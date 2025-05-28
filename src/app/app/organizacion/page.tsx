@@ -65,8 +65,9 @@ export default function OrganizationPage() {
         setLogoUrl(org.logo_url);
 
         // Catálogo tipos
+        // Nota: los tipos se inferirán dinámicamente
         const { data: cat, error: catErr } = await supabase
-          .from<OrgType>("organization_types")
+          .from("organization_types")
           .select("id,name");
         if (catErr) throw catErr;
         setTypes(cat || []);

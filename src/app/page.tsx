@@ -7,6 +7,8 @@ export default function Home() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <ModuleCard name="Inicio" path="/app/inicio" />
         <ModuleCard name="Login" path="/auth/login" />
+        <ModuleCard name="Reset Password" path="/auth/reset-password" />
+        <ModuleCard name="Forgot Password" path="/auth/forgot-password" />
         <ModuleCard name="CRM" path="/app/crm" />
         <ModuleCard name="HRM" path="/app/hrm" />
         <ModuleCard name="Finanzas" path="/app/finanzas" />

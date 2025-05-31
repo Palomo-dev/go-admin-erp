@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithEmail, signInWithGoogle, signInWithMicrosoft } from '@/lib/supabase/config';
 
 export default function LoginPage() {
@@ -11,7 +11,37 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [organization, setOrganization] = useState<string | null>(null);
+  const [showOrgSelector, setShowOrgSelector] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    // Check for error in URL
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      setError(
+        errorParam === 'auth-callback-failed' 
+          ? 'Error al iniciar sesión con proveedor externo' 
+          : 'Error al iniciar sesión'
+      );
+    }
+    
+    // Check for organization in subdomain
+    const hostname = window.location.hostname;
+    const subdomain = hostname.split('.')[0];
+    
+    if (subdomain !== 'www' && !hostname.includes('localhost')) {
+      setOrganization(subdomain);
+    }
+    
+    // Check for redirectTo parameter
+    const redirectTo = searchParams.get('redirectTo');
+    if (redirectTo) {
+      // Store it in session storage for after login
+      sessionStorage.setItem('redirectTo', redirectTo);
+    }
+  }, [searchParams]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,14 +49,31 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      // Add remember me option to the login
       const { data, error } = await signInWithEmail(email, password);
       
       if (error) {
         throw error;
       }
+      
+      // Set remember me preference in local storage if checked
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('userEmail', email);
+      } else {
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('userEmail');
+      }
 
-      // Redirect to dashboard on successful login
-      router.push('/app/inicio');
+      // Check if there's a redirectTo in session storage
+      const redirectTo = sessionStorage.getItem('redirectTo');
+      if (redirectTo) {
+        sessionStorage.removeItem('redirectTo');
+        router.push(redirectTo);
+      } else {
+        // Redirect to dashboard on successful login
+        router.push('/app/inicio');
+      }
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {
@@ -62,6 +109,28 @@ export default function LoginPage() {
     }
   };
 
+  // Toggle organization selector
+  const toggleOrgSelector = () => {
+    setShowOrgSelector(!showOrgSelector);
+  };
+  
+  // Handle organization selection
+  const selectOrganization = (org: string) => {
+    setOrganization(org);
+    setShowOrgSelector(false);
+  };
+  
+  // Load remembered email on component mount
+  useEffect(() => {
+    if (localStorage.getItem('rememberMe') === 'true') {
+      const savedEmail = localStorage.getItem('userEmail');
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    }
+  }, []);
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-blue-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
@@ -76,6 +145,35 @@ export default function LoginPage() {
           <h2 className="text-center text-2xl font-bold text-gray-800">
             Iniciar sesión en GO Admin ERP
           </h2>
+          
+          {/* Organization selector */}
+          <div className="mt-2 relative w-full">
+            <button 
+              type="button" 
+              onClick={toggleOrgSelector}
+              className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <span>{organization || 'Seleccionar organización'}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+            
+            {showOrgSelector && (
+              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1">
+                {['Restaurant', 'Hotel', 'Tienda', 'Gimnasio', 'SaaS', 'Transporte', 'Parqueadero'].map((org) => (
+                  <button
+                    key={org}
+                    type="button"
+                    onClick={() => selectOrganization(org)}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    {org}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         
         {error && (

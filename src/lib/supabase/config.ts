@@ -16,7 +16,8 @@ export const createSupabaseClient = () => {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce'
+      flowType: 'pkce',
+      storageKey: 'go-admin-erp-auth'
     }
   })
 }
@@ -51,6 +52,20 @@ export const signInWithMicrosoft = async () => {
 }
 
 export const signOut = async () => {
+  // Eliminar todas las cookies relacionadas con la autenticación
+  document.cookie = 'sb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+  document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+  document.cookie = 'sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+  document.cookie = 'go-admin-erp-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+  document.cookie = 'sb-jgmgphmzusbluqhuqihj-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+  
+  // Limpiar localStorage de tokens relacionados con la autenticación
+  localStorage.removeItem('supabase.auth.token');
+  localStorage.removeItem('sb-access-token');
+  localStorage.removeItem('sb-refresh-token');
+  localStorage.removeItem('go-admin-erp-auth');
+  
+  // Cerrar sesión en Supabase
   return await supabase.auth.signOut()
 }
 
@@ -101,4 +116,57 @@ export const updatePassword = async (newPassword: string) => {
   return await supabase.auth.updateUser({
     password: newPassword
   })
+}
+
+// Obtener organizaciones disponibles
+export const getOrganizations = async () => {
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('id, name, status')
+    .order('name');
+  
+  if (error) {
+    console.error('Error al obtener organizaciones:', error);
+    return [];
+  }
+  
+  return data || [];
+};
+
+// Función específica para registro con manejo mejorado de verificación
+export const signUpWithEmail = async (email: string, password: string, userData: any, redirectUrl: string) => {
+  const response = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: userData,
+      emailRedirectTo: redirectUrl,
+    },
+  });
+  
+  // Si la respuesta es exitosa pero no hay confirmación de envío de correo,
+  // intentamos enviar manualmente un correo de verificación
+  if (!response.error && response.data.user && 
+      !response.data.user.email_confirmed_at && 
+      !response.data.user.confirmation_sent_at) {
+    
+    console.log('Intentando enviar correo de verificación manualmente...');
+    
+    // Intentar enviar el correo de verificación manualmente
+    const resendResponse = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: redirectUrl,
+      }
+    });
+    
+    if (resendResponse.error) {
+      console.error('Error al reenviar correo de verificación:', resendResponse.error);
+    } else {
+      console.log('Correo de verificación enviado manualmente con éxito');
+    }
+  }
+  
+  return response;
 }

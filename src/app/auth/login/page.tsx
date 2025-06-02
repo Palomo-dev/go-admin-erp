@@ -3,7 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signInWithEmail, signInWithGoogle, signInWithMicrosoft } from '@/lib/supabase/config';
+import { supabase, signInWithEmail, signInWithGoogle, signInWithMicrosoft, getOrganizations } from '@/lib/supabase/config';
+
+// Definir el tipo para organizaciones
+type Organization = {
+  id: string;
+  name: string;
+  slug: string;
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,10 +18,29 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [organization, setOrganization] = useState<string | null>(null);
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [showOrgSelector, setShowOrgSelector] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // Cargar organizaciones desde Supabase
+  useEffect(() => {
+    const loadOrganizations = async () => {
+      setLoadingOrgs(true);
+      try {
+        const orgs = await getOrganizations();
+        setOrganizations(orgs);
+      } catch (err) {
+        console.error('Error al cargar organizaciones:', err);
+      } finally {
+        setLoadingOrgs(false);
+      }
+    };
+    
+    loadOrganizations();
+  }, []);
   
   useEffect(() => {
     // Check for error in URL
@@ -32,7 +58,11 @@ export default function LoginPage() {
     const subdomain = hostname.split('.')[0];
     
     if (subdomain !== 'www' && !hostname.includes('localhost')) {
-      setOrganization(subdomain);
+      // Buscar organización por slug
+      const matchingOrg = organizations.find(org => org.slug === subdomain);
+      if (matchingOrg) {
+        setOrganization(matchingOrg);
+      }
     }
     
     // Check for redirectTo parameter
@@ -41,19 +71,66 @@ export default function LoginPage() {
       // Store it in session storage for after login
       sessionStorage.setItem('redirectTo', redirectTo);
     }
-  }, [searchParams]);
+  }, [searchParams, organizations]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    // Verificar si se ha seleccionado una organización
+    if (!organization) {
+      setError('Por favor selecciona una organización para continuar');
+      setLoading(false);
+      return;
+    }
+
     try {
       // Add remember me option to the login
       const { data, error } = await signInWithEmail(email, password);
       
       if (error) {
-        throw error;
+        // Personalizar mensajes de error para hacerlos más amigables
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('El usuario no existe o las credenciales son incorrectas. Por favor verifica tu email y contraseña.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Tu cuenta aún no ha sido verificada. Por favor revisa tu correo electrónico y haz clic en el enlace de verificación.');
+        } else if (error.message.includes('User not found')) {
+          throw new Error('El usuario no existe. ¿Quieres crear una cuenta nueva?');
+        } else {
+          throw error;
+        }
+      }
+      
+      // Verificar si el usuario pertenece a la organización seleccionada
+      if (data.user) {
+        // Obtener el perfil del usuario usando su email
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', email) // Usar el email ingresado en el formulario
+          .single();
+          
+        console.log('Perfil del usuario:', profileData, 'Error:', profileError);
+        
+        if (profileError) {
+          console.error('Error al obtener perfil:', profileError);
+          throw new Error('Error al verificar acceso. Por favor intenta nuevamente.');
+        }
+        
+        if (!profileData) {
+          throw new Error('No se encontró un perfil asociado a este usuario.');
+        }
+        
+        // Verificar si el perfil pertenece a la organización seleccionada
+        if (profileData.organization_id !== organization.id) {
+          throw new Error('No tienes acceso a esta organización. Por favor selecciona otra o contacta al administrador.');
+        }
+        
+        // Guardar información relevante en localStorage para uso posterior
+        localStorage.setItem('currentOrganizationId', organization.id);
+        localStorage.setItem('currentOrganizationName', organization.name);
+        localStorage.setItem('userRole', profileData.role || 'user');
       }
       
       // Set remember me preference in local storage if checked
@@ -65,15 +142,65 @@ export default function LoginPage() {
         localStorage.removeItem('userEmail');
       }
 
+      // Agregar un log para depurar el proceso de redirección
+      console.log('Autenticación exitosa, intentando redireccionar...');
+      
       // Check if there's a redirectTo in session storage
       const redirectTo = sessionStorage.getItem('redirectTo');
-      if (redirectTo) {
-        sessionStorage.removeItem('redirectTo');
-        router.push(redirectTo);
-      } else {
-        // Redirect to dashboard on successful login
-        router.push('/app/inicio');
+      console.log('Destino de redirección:', redirectTo || '/app/inicio');
+      
+      // Forzar a Supabase a persistir la sesión correctamente
+      console.log('Verificando y reforzando persistencia de sesión...');
+      await supabase.auth.refreshSession();
+      
+      // Verificar que la sesión se haya establecido correctamente
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('Sesión establecida:', sessionData.session ? 'Sí' : 'No');
+      
+      // Guardar token de sesión en localStorage manualmente para garantizar disponibilidad
+      if (sessionData.session) {
+        console.log('Guardando token de sesión en localStorage');
+        localStorage.setItem('supabase.auth.token', JSON.stringify({
+          access_token: sessionData.session.access_token,
+          refresh_token: sessionData.session.refresh_token,
+          expires_at: sessionData.session.expires_at
+        }));
       }
+      console.log('Detalles de sesión:', sessionData.session);
+      
+      // Establecer una cookie para ayudar al middleware a detectar la sesión
+      document.cookie = `sb-auth-token=${sessionData.session?.access_token || ''}; path=/; max-age=3600; SameSite=Lax`;
+      
+      // Forzar un refresco completo de la página para que el middleware detecte la sesión correctamente
+      console.log('Esperando para redirigir y asegurar que la sesión sea detectada...');
+      
+      setTimeout(() => {
+        try {
+          // Verificar nuevamente la sesión antes de redireccionar
+          supabase.auth.getSession().then(({ data: finalSession }) => {
+            console.log('Estado final de sesión antes de redireccionar:', finalSession.session ? 'Autenticado' : 'No autenticado');
+            
+            if (finalSession.session) {
+              if (redirectTo) {
+                sessionStorage.removeItem('redirectTo');
+                console.log('Redireccionando a:', redirectTo);
+                // Usar window.location.replace para forzar recarga completa
+                window.location.replace(redirectTo);
+              } else {
+                // Redirect to dashboard on successful login
+                console.log('Redireccionando al dashboard');
+                window.location.replace('/app/inicio');
+              }
+            } else {
+              console.error('No se pudo establecer la sesión correctamente');
+              alert('Error al establecer la sesión. Por favor, intenta nuevamente.');
+            }
+          });
+        } catch (redirectError) {
+          console.error('Error al redireccionar:', redirectError);
+          alert('Error al redireccionar. Por favor, intenta nuevamente.');
+        }
+      }, 1000); // Aumentar el retraso a 1 segundo
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {
@@ -115,7 +242,7 @@ export default function LoginPage() {
   };
   
   // Handle organization selection
-  const selectOrganization = (org: string) => {
+  const selectOrganization = (org: Organization) => {
     setOrganization(org);
     setShowOrgSelector(false);
   };
@@ -153,7 +280,7 @@ export default function LoginPage() {
               onClick={toggleOrgSelector}
               className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              <span>{organization || 'Seleccionar organización'}</span>
+              <span>{organization ? organization.name : 'Seleccionar organización'}</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
@@ -161,16 +288,22 @@ export default function LoginPage() {
             
             {showOrgSelector && (
               <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1">
-                {['Restaurant', 'Hotel', 'Tienda', 'Gimnasio', 'SaaS', 'Transporte', 'Parqueadero'].map((org) => (
-                  <button
-                    key={org}
-                    type="button"
-                    onClick={() => selectOrganization(org)}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    {org}
-                  </button>
-                ))}
+                {loadingOrgs ? (
+                  <div className="px-4 py-2 text-sm text-gray-500">Cargando organizaciones...</div>
+                ) : organizations.length > 0 ? (
+                  organizations.map((org) => (
+                    <button
+                      key={org.id}
+                      type="button"
+                      onClick={() => selectOrganization(org)}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {org.name}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-2 text-sm text-gray-500">No hay organizaciones disponibles</div>
+                )}
               </div>
             )}
           </div>
@@ -179,6 +312,13 @@ export default function LoginPage() {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
             <span className="block sm:inline">{error}</span>
+            {error.includes('El usuario no existe') && (
+              <div className="mt-2">
+                <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
+                  Crear una cuenta nueva
+                </Link>
+              </div>
+            )}
           </div>
         )}
         
@@ -263,6 +403,15 @@ export default function LoginPage() {
               {loading ? 'Loading...' : 'LOGIN'}
             </button>
           </div>
+          
+          <div className="text-center mt-4">
+            <p className="text-sm text-gray-600">
+              ¿No tienes una cuenta?{' '}
+              <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
+                Regístrate aquí
+              </Link>
+            </p>
+          </div>
         </form>
 
         <div className="mt-6">
@@ -281,23 +430,11 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                <path
-                  fill="#EA4335"
-                  d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"
-                />
-                <path
-                  fill="#4A90E2"
-                  d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z"
-                />
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 23 23">
+                <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z" />
+                <path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z" />
+                <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z" />
+                <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z" />
               </svg>
               Log in with Google
             </button>

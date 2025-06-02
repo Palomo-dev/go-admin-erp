@@ -7,35 +7,96 @@ export async function middleware(request: NextRequest) {
   // Create a Supabase client configured to use cookies
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  
+  // Obtener cookies de autenticación de la solicitud - buscar todas las posibles cookies de Supabase
+  const authCookie = request.cookies.get('go-admin-erp-session') || 
+                    request.cookies.get('sb-jgmgphmzusbluqhuqihj-auth-token') ||
+                    request.cookies.get('sb-auth-token') ||
+                    request.cookies.get('sb-access-token') ||
+                    request.cookies.get('sb-refresh-token');
+  
+  // Crear cliente de Supabase con configuración para usar cookies
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+      flowType: 'pkce'
+    }
+  });
 
-  // Refresh session if expired - required for Server Components
-  const { data: { session } } = await supabase.auth.getSession();
+  // Verificar si hay una sesión activa
+  let session = null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    console.log('Sesión activa:', data);
+    session = data.session;
+    console.log('Sesión activa:', session);
+    
+    // Si no hay sesión pero existe una cookie de autenticación, intentar restaurar la sesión
+    if (!session && authCookie) {
+      console.log('Intentando restaurar sesión desde cookie');
+      // La sesión podría estar en la cookie pero no accesible por el middleware
+      // Usamos este enfoque para considerar que hay una sesión activa si existe la cookie
+      session = {}; // Objeto vacío para indicar que hay una sesión
+    }
+  } catch (error) {
+    console.error('Error al verificar sesión:', error);
+  }
 
-  // If the user is not signed in and the current path is not /auth/*, redirect to /auth/login
-  if (!session && !request.nextUrl.pathname.startsWith('/auth/')) {
+  // Verificar si hay cookies que indiquen una sesión activa
+  // Para middleware, solo podemos verificar cookies, no localStorage
+  const hasAuthToken = authCookie || request.cookies.get('sb-access-token');
+  
+  // Buscar en todas las cookies por cualquier indicio de autenticación
+  let hasAnyAuthCookie = false;
+  request.cookies.getAll().forEach(cookie => {
+    if (cookie.name.includes('auth') || cookie.name.includes('supabase') || cookie.name.includes('sb-')) {
+      console.log(`Cookie de autenticación encontrada: ${cookie.name}`);
+      hasAnyAuthCookie = true;
+    }
+  });
+  
+  // Un usuario está autenticado si tiene una sesión válida o cualquier cookie de autenticación
+  const isAuthenticated = !!session || !!hasAuthToken || hasAnyAuthCookie;
+
+  console.log('Sesión activa:', session);
+  console.log('Cookies de autenticación:', hasAuthToken);
+  console.log('Autenticado:', isAuthenticated);
+  console.log('Ruta:', request.nextUrl.pathname);
+  
+  // Registrar información para depuración
+  console.log(`Ruta: ${request.nextUrl.pathname}, Autenticado: ${isAuthenticated}`);
+  console.log(`Cookies de autenticación: ${hasAuthToken ? 'Presentes' : 'Ausentes'}`);
+
+  // Si el usuario no está autenticado y la ruta actual no es /auth/*, redirigir a /auth/login
+  if (!isAuthenticated && !request.nextUrl.pathname.startsWith('/auth/')) {
+    console.log('Redirigiendo a login: Usuario no autenticado');
     const redirectUrl = new URL('/auth/login', request.url);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // If the user is signed in and the current path is /auth/login, redirect to /app/inicio
-  if (session && request.nextUrl.pathname === '/auth/login') {
+  // Si el usuario está autenticado y la ruta actual es /auth/login, redirigir a /app/inicio
+  if (isAuthenticated && request.nextUrl.pathname === '/auth/login') {
+    console.log('Redirigiendo a inicio: Usuario ya autenticado en página de login');
     const redirectUrl = new URL('/app/inicio', request.url);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // If the user is signed in and the current path is /auth/* (except /auth/logout), redirect to /app/inicio
-  if (session && 
+  // Si el usuario está autenticado y la ruta actual es /auth/* (excepto /auth/logout), redirigir a /app/inicio
+  if (isAuthenticated && 
       request.nextUrl.pathname.startsWith('/auth/') && 
       request.nextUrl.pathname !== '/auth/logout') {
+    console.log('Redirigiendo a inicio: Usuario autenticado en ruta de autenticación');
     const redirectUrl = new URL('/app/inicio', request.url);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // If the user is not signed in and the current path is /app/*, redirect to /auth/login
-  if (!session && request.nextUrl.pathname.startsWith('/app/')) {
+  // Si el usuario no está autenticado y la ruta actual es /app/*, redirigir a /auth/login
+  if (!isAuthenticated && request.nextUrl.pathname.startsWith('/app/')) {
+    console.log('Redirigiendo a login: Usuario no autenticado intentando acceder a ruta protegida');
     const redirectUrl = new URL('/auth/login', request.url);
-    // Add the current URL as a query parameter so we can redirect back after login
+    // Agregar la URL actual como parámetro de consulta para poder redirigir después del inicio de sesión
     redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
   }

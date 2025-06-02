@@ -51,7 +51,7 @@ export const signInWithMicrosoft = async () => {
   })
 }
 
-export const signOut = async () => {
+export const  signOut = async () => {
   // Eliminar todas las cookies relacionadas con la autenticación
   document.cookie = 'sb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
   document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
@@ -169,4 +169,182 @@ export const signUpWithEmail = async (email: string, password: string, userData:
   }
   
   return response;
+}
+
+// Definir tipos para los datos de invitación
+type InviteData = {
+  id: string;
+  email: string;
+  organization_id: string;
+  organizations: { name: string } | null;
+  branch_id: string;
+  role_id: string;
+  roles: { name: string } | null;
+  created_at: string;
+  expires_at: string | null;
+  used: boolean;
+};
+
+// Función para validar invitaciones
+export const validateInvitation = async (inviteCode: string) => {
+  const { data, error } = await supabase
+    .from('invitations')
+    .select(`
+      id,
+      email,
+      code,
+      role_id,
+      organization_id,
+      created_at,
+      expires_at,
+      used_at,
+      status,
+      roles(name),
+      organizations(name, type)
+    `)
+    .eq('code', inviteCode)
+    .single();
+
+  if (error) return { data: null, error };
+
+  // Check if invitation is already used, revoked, or expired
+  if (data.status === 'used') {
+    return { data: null, error: { message: 'La invitación ya ha sido utilizada' } };
+  }
+
+  if (data.status === 'revoked') {
+    return { data: null, error: { message: 'La invitación ha sido revocada' } };
+  }
+
+  const expired = data.expires_at ? new Date(data.expires_at) < new Date() : false;
+  if (expired) {
+    return { data: null, error: { message: 'La invitación ha expirado' } };
+  }
+
+  // Extract data safely from potentially nested objects or arrays
+  let organizationName = '';
+  let roleName = '';
+
+  if (data.organizations) {
+    if (Array.isArray(data.organizations) && data.organizations.length > 0) {
+      organizationName = data.organizations[0].name || '';
+    } else if (typeof data.organizations === 'object') {
+      organizationName = data.organizations.name || '';
+    }
+  }
+
+  if (data.roles) {
+    if (Array.isArray(data.roles) && data.roles.length > 0) {
+      roleName = data.roles[0].name || '';
+    } else if (typeof data.roles === 'object') {
+      roleName = data.roles.name || '';
+    }
+  }
+
+  // Format the data for response
+  const formattedData = {
+    id: data.id,
+    code: data.code,
+    email: data.email,
+    organization_id: data.organization_id,
+    organization_name: organizationName,
+    role_id: data.role_id,
+    role_name: roleName,
+    created_at: data.created_at,
+    expires_at: data.expires_at
+  };
+
+  return { data: formattedData, error: null };
+}
+
+// Función para aceptar invitaciones
+export const acceptInvitation = async ({ 
+  inviteCode, 
+  password, 
+  userData 
+}: { 
+  inviteCode: string; 
+  password: string; 
+  userData: any 
+}) => {
+  // Validamos la invitación
+  const { data: inviteData, error: validateError } = 
+    await validateInvitation(inviteCode);
+  
+  if (validateError) {
+    return { error: validateError };
+  }
+
+  try {
+    // Creamos el usuario
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      email: inviteData.email,
+      password,
+      options: {
+        data: userData
+      }
+    });
+  
+    if (signUpError) {
+      return { error: signUpError };
+    }
+
+    if (!authData || !authData.user) {
+      return { error: { message: 'No se pudo crear el usuario' } };
+    }
+
+    // Agregamos el usuario a la tabla profiles
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: authData.user.id,
+        email: inviteData.email,
+        first_name: userData.firstName || userData.first_name,
+        last_name: userData.lastName || userData.last_name,
+        organization_id: inviteData.organization_id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    
+    if (profileError) {
+      return { error: profileError };
+    }
+
+    // Agregamos el miembro a la organización
+    const { error: memberError } = await supabase
+      .from('organization_members')
+      .upsert({
+        user_id: authData.user.id,
+        organization_id: inviteData.organization_id,
+        role: inviteData.role_name, // Usamos el nombre del rol directamente
+        is_active: true,
+        created_at: new Date().toISOString()
+      });
+    
+    if (memberError) {
+      return { error: memberError };
+    }
+
+    // Marcamos la invitación como utilizada
+    const { error: updateInviteError } = await supabase
+      .from('invitations')
+      .update({ 
+        status: 'used', 
+        used_at: new Date().toISOString() 
+      })
+      .eq('code', inviteCode);
+    
+    if (updateInviteError) {
+      return { error: updateInviteError };
+    }
+    
+    return { data: authData, error: null };
+  } catch (error: any) {
+    return { 
+      data: null, 
+      error: { 
+        message: error.message || 'Error al aceptar la invitación' 
+      } 
+    };
+  }
 }

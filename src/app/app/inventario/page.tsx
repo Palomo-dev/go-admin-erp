@@ -59,15 +59,254 @@ const InventarioPage: FC<InventarioPageProps> = () => {
     ],
   });
 
+  // Datos simulados para diferentes sucursales
+  const datosPorSucursal: Record<string, typeof dashboardData> = {
+    'SUC001': {
+      kpis: {
+        stockTotal: 2450,
+        valorizado: 145000000,
+        alertas: 12,
+      },
+      rotacion: [
+        { mes: 'Ene', rotacion: 65 },
+        { mes: 'Feb', rotacion: 59 },
+        { mes: 'Mar', rotacion: 80 },
+        { mes: 'Abr', rotacion: 81 },
+        { mes: 'May', rotacion: 76 },
+        { mes: 'Jun', rotacion: 85 },
+      ],
+      topSKUs: [
+        { id: 'SKU001', nombre: 'Laptop Dell XPS 13', stock: 24, valorUnitario: 1200000, rotacion: 85 },
+        { id: 'SKU002', nombre: 'Monitor Samsung 27"', stock: 45, valorUnitario: 450000, rotacion: 76 },
+        { id: 'SKU003', nombre: 'Teclado Mecánico Logitech', stock: 36, valorUnitario: 120000, rotacion: 68 },
+        { id: 'SKU004', nombre: 'Mouse Inalámbrico Microsoft', stock: 58, valorUnitario: 65000, rotacion: 92 },
+        { id: 'SKU005', nombre: 'Audífonos Sony WH-1000XM4', stock: 19, valorUnitario: 850000, rotacion: 71 },
+      ],
+    },
+    'SUC002': {
+      kpis: {
+        stockTotal: 1850,
+        valorizado: 98500000,
+        alertas: 8,
+      },
+      rotacion: [
+        { mes: 'Ene', rotacion: 58 },
+        { mes: 'Feb', rotacion: 62 },
+        { mes: 'Mar', rotacion: 75 },
+        { mes: 'Abr', rotacion: 78 },
+        { mes: 'May', rotacion: 70 },
+        { mes: 'Jun', rotacion: 79 },
+      ],
+      topSKUs: [
+        { id: 'SKU002', nombre: 'Monitor Samsung 27"', stock: 32, valorUnitario: 450000, rotacion: 82 },
+        { id: 'SKU003', nombre: 'Teclado Mecánico Logitech', stock: 28, valorUnitario: 120000, rotacion: 75 },
+        { id: 'SKU004', nombre: 'Mouse Inalámbrico Microsoft', stock: 45, valorUnitario: 65000, rotacion: 89 },
+        { id: 'SKU001', nombre: 'Laptop Dell XPS 13', stock: 18, valorUnitario: 1200000, rotacion: 72 },
+        { id: 'SKU008', nombre: 'Impresora HP LaserJet', stock: 12, valorUnitario: 520000, rotacion: 65 },
+      ],
+    },
+    'SUC003': {
+      kpis: {
+        stockTotal: 1250,
+        valorizado: 78500000,
+        alertas: 15,
+      },
+      rotacion: [
+        { mes: 'Ene', rotacion: 48 },
+        { mes: 'Feb', rotacion: 52 },
+        { mes: 'Mar', rotacion: 65 },
+        { mes: 'Abr', rotacion: 68 },
+        { mes: 'May', rotacion: 72 },
+        { mes: 'Jun', rotacion: 75 },
+      ],
+      topSKUs: [
+        { id: 'SKU006', nombre: 'Tablet Samsung Galaxy', stock: 22, valorUnitario: 750000, rotacion: 78 },
+        { id: 'SKU007', nombre: 'Smart TV LG 50"', stock: 8, valorUnitario: 1800000, rotacion: 62 },
+        { id: 'SKU004', nombre: 'Mouse Inalámbrico Microsoft', stock: 35, valorUnitario: 65000, rotacion: 85 },
+        { id: 'SKU009', nombre: 'Cámara Sony Alpha', stock: 6, valorUnitario: 2500000, rotacion: 58 },
+        { id: 'SKU010', nombre: 'Router TP-Link', stock: 18, valorUnitario: 180000, rotacion: 72 },
+      ],
+    },
+    'SUC004': {
+      kpis: {
+        stockTotal: 1650,
+        valorizado: 112000000,
+        alertas: 10,
+      },
+      rotacion: [
+        { mes: 'Ene', rotacion: 55 },
+        { mes: 'Feb', rotacion: 58 },
+        { mes: 'Mar', rotacion: 68 },
+        { mes: 'Abr', rotacion: 72 },
+        { mes: 'May', rotacion: 75 },
+        { mes: 'Jun', rotacion: 82 },
+      ],
+      topSKUs: [
+        { id: 'SKU001', nombre: 'Laptop Dell XPS 13', stock: 15, valorUnitario: 1200000, rotacion: 80 },
+        { id: 'SKU011', nombre: 'Disco Duro Externo 2TB', stock: 28, valorUnitario: 320000, rotacion: 88 },
+        { id: 'SKU012', nombre: 'Memoria USB 128GB', stock: 42, valorUnitario: 85000, rotacion: 92 },
+        { id: 'SKU013', nombre: 'Monitor Curvo 32"', stock: 10, valorUnitario: 980000, rotacion: 68 },
+        { id: 'SKU014', nombre: 'Teclado Inalámbrico Apple', stock: 12, valorUnitario: 420000, rotacion: 75 },
+      ],
+    },
+  };
+
+  // Datos simulados para diferentes categorías
+  const datosPorCategoria: Record<string, typeof dashboardData> = {
+    'CAT001': {
+      kpis: {
+        stockTotal: 980,
+        valorizado: 95000000,
+        alertas: 7,
+      },
+      rotacion: [
+        { mes: 'Ene', rotacion: 68 },
+        { mes: 'Feb', rotacion: 72 },
+        { mes: 'Mar', rotacion: 78 },
+        { mes: 'Abr', rotacion: 82 },
+        { mes: 'May', rotacion: 79 },
+        { mes: 'Jun', rotacion: 85 },
+      ],
+      topSKUs: [
+        { id: 'SKU001', nombre: 'Laptop Dell XPS 13', stock: 24, valorUnitario: 1200000, rotacion: 85 },
+        { id: 'SKU006', nombre: 'Tablet Samsung Galaxy', stock: 22, valorUnitario: 750000, rotacion: 78 },
+        { id: 'SKU007', nombre: 'Smart TV LG 50"', stock: 8, valorUnitario: 1800000, rotacion: 62 },
+        { id: 'SKU009', nombre: 'Cámara Sony Alpha', stock: 6, valorUnitario: 2500000, rotacion: 58 },
+        { id: 'SKU013', nombre: 'Monitor Curvo 32"', stock: 10, valorUnitario: 980000, rotacion: 68 },
+      ],
+    },
+    'CAT002': {
+      kpis: {
+        stockTotal: 650,
+        valorizado: 35000000,
+        alertas: 4,
+      },
+      rotacion: [
+        { mes: 'Ene', rotacion: 72 },
+        { mes: 'Feb', rotacion: 75 },
+        { mes: 'Mar', rotacion: 79 },
+        { mes: 'Abr', rotacion: 82 },
+        { mes: 'May', rotacion: 86 },
+        { mes: 'Jun', rotacion: 89 },
+      ],
+      topSKUs: [
+        { id: 'SKU002', nombre: 'Monitor Samsung 27"', stock: 45, valorUnitario: 450000, rotacion: 76 },
+        { id: 'SKU013', nombre: 'Monitor Curvo 32"', stock: 10, valorUnitario: 980000, rotacion: 68 },
+        { id: 'SKU015', nombre: 'Monitor LG UltraWide', stock: 8, valorUnitario: 1250000, rotacion: 65 },
+        { id: 'SKU016', nombre: 'Proyector Epson', stock: 5, valorUnitario: 1850000, rotacion: 55 },
+        { id: 'SKU017', nombre: 'Monitor Tactil Dell', stock: 7, valorUnitario: 1050000, rotacion: 62 },
+      ],
+    },
+    'CAT003': {
+      kpis: {
+        stockTotal: 820,
+        valorizado: 15000000,
+        alertas: 3,
+      },
+      rotacion: [
+        { mes: 'Ene', rotacion: 75 },
+        { mes: 'Feb', rotacion: 78 },
+        { mes: 'Mar', rotacion: 82 },
+        { mes: 'Abr', rotacion: 85 },
+        { mes: 'May', rotacion: 88 },
+        { mes: 'Jun', rotacion: 92 },
+      ],
+      topSKUs: [
+        { id: 'SKU003', nombre: 'Teclado Mecánico Logitech', stock: 36, valorUnitario: 120000, rotacion: 68 },
+        { id: 'SKU004', nombre: 'Mouse Inalámbrico Microsoft', stock: 58, valorUnitario: 65000, rotacion: 92 },
+        { id: 'SKU014', nombre: 'Teclado Inalámbrico Apple', stock: 12, valorUnitario: 420000, rotacion: 75 },
+        { id: 'SKU018', nombre: 'Webcam Logitech HD', stock: 25, valorUnitario: 180000, rotacion: 82 },
+        { id: 'SKU019', nombre: 'Audífonos Gamer Razer', stock: 18, valorUnitario: 350000, rotacion: 78 },
+      ],
+    },
+    'CAT004': {
+      kpis: {
+        stockTotal: 320,
+        valorizado: 58000000,
+        alertas: 5,
+      },
+      rotacion: [
+        { mes: 'Ene', rotacion: 45 },
+        { mes: 'Feb', rotacion: 48 },
+        { mes: 'Mar', rotacion: 52 },
+        { mes: 'Abr', rotacion: 58 },
+        { mes: 'May', rotacion: 62 },
+        { mes: 'Jun', rotacion: 65 },
+      ],
+      topSKUs: [
+        { id: 'SKU020', nombre: 'Escritorio Ejecutivo', stock: 8, valorUnitario: 750000, rotacion: 45 },
+        { id: 'SKU021', nombre: 'Silla Ergonómica', stock: 15, valorUnitario: 580000, rotacion: 62 },
+        { id: 'SKU022', nombre: 'Archivador Metálico', stock: 12, valorUnitario: 420000, rotacion: 38 },
+        { id: 'SKU023', nombre: 'Mesa de Juntas', stock: 4, valorUnitario: 1850000, rotacion: 25 },
+        { id: 'SKU024', nombre: 'Librero Modular', stock: 10, valorUnitario: 650000, rotacion: 48 },
+      ],
+    },
+  };
+
+  // Datos originales globales para el dashboard
+  const datosOriginales = {
+    kpis: {
+      stockTotal: 2450,
+      valorizado: 145000000,
+      alertas: 12,
+    },
+    rotacion: [
+      { mes: 'Ene', rotacion: 65 },
+      { mes: 'Feb', rotacion: 59 },
+      { mes: 'Mar', rotacion: 80 },
+      { mes: 'Abr', rotacion: 81 },
+      { mes: 'May', rotacion: 76 },
+      { mes: 'Jun', rotacion: 85 },
+    ],
+    topSKUs: [
+      { id: 'SKU001', nombre: 'Laptop Dell XPS 13', stock: 24, valorUnitario: 1200000, rotacion: 85 },
+      { id: 'SKU002', nombre: 'Monitor Samsung 27"', stock: 45, valorUnitario: 450000, rotacion: 76 },
+      { id: 'SKU003', nombre: 'Teclado Mecánico Logitech', stock: 36, valorUnitario: 120000, rotacion: 68 },
+      { id: 'SKU004', nombre: 'Mouse Inalámbrico Microsoft', stock: 58, valorUnitario: 65000, rotacion: 92 },
+      { id: 'SKU005', nombre: 'Audífonos Sony WH-1000XM4', stock: 19, valorUnitario: 850000, rotacion: 71 },
+    ],
+  };
+
   const handleFilterChange = (nuevosFiltros: { sucursal: string; categoria: string }) => {
     setFiltros(nuevosFiltros);
     
     // En una implementación real, aquí llamaríamos a la API para obtener los datos filtrados
     console.log('Aplicando filtros:', nuevosFiltros);
     
-    // Simulación de actualización de datos (esto sería reemplazado por la llamada a la API)
-    // Por ahora solo mantenemos los mismos datos
-    setDashboardData({ ...dashboardData });
+    // Si ambos filtros están vacíos, restaurar a los datos originales
+    if (!nuevosFiltros.sucursal && !nuevosFiltros.categoria) {
+      setDashboardData({...datosOriginales});
+      return;
+    }
+    
+    // Simulación de actualización de datos según los filtros seleccionados
+    let nuevosDatos = {...datosOriginales};
+    
+    // Si se seleccionó una sucursal específica
+    if (nuevosFiltros.sucursal) {
+      nuevosDatos = datosPorSucursal[nuevosFiltros.sucursal] || nuevosDatos;
+    }
+    
+    // Si se seleccionó una categoría específica (prioridad sobre la sucursal)
+    if (nuevosFiltros.categoria) {
+      nuevosDatos = datosPorCategoria[nuevosFiltros.categoria] || nuevosDatos;
+    }
+    
+    // Si se seleccionaron ambos filtros (en un caso real, consultaríamos datos combinados)
+    if (nuevosFiltros.sucursal && nuevosFiltros.categoria) {
+      // Simulamos combinación de datos (en un caso real, esto vendría de la API)
+      // Por ahora, simplemente reducimos un poco los valores para simular el filtrado combinado
+      nuevosDatos = {
+        ...nuevosDatos,
+        kpis: {
+          stockTotal: Math.floor(nuevosDatos.kpis.stockTotal * 0.8),
+          valorizado: Math.floor(nuevosDatos.kpis.valorizado * 0.8),
+          alertas: Math.floor(nuevosDatos.kpis.alertas * 0.8),
+        }
+      };
+    }
+    
+    setDashboardData(nuevosDatos);
   };
 
   const formatCurrency = (value: number): string => {

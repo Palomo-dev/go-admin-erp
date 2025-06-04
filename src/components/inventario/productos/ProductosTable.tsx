@@ -1,17 +1,7 @@
 "use client";
 
 import React from 'react';
-
-interface Producto {
-  id: string;
-  nombre: string;
-  sku: string;
-  categoria: string;
-  precio: number;
-  stock: number;
-  estado: string;
-  tieneVariantes: boolean;
-}
+import { Producto } from '@/components/inventario/productos/types';
 
 interface ProductosTableProps {
   productos: Producto[];
@@ -39,6 +29,11 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   };
   // Función para formatear precio en formato de moneda colombiana
   const formatCurrency = (value: number): string => {
+    // Verificar que el valor sea un número válido
+    if (isNaN(value) || value === null || value === undefined) {
+      return '$0';
+    }
+    
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',

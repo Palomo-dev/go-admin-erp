@@ -1,16 +1,11 @@
 "use client";
 
 import React from 'react';
-
-interface FiltroProdutos {
-  categoria: string;
-  estado: string;
-  busqueda: string;
-}
+import { FiltrosProducto } from '@/components/inventario/productos/types';
 
 interface FiltrosProductosProps {
-  filters: FiltroProdutos;
-  onFilterChange: (filters: FiltroProdutos) => void;
+  filters: FiltrosProducto;
+  onFilterChange: (filters: FiltrosProducto) => void;
 }
 
 /**

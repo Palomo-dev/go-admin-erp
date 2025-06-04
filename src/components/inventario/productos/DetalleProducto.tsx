@@ -1,18 +1,7 @@
 "use client";
 
 import React from 'react';
-
-interface Producto {
-  id: string;
-  nombre: string;
-  sku: string;
-  categoria: string;
-  precio: number;
-  stock: number;
-  estado: string;
-  tieneVariantes: boolean;
-  descripcion?: string;
-}
+import { Producto } from '@/components/inventario/productos/types';
 
 interface DetalleProductoProps {
   product: Producto;

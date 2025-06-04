@@ -2,21 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 
-interface ProductoBase {
-  id?: string;
-  nombre: string;
-  sku: string;
-  categoria: string;
-  precio: number;
-  stock: number;
-  estado: string;
-  tieneVariantes: boolean;
-  descripcion: string;
-}
+// Importamos la interfaz Producto desde el CatalogoProductos 
+import { Producto } from '@/components/inventario/productos/types';
 
 interface FormularioProductoProps {
-  initialData?: ProductoBase;
-  onSave: (productData: ProductoBase) => void;
+  initialData?: Producto;
+  onSave: (productData: Producto) => void;
   onCancel: () => void;
 }
 
@@ -32,7 +23,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
   onCancel,
 }) => {
   // Estado para los datos del formulario
-  const [formData, setFormData] = useState<ProductoBase>({
+  const [formData, setFormData] = useState<Producto>({
     nombre: '',
     sku: '',
     categoria: '',
@@ -52,7 +43,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
   // Cargar datos iniciales si se está editando un producto existente
   useEffect(() => {
     if (initialData) {
-      setFormData(prevData => ({
+      setFormData((prevData: Producto) => ({
         ...prevData,
         ...initialData,
       }));
@@ -224,7 +215,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
               type="number"
               id="precio"
               name="precio"
-              value={formData.precio || ''}
+              value={formData.precio ?? ''}
               onChange={handleChange}
               min="0"
               step="100"
@@ -246,7 +237,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
             type="number"
             id="stock"
             name="stock"
-            value={formData.stock || ''}
+            value={formData.stock ?? ''}
             onChange={handleChange}
             min="0"
             className={`block w-full py-2 px-3 border ${

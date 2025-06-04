@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 
 interface OrganizationProps {
-  id: string;
+  id: number;
   name: string;
   type: string;
   logo_url?: string;
@@ -18,7 +18,7 @@ interface OrganizationProps {
   created_at: string;
 }
 
-export default function OrganizationInfoTab({ orgData }: { orgData: any }) {
+export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
   const [formData, setFormData] = useState<Partial<OrganizationProps>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,14 +29,16 @@ export default function OrganizationInfoTab({ orgData }: { orgData: any }) {
   ]);
   
   useEffect(() => {
-    if (orgData?.id) {
-      fetchOrganizationDetails(orgData.id);
+    if (orgData) {
+      fetchOrganizationDetails(orgData);
     }
   }, [orgData]);
 
-  const fetchOrganizationDetails = async (orgId: string) => {
+  const fetchOrganizationDetails = async (orgId: number) => {
     try {
       setLoading(true);
+      
+      console.log('Fetching organization details for ID:', orgId);
       
       const { data, error } = await supabase
         .from('organizations')
@@ -46,10 +48,22 @@ export default function OrganizationInfoTab({ orgData }: { orgData: any }) {
 
       if (error) throw error;
 
+      console.log(data)
+
+      // Get organization type description
+      const { data: descriptionOrganization, error: errorD } = await supabase
+      .from('organizations_types')
+      .select('description')
+      .eq('id', data.type)
+      .single();
+
+
+      console.log('Organization data:', data);
+      
       setFormData({
         id: data.id,
         name: data.name,
-        type: data.type || '',
+        type: descriptionOrganization || '',
         logo_url: data.logo_url || '',
         website: data.website || '',
         phone: data.phone || '',

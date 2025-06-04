@@ -99,29 +99,6 @@ export const getUserOrganization = async (userId: string) => {
     .single()
 }
 
-// Obtener todas las organizaciones a las que pertenece un usuario
-export const getUserOrganizations = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('organization_id, organizations(id, name, type, status)')
-    .eq('user_id', userId);
-  
-  if (error) {
-    console.error('Error al obtener organizaciones del usuario:', error);
-    return [];
-  }
-  
-  // Extraer y formatear las organizaciones
-  const orgs = data?.map(item => ({
-    id: item.organizations?.id || '',
-    name: item.organizations?.name || '',
-    type: item.organizations?.type || '',
-    status: item.organizations?.status || ''
-  })).filter(org => org.id) || [];
-  
-  return orgs;
-}
-
 export const getBranches = async (organizationId: string) => {
   return await supabase
     .from('branches')

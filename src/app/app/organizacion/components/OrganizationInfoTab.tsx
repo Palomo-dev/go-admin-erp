@@ -16,6 +16,17 @@ interface OrganizationProps {
   postal_code?: string;
   tax_id?: string;
   created_at: string;
+  description?: string;
+  email?: string;
+  status?: string;
+  owner_user_id?: string;
+  subscription_status?: string;
+  subscription_plan?: string;
+  subscription_ends_at?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  subdomain?: string;
+  custom_domain?: string;
 }
 
 export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
@@ -24,14 +35,13 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [organizationTypes, setOrganizationTypes] = useState<string[]>([
-    'Restaurant', 'Hotel', 'Tienda', 'Gimnasio', 'SaaS', 'Transporte', 'Parqueadero', 'Otro'
-  ]);
+  const [organizationTypes, setOrganizationTypes] = useState<{id: number, description: string}[]>([]);
   
   useEffect(() => {
     if (orgData) {
       fetchOrganizationDetails(orgData);
     }
+    fetchOrganizationTypes();
   }, [orgData]);
 
   const fetchOrganizationDetails = async (orgId: number) => {
@@ -48,22 +58,26 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
 
       if (error) throw error;
 
-      console.log(data)
+      console.log('Organization data:', data);
 
       // Get organization type description
-      const { data: descriptionOrganization, error: errorD } = await supabase
-      .from('organizations_types')
-      .select('description')
-      .eq('id', data.type)
-      .single();
-
-
-      console.log('Organization data:', data);
+      let typeDescription = '';
+      if (data.type_id) {
+        const { data: typeData, error: typeError } = await supabase
+          .from('organization_types')
+          .select('description')
+          .eq('id', parseInt(data.type_id))
+          .single();
+          
+        if (!typeError && typeData) {
+          typeDescription = typeData.description;
+        }
+      }
       
       setFormData({
         id: data.id,
         name: data.name,
-        type: descriptionOrganization || '',
+        type: typeDescription,
         logo_url: data.logo_url || '',
         website: data.website || '',
         phone: data.phone || '',
@@ -71,14 +85,42 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
         city: data.city || '',
         country: data.country || '',
         postal_code: data.postal_code || '',
-        tax_id: data.tax_id || '',
-        created_at: data.created_at
+        tax_id: data.tax_id || data.nit || '',
+        created_at: data.created_at,
+        description: data.description || '',
+        email: data.email || '',
+        status: data.status || '',
+        owner_user_id: data.owner_user_id || '',
+        subscription_status: data.subscription_status || '',
+        subscription_plan: data.subscription_plan || '',
+        subscription_ends_at: data.subscription_ends_at || '',
+        primary_color: data.primary_color || '#3B82F6',
+        secondary_color: data.secondary_color || '#1E40AF',
+        subdomain: data.subdomain || '',
+        custom_domain: data.custom_domain || ''
       });
     } catch (err: any) {
       console.error('Error fetching organization details:', err);
       setError(err.message || 'Error al cargar los detalles de la organización');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOrganizationTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('organization_types')
+        .select('id, description')
+        .order('description');
+        
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        setOrganizationTypes(data);
+      }
+    } catch (err: any) {
+      console.error('Error fetching organization types:', err);
     }
   };
 
@@ -95,12 +137,23 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
       setError(null);
       setSuccess(null);
       
+      // Get the type_id from the type name
+      let type_id = null;
+      if (formData.type) {
+        const matchingType = organizationTypes.find(type => type.description === formData.type);
+        if (matchingType) {
+          type_id = matchingType.id;
+        }
+      }
+      
+      console.log('Updating organization with type_id:', type_id);
+      
       // Update organization in the database
       const { error } = await supabase
         .from('organizations')
         .update({
           name: formData.name,
-          type: formData.type,
+          type_id: type_id,
           logo_url: formData.logo_url,
           website: formData.website,
           phone: formData.phone,
@@ -109,16 +162,20 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
           country: formData.country,
           postal_code: formData.postal_code,
           tax_id: formData.tax_id,
+          description: formData.description,
+          email: formData.email,
+          primary_color: formData.primary_color,
+          secondary_color: formData.secondary_color,
+          subdomain: formData.subdomain,
+          custom_domain: formData.custom_domain,
           updated_at: new Date().toISOString()
         })
         .eq('id', formData.id);
       
       if (error) throw error;
       
-      // Update organization name in localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('currentOrganizationName', formData.name || '');
-      }
+      // No need to use localStorage for organization data
+      // This data should be fetched from the database when needed
       
       setSuccess('Información de la organización actualizada correctamente');
     } catch (err: any) {
@@ -272,6 +329,38 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
               </dd>
             </div>
             
+            {/* Organization Description */}
+            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Descripción</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                <textarea
+                  name="description"
+                  id="description"
+                  value={formData.description || ''}
+                  onChange={handleChange}
+                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Descripción de la organización"
+                  rows={3}
+                />
+              </dd>
+            </div>
+            
+            {/* Organization Email */}
+            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Email</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                <input
+                  type="email"
+                  name="email"
+                  id="email"
+                  value={formData.email || ''}
+                  onChange={handleChange}
+                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="email@organizacion.com"
+                />
+              </dd>
+            </div>
+            
             {/* Organization Type */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Tipo</dt>
@@ -286,8 +375,8 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                 >
                   <option value="" disabled>Selecciona un tipo</option>
                   {organizationTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
+                    <option key={type.id} value={type.description}>
+                      {type.description}
                     </option>
                   ))}
                 </select>
@@ -400,9 +489,9 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
               </dd>
             </div>
             
-            {/* Tax Information */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">NIT / Tax ID</dt>
+            {/* Tax ID */}
+            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">NIT/RUT</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="text"
@@ -411,8 +500,88 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   value={formData.tax_id || ''}
                   onChange={handleChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="123456789"
+                  placeholder="NIT o RUT"
                 />
+              </dd>
+            </div>
+            
+            {/* Primary Color */}
+            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Color Primario</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
+                <input
+                  type="color"
+                  name="primary_color"
+                  id="primary_color"
+                  value={formData.primary_color || '#3B82F6'}
+                  onChange={handleChange}
+                  className="h-8 w-8 rounded-md border border-gray-300 mr-2"
+                />
+                <input
+                  type="text"
+                  name="primary_color"
+                  value={formData.primary_color || '#3B82F6'}
+                  onChange={handleChange}
+                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="#3B82F6"
+                />
+              </dd>
+            </div>
+            
+            {/* Secondary Color */}
+            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Color Secundario</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
+                <input
+                  type="color"
+                  name="secondary_color"
+                  id="secondary_color"
+                  value={formData.secondary_color || '#1E40AF'}
+                  onChange={handleChange}
+                  className="h-8 w-8 rounded-md border border-gray-300 mr-2"
+                />
+                <input
+                  type="text"
+                  name="secondary_color"
+                  value={formData.secondary_color || '#1E40AF'}
+                  onChange={handleChange}
+                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="#1E40AF"
+                />
+              </dd>
+            </div>
+            
+            {/* Subdomain */}
+            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Subdominio</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
+                <input
+                  type="text"
+                  name="subdomain"
+                  id="subdomain"
+                  value={formData.subdomain || ''}
+                  onChange={handleChange}
+                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="miorganizacion"
+                />
+                <span className="ml-2 text-gray-500">.goadmin.app</span>
+              </dd>
+            </div>
+            
+            {/* Custom Domain */}
+            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Dominio Personalizado</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                <input
+                  type="text"
+                  name="custom_domain"
+                  id="custom_domain"
+                  value={formData.custom_domain || ''}
+                  onChange={handleChange}
+                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="www.miorganizacion.com"
+                />
+                <p className="text-xs text-gray-500 mt-1">Requiere configuración DNS adicional</p>
               </dd>
             </div>
             

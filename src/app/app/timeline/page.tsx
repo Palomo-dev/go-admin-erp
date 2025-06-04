@@ -1,14 +1,7 @@
-import { FC } from 'react';
-
-interface TimelinePageProps {}
-
-const TimelinePage: FC<TimelinePageProps> = () => {
+export default function TimelinePage() {
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Timeline</h1>
-      <p>Contenido del módulo Timeline</p>
+    <div className="p-8">
+      <h1 className="text-3xl font-bold">Hello Timeline</h1>
     </div>
   );
-};
-
-export default TimelinePage;
+}

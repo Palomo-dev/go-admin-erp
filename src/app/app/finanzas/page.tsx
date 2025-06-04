@@ -1,14 +1,7 @@
-import { FC } from 'react';
-
-interface FinanzasPageProps {}
-
-const FinanzasPage: FC<FinanzasPageProps> = () => {
+export default function FinanzasPage() {
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Finanzas</h1>
-      <p>Contenido del módulo Finanzas</p>
+    <div className="p-8">
+      <h1 className="text-3xl font-bold">Hello Finanzas</h1>
     </div>
   );
-};
-
-export default FinanzasPage;
+}

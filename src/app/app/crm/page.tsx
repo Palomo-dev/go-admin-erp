@@ -1,14 +1,7 @@
-import { FC } from 'react';
-
-interface CrmPageProps {}
-
-const CrmPage: FC<CrmPageProps> = () => {
+export default function CrmPage() {
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">CRM</h1>
-      <p>Contenido del módulo CRM</p>
+    <div className="p-8">
+      <h1 className="text-3xl font-bold">Hello CRM</h1>
     </div>
   );
-};
-
-export default CrmPage;
+}

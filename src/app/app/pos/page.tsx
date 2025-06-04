@@ -1,14 +1,7 @@
-import { FC } from 'react';
-
-interface PosPageProps {}
-
-const PosPage: FC<PosPageProps> = () => {
+export default function PosPage() {
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">POS</h1>
-      <p>Contenido del módulo POS</p>
+    <div className="p-8">
+      <h1 className="text-3xl font-bold">Hello POS</h1>
     </div>
   );
-};
-
-export default PosPage;
+}

@@ -1,14 +1,7 @@
-import { FC } from 'react';
-
-interface HrmPageProps {}
-
-const HrmPage: FC<HrmPageProps> = () => {
+export default function HrmPage() {
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">HRM</h1>
-      <p>Contenido del módulo HRM</p>
+    <div className="p-8">
+      <h1 className="text-3xl font-bold">Hello HRM</h1>
     </div>
   );
-};
-
-export default HrmPage;
+}

@@ -1,1 +1,0 @@
-mkdir -p app/pms app/pms/parking app/crm app/hrm app/finanzas app/reportes app/notificaciones app/integraciones app/transporte app/calendario app/timeline

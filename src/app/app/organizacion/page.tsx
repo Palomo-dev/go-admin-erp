@@ -7,6 +7,7 @@ import { getUserRole, getUserOrganization, supabase } from '@/lib/supabase/confi
 const MembersTab = lazy(() => import('./components/MembersTab'));
 const InvitationsTab = lazy(() => import('./components/InvitationsTab'));
 const OrganizationInfoTab = lazy(() => import('./components/OrganizationInfoTab'));
+const BranchesTab = lazy(() => import('./components/BranchesTab'));
 
 export default function OrganizacionPage() {
   const [activeTab, setActiveTab] = useState('members');
@@ -154,6 +155,12 @@ export default function OrganizacionPage() {
           >
             Información de Organización
           </button>
+          <button
+            onClick={() => setActiveTab('branches')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'branches' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            Sucursales
+          </button>
         </nav>
       </div>
       
@@ -168,6 +175,9 @@ export default function OrganizacionPage() {
           )}
           {activeTab === 'orgInfo' && (
             <OrganizationInfoTab orgData={orgData} />
+          )}
+          {activeTab === 'branches' && (
+            <BranchesTab orgId={orgData || 0} />
           )}
         </Suspense>
       </div>

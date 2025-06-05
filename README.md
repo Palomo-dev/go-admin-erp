@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GO Admin ERP
 
-## Getting Started
+Sistema de administración ERP modular basado en Next.js 15.3.1 y Supabase.
 
-First, run the development server:
+## Estructura del Proyecto
+
+El proyecto está organizado en módulos, cada uno con su propia funcionalidad:
+
+- **Inicio**: Dashboard principal
+- **CRM**: Gestión de relaciones con clientes
+- **HRM**: Gestión de recursos humanos
+- **Finanzas**: Gestión financiera
+- **Inventario**: Control de inventario
+- **POS**: Sistema de punto de venta
+- **PMS**: Sistema de gestión de proyectos
+- **Calendario**: Gestión de eventos y calendario
+- **Organización**: Estructura organizacional
+- **Reportes**: Generación de informes
+- **Timeline**: Línea de tiempo de actividades
+- **Transporte**: Gestión de transporte
+- **Notificaciones**: Sistema de notificaciones
+- **Integraciones**: Conexiones con servicios externos
+
+## Requisitos
+
+- Node.js ^18.18.0 || ^19.8.0 || >= 20.0.0
+- NPM o Yarn
+
+## Instalación
+
+1. Clona el repositorio
+2. Instala las dependencias:
+
+```bash
+npm install
+# o
+yarn install
+```
+
+3. Crea un archivo `.env.local` con las siguientes variables:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anonima_de_supabase
+```
+
+4. Inicia el servidor de desarrollo:
 
 ```bash
 npm run dev
-# or
+# o
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Autenticación
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+El sistema utiliza Supabase Auth para la autenticación de usuarios:
 
-## Learn More
+- Login básico con email/password
+- Registro de usuarios en dos pasos (datos personales y datos de organización)
 
-To learn more about Next.js, take a look at the following resources:
+## Tecnologías
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 15.3.1
+- React 19.0.0
+- Supabase
+- Tailwind CSS

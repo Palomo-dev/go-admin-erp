@@ -364,6 +364,4 @@ const InventarioPage: FC<InventarioPageProps> = () => {
       <TopSKUTable skus={dashboardData.topSKUs} />
     </div>
   );
-};
-
-export default InventarioPage;
+}

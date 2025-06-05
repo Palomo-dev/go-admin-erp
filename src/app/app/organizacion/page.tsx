@@ -1,256 +1,189 @@
-// Perfil de Organización
-"use client";
+'use client';
 
-import { useEffect, useState, ChangeEvent, FormEvent } from "react";
-import { supabase } from "@/lib/supabase/config";
-import Image from "next/image";
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { getUserRole, getUserOrganization, supabase } from '@/lib/supabase/config';
 
-interface OrgType {
-  id: number;
-  name: string;
-}
+// Use dynamic imports to fix TypeScript module not found errors
+const MembersTab = lazy(() => import('./components/MembersTab'));
+const InvitationsTab = lazy(() => import('./components/InvitationsTab'));
+const OrganizationInfoTab = lazy(() => import('./components/OrganizationInfoTab'));
 
-export default function OrganizationPage() {
-  const [orgId, setOrgId] = useState<number | null>(null);
-
-  // Campos editables
-  const [name, setName] = useState("");
-  const [nit, setNit] = useState("");
-  const [primaryColor, setPrimaryColor] = useState("#1e40af");
-  const [secondaryColor, setSecondaryColor] = useState("#1d4ed8");
-  const [subdomain, setSubdomain] = useState("");
-  const [customDomain, setCustomDomain] = useState("");
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-
-  // Tipos de negocio
-  const [types, setTypes] = useState<OrgType[]>([]);
-  const [selectedTypeIds, setSelectedTypeIds] = useState<number[]>([]);
-
-  // Estados UI
+export default function OrganizacionPage() {
+  const [activeTab, setActiveTab] = useState('members');
+  const [orgData, setOrgData] = useState<any>(null);
+  const [userRole, setUserRole] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
-  // Obtener org_id (seteado en cookie por el middleware multitenant)
-  const getOrgIdFromCookie = (): number | null => {
-    if (typeof document === "undefined") return null;
-    const match = document.cookie.match(/org_id=(\d+)/);
-    return match ? parseInt(match[1], 10) : null;
-  };
-
-  // Cargar datos iniciales
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchOrgData = async () => {
       try {
-        const id = getOrgIdFromCookie();
-        if (!id) throw new Error("No se encontró la organización en la cookie");
-        setOrgId(id);
+        setLoading(true);
+        
+        // Get current user session
+        const { data: { session } } = await supabase.auth.getSession();
+        
 
-        // Organización
-        const { data: org, error: orgErr } = await supabase
-          .from("organizations")
-          .select("id,name,nit,primary_color,secondary_color,subdomain,custom_domain,logo_url")
-          .eq("id", id)
-          .single();
-        if (orgErr) throw orgErr;
+        if (!session) {
+          setError('No se encontró sesión de usuario');
+          return;
+        }
+        
+        // Get user ID
+        const userId = session.user.id;
 
-        setName(org.name);
-        setNit(org.nit || "");
-        setPrimaryColor(org.primary_color || "#1e40af");
-        setSecondaryColor(org.secondary_color || "#1d4ed8");
-        setSubdomain(org.subdomain || "");
-        setCustomDomain(org.custom_domain || "");
-        setLogoUrl(org.logo_url);
+        console.log(userId);
+        
+        // Get user's organization and role from organization_members
+        const { data: memberData, error: memberError } = await supabase
+        .from('profiles')
+        .select('role_id, organization_id')
+        .eq('id', userId)
+        .single();
+        
+        if (memberError) {
+          console.error('Error al obtener información de miembro:', memberError);
+          setError('Error al cargar información de usuario');
+          return;
+        }
 
-        // Catálogo tipos
-        // Nota: los tipos se inferirán dinámicamente
-        const { data: cat, error: catErr } = await supabase
-          .from("organization_types")
-          .select("id,name");
-        if (catErr) throw catErr;
-        setTypes(cat || []);
+        console.log(memberData);
+        
+        // Set role directly from organization_members
+        setUserRole(memberData.role_id || 'Sin rol');
 
-        // Tipos seleccionados
-        const { data: sel, error: selErr } = await supabase
-          .from("organization_type_relations")
-          .select("type_id")
-          .eq("organization_id", id);
-        if (selErr) throw selErr;
-        setSelectedTypeIds(sel?.map((x) => x.type_id) || []);
-      } catch (e: any) {
-        setError(e.message);
+        console.log(memberData);  
+        
+        // Extract organization data safely
+        if (memberData?.organization_id) {
+          try {
+            // Use type assertion to tell TypeScript about the shape of organizations
+            setOrgData(memberData.organization_id);
+            console.log(orgData);
+          } catch (error) {
+            console.error('Error parsing organization data:', error);
+          }
+        }
+      } catch (err: any) {
+        console.error('Error:', err);
+        setError(err.message || 'Error al cargar datos');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchData();
+    
+    fetchOrgData();
   }, []);
 
-  const handleLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) setLogoFile(e.target.files[0]);
-  };
+  // Verificar si el usuario tiene permisos de admin
+  const isOrgAdmin = userRole === 2;
 
-  const toggleType = (typeId: number) => {
-    setSelectedTypeIds((prev) =>
-      prev.includes(typeId) ? prev.filter((id) => id !== typeId) : [...prev, typeId]
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
     );
-  };
+  }
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!orgId) return;
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      let newLogoUrl = logoUrl;
-      if (logoFile) {
-        // Subir logo al bucket `org-logos`
-        const { data: uploadData, error: uploadErr } = await supabase.storage
-          .from("org-logos")
-          .upload(`${orgId}/${logoFile.name}`, logoFile, { upsert: true });
-        if (uploadErr) throw uploadErr;
-        newLogoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/org-logos/${uploadData.path}`;
-      }
-
-      // Actualizar organización
-      const { error: updErr } = await supabase
-        .from("organizations")
-        .update({
-          name,
-          nit,
-          primary_color: primaryColor,
-          secondary_color: secondaryColor,
-          subdomain,
-          custom_domain: customDomain,
-          logo_url: newLogoUrl,
-        })
-        .eq("id", orgId);
-      if (updErr) throw updErr;
-
-      // Actualizar tipos seleccionados
-      await supabase.from("organization_type_relations").delete().eq("organization_id", orgId);
-      if (selectedTypeIds.length) {
-        const rows = selectedTypeIds.map((t) => ({ organization_id: orgId, type_id: t }));
-        const { error: insErr } = await supabase.from("organization_type_relations").insert(rows);
-        if (insErr) throw insErr;
-      }
-
-      // Reactivar módulos por defecto según nuevos tipos
-      const { error: rpcErr } = await supabase.rpc("activate_default_modules", { p_org_id: orgId });
-      if (rpcErr) throw rpcErr;
-
-      setSuccess("Preferencias actualizadas correctamente");
-    } catch (e: any) {
-      setError(e.message || "Error inesperado");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) return <p className="p-6 text-center">Cargando...</p>;
-  if (error) return <p className="p-6 text-red-600">{error}</p>;
+  if (!isOrgAdmin) {
+    return (
+      <div className="p-8">
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">No tienes permisos para administrar la organización. Contacta a un administrador.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h2 className="text-2xl font-semibold mb-4">Perfil de la organización</h2>
-      {success && (
-        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">{success}</div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Nombre y NIT */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Nombre</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full border px-3 py-2 rounded"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">NIT</label>
-            <input
-              value={nit}
-              onChange={(e) => setNit(e.target.value)}
-              className="w-full border px-3 py-2 rounded"
-            />
-          </div>
-        </div>
-
-        {/* Logo */}
-        <div className="flex items-start gap-4">
-          {logoUrl && <Image src={logoUrl} alt="Logo" width={64} height={64} className="rounded" />}
-          <div>
-            <label className="block text-sm font-medium mb-1">Logo</label>
-            <input type="file" accept="image/*" onChange={handleLogoChange} />
-          </div>
-        </div>
-
-        {/* Colores */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Color primario</label>
-            <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Color secundario</label>
-            <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
-          </div>
-        </div>
-
-        {/* Tipos de negocio */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Tipos de negocio</label>
-          <div className="flex flex-wrap gap-3">
-            {types.map((t) => (
-              <label key={t.id} className="flex items-center gap-1 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedTypeIds.includes(t.id)}
-                  onChange={() => toggleType(t.id)}
-                />
-                {t.name}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Dominios */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Subdominio</label>
-            <input
-              value={subdomain}
-              onChange={(e) => setSubdomain(e.target.value)}
-              className="w-full border px-3 py-2 rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Dominio personalizado</label>
-            <input
-              value={customDomain}
-              onChange={(e) => setCustomDomain(e.target.value)}
-              className="w-full border px-3 py-2 rounded"
-            />
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-4 py-2 bg-primary-600 text-white rounded shadow disabled:opacity-50"
-        >
-          {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
-      </form>
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Administración de Organización</h1>
+        <p className="mt-2 text-gray-600">Gestiona miembros, invitaciones y configuración de tu organización</p>
+      </div>
+      
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('members')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'members' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            Miembros
+          </button>
+          <button
+            onClick={() => setActiveTab('invitations')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'invitations' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            Invitaciones
+          </button>
+          <button
+            onClick={() => setActiveTab('orgInfo')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'orgInfo' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            Información de Organización
+          </button>
+        </nav>
+      </div>
+      
+      {/* Tab Content */}
+      <div className="px-4 py-6">
+        <Suspense fallback={<div className="text-center py-10"><div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div><p className="mt-2">Cargando...</p></div>}>
+          {activeTab === 'members' && (
+            <MembersTab orgId={orgData || 0} />
+          )}
+          {activeTab === 'invitations' && (
+            <InvitationsTab orgId={orgData || 0} />
+          )}
+          {activeTab === 'orgInfo' && (
+            <OrganizationInfoTab orgData={orgData} />
+          )}
+        </Suspense>
+      </div>
     </div>
   );
 }
+
+// These types ensure the component imports are properly recognized
+type MembersTabProps = {
+  orgId: string;
+};
+
+type InvitationsTabProps = {
+  orgId: string;
+};
+
+type OrganizationInfoTabProps = {
+  orgData: any;
+};

@@ -44,7 +44,7 @@ export interface Producto {
   codigoQR?: string;
   etiquetas?: EtiquetaProducto[];
   ubicacion?: string; // Para facilitar el seguimiento en el inventario físico
-  variantes?: { nombre: string; valor: string; sku: string; stock: number; precio: number }[]; // Variantes completas agregadas desde el formulario
+  variantes?: { id?: string; nombre: string; valor: string; sku: string; stock: number; precio: number }[]; // Variantes completas agregadas desde el formulario
 }
 
 
@@ -68,4 +68,38 @@ export interface VarianteProducto {
   precio?: number;
   stock: number;
   atributos?: Record<string, string>; // Por ejemplo: {color: 'rojo', talla: 'XL'}
+}
+
+/**
+ * Tipos de movimientos para el Kardex de inventario
+ */
+export enum TipoMovimientoInventario {
+  ENTRADA = 'entrada',       // Compras, devoluciones de clientes
+  SALIDA = 'salida',        // Ventas, envíos
+  AJUSTE = 'ajuste',        // Correcciones de inventario
+  TRASLADO = 'traslado',    // Movimiento entre ubicaciones
+  MERMA = 'merma',          // Pérdida, deterioro, caducidad
+  INVENTARIO = 'inventario' // Ajuste por conteo de inventario
+}
+
+/**
+ * Interfaz para los movimientos de inventario (Kardex)
+ */
+export interface MovimientoInventario {
+  id: string;
+  fecha: Date;
+  productoId: string;
+  productoNombre: string;   // Para facilitar la visualización sin joins
+  productoSku: string;      // Para facilitar la visualización sin joins
+  varianteId?: string;      // Si el movimiento es específico a una variante
+  tipoMovimiento: TipoMovimientoInventario;
+  cantidad: number;         // Cantidad positiva o negativa según el tipo
+  stockPrevio: number;      // Stock antes del movimiento
+  stockResultante: number;  // Stock después del movimiento
+  precioUnitario?: number;  // Para calcular valores de inventario
+  motivo: string;           // Descripción detallada del motivo
+  documentoReferencia?: string; // Número de factura, orden, etc.
+  responsable: string;      // Usuario que realizó el movimiento
+  ubicacion?: string;       // Ubicación física del producto
+  notas?: string;           // Información adicional
 }

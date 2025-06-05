@@ -1,11 +1,15 @@
 "use client";
 
-import React from 'react';
-import { Producto, EtiquetaProducto } from './types';
+import React, { useState } from 'react';
+import { Producto, EtiquetaProducto, MovimientoInventario } from './types';
+import HistorialKardex from './HistorialKardex';
+import RegistrarMovimientoInventario from './RegistrarMovimientoInventario';
 
 interface DetalleProductoProps {
   product: Producto;
   onEdit: () => void;
+  movimientos?: MovimientoInventario[];
+  onRegistrarMovimiento?: (movimiento: Omit<MovimientoInventario, 'id'>) => void;
 }
 
 /**
@@ -14,7 +18,13 @@ interface DetalleProductoProps {
  * Muestra información detallada del producto seleccionado
  * junto con sus variantes y datos complementarios
  */
-const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) => {
+const DetalleProducto: React.FC<DetalleProductoProps> = ({ 
+  product, 
+  onEdit,
+  movimientos = [], // Si no se proporcionan movimientos, usar array vacío 
+  onRegistrarMovimiento
+}) => {
+  const [mostrarRegistroMovimiento, setMostrarRegistroMovimiento] = useState<boolean>(false);
   // Función para determinar el color del texto según el nivel de stock
   const getStockTextColor = (stock: number): string => {
     if (stock > 10) return 'text-green-600';
@@ -30,8 +40,12 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) =>
     }).format(value);
   };
 
-  // Variantes reales del producto
-  const variantes = product.variantes || [];
+  // Variables para información auxiliar
+  // Asegurarse que cada variante tenga un id
+  const variantes = (product.variantes || []).map((v, index) => ({
+    ...v,
+    id: v.id || `var-${product.id}-${index}`
+  }));
 
   return (
     <div className="space-y-6">
@@ -318,13 +332,28 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) =>
         </div>
       )}
       
-      {/* Historial de movimientos */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="text-lg font-medium text-gray-800 mb-4">Historial de movimientos</h2>
-        <div className="text-sm text-gray-500 text-center py-4">
-          Funcionalidad pendiente de implementación
-        </div>
-      </div>
+      {/* Historial de movimientos (Kardex) */}
+      {mostrarRegistroMovimiento ? (
+        <RegistrarMovimientoInventario 
+          producto={product}
+          onGuardar={(movimientoDatos) => {
+            if (onRegistrarMovimiento) {
+              onRegistrarMovimiento(movimientoDatos);
+            }
+            setMostrarRegistroMovimiento(false);
+          }}
+          onCancelar={() => setMostrarRegistroMovimiento(false)}
+        />
+      ) : (
+        <HistorialKardex 
+          productoId={product.id}
+          movimientos={movimientos}
+          onRegistrarMovimiento={onRegistrarMovimiento ? 
+            () => setMostrarRegistroMovimiento(true) : 
+            undefined
+          }
+        />
+      )}
     </div>
   );
 };

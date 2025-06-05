@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 // Importamos los tipos centralizados
-import { Producto, FiltrosProducto } from '@/components/inventario/productos/types';
+import { Producto, FiltrosProducto, MovimientoInventario, TipoMovimientoInventario } from '@/components/inventario/productos/types';
 import ProductosPageHeader from '@/components/inventario/productos/ProductosPageHeader';
 import FiltrosProductos from '@/components/inventario/productos/FiltrosProductos';
 import ProductosTable from '@/components/inventario/productos/ProductosTable';
@@ -28,9 +28,91 @@ const CatalogoProductos: React.FC = () => {
     estado: 'todos',
     busqueda: ''
   });
+  
+  // Estado para los movimientos de inventario (Kardex)
+  const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
+
+  // Movimientos de inventario de ejemplo (en producción vendrían de Supabase)
+  React.useEffect(() => {
+    // Generar algunos movimientos de ejemplo para demostración
+    const movimientosEjemplo: MovimientoInventario[] = [
+      {
+        id: '1',
+        fecha: new Date(2025, 5, 1, 9, 30),
+        productoId: '1',
+        productoNombre: 'Camiseta Básica',
+        productoSku: 'CAM-001',
+        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
+        cantidad: 20,
+        stockPrevio: 30,
+        stockResultante: 50,
+        motivo: 'Ingreso inicial de inventario',
+        responsable: 'Juan Pérez',
+        documentoReferencia: 'OC-2025-001'
+      },
+      {
+        id: '2',
+        fecha: new Date(2025, 5, 2, 14, 15),
+        productoId: '1',
+        productoNombre: 'Camiseta Básica',
+        productoSku: 'CAM-001',
+        tipoMovimiento: TipoMovimientoInventario.SALIDA,
+        cantidad: -5,
+        stockPrevio: 50,
+        stockResultante: 45,
+        motivo: 'Venta en tienda',
+        responsable: 'María González',
+        documentoReferencia: 'FAC-2025-042'
+      },
+      {
+        id: '3',
+        fecha: new Date(2025, 5, 3, 11, 0),
+        productoId: '1',
+        productoNombre: 'Camiseta Básica',
+        productoSku: 'CAM-001',
+        tipoMovimiento: TipoMovimientoInventario.AJUSTE,
+        cantidad: 5,
+        stockPrevio: 45,
+        stockResultante: 50,
+        motivo: 'Ajuste por inventario físico',
+        responsable: 'Carlos López',
+        documentoReferencia: 'INV-2025-001'
+      },
+      {
+        id: '4',
+        fecha: new Date(2025, 5, 4, 16, 20),
+        productoId: '2',
+        productoNombre: 'Pantalón Vaquero',
+        productoSku: 'PAN-001',
+        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
+        cantidad: 15,
+        stockPrevio: 15,
+        stockResultante: 30,
+        motivo: 'Recepción de mercancía',
+        responsable: 'Juan Pérez',
+        documentoReferencia: 'OC-2025-002'
+      },
+      {
+        id: '5',
+        fecha: new Date(2025, 5, 5, 10, 45),
+        productoId: '3',
+        productoNombre: 'Zapatillas Running',
+        productoSku: 'ZAP-001',
+        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
+        cantidad: 10,
+        stockPrevio: 5,
+        stockResultante: 15,
+        motivo: 'Compra de mercancía',
+        responsable: 'Ana Torres',
+        documentoReferencia: 'OC-2025-004'
+      }
+    ];
+    
+    setMovimientos(movimientosEjemplo);
+  }, []); // Array vacío para que solo se ejecute una vez al montar el componente
 
   // Productos de ejemplo (en producción vendrían de Supabase)
-  const [productos, setProductos] = useState<Producto[]>([
+  const [productos, setProductos] = useState<Producto[]>([  
     { 
       id: '1', 
       nombre: 'Camiseta Básica', 
@@ -107,6 +189,25 @@ const CatalogoProductos: React.FC = () => {
       };
       setProductos([...productos, newProduct]);
       savedProduct = newProduct;
+
+      // Registrar automáticamente un movimiento de entrada inicial
+      const nuevoMovimiento: Omit<MovimientoInventario, 'id'> = {
+        fecha: new Date(),
+        productoId: savedProduct.id,
+        productoNombre: savedProduct.nombre,
+        productoSku: savedProduct.sku,
+        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
+        cantidad: savedProduct.stock,
+        stockPrevio: 0,
+        stockResultante: savedProduct.stock,
+        motivo: 'Creación inicial de producto',
+        responsable: 'Admin', // Idealmente vendría del contexto de usuario
+        documentoReferencia: 'NUEVO-PROD'
+      };
+
+      // Guardar el movimiento (en producción: guardar en Supabase)
+      handleRegistrarMovimiento(nuevoMovimiento);
+
     } else if (isEditing && selectedProduct) {
       // En producción: actualizar en Supabase
       const updatedProduct = { ...selectedProduct, ...productData };
@@ -115,6 +216,27 @@ const CatalogoProductos: React.FC = () => {
       );
       setProductos(updatedProducts);
       savedProduct = updatedProduct;
+
+      // Si el stock cambió, registrar un movimiento de ajuste
+      if (updatedProduct.stock !== selectedProduct.stock) {
+        const diferencia = updatedProduct.stock - selectedProduct.stock;
+        const nuevoMovimiento: Omit<MovimientoInventario, 'id'> = {
+          fecha: new Date(),
+          productoId: updatedProduct.id,
+          productoNombre: updatedProduct.nombre,
+          productoSku: updatedProduct.sku,
+          tipoMovimiento: TipoMovimientoInventario.AJUSTE,
+          cantidad: diferencia,
+          stockPrevio: selectedProduct.stock,
+          stockResultante: updatedProduct.stock,
+          motivo: 'Ajuste por edición de producto',
+          responsable: 'Admin', // Idealmente vendría del contexto de usuario
+          documentoReferencia: 'EDIT-' + updatedProduct.id
+        };
+
+        // Guardar el movimiento (en producción: guardar en Supabase)
+        handleRegistrarMovimiento(nuevoMovimiento);
+      }
     } else {
       // Caso no esperado, pero necesario para TypeScript
       return;
@@ -130,6 +252,25 @@ const CatalogoProductos: React.FC = () => {
   };
 
   const handleDelete = (productId: string) => {
+    const producto = productos.find(p => p.id === productId);
+    if (producto) {
+      // Registrar movimiento de eliminación de inventario
+      const nuevoMovimiento: Omit<MovimientoInventario, 'id'> = {
+        fecha: new Date(),
+        productoId: producto.id,
+        productoNombre: producto.nombre,
+        productoSku: producto.sku,
+        tipoMovimiento: TipoMovimientoInventario.AJUSTE,
+        cantidad: -producto.stock,
+        stockPrevio: producto.stock,
+        stockResultante: 0,
+        motivo: 'Producto eliminado del catálogo',
+        responsable: 'Admin', // Idealmente vendría del contexto de usuario
+        documentoReferencia: 'DEL-' + producto.id
+      };
+      handleRegistrarMovimiento(nuevoMovimiento);
+    }
+    
     // En producción: eliminar de Supabase
     setProductos(productos.filter((p) => p.id !== productId));
   };
@@ -140,6 +281,38 @@ const CatalogoProductos: React.FC = () => {
     setIsViewing(false);
     setIsImporting(false);
     setSelectedProduct(null);
+  };
+
+  // Función para registrar un movimiento de inventario
+  const handleRegistrarMovimiento = (movimientoDatos: Omit<MovimientoInventario, 'id'>) => {
+    // En producción: guardar en Supabase
+    const nuevoMovimiento: MovimientoInventario = {
+      ...movimientoDatos,
+      id: Date.now().toString(), // En producción: ID generado por Supabase
+    };
+    
+    setMovimientos([...movimientos, nuevoMovimiento]);
+    
+    // Actualizar el stock del producto afectado
+    if (movimientoDatos.productoId) {
+      const productoActualizado = productos.find(p => p.id === movimientoDatos.productoId);
+      if (productoActualizado) {
+        // Actualizar el stock según el movimiento
+        const stockActualizado = movimientoDatos.stockResultante;
+        
+        // Actualizar el producto en el estado
+        setProductos(productos.map(p => 
+          p.id === movimientoDatos.productoId 
+            ? {...p, stock: stockActualizado}
+            : p
+        ));
+        
+        // Si se está viendo el producto afectado, actualizar también el selectedProduct
+        if (selectedProduct && selectedProduct.id === movimientoDatos.productoId) {
+          setSelectedProduct({...selectedProduct, stock: stockActualizado});
+        }
+      }
+    }
   };
 
   // Función para manejar los datos importados
@@ -211,6 +384,8 @@ const CatalogoProductos: React.FC = () => {
         <DetalleProducto 
           product={selectedProduct}
           onEdit={() => handleEdit(selectedProduct)}
+          movimientos={movimientos.filter(m => m.productoId === selectedProduct.id)}
+          onRegistrarMovimiento={handleRegistrarMovimiento}
         />
       </div>
     );

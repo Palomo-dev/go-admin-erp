@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 
 // Importamos las interfaces necesarias
-import { Producto, EtiquetaProducto, LoteProducto } from './types';
+import { Producto, EtiquetaProducto, LoteProducto, NumeroSerieProducto } from './types';
 
 interface FormularioProductoProps {
   initialData?: Producto;
@@ -66,6 +66,17 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
   });
   const [editandoLoteIdx, setEditandoLoteIdx] = useState<number | null>(null);
   const [loteError, setLoteError] = useState<string>('');
+
+  // Estado para gestión de números de serie
+  const [nuevoNumeroSerie, setNuevoNumeroSerie] = useState<NumeroSerieProducto>({
+    id: '',
+    numeroSerie: '',
+    observaciones: '',
+    vendido: false,
+    fechaVenta: '',
+  });
+  const [editandoSerieIdx, setEditandoSerieIdx] = useState<number | null>(null);
+  const [serieError, setSerieError] = useState<string>('');
 
   // Categorías de ejemplo (en producción vendrían de Supabase)
   const categorias = ['Ropa', 'Calzado', 'Accesorios', 'Electrónica'];
@@ -1010,6 +1021,171 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
         </div>
         {loteError && <p className="text-xs text-red-600 mt-1">{loteError}</p>}
         {errors.lotes && <p className="text-xs text-red-600 mt-1">{errors.lotes}</p>}
+      </div>
+
+      {/* Gestión de Números de Serie */}
+      <div className="md:col-span-2 mt-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Números de serie
+        </label>
+        <p className="text-xs text-gray-500 mb-2">
+          Permite asociar números de serie únicos para trazabilidad de artículos individuales y su historial de ventas.
+        </p>
+        {/* Tabla de números de serie existentes */}
+        {formData.numerosSerie && formData.numerosSerie.length > 0 ? (
+          <table className="mb-3 w-full text-xs">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="text-left font-semibold text-gray-800 px-2 py-1">N° Serie</th>
+                <th className="text-left font-semibold text-gray-800 px-2 py-1">Observaciones</th>
+                <th className="text-left font-semibold text-gray-800 px-2 py-1">Vendido</th>
+                <th className="text-left font-semibold text-gray-800 px-2 py-1">Fecha de venta</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {formData.numerosSerie.map((serie, idx) => (
+                <tr key={serie.id || idx} className="border-b">
+                  <td className="px-2 py-1 text-gray-800">{serie.numeroSerie}</td>
+                  <td className="px-2 py-1 text-gray-800">{serie.observaciones || <span className="text-gray-400 italic">-</span>}</td>
+                  <td className="px-2 py-1 text-gray-800">{serie.vendido ? 'Sí' : 'No'}</td>
+                  <td className="px-2 py-1 text-gray-800">{serie.fechaVenta || <span className="text-gray-400 italic">-</span>}</td>
+                  <td className="px-2 py-1 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNuevoNumeroSerie({ ...serie });
+                        setEditandoSerieIdx(idx);
+                        setSerieError('');
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 px-2 py-0.5 rounded"
+                      aria-label="Editar número de serie"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          numerosSerie: formData.numerosSerie!.filter((_, i) => i !== idx),
+                        });
+                        setSerieError('');
+                      }}
+                      className="text-xs text-red-600 hover:text-red-800 px-2 py-0.5 rounded"
+                      aria-label="Eliminar número de serie"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-xs text-gray-500 mb-2">No hay números de serie añadidos</p>
+        )}
+        {/* Formulario para agregar/editar número de serie */}
+        <div className="flex flex-wrap gap-2 items-end">
+          <input
+            type="text"
+            name="numeroSerie"
+            value={nuevoNumeroSerie.numeroSerie}
+            onChange={e => setNuevoNumeroSerie({ ...nuevoNumeroSerie, numeroSerie: e.target.value })}
+            placeholder="Número de serie"
+            className="py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+          />
+          <input
+            type="text"
+            name="observaciones"
+            value={nuevoNumeroSerie.observaciones || ''}
+            onChange={e => setNuevoNumeroSerie({ ...nuevoNumeroSerie, observaciones: e.target.value })}
+            placeholder="Observaciones"
+            className="py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+          />
+          <label className="flex items-center text-xs text-gray-700">
+            <input
+              type="checkbox"
+              checked={!!nuevoNumeroSerie.vendido}
+              onChange={e => setNuevoNumeroSerie({ ...nuevoNumeroSerie, vendido: e.target.checked })}
+              className="mr-1"
+            />
+            Vendido
+          </label>
+          <input
+            type="date"
+            name="fechaVenta"
+            value={nuevoNumeroSerie.fechaVenta || ''}
+            onChange={e => setNuevoNumeroSerie({ ...nuevoNumeroSerie, fechaVenta: e.target.value })}
+            className="py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+            placeholder="Fecha de venta"
+            disabled={!nuevoNumeroSerie.vendido}
+          />
+          {editandoSerieIdx === null ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (!nuevoNumeroSerie.numeroSerie.trim()) {
+                  setSerieError('El número de serie es obligatorio.');
+                  return;
+                }
+                if ((formData.numerosSerie || []).some(s => s.numeroSerie === nuevoNumeroSerie.numeroSerie)) {
+                  setSerieError('El número de serie debe ser único.');
+                  return;
+                }
+                setFormData({
+                  ...formData,
+                  numerosSerie: [...(formData.numerosSerie || []), { ...nuevoNumeroSerie, id: Math.random().toString(36).substring(2, 15) }],
+                });
+                setNuevoNumeroSerie({ id: '', numeroSerie: '', observaciones: '', vendido: false, fechaVenta: '' });
+                setSerieError('');
+              }}
+              className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+            >
+              Añadir número de serie
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!nuevoNumeroSerie.numeroSerie.trim()) {
+                    setSerieError('El número de serie es obligatorio.');
+                    return;
+                  }
+                  if ((formData.numerosSerie || []).some((s, idx) => idx !== editandoSerieIdx && s.numeroSerie === nuevoNumeroSerie.numeroSerie)) {
+                    setSerieError('El número de serie debe ser único.');
+                    return;
+                  }
+                  const nuevosSeries = [...(formData.numerosSerie || [])];
+                  nuevosSeries[editandoSerieIdx!] = { ...nuevoNumeroSerie };
+                  setFormData({
+                    ...formData,
+                    numerosSerie: nuevosSeries,
+                  });
+                  setNuevoNumeroSerie({ id: '', numeroSerie: '', observaciones: '', vendido: false, fechaVenta: '' });
+                  setEditandoSerieIdx(null);
+                  setSerieError('');
+                }}
+                className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200"
+              >
+                Actualizar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNuevoNumeroSerie({ id: '', numeroSerie: '', observaciones: '', vendido: false, fechaVenta: '' });
+                  setEditandoSerieIdx(null);
+                  setSerieError('');
+                }}
+                className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 ml-1"
+              >
+                Cancelar
+              </button>
+            </>
+          )}
+        </div>
+        {serieError && <p className="text-xs text-red-600 mt-1">{serieError}</p>}
       </div>
 
       {/* Etiquetas */}

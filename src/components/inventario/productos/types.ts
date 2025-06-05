@@ -56,6 +56,23 @@ export interface Producto {
    * Si el producto no requiere control de lotes, dejar vacío o no usar.
    */
   lotes?: LoteProducto[];
+
+  /**
+   * Números de serie asociados al producto (gestión individual y trazabilidad).
+   * Si el producto requiere seguimiento individual, llenar este campo.
+   */
+  numerosSerie?: NumeroSerieProducto[];
+}
+
+/**
+ * Interfaz para la gestión de números de serie de productos
+ */
+export interface NumeroSerieProducto {
+  id: string; // Identificador único del número de serie
+  numeroSerie: string; // Número de serie único
+  observaciones?: string; // Campo opcional para notas adicionales
+  vendido?: boolean; // Indica si el artículo fue vendido
+  fechaVenta?: string; // Fecha de venta (ISO) si aplica
 }
 
 /**

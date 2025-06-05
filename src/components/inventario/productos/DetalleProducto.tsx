@@ -154,6 +154,34 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
               </div>
             )}
 
+            {/* Números de serie */}
+            {Array.isArray(product.numerosSerie) && product.numerosSerie.length > 0 && (
+              <div className="bg-white border border-indigo-100 rounded-lg p-4 mt-2">
+                <h3 className="text-base font-semibold text-indigo-800 mb-2">Números de serie</h3>
+                <table className="w-full text-xs mb-2">
+                  <thead>
+                    <tr className="bg-indigo-50">
+                      <th className="text-left font-medium text-indigo-900 px-2 py-1">N° Serie</th>
+                      <th className="text-left font-medium text-indigo-900 px-2 py-1">Observaciones</th>
+                      <th className="text-left font-medium text-indigo-900 px-2 py-1">Vendido</th>
+                      <th className="text-left font-medium text-indigo-900 px-2 py-1">Fecha de venta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {product.numerosSerie.map((serie, idx) => (
+                      <tr key={serie.id || idx} className="border-b last:border-b-0">
+                        <td className="px-2 py-1 text-gray-800">{serie.numeroSerie}</td>
+                        <td className="px-2 py-1 text-gray-800">{serie.observaciones || <span className="text-gray-400 italic">-</span>}</td>
+                        <td className="px-2 py-1 text-gray-800">{serie.vendido ? 'Sí' : 'No'}</td>
+                        <td className="px-2 py-1 text-gray-800">{serie.fechaVenta || <span className="text-gray-400 italic">-</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-xs text-indigo-700">Permite el seguimiento individual y el historial de ventas de cada artículo.</p>
+              </div>
+            )}
+
             <div className="border-t border-gray-200 pt-4">
               <h3 className="font-medium text-gray-800 mb-2">Descripción</h3>
               <p className="font-medium text-gray-800">{product.descripcion ?? 'Este producto no tiene descripción.'}</p>

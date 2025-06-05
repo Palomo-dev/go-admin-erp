@@ -22,7 +22,19 @@ export interface Producto {
   nombre: string;
   sku: string;
   categoria: string;
+  /**
+   * Precio principal (legacy). Usar 'precios' para nuevos desarrollos.
+   */
   precio: number;
+  /**
+   * Precios múltiples por segmento de cliente.
+   * - mayorista: precio para clientes mayoristas
+   * - minorista: precio para clientes minoristas/retail
+   */
+  precios?: {
+    mayorista: number;
+    minorista: number;
+  };
   stock: number;
   estado: string;
   tieneVariantes: boolean;
@@ -34,6 +46,7 @@ export interface Producto {
   ubicacion?: string; // Para facilitar el seguimiento en el inventario físico
   variantes?: { nombre: string; valor: string; sku: string; stock: number; precio: number }[]; // Variantes completas agregadas desde el formulario
 }
+
 
 /**
  * Interfaz para los filtros de búsqueda de productos

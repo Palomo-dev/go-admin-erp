@@ -53,6 +53,16 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) =>
               <div>
                 <p className="text-sm text-gray-500">Precio</p>
                 <p className="font-medium text-gray-800">{formatCurrency(product.precio)}</p>
+                {product.precios?.mayorista !== undefined && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    <span className="font-semibold text-gray-700">Mayorista: </span>{formatCurrency(product.precios.mayorista)}
+                  </p>
+                )}
+                {product.precios?.minorista !== undefined && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    <span className="font-semibold text-gray-700">Minorista: </span>{formatCurrency(product.precios.minorista)}
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-sm text-gray-500">Stock Total</p>

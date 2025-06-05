@@ -65,6 +65,9 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                   Precio
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Precio Mayorista
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Stock
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -100,6 +103,9 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {formatCurrency(producto.precio)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {producto.precios?.mayorista !== undefined ? formatCurrency(producto.precios.mayorista) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`font-medium ${getStockTextColor(producto.stock)}`}>

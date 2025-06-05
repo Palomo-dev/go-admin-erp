@@ -371,7 +371,7 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
         {/* Precio */}
         <div>
           <label htmlFor="precio" className="block text-sm font-medium text-gray-700 mb-1">
-            Precio <span className="text-red-500">*</span>
+            Precio base <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -384,24 +384,135 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
               value={formData.precio === 0 ? '' : formData.precio}
               onChange={handleChange}
               min="0"
-              step="100"
-              className={`block w-full py-2 pl-7 pr-3 border ${
+              className={`block w-full py-2 px-3 pl-7 border ${
                 errors.precio ? 'border-red-500' : 'border-gray-300'
               } rounded-md bg-white text-gray-800`}
               placeholder="0"
-              onFocus={(e) => {
+              onFocus={e => {
                 if (formData.precio === 0) {
                   setFormData({ ...formData, precio: undefined as unknown as number });
                 }
               }}
-              onBlur={(e) => {
-                if (!e.target.value) {
+              onBlur={e => {
+                if (e.target.value === '' || isNaN(Number(e.target.value))) {
                   setFormData({ ...formData, precio: 0 });
                 }
               }}
             />
           </div>
           {errors.precio && <p className="mt-1 text-sm text-red-600">{errors.precio}</p>}
+        </div>
+
+        {/* Precios múltiples */}
+        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div>
+            <label htmlFor="precio-mayorista" className="block text-sm font-medium text-gray-700 mb-1">
+              Precio mayorista <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-500 sm:text-sm">$</span>
+              </div>
+              <input
+                type="number"
+                id="precio-mayorista"
+                name="precioMayorista"
+                value={formData.precios?.mayorista === 0 ? '' : (formData.precios?.mayorista ?? formData.precio ?? '')}
+                onChange={e => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                  setFormData({
+                    ...formData,
+                    precios: {
+                      ...formData.precios,
+                      mayorista: value,
+                      minorista: formData.precios?.minorista ?? formData.precio,
+                    },
+                  });
+                }}
+                min="0"
+                className="block w-full py-2 px-3 pl-7 border border-gray-300 rounded-md bg-white text-gray-800"
+                placeholder="Precio mayorista"
+                onFocus={e => {
+                  if ((formData.precios?.mayorista ?? formData.precio) === 0) {
+                    setFormData({
+                      ...formData,
+                      precios: {
+                        ...formData.precios,
+                        mayorista: undefined as unknown as number,
+                        minorista: formData.precios?.minorista ?? formData.precio,
+                      },
+                    });
+                  }
+                }}
+                onBlur={e => {
+                  if (e.target.value === '' || isNaN(Number(e.target.value))) {
+                    setFormData({
+                      ...formData,
+                      precios: {
+                        ...formData.precios,
+                        mayorista: 0,
+                        minorista: formData.precios?.minorista ?? formData.precio,
+                      },
+                    });
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="precio-minorista" className="block text-sm font-medium text-gray-700 mb-1">
+              Precio minorista <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-500 sm:text-sm">$</span>
+              </div>
+              <input
+                type="number"
+                id="precio-minorista"
+                name="precioMinorista"
+                value={formData.precios?.minorista === 0 ? '' : (formData.precios?.minorista ?? formData.precio ?? '')}
+                onChange={e => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                  setFormData({
+                    ...formData,
+                    precios: {
+                      ...formData.precios,
+                      minorista: value,
+                      mayorista: formData.precios?.mayorista ?? formData.precio,
+                    },
+                  });
+                }}
+                min="0"
+                className="block w-full py-2 px-3 pl-7 border border-gray-300 rounded-md bg-white text-gray-800"
+                placeholder="Precio minorista"
+                onFocus={e => {
+                  if ((formData.precios?.minorista ?? formData.precio) === 0) {
+                    setFormData({
+                      ...formData,
+                      precios: {
+                        ...formData.precios,
+                        minorista: undefined as unknown as number,
+                        mayorista: formData.precios?.mayorista ?? formData.precio,
+                      },
+                    });
+                  }
+                }}
+                onBlur={e => {
+                  if (e.target.value === '' || isNaN(Number(e.target.value))) {
+                    setFormData({
+                      ...formData,
+                      precios: {
+                        ...formData.precios,
+                        minorista: 0,
+                        mayorista: formData.precios?.mayorista ?? formData.precio,
+                      },
+                    });
+                  }
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Stock */}
@@ -459,7 +570,7 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
 
           {/* Sección de variantes solo si está activo */}
           {formData.tieneVariantes && (
-            <div className="mt-4 mb-4 border rounded-md p-4 bg-gray-50">
+            <div className="mt-4 border rounded-md p-4 bg-gray-50">
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Variantes</h3>
               {/* Lista de variantes actuales */}
               {formData.variantes && formData.variantes.length > 0 ? (
@@ -613,7 +724,7 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
           )}
 
           {/* Descripción */}
-          <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 mb-1 mt-4">
             Descripción del producto
           </label>
           <textarea

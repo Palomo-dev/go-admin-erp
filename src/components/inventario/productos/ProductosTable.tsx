@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Producto } from '@/components/inventario/productos/types';
+import { Producto, EtiquetaProducto } from './types';
 
 interface ProductosTableProps {
   productos: Producto[];
@@ -71,6 +71,9 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                   Estado
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Etiquetas
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Variantes
                 </th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -83,6 +86,11 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 <tr key={producto.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-800">{producto.nombre}</div>
+                    {producto.codigoBarras && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Cod: {producto.codigoBarras}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {producto.sku}
@@ -98,7 +106,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                       {producto.stock}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span
                       className={`px-2 py-1 text-xs rounded-full ${
                         producto.estado === 'activo'
@@ -108,6 +116,27 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                     >
                       {producto.estado === 'activo' ? 'Activo' : 'Inactivo'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-wrap gap-1 max-w-xs">
+                      {producto.etiquetas && producto.etiquetas.length > 0 ? (
+                        producto.etiquetas.map((etiqueta: EtiquetaProducto) => (
+                          <span
+                            key={etiqueta.id}
+                            className="inline-flex items-center px-2 py-0.5 text-xs rounded-full"
+                            style={{ 
+                              backgroundColor: etiqueta.color + '20',
+                              color: etiqueta.color
+                            }}
+                            title={etiqueta.nombre}
+                          >
+                            {etiqueta.nombre}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-gray-500">-</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {producto.tieneVariantes ? (
@@ -164,13 +193,16 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                       </svg>
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm('¿Estás seguro de que deseas eliminar este producto?')) {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (window.confirm('¿Estás seguro de que deseas eliminar este producto?')) {
                           onDelete(producto.id);
                         }
                       }}
                       className="text-red-600 hover:text-red-800"
                       aria-label="Eliminar"
+                      type="button"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"

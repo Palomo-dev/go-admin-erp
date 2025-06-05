@@ -3,11 +3,16 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
-import { Producto } from '@/components/inventario/productos/types';
+import { Producto } from './types';
 
 interface ImportarProductosProps {
   onImportComplete: (productos: Producto[]) => void;
   onCancel: () => void;
+}
+
+// Definición de interfaces para manejo de datos de archivos
+interface FileData {
+  [key: string]: string | number | boolean;
 }
 
 /**
@@ -16,24 +21,38 @@ interface ImportarProductosProps {
  * Este componente permite al usuario cargar archivos CSV o Excel (.xlsx, .xls)
  * y los convierte en datos de productos que pueden ser utilizados en el catálogo.
  */
-const ImportarProductos: React.FC<ImportarProductosProps> = ({ onImportComplete, onCancel }) => {
+const ImportarProductos: React.FC<ImportarProductosProps> = ({ onImportComplete, onCancel }): React.ReactNode => {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [previewData, setPreviewData] = useState<any[] | null>(null);
+  const [previewData, setPreviewData] = useState<FileData[] | null>(null);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({
     nombre: '',
     sku: '',
     categoria: '',
     precio: '',
     stock: '',
-    estado: ''
+    estado: '',
+    descripcion: '',
+    codigoBarras: '',
+    codigoQR: '',
+    ubicacion: '',
+    etiquetas: ''
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Columnas requeridas para el catálogo de productos
   const requiredColumns = ['nombre', 'sku', 'categoria', 'precio'];
-  const optionalColumns = ['stock', 'estado', 'descripcion', 'tieneVariantes'];
+  const optionalColumns = [
+    'stock', 
+    'estado', 
+    'descripcion', 
+    'tieneVariantes', 
+    'codigoBarras', 
+    'codigoQR', 
+    'ubicacion', 
+    'etiquetas'
+  ];
   
   // Columnas disponibles (se llenará al cargar un archivo)
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
@@ -75,7 +94,7 @@ const ImportarProductos: React.FC<ImportarProductosProps> = ({ onImportComplete,
     Papa.parse(csvFile, {
       header: true,
       complete: (results) => {
-        handleFileParseComplete(results.data as Record<string, any>[]);
+        handleFileParseComplete(results.data as FileData[]);
       },
       error: (error) => {
         setErrorMessage(`Error al procesar el archivo CSV: ${error.message}`);
@@ -90,7 +109,7 @@ const ImportarProductos: React.FC<ImportarProductosProps> = ({ onImportComplete,
       const data = await excelFile.arrayBuffer();
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, any>[];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet) as FileData[];
       handleFileParseComplete(jsonData);
     } catch (error) {
       setErrorMessage(`Error al procesar el archivo Excel: ${(error as Error).message}`);
@@ -99,7 +118,7 @@ const ImportarProductos: React.FC<ImportarProductosProps> = ({ onImportComplete,
   };
 
   // Manejar los datos parseados del archivo
-  const handleFileParseComplete = (data: Record<string, any>[]) => {
+  const handleFileParseComplete = (data: FileData[]) => {
     // Filtrar filas vacías (donde todos los campos son vacíos o undefined)
     const filteredData = data.filter(row => {
       return Object.values(row).some(val => 
@@ -158,7 +177,6 @@ const ImportarProductos: React.FC<ImportarProductosProps> = ({ onImportComplete,
   const handleImport = () => {
     setIsProcessing(true);
     
-    // Comprueba si hay un archivo seleccionado
     if (!file) {
       setErrorMessage('No se ha seleccionado ningún archivo.');
       setIsProcessing(false);
@@ -175,64 +193,74 @@ const ImportarProductos: React.FC<ImportarProductosProps> = ({ onImportComplete,
       setIsProcessing(false);
       return;
     }
-    
-    // A partir de aquí sabemos que file no es null
-    const selectedFile: File = file;
-    const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
-    
-    if (fileExtension === 'csv') {
-      // Procesar archivo CSV para la importación final
-      Papa.parse(selectedFile, {
+
+    // Si es CSV, procesamos con PapaParse
+    if (file.name.endsWith('.csv')) {
+      Papa.parse(file, {
         header: true,
         complete: (results) => {
-          // Filtrar filas vacías antes de transformar
-          const filteredData = (results.data as Record<string, any>[]).filter(row => 
-            Object.values(row).some(val => val !== undefined && val !== null && val !== '')
-          );
-          const importedData = transformData(filteredData);
-          onImportComplete(importedData);
-          setIsProcessing(false);
-        },
-        error: (error) => {
-          setErrorMessage(`Error al importar: ${error.message}`);
-          setIsProcessing(false);
-        }
-      });
-    } else {
-      // Leer el archivo Excel
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        try {
-          if (e.target?.result) {
-            const data = e.target.result;
-            const workbook = XLSX.read(data, { type: 'binary' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, any>[];
-            
-            // Filtrar filas vacías antes de transformar
-            const filteredData = jsonData.filter(row => 
+          try {
+            // Filtrar filas vacías
+            const filteredData = (results.data as FileData[]).filter(row => 
               Object.values(row).some(val => val !== undefined && val !== null && val !== '')
             );
             
-            const importedData = transformData(filteredData);
-            onImportComplete(importedData);
+            const transformedData = transformData(filteredData);
+            onImportComplete(transformedData);
+          } catch (err) {
+            setErrorMessage(`Error al procesar los datos: ${(err as Error).message}`);
+          } finally {
+            setIsProcessing(false);
           }
+        },
+        error: (error) => {
+          setErrorMessage(`Error al procesar el archivo CSV: ${error.message}`);
           setIsProcessing(false);
-        } catch (error) {
-          setErrorMessage(`Error al importar Excel: ${(error as Error).message}`);
+        }
+      });
+    }
+    // Si es Excel, usamos XLSX.js
+    else {
+      // Para Excel, leemos como BinaryString
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          if (!e.target?.result) {
+            throw new Error('No se pudo leer el contenido del archivo');
+          }
+          
+          const binary = e.target.result as string;
+          const workbook = XLSX.read(binary, { type: 'binary' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet) as FileData[];
+          
+          // Filtrar filas vacías
+          const filteredData = jsonData.filter(row => 
+            Object.values(row).some(val => val !== undefined && val !== null && val !== '')
+          );
+          
+          const transformedData = transformData(filteredData);
+          onImportComplete(transformedData);
+        } catch (err) {
+          setErrorMessage(`Error al procesar el archivo Excel: ${(err as Error).message}`);
+        } finally {
           setIsProcessing(false);
         }
       };
       
-      reader.readAsBinaryString(selectedFile);
+      reader.onerror = () => {
+        setErrorMessage('Error al leer el archivo');
+        setIsProcessing(false);
+      };
+      
+      reader.readAsBinaryString(file);
     }  
   };
 
   // Transformar los datos según el mapeo
-  const transformData = (data: Record<string, any>[]) => {
+  const transformData = (data: FileData[]) => {
     return data.map((item) => {
-      // Creamos un producto con valores por defecto para evitar NaN
       const producto: Producto = {
         id: Math.random().toString(36).substring(2, 15),
         nombre: '',
@@ -243,50 +271,118 @@ const ImportarProductos: React.FC<ImportarProductosProps> = ({ onImportComplete,
         estado: 'inactivo',
         tieneVariantes: false,
         descripcion: '',
+        codigoBarras: '',
+        codigoQR: '',
+        ubicacion: '',
+        etiquetas: [],
       };
 
-      // Procesamos cada campo según el mapeo configurado
-      Object.entries(columnMapping).forEach(([field, mappedColumn]) => {
-        // Saltamos si no hay mapeo o el valor está vacío
-        if (!mappedColumn || item[mappedColumn] === undefined || item[mappedColumn] === '') {
-          return;
-        }
-        
-        // Obtenemos el valor como string para facilitar la conversión
-        const stringValue = String(item[mappedColumn]);
-        
-        // Manejamos cada campo según su tipo
-        if (field === 'precio') {
-          const cleanValue = stringValue.replace(/[^\d.-]/g, '');
-          const numValue = parseFloat(cleanValue);
-          if (!isNaN(numValue)) {
-            producto.precio = numValue;
-          }
-        }
-        else if (field === 'stock') {
-          const cleanValue = stringValue.replace(/[^\d.-]/g, '');
-          const numValue = parseFloat(cleanValue);
-          if (!isNaN(numValue)) {
-            producto.stock = Math.round(numValue);
-          }
-        }
-        else if (field === 'nombre') {
-          producto.nombre = stringValue;
-        }
-        else if (field === 'sku') {
-          producto.sku = stringValue;
-        }
-        else if (field === 'categoria') {
-          producto.categoria = stringValue;
-        }
-        else if (field === 'estado') {
-          producto.estado = stringValue.toLowerCase() === 'activo' ? 'activo' : 'inactivo';
-        }
-        else if (field === 'tieneVariantes') {
-          producto.tieneVariantes = ['true', 'si', 'sí', 'yes', '1'].includes(stringValue.toLowerCase());
-        }
-        else if (field === 'descripcion') {
-          producto.descripcion = stringValue;
+      // Mapear los campos según la configuración
+      Object.keys(columnMapping).forEach((field) => {
+        const sourceColumn = columnMapping[field];
+        if (!sourceColumn) return;
+
+        const value = item[sourceColumn];
+
+        // Transformaciones según el tipo de campo
+        switch (field) {
+          case 'precio':
+            // Convertir a número, asegurándose de manejar valores vacíos
+            if (typeof value === 'string') {
+              const parsedValue = parseFloat(value);
+              producto.precio = isNaN(parsedValue) ? 0 : parsedValue;
+            } else if (typeof value === 'number') {
+              producto.precio = value;
+            } else {
+              producto.precio = 0;
+            }
+            break;
+
+          case 'stock':
+            // Convertir a número entero
+            if (typeof value === 'string') {
+              const parsedValue = parseInt(value, 10);
+              producto.stock = isNaN(parsedValue) ? 0 : parsedValue;
+            } else if (typeof value === 'number') {
+              producto.stock = Math.floor(value);
+            } else {
+              producto.stock = 0;
+            }
+            break;
+
+          case 'tieneVariantes':
+            // Convertir a booleano
+            if (typeof value === 'string') {
+              const lowerValue = value.toLowerCase();
+              producto.tieneVariantes = lowerValue === 'sí' || lowerValue === 'si' || lowerValue === 'true' || lowerValue === '1';
+            } else {
+              producto.tieneVariantes = Boolean(value);
+            }
+            break;
+
+          case 'estado':
+            // Asegurar que sea uno de los valores permitidos
+            if (typeof value === 'string') {
+              const lowerValue = value.toLowerCase();
+              producto.estado = lowerValue === 'activo' ? 'activo' : 'inactivo';
+            } else {
+              producto.estado = 'inactivo'; // Valor por defecto
+            }
+            break;
+            
+          case 'etiquetas':
+            // Transformar una lista separada por comas en un array de objetos etiqueta
+            if (typeof value === 'string' && value.trim() !== '') {
+              // Dividir por comas y eliminar espacios en blanco
+              const etiquetasNombres = value.split(',').map(e => e.trim()).filter(e => e !== '');
+              
+              // Colores predefinidos para asignar a las etiquetas
+              const coloresPredefinidos = [
+                '#3B82F6', // azul
+                '#10B981', // verde
+                '#F59E0B', // amarillo
+                '#EF4444', // rojo
+                '#8B5CF6', // violeta
+                '#EC4899', // rosa
+              ];
+              
+              // Crear objetos etiqueta
+              producto.etiquetas = etiquetasNombres.map((nombre, index) => ({
+                id: Math.random().toString(36).substring(2, 15),
+                nombre,
+                color: coloresPredefinidos[index % coloresPredefinidos.length]
+              }));
+            } else {
+              producto.etiquetas = [];
+            }
+            break;
+            
+          case 'descripcion':
+            producto.descripcion = value !== undefined ? String(value) : '';
+            break;
+            
+          case 'codigoBarras':
+            producto.codigoBarras = value !== undefined ? String(value) : '';
+            break;
+            
+          case 'codigoQR':
+            producto.codigoQR = value !== undefined ? String(value) : '';
+            break;
+            
+          case 'ubicacion':
+            producto.ubicacion = value !== undefined ? String(value) : '';
+            break;
+            
+          case 'nombre':
+            producto.nombre = value !== undefined ? String(value) : '';
+            break;
+            
+          case 'categoria':
+            producto.categoria = value !== undefined ? String(value) : '';
+            break;
+            
+          case 'sku':
+            producto.sku = value !== undefined ? String(value) : '';
         }
       });
 
@@ -313,6 +409,10 @@ const ImportarProductos: React.FC<ImportarProductosProps> = ({ onImportComplete,
             <li><span className="font-medium">estado:</span> Texto &ldquo;activo&rdquo; o &ldquo;inactivo&rdquo;</li>
             <li><span className="font-medium">tieneVariantes:</span> Valores aceptados para &ldquo;sí&rdquo;: true, si, sí, yes, 1</li>
             <li><span className="font-medium">descripcion:</span> Texto descriptivo detallado (opcional)</li>
+            <li><span className="font-medium">codigoBarras:</span> Número o código alfanumérico (opcional)</li>
+            <li><span className="font-medium">codigoQR:</span> Texto o URL para código QR (opcional)</li>
+            <li><span className="font-medium">ubicacion:</span> Texto indicando ubicación física (opcional)</li>
+            <li><span className="font-medium">etiquetas:</span> Lista de etiquetas separadas por comas (opcional)</li>
           </ul>
         </div>
       </div>

@@ -6,6 +6,15 @@
  */
 
 /**
+ * Interfaz para las etiquetas de producto
+ */
+export interface EtiquetaProducto {
+  id: string;
+  nombre: string;
+  color?: string; // Color en formato hexadecimal para visualizar la etiqueta
+}
+
+/**
  * Interfaz para los productos del catálogo
  */
 export interface Producto {
@@ -18,6 +27,11 @@ export interface Producto {
   estado: string;
   tieneVariantes: boolean;
   descripcion?: string;
+  // Nuevos campos para gestión de etiquetas, códigos de barras y QR
+  codigoBarras?: string;
+  codigoQR?: string;
+  etiquetas?: EtiquetaProducto[];
+  ubicacion?: string; // Para facilitar el seguimiento en el inventario físico
 }
 
 /**

@@ -97,6 +97,8 @@ const CatalogoProductos: React.FC = () => {
   };
 
   const handleSave = (productData: Producto) => {
+    let savedProduct: Producto;
+
     if (isCreating) {
       // En producción: guardar en Supabase
       const newProduct = {
@@ -104,17 +106,27 @@ const CatalogoProductos: React.FC = () => {
         id: Date.now().toString(), // En producción: ID generado por Supabase
       };
       setProductos([...productos, newProduct]);
+      savedProduct = newProduct;
     } else if (isEditing && selectedProduct) {
       // En producción: actualizar en Supabase
+      const updatedProduct = { ...selectedProduct, ...productData };
       const updatedProducts = productos.map((p) => 
-        p.id === selectedProduct.id ? { ...p, ...productData } : p
+        p.id === selectedProduct.id ? updatedProduct : p
       );
       setProductos(updatedProducts);
+      savedProduct = updatedProduct;
+    } else {
+      // Caso no esperado, pero necesario para TypeScript
+      return;
     }
     
+    // Limpiar estados de edición y creación
     setIsCreating(false);
     setIsEditing(false);
-    setSelectedProduct(null);
+    
+    // Establecer el producto guardado como seleccionado y mostrar su vista de detalle
+    setSelectedProduct(savedProduct);
+    setIsViewing(true);
   };
 
   const handleDelete = (productId: string) => {
@@ -179,7 +191,7 @@ const CatalogoProductos: React.FC = () => {
           onBack={handleCancel}
         />
         <FormularioProducto 
-          initialData={isEditing ? selectedProduct : undefined}
+          initialData={isEditing && selectedProduct ? selectedProduct : undefined}
           onSave={handleSave}
           onCancel={handleCancel}
         />

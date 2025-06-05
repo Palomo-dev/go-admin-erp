@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Producto } from '@/components/inventario/productos/types';
+import { Producto, EtiquetaProducto } from './types';
 
 interface DetalleProductoProps {
   product: Producto;
@@ -83,6 +83,31 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) =>
                 <p className="font-medium text-gray-800">{product.tieneVariantes ? 'Sí' : 'No'}</p>
               </div>
             </div>
+
+            {/* Etiquetas del producto */}
+            <div className="mt-4 mb-4">
+              <p className="text-sm text-gray-500 mb-2">Etiquetas</p>
+              <div className="flex flex-wrap gap-2">
+                {product.etiquetas && product.etiquetas.length > 0 ? (
+                  product.etiquetas.map((etiqueta: EtiquetaProducto) => (
+                    <span
+                      key={etiqueta.id}
+                      className="inline-flex items-center px-2.5 py-1.5 rounded-full text-sm font-medium"
+                      style={{ 
+                        backgroundColor: etiqueta.color ? `${etiqueta.color}20` : '#E5E7EB',
+                        color: etiqueta.color || '#1F2937',
+                        borderWidth: '1px',
+                        borderColor: etiqueta.color ? `${etiqueta.color}40` : '#D1D5DB'
+                      }}
+                    >
+                      {etiqueta.nombre}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-gray-500 italic">No hay etiquetas asignadas</span>
+                )}
+              </div>
+            </div>
             
             <div className="border-t border-gray-200 pt-4">
               <h3 className="font-medium text-gray-800 mb-2">Descripción</h3>
@@ -92,7 +117,7 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) =>
           
           <div className="md:border-l md:border-gray-200 md:pl-6">
             <h3 className="font-medium text-gray-800 mb-3">Acciones</h3>
-            <div className="space-y-3">
+            <div className="space-y-3 mb-6">
               <button
                 onClick={onEdit}
                 className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50"
@@ -149,6 +174,86 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) =>
                 </svg>
                 Duplicar producto
               </button>
+            </div>
+            
+            {/* Información de seguimiento con código de barras, QR y ubicación */}
+            <div className="border-t border-gray-200 mt-5 pt-4">
+              <h3 className="font-medium text-gray-800 mb-3">Información de seguimiento</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-white border border-gray-200 rounded-md p-3 shadow-sm">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Código de barras</p>
+                  <div className="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                    </svg>
+                    <p className="font-mono text-gray-800">
+                      {product.codigoBarras || <span className="text-gray-500 italic">No asignado</span>}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="bg-white border border-gray-200 rounded-md p-3 shadow-sm">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Código QR</p>
+                  {product.codigoQR ? (
+                    <>
+                      {/* Si es una URL que parece ser una imagen, mostrarla */}
+                      {product.codigoQR.match(/\.(jpeg|jpg|gif|png)$|^(http|https):\/\/.+/i) ? (
+                        <div className="mt-2">
+                          <div className="flex justify-between items-start mb-2">
+                            <p className="text-xs text-gray-600 truncate pr-2 max-w-[70%]">{product.codigoQR}</p>
+                            <a 
+                              href={product.codigoQR} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Abrir
+                            </a>
+                          </div>
+                          <div className="border border-gray-200 rounded-md p-2 bg-gray-50 flex justify-center items-center">
+                            <img 
+                              src={product.codigoQR} 
+                              alt="Código QR" 
+                              className="max-h-32 max-w-full object-contain" 
+                              onError={(e) => {
+                                // Si la imagen no carga, mostrar un mensaje de error
+                                const target = e.target as HTMLImageElement;
+                                target.onerror = null;
+                                target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5Y2EzYWYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTAgMTRhMy41IDMuNSAwIDAgMCA1IDBoMy41YTEgMSAwIDAgMCAuODI0LTEuNTggMTMgMTMgMCAwIDAtMTMuNTQ3LTIuODg3IDEyLjk4IDEyLjk4IDAgMCAwLTcuNTIgMTEuMzczbC41MTMuNTEzYTEgMSAwIDAgMCAxLjQxNSAwTDEwIDEyLjQxNFYxNHoiPjwvcGF0aD48bGluZSB4MT0iMjEiIHkxPSIzIiB4Mj0iMyIgeTI9IjIxIj48L2xpbmU+PC9zdmc+JyNyn';                                
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center mt-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                          </svg>
+                          <p className="font-mono text-gray-800">{product.codigoQR}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center mt-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                      </svg>
+                      <span className="text-gray-500 italic">No asignado</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="bg-white border border-gray-200 rounded-md p-3 shadow-sm">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Ubicación física</p>
+                  <div className="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="font-medium text-gray-800">{product.ubicacion || <span className="text-gray-500 italic">No asignada</span>}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

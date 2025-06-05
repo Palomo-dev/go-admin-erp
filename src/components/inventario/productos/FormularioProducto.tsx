@@ -37,7 +37,14 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
     codigoQR: '',
     etiquetas: [],
     ubicacion: '',
+    variantes: initialData?.variantes ?? [],
   });
+
+  // Estado local para gestionar una variante temporal
+  const [nuevaVariante, setNuevaVariante] = useState<{ nombre: string; valor: string; sku: string; stock: number; precio: number }>({ nombre: '', valor: '', sku: '', stock: 0, precio: formData.precio });
+const [editandoVarianteIdx, setEditandoVarianteIdx] = useState<number | null>(null);
+// Estado para error de stock de variantes
+const [varianteStockError, setVarianteStockError] = useState<string>('');
   
   // Estado para gestionar una nueva etiqueta
   const [nuevaEtiqueta, setNuevaEtiqueta] = useState<{
@@ -73,6 +80,8 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
       setFormData({
         ...formData,
         [name]: checked,
+        // Si se desactiva el checkbox, limpiar variantes
+        ...(name === 'tieneVariantes' && !checked ? { variantes: [] } : {}),
       });
     } else if (type === 'number') {
       // Para campos numéricos, convertimos a número
@@ -89,7 +98,108 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
       });
     }
   };
-  
+
+  // Manejar cambios en los inputs de variante temporal
+  const handleVarianteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const { name, value, type } = e.target;
+  let newValue: string | number = value;
+  if (type === 'number') {
+    newValue = value === '' ? 0 : parseFloat(value);
+  }
+  // Si el campo es sku y está vacío, autocompletar con base
+  if (name === 'sku' && !value && formData.sku) {
+    newValue = formData.sku + '-';
+  }
+  // Si el campo es precio y está vacío, poner precio base
+  if (name === 'precio' && value === '') {
+    newValue = formData.precio;
+  }
+  setNuevaVariante({
+    ...nuevaVariante,
+    [name]: newValue
+  });
+};
+
+  // Agregar variante manualmente
+  const agregarVariante = () => {
+  if (editandoVarianteIdx !== null) {
+    // Actualizar variante existente
+    if (!nuevaVariante.nombre.trim() || !nuevaVariante.valor.trim()) return;
+    if (!nuevaVariante.sku.trim()) {
+      setVarianteStockError('El SKU de la variante es obligatorio.');
+      return;
+    }
+    if (!nuevaVariante.precio || nuevaVariante.precio <= 0) {
+      setVarianteStockError('El precio de la variante debe ser mayor a 0.');
+      return;
+    }
+    if (nuevaVariante.stock <= 0) {
+      setVarianteStockError('La cantidad de la variante debe ser mayor a 0.');
+      return;
+    }
+    // Calcular nuevo total de stock (excluyendo la variante editada)
+    const totalStockVariantes = (formData.variantes || []).reduce((acc, v, idx) => acc + (idx === editandoVarianteIdx ? 0 : v.stock || 0), 0) + nuevaVariante.stock;
+    if (totalStockVariantes > formData.stock) {
+      setVarianteStockError('La suma de las cantidades de las variantes no puede superar el stock total del producto.');
+      return;
+    }
+    const nuevasVariantes = [...(formData.variantes || [])];
+    nuevasVariantes[editandoVarianteIdx] = { ...nuevaVariante };
+    setFormData({
+      ...formData,
+      variantes: nuevasVariantes,
+    });
+    setNuevaVariante({ nombre: '', valor: '', sku: '', stock: 0, precio: formData.precio });
+    setEditandoVarianteIdx(null);
+    setVarianteStockError('');
+    return;
+  }
+
+  if (!nuevaVariante.nombre.trim() || !nuevaVariante.valor.trim()) return;
+  if (nuevaVariante.stock <= 0) {
+    setVarianteStockError('La cantidad de la variante debe ser mayor a 0.');
+    return;
+  }
+  if (!nuevaVariante.sku.trim()) {
+    setVarianteStockError('El SKU de la variante es obligatorio.');
+    return;
+  }
+  if (!nuevaVariante.precio || nuevaVariante.precio <= 0) {
+    setVarianteStockError('El precio de la variante debe ser mayor a 0.');
+    return;
+  }
+  const totalStockVariantes = (formData.variantes || []).reduce((acc, v) => acc + (v.stock || 0), 0) + nuevaVariante.stock;
+  if (totalStockVariantes > formData.stock) {
+    setVarianteStockError('La suma de las cantidades de las variantes no puede superar el stock total del producto.');
+    return;
+  }
+  setFormData({
+    ...formData,
+    variantes: [...(formData.variantes || []), { ...nuevaVariante }],
+  });
+  setNuevaVariante({ nombre: '', valor: '', sku: '', stock: 0, precio: formData.precio });
+  setVarianteStockError('');
+};
+
+  // Editar variante por índice
+  const editarVariante = (idx: number) => {
+    const variante = formData.variantes?.[idx];
+    if (variante) {
+      setNuevaVariante({ ...variante });
+      setEditandoVarianteIdx(idx);
+      setVarianteStockError('');
+    }
+  };
+
+  // Eliminar variante por índice
+  const eliminarVariante = (idx: number) => {
+    setFormData({
+      ...formData,
+      variantes: (formData.variantes || []).filter((_, i) => i !== idx),
+    });
+    setVarianteStockError('');
+  };
+
   // Función para añadir una nueva etiqueta
   const agregarEtiqueta = () => {
     if (nuevaEtiqueta.nombre.trim() === '') return;
@@ -271,7 +381,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
               type="number"
               id="precio"
               name="precio"
-              value={formData.precio ?? ''}
+              value={formData.precio === 0 ? '' : formData.precio}
               onChange={handleChange}
               min="0"
               step="100"
@@ -279,6 +389,16 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
                 errors.precio ? 'border-red-500' : 'border-gray-300'
               } rounded-md bg-white text-gray-800`}
               placeholder="0"
+              onFocus={(e) => {
+                if (formData.precio === 0) {
+                  setFormData({ ...formData, precio: undefined as unknown as number });
+                }
+              }}
+              onBlur={(e) => {
+                if (!e.target.value) {
+                  setFormData({ ...formData, precio: 0 });
+                }
+              }}
             />
           </div>
           {errors.precio && <p className="mt-1 text-sm text-red-600">{errors.precio}</p>}
@@ -293,8 +413,18 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
             type="number"
             id="stock"
             name="stock"
-            value={formData.stock ?? ''}
+            value={formData.stock === 0 ? '' : formData.stock}
             onChange={handleChange}
+            onFocus={(e) => {
+              if (formData.stock === 0) {
+                setFormData({ ...formData, stock: undefined as unknown as number });
+              }
+            }}
+            onBlur={(e) => {
+              if (e.target.value === '' || isNaN(Number(e.target.value))) {
+                setFormData({ ...formData, stock: 0 });
+              }
+            }}
             min="0"
             className={`block w-full py-2 px-3 border ${
               errors.stock ? 'border-red-500' : 'border-gray-300'
@@ -326,10 +456,163 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
               </p>
             </div>
           </div>
-        </div>
 
-        {/* Descripción */}
-        <div className="md:col-span-2">
+          {/* Sección de variantes solo si está activo */}
+          {formData.tieneVariantes && (
+            <div className="mt-4 mb-4 border rounded-md p-4 bg-gray-50">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Variantes</h3>
+              {/* Lista de variantes actuales */}
+              {formData.variantes && formData.variantes.length > 0 ? (
+                <table className="mb-3 w-full text-xs">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="text-left font-semibold text-gray-800 px-2 py-1">Nombre</th>
+                      <th className="text-left font-semibold text-gray-800 px-2 py-1">Valor</th>
+                      <th className="text-left font-semibold text-gray-800 px-2 py-1">SKU</th>
+                      <th className="text-left font-semibold text-gray-800 px-2 py-1">Cantidad</th>
+                      <th className="text-left font-semibold text-gray-800 px-2 py-1">Precio</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formData.variantes.map((v, idx) => (
+  <tr key={idx} className="border-b">
+    <td className="px-2 py-1 text-gray-800">{v.nombre}</td>
+    <td className="px-2 py-1 text-gray-800">{v.valor}</td>
+    <td className="px-2 py-1 text-gray-800">{v.sku}</td>
+    <td className="px-2 py-1 text-gray-800">{v.stock}</td>
+    <td className="px-2 py-1 text-gray-800">{v.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 })}</td>
+    <td className="px-2 py-1 flex gap-2">
+      <button
+        type="button"
+        onClick={() => editarVariante(idx)}
+        className="text-xs text-blue-600 hover:text-blue-800 px-2 py-0.5 rounded"
+        aria-label="Editar variante"
+      >
+        Editar
+      </button>
+      <button
+        type="button"
+        onClick={() => eliminarVariante(idx)}
+        className="text-xs text-red-600 hover:text-red-800 px-2 py-0.5 rounded"
+        aria-label="Eliminar variante"
+      >
+        Eliminar
+      </button>
+    </td>
+  </tr>
+))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-xs text-gray-500 mb-2">No hay variantes añadidas</p>
+              )}
+              {/* Formulario para agregar variante */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  name="nombre"
+                  value={nuevaVariante.nombre}
+                  onChange={handleVarianteChange}
+                  placeholder="Nombre (ej: Talla, Color)"
+                  className="flex-1 py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+                />
+                <input
+                  type="text"
+                  name="valor"
+                  value={nuevaVariante.valor}
+                  onChange={handleVarianteChange}
+                  placeholder="Valor (ej: M, Azul)"
+                  className="flex-1 py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+                />
+                <input
+  type="text"
+  name="sku"
+  value={nuevaVariante.sku}
+  onChange={handleVarianteChange}
+  onFocus={() => {
+    if (!nuevaVariante.sku && formData.sku) {
+      setNuevaVariante({ ...nuevaVariante, sku: formData.sku + '-' });
+    }
+  }}
+  placeholder={`SKU (ej: ${formData.sku}-S-R)`}
+  className="flex-1 py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+/>
+<input
+  type="number"
+  name="stock"
+  value={nuevaVariante.stock === 0 ? '' : nuevaVariante.stock}
+  min={0}
+  onChange={handleVarianteChange}
+  onFocus={e => {
+    if (nuevaVariante.stock === 0) {
+      setNuevaVariante({ ...nuevaVariante, stock: undefined as unknown as number });
+    }
+  }}
+  onBlur={e => {
+    if (e.target.value === '' || isNaN(Number(e.target.value))) {
+      setNuevaVariante({ ...nuevaVariante, stock: 0 });
+    }
+  }}
+  placeholder="Cantidad"
+  className="w-20 py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+/>
+<input
+  type="number"
+  name="precio"
+  value={nuevaVariante.precio === 0 ? '' : nuevaVariante.precio}
+  min={0}
+  onChange={handleVarianteChange}
+  onFocus={e => {
+    if (!nuevaVariante.precio || nuevaVariante.precio === 0) {
+      setNuevaVariante({ ...nuevaVariante, precio: formData.precio });
+    }
+  }}
+  onBlur={e => {
+    if (e.target.value === '' || isNaN(Number(e.target.value))) {
+      setNuevaVariante({ ...nuevaVariante, precio: 0 });
+    }
+  }}
+  placeholder={`Precio (${formData.precio})`}
+  className="w-24 py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+/>
+                {editandoVarianteIdx === null ? (
+  <button
+    type="button"
+    onClick={agregarVariante}
+    className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+  >
+    Añadir
+  </button>
+) : (
+  <>
+    <button
+      type="button"
+      onClick={agregarVariante}
+      className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200"
+    >
+      Actualizar
+    </button>
+    <button
+      type="button"
+      onClick={() => {
+        setNuevaVariante({ nombre: '', valor: '', sku: '', stock: 0, precio: formData.precio });
+        setEditandoVarianteIdx(null);
+        setVarianteStockError('');
+      }}
+      className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 ml-1"
+    >
+      Cancelar
+    </button>
+  </>
+)}
+              </div>
+              {varianteStockError && <p className="text-xs text-red-600 mt-1">{varianteStockError}</p>}
+              <p className="mt-1 text-xs text-gray-500">Ejemplo: Talla: M, Color: Azul, SKU: {formData.sku}-M-A, Cantidad: 5, Precio: {formData.precio}</p>
+            </div>
+          )}
+
+          {/* Descripción */}
           <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 mb-1">
             Descripción del producto
           </label>

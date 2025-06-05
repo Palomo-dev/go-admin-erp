@@ -32,6 +32,7 @@ export interface Producto {
   codigoQR?: string;
   etiquetas?: EtiquetaProducto[];
   ubicacion?: string; // Para facilitar el seguimiento en el inventario físico
+  variantes?: { nombre: string; valor: string; sku: string; stock: number; precio: number }[]; // Variantes completas agregadas desde el formulario
 }
 
 /**

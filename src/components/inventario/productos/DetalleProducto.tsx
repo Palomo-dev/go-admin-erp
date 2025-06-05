@@ -30,14 +30,8 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) =>
     }).format(value);
   };
 
-  // Variantes de ejemplo (en producción vendrían de Supabase)
-  const variantes = [
-    { id: '1', nombre: 'S / Rojo', sku: `${product.sku}-S-R`, stock: 10, precio: product.precio },
-    { id: '2', nombre: 'M / Rojo', sku: `${product.sku}-M-R`, stock: 15, precio: product.precio },
-    { id: '3', nombre: 'L / Rojo', sku: `${product.sku}-L-R`, stock: 5, precio: product.precio },
-    { id: '4', nombre: 'S / Azul', sku: `${product.sku}-S-A`, stock: 8, precio: product.precio },
-    { id: '5', nombre: 'M / Azul', sku: `${product.sku}-M-A`, stock: 12, precio: product.precio },
-  ];
+  // Variantes reales del producto
+  const variantes = product.variantes || [];
 
   return (
     <div className="space-y-6">
@@ -273,6 +267,9 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) =>
                     Nombre
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Valor
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                     SKU
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -288,6 +285,9 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ product, onEdit }) =>
                   <tr key={variante.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">
                       {variante.nombre}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {variante.valor}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {variante.sku}

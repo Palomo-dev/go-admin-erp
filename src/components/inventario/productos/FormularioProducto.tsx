@@ -6,6 +6,8 @@ import React, { useState, useEffect } from 'react';
 import { Producto, EtiquetaProducto, LoteProducto, NumeroSerieProducto } from './types';
 
 interface FormularioProductoProps {
+  proveedores: Proveedor[]; // Lista de proveedores para el select
+
   initialData?: Producto;
   onSave: (productData: Producto) => void;
   onCancel: () => void;
@@ -21,9 +23,11 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
   initialData,
   onSave,
   onCancel,
+  proveedores = [],
 }) => {
   // Estado para los datos del formulario
   const [formData, setFormData] = useState<Producto>({
+    proveedorId: initialData?.proveedorId ?? '',
     id: initialData?.id ?? Math.random().toString(36).substring(2, 15),
     nombre: '',
     sku: '',
@@ -96,7 +100,10 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-    
+    if (name === 'proveedorId') {
+      setFormData({ ...formData, proveedorId: value });
+      return;
+    }
     // Para checkbox, manejamos de forma diferente
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
@@ -1188,6 +1195,25 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
         {serieError && <p className="text-xs text-red-600 mt-1">{serieError}</p>}
       </div>
 
+      {/* Proveedor */}
+      <div className="md:col-span-2">
+        <label htmlFor="proveedorId" className="block text-sm font-medium text-gray-700 mb-2">
+          Proveedor
+        </label>
+        <select
+          id="proveedorId"
+          name="proveedorId"
+          value={formData.proveedorId || ''}
+          onChange={handleChange}
+          className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white text-gray-800"
+        >
+          <option value="">Sin proveedor</option>
+          {proveedores.map((prov) => (
+            <option key={prov.id} value={prov.id}>{prov.nombre}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Etiquetas */}
         <div className="md:col-span-2">
           <label htmlFor="nuevaEtiqueta" className="block text-sm font-medium text-gray-700 mb-2">
@@ -1273,3 +1299,4 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
 };
 
 export default FormularioProducto;
+

@@ -23,6 +23,8 @@ export interface EtiquetaProducto {
  * Si el producto se gestiona por lotes, usar el campo `lotes`.
  */
 export interface Producto {
+  proveedorId?: string; // Relación con proveedor principal (opcional)
+  proveedor?: Proveedor; // Objeto proveedor (opcional, para visualización)
   id: string;
   nombre: string;
   sku: string;
@@ -125,6 +127,46 @@ export enum TipoMovimientoInventario {
 /**
  * Interfaz para los movimientos de inventario (Kardex)
  */
+/**
+ * Interfaz para proveedores
+ */
+export interface Proveedor {
+  id: string; // Identificador único del proveedor
+  nombre: string; // Nombre comercial
+  contacto?: string; // Nombre de contacto
+  telefono?: string;
+  email?: string;
+  direccion?: string;
+  notas?: string;
+}
+
+/**
+ * Interfaz para órdenes de compra
+ */
+export interface OrdenCompra {
+  id: string; // Identificador único de la orden
+  proveedorId: string; // Relación con proveedor
+  proveedor?: Proveedor; // Objeto proveedor (opcional para visualización)
+  fecha: string; // Fecha de emisión (ISO)
+  estado: 'pendiente' | 'recibida' | 'cancelada';
+  productos: OrdenCompraProducto[]; // Productos solicitados
+  total: number;
+  notas?: string;
+}
+
+/**
+ * Producto dentro de una orden de compra
+ */
+export interface OrdenCompraProducto {
+  productoId: string;
+  nombre: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+  loteAsignado?: string;
+  numeroSerieAsignado?: string;
+}
+
 export interface MovimientoInventario {
   id: string;
   fecha: Date;

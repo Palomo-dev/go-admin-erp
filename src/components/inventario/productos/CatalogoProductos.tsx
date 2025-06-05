@@ -9,6 +9,9 @@ import ProductosTable from '@/components/inventario/productos/ProductosTable';
 import FormularioProducto from '@/components/inventario/productos/FormularioProducto';
 import DetalleProducto from '@/components/inventario/productos/DetalleProducto';
 import ImportarProductos from '@/components/inventario/productos/ImportarProductos';
+import Proveedores from './Proveedores';
+import OrdenesCompra from './OrdenesCompra';
+import { Proveedor } from './types';
 
 /**
  * Componente principal para el catálogo maestro de productos
@@ -31,6 +34,9 @@ const CatalogoProductos: React.FC = () => {
   
   // Estado para los movimientos de inventario (Kardex)
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
+
+  // Estado para proveedores (levantado para compartir entre componentes)
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
 
   // Movimientos de inventario de ejemplo (en producción vendrían de Supabase)
   React.useEffect(() => {
@@ -367,6 +373,7 @@ const CatalogoProductos: React.FC = () => {
           initialData={isEditing && selectedProduct ? selectedProduct : undefined}
           onSave={handleSave}
           onCancel={handleCancel}
+          proveedores={proveedores}
         />
       </div>
     );
@@ -409,6 +416,26 @@ const CatalogoProductos: React.FC = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
+      {/* Sección de proveedores y órdenes de compra */}
+      <div className="mt-10">
+        {/* Proveedores */}
+        <details className="mb-4 border rounded">
+          <summary className="cursor-pointer px-4 py-2 bg-gray-100 text-gray-800 font-semibold rounded-t select-none">Proveedores</summary>
+          <div className="p-4">
+            {/* No se comparte estado real, solo ejemplo */}
+            {/* En producción, los proveedores vendrían de Supabase */}
+            <Proveedores proveedoresIniciales={proveedores} onProveedoresChange={setProveedores} />
+          </div>
+        </details>
+        {/* Órdenes de compra */}
+        <details className="border rounded">
+          <summary className="cursor-pointer px-4 py-2 bg-gray-100 text-gray-800 font-semibold rounded-t select-none">Órdenes de compra</summary>
+          <div className="p-4">
+            {/* En producción, productos y proveedores vendrían de Supabase */}
+            <OrdenesCompra productosDisponibles={productos} proveedores={proveedores} />
+          </div>
+        </details>
+      </div>
     </div>
   );
 };

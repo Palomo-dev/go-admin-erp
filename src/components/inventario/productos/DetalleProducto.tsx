@@ -61,6 +61,10 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
                 <p className="font-medium text-gray-800">{product.sku}</p>
               </div>
               <div>
+                <p className="text-sm text-gray-500">Proveedor</p>
+                <p className="font-medium text-gray-800">{product.proveedor?.nombre || ''}</p>
+              </div>
+              <div>
                 <p className="text-sm text-gray-500">Categoría</p>
                 <p className="font-medium text-gray-800">{product.categoria}</p>
               </div>

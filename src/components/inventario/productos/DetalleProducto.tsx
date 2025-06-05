@@ -25,6 +25,70 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
   onRegistrarMovimiento
 }) => {
   const [mostrarRegistroMovimiento, setMostrarRegistroMovimiento] = useState<boolean>(false);
+
+  // Estado local para simular la distribución de stock por sucursal
+  const sucursales = [
+    { id: 'suc-1', nombre: 'Sucursal Principal' },
+    { id: 'suc-2', nombre: 'Sucursal Norte' },
+    { id: 'suc-3', nombre: 'Sucursal Sur' },
+  ];
+
+  // Inicializar distribución: todo el stock en la sucursal principal por defecto
+  const [stockPorSucursal, setStockPorSucursal] = useState<{ sucursalId: string; nombreSucursal: string; unidades: number }[]>([
+    { sucursalId: 'suc-1', nombreSucursal: 'Sucursal Principal', unidades: product.stock },
+    { sucursalId: 'suc-2', nombreSucursal: 'Sucursal Norte', unidades: 0 },
+    { sucursalId: 'suc-3', nombreSucursal: 'Sucursal Sur', unidades: 0 },
+  ]);
+
+  // Suma total de unidades en sucursales
+  const sumaStockSucursales = stockPorSucursal.reduce((acc, curr) => acc + curr.unidades, 0);
+
+  // Manejar registro de movimientos: solo traslados afectan la distribución por sucursal
+  const handleRegistrarMovimiento = (movimientoDatos: any) => {
+    if (
+      movimientoDatos.tipoMovimiento === 'traslado' &&
+      movimientoDatos.sucursalSalida &&
+      movimientoDatos.sucursalEntrada &&
+      movimientoDatos.cantidad > 0
+    ) {
+      setStockPorSucursal((prev) => {
+        return prev.map((item) => {
+          if (item.sucursalId === movimientoDatos.sucursalSalida) {
+            return { ...item, unidades: Math.max(0, item.unidades - movimientoDatos.cantidad) };
+          }
+          if (item.sucursalId === movimientoDatos.sucursalEntrada) {
+            return { ...item, unidades: item.unidades + movimientoDatos.cantidad };
+          }
+          return item;
+        });
+      });
+
+      // Motivo automático para traslado
+      const nombreSalida = sucursales.find(s => s.id === movimientoDatos.sucursalSalida)?.nombre || '';
+      const nombreEntrada = sucursales.find(s => s.id === movimientoDatos.sucursalEntrada)?.nombre || '';
+      const motivoTraslado = `Traslado de ${nombreSalida} a ${nombreEntrada}`;
+
+      // En el Kardex: stockPrevio y stockResultante no cambian para traslados
+      const kardexMovimiento = {
+        ...movimientoDatos,
+        motivo: motivoTraslado,
+        stockPrevio: product.stock,
+        stockResultante: product.stock,
+      };
+      if (onRegistrarMovimiento) {
+        onRegistrarMovimiento(kardexMovimiento);
+      }
+      setMostrarRegistroMovimiento(false);
+      return;
+    }
+    // Los demás movimientos (entrada, salida, ajuste) siguen igual
+    if (onRegistrarMovimiento) {
+      onRegistrarMovimiento(movimientoDatos);
+    }
+    setMostrarRegistroMovimiento(false);
+  };
+
+
   // Función para determinar el color del texto según el nivel de stock
   const getStockTextColor = (stock: number): string => {
     if (stock > 10) return 'text-green-600';
@@ -82,11 +146,36 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
                   </p>
                 )}
               </div>
+              {/* Distribución de stock por sucursal */}
+              <div className="col-span-2">
+                <p className="text-sm text-gray-500 mb-1">Distribución por sucursal</p>
+                <table className="w-full text-xs border rounded mb-2">
+                  <thead>
+                    <tr>
+                      <th className="text-left font-medium text-gray-700 px-2 py-1">Sucursal</th>
+                      <th className="text-left font-medium text-gray-700 px-2 py-1">Unidades</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Estado local para simular la distribución */}
+                    {stockPorSucursal.map((item) => (
+                      <tr key={item.sucursalId}>
+                        <td className="px-2 py-1 text-gray-800">{item.nombreSucursal}</td>
+                        <td className="px-2 py-1 text-gray-800">{item.unidades}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t">
+                      <td className="px-2 py-1 font-semibold text-gray-900">Total</td>
+                      <td className="px-2 py-1 font-semibold text-gray-900">{sumaStockSucursales} unidades</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
               <div>
                 <p className="text-sm text-gray-500">Stock Total</p>
-                <p className={`font-medium ${getStockTextColor(product.stock)}`}>
-                  {product.stock} unidades
-                </p>
+                <p className={`font-medium ${getStockTextColor(product.stock)}`}>{product.stock} unidades</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Estado</p>
@@ -395,12 +484,7 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
       {mostrarRegistroMovimiento ? (
         <RegistrarMovimientoInventario 
           producto={product}
-          onGuardar={(movimientoDatos) => {
-            if (onRegistrarMovimiento) {
-              onRegistrarMovimiento(movimientoDatos);
-            }
-            setMostrarRegistroMovimiento(false);
-          }}
+          onGuardar={handleRegistrarMovimiento}
           onCancelar={() => setMostrarRegistroMovimiento(false)}
         />
       ) : (

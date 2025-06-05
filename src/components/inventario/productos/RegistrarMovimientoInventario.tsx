@@ -20,7 +20,14 @@ const RegistrarMovimientoInventario: React.FC<RegistrarMovimientoInventarioProps
   onGuardar,
   onCancelar,
 }) => {
-  const [formData, setFormData] = useState<Omit<MovimientoInventario, 'id'>>({
+  // Sucursales de ejemplo (en producción vendrán de la BD)
+  const sucursales = [
+    { id: 'suc-1', nombre: 'Sucursal Principal' },
+    { id: 'suc-2', nombre: 'Sucursal Norte' },
+    { id: 'suc-3', nombre: 'Sucursal Sur' },
+  ];
+
+  const [formData, setFormData] = useState<Omit<MovimientoInventario, 'id'> & { sucursalSalida?: string; sucursalEntrada?: string }>({
     fecha: new Date(),
     productoId: producto?.id || '',
     productoNombre: producto?.nombre || '',
@@ -31,6 +38,8 @@ const RegistrarMovimientoInventario: React.FC<RegistrarMovimientoInventarioProps
     stockResultante: (producto?.stock || 0) + 1, // Por defecto sumamos 1 para entrada
     motivo: '',
     responsable: 'Admin', // Debería venir del contexto de usuario
+    sucursalSalida: '',
+    sucursalEntrada: '',
   });
 
   const [formError, setFormError] = useState<string>('');
@@ -38,7 +47,16 @@ const RegistrarMovimientoInventario: React.FC<RegistrarMovimientoInventarioProps
   // Manejar cambios en campos del formulario
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
+
+    // Campos especiales para traslado
+    if (name === 'sucursalSalida' || name === 'sucursalEntrada') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+      return;
+    }
+
     // Caso especial: al cambiar tipo o cantidad, recalculamos el stock resultante
     if (name === 'tipoMovimiento' || name === 'cantidad') {
       let cantidad = name === 'cantidad' 
@@ -307,7 +325,7 @@ const RegistrarMovimientoInventario: React.FC<RegistrarMovimientoInventarioProps
                 placeholder="Describe el motivo del movimiento..."
               />
             </div>
-            
+
             <div>
               <label htmlFor="documentoReferencia" className="block text-sm font-medium text-gray-700 mb-1">
                 Documento de Referencia
@@ -321,7 +339,47 @@ const RegistrarMovimientoInventario: React.FC<RegistrarMovimientoInventarioProps
                 className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white text-gray-800"
                 placeholder="Número de factura, orden, etc."
               />
-              
+
+              {/* Campos de sucursal solo si es traslado */}
+              {formData.tipoMovimiento === TipoMovimientoInventario.TRASLADO && (
+                <div className="mt-4 grid grid-cols-1 gap-4">
+                  <div>
+                    <label htmlFor="sucursalSalida" className="block text-sm font-medium text-gray-700 mb-1">
+                      Sucursal de salida
+                    </label>
+                    <select
+                      id="sucursalSalida"
+                      name="sucursalSalida"
+                      value={formData.sucursalSalida || ''}
+                      onChange={handleChange}
+                      className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white text-gray-800"
+                    >
+                      <option value="">Selecciona sucursal</option>
+                      {sucursales.map((suc) => (
+                        <option key={suc.id} value={suc.id}>{suc.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="sucursalEntrada" className="block text-sm font-medium text-gray-700 mb-1">
+                      Sucursal de entrada
+                    </label>
+                    <select
+                      id="sucursalEntrada"
+                      name="sucursalEntrada"
+                      value={formData.sucursalEntrada || ''}
+                      onChange={handleChange}
+                      className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white text-gray-800"
+                    >
+                      <option value="">Selecciona sucursal</option>
+                      {sucursales.map((suc) => (
+                        <option key={suc.id} value={suc.id}>{suc.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4">
                 <label htmlFor="ubicacion" className="block text-sm font-medium text-gray-700 mb-1">
                   Ubicación
@@ -340,25 +398,48 @@ const RegistrarMovimientoInventario: React.FC<RegistrarMovimientoInventarioProps
           </div>
         </div>
 
-        {/* Preview del cambio de stock */}
+        {/* Preview del cambio de stock o traslado */}
         <div className={`mb-6 p-4 border rounded-md ${getTipoMovimientoClass()}`}>
           <h3 className="text-sm font-semibold mb-2">Previsualización del Cambio</h3>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <p className="text-xs text-gray-600">Stock Anterior</p>
-              <p className="text-lg font-semibold">{formData.stockPrevio}</p>
+          {formData.tipoMovimiento === TipoMovimientoInventario.TRASLADO ? (
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-xs text-gray-600">Sucursal de salida</p>
+                <p className="text-lg font-semibold">
+                  {sucursales.find(s => s.id === formData.sucursalSalida)?.nombre || '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Cantidad</p>
+                <p className="text-lg font-semibold text-purple-700">
+                  {formData.cantidad}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Sucursal de entrada</p>
+                <p className="text-lg font-semibold">
+                  {sucursales.find(s => s.id === formData.sucursalEntrada)?.nombre || '-'}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-600">Cambio</p>
-              <p className={`text-lg font-semibold ${formData.cantidad >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formData.cantidad > 0 ? '+' : ''}{formData.cantidad}
-              </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-xs text-gray-600">Stock Anterior</p>
+                <p className="text-lg font-semibold">{formData.stockPrevio}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Cambio</p>
+                <p className={`text-lg font-semibold ${formData.cantidad >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formData.cantidad > 0 ? '+' : ''}{formData.cantidad}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Stock Resultante</p>
+                <p className="text-lg font-semibold">{formData.stockResultante}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-600">Stock Resultante</p>
-              <p className="text-lg font-semibold">{formData.stockResultante}</p>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Botones de acción */}

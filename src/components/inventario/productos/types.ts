@@ -17,6 +17,11 @@ export interface EtiquetaProducto {
 /**
  * Interfaz para los productos del catálogo
  */
+/**
+ * Interfaz para los productos del catálogo
+ *
+ * Si el producto se gestiona por lotes, usar el campo `lotes`.
+ */
 export interface Producto {
   id: string;
   nombre: string;
@@ -45,7 +50,25 @@ export interface Producto {
   etiquetas?: EtiquetaProducto[];
   ubicacion?: string; // Para facilitar el seguimiento en el inventario físico
   variantes?: { id?: string; nombre: string; valor: string; sku: string; stock: number; precio: number }[]; // Variantes completas agregadas desde el formulario
+
+  /**
+   * Lotes asociados al producto (gestión de vencimientos y trazabilidad).
+   * Si el producto no requiere control de lotes, dejar vacío o no usar.
+   */
+  lotes?: LoteProducto[];
 }
+
+/**
+ * Interfaz para la gestión de lotes y fechas de vencimiento de productos
+ */
+export interface LoteProducto {
+  id: string; // Identificador único del lote
+  numeroLote: string; // Número o código del lote
+  cantidad: number; // Cantidad de unidades en el lote
+  fechaVencimiento: string; // Fecha de vencimiento en formato ISO (YYYY-MM-DD)
+  observaciones?: string; // Campo opcional para notas adicionales
+}
+
 
 
 /**

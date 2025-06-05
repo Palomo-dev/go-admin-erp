@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 
 // Importamos las interfaces necesarias
-import { Producto, EtiquetaProducto } from './types';
+import { Producto, EtiquetaProducto, LoteProducto } from './types';
 
 interface FormularioProductoProps {
   initialData?: Producto;
@@ -38,6 +38,7 @@ const FormularioProducto: React.FC<FormularioProductoProps> = ({
     etiquetas: [],
     ubicacion: '',
     variantes: initialData?.variantes ?? [],
+    lotes: initialData?.lotes ?? [],
   });
 
   // Estado local para gestionar una variante temporal
@@ -54,6 +55,17 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
 
   // Estado para errores de validación
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Estado para gestión de lotes
+  const [nuevoLote, setNuevoLote] = useState<LoteProducto>({
+    id: '',
+    numeroLote: '',
+    cantidad: 0,
+    fechaVencimiento: '',
+    observaciones: '',
+  });
+  const [editandoLoteIdx, setEditandoLoteIdx] = useState<number | null>(null);
+  const [loteError, setLoteError] = useState<string>('');
 
   // Categorías de ejemplo (en producción vendrían de Supabase)
   const categorias = ['Ropa', 'Calzado', 'Accesorios', 'Electrónica'];
@@ -237,6 +249,7 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
   };
 
   // Validar el formulario antes de guardarlo
+  // Incluye validación de lotes
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -269,6 +282,24 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
       newErrors.codigoQR = 'El código QR es demasiado largo';
     }
 
+    // Validación de lotes
+    if (formData.lotes && formData.lotes.length > 0) {
+      const sumaLotes = formData.lotes.reduce((acc, lote) => acc + (lote.cantidad || 0), 0);
+      if (sumaLotes > formData.stock) {
+        newErrors.lotes = 'La suma de las cantidades de los lotes no puede superar el stock total del producto';
+      }
+      formData.lotes.forEach((lote, idx) => {
+        if (!lote.numeroLote.trim()) {
+          newErrors[`lote_numeroLote_${idx}`] = 'El número de lote es obligatorio';
+        }
+        if (!lote.fechaVencimiento || !/^\d{4}-\d{2}-\d{2}$/.test(lote.fechaVencimiento)) {
+          newErrors[`lote_fechaVencimiento_${idx}`] = 'La fecha de vencimiento es obligatoria y debe tener formato AAAA-MM-DD';
+        }
+        if (lote.cantidad <= 0) {
+          newErrors[`lote_cantidad_${idx}`] = 'La cantidad del lote debe ser mayor a 0';
+        }
+      });
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -796,7 +827,192 @@ const [varianteStockError, setVarianteStockError] = useState<string>('');
           <p className="mt-1 text-xs text-gray-500">Facilita la localización física del producto</p>
         </div>
 
-        {/* Etiquetas */}
+        {/* Gestión de Lotes y Fechas de Vencimiento */}
+      <div className="md:col-span-2 mt-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Lotes y fechas de vencimiento
+        </label>
+        <p className="text-xs text-gray-500 mb-2">
+          Permite asociar lotes con cantidades y fechas de vencimiento para trazabilidad y cumplimiento normativo.
+        </p>
+        {/* Tabla de lotes existentes */}
+        {formData.lotes && formData.lotes.length > 0 ? (
+          <table className="mb-3 w-full text-xs">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="text-left font-semibold text-gray-800 px-2 py-1">N° Lote</th>
+                <th className="text-left font-semibold text-gray-800 px-2 py-1">Cantidad</th>
+                <th className="text-left font-semibold text-gray-800 px-2 py-1">Vencimiento</th>
+                <th className="text-left font-semibold text-gray-800 px-2 py-1">Observaciones</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {formData.lotes.map((lote, idx) => (
+                <tr key={lote.id || idx} className="border-b">
+                  <td className="px-2 py-1 text-gray-800">{lote.numeroLote}</td>
+                  <td className="px-2 py-1 text-gray-800">{lote.cantidad}</td>
+                  <td className="px-2 py-1 text-gray-800">{lote.fechaVencimiento}</td>
+                  <td className="px-2 py-1 text-gray-800">{lote.observaciones}</td>
+                  <td className="px-2 py-1 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNuevoLote({ ...lote });
+                        setEditandoLoteIdx(idx);
+                        setLoteError('');
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 px-2 py-0.5 rounded"
+                      aria-label="Editar lote"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          lotes: formData.lotes!.filter((_, i) => i !== idx),
+                        });
+                        setLoteError('');
+                      }}
+                      className="text-xs text-red-600 hover:text-red-800 px-2 py-0.5 rounded"
+                      aria-label="Eliminar lote"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-xs text-gray-500 mb-2">No hay lotes añadidos</p>
+        )}
+        {/* Formulario para agregar/editar lote */}
+        <div className="flex flex-wrap gap-2 items-end">
+          <input
+            type="text"
+            name="numeroLote"
+            value={nuevoLote.numeroLote}
+            onChange={e => setNuevoLote({ ...nuevoLote, numeroLote: e.target.value })}
+            placeholder="N° Lote"
+            className="py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+          />
+          <input
+            type="number"
+            name="cantidad"
+            value={nuevoLote.cantidad === 0 ? '' : nuevoLote.cantidad}
+            min={0}
+            onChange={e => setNuevoLote({ ...nuevoLote, cantidad: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+            onFocus={e => { if (nuevoLote.cantidad === 0) setNuevoLote({ ...nuevoLote, cantidad: undefined as unknown as number }); }}
+            onBlur={e => { if (e.target.value === '' || isNaN(Number(e.target.value))) setNuevoLote({ ...nuevoLote, cantidad: 0 }); }}
+            placeholder="Cantidad"
+            className="w-20 py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+          />
+          <input
+            type="date"
+            name="fechaVencimiento"
+            value={nuevoLote.fechaVencimiento}
+            onChange={e => setNuevoLote({ ...nuevoLote, fechaVencimiento: e.target.value })}
+            className="py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+            placeholder="Vencimiento"
+          />
+          <input
+            type="text"
+            name="observaciones"
+            value={nuevoLote.observaciones || ''}
+            onChange={e => setNuevoLote({ ...nuevoLote, observaciones: e.target.value })}
+            placeholder="Observaciones"
+            className="py-1 px-2 border border-gray-300 rounded-md text-xs text-gray-800"
+          />
+          {editandoLoteIdx === null ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (!nuevoLote.numeroLote.trim()) {
+                  setLoteError('El número de lote es obligatorio.');
+                  return;
+                }
+                if (!nuevoLote.fechaVencimiento || !/^\d{4}-\d{2}-\d{2}$/.test(nuevoLote.fechaVencimiento)) {
+                  setLoteError('La fecha de vencimiento es obligatoria y debe tener formato AAAA-MM-DD.');
+                  return;
+                }
+                if (!nuevoLote.cantidad || nuevoLote.cantidad <= 0) {
+                  setLoteError('La cantidad del lote debe ser mayor a 0.');
+                  return;
+                }
+                const sumaLotes = (formData.lotes || []).reduce((acc, l) => acc + (l.cantidad || 0), 0) + nuevoLote.cantidad;
+                if (sumaLotes > formData.stock) {
+                  setLoteError('La suma de las cantidades de los lotes no puede superar el stock total del producto.');
+                  return;
+                }
+                setFormData({
+                  ...formData,
+                  lotes: [...(formData.lotes || []), { ...nuevoLote, id: Math.random().toString(36).substring(2, 15) }],
+                });
+                setNuevoLote({ id: '', numeroLote: '', cantidad: 0, fechaVencimiento: '', observaciones: '' });
+                setLoteError('');
+              }}
+              className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+            >
+              Añadir lote
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!nuevoLote.numeroLote.trim()) {
+                    setLoteError('El número de lote es obligatorio.');
+                    return;
+                  }
+                  if (!nuevoLote.fechaVencimiento || !/^\d{4}-\d{2}-\d{2}$/.test(nuevoLote.fechaVencimiento)) {
+                    setLoteError('La fecha de vencimiento es obligatoria y debe tener formato AAAA-MM-DD.');
+                    return;
+                  }
+                  if (!nuevoLote.cantidad || nuevoLote.cantidad <= 0) {
+                    setLoteError('La cantidad del lote debe ser mayor a 0.');
+                    return;
+                  }
+                  const sumaLotes = (formData.lotes || []).reduce((acc, l, idx) => acc + (idx === editandoLoteIdx ? 0 : l.cantidad || 0), 0) + nuevoLote.cantidad;
+                  if (sumaLotes > formData.stock) {
+                    setLoteError('La suma de las cantidades de los lotes no puede superar el stock total del producto.');
+                    return;
+                  }
+                  const nuevosLotes = [...(formData.lotes || [])];
+                  nuevosLotes[editandoLoteIdx!] = { ...nuevoLote };
+                  setFormData({
+                    ...formData,
+                    lotes: nuevosLotes,
+                  });
+                  setNuevoLote({ id: '', numeroLote: '', cantidad: 0, fechaVencimiento: '', observaciones: '' });
+                  setEditandoLoteIdx(null);
+                  setLoteError('');
+                }}
+                className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200"
+              >
+                Actualizar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNuevoLote({ id: '', numeroLote: '', cantidad: 0, fechaVencimiento: '', observaciones: '' });
+                  setEditandoLoteIdx(null);
+                  setLoteError('');
+                }}
+                className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 ml-1"
+              >
+                Cancelar
+              </button>
+            </>
+          )}
+        </div>
+        {loteError && <p className="text-xs text-red-600 mt-1">{loteError}</p>}
+        {errors.lotes && <p className="text-xs text-red-600 mt-1">{errors.lotes}</p>}
+      </div>
+
+      {/* Etiquetas */}
         <div className="md:col-span-2">
           <label htmlFor="nuevaEtiqueta" className="block text-sm font-medium text-gray-700 mb-2">
             Etiquetas

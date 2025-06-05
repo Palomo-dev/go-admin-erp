@@ -126,7 +126,34 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
                 )}
               </div>
             </div>
-            
+
+            {/* Lotes y fechas de vencimiento */}
+            {Array.isArray(product.lotes) && product.lotes.length > 0 && (
+              <div className="bg-white border border-blue-100 rounded-lg p-4 mt-2">
+                <h3 className="text-base font-semibold text-blue-800 mb-2">Lotes y fechas de vencimiento</h3>
+                <table className="w-full text-xs mb-2">
+                  <thead>
+                    <tr className="bg-blue-50">
+                      <th className="text-left font-medium text-blue-900 px-2 py-1">N° Lote</th>
+                      <th className="text-left font-medium text-blue-900 px-2 py-1">Cantidad</th>
+                      <th className="text-left font-medium text-blue-900 px-2 py-1">Vencimiento</th>
+                      <th className="text-left font-medium text-blue-900 px-2 py-1">Observaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {product.lotes.map((lote, idx) => (
+                      <tr key={lote.id || idx} className="border-b last:border-b-0">
+                        <td className="px-2 py-1 text-gray-800">{lote.numeroLote}</td>
+                        <td className="px-2 py-1 text-gray-800">{lote.cantidad}</td>
+                        <td className="px-2 py-1 text-gray-800">{lote.fechaVencimiento}</td>
+                        <td className="px-2 py-1 text-gray-800">{lote.observaciones || <span className="text-gray-400 italic">-</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             <div className="border-t border-gray-200 pt-4">
               <h3 className="font-medium text-gray-800 mb-2">Descripción</h3>
               <p className="font-medium text-gray-800">{product.descripcion ?? 'Este producto no tiene descripción.'}</p>

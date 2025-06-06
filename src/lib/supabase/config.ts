@@ -200,7 +200,7 @@ export const validateInvitation = async (inviteCode: string) => {
       used_at,
       status,
       roles(name),
-      organizations(name, type)
+      organizations(name)
     `)
     .eq('code', inviteCode)
     .single();
@@ -225,19 +225,21 @@ export const validateInvitation = async (inviteCode: string) => {
   let organizationName = '';
   let roleName = '';
 
+  // Handle organization data safely
   if (data.organizations) {
-    if (Array.isArray(data.organizations) && data.organizations.length > 0) {
-      organizationName = data.organizations[0].name || '';
-    } else if (typeof data.organizations === 'object') {
-      organizationName = data.organizations.name || '';
+    // Supabase returns this as an object with name property
+    const org = data.organizations as unknown;
+    if (org && typeof org === 'object' && 'name' in org) {
+      organizationName = (org as {name: string}).name || '';
     }
   }
 
+  // Handle roles data safely
   if (data.roles) {
-    if (Array.isArray(data.roles) && data.roles.length > 0) {
-      roleName = data.roles[0].name || '';
-    } else if (typeof data.roles === 'object') {
-      roleName = data.roles.name || '';
+    // Supabase returns this as an object with name property
+    const role = data.roles as unknown;
+    if (role && typeof role === 'object' && 'name' in role) {
+      roleName = (role as {name: string}).name || '';
     }
   }
 
@@ -293,7 +295,17 @@ export const acceptInvitation = async ({
       return { error: { message: 'No se pudo crear el usuario' } };
     }
 
-    // Agregamos el usuario a la tabla profiles
+    // Obtenemos información de la sucursal principal
+    const { data: branchData } = await supabase
+      .from('branches')
+      .select('id')
+      .eq('organization_id', inviteData.organization_id)
+      .eq('is_main', true)
+      .single();
+
+    const branchId = branchData?.id || null;
+
+    // Agregamos el usuario a la tabla profiles con todos los campos requeridos
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
@@ -301,28 +313,21 @@ export const acceptInvitation = async ({
         email: inviteData.email,
         first_name: userData.firstName || userData.first_name,
         last_name: userData.lastName || userData.last_name,
+        phone: userData.phoneNumber || userData.phone,
         organization_id: inviteData.organization_id,
+        role_id: inviteData.role_id,
+        branch_id: branchId,
+        status: 'active',
+        is_owner: false,
+        metadata: {},
+        preferred_language: 'es',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
     
     if (profileError) {
+      console.error('Error al crear perfil:', profileError);
       return { error: profileError };
-    }
-
-    // Agregamos el miembro a la organización
-    const { error: memberError } = await supabase
-      .from('organization_members')
-      .upsert({
-        user_id: authData.user.id,
-        organization_id: inviteData.organization_id,
-        role: inviteData.role_name, // Usamos el nombre del rol directamente
-        is_active: true,
-        created_at: new Date().toISOString()
-      });
-    
-    if (memberError) {
-      return { error: memberError };
     }
 
     // Marcamos la invitación como utilizada
@@ -335,11 +340,13 @@ export const acceptInvitation = async ({
       .eq('code', inviteCode);
     
     if (updateInviteError) {
+      console.error('Error al actualizar invitación:', updateInviteError);
       return { error: updateInviteError };
     }
     
     return { data: authData, error: null };
   } catch (error: any) {
+    console.error('Error en acceptInvitation:', error);
     return { 
       data: null, 
       error: { 

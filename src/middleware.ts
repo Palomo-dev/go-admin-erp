@@ -83,10 +83,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Si el usuario está autenticado y la ruta actual es /auth/* (excepto /auth/logout), redirigir a /app/inicio
+  // Si el usuario está autenticado y la ruta actual es /auth/* (excepto /auth/logout y /auth/invite), redirigir a /app/inicio
   if (isAuthenticated && 
       request.nextUrl.pathname.startsWith('/auth/') && 
-      request.nextUrl.pathname !== '/auth/logout') {
+      request.nextUrl.pathname !== '/auth/logout' &&
+      !request.nextUrl.pathname.startsWith('/auth/invite')) {
     console.log('Redirigiendo a inicio: Usuario autenticado en ruta de autenticación');
     const redirectUrl = new URL('/app/inicio', request.url);
     return NextResponse.redirect(redirectUrl);

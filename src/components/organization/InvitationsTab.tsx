@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 
 interface InvitationProps {
   id: string;
   email: string;
   code?: string;
   role_name: string;
+  branch_id?: string | null;
+  branch_name?: string;
   created_at: string;
   expires_at: string | null;
   used: boolean;
@@ -20,7 +23,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
+  const [roles, setRoles] = useState<{ id: string; name: string; code: string }[]>([]);
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   
   // Form state
@@ -44,10 +47,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       setLoading(true);
       setError(null);
       
-      // Get invitations for the organization
+      // Get invitations for the organization with branch information
       const { data, error } = await supabase
         .from('invitations')
-        .select('id, email, code, role_id, organization_id, created_at, expires_at, used_at, status')
+        .select('id, email, code, role_id, branch_id, organization_id, created_at, expires_at, used_at, status')
         .eq('organization_id', orgId);
 
       if (error) throw error;
@@ -61,32 +64,56 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       // Get role information separately
       const roleIds = data.filter(invite => invite.role_id).map(invite => invite.role_id);
       
-      let rolesData = [];
+      // Define proper type for rolesData
+      interface RoleData {
+        id: number;
+        name: string;
+        code?: string;
+      }
+      
+      let rolesData: RoleData[] = [];
       if (roleIds.length > 0) {
         const { data: rolesResult, error: rolesError } = await supabase
           .from('roles')
           .select('id, name')
           .in('id', roleIds);
           
-        if (!rolesError) {
-          rolesData = rolesResult || [];
+        if (!rolesError && rolesResult) {
+          rolesData = rolesResult as RoleData[];
         }
       }
 
+      // Get branch information for each invitation
+      const branchIds = data.filter(invite => invite.branch_id).map(invite => invite.branch_id);
+      
+      let branchesData: any[] = [];
+      if (branchIds.length > 0) {
+        const { data: branchesResult, error: branchesError } = await supabase
+          .from('branches')
+          .select('id, name')
+          .in('id', branchIds);
+          
+        if (!branchesError && branchesResult) {
+          branchesData = branchesResult;
+        }
+      }
+      
       // Format the invitations data
       const formattedInvitations = data.map((invite) => {
-        const role = rolesData.find(r => r.id === invite.role_id);
+        // Use the roleUtils to get role info
+        const roleInfo = getRoleInfoById(invite.role_id);
         
-        let roleName = 'Sin rol';
-        if (role) {
-          roleName = role.name;
-        }
+        // Get branch information
+        const branch = branchesData.find(b => b.id === invite.branch_id);
+        const branchName = branch ? branch.name : 'Sin sucursal';
         
         return {
           id: invite.id,
           email: invite.email,
           code: invite.code,
-          role_name: roleName,
+          role_name: roleInfo.name,
+          branch_id: invite.branch_id,
+          branch_name: branchName,
           created_at: new Date(invite.created_at).toLocaleDateString(),
           expires_at: invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : 'No expira',
           status: invite.status,
@@ -112,11 +139,14 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .order('name');
 
       if (error) throw error;
-      setRoles(data);
       
-      // Set default role if available
-      if (data.length > 0) {
-        const employeeRole = data.find(r => r.name === 'Empleado') || data[0];
+      // Format roles with codes using the utility function
+      const formattedRoles = formatRolesForDropdown(data);
+      setRoles(formattedRoles);
+      
+      // Set default role if available - look for employee role by code
+      if (formattedRoles.length > 0) {
+        const employeeRole = formattedRoles.find(r => r.code === 'employee') || formattedRoles[0];
         setRoleId(employeeRole.id);
       }
     } catch (err: any) {
@@ -204,9 +234,14 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       if (error) throw error;
       
       // Generate invitation URL
-      const inviteId = invite?.[0]?.id;
       const inviteCode = invite?.[0]?.code;
       const inviteUrl = `${window.location.origin}/auth/invite?code=${inviteCode}`;
+      
+      console.log('Invitation created:', {
+        email: email.toLowerCase(),
+        code: inviteCode,
+        url: inviteUrl
+      });
       
       setSuccess('Invitación enviada correctamente');
       setEmail('');
@@ -399,7 +434,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   <option value="" disabled>Selecciona un rol</option>
                   {roles.map((role) => (
                     <option key={role.id} value={role.id}>
-                      {role.name}
+                      {roleDisplayMap[role.code] || role.name}
                     </option>
                   ))}
                 </select>
@@ -460,6 +495,9 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   Rol
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Sucursal
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -476,18 +514,21 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             <tbody className="bg-white divide-y divide-gray-200">
               {invitations.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                     No hay invitaciones enviadas
                   </td>
                 </tr>
               ) : (
                 invitations.map((invitation) => (
                   <tr key={invitation.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {invitation.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {invitation.role_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {invitation.branch_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(invitation)}

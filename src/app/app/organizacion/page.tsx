@@ -4,10 +4,10 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { getUserRole, getUserOrganization, supabase } from '@/lib/supabase/config';
 
 // Use dynamic imports to fix TypeScript module not found errors
-const MembersTab = lazy(() => import('./components/MembersTab'));
-const InvitationsTab = lazy(() => import('./components/InvitationsTab'));
-const OrganizationInfoTab = lazy(() => import('./components/OrganizationInfoTab'));
-const BranchesTab = lazy(() => import('./components/BranchesTab'));
+const MembersTab = lazy(() => import('../../../components/organization/MembersTab'));
+const InvitationsTab = lazy(() => import('../../../components/organization/InvitationsTab'));
+const OrganizationInfoTab = lazy(() => import('../../../components/organization/OrganizationInfoTab'));
+const BranchesTab = lazy(() => import('../../../components/organization/BranchesTab'));
 
 export default function OrganizacionPage() {
   const [activeTab, setActiveTab] = useState('members');

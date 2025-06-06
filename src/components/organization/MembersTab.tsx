@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 
 interface MemberProps {
   id: string;
@@ -9,12 +10,17 @@ interface MemberProps {
   full_name: string;
   email: string;
   role: string;
+  role_id: number;
+  role_code: string;
+  is_admin: boolean;
   status: string;
+  branch_id: string | null;
+  branch_name: string;
   created_at: string;
 }
 
 export default function MembersTab({ orgId }: { orgId: number }) {
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<MemberProps[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,49 +41,66 @@ export default function MembersTab({ orgId }: { orgId: number }) {
 
       console.log('Organization ID:', orgId);
 
-      // First fetch members from organization_members
+      // Fetch members from profiles with a join to roles and branches to get role and branch names
       const { data: membersData, error: membersError } = await supabase
-        .from('organization_members')
-        .select('id, user_id, role, is_super_admin, is_active, created_at')
+        .from('profiles')
+        .select(`
+          id, 
+          role_id, 
+          is_owner, 
+          status, 
+          created_at, 
+          first_name, 
+          last_name, 
+          email, 
+          avatar_url,
+          branch_id,
+          roles(id, name),
+          branches(id, name)
+        `)
         .eq('organization_id', orgId);
         
+      console.log('Members data:', membersData);
+
       if (membersError) {
         console.error('Error al obtener miembros:', membersError);
         throw membersError;
       }
 
-      // Then fetch profiles for those members
-      const userIds = membersData.map(member => member.user_id);
-      
-      // Only fetch profiles if we have members
-      if (userIds.length === 0) {
+      // Only proceed if we have members
+      if (!membersData || membersData.length === 0) {
         setMembers([]);
         return;
       }
 
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, avatar_url')
-        .in('id', userIds);
+      // We'll use the roleUtils functions instead of defining the map here
 
-      if (profilesError) {
-        console.error('Error al obtener perfiles:', profilesError);
-        throw profilesError;
-      }
+      // Type assertion for the data from Supabase
+      type MemberData = any;
 
-      // Combine the data
-      const formattedMembers = membersData.map(member => {
-        const profile = profilesData.find(p => p.id === member.user_id) || {};
-        const fullName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Sin nombre';
+      // Format the member data with proper role names
+      const formattedMembers = membersData.map((member: MemberData) => {
+        const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Sin nombre';
+        const roleInfo = getRoleInfoById(member.role_id);
+        
+        // Get branch information
+        let branchName = 'Sin sucursal';
+        if (member.branches && typeof member.branches === 'object') {
+          branchName = member.branches.name || 'Sin sucursal';
+        }
         
         return {
           id: member.id,
-          user_id: member.user_id,
+          user_id: member.id,
           full_name: fullName,
-          email: profile?.email || 'Sin email',
-          role: member.role || 'Sin rol',
-          is_admin: member.is_super_admin,
-          status: member.is_active ? 'Activo' : 'Inactivo',
+          email: member.email || 'Sin email',
+          role: roleInfo.name,
+          role_id: member.role_id,
+          role_code: roleInfo.code,
+          is_admin: member.is_owner,
+          status: member.status ? "Activo" : "Inactivo",
+          branch_id: member.branch_id,
+          branch_name: branchName,
           created_at: new Date(member.created_at).toLocaleDateString()
         };
       });
@@ -99,31 +122,46 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         .order('name');
 
       if (error) throw error;
-      setRoles(data);
+      
+      // Format roles with codes using our utility function
+      const rolesWithCodes = formatRolesForDropdown(data);
+      setRoles(rolesWithCodes);
     } catch (err: any) {
       console.error('Error fetching roles:', err);
     }
   };
 
-  const updateMemberRole = async (memberId: string, roleName: string) => {
+  const updateMemberRole = async (memberId: string, roleCode: string) => {
     try {
       setUpdatingRole(true);
       
-      // Update the member's role directly in organization_members
+      // Find the role ID that corresponds to this role code using our utility function
+      const roleId = getRoleIdByCode(roleCode);
+      
+      if (roleId === null) {
+        throw new Error(`Role code ${roleCode} not found`);
+      }
+      
+      // Update the member's role_id in profiles table
       const { error } = await supabase
-        .from('organization_members')
-        .update({ role: roleName })
+        .from('profiles')
+        .update({ role_id: roleId })
         .eq('id', memberId)
         .eq('organization_id', orgId);
 
       if (error) throw error;
+      
+      // Get role info using our utility function
+      const roleInfo = getRoleInfoById(roleId);
       
       // Update local member data
       setMembers(prev => prev.map(m => {
         if (m.id === memberId) {
           return { 
             ...m, 
-            role: roleName || 'Sin rol'
+            role: roleInfo.name,
+            role_id: roleId,
+            role_code: roleCode
           };
         }
         return m;
@@ -215,6 +253,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                 Rol
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Sucursal
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Estado
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -244,16 +285,20 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <select 
                       className="rounded-md border border-gray-300 p-1"
-                      defaultValue={member.role}
+                      value={member.role_code || ""}
                       onChange={(e) => updateMemberRole(member.id, e.target.value)}
+                      disabled={member.is_admin} // Disable changing role for owners/admins
                     >
                       <option value="">Seleccionar rol</option>
                       {roles.map(role => (
-                        <option key={role.id} value={role.name}>
-                          {role.name}
+                        <option key={role.id} value={role.code}>
+                          {roleDisplayMap[role.code] || role.name}
                         </option>
                       ))}
                     </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {member.branch_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

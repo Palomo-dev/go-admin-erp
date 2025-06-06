@@ -22,16 +22,20 @@ interface MemberProps {
 export default function MembersTab({ orgId }: { orgId: number }) {
   const [members, setMembers] = useState<MemberProps[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [updatingRole, setUpdatingRole] = useState(false);
+  const [updatingBranch, setUpdatingBranch] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [newRole, setNewRole] = useState<string>('');
 
   useEffect(() => {
     if (orgId) {
       fetchMembers();
       fetchRoles();
+      fetchBranches();
     }
   }, [orgId]);
 
@@ -39,29 +43,27 @@ export default function MembersTab({ orgId }: { orgId: number }) {
     try {
       setLoading(true);
 
-      console.log('Organization ID:', orgId);
-
       // Fetch members from profiles with a join to roles and branches to get role and branch names
       const { data: membersData, error: membersError } = await supabase
-        .from('profiles')
-        .select(`
-          id, 
-          role_id, 
-          is_owner, 
-          status, 
-          created_at, 
-          first_name, 
-          last_name, 
-          email, 
-          avatar_url,
-          branch_id,
-          roles(id, name),
-          branches(id, name)
-        `)
-        .eq('organization_id', orgId);
-        
-      console.log('Members data:', membersData);
+          .from('profiles')
+          .select(`
+            id, 
+            role_id, 
+            is_owner, 
+            status, 
+            created_at, 
+            first_name, 
+            last_name, 
+            email, 
+            avatar_url,
+            branch_id,
+            roles(id, name),
+            profiles_branch_id_fkey(id, name)
+          `)
+          .eq('organization_id', orgId);
 
+      console.log('Members data:', membersData);
+      
       if (membersError) {
         console.error('Error al obtener miembros:', membersError);
         throw membersError;
@@ -82,13 +84,12 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       const formattedMembers = membersData.map((member: MemberData) => {
         const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Sin nombre';
         const roleInfo = getRoleInfoById(member.role_id);
-        
-        // Get branch information
+      
         let branchName = 'Sin sucursal';
-        if (member.branches && typeof member.branches === 'object') {
-          branchName = member.branches.name || 'Sin sucursal';
+        if (member.profiles_branch_id_fkey && typeof member.profiles_branch_id_fkey === 'object') {
+          branchName = member.profiles_branch_id_fkey.name || 'Sin sucursal';
         }
-        
+      
         return {
           id: member.id,
           user_id: member.id,
@@ -123,11 +124,25 @@ export default function MembersTab({ orgId }: { orgId: number }) {
 
       if (error) throw error;
       
-      // Format roles with codes using our utility function
-      const rolesWithCodes = formatRolesForDropdown(data);
-      setRoles(rolesWithCodes);
+      const formattedRoles = formatRolesForDropdown(data);
+      setRoles(formattedRoles);
     } catch (err: any) {
       console.error('Error fetching roles:', err);
+    }
+  };
+
+  const fetchBranches = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('id, name')
+        .eq('organization_id', orgId)
+        .order('name');
+
+      if (error) throw error;
+      setBranches(data);
+    } catch (err: any) {
+      console.error('Error fetching branches:', err);
     }
   };
 
@@ -173,6 +188,80 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       setError(err.message || 'Error al actualizar el rol del miembro');
     } finally {
       setUpdatingRole(false);
+    }
+  };
+  
+  const updateMemberBranch = async (memberId: string, branchId: string) => {
+    try {
+      setUpdatingBranch(true);
+      
+      // Update the member's branch_id in profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .update({ branch_id: branchId })
+        .eq('id', memberId)
+        .eq('organization_id', orgId);
+
+      if (error) throw error;
+      
+      // Find the branch name
+      const branch = branches.find(b => b.id === branchId);
+      const branchName = branch ? branch.name : 'Sin sucursal';
+      
+      // Update local member data
+      setMembers(prev => prev.map(m => {
+        if (m.id === memberId) {
+          return { 
+            ...m, 
+            branch_id: branchId,
+            branch_name: branchName
+          };
+        }
+        return m;
+      }));
+      
+      setSuccess('Sucursal actualizada correctamente');
+    } catch (err: any) {
+      console.error('Error al actualizar sucursal:', err);
+      setError(err.message || 'Error al actualizar la sucursal del miembro');
+    } finally {
+      setUpdatingBranch(false);
+    }
+  };
+  
+  const toggleMemberStatus = async (memberId: string, currentStatus: boolean) => {
+    try {
+      setUpdatingStatus(true);
+      
+      // Toggle the status
+      const newStatus = !currentStatus;
+      
+      // Update the member's status in profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: newStatus })
+        .eq('id', memberId)
+        .eq('organization_id', orgId);
+
+      if (error) throw error;
+      
+      // Update local member data
+      setMembers(prev => prev.map(m => {
+        if (m.id === memberId) {
+          return { 
+            ...m, 
+            status: newStatus ? 'Activo' : 'Inactivo'
+          };
+        }
+        return m;
+      }));
+      
+      setSuccess(`Usuario ${newStatus ? 'activado' : 'desactivado'} correctamente`);
+    } catch (err: any) {
+      console.error('Error al actualizar estado:', err);
+      setError(err.message || 'Error al actualizar el estado del miembro');
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -298,14 +387,30 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                     </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {member.branch_name}
+                    <select 
+                      className="rounded-md border border-gray-300 p-1"
+                      value={member.branch_id || ""}
+                      onChange={(e) => updateMemberBranch(member.id, e.target.value)}
+                      disabled={member.is_admin} // Disable changing branch for owners/admins
+                    >
+                      <option value="">Sin sucursal</option>
+                      {branches.map(branch => (
+                        <option key={branch.id} value={branch.id}>
+                          {branch.name}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      member.status === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                    <button 
+                      onClick={() => !member.is_admin && toggleMemberStatus(member.id, member.status === 'Activo')}
+                      disabled={member.is_admin}
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        member.status === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      } ${!member.is_admin ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-75'}`}
+                    >
                       {member.status}
-                    </span>
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {member.created_at}

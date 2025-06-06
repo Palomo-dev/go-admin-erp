@@ -9,8 +9,6 @@ interface InvitationProps {
   email: string;
   code?: string;
   role_name: string;
-  branch_id?: string | null;
-  branch_name?: string;
   created_at: string;
   expires_at: string | null;
   used: boolean;
@@ -24,96 +22,66 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [roles, setRoles] = useState<{ id: string; name: string; code: string }[]>([]);
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   
   // Form state
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
-  const [branchId, setBranchId] = useState('');
   const [sendingInvitation, setSendingInvitation] = useState(false);
 
   useEffect(() => {
     if (orgId) {
       fetchInvitations();
       fetchRoles();
-      fetchBranches();
     }
   }, [orgId]);
 
   const fetchInvitations = async () => {
     try {
-      console.log('Organization ID:', orgId);
-
       setLoading(true);
       setError(null);
-      
-      // Get invitations for the organization with branch information
+
+      // Get invitations for the organization
       const { data, error } = await supabase
         .from('invitations')
-        .select('id, email, code, role_id, branch_id, organization_id, created_at, expires_at, used_at, status')
+        .select('id, email, code, role_id, organization_id, created_at, expires_at, used_at, status')
         .eq('organization_id', orgId);
 
       if (error) throw error;
 
-      // If no invitations, set empty array and return
       if (!data || data.length === 0) {
         setInvitations([]);
         return;
       }
 
-      // Get role information separately
-      const roleIds = data.filter(invite => invite.role_id).map(invite => invite.role_id);
-      
-      // Define proper type for rolesData
-      interface RoleData {
-        id: number;
-        name: string;
-        code?: string;
-      }
-      
-      let rolesData: RoleData[] = [];
-      if (roleIds.length > 0) {
-        const { data: rolesResult, error: rolesError } = await supabase
-          .from('roles')
-          .select('id, name')
-          .in('id', roleIds);
-          
-        if (!rolesError && rolesResult) {
-          rolesData = rolesResult as RoleData[];
-        }
+      // Get roles to map role_id to role names
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('roles')
+        .select('id, name');
+
+      if (rolesError) {
+        console.error('Error fetching roles:', rolesError);
+        // Continue with available data
       }
 
-      // Get branch information for each invitation
-      const branchIds = data.filter(invite => invite.branch_id).map(invite => invite.branch_id);
-      
-      let branchesData: any[] = [];
-      if (branchIds.length > 0) {
-        const { data: branchesResult, error: branchesError } = await supabase
-          .from('branches')
-          .select('id, name')
-          .in('id', branchIds);
-          
-        if (!branchesError && branchesResult) {
-          branchesData = branchesResult;
-        }
+      // Create a map of role IDs to role names
+      let roleMap: { [key: number]: string } = {};
+      if (rolesData) {
+        roleMap = rolesData.reduce((acc: any, role: any) => {
+          acc[role.id] = role.name;
+          return acc;
+        }, {});
       }
-      
+
       // Format the invitations data
       const formattedInvitations = data.map((invite) => {
         // Use the roleUtils to get role info
         const roleInfo = getRoleInfoById(invite.role_id);
-        
-        // Get branch information
-        const branch = branchesData.find(b => b.id === invite.branch_id);
-        const branchName = branch ? branch.name : 'Sin sucursal';
-        
+
         return {
           id: invite.id,
           email: invite.email,
           code: invite.code,
           role_name: roleInfo.name,
-          branch_id: invite.branch_id,
-          branch_name: branchName,
           created_at: new Date(invite.created_at).toLocaleDateString(),
           expires_at: invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : 'No expira',
           status: invite.status,
@@ -124,8 +92,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
       setInvitations(formattedInvitations);
     } catch (err: any) {
-      console.error('Error al obtener invitaciones:', err);
-      setError(err.message || 'Error al cargar las invitaciones');
+      console.error('Error fetching invitations:', err);
+      setError(err.message || 'Error al cargar invitaciones');
     } finally {
       setLoading(false);
     }
@@ -151,26 +119,6 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       }
     } catch (err: any) {
       console.error('Error fetching roles:', err);
-    }
-  };
-
-  const fetchBranches = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('branches')
-        .select('id, name')
-        .eq('organization_id', orgId)
-        .order('name');
-
-      if (error) throw error;
-      setBranches(data);
-      
-      // Set default branch if available
-      if (data.length > 0) {
-        setBranchId(data[0].id);
-      }
-    } catch (err: any) {
-      console.error('Error fetching branches:', err);
     }
   };
 
@@ -233,25 +181,23 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         
       if (error) throw error;
       
-      // Generate invitation URL
-      const inviteCode = invite?.[0]?.code;
-      const inviteUrl = `${window.location.origin}/auth/invite?code=${inviteCode}`;
+      // Send invitation email
+      // This would typically call a server function to send an email
+      // For now, we'll just log it and update the UI
+      console.log(`Invitation sent to ${email} with code ${code}`);
       
-      console.log('Invitation created:', {
-        email: email.toLowerCase(),
-        code: inviteCode,
-        url: inviteUrl
-      });
+      // Update UI
+      setSuccess(`Invitación enviada a ${email}`);
       
-      setSuccess('Invitación enviada correctamente');
+      // Reset form
       setEmail('');
       setRoleId('');
-      setBranchId('');
       
       // Refresh invitations list
       fetchInvitations();
+      
     } catch (err: any) {
-      console.error('Error al enviar invitación:', err);
+      console.error('Error sending invitation:', err);
       setError(err.message || 'Error al enviar la invitación');
     } finally {
       setSendingInvitation(false);
@@ -418,48 +364,25 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                  Rol
-                </label>
-                <select
-                  id="role"
-                  name="role"
-                  value={roleId}
-                  onChange={(e) => setRoleId(e.target.value)}
-                  className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  required
-                >
-                  <option value="" disabled>Selecciona un rol</option>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {roleDisplayMap[role.code] || role.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="branch" className="block text-sm font-medium text-gray-700">
-                  Sucursal
-                </label>
-                <select
-                  id="branch"
-                  name="branch"
-                  value={branchId}
-                  onChange={(e) => setBranchId(e.target.value)}
-                  className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  required
-                >
-                  <option value="" disabled>Selecciona una sucursal</option>
-                  {branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                Rol
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={roleId}
+                onChange={(e) => setRoleId(e.target.value)}
+                className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                required
+              >
+                <option value="" disabled>Selecciona un rol</option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {roleDisplayMap[role.code] || role.name}
+                  </option>
+                ))}
+              </select>
             </div>
             
             <div className="pt-2">
@@ -495,9 +418,6 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   Rol
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sucursal
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -514,7 +434,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             <tbody className="bg-white divide-y divide-gray-200">
               {invitations.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                     No hay invitaciones enviadas
                   </td>
                 </tr>
@@ -526,9 +446,6 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {invitation.role_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {invitation.branch_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(invitation)}

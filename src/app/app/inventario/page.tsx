@@ -365,3 +365,5 @@ const InventarioPage: FC<InventarioPageProps> = () => {
     </div>
   );
 }
+
+export default InventarioPage;

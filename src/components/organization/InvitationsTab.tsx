@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 
 interface InvitationProps {
   id: string;
@@ -20,30 +21,25 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
-  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [roles, setRoles] = useState<{ id: string; name: string; code: string }[]>([]);
   
   // Form state
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
-  const [branchId, setBranchId] = useState('');
   const [sendingInvitation, setSendingInvitation] = useState(false);
 
   useEffect(() => {
     if (orgId) {
       fetchInvitations();
       fetchRoles();
-      fetchBranches();
     }
   }, [orgId]);
 
   const fetchInvitations = async () => {
     try {
-      console.log('Organization ID:', orgId);
-
       setLoading(true);
       setError(null);
-      
+
       // Get invitations for the organization
       const { data, error } = await supabase
         .from('invitations')
@@ -52,41 +48,40 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
       if (error) throw error;
 
-      // If no invitations, set empty array and return
       if (!data || data.length === 0) {
         setInvitations([]);
         return;
       }
 
-      // Get role information separately
-      const roleIds = data.filter(invite => invite.role_id).map(invite => invite.role_id);
-      
-      let rolesData = [];
-      if (roleIds.length > 0) {
-        const { data: rolesResult, error: rolesError } = await supabase
-          .from('roles')
-          .select('id, name')
-          .in('id', roleIds);
-          
-        if (!rolesError) {
-          rolesData = rolesResult || [];
-        }
+      // Get roles to map role_id to role names
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('roles')
+        .select('id, name');
+
+      if (rolesError) {
+        console.error('Error fetching roles:', rolesError);
+        // Continue with available data
+      }
+
+      // Create a map of role IDs to role names
+      let roleMap: { [key: number]: string } = {};
+      if (rolesData) {
+        roleMap = rolesData.reduce((acc: any, role: any) => {
+          acc[role.id] = role.name;
+          return acc;
+        }, {});
       }
 
       // Format the invitations data
       const formattedInvitations = data.map((invite) => {
-        const role = rolesData.find(r => r.id === invite.role_id);
-        
-        let roleName = 'Sin rol';
-        if (role) {
-          roleName = role.name;
-        }
-        
+        // Use the roleUtils to get role info
+        const roleInfo = getRoleInfoById(invite.role_id);
+
         return {
           id: invite.id,
           email: invite.email,
           code: invite.code,
-          role_name: roleName,
+          role_name: roleInfo.name,
           created_at: new Date(invite.created_at).toLocaleDateString(),
           expires_at: invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : 'No expira',
           status: invite.status,
@@ -97,8 +92,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
       setInvitations(formattedInvitations);
     } catch (err: any) {
-      console.error('Error al obtener invitaciones:', err);
-      setError(err.message || 'Error al cargar las invitaciones');
+      console.error('Error fetching invitations:', err);
+      setError(err.message || 'Error al cargar invitaciones');
     } finally {
       setLoading(false);
     }
@@ -112,35 +107,18 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .order('name');
 
       if (error) throw error;
-      setRoles(data);
       
-      // Set default role if available
-      if (data.length > 0) {
-        const employeeRole = data.find(r => r.name === 'Empleado') || data[0];
+      // Format roles with codes using the utility function
+      const formattedRoles = formatRolesForDropdown(data);
+      setRoles(formattedRoles);
+      
+      // Set default role if available - look for employee role by code
+      if (formattedRoles.length > 0) {
+        const employeeRole = formattedRoles.find(r => r.code === 'employee') || formattedRoles[0];
         setRoleId(employeeRole.id);
       }
     } catch (err: any) {
       console.error('Error fetching roles:', err);
-    }
-  };
-
-  const fetchBranches = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('branches')
-        .select('id, name')
-        .eq('organization_id', orgId)
-        .order('name');
-
-      if (error) throw error;
-      setBranches(data);
-      
-      // Set default branch if available
-      if (data.length > 0) {
-        setBranchId(data[0].id);
-      }
-    } catch (err: any) {
-      console.error('Error fetching branches:', err);
     }
   };
 
@@ -203,20 +181,23 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         
       if (error) throw error;
       
-      // Generate invitation URL
-      const inviteId = invite?.[0]?.id;
-      const inviteCode = invite?.[0]?.code;
-      const inviteUrl = `${window.location.origin}/auth/invite?code=${inviteCode}`;
+      // Send invitation email
+      // This would typically call a server function to send an email
+      // For now, we'll just log it and update the UI
+      console.log(`Invitation sent to ${email} with code ${code}`);
       
-      setSuccess('Invitación enviada correctamente');
+      // Update UI
+      setSuccess(`Invitación enviada a ${email}`);
+      
+      // Reset form
       setEmail('');
       setRoleId('');
-      setBranchId('');
       
       // Refresh invitations list
       fetchInvitations();
+      
     } catch (err: any) {
-      console.error('Error al enviar invitación:', err);
+      console.error('Error sending invitation:', err);
       setError(err.message || 'Error al enviar la invitación');
     } finally {
       setSendingInvitation(false);
@@ -383,48 +364,25 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                  Rol
-                </label>
-                <select
-                  id="role"
-                  name="role"
-                  value={roleId}
-                  onChange={(e) => setRoleId(e.target.value)}
-                  className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  required
-                >
-                  <option value="" disabled>Selecciona un rol</option>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="branch" className="block text-sm font-medium text-gray-700">
-                  Sucursal
-                </label>
-                <select
-                  id="branch"
-                  name="branch"
-                  value={branchId}
-                  onChange={(e) => setBranchId(e.target.value)}
-                  className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  required
-                >
-                  <option value="" disabled>Selecciona una sucursal</option>
-                  {branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                Rol
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={roleId}
+                onChange={(e) => setRoleId(e.target.value)}
+                className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                required
+              >
+                <option value="" disabled>Selecciona un rol</option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {roleDisplayMap[role.code] || role.name}
+                  </option>
+                ))}
+              </select>
             </div>
             
             <div className="pt-2">
@@ -483,7 +441,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
               ) : (
                 invitations.map((invitation) => (
                   <tr key={invitation.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {invitation.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

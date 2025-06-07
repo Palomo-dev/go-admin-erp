@@ -69,6 +69,17 @@ export async function middleware(request: NextRequest) {
   console.log(`Ruta: ${request.nextUrl.pathname}, Autenticado: ${isAuthenticated}`);
   console.log(`Cookies de autenticación: ${hasAuthToken ? 'Presentes' : 'Ausentes'}`);
 
+  // Verificar si la sesión expiró (había una cookie de sesión pero ya no es válida)
+  const sessionExpired = !session && hasAnyAuthCookie;
+  
+  // Si la sesión expiró y no estamos ya en la página de sesión expirada, redirigir a /auth/session-expired
+  if (sessionExpired && request.nextUrl.pathname !== '/auth/session-expired' && 
+      !request.nextUrl.pathname.startsWith('/auth/login')) {
+    console.log('Redirigiendo a session-expired: Sesión expirada');
+    const redirectUrl = new URL('/auth/session-expired', request.url);
+    return NextResponse.redirect(redirectUrl);
+  }
+  
   // Si el usuario no está autenticado y la ruta actual no es /auth/*, redirigir a /auth/login
   if (!isAuthenticated && !request.nextUrl.pathname.startsWith('/auth/')) {
     console.log('Redirigiendo a login: Usuario no autenticado');
@@ -83,10 +94,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Si el usuario está autenticado y la ruta actual es /auth/* (excepto /auth/logout), redirigir a /app/inicio
+  // Si el usuario está autenticado y la ruta actual es /auth/* (excepto /auth/logout, /auth/invite y /auth/session-expired), redirigir a /app/inicio
   if (isAuthenticated && 
       request.nextUrl.pathname.startsWith('/auth/') && 
-      request.nextUrl.pathname !== '/auth/logout') {
+      request.nextUrl.pathname !== '/auth/logout' &&
+      request.nextUrl.pathname !== '/auth/session-expired' &&
+      !request.nextUrl.pathname.startsWith('/auth/invite')) {
     console.log('Redirigiendo a inicio: Usuario autenticado en ruta de autenticación');
     const redirectUrl = new URL('/app/inicio', request.url);
     return NextResponse.redirect(redirectUrl);

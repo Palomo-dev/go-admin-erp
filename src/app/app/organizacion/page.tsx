@@ -8,6 +8,9 @@ const MembersTab = lazy(() => import('../../../components/organization/MembersTa
 const InvitationsTab = lazy(() => import('../../../components/organization/InvitationsTab'));
 const OrganizationInfoTab = lazy(() => import('../../../components/organization/OrganizationInfoTab'));
 const BranchesTab = lazy(() => import('../../../components/organization/BranchesTab'));
+const OrganizationList = lazy(() => import('../../../components/organization/OrganizationList'));
+const ManageOrganizationsTab = lazy(() => import('../../../components/organization/ManageOrganizationsTab'));
+const CreateOrganizationForm = lazy(() => import('../../../components/organization/CreateOrganizationForm'));
 
 export default function OrganizacionPage() {
   const [activeTab, setActiveTab] = useState('members');
@@ -15,6 +18,7 @@ export default function OrganizacionPage() {
   const [userRole, setUserRole] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     const fetchOrgData = async () => {
@@ -79,11 +83,35 @@ export default function OrganizacionPage() {
   // Verificar si el usuario tiene permisos de admin
   const isOrgAdmin = userRole === 2;
 
+
+
   if (loading) {
     return (
       <div className="p-8">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // If user has no current organization selected, show organization list
+  if (!orgData && !error) {
+    return (
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Mis Organizaciones
+            </h2>
+            <p className="mt-4 text-lg leading-6 text-gray-500">
+              Selecciona una organización para administrar
+            </p>
+          </div>
+          
+          <Suspense fallback={<div>Cargando organizaciones...</div>}>
+            <OrganizationList />
+          </Suspense>
         </div>
       </div>
     );
@@ -129,58 +157,66 @@ export default function OrganizacionPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Administración de Organización</h1>
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8 flex justify-between items-center">
+          <h1 className="text-2xl font-semibold text-gray-900">Administración de Organización</h1>
+        </div>
         <p className="mt-2 text-gray-600">Gestiona miembros, invitaciones y configuración de tu organización</p>
       </div>
-      
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('members')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'members' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-          >
-            Miembros
-          </button>
-          <button
-            onClick={() => setActiveTab('invitations')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'invitations' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-          >
-            Invitaciones
-          </button>
-          <button
-            onClick={() => setActiveTab('orgInfo')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'orgInfo' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-          >
-            Información de Organización
-          </button>
-          <button
-            onClick={() => setActiveTab('branches')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'branches' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-          >
-            Sucursales
-          </button>
-        </nav>
-      </div>
-      
-      {/* Tab Content */}
-      <div className="px-4 py-6">
-        <Suspense fallback={<div className="text-center py-10"><div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div><p className="mt-2">Cargando...</p></div>}>
-          {activeTab === 'members' && (
-            <MembersTab orgId={orgData || 0} />
-          )}
-          {activeTab === 'invitations' && (
-            <InvitationsTab orgId={orgData || 0} />
-          )}
-          {activeTab === 'orgInfo' && (
-            <OrganizationInfoTab orgData={orgData} />
-          )}
-          {activeTab === 'branches' && (
-            <BranchesTab orgId={orgData || 0} />
-          )}
+      {showCreateForm ? (
+        <Suspense fallback={<div>Cargando formulario...</div>}>
+          <CreateOrganizationForm
+            onSuccess={() => setShowCreateForm(false)}
+            onCancel={() => setShowCreateForm(false)}
+          />
         </Suspense>
-      </div>
+      ) : (
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('members')}
+                className={`${activeTab === 'members' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+              >
+                Miembros
+              </button>
+              <button
+                onClick={() => setActiveTab('invitations')}
+                className={`${activeTab === 'invitations' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+              >
+                Invitaciones
+              </button>
+              <button
+                onClick={() => setActiveTab('info')}
+                className={`${activeTab === 'info' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+              >
+                Información
+              </button>
+              <button
+                onClick={() => setActiveTab('branches')}
+                className={`${activeTab === 'branches' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+              >
+                Sucursales
+              </button>
+              <button
+                onClick={() => setActiveTab('manage')}
+                className={`${activeTab === 'manage' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+              >
+                Mis Organizaciones
+              </button>
+            </nav>
+          </div>
+          <div className="px-4 py-6">
+            <Suspense fallback={<div className="text-center py-10"><div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div><p className="mt-2">Cargando...</p></div>}>
+              {activeTab === 'members' && <MembersTab orgId={orgData} />}
+              {activeTab === 'invitations' && <InvitationsTab orgId={orgData} />}
+              {activeTab === 'info' && <OrganizationInfoTab orgData={orgData} />}
+              {activeTab === 'branches' && <BranchesTab orgId={orgData} />}
+              {activeTab === 'manage' && <ManageOrganizationsTab />}
+            </Suspense>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

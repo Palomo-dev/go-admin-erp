@@ -18,7 +18,7 @@ export default function Home() {
       localStorage.removeItem('supabase.auth.token');
       
       // Redireccionar a la página de login
-      window.location.replace('/auth/login');
+      window.location.replace('/auth/login'); 
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     } finally {

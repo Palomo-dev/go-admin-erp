@@ -3,7 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase, signInWithEmail, signInWithGoogle, signInWithMicrosoft, getOrganizations } from '@/lib/supabase/config';
+import { supabase, getOrganizations } from '@/lib/supabase/config';
+import { 
+  handleEmailLogin, 
+  handleGoogleLogin, 
+  handleMicrosoftLogin, 
+  selectOrganizationFromPopup,
+  proceedWithLogin,
+} from '@/lib/auth';
 
 // Definir el tipo para organizaciones
 type Organization = {
@@ -18,30 +25,11 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [loadingOrgs, setLoadingOrgs] = useState(false);
-  const [showOrgSelector, setShowOrgSelector] = useState(false);
-  const router = useRouter();
+  const [userOrganizations, setUserOrganizations] = useState<Organization[]>([]);
+  const [showOrgPopup, setShowOrgPopup] = useState(false);
   const searchParams = useSearchParams();
   
-  // Cargar organizaciones desde Supabase
-  useEffect(() => {
-    const loadOrganizations = async () => {
-      setLoadingOrgs(true);
-      try {
-        const orgs = await getOrganizations();
-        setOrganizations(orgs);
-      } catch (err) {
-        console.error('Error al cargar organizaciones:', err);
-      } finally {
-        setLoadingOrgs(false);
-      }
-    };
-    
-    loadOrganizations();
-  }, []);
-  
+ 
   useEffect(() => {
     // Check for error in URL
     const errorParam = searchParams.get('error');
@@ -53,198 +41,50 @@ export default function LoginPage() {
       );
     }
     
-    // Check for organization in subdomain
-    const hostname = window.location.hostname;
-    const subdomain = hostname.split('.')[0];
-    
-    if (subdomain !== 'www' && !hostname.includes('localhost')) {
-      // Buscar organización por slug
-      const matchingOrg = organizations.find(org => org.slug === subdomain);
-      if (matchingOrg) {
-        setOrganization(matchingOrg);
-      }
-    }
-    
     // Check for redirectTo parameter
     const redirectTo = searchParams.get('redirectTo');
     if (redirectTo) {
       // Store it in session storage for after login
       sessionStorage.setItem('redirectTo', redirectTo);
     }
-  }, [searchParams, organizations]);
+  }, [searchParams, userOrganizations]);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const onEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    // Verificar si se ha seleccionado una organización
-    if (!organization) {
-      setError('Por favor selecciona una organización para continuar');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Add remember me option to the login
-      const { data, error } = await signInWithEmail(email, password);
-      
-      if (error) {
-        // Personalizar mensajes de error para hacerlos más amigables
-        if (error.message.includes('Invalid login credentials')) {
-          throw new Error('El usuario no existe o las credenciales son incorrectas. Por favor verifica tu email y contraseña.');
-        } else if (error.message.includes('Email not confirmed')) {
-          throw new Error('Tu cuenta aún no ha sido verificada. Por favor revisa tu correo electrónico y haz clic en el enlace de verificación.');
-        } else if (error.message.includes('User not found')) {
-          throw new Error('El usuario no existe. ¿Quieres crear una cuenta nueva?');
-        } else {
-          throw error;
-        }
-      }
-      
-      // Verificar si el usuario pertenece a la organización seleccionada
-      if (data.user) {
-        // Obtener el perfil del usuario usando su email
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('email', email) // Usar el email ingresado en el formulario
-          .single();
-          
-        console.log('Perfil del usuario:', profileData, 'Error:', profileError);
-        
-        if (profileError) {
-          console.error('Error al obtener perfil:', profileError);
-          throw new Error('Error al verificar acceso. Por favor intenta nuevamente.');
-        }
-        
-        if (!profileData) {
-          throw new Error('No se encontró un perfil asociado a este usuario.');
-        }
-        
-        // Verificar si el perfil pertenece a la organización seleccionada
-        if (profileData.organization_id !== organization.id) {
-          throw new Error('No tienes acceso a esta organización. Por favor selecciona otra o contacta al administrador.');
-        }
-        
-        // Guardar información relevante en localStorage para uso posterior
-        localStorage.setItem('currentOrganizationId', organization.id);
-        localStorage.setItem('currentOrganizationName', organization.name);
-        localStorage.setItem('userRole', profileData.role || 'user');
-      }
-      
-      // Set remember me preference in local storage if checked
-      if (rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
-        localStorage.setItem('userEmail', email);
-      } else {
-        localStorage.removeItem('rememberMe');
-        localStorage.removeItem('userEmail');
-      }
-
-      // Agregar un log para depurar el proceso de redirección
-      console.log('Autenticación exitosa, intentando redireccionar...');
-      
-      // Check if there's a redirectTo in session storage
-      const redirectTo = sessionStorage.getItem('redirectTo');
-      console.log('Destino de redirección:', redirectTo || '/app/inicio');
-      
-      // Forzar a Supabase a persistir la sesión correctamente
-      console.log('Verificando y reforzando persistencia de sesión...');
-      await supabase.auth.refreshSession();
-      
-      // Verificar que la sesión se haya establecido correctamente
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log('Sesión establecida:', sessionData.session ? 'Sí' : 'No');
-      
-      // Guardar token de sesión en localStorage manualmente para garantizar disponibilidad
-      if (sessionData.session) {
-        console.log('Guardando token de sesión en localStorage');
-        localStorage.setItem('supabase.auth.token', JSON.stringify({
-          access_token: sessionData.session.access_token,
-          refresh_token: sessionData.session.refresh_token,
-          expires_at: sessionData.session.expires_at
-        }));
-      }
-      console.log('Detalles de sesión:', sessionData.session);
-      
-      // Establecer una cookie para ayudar al middleware a detectar la sesión
-      document.cookie = `sb-auth-token=${sessionData.session?.access_token || ''}; path=/; max-age=3600; SameSite=Lax`;
-      
-      // Forzar un refresco completo de la página para que el middleware detecte la sesión correctamente
-      console.log('Esperando para redirigir y asegurar que la sesión sea detectada...');
-      
-      setTimeout(() => {
-        try {
-          // Verificar nuevamente la sesión antes de redireccionar
-          supabase.auth.getSession().then(({ data: finalSession }) => {
-            console.log('Estado final de sesión antes de redireccionar:', finalSession.session ? 'Autenticado' : 'No autenticado');
-            
-            if (finalSession.session) {
-              if (redirectTo) {
-                sessionStorage.removeItem('redirectTo');
-                console.log('Redireccionando a:', redirectTo);
-                // Usar window.location.replace para forzar recarga completa
-                window.location.replace(redirectTo);
-              } else {
-                // Redirect to dashboard on successful login
-                console.log('Redireccionando al dashboard');
-                window.location.replace('/app/inicio');
-              }
-            } else {
-              console.error('No se pudo establecer la sesión correctamente');
-              alert('Error al establecer la sesión. Por favor, intenta nuevamente.');
-            }
-          });
-        } catch (redirectError) {
-          console.error('Error al redireccionar:', redirectError);
-          alert('Error al redireccionar. Por favor, intenta nuevamente.');
-        }
-      }, 1000); // Aumentar el retraso a 1 segundo
-    } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión');
-    } finally {
-      setLoading(false);
-    }
+    await handleEmailLogin({
+      email,
+      password,
+      setLoading,
+      setError,
+      setUserOrganizations,
+      setShowOrgPopup,
+      proceedWithLogin: (data) => proceedWithLogin(data, rememberMe, email)
+    });
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const { error } = await signInWithGoogle();
-      if (error) throw error;
-      // Redirect happens automatically via OAuth
-    } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión con Google');
-      setLoading(false);
-    }
+  const onGoogleLogin = async () => {
+    await handleGoogleLogin({
+      setLoading,
+      setError
+    });
   };
 
-  const handleMicrosoftLogin = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const { error } = await signInWithMicrosoft();
-      if (error) throw error;
-      // Redirect happens automatically via OAuth
-    } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión con Microsoft');
-      setLoading(false);
-    }
-  };
-
-  // Toggle organization selector
-  const toggleOrgSelector = () => {
-    setShowOrgSelector(!showOrgSelector);
+  const onMicrosoftLogin = async () => {
+    await handleMicrosoftLogin({
+      setLoading,
+      setError
+    });
   };
   
-  // Handle organization selection
-  const selectOrganization = (org: Organization) => {
-    setOrganization(org);
-    setShowOrgSelector(false);
+
+  // Handle organization selection from popup
+  const onSelectOrganizationFromPopup = async (org: Organization) => {
+    await selectOrganizationFromPopup({
+      organization: org,
+      email,
+      setShowOrgPopup,
+      proceedWithLogin: (data) => proceedWithLogin(data, rememberMe, email)
+    });
   };
   
   // Load remembered email on component mount
@@ -260,7 +100,7 @@ export default function LoginPage() {
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md relative">
         <div className="flex flex-col items-center">
           <div className="w-20 h-20 rounded-full border-2 border-blue-500 flex items-center justify-center mb-4">
             <div className="text-blue-500">
@@ -273,40 +113,7 @@ export default function LoginPage() {
             Iniciar sesión en GO Admin ERP
           </h2>
           
-          {/* Organization selector */}
-          <div className="mt-2 relative w-full">
-            <button 
-              type="button" 
-              onClick={toggleOrgSelector}
-              className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <span>{organization ? organization.name : 'Seleccionar organización'}</span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-            
-            {showOrgSelector && (
-              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1">
-                {loadingOrgs ? (
-                  <div className="px-4 py-2 text-sm text-gray-500">Cargando organizaciones...</div>
-                ) : organizations.length > 0 ? (
-                  organizations.map((org) => (
-                    <button
-                      key={org.id}
-                      type="button"
-                      onClick={() => selectOrganization(org)}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      {org.name}
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-4 py-2 text-sm text-gray-500">No hay organizaciones disponibles</div>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Organization selector - hidden now, will show popup when needed */}
         </div>
         
         {error && (
@@ -322,7 +129,30 @@ export default function LoginPage() {
           </div>
         )}
         
-        <form className="mt-8 space-y-6" onSubmit={handleEmailLogin}>
+        {/* Organization selection popup */}
+        {showOrgPopup && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Selecciona una organización</h3>
+              <p className="text-sm text-gray-500 mb-4">Tu cuenta está asociada a múltiples organizaciones. Por favor selecciona una para continuar.</p>
+              
+              <div className="max-h-60 overflow-y-auto">
+                {userOrganizations.map((org) => (
+                  <button
+                    key={org.id}
+                    type="button"
+                    onClick={() => onSelectOrganizationFromPopup(org)}
+                    className="block w-full text-left px-4 py-3 mb-2 text-sm text-gray-700 hover:bg-gray-100 border border-gray-200 rounded-md"
+                  >
+                    {org.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <form className="mt-8 space-y-6" onSubmit={onEmailLogin}>
           <div className="space-y-4">
             <div className="relative">
               <div className="flex items-center border border-blue-300 rounded-md">
@@ -426,7 +256,7 @@ export default function LoginPage() {
 
           <div className="mt-6 space-y-2">
             <button
-              onClick={handleGoogleLogin}
+              onClick={onGoogleLogin}
               disabled={loading}
               className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
@@ -439,7 +269,7 @@ export default function LoginPage() {
               Log in with Google
             </button>
             <button
-              onClick={handleMicrosoftLogin}
+              onClick={onMicrosoftLogin}
               disabled={loading}
               className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             >

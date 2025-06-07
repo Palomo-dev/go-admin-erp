@@ -34,6 +34,7 @@ Módulos disponibles (rutas base):
 1. *Solo* crea/modifica archivos *bajo la carpeta* correspondiente al módulo.  
 2. Si necesitas tocar algo fuera de ese scope, *pregunta antes*.  
 3. Ejecuta lint, build (next build) y tests (npm test) *antes* de generar PR.  
+4. Simepre aplica buenas prcticas de programacion. (Division en funciones, archivos, nombramientos de variables, etc)
 
 *Commit*:
 - *Commit*: feat(SCRUM-[ID]): <breve descripción>  

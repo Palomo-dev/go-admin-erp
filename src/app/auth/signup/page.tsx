@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PersonalInfoStep from './components/PersonalInfoStep';
-import OrganizationStep from './components/OrganizationStep';
-import VerificationStep from './components/VerificationStep';
+import PersonalInfoStep from '../../../components/auth/PersonalInfoStep';
+import OrganizationStep from '../../../components/auth/OrganizationStep';
+import VerificationStep from '../../../components/auth/VerificationStep';
 import { supabase, signUpWithEmail } from '@/lib/supabase/config';
 
 // Definición de tipos

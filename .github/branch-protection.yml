@@ -1,0 +1,28 @@
+name: Branch Protection Rules
+
+on:
+  # Trigger on push events to any branch
+  push:
+    branches:
+      - '*'
+
+jobs:
+  protect-master:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Create/Update branch protection rule
+        uses: octokit/request-action@v2.x
+        with:
+          route: PUT /repos/{owner}/{repo}/branches/master/protection
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.repository.name }}
+          required_status_checks: null
+          enforce_admins: true
+          required_pull_request_reviews:
+            required_approving_review_count: 1
+            dismiss_stale_reviews: true
+          restrictions: null
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

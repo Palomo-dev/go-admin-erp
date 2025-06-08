@@ -135,6 +135,22 @@ export const getOrganizations = async () => {
 
 // Función específica para registro con manejo mejorado de verificación
 export const signUpWithEmail = async (email: string, password: string, userData: any, redirectUrl: string) => {
+  // Check if email already exists
+  console.log('Verificando correo electrónico...');
+  console.log('Email:', email); 
+  const { data: existingUsers } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingUsers) {
+    return {
+      data: { user: null },
+      error: { message: 'Este correo electrónico ya está registrado' }
+    };
+  }
+
   const response = await supabase.auth.signUp({
     email,
     password,

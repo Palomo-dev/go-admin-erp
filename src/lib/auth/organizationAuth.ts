@@ -2,9 +2,12 @@ import { supabase } from '@/lib/supabase/config';
 
 // Define Organization type
 export interface Organization {
-  id: string;
+  id: number;
   name: string;
-  slug: string;
+  type_id: {
+    name: string;
+  };
+  role_id?: number;
 }
 
 export interface SelectOrganizationParams {
@@ -32,7 +35,7 @@ export const selectOrganizationFromPopup = async ({
     .single();
   
   // Save organization info to localStorage
-  localStorage.setItem('currentOrganizationId', organization.id);
+  localStorage.setItem('currentOrganizationId', organization.id.toString());
   localStorage.setItem('currentOrganizationName', organization.name);
   localStorage.setItem('userRole', profileData?.role || 'user');
   

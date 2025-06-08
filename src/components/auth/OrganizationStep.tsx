@@ -70,7 +70,7 @@ export default function OrganizationStep({
                 updateFormData({
                   organizationName: data.name,
                   organizationType: data.type_id,
-                  logoUrl: data.logo_url
+                  logoUrl: data.logo_url !== null ? data.logo_url : undefined
                 });
                 onNext();
               }}

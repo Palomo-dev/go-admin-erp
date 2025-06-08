@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
+import LogoUploader from './LogoUploader';
 
 interface OrganizationData {
   name: string;
@@ -31,6 +32,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     website: '',
     primaryColor: '#3B82F6', // Default primary color
     secondaryColor: '#F59E0B', // Default secondary color (amber)
+    logoUrl: null as string | null,
   });
   const [organizationTypes, setOrganizationTypes] = useState<Array<{ id: number; name: string }>>([]);
   const [loading, setLoading] = useState(false);
@@ -126,8 +128,9 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             website: formData.website,
             owner_user_id: session.user.id,
             status: 'active',
-            primary_color: formData.primaryColor, // Add primary color to organization data
-            secondary_color: formData.secondaryColor, // Add secondary color to organization data
+            primary_color: formData.primaryColor,
+            secondary_color: formData.secondaryColor,
+            logo_url: formData.logoUrl,
           }
         ])
         .select()
@@ -314,6 +317,15 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     <div className="space-y-6">
       <div className="bg-white px-6 py-8 shadow-md sm:rounded-lg">
         <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-6">Información Básica</h3>
+        
+        <div className="mb-8 flex justify-center">
+          <LogoUploader
+            onLogoChange={(url) => setFormData({ ...formData, logoUrl: url })}
+            initialLogo={formData.logoUrl}
+            className="mb-4"
+          />
+        </div>
+        
         <div className="grid grid-cols-6 gap-6">
           {renderFormField('name', 'Nombre de la Organización', 'text', true, 'col-span-6')}
           

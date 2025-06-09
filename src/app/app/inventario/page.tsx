@@ -329,7 +329,7 @@ const InventarioPage: FC<InventarioPageProps> = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <KPICard 
           title="Stock Total" 
-          value={dashboardData.kpis.stockTotal.toLocaleString()} 
+          value={dashboardData.kpis.stockTotal} 
           icon={<StockIcon />}
           trend={{ value: 5.2, isPositive: true }}
           variant="blue"
@@ -365,3 +365,5 @@ const InventarioPage: FC<InventarioPageProps> = () => {
     </div>
   );
 }
+
+export default InventarioPage;

@@ -5,6 +5,8 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  // Activamos el modo oscuro con clase para tener más control
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

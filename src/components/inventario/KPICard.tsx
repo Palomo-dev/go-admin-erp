@@ -64,7 +64,7 @@ const KPICard: FC<KPICardProps> = ({ title, value, icon, trend, className, varia
       <div className="flex justify-between items-start">
         <div>
           <p className={`text-sm font-medium ${colors.title || 'text-gray-500'}`}>{title}</p>
-          <h3 className={`text-2xl font-bold mt-1 ${'value' in colors ? colors.value : 'text-gray-900'}`}>{value}</h3>
+          <h3 className={`text-2xl font-bold mt-1 ${'value' in colors ? colors.value : 'text-gray-900'}`}>{typeof value === 'number' ? value.toString() : value}</h3>
           {trend && (
             <div className="flex items-center mt-1">
               <span

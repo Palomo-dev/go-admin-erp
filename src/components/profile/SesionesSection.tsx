@@ -79,12 +79,18 @@ export default function SesionesSection({ user, initialSessions }: SesionesSecti
     setLoading(true);
     
     try {
-      const { error } = await supabase
-        .from('refresh_tokens')
-        .delete()
-        .eq('id', sessionId);
+      // Llamar a la función RPC para revocar la sesión de manera segura
+      const { data, error } = await supabase
+        .from('user_devices')
+        .select('refresh_token_id')
+        .eq('id', sessionId)
+        .single();
         
       if (error) throw error;
+      
+      if (data.refresh_token_id) {
+        await supabase.rpc('revoke_session', { token_id: data.refresh_token_id });
+      }
       
       // Actualizar lista de sesiones
       setSessions(sessions.filter(session => session.id !== sessionId));
@@ -105,20 +111,17 @@ export default function SesionesSection({ user, initialSessions }: SesionesSecti
     setLoading(true);
     
     try {
-      // Obtener la sesión actual
+      // Encontrar sesión actual
       const currentSession = sessions.find(session => session.is_current);
       
       if (!currentSession) {
         throw new Error('No se pudo identificar la sesión actual');
       }
       
-      // Eliminar todas las sesiones excepto la actual
-      const { error } = await supabase
-        .from('refresh_tokens')
-        .delete()
-        .not('id', 'eq', currentSession.id);
-        
-      if (error) throw error;
+      // Llamar a la función RPC para revocar otras sesiones
+      await supabase.rpc('revoke_other_sessions', { 
+        current_session_id: currentSession.id 
+      });
       
       // Mantener solo la sesión actual en la lista
       setSessions(sessions.filter(session => session.is_current));

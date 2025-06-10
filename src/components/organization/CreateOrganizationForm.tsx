@@ -60,6 +60,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       .select('id, name')
       .order('name');
 
+    console.log(data);
+
     if (error) {
       setError('Error al cargar los tipos de organización');
     } else {

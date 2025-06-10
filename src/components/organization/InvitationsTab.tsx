@@ -22,7 +22,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [roles, setRoles] = useState<{ id: string; name: string; code: string }[]>([]);
-  
+
   // Form state
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
@@ -40,30 +40,17 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       setLoading(true);
       setError(null);
 
-      // Get invitations for the organization
       const { data, error } = await supabase
-        .from('invitations')
-        .select('id, email, code, role_id, organization_id, created_at, expires_at, used_at, status')
+      .from('invitations')
+        .select('id, email, code, role_id, created_at, expires_at, used_at, status')
         .eq('organization_id', orgId);
 
       if (error) throw error;
 
-      if (!data || data.length === 0) {
-        setInvitations([]);
-        return;
-      }
-
-      // Get roles to map role_id to role names
       const { data: rolesData, error: rolesError } = await supabase
         .from('roles')
         .select('id, name');
 
-      if (rolesError) {
-        console.error('Error fetching roles:', rolesError);
-        // Continue with available data
-      }
-
-      // Create a map of role IDs to role names
       let roleMap: { [key: number]: string } = {};
       if (rolesData) {
         roleMap = rolesData.reduce((acc: any, role: any) => {
@@ -72,9 +59,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         }, {});
       }
 
-      // Format the invitations data
       const formattedInvitations = data.map((invite) => {
-        // Use the roleUtils to get role info
         const roleInfo = getRoleInfoById(invite.role_id);
 
         return {
@@ -107,12 +92,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .order('name');
 
       if (error) throw error;
-      
-      // Format roles with codes using the utility function
+
       const formattedRoles = formatRolesForDropdown(data);
       setRoles(formattedRoles);
-      
-      // Set default role if available - look for employee role by code
+
       if (formattedRoles.length > 0) {
         const employeeRole = formattedRoles.find(r => r.code === 'employee') || formattedRoles[0];
         setRoleId(employeeRole.id);
@@ -177,10 +160,11 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             status: 'pending'
           }
         ])
+        
         .select();
         
       if (error) throw error;
-      
+
       // Send invitation email
       // This would typically call a server function to send an email
       // For now, we'll just log it and update the UI

@@ -36,14 +36,49 @@ export default function RegistrationForm({
     lastName: '',
     phoneNumber: '',
   });
+  const [validationErrors, setValidationErrors] = useState<{
+    email?: string;
+    phoneNumber?: string;
+  }>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear validation errors when field is edited
+    if (validationErrors[name as keyof typeof validationErrors]) {
+      setValidationErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone: string): boolean => {
+    // Allow empty phone if not required
+    if (!isEmployee && !phone) return true;
+    
+    // Only allow digits
+    const phoneRegex = /^\d+$/;
+    return phoneRegex.test(phone);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email
+    if (!validateEmail(formData.email)) {
+      setValidationErrors(prev => ({ ...prev, email: 'Por favor ingrese un correo electrónico válido' }));
+      return;
+    }
+    
+    // Validate phone number
+    if (!validatePhone(formData.phoneNumber)) {
+      setValidationErrors(prev => ({ ...prev, phoneNumber: 'El teléfono debe contener solo dígitos' }));
+      return;
+    }
     
     // Basic validation
     if (formData.password !== formData.confirmPassword) {
@@ -100,10 +135,13 @@ export default function RegistrationForm({
           onChange={handleChange}
           disabled={isReadOnlyEmail}
           required
-          className={`mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm ${
+          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm ${
             isReadOnlyEmail ? 'bg-gray-50 text-gray-500' : 'focus:outline-none focus:ring-blue-500 focus:border-blue-500'
           }`}
         />
+        {validationErrors.email && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+        )}
       </div>
       
       <div>
@@ -117,8 +155,11 @@ export default function RegistrationForm({
           value={formData.phoneNumber}
           onChange={handleChange}
           required={isEmployee}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.phoneNumber ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
         />
+        {validationErrors.phoneNumber && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors.phoneNumber}</p>
+        )}
       </div>
       
       <div>

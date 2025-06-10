@@ -63,14 +63,16 @@ export const handleEmailLogin = async ({
 
     // Get user's organizations where they are owner
     const { data: ownedOrgs, error: ownedError } = await supabase
-      .from('organizations')
-      .select(`
-        id,
-        name,
-        type_id,
-        organization_types:organization_types!fk_organizations_organization_type(name)
-      `)
-      .eq('owner_user_id', data.user.id);
+  .from('organizations')
+  .select(`
+    id,
+    name,
+    type_id,
+    organization_types:organization_types!fk_organizations_organization_type(name)
+  `)
+  .eq('owner_user_id', data.user.id);
+
+    console.log(ownedOrgs);
 
     if (ownedError) {
       throw ownedError;

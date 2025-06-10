@@ -153,7 +153,7 @@ export default function SesionesSection({ user, initialSessions }: SesionesSecti
 
       {/* Lista de sesiones activas */}
       <div className="space-y-4 mb-6">
-        {sessions.length > 0 ? (
+        {(sessions && sessions.length > 0) ? (
           sessions.map((session) => {
             const device = detectDeviceType(session.user_agent);
             const DeviceIcon = device.icon;

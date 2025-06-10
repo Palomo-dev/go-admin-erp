@@ -9,13 +9,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 // Componentes para las diferentes secciones
-import DatosPersonalesSection from '@/components/profile/DatosPersonalesSection';
-import SeguridadSection from '@/components/profile/SeguridadSection';
-import SesionesSection from '@/components/profile/SesionesSection';
-import OrganizacionDefaultSection from '@/components/profile/OrganizacionDefaultSection';
-import NotificacionesSection from '@/components/profile/NotificacionesSection';
-import RolesSection from '@/components/profile/RolesSection';
-import EliminarCuentaSection from '@/components/profile/EliminarCuentaSection';
+import DatosPersonalesSection from '../../../components/profile/DatosPersonalesSection';
+import SeguridadSection from '../../../components/profile/SeguridadSection';
+import SesionesSection from '../../../components/profile/SesionesSection';
+import OrganizacionDefaultSection from '../../../components/profile/OrganizacionDefaultSection';
+import NotificacionesSection from '../../../components/profile/NotificacionesSection';
+import RolesSection from '../../../components/profile/RolesSection';
+import EliminarCuentaSection from '../../../components/profile/EliminarCuentaSection';
 
 // Interfaces para los tipos de datos
 interface Profile {
@@ -33,16 +33,13 @@ interface Profile {
 }
 
 interface NotificationPreference {
-  id?: string;
+  id: string;
   user_id: string;
   email_enabled: boolean;
   push_enabled: boolean;
   whatsapp_enabled: boolean;
-  do_not_disturb_enabled: boolean;
   do_not_disturb_start?: string;
   do_not_disturb_end?: string;
-  created_at: string;
-  updated_at: string;
 }
 
 interface UserSession {
@@ -53,15 +50,9 @@ interface UserSession {
   ip_address: string;
   last_active: string;
   is_current: boolean;
-  created_at: string;
-  updated_at: string;
-  last_sign_in_at: string;
-  user_agent: string;
-  ip: string;
 }
 
 interface UserRole {
-  id?: string;
   role_id: number;
   organization_id: string;
   branch_id?: string;
@@ -74,9 +65,6 @@ interface UserRole {
   branches?: {
     name: string;
   };
-  // Campos adicionales requeridos por el componente
-  role_name: string;
-  description: string;
 }
 
 interface MfaMethod {
@@ -140,17 +128,12 @@ export default function PerfilUsuarioPage() {
         if (notifError && notifError.code !== 'PGRST116') { // No se encontró el registro
           console.error('Error al obtener preferencias de notificación:', notifError);
         } else {
-          const defaultPrefs = {
-            id: '',
+          setNotificationPrefs(notifData || {
             user_id: session.user.id,
             email_enabled: true,
             push_enabled: false,
-            whatsapp_enabled: false,
-            do_not_disturb_enabled: false,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          setNotificationPrefs(notifData || defaultPrefs);
+            whatsapp_enabled: false
+          });
         }
         
         // Obtener sesiones del usuario
@@ -170,11 +153,10 @@ export default function PerfilUsuarioPage() {
         const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
           .select(`
-            id,
             role_id,
             organization_id,
             branch_id,
-            roles(name, description),
+            roles(name),
             organizations(name),
             branches(name)
           `)
@@ -183,26 +165,7 @@ export default function PerfilUsuarioPage() {
         if (rolesError) {
           console.error('Error al obtener roles:', rolesError);
         } else {
-          // Transformar los datos para adaptarlos al formato esperado por el componente
-          const formattedRoles = (rolesData || []).map(role => {
-            // Verificar si roles, organizations, branches son arrays y tomar el primer elemento si es necesario
-            const roleData = Array.isArray(role.roles) ? role.roles[0] : role.roles;
-            const orgData = Array.isArray(role.organizations) ? role.organizations[0] : role.organizations;
-            const branchData = Array.isArray(role.branches) ? role.branches[0] : role.branches;
-            
-            return {
-              id: role.id,
-              role_id: role.role_id,
-              organization_id: role.organization_id,
-              branch_id: role.branch_id,
-              role_name: roleData?.name || '',
-              description: roleData?.description || '',
-              roles: { name: roleData?.name || '' },
-              organizations: { name: orgData?.name || '' },
-              branches: branchData ? { name: branchData?.name || '' } : undefined
-            };
-          });
-          setUserRoles(formattedRoles as any);
+          setUserRoles(rolesData || []);
         }
         
         // Obtener organizaciones a las que pertenece el usuario
@@ -218,15 +181,23 @@ export default function PerfilUsuarioPage() {
         }
         
         // Obtener métodos MFA configurados
-        const { data: mfaData, error: mfaError } = await supabase
-          .from('mfa_factors')
-          .select('*')
-          .eq('user_id', session.user.id);
+        try {
+          const { data } = await supabase.auth.mfa.listFactors();
           
-        if (mfaError) {
+          // Unificamos los diferentes tipos de factores en una sola lista
+          const allFactors = [...(data?.totp || []), ...(data?.phone || [])];
+          
+          setMfaMethods(
+            allFactors.map((factor: any) => ({
+              id: factor.id,
+              factor_type: factor.factor_type || 'totp',
+              status: factor.status || 'verified',
+              created_at: factor.created_at || new Date().toISOString()
+            })) || []
+          );
+        } catch (mfaError) {
           console.error('Error al obtener métodos MFA:', mfaError);
-        } else {
-          setMfaMethods(mfaData || []);
+          // No interrumpir el flujo si falla MFA
         }
         
       } catch (error) {
@@ -322,9 +293,7 @@ export default function PerfilUsuarioPage() {
             <DatosPersonalesSection 
               profile={profile} 
               user={user}
-              onProfileUpdated={(updatedProfile) => {
-                if (updatedProfile) setProfile(updatedProfile);
-              }}
+              onProfileUpdated={setProfile}
             />
           )}
           
@@ -332,22 +301,19 @@ export default function PerfilUsuarioPage() {
             <SeguridadSection 
               user={user}
               mfaMethods={mfaMethods}
-              onMfaUpdated={(methods) => {
-                if (methods) setMfaMethods(methods);
-              }}
+              onMfaUpdated={setMfaMethods}
             />
           )}
           
           {currentSection === 'sesiones' && (
             <SesionesSection 
-              user={user}
-              initialSessions={userSessions as any}
+              sessions={userSessions}
+              onSessionsUpdated={setUserSessions}
             />
           )}
           
           {currentSection === 'organizacion-default' && (
             <OrganizacionDefaultSection 
-              user={user}
               profile={profile}
               organizations={organizations}
               onProfileUpdated={setProfile}
@@ -356,18 +322,15 @@ export default function PerfilUsuarioPage() {
           
           {currentSection === 'notificaciones' && (
             <NotificacionesSection 
-              preferences={notificationPrefs as any}
+              preferences={notificationPrefs}
               user={user}
-              onPreferencesUpdated={(prefs) => {
-                if (prefs) setNotificationPrefs(prefs as any);
-              }}
+              onPreferencesUpdated={setNotificationPrefs}
             />
           )}
           
           {currentSection === 'roles' && (
             <RolesSection 
-              user={user}
-              roles={userRoles as any}
+              roles={userRoles}
             />
           )}
           

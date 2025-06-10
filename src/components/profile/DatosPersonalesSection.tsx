@@ -10,14 +10,14 @@ import toast from 'react-hot-toast';
 interface Profile {
   id: string;
   email: string;
-  full_name?: string;
   first_name?: string;
   last_name?: string;
   phone?: string;
   avatar_url?: string;
-  lang?: string;
+  lang?: string; // En la BD es preferred_language
   status: string;
   created_at: string;
+  updated_at?: string;
 }
 
 interface DatosPersonalesSectionProps {
@@ -36,7 +36,9 @@ const lenguajes = [
 export default function DatosPersonalesSection({ profile, user, onProfileUpdated }: DatosPersonalesSectionProps) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [firstName, setFirstName] = useState(profile?.first_name || '');
+  const [lastName, setLastName] = useState(profile?.last_name || '');
+  const [fullName, setFullName] = useState(`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim());
   const [phone, setPhone] = useState(profile?.phone || '');
   const [lang, setLang] = useState(profile?.lang || 'es');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
@@ -51,7 +53,9 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
 
   const handleCancel = () => {
     setEditing(false);
-    setFullName(profile?.full_name || '');
+    setFirstName(profile?.first_name || '');
+    setLastName(profile?.last_name || '');
+    setFullName(`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim());
     setPhone(profile?.phone || '');
     setLang(profile?.lang || 'es');
     setTempAvatar(null);
@@ -63,11 +67,19 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
     }
 
     const file = e.target.files[0];
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
     const maxSize = 2 * 1024 * 1024; // 2MB
 
+    // Validar tamaño y formato
     if (file.size > maxSize) {
       toast.error('La imagen es demasiado grande. El tamaño máximo permitido es 2MB.');
+      e.target.value = ''; // Limpiar el input
+      return;
+    }
+
+    if (!['jpg', 'jpeg', 'png', 'webp'].includes(fileExt || '')) {
+      toast.error('Formato de archivo no permitido. Use JPG, PNG o WEBP.');
+      e.target.value = ''; // Limpiar el input
       return;
     }
 
@@ -89,8 +101,19 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
     const filePath = `avatars/${fileName}`;
 
     setUploading(true);
+    toast.loading('Subiendo imagen...', { id: 'upload-avatar' });
     
     try {
+      // Verificar tamaño y formato antes de subir
+      if (file.size > 2 * 1024 * 1024) {
+        throw new Error('La imagen es demasiado grande. El tamaño máximo permitido es 2MB.');
+      }
+      
+      if (!['jpg', 'jpeg', 'png', 'webp'].includes(fileExt?.toLowerCase() || '')) {
+        throw new Error('Formato de archivo no permitido. Use JPG, PNG o WEBP.');
+      }
+
+      // Optimizar imagen antes de subir (si es posible)
       const { error: uploadError } = await supabase.storage
         .from('profiles')
         .upload(filePath, file, { 
@@ -101,6 +124,7 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
       if (uploadError) throw uploadError;
       
       const { data } = supabase.storage.from('profiles').getPublicUrl(filePath);
+      toast.success('Imagen subida correctamente', { id: 'upload-avatar' });
       return data.publicUrl;
     } catch (error) {
       console.error('Error al subir avatar:', error);
@@ -129,13 +153,19 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
         updatedAvatarUrl = await uploadAvatar(file);
       }
       
+      // Dividir el nombre completo en nombre y apellido
+      const nameParts = fullName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
       const { data, error } = await supabase
         .from('profiles')
         .update({
-          full_name: fullName,
+          first_name: firstName,
+          last_name: lastName,
           phone: phone,
           avatar_url: updatedAvatarUrl,
-          lang: lang,
+          preferred_language: lang, // Usar preferred_language en lugar de lang
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
@@ -228,11 +258,17 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
                 className="rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
               />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center relative overflow-hidden">
                 <span className="text-2xl font-bold text-gray-500 dark:text-gray-300">
                   {profile?.full_name?.charAt(0).toUpperCase() || 
                    profile?.first_name?.charAt(0).toUpperCase() || '?'}
                 </span>
+                {editing && (
+                  <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+                       onClick={() => fileInputRef.current?.click()}>
+                    <Upload size={24} className="text-white" />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -288,6 +324,7 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
+              placeholder="Nombre y Apellido"
               disabled={!editing || loading}
               className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-700/50 disabled:text-gray-500 dark:disabled:text-gray-400"
             />

@@ -220,7 +220,7 @@ export default function SesionesSection({ user, initialSessions }: SesionesSecti
       </div>
 
       {/* Botón para cerrar todas las sesiones */}
-      {sessions.length > 1 && (
+      {(sessions && sessions.length > 1) && (
         <div className="flex justify-end">
           <button
             onClick={closeAllOtherSessions}

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image'; // Importación del componente Image de Next.js
-import { signOut } from '@/lib/supabase/config';
+import { signOut, supabase } from '@/lib/supabase/config';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 // Importación explícita de los iconos para evitar problemas
@@ -156,13 +156,70 @@ export default function AppLayout({
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [userData, setUserData] = useState<{
-    name: string;
-    email: string;
-    role: string;
+    name?: string;
+    email?: string;
+    role?: string;
     avatar?: string;
   } | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  
+  // Indicador de recarga para forzar actualización de datos del perfil
+  const [profileRefresh, setProfileRefresh] = useState(0);
+  
+  // Cargar datos del perfil del usuario desde Supabase al montar el componente o cuando se actualiza el perfil
+  useEffect(() => {
+    async function loadUserProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        try {
+          // Obtener datos del perfil del usuario
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+            
+          // Obtener datos del rol del usuario
+          const { data: userRoleData } = await supabase
+            .from('user_roles')
+            .select('*, roles(name)')
+            .eq('user_id', user.id)
+            .single();
+          
+          // Actualizar el estado del userData
+          setUserData({
+            name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
+            email: user.email,
+            role: userRoleData?.roles?.name,
+            avatar: profileData?.avatar_url
+          });
+        } catch (error) {
+          console.error('Error al cargar datos del perfil:', error);
+        }
+      }
+    }
+    
+    loadUserProfile();
+    
+    // Configurar un canal de suscripción para escuchar cambios en el perfil
+    const profileSubscription = supabase
+      .channel('public:profiles')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${supabase.auth.getSession().then(res => res.data.session?.user.id)}` },
+        (payload) => {
+          // Cuando se actualiza el perfil, actualizar el userData
+          setProfileRefresh(prev => prev + 1);
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      // Limpiar la suscripción cuando el componente se desmonta
+      supabase.removeChannel(profileSubscription);
+    };
+  }, [profileRefresh]);
   
   // Inicializar tema desde localStorage o preferencia del sistema
   useEffect(() => {

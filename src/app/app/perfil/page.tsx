@@ -45,26 +45,30 @@ interface NotificationPreference {
 interface UserSession {
   id: string;
   user_id: string;
-  browser: string;
-  os: string;
-  ip_address: string;
-  last_active: string;
+  created_at: string;
+  updated_at: string;
+  last_sign_in_at: string;
   is_current: boolean;
+  user_agent: string;
+  ip: string;
+  location?: string;
+  device_type: string;
 }
 
 interface UserRole {
   role_id: number;
-  organization_id: string;
-  branch_id?: string;
+  organization_id?: number | null;
+  branch_id?: number | null;
   roles: {
     name: string;
-  };
+  }
   organizations: {
     name: string;
-  };
+  }
   branches?: {
     name: string;
-  };
+  } | null;
+  name: string;
 }
 
 interface MfaMethod {
@@ -141,12 +145,26 @@ export default function PerfilUsuarioPage() {
           .from('user_devices')
           .select('*')
           .eq('user_id', session.user.id)
-          .order('last_active', { ascending: false });
+          .order('last_sign_in_at', { ascending: false });
           
         if (sessionsError) {
           console.error('Error al obtener sesiones:', sessionsError);
         } else {
-          setUserSessions(sessionsData || []);
+          // Adaptamos los datos al formato esperado por el componente SesionesSection
+          const formattedSessions: UserSession[] = (sessionsData || []).map(device => ({
+            id: device.id,
+            user_id: device.user_id,
+            created_at: device.created_at || new Date().toISOString(),
+            updated_at: device.updated_at || new Date().toISOString(),
+            last_sign_in_at: device.last_sign_in_at,
+            is_current: device.is_current || false,
+            user_agent: device.user_agent || '',
+            ip: device.ip_address || '',
+            location: device.location || undefined,
+            device_type: device.device_type || ''
+          }));
+          
+          setUserSessions(formattedSessions);
         }
         
         // Obtener roles del usuario
@@ -154,18 +172,38 @@ export default function PerfilUsuarioPage() {
           .from('user_roles')
           .select(`
             role_id,
-            organization_id,
             branch_id,
-            roles(name),
-            organizations(name),
-            branches(name)
+            roles!inner(
+              name,
+              organization_id
+            ),
+            branches:branch_id(name)
           `)
           .eq('user_id', session.user.id);
           
         if (rolesError) {
           console.error('Error al obtener roles:', rolesError);
         } else {
-          setUserRoles(rolesData || []);
+          // Adaptamos los datos al formato esperado por la interfaz UserRole
+          const formattedRoles: UserRole[] = (rolesData || []).map(role => {
+            // Aseguramos que todas las propiedades tengan valores válidos
+            const roleObj = role as any; // Usamos any para evitar errores de typescript
+            return {
+              role_id: roleObj.role_id,
+              organization_id: roleObj.roles?.organization_id || null,
+              branch_id: roleObj.branch_id || null,
+              roles: { 
+                name: roleObj.roles?.name || 'Sin nombre'
+              },
+              organizations: { 
+                name: roleObj.roles?.organization_id ? `Organización ${roleObj.roles.organization_id}` : 'Global'
+              },
+              branches: roleObj.branches ? { name: roleObj.branches.name } : null,
+              name: roleObj.roles?.name || 'Sin nombre'
+            };
+          });
+          
+          setUserRoles(formattedRoles);
         }
         
         // Obtener organizaciones a las que pertenece el usuario
@@ -307,8 +345,8 @@ export default function PerfilUsuarioPage() {
           
           {currentSection === 'sesiones' && (
             <SesionesSection 
-              sessions={userSessions}
-              onSessionsUpdated={setUserSessions}
+              user={user}
+              initialSessions={userSessions}
             />
           )}
           

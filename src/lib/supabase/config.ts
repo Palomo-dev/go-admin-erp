@@ -92,11 +92,53 @@ export const getUserRole = async (userId: string) => {
 }
 
 export const getUserOrganization = async (userId: string) => {
-  return await supabase
-    .from('profiles')
-    .select('organizations(id, name, type, status)')
-    .eq('id', userId)
-    .single()
+  try {
+    // Primero obtenemos el perfil del usuario con su organization_id
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('organization_id, branch_id')
+      .eq('id', userId)
+      .single();
+    
+    if (profileError || !profileData) {
+      console.error('Error obteniendo perfil de usuario:', profileError);
+      return { organization: null, role: null, error: profileError?.message || 'Perfil no encontrado' };
+    }
+    
+    // Ahora obtenemos la información de la organización
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id, name, status, types, primary_branch_id')
+      .eq('id', profileData.organization_id)
+      .single();
+    
+    if (orgError || !orgData) {
+      console.error('Error obteniendo organización:', orgError);
+      return { organization: null, role: null, error: orgError?.message || 'Organización no encontrada' };
+    }
+    
+    // Obtenemos el rol del usuario
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('roles(name, permissions)')
+      .eq('user_id', userId)
+      .single();
+    
+    return { 
+      organization: {
+        id: orgData.id,
+        name: orgData.name,
+        status: orgData.status,
+        types: orgData.types,
+        primary_branch_id: orgData.primary_branch_id
+      },
+      branch_id: profileData.branch_id || orgData.primary_branch_id,
+      role: roleData?.roles?.name || null
+    };
+  } catch (error) {
+    console.error('Error general obteniendo organización:', error);
+    return { organization: null, role: null, error: 'Error obteniendo organización' };
+  }
 }
 
 export const getBranches = async (organizationId: string) => {

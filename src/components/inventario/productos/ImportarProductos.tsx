@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
-import { Producto } from './types';
+import { Producto } from '@/types/products';
 
 interface ImportarProductosProps {
   onImportComplete: (productos: Producto[]) => void;

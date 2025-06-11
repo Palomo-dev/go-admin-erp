@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Producto, EtiquetaProducto } from './types';
+import { Producto, EtiquetaProducto } from '@/types/products';
 
 interface ProductosTableProps {
   productos: Producto[];

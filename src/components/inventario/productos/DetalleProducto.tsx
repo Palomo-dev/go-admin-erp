@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Producto, EtiquetaProducto, MovimientoInventario } from './types';
+import React, { useState, useEffect } from 'react';
+import ProductosService from '@/lib/services/productos.service';
+import { Producto, EtiquetaProducto, MovimientoInventario } from '@/types/products';
 import HistorialKardex from './HistorialKardex';
 import RegistrarMovimientoInventario from './RegistrarMovimientoInventario';
 
@@ -26,22 +27,31 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
 }) => {
   const [mostrarRegistroMovimiento, setMostrarRegistroMovimiento] = useState<boolean>(false);
 
-  // Estado local para simular la distribución de stock por sucursal
-  const sucursales = [
-    { id: 'suc-1', nombre: 'Sucursal Principal' },
-    { id: 'suc-2', nombre: 'Sucursal Norte' },
-    { id: 'suc-3', nombre: 'Sucursal Sur' },
-  ];
-
-  // Inicializar distribución: todo el stock en la sucursal principal por defecto
-  const [stockPorSucursal, setStockPorSucursal] = useState<{ sucursalId: string; nombreSucursal: string; unidades: number }[]>([
-    { sucursalId: 'suc-1', nombreSucursal: 'Sucursal Principal', unidades: product.stock },
-    { sucursalId: 'suc-2', nombreSucursal: 'Sucursal Norte', unidades: 0 },
-    { sucursalId: 'suc-3', nombreSucursal: 'Sucursal Sur', unidades: 0 },
-  ]);
-
-  // Suma total de unidades en sucursales
+  // Estados para datos reales
+  const [stockPorSucursal, setStockPorSucursal] = useState<{ sucursalId: string; nombreSucursal: string; unidades: number; costoPromedio?: number }[]>([]);
+  const [lotes, setLotes] = useState<any[]>([]);
+  const [seriales, setSeriales] = useState<any[]>([]);
+  const [unidad, setUnidad] = useState<string>('');
+  const [movimientosInventario, setMovimientosInventario] = useState<MovimientoInventario[]>([]);
   const sumaStockSucursales = stockPorSucursal.reduce((acc, curr) => acc + curr.unidades, 0);
+
+  // Carga de datos desde Supabase
+  useEffect(() => {
+    // Stock por sucursal
+    ProductosService.getStockPorSucursal(product.id).then(({ data }) => {
+      if (data) setStockPorSucursal(data);
+    });
+    // Lotes
+    ProductosService.getProductoById(product.id).then(({ data }) => {
+      if (data && data.lotes) setLotes(data.lotes);
+      if (data && data.numerosSerie) setSeriales(data.numerosSerie);
+      if (data && data.unidad) setUnidad(data.unidad);
+    });
+    // Movimientos de inventario
+    ProductosService.getMovimientosInventario(product.id).then(({ data }) => {
+      if (data) setMovimientosInventario(data);
+    });
+  }, [product.id]);
 
   // Manejar registro de movimientos: solo traslados afectan la distribución por sucursal
   const handleRegistrarMovimiento = (movimientoDatos: any) => {
@@ -133,6 +143,10 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
                 <p className="font-medium text-gray-800">{product.categoria}</p>
               </div>
               <div>
+                <p className="text-sm text-gray-500">Unidad de medida</p>
+                <p className="font-medium text-gray-800">{product.unidad}</p>
+              </div>
+              <div>
                 <p className="text-sm text-gray-500">Precio</p>
                 <p className="font-medium text-gray-800">{formatCurrency(product.precio)}</p>
                 {product.precios?.mayorista !== undefined && (
@@ -154,21 +168,23 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
                     <tr>
                       <th className="text-left font-medium text-gray-700 px-2 py-1">Sucursal</th>
                       <th className="text-left font-medium text-gray-700 px-2 py-1">Unidades</th>
+                      <th className="text-left font-medium text-gray-700 px-2 py-1">Costo Promedio</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Estado local para simular la distribución */}
-                    {stockPorSucursal.map((item) => (
+                    {(product.stockPorSucursal || []).map((item: { sucursalId: string; nombreSucursal: string; unidades: number; costoPromedio?: number }) => (
                       <tr key={item.sucursalId}>
                         <td className="px-2 py-1 text-gray-800">{item.nombreSucursal}</td>
                         <td className="px-2 py-1 text-gray-800">{item.unidades}</td>
+                        <td className="px-2 py-1 text-gray-800">{item.costoPromedio ? formatCurrency(item.costoPromedio) : '-'}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="border-t">
                       <td className="px-2 py-1 font-semibold text-gray-900">Total</td>
-                      <td className="px-2 py-1 font-semibold text-gray-900">{sumaStockSucursales} unidades</td>
+                      <td className="px-2 py-1 font-semibold text-gray-900">{(product.stockPorSucursal || []).reduce((acc: number, item: { unidades: number }) => acc + item.unidades, 0)} unidades</td>
+                      <td></td>
                     </tr>
                   </tfoot>
                 </table>
@@ -277,7 +293,7 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
 
             <div className="border-t border-gray-200 pt-4">
               <h3 className="font-medium text-gray-800 mb-2">Descripción</h3>
-              <p className="font-medium text-gray-800">{product.descripcion ?? 'Este producto no tiene descripción.'}</p>
+              <p className="font-medium text-gray-800">{product.descripcion || 'Este producto no tiene descripción.'}</p>
             </div>
           </div>
           
@@ -490,7 +506,7 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({
       ) : (
         <HistorialKardex 
           productoId={product.id}
-          movimientos={movimientos}
+          movimientos={movimientosInventario}
           onRegistrarMovimiento={onRegistrarMovimiento ? 
             () => setMostrarRegistroMovimiento(true) : 
             undefined

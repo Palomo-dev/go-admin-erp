@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // Importamos los tipos centralizados
-import { Producto, FiltrosProducto, MovimientoInventario, TipoMovimientoInventario } from '@/components/inventario/productos/types';
+import { Producto, FiltrosProducto, MovimientoInventario, TipoMovimientoInventario, Proveedor } from '@/types/products';
+import ProductosService from '@/lib/services/productos.service';
 import ProductosPageHeader from '@/components/inventario/productos/ProductosPageHeader';
 import FiltrosProductos from '@/components/inventario/productos/FiltrosProductos';
 import ProductosTable from '@/components/inventario/productos/ProductosTable';
@@ -11,7 +12,6 @@ import DetalleProducto from '@/components/inventario/productos/DetalleProducto';
 import ImportarProductos from '@/components/inventario/productos/ImportarProductos';
 import Proveedores from './Proveedores';
 import OrdenesCompra from './OrdenesCompra';
-import { Proveedor } from './types';
 
 /**
  * Componente principal para el catálogo maestro de productos
@@ -38,118 +38,51 @@ const CatalogoProductos: React.FC = () => {
   // Estado para proveedores (levantado para compartir entre componentes)
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
 
-  // Movimientos de inventario de ejemplo (en producción vendrían de Supabase)
-  React.useEffect(() => {
-    // Generar algunos movimientos de ejemplo para demostración
-    const movimientosEjemplo: MovimientoInventario[] = [
-      {
-        id: '1',
-        fecha: new Date(2025, 5, 1, 9, 30),
-        productoId: '1',
-        productoNombre: 'Camiseta Básica',
-        productoSku: 'CAM-001',
-        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
-        cantidad: 20,
-        stockPrevio: 30,
-        stockResultante: 50,
-        motivo: 'Ingreso inicial de inventario',
-        responsable: 'Juan Pérez',
-        documentoReferencia: 'OC-2025-001'
-      },
-      {
-        id: '2',
-        fecha: new Date(2025, 5, 2, 14, 15),
-        productoId: '1',
-        productoNombre: 'Camiseta Básica',
-        productoSku: 'CAM-001',
-        tipoMovimiento: TipoMovimientoInventario.SALIDA,
-        cantidad: -5,
-        stockPrevio: 50,
-        stockResultante: 45,
-        motivo: 'Venta en tienda',
-        responsable: 'María González',
-        documentoReferencia: 'FAC-2025-042'
-      },
-      {
-        id: '3',
-        fecha: new Date(2025, 5, 3, 11, 0),
-        productoId: '1',
-        productoNombre: 'Camiseta Básica',
-        productoSku: 'CAM-001',
-        tipoMovimiento: TipoMovimientoInventario.AJUSTE,
-        cantidad: 5,
-        stockPrevio: 45,
-        stockResultante: 50,
-        motivo: 'Ajuste por inventario físico',
-        responsable: 'Carlos López',
-        documentoReferencia: 'INV-2025-001'
-      },
-      {
-        id: '4',
-        fecha: new Date(2025, 5, 4, 16, 20),
-        productoId: '2',
-        productoNombre: 'Pantalón Vaquero',
-        productoSku: 'PAN-001',
-        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
-        cantidad: 15,
-        stockPrevio: 15,
-        stockResultante: 30,
-        motivo: 'Recepción de mercancía',
-        responsable: 'Juan Pérez',
-        documentoReferencia: 'OC-2025-002'
-      },
-      {
-        id: '5',
-        fecha: new Date(2025, 5, 5, 10, 45),
-        productoId: '3',
-        productoNombre: 'Zapatillas Running',
-        productoSku: 'ZAP-001',
-        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
-        cantidad: 10,
-        stockPrevio: 5,
-        stockResultante: 15,
-        motivo: 'Compra de mercancía',
-        responsable: 'Ana Torres',
-        documentoReferencia: 'OC-2025-004'
-      }
-    ];
-    
-    setMovimientos(movimientosEjemplo);
-  }, []); // Array vacío para que solo se ejecute una vez al montar el componente
 
-  // Productos de ejemplo (en producción vendrían de Supabase)
-  const [productos, setProductos] = useState<Producto[]>([  
-    { 
-      id: '1', 
-      nombre: 'Camiseta Básica', 
-      sku: 'CAM-001', 
-      categoria: 'Ropa', 
-      precio: 25000, 
-      stock: 50,
-      estado: 'activo',
-      tieneVariantes: true
-    },
-    { 
-      id: '2', 
-      nombre: 'Pantalón Vaquero', 
-      sku: 'PAN-001', 
-      categoria: 'Ropa', 
-      precio: 59900, 
-      stock: 30,
-      estado: 'activo',
-      tieneVariantes: true
-    },
-    { 
-      id: '3', 
-      nombre: 'Zapatillas Running', 
-      sku: 'ZAP-001', 
-      categoria: 'Calzado', 
-      precio: 89900, 
-      stock: 15,
-      estado: 'inactivo',
-      tieneVariantes: true
+  // Productos cargados desde la base de datos
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [loadingProductos, setLoadingProductos] = useState<boolean>(true);
+  const [errorProductos, setErrorProductos] = useState<string | null>(null);
+
+  // Función definida fuera del useEffect para poder usarla en otros lugares del componente
+  const fetchProductos = async () => {
+    console.log('%cIniciando carga de productos...', 'background:#3498db;color:white;padding:4px;border-radius:4px');
+    setLoadingProductos(true);
+    setErrorProductos(null);
+    try {
+      console.log('%cLlamando a ProductosService.getAllProductos()', 'background:#2ecc71;color:white;padding:4px');
+      const { data, error } = await ProductosService.getAllProductos();
+      
+      if (error) {
+        console.error('%cError recibido del servicio:', 'background:#e74c3c;color:white;padding:4px', error);
+        setErrorProductos(`Error al cargar productos: ${error.message || 'Error desconocido'}`);
+      } else {
+        if (data && data.length > 0) {
+          console.log(`%cProductos recibidos: ${data.length}`, 'background:#2ecc71;color:white;padding:4px');
+          console.table(data.map(p => ({ 
+            id: p.id,
+            nombre: p.nombre,
+            sku: p.sku,
+            precio: p.precio,
+            stock: p.stock,
+            estado: p.estado
+          })));
+        } else {
+          console.warn('%cNo se recibieron productos del servicio', 'background:#f39c12;color:white;padding:4px');
+        }
+        setProductos(data || []);
+      }
+    } catch (err) {
+      console.error('%cExcepción al cargar productos:', 'background:#e74c3c;color:white;padding:4px', err);
+      setErrorProductos(`Error inesperado al cargar productos: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoadingProductos(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchProductos();
+  }, []);
 
   // Manejadores de eventos
   const handleCreateNew = () => {
@@ -410,12 +343,60 @@ const CatalogoProductos: React.FC = () => {
         filters={filters}
         onFilterChange={setFilters}
       />
-      <ProductosTable 
-        productos={filteredProducts}
-        onView={handleView}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+      
+      {loadingProductos ? (
+        <div className="p-4 text-center">
+          <p>Cargando productos...</p>
+        </div>
+      ) : errorProductos ? (
+        <div className="p-4 bg-red-50 text-red-800 border border-red-200 rounded">
+          <p className="font-semibold">Error:</p> 
+          <p>{errorProductos}</p>
+          <button 
+            onClick={() => fetchProductos()} 
+            className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Reintentar
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-gray-600">
+              {filteredProducts.length > 0 
+                ? `Mostrando ${filteredProducts.length} producto${filteredProducts.length !== 1 ? 's' : ''}` 
+                : 'No se encontraron productos con los filtros actuales'}
+            </p>
+          </div>
+            
+          {/* Tabla de productos */}
+          <ProductosTable 
+            productos={filteredProducts} 
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+          
+          {/* Si no hay productos pero sí hay filtros, mostrar botón para limpiar filtros */}
+          {productos.length > 0 && filteredProducts.length === 0 && (
+            <div className="mt-4">
+              <button 
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                onClick={() => {
+                  // Limpiar filtros
+                  setFilters({
+                    busqueda: '',
+                    categoria: '',
+                    estado: ''
+                  });
+                }}
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          )}
+        </>
+      )}
       {/* Sección de proveedores y órdenes de compra */}
       <div className="mt-10">
         {/* Proveedores */}

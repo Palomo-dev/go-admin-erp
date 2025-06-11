@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { MovimientoInventario, TipoMovimientoInventario } from './types';
+import { MovimientoInventario, TipoMovimientoInventario } from '@/types/products';
 
 interface HistorialKardexProps {
   productoId?: string;

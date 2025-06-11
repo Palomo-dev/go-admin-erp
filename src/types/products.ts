@@ -46,6 +46,10 @@ export interface Producto {
   estado: string;
   tieneVariantes: boolean;
   descripcion?: string;
+  // URL de la imagen del producto (opcional)
+  imagenUrl?: string;
+  // Código o nombre de la unidad de medida asociada (opcional)
+  unidad?: string;
   // Nuevos campos para gestión de etiquetas, códigos de barras y QR
   codigoBarras?: string;
   codigoQR?: string;

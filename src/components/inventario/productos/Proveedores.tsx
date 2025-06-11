@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Proveedor } from './types';
+import { Proveedor } from '@/types/products';
 
 /**
  * Componente para listar y crear proveedores.

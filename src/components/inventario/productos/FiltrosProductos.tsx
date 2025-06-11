@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { FiltrosProducto } from '@/components/inventario/productos/types';
+import { FiltrosProducto } from '@/types/products';
 
 interface FiltrosProductosProps {
   filters: FiltrosProducto;

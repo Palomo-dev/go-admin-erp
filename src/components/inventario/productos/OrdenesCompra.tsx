@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OrdenCompra, Proveedor, Producto } from './types';
+import { OrdenCompra, Proveedor, Producto } from '@/types/products';
 
 /**
  * Componente para listar y crear órdenes de compra.

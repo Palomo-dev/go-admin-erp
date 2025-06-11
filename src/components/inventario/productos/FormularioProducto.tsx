@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 
 // Importamos las interfaces necesarias
-import { Producto, EtiquetaProducto, LoteProducto, NumeroSerieProducto } from './types';
+import { Producto, EtiquetaProducto, LoteProducto, NumeroSerieProducto } from '@/types/products';
 
 interface FormularioProductoProps {
   proveedores: Proveedor[]; // Lista de proveedores para el select

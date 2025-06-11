@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { TipoMovimientoInventario, MovimientoInventario, Producto } from './types';
+import { TipoMovimientoInventario, MovimientoInventario, Producto } from '@/types/products';
 
 interface RegistrarMovimientoInventarioProps {
   producto?: Producto;

@@ -581,9 +581,19 @@ const SidebarNavigation = ({
           href: "/app/pos", 
           icon: <ShoppingCart size={18} />,
           submenu: [
-            { name: "Ventas", href: "/app/pos/ventas" },
-            { name: "Parking", href: "/app/pos/parking" },
-            { name: "Cajas", href: "/app/pos/cajas" }
+            { name: "Carritos", href: "/app/pos/carritos" },
+            { name: "Mesas", href: "/app/pos/mesas" },
+            { name: "Cajas", href: "/app/pos/cajas" },
+            { name: "Clientes Multiples", href: "/app/pos/clientes-multiples" },
+            { name: "Cobro", href: "/app/pos/cobro" },
+            { name: "Comandas", href: "/app/pos/comandas" },
+            { name: "Configuración", href: "/app/pos/configuración" },
+            { name: "Cuentas por Cobrar", href: "/app/pos/cuentas-por-cobrar" },
+            { name: "Devoluciones", href: "/app/pos/devoluciones" },
+            { name: "Habitaciones", href: "/app/pos/habitaciones" },
+            { name: "Mesas", href: "/app/pos/mesas" },
+            { name: "Pagos Pendientes", href: "/app/pos/pagos-pendientes" },
+            { name: "Reportes", href: "/app/pos/reportes" },
           ]
         },
         { 

@@ -37,6 +37,7 @@ export default function CobroPage() {
   const router = useRouter();
   const mesaId = searchParams.get("mesa");
   const cartId = searchParams.get("cartId"); // Si venimos desde la página de carritos
+  const customerId = searchParams.get("customerId"); // Recuperar el ID del cliente seleccionado
   
   // Estado para cargando y error
   const [loading, setLoading] = useState<boolean>(true);
@@ -128,9 +129,9 @@ export default function CobroPage() {
         }
         
         // Obtener datos de organización
-        const { data: userData, error: userError } = await getUserOrganization(session.user.id);
+        const userData = await getUserOrganization(session.user.id);
         
-        if (userError || !userData || !userData.organizations) {
+        if (userData.error || !userData.organization) {
           setError("No se pudo obtener la información de la organización");
           setLoading(false);
           return;
@@ -140,7 +141,7 @@ export default function CobroPage() {
         const { data: branchData, error: branchError } = await supabase
           .from("branches")
           .select("*")
-          .eq("organization_id", userData.organizations[0].id)
+          .eq("organization_id", userData.organization.id)
           .eq("is_primary", true)
           .limit(1)
           .single();
@@ -153,7 +154,7 @@ export default function CobroPage() {
         
         // Guardar información de organización y sucursal
         setOrgData({
-          organization_id: userData.organizations[0].id,
+          organization_id: userData.organization.id,
           branch_id: branchData.id,
           user_id: session.user.id
         });
@@ -204,6 +205,34 @@ export default function CobroPage() {
           }
         }
         
+        // Si tenemos customerId, cargar datos del cliente desde Supabase
+        if (customerId) {
+          try {
+            const { data: customerData, error: customerError } = await supabase
+              .from("customers")
+              .select("*")
+              .eq("id", customerId)
+              .eq("organization_id", userData.organizations[0].id)
+              .single();
+              
+            if (customerError) {
+              console.error("Error al cargar datos del cliente:", customerError);
+            } else if (customerData) {
+              // Si ya tenemos cliente asignado desde el carrito, solo actualizarlo si coincide el ID
+              if (!customer.id || customer.id.toString() === customerId) {
+                setCustomer({
+                  id: customerData.id,
+                  name: customerData.full_name || `${customerData.first_name || ''} ${customerData.last_name || ''}`.trim(),
+                  email: customerData.email || "",
+                  phone: customerData.phone || ""
+                });
+              }
+            }
+          } catch (customerErr) {
+            console.error("Error al procesar datos del cliente:", customerErr);
+          }
+        }
+        
         setLoading(false);
       } catch (err) {
         console.error("Error al cargar datos:", err);
@@ -213,7 +242,7 @@ export default function CobroPage() {
     };
     
     loadCartData();
-  }, [cartId]);
+  }, [cartId, customerId]);
   
   // Función para completar la venta
   const completeSale = async () => {
@@ -396,7 +425,7 @@ export default function CobroPage() {
       pendingAmount                         // Monto exacto
     ];
     
-    return [...new Set(amounts)].sort((a, b) => a - b);
+    return Array.from(new Set(amounts)).sort((a, b) => a - b);
   };
 
   // Verificar si se puede completar la venta

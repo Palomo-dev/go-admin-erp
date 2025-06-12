@@ -34,32 +34,35 @@ export default function OrganizationList({ showActions = false, onDelete }: Orga
       if (!session) throw new Error('No se encontró sesión de usuario');
 
       // Get user's organizations with role information and current organization
-      const { data: organizations, error } = await supabase
-  .from('organizations')
-  .select(`
-    id,
-    name,
-    type_id,
-    organization_types!fk_organizations_organization_type(name),
-    owner_user_id
-  `)
-  .eq('owner_user_id', session.user.id);
+      // Get user's profile to know their current organization
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('organization_id, role_id')
+        .eq('id', session.user.id)
+        .single();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      const { data: memberships, error: memError } = await supabase
-  .from('profiles')
-  .select('organization_id, role_id')
-  .eq('id', session.user.id);
+      // Get organizations where user is owner
+      const { data: ownedOrgs, error: ownedError } = await supabase
+        .from('organizations')
+        .select(`
+          id,
+          name,
+          type_id,
+          organization_types!fk_organizations_organization_type(name)
+        `)
+        .eq('owner_user_id', session.user.id);
 
-      if (memError) throw memError;
+      if (ownedError) throw ownedError;
 
-      const orgs = organizations.map(org => ({
+      // Transform organizations data
+      const orgs = ownedOrgs.map(org => ({
         id: org.id,
         name: org.name,
-        type_id: { name: org.type_id.name },
-        role_id: memberships.find(m => m.organization_id === org.id)?.role_id,
-        is_current: memberships.find(m => m.organization_id === org.id)?.role_id === 2,
+        type_id: { name: org.organization_types?.name || 'Unknown' },
+        role_id: 2, // Owner role
+        is_current: org.id === profile.organization_id
       }));
 
       setOrganizations(orgs);
@@ -77,10 +80,10 @@ export default function OrganizationList({ showActions = false, onDelete }: Orga
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No se encontró sesión de usuario');
 
-      // Update user's current organization
+      // Update user's organization
       const { error } = await supabase
         .from('profiles')
-        .update({ current_organization_id: orgId })
+        .update({ organization_id: orgId })
         .eq('id', session.user.id);
 
       if (error) throw error;

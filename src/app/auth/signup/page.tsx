@@ -6,6 +6,7 @@ import Link from 'next/link';
 import PersonalInfoStep from '../../../components/auth/PersonalInfoStep';
 import OrganizationStep from '../../../components/auth/OrganizationStep';
 import VerificationStep from '../../../components/auth/VerificationStep';
+import SubscriptionStep from '../../../components/auth/SubscriptionStep';
 import { supabase, signUpWithEmail } from '@/lib/supabase/config';
 
 // Definición de tipos
@@ -50,7 +51,27 @@ export default function SignupPage() {
   };
 
   // Avanzar al siguiente paso
-  const nextStep = () => {
+  const nextStep = async () => {
+    if (currentStep === 1) {
+      setLoading(true);
+      setError(null);
+      
+      // Verificar si el correo ya está registrado
+      const { data: existingUsers } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', signupData.email)
+        .maybeSingle();
+
+      if (existingUsers) {
+        setError('Este correo electrónico ya está registrado');
+        setLoading(false);
+        return;
+      }
+      
+      setLoading(false);
+    }
+    
     setCurrentStep((prev) => prev + 1);
   };
 
@@ -65,6 +86,7 @@ export default function SignupPage() {
     setError(null);
 
     try {
+      console.log('Datos de registro:', signupData);
       // 1. Crear cuenta de usuario en Supabase Auth usando la función mejorada
       const { data: authData, error: authError } = await signUpWithEmail(
         signupData.email,
@@ -196,6 +218,10 @@ export default function SignupPage() {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 3
               </div>
+              <div className={`w-16 h-1 ${currentStep >= 4 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                4
+              </div>
             </div>
           </div>
         </div>
@@ -212,11 +238,23 @@ export default function SignupPage() {
             formData={signupData} 
             updateFormData={updateFormData} 
             onNext={nextStep}
+            error={error}
+            loading={loading}
           />
         )}
         
         {currentStep === 2 && (
           <OrganizationStep 
+            formData={signupData} 
+            updateFormData={updateFormData} 
+            onNext={nextStep}
+            onBack={prevStep}
+            loading={loading}
+          />
+        )}
+        
+        {currentStep === 3 && (
+          <SubscriptionStep 
             formData={signupData} 
             updateFormData={updateFormData} 
             onNext={handleSignup}
@@ -225,7 +263,7 @@ export default function SignupPage() {
           />
         )}
         
-        {currentStep === 3 && (
+        {currentStep === 4 && (
           <VerificationStep 
             email={signupData.email}
           />

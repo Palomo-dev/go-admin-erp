@@ -9,9 +9,10 @@ export const branchService = {
     const { data, error } = await supabase
       .from('branches')
       .select('*')
-      .eq('organization_id', organizationId)
-      .order('is_main', { ascending: false })
-      .order('name', { ascending: true });
+      .eq('organization_id', 3)
+      
+      console.log(typeof(organizationId));
+      console.log("Branch data", data);
 
     if (error) {
       console.error('Error fetching branches:', error);

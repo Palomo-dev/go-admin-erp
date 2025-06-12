@@ -58,14 +58,14 @@ export default function POSPage() {
         
         // Obtener datos de organización usando la función centralizada
         const userOrgData = await getUserOrganization(session.user.id);
-        
+
         if (!userOrgData?.organization) {
           throw new Error("No se pudo obtener la información de la organización");
         }
         
         const organizationId = userOrgData.organization.id;
         const branchId = userOrgData.branch_id;
-        
+
         if (!branchId) {
           throw new Error("No se encontró ninguna sucursal para esta organización");
         }

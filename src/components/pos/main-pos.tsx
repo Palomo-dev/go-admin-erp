@@ -119,11 +119,16 @@ export function MainPOS({
   const loadSavedCarts = async () => {
     setIsLoading(true);
     try {
+      console.log("Cargando carritos guardados...");
+      console.log("Datos usuario", initialUser);
+
       const { data, error } = await supabase
         .from('carts')
         .select('*')
         .eq('organization_id', initialUser?.organization_id)
         .eq('branch_id', initialUser?.branch_id);
+
+      console.log("Carritos guardados:", data);
       
       if (error) {
         console.error("Error al cargar carritos:", error);

@@ -64,9 +64,13 @@ export default function CarritosPage() {
         return;
       }
 
+      console.log("Datos de sesión:", session);
+
       // Obtenemos la organización y sucursal del usuario usando la función existente
       const { data: userOrg, error: orgError } = await getUserOrganization(session.user.id);
       
+      console.log("Datos de organización:", userOrg);
+
       if (orgError || !userOrg || !userOrg.organizations) {
         console.error("Error al obtener la organización:", orgError);
         setError("No se pudo obtener la información de organización");

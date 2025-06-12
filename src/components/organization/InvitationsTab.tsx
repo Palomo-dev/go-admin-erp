@@ -42,8 +42,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
       const { data, error } = await supabase
       .from('invitations')
-        .select('id, email, code, role_id, created_at, expires_at, used_at, status')
-        .eq('organization_id', orgId);
+      .select('id, email, code, role_id, created_at, expires_at, used_at, status')
+      .eq('organization_id', orgId);
 
       if (error) throw error;
 

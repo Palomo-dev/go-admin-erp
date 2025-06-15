@@ -165,7 +165,7 @@ export default function CobroPage() {
             .from("carts")
             .select("*")
             .eq("id", cartId)
-            .eq("organization_id", userData.organizations[0].id)
+            .eq("organization_id", userData.organization.id)
             .single();
             
           if (cartError) {
@@ -212,7 +212,7 @@ export default function CobroPage() {
               .from("customers")
               .select("*")
               .eq("id", customerId)
-              .eq("organization_id", userData.organizations[0].id)
+              .eq("organization_id", userData.organization.id)
               .single();
               
             if (customerError) {

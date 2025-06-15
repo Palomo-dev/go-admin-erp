@@ -2,7 +2,60 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
+
+// Importar las utilidades de roles directamente en lugar de usando importación con ruta relativa
+// Esto ayuda a evitar problemas de carga de chunks
+const roleCodeMap: {[key: number]: string} = {
+  1: 'super_admin',
+  2: 'org_admin',
+  3: 'manager',
+  4: 'employee',
+  5: 'customer'
+};
+
+const roleNameMap: {[key: number]: string} = {
+  1: 'Super Admin',
+  2: 'Admin',
+  3: 'Manager',
+  4: 'Employee',
+  5: 'Customer'
+};
+
+const roleIdMap: {[key: string]: number} = {
+  'super_admin': 1,
+  'org_admin': 2,
+  'manager': 3,
+  'employee': 4,
+  'customer': 5
+};
+
+const roleDisplayMap: {[key: string]: string} = {
+  'super_admin': 'Super Admin',
+  'org_admin': 'Admin',
+  'manager': 'Manager',
+  'employee': 'Employee',
+  'customer': 'Customer'
+};
+
+const getRoleInfoById = (roleId: number | null): { name: string; code: string } => {
+  if (!roleId) return { name: 'Sin rol', code: '' };
+  
+  return {
+    name: roleNameMap[roleId] || `Rol ${roleId}`,
+    code: roleCodeMap[roleId] || `role_${roleId}`
+  };
+};
+
+const getRoleIdByCode = (code: string): number | null => {
+  return roleIdMap[code] || null;
+};
+
+const formatRolesForDropdown = (roles: any[]): any[] => {
+  return roles.map(role => ({
+    value: roleCodeMap[role.id] || `role_${role.id}`,
+    label: role.name
+  }));
+};
 
 interface MemberProps {
   id: string;
@@ -362,9 +415,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       onChange={(e) => updateMemberRole(member.id, e.target.value)}
                       disabled={member.is_admin} // Disable changing role for owners/admins
                     >
-                      <option value="">Seleccionar rol</option>
-                      {roles.map(role => (
-                        <option key={role.id} value={role.code}>
+                      <option key={`select-role-default-${member.id}`} value="">Seleccionar rol</option>
+                      {roles.map((role, roleIndex) => (
+                        <option key={`role-${role.id || roleIndex}-${member.id}`} value={role.code}>
                           {roleDisplayMap[role.code] || role.name}
                         </option>
                       ))}
@@ -377,9 +430,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       onChange={(e) => updateMemberBranch(member.id, e.target.value)}
                       disabled={member.is_admin} // Disable changing branch for owners/admins
                     >
-                      <option value="">Sin sucursal</option>
-                      {branches.map(branch => (
-                        <option key={branch.id} value={branch.id}>
+                      <option key={`no-branch-default-${member.id}`} value="">Sin sucursal</option>
+                      {branches.map((branch, branchIndex) => (
+                        <option key={`branch-${branch.id || branchIndex}-${member.id}`} value={branch.id}>
                           {branch.name}
                         </option>
                       ))}

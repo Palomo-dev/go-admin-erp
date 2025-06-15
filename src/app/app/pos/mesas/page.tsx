@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/pos/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/pos/card";
 import { Badge } from "@/components/pos/badge";
 import { Button } from "@/components/pos/button";
-import Link from "next/link";
-import { Plus, Filter, Search, MoreVertical, Users, Coffee, Clock, X } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/pos/dropdown-menu";
+import { Plus, Filter, Search } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { supabase, getSession, getUserOrganization } from "@/lib/supabase/config";
+import { MesasManager } from "@/components/pos/mesas/mesas-manager";
 
 // Interfaz para mesas según la estructura de restaurant_tables en Supabase
 interface Mesa {
@@ -46,12 +45,12 @@ export default function MesasPage() {
         }
         
         // Obtener datos de la organización del usuario
-        const { data, error: orgError } = await getUserOrganization(session.user.id);
-        if (orgError || !data || !data.organizations) {
-          throw new Error("Error al cargar la organización del usuario");
+        const userOrgResult = await getUserOrganization(session.user.id);
+        if (userOrgResult.error || !userOrgResult.organization) {
+          throw new Error("Error al cargar la organización del usuario: " + userOrgResult.error);
         }
         
-        const orgId = data.organizations.id;
+        const orgId = userOrgResult.organization.id;
         setOrganizationId(orgId);
         
         // Obtener sucursal principal del usuario
@@ -230,15 +229,11 @@ export default function MesasPage() {
   // Router para navegación
   const router = useRouter();
   
-  // Estado para controlar modales
-  const [openSessionModal, setOpenSessionModal] = useState(false);
+  // Estado para componente de mesas
   const [selectedMesa, setSelectedMesa] = useState<Mesa | null>(null);
-  const [customerCount, setCustomerCount] = useState<number>(1);
 
   // Función para abrir una nueva sesión de mesa
-  const handleOpenSession = async (mesa: Mesa) => {
-    setSelectedMesa(mesa);
-    setCustomerCount(1);
+  const handleOpenSession = async (mesa: Mesa, customerCount: number) => {
     try {
       if (!organizationId) {
         throw new Error("No se pudo obtener la organización");
@@ -408,120 +403,25 @@ export default function MesasPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gestión de Mesas</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => organizationId && branchId && loadMesas(organizationId, branchId)}>
-            Actualizar
-          </Button>
-          <Button variant="outline" size="sm">
-            Filtrar por Zona
+          <Button variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Mesa
           </Button>
         </div>
       </div>
-
-      {/* Leyenda de estados */}
-      <div className="flex gap-4 mb-6">
-        <Badge variant="success">Libre</Badge>
-        <Badge variant="warning">Ocupada</Badge>
-        <Badge variant="info">Reservada</Badge>
-        <Badge variant="destructive">Cuenta solicitada</Badge>
-      </div>
-
-      {/* Mostrar mesas por zona */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-2">Cargando mesas...</p>
-          </div>
-        </div>
-      ) : error ? (
-        <div className="p-4 border border-red-200 rounded-lg bg-red-50 text-red-500 text-center">
-          <p>{error}</p>
-          <button 
-            onClick={() => organizationId && branchId && loadMesas(organizationId, branchId)}
-            className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 rounded-md text-red-800 transition-colors"
-          >
-            Reintentar
-          </button>
-        </div>
-      ) : mesas.length === 0 ? (
-        <div className="p-4 border rounded-lg bg-blue-50 text-blue-500 text-center">
-          <p>No hay mesas configuradas. Por favor, cree mesas en la configuración.</p>
-        </div>
-      ) : (
-        <div className="grid gap-6 p-4 md:grid-cols-2 lg:grid-cols-3">
-          {Object.keys(mesasPorZona).map(zona => (
-            <Card key={zona} className="shadow-md">
-              <CardHeader>
-                <CardTitle className="text-xl">{zona || "Sin zona"}</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 grid-cols-2">
-                {mesasPorZona[zona].map(mesa => (
-                  <div 
-                    key={mesa.id} 
-                    className="flex flex-col p-3 border rounded-lg hover:bg-gray-50 transition-colors relative group"
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-lg font-medium">{mesa.name}</h3>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={getBadgeVariant(mesa.state)}>
-                          {getEstadoTexto(mesa.state)}
-                        </Badge>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menú</span>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => router.push(`/app/pos/mesa/${mesa.id}`)}>Ver detalle</DropdownMenuItem>
-                            {mesa.state === 'free' && (
-                              <DropdownMenuItem onClick={() => handleOpenSession(mesa)}>Abrir sesión</DropdownMenuItem>
-                            )}
-                            {mesa.state === 'occupied' && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleRequestBill(mesa)}>Solicitar cuenta</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleCloseSession(mesa)}>Cerrar sesión</DropdownMenuItem>
-                              </>
-                            )}
-                            {mesa.state === 'bill_requested' && (
-                              <DropdownMenuItem onClick={() => handleCloseSession(mesa)}>Cerrar sesión</DropdownMenuItem>
-                            )}
-                            {mesa.state === 'reserved' && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleOpenSession(mesa)}>Ocupar mesa</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleCancelReservation(mesa)}>Cancelar reserva</DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                    <div className="flex flex-col" onClick={() => router.push(`/app/pos/mesa/${mesa.id}`)}>
-                      <div className="text-sm text-gray-500">Capacidad: {mesa.capacity}</div>
-                      {mesa.timeOccupied && (
-                        <div className="text-sm font-medium mt-1">
-                          <Clock className="inline h-3 w-3 mr-1" /> {mesa.timeOccupied}
-                        </div>
-                      )}
-                      {mesa.customers && (
-                        <div className="text-sm text-gray-600 mt-1">
-                          <Users className="inline h-3 w-3 mr-1" /> {mesa.customers}
-                        </div>
-                      )}
-                      {mesa.server_name && (
-                        <div className="text-xs text-gray-500 mt-1 truncate">
-                          <Coffee className="inline h-3 w-3 mr-1" /> {mesa.server_name}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      
+      <MesasManager
+        mesas={mesas}
+        loading={loading}
+        error={error}
+        organizationId={organizationId}
+        branchId={branchId}
+        onLoadMesas={loadMesas}
+        onOpenSession={handleOpenSession}
+        onRequestBill={handleRequestBill}
+        onCloseSession={handleCloseSession}
+        onCancelReservation={handleCancelReservation}
+      />
     </div>
   );
 }

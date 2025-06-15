@@ -1,222 +1,229 @@
 "use client";
 
-import React, { useState } from "react";
-import { Button } from "@/components/pos/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/pos/card";
-import { Badge } from "@/components/pos/badge";
-import { Input } from "@/components/pos/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/pos/tabs";
-import Link from "next/link";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/pos/card';
+import { Button } from '@/components/pos/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/pos/tabs';
+import { Input } from '@/components/pos/input';
+import { Badge } from '@/components/pos/badge';
+import Link from 'next/link';
+import { Skeleton } from '@/components/pos/skeleton';
+import { useToast } from '@/components/pos/use-toast';
+import { useMultiClient, Product } from "@/components/pos/clientes-multiples/use-multi-client";
+import { useTheme } from 'next-themes';
+import { cn } from '@/utils/posUtils';
+import { CustomerSelector } from '@/components/pos/clientes-multiples/customer-selector';
+import { ProductItem } from '@/components/pos/clientes-multiples/product-item';
+import { CartItem } from '@/components/pos/clientes-multiples/cart-item';
+import { ClientTab } from '@/components/pos/clientes-multiples/client-tab';
+import { supabase, updatePassword } from '@/lib/supabase/config';
 
-// Interfaces
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  category: string;
-  image?: string;
-}
-
-interface CartItem {
-  id: number;
-  productId: number;
-  productName: string;
-  quantity: number;
-  price: number;
-}
-
-interface Customer {
-  id: number;
-  name: string;
-  email?: string;
-  phone?: string;
-}
-
-interface Cart {
-  id: number;
-  customer: Customer;
-  items: CartItem[];
-  active: boolean;
-}
+// Utilizamos el tipo Product directamente del hook useMultiClient
 
 export default function ClientesMultiplesPage() {
-  // Estado para búsqueda de productos
-  const [search, setSearch] = useState("");
-
-  // Estado para clientes y carritos
-  const [carts, setCarts] = useState<Cart[]>([
-    {
-      id: 1,
-      customer: { id: 1, name: "Juan Pérez", email: "juan@ejemplo.com" },
-      items: [
-        { id: 1, productId: 1, productName: "Camiseta Casual", quantity: 2, price: 24.99 },
-        { id: 2, productId: 3, productName: "Calcetines", quantity: 3, price: 5.99 }
-      ],
-      active: true
-    },
-    {
-      id: 2,
-      customer: { id: 2, name: "María González" },
-      items: [
-        { id: 3, productId: 2, productName: "Pantalón Vaquero", quantity: 1, price: 39.99 }
-      ],
-      active: false
-    }
-  ]);
-
-  // Estado para productos (simulados)
-  const [products, setProducts] = useState<Product[]>([
-    { id: 1, name: "Camiseta Casual", price: 24.99, category: "Ropa", image: "shirt.jpg" },
-    { id: 2, name: "Pantalón Vaquero", price: 39.99, category: "Ropa", image: "jeans.jpg" },
-    { id: 3, name: "Calcetines", price: 5.99, category: "Accesorios", image: "socks.jpg" },
-    { id: 4, name: "Zapatillas Deportivas", price: 59.99, category: "Calzado", image: "shoes.jpg" },
-    { id: 5, name: "Gorra", price: 14.99, category: "Accesorios", image: "cap.jpg" },
-    { id: 6, name: "Reloj Digital", price: 29.99, category: "Accesorios", image: "watch.jpg" },
-    { id: 7, name: "Bufanda", price: 19.99, category: "Accesorios", image: "scarf.jpg" },
-    { id: 8, name: "Sudadera", price: 34.99, category: "Ropa", image: "hoodie.jpg" },
-  ]);
-
-  // Categorías únicas para pestañas
-  const categories = Array.from(new Set(products.map(p => p.category)));
-
-  // Cliente activo
-  const activeCart = carts.find(cart => cart.active) || carts[0];
-
-  // Filtrar productos por búsqueda
-  const filteredProducts = search.trim() !== ""
-    ? products.filter(product => 
-        product.name.toLowerCase().includes(search.toLowerCase())
-      )
-    : products;
-
-  // Funciones para manejar el carrito
-  const addToCart = (product: Product) => {
-    setCarts(currentCarts => 
-      currentCarts.map(cart => {
-        if (!cart.active) return cart;
-        
-        // Verificar si el producto ya está en el carrito
-        const existingItem = cart.items.find(item => item.productId === product.id);
-        
-        if (existingItem) {
-          // Incrementar cantidad
-          return {
-            ...cart,
-            items: cart.items.map(item => 
-              item.productId === product.id 
-                ? { ...item, quantity: item.quantity + 1 } 
-                : item
-            )
-          };
-        } else {
-          // Agregar nuevo item
-          return {
-            ...cart,
-            items: [
-              ...cart.items,
-              {
-                id: Date.now(),
-                productId: product.id,
-                productName: product.name,
-                quantity: 1,
-                price: product.price
-              }
-            ]
-          };
-        }
-      })
-    );
-  };
-
-  const increaseQuantity = (itemId: number) => {
-    setCarts(currentCarts => 
-      currentCarts.map(cart => {
-        if (!cart.active) return cart;
-        
-        return {
-          ...cart,
-          items: cart.items.map(item => 
-            item.id === itemId 
-              ? { ...item, quantity: item.quantity + 1 } 
-              : item
-          )
-        };
-      })
-    );
-  };
-
-  const decreaseQuantity = (itemId: number) => {
-    setCarts(currentCarts => 
-      currentCarts.map(cart => {
-        if (!cart.active) return cart;
-        
-        return {
-          ...cart,
-          items: cart.items.map(item => 
-            item.id === itemId && item.quantity > 1
-              ? { ...item, quantity: item.quantity - 1 } 
-              : item
-          ).filter(item => !(item.id === itemId && item.quantity === 1))
-        };
-      })
-    );
-  };
-
-  const removeFromCart = (itemId: number) => {
-    setCarts(currentCarts => 
-      currentCarts.map(cart => {
-        if (!cart.active) return cart;
-        
-        return {
-          ...cart,
-          items: cart.items.filter(item => item.id !== itemId)
-        };
-      })
-    );
-  };
-
-  const setActiveCart = (cartId: number) => {
-    setCarts(currentCarts => 
-      currentCarts.map(cart => ({
-        ...cart,
-        active: cart.id === cartId
-      }))
-    );
-  };
-
-  const addNewCart = () => {
-    const newCart: Cart = {
-      id: Date.now(),
-      customer: { id: Date.now(), name: "Nuevo Cliente" },
-      items: [],
-      active: true
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const { toast } = useToast();
+  
+  // Obtener el ID de usuario de la sesión activa
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+  
+  // Estado para la pestaña de categoría activa - movido al inicio para mantener orden de hooks consistente
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  
+  useEffect(() => {
+    // En un entorno real, esto vendría de la sesión del usuario
+    const getUserId = async () => {
+      try {
+        // Usamos un UUID válido de ejemplo mientras se implementa la autenticación real
+        setUserId("ef533638-8ef8-4dd9-8986-a69effbaec83");
+      } catch (error) {
+        console.error("Error al obtener ID de usuario:", error);
+      }
     };
     
-    setCarts(currentCarts => 
-      currentCarts.map(cart => ({
-        ...cart,
-        active: false
-      })).concat(newCart)
-    );
-  };
+    getUserId();
+  }, []);
+  
+  // Usar nuestro hook personalizado para la gestión de clientes múltiples
+  const {
+    carts,
+    activeCart,
+    products,
+    categories,
+    loading,
+    addToCart,
+    removeFromCart,
+    increaseQuantity,
+    decreaseQuantity,
+    setActiveCart,
+    addNewCart,
+    removeCart,
+    searchCustomers,
+    createCustomer,
+    assignCustomer,
+    saveCarts,
+    processCheckout,
+    calculateSummary
+  } = useMultiClient(userId);
+  
+  // Estados para búsqueda
+  const [search, setSearch] = useState<string>('');
+  const filteredProducts = search.trim() ? 
+    products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())) : 
+    products;
+  
+  // La búsqueda de productos ya viene del hook useMultiClient
 
-  const removeCart = (cartId: number) => {
-    setCarts(currentCarts => {
-      const filtered = currentCarts.filter(cart => cart.id !== cartId);
-      
-      // Si eliminamos el carrito activo, activar el primero
-      if (filtered.length > 0 && !filtered.some(cart => cart.active)) {
-        filtered[0].active = true;
+  // Renderizado de producto individual
+  const renderProduct = (product: Product) => (
+    <ProductItem 
+      key={Number(product.id)} 
+      id={Number(product.id)}
+      name={product.name}
+      category={product.category || "Sin categoría"}
+      price={product.price}
+      image={product.image_url}
+      onClick={() => addToCart(product)}
+    />
+  );
+
+  // La filtración de productos por búsqueda ya viene implementada en el hook useMultiClient
+    
+  // Manejar guardar carritos
+  const handleSaveCarts = async () => {
+    try {
+      const result = await saveCarts();
+      if (result) {
+        toast.success("Los carritos se han guardado correctamente");
       }
-      
-      return filtered;
-    });
+    } catch (error) {
+      console.error("Error al guardar carritos:", error);
+      toast.error("No se pudieron guardar los carritos");
+    }
+  };
+  
+  // Manejar checkout
+  const handleCheckout = async () => {
+    if (!activeCart || activeCart.items.length === 0) {
+      toast.error("Agrega productos al carrito antes de proceder al cobro");
+      return;
+    }
+
+    try {
+      const result = await processCheckout(activeCart.id);
+      if (result && result.success) {
+        toast.success("El pago se ha procesado correctamente");
+      } else {
+        toast.error(result?.error || "Error desconocido al cobrar");
+      }
+    } catch (error) {
+      console.error("Error en checkout:", error);
+      toast.error("No se pudo procesar el cobro");
+    }
+  };
+  
+  // Manejar eliminación de carrito
+  const handleDeleteCart = () => {
+    if (activeCart && carts.length > 1) {
+      removeCart(activeCart.id);
+      toast.success("El carrito se ha eliminado correctamente");
+    } else {
+      toast.error("No se puede eliminar el último carrito");
+    }
+  };
+  
+  // Renderizar loading state
+  if (loading) {
+    return (
+      <div className={cn(
+        "container mx-auto p-4",
+        isDark ? "text-white" : "text-gray-900"
+      )}>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">POS - Clientes Múltiples</h1>
+            <p className={cn(
+              isDark ? "text-gray-300" : "text-gray-600"
+            )}>Cargando datos...</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="h-full">
+              <CardHeader>
+                <Skeleton className="h-8 w-3/4" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Obtener el resumen del carrito activo
+  const activeCartSummary = activeCart ? calculateSummary(activeCart.items) : { subtotal: 0, tax_total: 0, total: 0 };
+
+  // Categorías únicas obtenidas de los productos
+  const uniqueCategories = Array.from(new Set(products.map(product => product.category || '')));
+
+  // Filtrar productos por categoría y búsqueda
+  const filteredByCategory = activeCategory === 'all' ? 
+    filteredProducts : 
+    filteredProducts.filter((product: Product) => product.category === activeCategory);
+
+  // Handler para cambiar cliente en el carrito activo
+  const handleCustomerChange = (customer: any) => {
+    if (activeCart) {
+      assignCustomer(customer);
+    }
   };
 
-  // Calcular total del carrito activo
-  const cartTotal = activeCart
-    ? activeCart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-    : 0;
+  // Handler para crear un nuevo cliente
+  const handleCreateCustomer = async (data: any) => {
+    try {
+      // Llamar a la función del hook para crear cliente
+      const newCustomer = await createCustomer(data);
+      
+      if (newCustomer) {
+        toast.success(`Se ha creado el cliente ${data.full_name || data.email}`);
+        
+        // Asignar al carrito automáticamente
+        if (activeCart) {
+          assignCustomer(newCustomer);
+          toast.success(`El cliente ha sido asignado al carrito`);
+        }
+        
+        return newCustomer;
+      }
+    } catch (error) {
+      console.error("Error al crear cliente:", error);
+      toast.error("No se pudo crear el cliente");
+    }
+  };
+
+  // Handler para búsqueda de clientes
+  const handleSearchCustomer = async (query: string) => {
+    return await searchCustomers(query);
+  };
+  
+  // Handler para guardar todos los carritos
+  const handleSaveCart = async () => {
+    try {
+      await saveCarts();
+      toast.success(`Carritos guardados correctamente`);
+    } catch (error) {
+      toast.error("No se pudieron guardar los cambios");
+    }
+  };
 
   return (
     <div className="container mx-auto p-4">
@@ -257,19 +264,19 @@ export default function ClientesMultiplesPage() {
                     <CardContent className="p-4">
                       <div className="flex justify-between items-center">
                         <div>
-                          <div className="font-medium">{cart.customer.name}</div>
+                          <div className="font-medium">{cart.customer.full_name}</div>
                           <div className="text-sm text-gray-500">
-                            {cart.items.length} productos · ${cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}
+                            {cart.items.length} productos · ${cart.items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0).toFixed(2)}
                           </div>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex items-center gap-2">
                           {cart.active && <Badge variant="default">Activo</Badge>}
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={(e) => {
+                            onClick={(e: React.MouseEvent) => {
                               e.stopPropagation();
-                              removeCart(cart.id);
+                              handleDeleteCart();
                             }}
                           >
                             Eliminar
@@ -297,11 +304,11 @@ export default function ClientesMultiplesPage() {
           <Card className="h-full">
             <CardHeader>
               <CardTitle>Productos</CardTitle>
-              <Input
+                <Input
                 type="text"
                 placeholder="Buscar productos..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
               />
             </CardHeader>
             <CardContent>
@@ -318,9 +325,9 @@ export default function ClientesMultiplesPage() {
                   <TabsContent key={category} value={category} className="space-y-3 mt-3">
                     {filteredProducts
                       .filter(product => product.category === category)
-                      .map((product) => (
+                      .map(product => (
                         <div
-                          key={product.id}
+                          key={Number(product.id)}
                           className="flex justify-between items-center border rounded-md p-3 hover:bg-gray-50 cursor-pointer"
                           onClick={() => addToCart(product)}
                         >
@@ -347,7 +354,7 @@ export default function ClientesMultiplesPage() {
           <Card className="h-full">
             <CardHeader>
               <CardTitle>
-                Carrito de {activeCart?.customer.name || "Cliente"}
+                Carrito de {activeCart?.customer?.full_name || "Cliente"}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -364,9 +371,9 @@ export default function ClientesMultiplesPage() {
                         className="flex justify-between items-center border-b pb-2"
                       >
                         <div className="flex-grow">
-                          <div>{item.productName}</div>
+                          <div>{item.product_name}</div>
                           <div className="text-gray-500">
-                            ${item.price.toFixed(2)}
+                            ${item.unit_price.toFixed(2)}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -403,29 +410,27 @@ export default function ClientesMultiplesPage() {
                 <div className="border-t pt-4">
                   <div className="flex justify-between font-medium">
                     <span>Subtotal:</span>
-                    <span>${cartTotal.toFixed(2)}</span>
+                    <span>${activeCartSummary.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-1">
                     <span>IVA (16%):</span>
-                    <span>${(cartTotal * 0.16).toFixed(2)}</span>
+                    <span>${(activeCartSummary.subtotal * 0.16).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg mt-2">
                     <span>Total:</span>
-                    <span>${(cartTotal * 1.16).toFixed(2)}</span>
+                    <span>${activeCartSummary.total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
             </CardContent>
             <CardFooter>
               <div className="flex w-full gap-2">
-                <Button variant="outline" className="flex-1">
+                <Button variant="outline" className="flex-1" onClick={handleSaveCart}>
                   Guardar
                 </Button>
-                <Link href="/app/pos/cobro" className="flex-1">
-                  <Button className="w-full">
-                    Cobrar
-                  </Button>
-                </Link>
+                <Button className="flex-1" onClick={handleCheckout}>
+                  Cobrar
+                </Button>
               </div>
             </CardFooter>
           </Card>

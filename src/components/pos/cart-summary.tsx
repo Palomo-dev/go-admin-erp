@@ -86,7 +86,7 @@ export function CartSummary({
         )}
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 max-h-[50vh] md:max-h-[60vh] lg:max-h-[65vh]" data-component-name="CartSummary">
         {cart.items.length === 0 ? (
           <div className="text-center py-8">
             <ShoppingCart className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-3" />

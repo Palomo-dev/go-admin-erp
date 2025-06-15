@@ -45,7 +45,12 @@ export function ProductGrid({
 
   // Filtrar productos por categoría
   const filteredProducts = selectedCategory
-    ? products.filter(product => product.category_id === selectedCategory)
+    ? products.filter(product => {
+        // Convertir ambos valores a string para comparación
+        const productCategoryId = product.category_id?.toString();
+        const selectedCategoryId = selectedCategory.toString();
+        return productCategoryId === selectedCategoryId;
+      })
     : products;
 
   // Función para mostrar imagen del producto

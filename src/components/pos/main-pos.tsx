@@ -115,6 +115,12 @@ export function MainPOS({
     setFilteredProducts(filtered);
   }, [searchTerm, products]);
 
+  // Función para validar si un string tiene formato UUID
+  const isValidUUID = (uuid: any): boolean => {
+    if (!uuid) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid.toString());
+  };
+
   // Cargar carritos guardados desde Supabase
   const loadSavedCarts = async () => {
     setIsLoading(true);
@@ -122,11 +128,21 @@ export function MainPOS({
       console.log("Cargando carritos guardados...");
       console.log("Datos usuario", initialUser);
 
+      // Validar que los IDs sean UUIDs válidos antes de consultar
+      const orgId = initialUser?.organization_id;
+      const branchId = initialUser?.branch_id;
+
+      if (!isValidUUID(orgId) || !isValidUUID(branchId)) {
+        console.warn("IDs de organización o sucursal no válidos para consulta de carritos");
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('carts')
         .select('*')
-        .eq('organization_id', initialUser?.organization_id)
-        .eq('branch_id', initialUser?.branch_id);
+        .eq('organization_id', orgId)
+        .eq('branch_id', branchId);
 
       console.log("Carritos guardados:", data);
       

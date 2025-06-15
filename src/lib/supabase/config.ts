@@ -191,7 +191,7 @@ export const getUserOrganization = async (userId: string) => {
     try {
       const { data: roleResult, error: roleError } = await supabase
         .from('user_roles')
-        .select('roles(name, permissions)')
+        .select('roles(name)')
         .eq('user_id', userId)
         .maybeSingle();
       
@@ -204,6 +204,18 @@ export const getUserOrganization = async (userId: string) => {
       console.error('Error inesperado al obtener rol:', roleErr);
     }
     
+    // Extraer el nombre del rol de manera segura
+    let roleName = null;
+    if (roleData && roleData.roles) {
+      // Manejar tanto si roles es un objeto como si es un array
+      if (Array.isArray(roleData.roles)) {
+        roleName = roleData.roles.length > 0 ? roleData.roles[0].name : null;
+      } else if (roleData.roles && typeof roleData.roles === 'object') {
+        // Verificar que roles es un objeto y que tiene la propiedad name
+        roleName = roleData.roles.name || null;
+      }
+    }
+    
     return { 
       organization: {
         id: orgData.id,
@@ -214,7 +226,7 @@ export const getUserOrganization = async (userId: string) => {
       },
       branch_id: activeBranchId, // También lo dejamos en la raíz para el nuevo código
       branches,
-      role: roleData?.roles?.name || null,
+      role: roleName,
       hasBranches: branches.length > 0
     };
   } catch (error) {

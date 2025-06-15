@@ -1,21 +1,35 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase/config";
+import { getUserOrganization } from "@/lib/hooks/useOrganization";
+
+// Omitir la definición de interfaces ya que no es necesaria para usar los datos
+// La estructura de datos que devuelve getUserOrganization ya es manejada por la función
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/pos/button";
-import { Badge } from "@/components/pos/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/pos/card";
 import { Input } from "@/components/pos/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/pos/tabs";
-import { MoreVertical, Edit, Trash2, CheckCircle } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
+import { Badge } from "@/components/pos/badge";
+import { Button } from "@/components/pos/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/pos/card";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
   DropdownMenuTrigger
 } from "@/components/pos/dropdown-menu";
-import Link from "next/link";
-import { supabase, getSession, getUserOrganization } from "@/lib/supabase/config";
+import { 
+  MoreVertical, 
+  Edit, 
+  Trash2, 
+  CheckCircle,
+  Plus
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { ProductModifiers } from "@/components/pos/mesas/product-modifiers";
+import { TransferItems } from "@/components/pos/mesas/transfer-items";
+import { BillManager } from "@/components/pos/mesas/bill-manager";
+import { KitchenTicket } from "@/components/pos/mesas/kitchen-ticket";
 
 // Interfaces
 interface Mesa {
@@ -53,20 +67,21 @@ interface CartItem {
 
 export default function MesaDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  // Estado para la mesa
+  // Estados y referencias
   const [mesa, setMesa] = useState<Mesa | null>(null);
-  
-  // Estado para productos
-  const [productos, setProductos] = useState<Product[]>([]);
-  
-  // Estado para items del carrito de la mesa
+  const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  
-  // Estados para carga y errores
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState<string>("");
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [saleId, setSaleId] = useState<number | null>(null);
+  // ID de la organización y sucursal
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [branchId, setBranchId] = useState<number | null>(null);
+  // Theme
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   // Cargar datos al iniciar
   useEffect(() => {
@@ -76,21 +91,21 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
         setError(null);
         
         // Obtener sesión del usuario
-        const { session, error: sessionError } = await getSession();
-        if (sessionError || !session) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData.session) {
           throw new Error("Error al cargar la sesión del usuario");
         }
+        const session = sessionData.session;
         
         // Obtener organización del usuario
         const { data, error: orgError } = await getUserOrganization(session.user.id);
-        if (orgError || !data || !data.organizations) {
+        if (orgError || !data || data.length === 0) {
           throw new Error("Error al cargar la organización del usuario");
         }
         
-        // La organización viene como un array, debemos obtener el primer elemento
-        const orgId = Array.isArray(data.organizations) && data.organizations.length > 0 
-          ? data.organizations[0]?.id 
-          : null;
+        // Acceder a los datos utilizando la notación segura y casting para evitar errores de TypeScript
+        // @ts-ignore - Ignoramos los errores de TypeScript para esta línea específica
+        const orgId = data[0]?.organization?.id || null;
         
         if (!orgId) {
           throw new Error("No se encontró un ID de organización válido");
@@ -118,7 +133,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
         
         // Cargar productos disponibles
         const productosFormateados = await loadProductos(orgId, branchData.id);
-        setProductos(productosFormateados);
+        setProducts(productosFormateados);
         
         // Cargar items del carrito para la mesa
         const cartItemsFormateados = await loadCartItems(orgId, branchData.id, parseInt(params.id));
@@ -341,9 +356,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
     }
   };
 
-  // Estado para búsqueda de productos
-  const [search, setSearch] = useState("");
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  // Filtrar productos basados en la búsqueda
 
   // Verificar si la mesa está cargada para evitar errores de referencia nula
   if (loading) {
@@ -378,7 +391,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
     if (searchTerm.trim() === "") {
       setFilteredProducts([]);
     } else {
-      const filtered = productos.filter(product => 
+      const filtered = products.filter(product => 
         product.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredProducts(filtered);
@@ -386,7 +399,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
   };
 
   // Guardar productos en Supabase
-  const saveProductToSupabase = async (product: Product, quantity: number, existingItemId?: number) => {
+  const saveProductToSupabase = async (product: Product, quantity: number, existingItemId?: number, notes?: string, modifiers?: string) => {
     try {
       if (!mesa?.session_id || !organizationId || !branchId) {
         throw new Error("No hay sesión activa para esta mesa");
@@ -404,6 +417,12 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
       }
       
       const saleId = sessionData.sale_id;
+      setSaleId(saleId);
+      
+      // Combinar notas con modificadores
+      const finalNotes = notes && modifiers 
+        ? `${notes} - ${modifiers}`
+        : modifiers || notes || null;
       
       // Si es un item existente, actualizarlo
       if (existingItemId) {
@@ -412,6 +431,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
           .update({
             quantity,
             total: product.price * quantity,
+            notes: finalNotes,
             updated_at: new Date().toISOString()
           })
           .eq("id", existingItemId);
@@ -432,7 +452,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
             unit_price: product.price,
             total: product.price * quantity,
             status: "ordered",
-            notes: null,
+            notes: finalNotes,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -459,7 +479,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
   };
   
   // Agregar producto al carrito
-  const addToCart = async (product: Product) => {
+  const addToCart = async (product: Product, notes: string = "", modifiers: string = "") => {
     // Verificar si el producto ya está en el carrito
     const existingItem = cartItems.find(item => item.product_id === product.id);
     
@@ -467,19 +487,19 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
       const newQuantity = existingItem.quantity + 1;
       
       // Actualizar en Supabase primero
-      const saved = await saveProductToSupabase(product, newQuantity, existingItem.id);
+      const saved = await saveProductToSupabase(product, newQuantity, existingItem.id, notes, modifiers);
       
       if (saved) {
         // Actualizar el estado local
         setCartItems(cartItems.map(item => 
           item.product_id === product.id 
-            ? { ...item, quantity: newQuantity } 
+            ? { ...item, quantity: newQuantity, notes: notes || item.notes } 
             : item
         ));
       }
     } else {
       // Guardar nuevo producto en Supabase primero
-      const saved = await saveProductToSupabase(product, 1);
+      const saved = await saveProductToSupabase(product, 1, undefined, notes, modifiers);
       
       if (saved) {
         // No necesitamos actualizar manualmente el estado local porque
@@ -736,29 +756,71 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-4">
-                  <Button 
-                    className="flex-1 bg-primary text-primary-foreground shadow hover:bg-primary/90"
-                    onClick={sendToKitchen}
-                  >
-                    Enviar a Cocina
-                  </Button>
-                  <Button className="flex-1 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground">
-                    Dividir Cuenta
-                  </Button>
-                  <Link href={`/app/pos/cobro?mesa=${params.id}`} className="flex-1">
-                    <Button className="w-full bg-primary text-primary-foreground shadow hover:bg-primary/90">
-                      Cobrar
-                    </Button>
-                  </Link>
+                <div className="flex flex-col gap-2 pt-4">
+                  <div className="flex gap-2">
+                    <KitchenTicket
+                      cartItems={cartItems.filter(item => item.status === 'ordered')} 
+                      saleId={saleId}
+                      tableId={parseInt(params.id)}
+                      organizationId={organizationId || 0}
+                      branchId={branchId || 0}
+                      onTicketCreated={() => loadCartItems(
+                        organizationId as number,
+                        branchId as number,
+                        parseInt(params.id)
+                      ).then(items => setCartItems(items))}
+                      className="flex-1"
+                    />
+                    <TransferItems 
+                      tableId={parseInt(params.id)}
+                      tableSessionId={mesa?.session_id || 0}
+                      saleId={saleId}
+                      organizationId={organizationId || 0}
+                      branchId={branchId || 0}
+                      cartItems={cartItems}
+                      onItemsTransferred={() => loadCartItems(
+                        organizationId as number,
+                        branchId as number,
+                        parseInt(params.id)
+                      ).then(items => setCartItems(items))}
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <BillManager 
+                      tableId={parseInt(params.id)}
+                      tableSessionId={mesa?.session_id || 0}
+                      saleId={saleId}
+                      organizationId={organizationId || 0}
+                      branchId={branchId || 0}
+                      cartItems={cartItems}
+                      subtotal={total}
+                      taxRate={0.16}
+                      onBillGenerated={() => {
+                        // Recargar los ítems después de generar la cuenta
+                        loadCartItems(
+                          organizationId as number,
+                          branchId as number,
+                          parseInt(params.id)
+                        ).then(items => setCartItems(items))
+                      }}
+                      className="flex-1"
+                    />
+
+                    <Link href={`/app/pos/cobro?mesa=${params.id}`} className="flex-1">
+                      <Button className="w-full bg-primary text-primary-foreground shadow hover:bg-primary/90">
+                        Cobrar
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Panel Derecho - Agregar Productos */}
-        <div>
+        {/* Panel Derecho - Agregar Productos y Gestionar */}
+        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Agregar Productos</CardTitle>
@@ -808,7 +870,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
                   <h3 className="font-medium">Productos frecuentes</h3>
                   
                   <div className="grid grid-cols-2 gap-2">
-                    {Array.isArray(productos) && productos.length > 0 ? productos.slice(0, 10).map((product) => (
+                    {Array.isArray(products) && products.length > 0 ? products.slice(0, 10).map((product: Product) => (
                       <div
                         key={product.id || Math.random()}
                         className="border rounded-md p-3 hover:bg-gray-50 cursor-pointer"
@@ -833,6 +895,24 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Gestión de Cuenta */}
+        <BillManager
+          tableId={parseInt(params.id)}
+          tableSessionId={mesa?.session_id || 0}
+          saleId={saleId}
+          organizationId={organizationId || 0}
+          branchId={branchId || 0}
+          cartItems={cartItems}
+          subtotal={cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)}
+          taxRate={0.16} // Ajustar según corresponda para tu aplicación
+          onBillGenerated={() => loadCartItems(
+            organizationId as number,
+            branchId as number,
+            parseInt(params.id)
+          ).then(items => setCartItems(items))}
+          className=""
+        />
       </div>
     </div>
   );

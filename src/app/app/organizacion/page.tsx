@@ -180,9 +180,10 @@ export default function OrganizacionPage() {
         
         // Get user's organization and role from organization_members
         const { data: memberData, error: memberError } = await supabase
-        .from('profiles')
+        .from('organization_members')
         .select('role_id, organization_id')
-        .eq('id', userId)
+        .eq('user_id', userId)
+        .eq('organization_id', localStorage.getItem('currentOrganizationId'))
         .single();
         
         if (memberError) {

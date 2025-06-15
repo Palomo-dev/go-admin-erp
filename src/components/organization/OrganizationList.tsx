@@ -32,15 +32,14 @@ export default function OrganizationList({ showActions = false, onDelete }: Orga
       // Get current user session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No se encontró sesión de usuario');
-
+    
       // Get user's organizations with role information and current organization
       // Get user's profile to know their current organization
       const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+        .from('organization_members')
         .select('organization_id, role_id')
-        .eq('id', session.user.id)
-        .single();
-
+        .eq('user_id', session.user.id)
+    
       if (profileError) throw profileError;
 
       // Get organizations where user is owner

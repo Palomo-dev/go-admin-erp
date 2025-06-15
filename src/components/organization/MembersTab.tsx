@@ -45,25 +45,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
 
       // Fetch members from profiles with a join to roles and branches to get role and branch names
       const { data: membersData, error: membersError } = await supabase
-          .from('profiles')
-          .select(`
-            id, 
-            role_id, 
-            is_owner, 
-            status, 
-            created_at, 
-            first_name, 
-            last_name, 
-            email, 
-            avatar_url,
-            branch_id,
-            roles(id, name),
-            profiles_branch_id_fkey(id, name)
-          `)
-          .eq('organization_id', orgId);
+        .rpc('get_profiles_by_organization', { org_id: orgId });
 
       console.log('Members data:', membersData);
-      
+
       if (membersError) {
         console.error('Error al obtener miembros:', membersError);
         throw membersError;
@@ -159,7 +144,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       
       // Update the member's role_id in profiles table
       const { error } = await supabase
-        .from('profiles')
+        .from('organization_members')
         .update({ role_id: roleId })
         .eq('id', memberId)
         .eq('organization_id', orgId);
@@ -194,14 +179,13 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   const updateMemberBranch = async (memberId: string, branchId: string) => {
     try {
       setUpdatingBranch(true);
-      
+      console.log(memberId);  
       // Update the member's branch_id in profiles table
       const { error } = await supabase
-        .from('profiles')
+        .from('member_branches')
         .update({ branch_id: branchId })
         .eq('id', memberId)
-        .eq('organization_id', orgId);
-
+      
       if (error) throw error;
       
       // Find the branch name
@@ -238,11 +222,11 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       
       // Update the member's status in profiles table
       const { error } = await supabase
-        .from('profiles')
+        .from('organization_members')
         .update({ status: newStatus })
         .eq('id', memberId)
         .eq('organization_id', orgId);
-
+      
       if (error) throw error;
       
       // Update local member data

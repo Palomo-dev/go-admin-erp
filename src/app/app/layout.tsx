@@ -608,6 +608,7 @@ const SidebarNavigation = ({
       title: "Organización",
       items: [
         { name: "Calendario", href: "/app/calendario", icon: <Calendar size={18} /> },
+        { name: "Clientes", href: "/app/clientes", icon: <Users size={18} /> },
         { name: "Organización", href: "/app/organizacion", icon: <Building2 size={18} /> },
         { name: "Reportes", href: "/app/reportes", icon: <BarChart3 size={18} /> },
         { name: "Timeline", href: "/app/timeline", icon: <CalendarClock size={18} /> },

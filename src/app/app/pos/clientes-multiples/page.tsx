@@ -324,16 +324,16 @@ export default function ClientesMultiplesPage() {
                 {categories.map((category) => (
                   <TabsContent key={category} value={category} className="space-y-3 mt-3">
                     {filteredProducts
-                      .filter(product => product.category === category)
+                      .filter(product => category === "Todos" ? true : product.category === category)
                       .map(product => (
                         <div
                           key={Number(product.id)}
-                          className="flex justify-between items-center border rounded-md p-3 hover:bg-gray-50 cursor-pointer"
+                          className="flex justify-between items-center border rounded-md p-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                           onClick={() => addToCart(product)}
                         >
                           <div>
                             <div className="font-medium">{product.name}</div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
                               {product.category}
                             </div>
                           </div>
@@ -342,6 +342,11 @@ export default function ClientesMultiplesPage() {
                           </div>
                         </div>
                       ))}
+                      {filteredProducts.filter(product => category === "Todos" ? true : product.category === category).length === 0 && (
+                        <div className="text-center py-3 text-gray-500 dark:text-gray-400">
+                          No hay productos en esta categoría
+                        </div>
+                      )}
                   </TabsContent>
                 ))}
               </Tabs>

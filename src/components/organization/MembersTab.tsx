@@ -96,29 +96,63 @@ export default function MembersTab({ orgId }: { orgId: number }) {
     try {
       setLoading(true);
 
-      // Fetch members from profiles with a join to roles and branches to get role and branch names
+      // Fetch members from organization_members joined with profiles and roles
       const { data: membersData, error: membersError } = await supabase
-          .from('profiles')
+          .from('organization_members')
           .select(`
             id, 
-            role_id, 
-            is_owner, 
-            status, 
-            created_at, 
-            first_name, 
-            last_name, 
-            email, 
-            avatar_url,
-            branch_id,
-            roles(id, name),
-            profiles_branch_id_fkey(id, name)
+            role_id,
+            role,
+            organization_id,
+            user_id,
+            is_super_admin,
+            is_active,
+            created_at,
+            profiles!organization_members_user_id_fkey1(id, first_name, last_name, email, avatar_url, status),
+            roles!organization_members_role_id_fkey(id, name, description)
           `)
           .eq('organization_id', orgId);
 
-      console.log('Members data:', membersData);
+      // Obtener información de sucursales para cada miembro
+      if (membersData && membersData.length > 0) {
+        // Array para almacenar los ids de miembros
+        const memberIds = membersData.map(member => member.id);
+        
+        // Obtener todas las asignaciones de sucursales para estos miembros
+        const { data: branchAssignments, error: branchError } = await supabase
+          .from('member_branches')
+          .select(`
+            organization_member_id,
+            branch_id,
+            branches!member_branches_branch_id_fkey(id, name)
+          `)
+          .in('organization_member_id', memberIds);
+
+        if (branchError) {
+          console.error('Error al cargar asignaciones de sucursales:', branchError);
+        }
+        
+        // Crear un mapa de asignaciones de sucursales por miembro
+        const branchAssignmentMap = branchAssignments ? branchAssignments.reduce((map, assignment) => {
+          const memberId = assignment.organization_member_id;
+          if (!map[memberId]) map[memberId] = [];
+          map[memberId].push({
+            branch_id: assignment.branch_id,
+            branch_name: assignment.branches?.name || 'Sin nombre'
+          });
+          return map;
+        }, {} as Record<number, Array<{branch_id: number, branch_name: string}>>) : {};
+        
+        // Asignar la información de sucursales a cada miembro
+        membersData.forEach(member => {
+          member.branchAssignments = branchAssignmentMap[member.id] || [];
+        });
+      }
+      
+      console.log('Datos de miembros cargados:', membersData);
       
       if (membersError) {
-        console.error('Error al obtener miembros:', membersError);
+        console.error('Error al obtener información de miembro:', membersError);
         throw membersError;
       }
 
@@ -127,6 +161,21 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         setMembers([]);
         return;
       }
+      
+      // Eliminar duplicados basados en user_id
+      // Esto asegura que cada usuario aparezca solo una vez en la lista
+      const uniqueUserIds = new Set<string>();
+      const uniqueMembersData = membersData.filter(member => {
+        // Si ya hemos visto este user_id, lo filtramos
+        if (uniqueUserIds.has(member.user_id)) {
+          return false;
+        }
+        // Si es la primera vez que vemos este user_id, lo mantenemos
+        uniqueUserIds.add(member.user_id);
+        return true;
+      });
+      
+      console.log('Datos de miembros sin duplicados:', uniqueMembersData.length, 'de', membersData.length, 'registros originales');
 
       // We'll use the roleUtils functions instead of defining the map here
 
@@ -134,27 +183,37 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       type MemberData = any;
 
       // Format the member data with proper role names
-      const formattedMembers = membersData.map((member: MemberData) => {
-        const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Sin nombre';
-        const roleInfo = getRoleInfoById(member.role_id);
-      
+      const formattedMembers = uniqueMembersData.map((member: MemberData) => {
+        const profile = member.profiles || {};
+        const role = member.roles || {};
+        const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Sin nombre';
+        
+        // Para obtener información de roles, ahora usamos los datos relacionados directamente
+        const roleName = role.name || 'Sin rol';
+        const roleCode = roleName.toLowerCase().replace(' ', '_');
+        
+        // Obtener información de la primera sucursal asignada (si existe)
+        let branchId = null;
         let branchName = 'Sin sucursal';
-        if (member.profiles_branch_id_fkey && typeof member.profiles_branch_id_fkey === 'object') {
-          branchName = member.profiles_branch_id_fkey.name || 'Sin sucursal';
+        
+        if (member.branchAssignments && member.branchAssignments.length > 0) {
+          branchId = member.branchAssignments[0].branch_id;
+          branchName = member.branchAssignments[0].branch_name;
         }
-      
+        
         return {
           id: member.id,
-          user_id: member.id,
+          user_id: member.user_id,
           full_name: fullName,
-          email: member.email || 'Sin email',
-          role: roleInfo.name,
+          email: profile.email || 'Sin email',
+          role: roleName,
           role_id: member.role_id,
-          role_code: roleInfo.code,
-          is_admin: member.is_owner,
-          status: member.status ? "Activo" : "Inactivo",
-          branch_id: member.branch_id,
+          role_code: roleCode,
+          is_admin: member.is_super_admin || false,
+          status: member.is_active ? "Activo" : "Inactivo",
+          branch_id: branchId,
           branch_name: branchName,
+          branch_assignments: member.branchAssignments || [],
           created_at: new Date(member.created_at).toLocaleDateString()
         };
       });

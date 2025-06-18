@@ -179,11 +179,10 @@ export default function OrganizacionPage() {
         console.log(userId);
         
         // Get user's organization and role from organization_members
-        const { data: memberData, error: memberError } = await supabase
-        .from('profiles')
-        .select('role_id, organization_id')
-        .eq('id', userId)
-        .single();
+        const { data: memberDataList, error: memberError } = await supabase
+        .from('organization_members')
+        .select('role_id, organization_id, role')
+        .eq('user_id', userId);
         
         if (memberError) {
           console.error('Error al obtener información de miembro:', memberError);
@@ -191,12 +190,19 @@ export default function OrganizacionPage() {
           return;
         }
 
-        console.log(memberData);
+        // Verificar si hay resultados
+        if (!memberDataList || memberDataList.length === 0) {
+          console.error('No se encontró información de membresía para este usuario');
+          setError('Usuario no pertenece a ninguna organización');
+          return;
+        }
+
+        // Utilizar el primer registro por defecto
+        const memberData = memberDataList[0];
+        console.log('Información de miembro encontrada:', memberData);
         
         // Set role directly from organization_members
-        setUserRole(memberData.role_id || 'Sin rol');
-
-        console.log(memberData);  
+        setUserRole(memberData.role_id || memberData.role || 'Sin rol');  
         
         // Extract organization data safely
         if (memberData?.organization_id) {

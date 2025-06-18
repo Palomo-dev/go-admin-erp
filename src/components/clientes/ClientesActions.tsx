@@ -17,6 +17,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,51 +95,69 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
 
   return (
     <div className="flex items-center space-x-2">
-      {/* Nuevo cliente */}
-      <Button
-        onClick={handleNewCustomerClick}
-        className="bg-blue-600 hover:bg-blue-700 text-white"
-        size="sm"
-      >
-        <Plus className="mr-2 h-4 w-4" />
-        Nuevo cliente
-      </Button>
+      <TooltipProvider>
+        {/* Nuevo cliente */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="default"
+              size="sm"
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => window.location.href = '/app/clientes/new'}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Nuevo cliente
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Crear un nuevo cliente</TooltipContent>
+        </Tooltip>
 
-      {/* Exportar a CSV */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onExportCSV}
-          >
-            <Download className="h-4 w-4" />
-            <span className="sr-only">Exportar a CSV</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Exportar a CSV</p>
-        </TooltipContent>
-      </Tooltip>
-
-      {/* Etiquetado masivo */}
-      <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="outline"
-              size="icon"
+              size="sm"
               disabled={!selectedCustomers.length}
               onClick={() => setIsTagDialogOpen(true)}
             >
-              <Tag className="h-4 w-4" />
-              <span className="sr-only">Etiquetar</span>
+              <Tag className="w-4 h-4 mr-1" />
+              Etiquetar
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Etiquetar seleccionados</p>
-          </TooltipContent>
+          <TooltipContent>Aplicar etiquetas a clientes seleccionados</TooltipContent>
         </Tooltip>
+        
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!selectedCustomers.length}
+              onClick={() => setIsMergeDialogOpen(true)}
+            >
+              <Users className="w-4 h-4 mr-1" />
+              Unificar
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Unificar clientes duplicados</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onExportCSV}
+            >
+              <Download className="w-4 h-4 mr-1" />
+            Exportar
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Exportar a CSV</TooltipContent>
+      </Tooltip>
+      </TooltipProvider>
+
+      <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Etiquetar clientes</DialogTitle>
@@ -204,22 +223,24 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
 
       {/* Fusionar duplicados */}
       <Dialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={selectedCustomers.length < 2}
-              onClick={() => setIsMergeDialogOpen(true)}
-            >
-              <Users className="h-4 w-4" />
-              <span className="sr-only">Fusionar duplicados</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Fusionar duplicados</p>
-          </TooltipContent>
-        </Tooltip>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={selectedCustomers.length < 2}
+                onClick={() => setIsMergeDialogOpen(true)}
+              >
+                <Users className="h-4 w-4" />
+                <span className="sr-only">Fusionar duplicados</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Fusionar duplicados</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Fusionar clientes duplicados</DialogTitle>

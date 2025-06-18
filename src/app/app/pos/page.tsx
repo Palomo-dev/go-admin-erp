@@ -96,7 +96,7 @@ export default function POSPage() {
         // PASO 1: Obtener miembros activos para el usuario
         const { data: memberData, error: memberError } = await supabase
           .from("organization_members")
-          .select("id, organization_id, branch_id, role")
+          .select("id, organization_id, role, role_id")
           .eq("user_id", session.user.id)
           .eq("is_active", true);
         
@@ -115,7 +115,7 @@ export default function POSPage() {
         // Usar el primer miembro activo encontrado
         const member = memberData[0];
         const organizationId = member.organization_id;
-        const memberBranchId = member.branch_id;
+        let defaultBranchId = null; // Inicialmente no hay sucursal asignada
         
         // PASO 2: Obtener datos de la organización
         const { data: organization, error: orgError } = await supabase
@@ -142,6 +142,12 @@ export default function POSPage() {
           // Continuamos aunque no haya sucursales
         }
         
+        // Si hay sucursales, usamos la primera como predeterminada
+        if (branches && branches.length > 0) {
+          defaultBranchId = branches[0].id.toString();
+          console.log("Usando la primera sucursal como predeterminada:", defaultBranchId);
+        }
+        
         // Preparamos la estructura de datos esperada
         const formattedData = [
           {
@@ -160,7 +166,7 @@ export default function POSPage() {
               // Asignamos las sucursales
               branches: branches || []
             },
-            branch_id: memberBranchId
+            branch_id: defaultBranchId
           }
         ];
         

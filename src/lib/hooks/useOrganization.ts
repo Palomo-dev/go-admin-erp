@@ -21,10 +21,10 @@ interface DbOrganization {
 interface DbOrganizationMember {
   id: number;
   organization_id: number;
-  branch_id: number | null;
   user_id: string;
   role?: string;
   is_active: boolean;
+  role_id?: number;
 }
 
 // Interfaces para la respuesta formateada
@@ -73,7 +73,7 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
     // Paso 1: Obtener el miembro de la organización
     const { data: memberData, error: memberError } = await supabase
       .from("organization_members")
-      .select("id, organization_id, branch_id, role")
+      .select("id, organization_id, role, role_id")
       .eq("user_id", userId)
       .eq("is_active", true);
 
@@ -144,8 +144,8 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
           // Asignamos las sucursales
           branches: branches
         },
-        // Aseguramos que branch_id sea el correcto del miembro
-        branch_id: member.branch_id
+        // Usamos la primera sucursal como predeterminada, si existe
+        branch_id: branches && branches.length > 0 ? branches[0].id : null
       }
     ];
     

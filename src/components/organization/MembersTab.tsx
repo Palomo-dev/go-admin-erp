@@ -52,8 +52,9 @@ const getRoleIdByCode = (code: string): number | null => {
 
 const formatRolesForDropdown = (roles: any[]): any[] => {
   return roles.map(role => ({
-    value: roleCodeMap[role.id] || `role_${role.id}`,
-    label: role.name
+    id: role.id,
+    code: roleCodeMap[role.id] || `role_${role.id}`,
+    name: role.name
   }));
 };
 
@@ -493,7 +494,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       <option key={`select-role-default-${member.id}`} value="">Seleccionar rol</option>
                       {roles.map((role, roleIndex) => (
                         <option key={`role-${role.id || roleIndex}-${member.id}`} value={role.code}>
-                          {roleDisplayMap[role.code] || role.name}
+                          {role.name}
                         </option>
                       ))}
                     </select>

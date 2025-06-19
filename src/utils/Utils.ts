@@ -28,3 +28,20 @@ export function formatCurrency(amount: number, currency: string = 'COP', locale:
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+/**
+ * Formatea una fecha en formato legible
+ * 
+ * @param date - Fecha a formatear
+ * @param locale - Configuración regional (por defecto es-ES)
+ * @returns Cadena de fecha formateada
+ */
+export function formatDate(date: Date, locale: string = 'es-ES'): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}

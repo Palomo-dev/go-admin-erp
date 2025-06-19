@@ -12,11 +12,14 @@ import {
   proceedWithLogin,
 } from '@/lib/auth';
 
-// Definir el tipo para organizaciones
+// Define organization type
 type Organization = {
-  id: string;
+  id: number;
   name: string;
-  slug: string;
+  type_id: {
+    name: string;
+  };
+  role_id?: number;
 };
 
 export default function LoginPage() {

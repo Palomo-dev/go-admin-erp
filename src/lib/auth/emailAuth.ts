@@ -1,11 +1,31 @@
 import { supabase, signInWithEmail } from '@/lib/supabase/config';
 
+interface OrganizationType {
+  name: string;
+}
+
+interface OrganizationResponse {
+  id: number;
+  name: string;
+  type_id: number;
+  organization_types: OrganizationType;
+}
+
+interface Organization {
+  id: number;
+  name: string;
+  type_id: {
+    name: string;
+  };
+  role_id?: number;
+}
+
 export interface EmailLoginParams {
   email: string;
   password: string;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  setUserOrganizations: (orgs: any[]) => void;
+  setUserOrganizations: (orgs: Organization[]) => void;
   setShowOrgPopup: (show: boolean) => void;
   proceedWithLogin: (data: any) => void;
 }
@@ -19,16 +39,13 @@ export const handleEmailLogin = async ({
   setShowOrgPopup,
   proceedWithLogin
 }: EmailLoginParams) => {
-
   setLoading(true);
   setError(null);
 
   try {
-    // Add remember me option to the login
     const { data, error } = await signInWithEmail(email, password);
     
     if (error) {
-      // Personalizar mensajes de error para hacerlos más amigables
       if (error.message.includes('Invalid login credentials')) {
         throw new Error('El usuario no existe o las credenciales son incorrectas. Por favor verifica tu email y contraseña.');
       } else if (error.message.includes('Email not confirmed')) {
@@ -40,70 +57,47 @@ export const handleEmailLogin = async ({
       }
     }
     
-    // User authenticated successfully, now check their organizations
-    if (data.user) {
-      // Obtener el perfil del usuario usando su email
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('role_id, organization_id')
-        .eq('email', email);
-        
-      if (profileError) {
-        console.error('Error al obtener perfil:', profileError);
-        throw new Error('Error al verificar acceso. Por favor intenta nuevamente.');
-      }
-      
-      if (!profileData || profileData.length === 0) {
-        throw new Error('No se encontró un perfil asociado a este usuario.');
-      }
-      
-      // Get all organizations this user belongs to
-      const userOrgs = profileData.map(profile => ({
-        id: profile.organization_id,
-        name: '',
-      }));
-      
-      // If user has organizations, fetch their details
-      if (userOrgs.length > 0) {
-        const orgIds = userOrgs.map(org => org.id);
-        const { data: orgsData, error: orgsError } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .in('id', orgIds);
-          
-        if (orgsError) {
-          console.error('Error al obtener organizaciones del usuario:', orgsError);
-          throw new Error('Error al verificar organizaciones. Por favor intenta nuevamente.');
-        }
-        
-        if (orgsData && orgsData.length > 0) {
-          
-          setUserOrganizations(orgsData);
-          
-          // If user has only one organization, select it automatically
-          if (orgsData.length === 1) {
-            const singleOrg = orgsData[0];
-            
-            // Save organization info to localStorage
-            localStorage.setItem('currentOrganizationId', singleOrg.id);
-            localStorage.setItem('currentOrganizationName', singleOrg.name);
-            localStorage.setItem('userRole', profileData[0].role_id || 'user');
-            
-            // Continue with login process
-            proceedWithLogin(data);
-          } else {
-            // User has multiple organizations, show popup for selection
-            setShowOrgPopup(true);
-            setLoading(false);
-            return; // Stop here until user selects an organization
-          }
-        } else {
-          throw new Error('No se encontraron organizaciones asociadas a este usuario.');
-        }
-      } else {
-        throw new Error('El usuario no pertenece a ninguna organización.');
-      }
+    if (!data?.user) {
+      throw new Error('No se pudo obtener la información del usuario');
     }
+
+    // Get user's organizations where they are owner
+    const { data: ownedOrgs, error: ownedError } = await supabase
+  .from('organizations')
+  .select(`
+    id,
+    name,
+    type_id,
+    organization_types:organization_types!fk_organizations_organization_type(name)
+  `)
+  .eq('owner_user_id', data.user.id);
+
+    console.log(ownedOrgs);
+
+    if (ownedError) {
+      throw ownedError;
+    }
+
+    // Transform organizations data
+    const organizations = (ownedOrgs || []).map((org: any) => ({
+      id: org.id,
+      name: org.name,
+      type_id: { name: org.organization_types ? org.organization_types.name : 'Unknown' },
+      role_id: 2 // Owner role
+    }));
+
+    // If user has organizations, show selection popup
+    if (organizations.length > 0) {
+      setUserOrganizations(organizations);
+      setShowOrgPopup(true);
+      setLoading(false);
+      return;
+    }
+
+    // If no organizations found, proceed with login
+    // The user might be invited to join an organization later
+    proceedWithLogin(data);
+    setLoading(false);
   } catch (err: any) {
     setError(err.message || 'Error al iniciar sesión');
     setLoading(false);

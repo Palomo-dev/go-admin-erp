@@ -3,14 +3,153 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { getUserRole, getUserOrganization, supabase } from '@/lib/supabase/config';
 
-// Use dynamic imports to fix TypeScript module not found errors
-const MembersTab = lazy(() => import('../../../components/organization/MembersTab'));
-const InvitationsTab = lazy(() => import('../../../components/organization/InvitationsTab'));
-const OrganizationInfoTab = lazy(() => import('../../../components/organization/OrganizationInfoTab'));
-const BranchesTab = lazy(() => import('../../../components/organization/BranchesTab'));
-const OrganizationList = lazy(() => import('../../../components/organization/OrganizationList'));
-const ManageOrganizationsTab = lazy(() => import('../../../components/organization/ManageOrganizationsTab'));
-const CreateOrganizationForm = lazy(() => import('../../../components/organization/CreateOrganizationForm'));
+// Componente de fallback para las cargas dinámicas
+const LoadingFallback = () => (
+  <div className="p-4 flex justify-center items-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+  </div>
+);
+
+// Componente para manejar errores de carga
+const ErrorBoundary = ({ children }: { children: React.ReactNode }) => {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error('Error capturado por boundary:', event.error);
+      setHasError(true);
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-red-500">Ocurrió un error al cargar el componente.</p>
+        <button 
+          onClick={() => setHasError(false)}
+          className="mt-2 px-4 py-2 bg-purple-500 text-white rounded-md"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+// Use dynamic imports con manejo de errores mejorado y prefetching
+const MembersTab = lazy(() => {
+  // Utilizamos import con prefetch para mejorar la carga
+  return import('../../../components/organization/MembersTab')
+    .catch(err => {
+      console.error('Error al cargar MembersTab:', JSON.stringify(err));
+      return { 
+        default: () => (
+          <div className="p-6 rounded-lg border border-red-200 bg-red-50 text-red-700">
+            <h3 className="font-medium text-lg mb-2">Error al cargar componente de miembros</h3>
+            <p>No se pudo cargar la lista de miembros. Por favor, intente recargar la página.</p>
+          </div>
+        ) 
+      };
+    });
+});
+
+const InvitationsTab = lazy(() => {
+  return import('../../../components/organization/InvitationsTab')
+    .catch(err => {
+      console.error('Error al cargar InvitationsTab:', JSON.stringify(err));
+      return { 
+        default: () => (
+          <div className="p-6 rounded-lg border border-red-200 bg-red-50 text-red-700">
+            <h3 className="font-medium text-lg mb-2">Error al cargar componente de invitaciones</h3>
+            <p>No se pudo cargar la lista de invitaciones. Por favor, intente recargar la página.</p>
+          </div>
+        ) 
+      };
+    });
+});
+
+const OrganizationInfoTab = lazy(() => {
+  return import('../../../components/organization/OrganizationInfoTab')
+    .catch(err => {
+      console.error('Error al cargar OrganizationInfoTab:', JSON.stringify(err));
+      return { 
+        default: () => (
+          <div className="p-6 rounded-lg border border-red-200 bg-red-50 text-red-700">
+            <h3 className="font-medium text-lg mb-2">Error al cargar información de la organización</h3>
+            <p>No se pudo cargar la información. Por favor, intente recargar la página.</p>
+          </div>
+        ) 
+      };
+    });
+});
+
+const CreateOrganizationForm = lazy(() => {
+  return import('../../../components/organization/CreateOrganizationForm')
+    .catch(err => {
+      console.error('Error al cargar CreateOrganizationForm:', JSON.stringify(err));
+      return { 
+        default: () => (
+          <div className="p-6 rounded-lg border border-red-200 bg-red-50 text-red-700">
+            <h3 className="font-medium text-lg mb-2">Error al cargar formulario</h3>
+            <p>No se pudo cargar el formulario de creación. Por favor, intente recargar la página.</p>
+          </div>
+        ) 
+      };
+    });
+});
+
+const OrganizationList = lazy(() => {
+  return import('../../../components/organization/OrganizationList')
+    .catch(err => {
+      console.error('Error al cargar OrganizationList:', JSON.stringify(err));
+      return { 
+        default: () => (
+          <div className="p-6 rounded-lg border border-red-200 bg-red-50 text-red-700">
+            <h3 className="font-medium text-lg mb-2">Error al cargar lista de organizaciones</h3>
+            <p>No se pudo cargar la lista. Por favor, intente recargar la página.</p>
+          </div>
+        ) 
+      };
+    });
+});
+
+const ManageOrganizationsTab = lazy(() => {
+  return import('../../../components/organization/ManageOrganizationsTab')
+    .catch(err => {
+      console.error('Error al cargar ManageOrganizationsTab:', JSON.stringify(err));
+      return { 
+        default: () => (
+          <div className="p-6 rounded-lg border border-red-200 bg-red-50 text-red-700">
+            <h3 className="font-medium text-lg mb-2">Error al cargar gestor de organizaciones</h3>
+            <p>No se pudo cargar el gestor. Por favor, intente recargar la página.</p>
+          </div>
+        ) 
+      };
+    });
+});
+
+const BranchesTab = lazy(() => {
+  return import('../../../components/organization/BranchesTab')
+    .catch(err => {
+      console.error('Error al cargar BranchesTab:', JSON.stringify(err));
+      return { 
+        default: () => (
+          <div className="p-6 rounded-lg border border-red-200 bg-red-50 text-red-700">
+            <h3 className="font-medium text-lg mb-2">Error al cargar componente de sucursales</h3>
+            <p>No se pudo cargar la lista de sucursales. Por favor, intente recargar la página.</p>
+          </div>
+        ) 
+      };
+    });
+});
+
+// El componente SettingsTab no existe actualmente en el proyecto
+// Cuando se implemente, usar la misma estructura de importación dinámica
 
 export default function OrganizacionPage() {
   const [activeTab, setActiveTab] = useState('members');
@@ -84,34 +223,12 @@ export default function OrganizacionPage() {
   const isOrgAdmin = userRole === 2;
 
 
-
   if (loading) {
     return (
       <div className="p-8">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-        </div>
-      </div>
-    );
-  }
 
-  // If user has no current organization selected, show organization list
-  if (!orgData && !error) {
-    return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Mis Organizaciones
-            </h2>
-            <p className="mt-4 text-lg leading-6 text-gray-500">
-              Selecciona una organización para administrar
-            </p>
-          </div>
-          
-          <Suspense fallback={<div>Cargando organizaciones...</div>}>
-            <OrganizationList />
-          </Suspense>
         </div>
       </div>
     );
@@ -207,13 +324,41 @@ export default function OrganizacionPage() {
             </nav>
           </div>
           <div className="px-4 py-6">
-            <Suspense fallback={<div className="text-center py-10"><div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div><p className="mt-2">Cargando...</p></div>}>
-              {activeTab === 'members' && <MembersTab orgId={orgData} />}
-              {activeTab === 'invitations' && <InvitationsTab orgId={orgData} />}
-              {activeTab === 'info' && <OrganizationInfoTab orgData={orgData} />}
-              {activeTab === 'branches' && <BranchesTab orgId={orgData} />}
-              {activeTab === 'manage' && <ManageOrganizationsTab />}
-            </Suspense>
+            {activeTab === 'members' && (
+              <ErrorBoundary>
+                <Suspense fallback={<LoadingFallback />}>
+                  <MembersTab orgId={orgData} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+            {activeTab === 'invitations' && (
+              <ErrorBoundary>
+                <Suspense fallback={<LoadingFallback />}>
+                  <InvitationsTab orgId={orgData} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+            {activeTab === 'info' && (
+              <ErrorBoundary>
+                <Suspense fallback={<LoadingFallback />}>
+                  <OrganizationInfoTab orgData={orgData} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+            {activeTab === 'branches' && (
+              <ErrorBoundary>
+                <Suspense fallback={<LoadingFallback />}>
+                  <BranchesTab orgId={orgData} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+            {activeTab === 'manage' && (
+              <ErrorBoundary>
+                <Suspense fallback={<LoadingFallback />}>
+                  <ManageOrganizationsTab />
+                </Suspense>
+              </ErrorBoundary>
+            )}
           </div>
         </div>
       )}

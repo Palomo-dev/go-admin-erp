@@ -16,10 +16,13 @@ type PersonalInfoProps = {
   formData: FormData;
   updateFormData: (data: Partial<FormData>) => void;
   onNext: () => void;
+  error?: string | null;
+  loading?: boolean;
 };
 
-export default function PersonalInfoStep({ formData, updateFormData, onNext }: PersonalInfoProps) {
+export default function PersonalInfoStep({ formData, updateFormData, onNext, error, loading = false }: PersonalInfoProps) {
   const [formError, setFormError] = useState<string | null>(null);
+  const currentError = error || formError;
 
   const handleSubmit = async (data: RegistrationFormData) => {
     // Validate passwords match
@@ -55,8 +58,8 @@ export default function PersonalInfoStep({ formData, updateFormData, onNext }: P
         isEmployee={false}
         isReadOnlyEmail={false}
         onSubmit={handleSubmit}
-        isLoading={false}
-        error={formError}
+        isLoading={loading}
+        error={currentError}
       />
     </div>
   );

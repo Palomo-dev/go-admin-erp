@@ -99,59 +99,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
 
       // Fetch members from organization_members joined with profiles and roles
       const { data: membersData, error: membersError } = await supabase
-          .from('organization_members')
-          .select(`
-            id, 
-            role_id,
-            role,
-            organization_id,
-            user_id,
-            is_super_admin,
-            is_active,
-            created_at,
-            profiles!organization_members_user_id_fkey1(id, first_name, last_name, email, avatar_url, status),
-            roles!organization_members_role_id_fkey(id, name, description)
-          `)
-          .eq('organization_id', orgId);
+        .rpc('get_profiles_by_organization', { org_id: orgId });
 
-      // Obtener información de sucursales para cada miembro
-      if (membersData && membersData.length > 0) {
-        // Array para almacenar los ids de miembros
-        const memberIds = membersData.map(member => member.id);
-        
-        // Obtener todas las asignaciones de sucursales para estos miembros
-        const { data: branchAssignments, error: branchError } = await supabase
-          .from('member_branches')
-          .select(`
-            organization_member_id,
-            branch_id,
-            branches!member_branches_branch_id_fkey(id, name)
-          `)
-          .in('organization_member_id', memberIds);
+      console.log('Members data:', membersData);
 
-        if (branchError) {
-          console.error('Error al cargar asignaciones de sucursales:', branchError);
-        }
-        
-        // Crear un mapa de asignaciones de sucursales por miembro
-        const branchAssignmentMap = branchAssignments ? branchAssignments.reduce((map, assignment) => {
-          const memberId = assignment.organization_member_id;
-          if (!map[memberId]) map[memberId] = [];
-          map[memberId].push({
-            branch_id: assignment.branch_id,
-            branch_name: assignment.branches?.name || 'Sin nombre'
-          });
-          return map;
-        }, {} as Record<number, Array<{branch_id: number, branch_name: string}>>) : {};
-        
-        // Asignar la información de sucursales a cada miembro
-        membersData.forEach(member => {
-          member.branchAssignments = branchAssignmentMap[member.id] || [];
-        });
-      }
-      
-      console.log('Datos de miembros cargados:', membersData);
-      
       if (membersError) {
         console.error('Error al obtener información de miembro:', membersError);
         throw membersError;
@@ -272,7 +223,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       
       // Update the member's role_id in profiles table
       const { error } = await supabase
-        .from('profiles')
+        .from('organization_members')
         .update({ role_id: roleId })
         .eq('id', memberId)
         .eq('organization_id', orgId);
@@ -307,14 +258,13 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   const updateMemberBranch = async (memberId: string, branchId: string) => {
     try {
       setUpdatingBranch(true);
-      
+      console.log(memberId);  
       // Update the member's branch_id in profiles table
       const { error } = await supabase
-        .from('profiles')
+        .from('member_branches')
         .update({ branch_id: branchId })
         .eq('id', memberId)
-        .eq('organization_id', orgId);
-
+      
       if (error) throw error;
       
       // Find the branch name
@@ -351,11 +301,11 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       
       // Update the member's status in profiles table
       const { error } = await supabase
-        .from('profiles')
+        .from('organization_members')
         .update({ status: newStatus })
         .eq('id', memberId)
         .eq('organization_id', orgId);
-
+      
       if (error) throw error;
       
       // Update local member data

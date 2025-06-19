@@ -183,16 +183,17 @@ export default function AppLayout({
             
           // Obtener datos del rol del usuario
           const { data: userRoleData } = await supabase
-            .from('user_roles')
-            .select('*, roles(name)')
+            .from('organization_members')
+            .select('role')
             .eq('user_id', user.id)
+            .eq('organization_id', localStorage.getItem('currentOrganizationId'))
             .single();
           
           // Actualizar el estado del userData
           setUserData({
             name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
             email: user.email,
-            role: userRoleData?.roles?.name,
+            role: userRoleData?.role,
             avatar: profileData?.avatar_url
           });
         } catch (error) {

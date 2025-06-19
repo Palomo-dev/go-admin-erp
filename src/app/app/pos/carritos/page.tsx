@@ -67,73 +67,40 @@ export default function CarritosPage() {
       console.log("Datos de sesión:", session);
 
       // Obtenemos la organización y sucursal del usuario usando la función existente
-      const userOrgData = await getUserOrganization(session.user.id);
+      const { data: userOrg, error: orgError } = await supabase
+        .from('organization_members')
+        .select('id, organization_id, role_id')
+        .eq('user_id', session.user.id)
+        .eq('organization_id', localStorage.getItem('currentOrganizationId'))
+        .single();
       
       console.log("Datos de organización:", userOrgData);
 
-      if (!userOrgData || !userOrgData.organization) {
-        console.error("Error al obtener la organización:", userOrgData?.error || 'No hay organización');
+      if (orgError || !userOrg) {
+        console.error("Error al obtener la organización:", orgError);
         setError("No se pudo obtener la información de organización");
         setLoading(false);
         return;
       }
 
-      // Ya tenemos los datos de la organización y la sucursal en userOrgData
-      
-      // Verificamos si tenemos los UUIDs correctos para consultar los carritos
-      // La tabla carts espera UUIDs y no números en organization_id y branch_id
-      
-      // Primero verificamos si ya tenemos UUIDs válidos
-      let orgUuid = null;
-      let branchUuid = null;
-      
-      // Intentamos obtener el UUID de la organización
-      try {
-        const { data: orgData, error: orgUuidError } = await supabase
-          .from("organizations")
-          .select("uuid")
-          .eq("id", userOrgData.organization.id)
-          .single();
-        
-        if (orgUuidError) {
-          console.error("Error obteniendo UUID de organización:", orgUuidError);
-          setError("No se pudo obtener el identificador de la organización");
-          setLoading(false);
-          return;
-        }
-        
-        if (orgData && orgData.uuid) {
-          orgUuid = orgData.uuid;
-        } else {
-          console.error("No se encontró el UUID para la organización");
-          setError("Identificador de organización no encontrado");
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error("Error procesando UUID de organización:", err);
-        setError("Error al procesar los identificadores");
+      // Obtenemos los datos de la sucursal primaria del usuario
+      const { data: branchData, error: branchError } = await supabase
+        .from("member_branches")
+        .select("*")
+        .eq("organization_member_id", userOrg.id)
+        .single();
+
+      console.log("Datos de sucursal:", branchData);
+
+      if (branchError) {
+        console.error("Error al obtener la sucursal:", branchError);
+        setError("No se pudo obtener la información de sucursal");
         setLoading(false);
         return;
       }
       
-      // Ya tenemos el UUID de la organización, ahora consultemos los carritos directamente
-      // Ya que la tabla carts está configurada para usar organización por UUID
-      // pero la tabla branches usa IDs numéricos, adaptamos nuestra consulta
-      let branch_id = userOrgData.branch_id;
-      
-      if (!branch_id && userOrgData.branches && userOrgData.branches.length > 0) {
-        // Usar preferentemente una sucursal principal si existe
-        const mainBranch = userOrgData.branches.find(b => b.is_main === true);
-        branch_id = mainBranch ? mainBranch.id : userOrgData.branches[0].id;
-      }
-      
-      if (!branch_id) {
-        console.error("Error: No se encontraron sucursales disponibles");
-        setError("No hay sucursales disponibles para esta organización");
-        setLoading(false);
-        return;
-      }
+      const organization_id = userOrg.organization_id;
+      const branch_id = branchData.id;
 
       // Obtenemos los carritos de la organización actual
       // Solo traemos los que no han expirado

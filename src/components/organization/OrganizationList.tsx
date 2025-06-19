@@ -32,23 +32,15 @@ export default function OrganizationList({ showActions = false, onDelete }: Orga
       // Get current user session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No se encontró sesión de usuario');
-
+    
       // Get user's organizations with role information and current organization
-      // Use organization_members to know their current organization
-      const { data: memberData, error: memberError } = await supabase
+      // Get user's profile to know their current organization
+      const { data: profile, error: profileError } = await supabase
         .from('organization_members')
-        .select('organization_id, role_id, role')
-        .eq('user_id', session.user.id);
-
-      if (memberError) throw memberError;
-      
-      // Verificar si hay resultados
-      if (!memberData || memberData.length === 0) {
-        throw new Error('No se encontró información de membresía para este usuario');
-      }
-      
-      // Usar el primer registro como organización actual por defecto
-      const currentMembership = memberData[0];
+        .select('organization_id, role_id')
+        .eq('user_id', session.user.id)
+    
+      if (profileError) throw profileError;
 
       // Get organizations where user is owner
       const { data: ownedOrgs, error: ownedError } = await supabase

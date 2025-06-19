@@ -2,17 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import dynamic from 'next/dynamic';
+import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import LogoUploader from './LogoUploader';
-
-// Importar el ícono de manera dinámica para evitar problemas de carga
-const ExclamationCircleIcon = dynamic(
-  () => import('@heroicons/react/24/solid').then((mod) => mod.ExclamationCircleIcon),
-  {
-    ssr: false,
-    loading: () => <span className="h-5 w-5 bg-red-100 rounded-full"></span>
-  }
-);
 
 interface OrganizationData {
   name: string;

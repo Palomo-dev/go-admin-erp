@@ -4,6 +4,7 @@ import Image from 'next/image'; // Importación del componente Image de Next.js
 import { signOut, supabase } from '@/lib/supabase/config';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import BranchSelector from '@/components/common/BranchSelector';
 // Importación explícita de los iconos para evitar problemas
 import { 
   Bell, 
@@ -301,6 +302,15 @@ export default function AppLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
+  // Estado para almacenar el ID de la organización
+  const [orgId, setOrgId] = useState<string | null>(null);
+  
+  // Efecto para obtener el ID de la organización del localStorage (solo en cliente)
+  useEffect(() => {
+    const storedOrgId = localStorage.getItem('currentOrganizationId');
+    setOrgId(storedOrgId);
+  }, []);
+  
   return (
     <div className="flex h-screen">
       {/* Sidebar - con versión móvil que se muestra/oculta */}
@@ -390,6 +400,11 @@ export default function AppLayout({
               Panel de Administración
             </h2>
             <div className="flex items-center space-x-3">
+              {/* Branch Selector */}
+              {orgId && (
+                <BranchSelector organizationId={parseInt(orgId)} />
+              )}
+              
               {/* Botón para cambiar tema */}
               <button
                 onClick={toggleTheme}
@@ -447,16 +462,14 @@ export default function AppLayout({
                     {/* Información del usuario */}
                     <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                       <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{userData?.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                        <Mail size={12} className="mr-1" />
-                        {userData?.email}
-                      </p>
-                      {orgName && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                          <Building2 size={12} className="mr-1" />
-                          {orgName}
-                        </p>
-                      )}
+                      <div className="flex flex-col space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                        {userData?.role && (
+                          <p className="truncate">{userData.role}</p>
+                        )}
+                        {userData?.email && (
+                          <p className="truncate">{userData.email}</p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Opciones del menú */}
@@ -778,5 +791,3 @@ const SidebarNavigation = ({
     </div>
   );
 }
-
-

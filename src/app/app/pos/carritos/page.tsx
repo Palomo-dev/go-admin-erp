@@ -64,8 +64,6 @@ export default function CarritosPage() {
         return;
       }
 
-      console.log("Datos de sesión:", session);
-
       // Obtenemos la organización y sucursal del usuario usando la función existente
       const { data: userOrg, error: orgError } = await supabase
         .from('organization_members')
@@ -81,18 +79,14 @@ export default function CarritosPage() {
         setLoading(false);
         return;
       }
-
-      console.log("Datos de organización:", userOrg);
       
       // Obtenemos los datos de la sucursal primaria del usuario
       const { data: branchData, error: branchError } = await supabase
-        .from("member_branches")
-        .select("*")
-        .eq("organization_member_id", userOrg.id)
-        .eq("branch_id", localStorage.getItem('currentBranchId'))
+        .from("branches")
+        .select("uuid")
+        .eq("id", localStorage.getItem('currentBranchId'))
         .single();
       
-      console.log("Datos de sucursal:", branchData);
       
       if (branchError) {
         console.error("Error al obtener la sucursal:", branchError);
@@ -102,19 +96,32 @@ export default function CarritosPage() {
       }
       
       const organization_id = userOrg.organization_id;
-      const branch_id = branchData.id;
-
+      const branch_uuid = branchData.uuid;
+      
       // Obtenemos los carritos de la organización actual
       // Solo traemos los que no han expirado
       // Usamos el UUID obtenido para la consulta
-      console.log("Consultando carritos con orgUuid:", orgUuid, "y branch_id:", branch_id);
+
+      const { data: orgUuid} = await supabase
+        .from("organizations")
+        .select("uuid")
+        .eq("id", organization_id)
+        .single();
+      
+      if (!orgUuid) {
+        console.error('Error al obtener UUID de organización:');
+        setError('No se pudo obtener la información de organización');
+        setLoading(false);
+        return;
+      }
       
       // Consultamos sólo por organización, ya que la relación de branches y branch_id en carts
       // necesita una revisión más profunda de la estructura
       const { data: cartsData, error: cartsError } = await supabase
         .from("carts")
         .select("*")
-        .eq("organization_id", orgUuid) // Usamos el UUID de la organización
+        .eq("organization_id", orgUuid.uuid)
+        .eq("branch_id", branch_uuid)
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false });
         

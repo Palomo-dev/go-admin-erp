@@ -74,7 +74,6 @@ export default function CarritosPage() {
         .eq('organization_id', localStorage.getItem('currentOrganizationId'))
         .single();
       
-      console.log("Datos de organización:", userOrgData);
 
       if (orgError || !userOrg) {
         console.error("Error al obtener la organización:", orgError);
@@ -83,15 +82,18 @@ export default function CarritosPage() {
         return;
       }
 
+      console.log("Datos de organización:", userOrg);
+      
       // Obtenemos los datos de la sucursal primaria del usuario
       const { data: branchData, error: branchError } = await supabase
         .from("member_branches")
         .select("*")
         .eq("organization_member_id", userOrg.id)
+        .eq("branch_id", localStorage.getItem('currentBranchId'))
         .single();
-
+      
       console.log("Datos de sucursal:", branchData);
-
+      
       if (branchError) {
         console.error("Error al obtener la sucursal:", branchError);
         setError("No se pudo obtener la información de sucursal");

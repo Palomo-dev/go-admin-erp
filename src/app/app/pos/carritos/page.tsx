@@ -6,9 +6,9 @@ import { supabase, getUserOrganization } from '@/lib/supabase/config';
 import Image from "next/image";
 
 // Componentes
-import { Button } from "@/components/pos/Button";
-import { Card } from "@/components/pos/Card";
-import { Badge } from "@/components/pos/Badge";
+import { Badge } from "@/components/pos/badge";  
+import { Card } from "@/components/pos/card";  
+import { Button } from "@/components/pos/button";  
 
 // Estilos
 import styles from "../../styles.module.css";
@@ -16,7 +16,7 @@ import styles from "../../styles.module.css";
 // Tipos
 interface Cart {
   id: string;
-  organization_id: string;
+  organization_id: string; // Nombre correcto según la tabla
   branch_id: string;
   user_id: string;
   cart_data: {
@@ -74,7 +74,7 @@ export default function CarritosPage() {
         .eq('organization_id', localStorage.getItem('currentOrganizationId'))
         .single();
       
-      console.log("Datos de organización:", userOrg);
+      console.log("Datos de organización:", userOrgData);
 
       if (orgError || !userOrg) {
         console.error("Error al obtener la organización:", orgError);
@@ -102,15 +102,22 @@ export default function CarritosPage() {
       const organization_id = userOrg.organization_id;
       const branch_id = branchData.id;
 
-      // Obtenemos los carritos de la organización y sucursal actual
+      // Obtenemos los carritos de la organización actual
       // Solo traemos los que no han expirado
+      // Usamos el UUID obtenido para la consulta
+      console.log("Consultando carritos con orgUuid:", orgUuid, "y branch_id:", branch_id);
+      
+      // Consultamos sólo por organización, ya que la relación de branches y branch_id en carts
+      // necesita una revisión más profunda de la estructura
       const { data: cartsData, error: cartsError } = await supabase
         .from("carts")
         .select("*")
-        .eq("organization_id", organization_id)
-        .eq("branch_id", branch_id)
+        .eq("organization_id", orgUuid) // Usamos el UUID de la organización
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false });
+        
+      // Si tenemos datos, podemos filtrar por branch_id en el cliente
+      // Esta es una solución temporal hasta que se revise la estructura
 
       if (cartsError) {
         console.error("Error al obtener los carritos:", cartsError);

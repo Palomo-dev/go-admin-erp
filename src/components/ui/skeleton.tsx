@@ -1,4 +1,4 @@
-import { cn } from "@/utils/Utils";
+import { cn } from "@/utils/utils";
 
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
 

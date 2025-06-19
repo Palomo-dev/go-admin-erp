@@ -192,12 +192,19 @@ export default function OrganizacionPage() {
           return;
         }
 
-        console.log(memberData);
+        // Verificar si hay resultados
+        if (!memberDataList || memberDataList.length === 0) {
+          console.error('No se encontró información de membresía para este usuario');
+          setError('Usuario no pertenece a ninguna organización');
+          return;
+        }
+
+        // Utilizar el primer registro por defecto
+        const memberData = memberDataList[0];
+        console.log('Información de miembro encontrada:', memberData);
         
         // Set role directly from organization_members
-        setUserRole(memberData.role_id || 'Sin rol');
-
-        console.log(memberData);  
+        setUserRole(memberData.role_id || memberData.role || 'Sin rol');  
         
         // Extract organization data safely
         if (memberData?.organization_id) {

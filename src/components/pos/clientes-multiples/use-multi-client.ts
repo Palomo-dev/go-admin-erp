@@ -14,22 +14,22 @@ import { supabase } from "@/lib/supabase/config";
 import { getUserOrganization, getMainBranch } from "@/lib/hooks/useOrganization";
 
 // Interfaces mejoradas basadas en las tablas de Supabase
-export interface Product {
-  id: string; // UUID en la base de datos
+interface Product {
+  id: string;
   name: string;
   price: number;
   cost: number;
-  category_id?: number; // Integer en la base de datos
+  category_id?: number;
   category?: string;
   description?: string;
   sku?: string;
   image_url?: string;
   is_menu_item?: boolean;
   track_stock?: boolean;
-  organization_id: number; // Integer en la base de datos
+  organization_id: number;
 }
 
-export interface Customer {
+interface Customer {
   id: string; // UUID en la base de datos
   full_name: string;
   email?: string;
@@ -71,6 +71,8 @@ export function useMultiClient(userId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [orgId, setOrgId] = useState<number | null>(null);
   const [branchId, setBranchId] = useState<number | null>(null);
+  const [orgUuid, setOrgUuid] = useState<string | null>(null);
+  const [branchUuid, setBranchUuid] = useState<string | null>(null);
   const [userIdState, setUserId] = useState<string | undefined>(userId);
   
   // Inicialización - Cargar organización y sucursal
@@ -81,32 +83,40 @@ export function useMultiClient(userId: string | undefined) {
         
         if (session?.data?.session?.user) {
           const userId = session.data.session.user.id;
+          // Asignar userId al estado local
           setUserId(userId);
           
           // Obtener información de la organización del usuario
-          const orgData = await getUserOrganization(userId);
+          const { data: orgData, error: orgError } = await getUserOrganization(userId);
           
-          console.log('Datos de organización obtenidos:', orgData);
+          console.log('Datos de organización obtenidos:', { data: orgData, error: orgError });
           console.log('Tipos de datos - userId:', typeof userId);
+          
+          if (orgError) {
+            console.error('Error al obtener la organización:', orgError);
+            // Manejar el error apropiadamente
+            return;
+          }
           
           if (orgData && Array.isArray(orgData) && orgData.length > 0) {
             // Tomar la primera organización por defecto
             const firstOrg = orgData[0].organization;
             setOrgId(firstOrg?.id);
+            // Guardar el UUID de la organización
+            setOrgUuid(firstOrg?.uuid || null);
             console.log('Organization ID:', firstOrg?.id, 'tipo:', typeof firstOrg?.id);
+            console.log('Organization UUID:', firstOrg?.uuid, 'tipo:', typeof firstOrg?.uuid);
             
             // Buscar la sucursal principal
             if (firstOrg?.branches && firstOrg.branches.length > 0) {
               const mainBranch = firstOrg.branches.find(b => b.is_main === true) || firstOrg.branches[0];
               setBranchId(mainBranch.id);
+              // Las sucursales no tienen UUID, según lo que vimos previamente
               console.log('Branch ID:', mainBranch.id, 'tipo:', typeof mainBranch.id);
             }
             
             // Cargar productos
             await loadProducts(firstOrg?.id);
-            
-            // Cargar carritos guardados o crear uno inicial
-            await loadSavedCarts(firstOrg?.id);
           }
         }
       } catch (error) {
@@ -117,12 +127,63 @@ export function useMultiClient(userId: string | undefined) {
     };
     
     getInitialContext();
-  }, [userIdState]);
+  }, []);
+  
+  // Efecto separado para cargar carritos cuando tengamos userIdState y orgUuid
+  useEffect(() => {
+    const loadCartsWhenReady = async () => {
+      if (userIdState && orgUuid && isValidUUID(userIdState) && isValidUUID(orgUuid)) {
+        console.log('Intentando cargar carritos con userIdState:', userIdState);
+        console.log('y orgUuid:', orgUuid);
+        
+        // Evitar referencia circular al separar esta lógica
+        try {
+          const currentUserId = userIdState;
+          if (!currentUserId || !isValidUUID(currentUserId)) {
+            console.error("No se puede cargar carritos sin un user_id válido");
+            return;
+          }
+          const { data: existingCarts, error } = await supabase
+            .from("carts")
+            .select("*")
+            .eq("organization_id", orgUuid)
+            .eq("user_id", currentUserId);
+
+          if (error) {
+            console.error("Error al cargar carritos:", error);
+            return;
+          }
+
+          if (existingCarts && existingCarts.length > 0) {
+            console.log("Carritos cargados:", existingCarts.length);
+            const loadedCarts = existingCarts.map((cart: any) => ({
+              id: cart.id,
+              customer: {
+                id: cart.customer_id || "",
+                full_name: cart.customer_name || "Cliente sin nombre",
+                organization_id: orgId || 0
+              },
+              items: cart.items || [],
+              active: cart.active || false
+            }));
+            setCarts(loadedCarts);
+          } else {
+            console.log("No se encontraron carritos guardados");
+            setCarts([]);
+          }
+        } catch (loadError) {
+          console.error("Error al procesar carritos:", loadError);
+        }
+      }
+    };
+    
+    loadCartsWhenReady();
+  }, [userIdState, orgUuid, orgId, isValidUUID]);
   
   // Cargar productos desde Supabase
   const loadProducts = async (organizationId: number) => {
     try {
-      // Obtener productos con sus categorías
+      // Obtener productos
       const { data: productsData, error } = await supabase
         .from("products")
         .select(`
@@ -135,18 +196,37 @@ export function useMultiClient(userId: string | undefined) {
           image_url,
           track_stock,
           is_menu_item,
-          category_id,
-          categories (name)
+          category_id
         `)
         .eq("organization_id", organizationId)
         .eq("status", "active");
         
       if (error) throw error;
       
+      // Obtener todas las categorías
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("categories")
+        .select("id, name")
+        .eq("organization_id", organizationId);
+        
+      if (categoriesError) {
+        console.error("Error al cargar categorías:", categoriesError);
+      }
+      
+      // Crear mapa de categorías para buscar por ID
+      const categoriesMap: Record<number, string> = {};
+      if (categoriesData) {
+        categoriesData.forEach((cat) => {
+          categoriesMap[cat.id] = cat.name;
+        });
+      }
+      
       if (productsData) {
+        // Formatear productos con sus categorías
         const formattedProducts = productsData.map(product => ({
           ...product,
-          category: product.categories && product.categories[0]?.name || "Sin categoría",
+          // Asignar nombre de categoría desde el mapa o "Sin categoría" si no existe
+          category: product.category_id ? categoriesMap[product.category_id] || "Sin categoría" : "Sin categoría",
           organization_id: organizationId // Asegurar que organization_id esté presente
         }));
         
@@ -156,92 +236,78 @@ export function useMultiClient(userId: string | undefined) {
         const uniqueCategories = Array.from(
           new Set(formattedProducts.map(p => p.category))
         );
-        setCategories(uniqueCategories);
+        
+        // Añadir "Todos" al principio y asegurarse que "Sin categoría" esté después
+        const finalCategories = ["Todos"];
+        
+        // Añadir "Sin categoría" si existe o si hay productos sin categoría
+        if (uniqueCategories.includes("Sin categoría") || formattedProducts.some(p => !p.category_id)) {
+          finalCategories.push("Sin categoría");
+        }
+        
+        // Añadir el resto de categorías
+        uniqueCategories.forEach(category => {
+          if (category !== "Sin categoría") {
+            finalCategories.push(category);
+          }
+        });
+        
+        console.log("Categorías cargadas:", finalCategories);
+        setCategories(finalCategories);
       }
     } catch (error) {
       console.error("Error al cargar productos:", error);
     }
   };
-
+  
   // Cargar carritos guardados desde Supabase
-  const loadSavedCarts = async (organizationId: number) => {
+  const loadSavedCarts = async (organizationUuid: string): Promise<void> => {
     try {
-      // Debug - Verificar valores y tipos
-      console.log('Cargando carritos con params:', {
-        organizationId,
-        tipoOrganizationId: typeof organizationId,
-        userId,
-        tipoUserId: typeof userId,
-        esUUID: isValidUUID(userId)
+      const currentUserId = userIdState;
+      // Debug para errores de UUID
+      console.log("Debug loadSavedCarts:", { 
+        orgUuid: organizationUuid, 
+        esUUIDOrg: isValidUUID(organizationUuid),
+        userIdState: currentUserId, 
+        esUUIDUser: currentUserId ? isValidUUID(currentUserId) : false
       });
+      
+      // Si no hay userId válido, no podemos consultar
+      if (!currentUserId || !isValidUUID(currentUserId)) {
+        console.error("No se puede cargar carritos sin un user_id válido");
+        return; // Salir de la función sin consultar
+      }
 
       const { data: existingCarts, error } = await supabase
         .from("carts")
         .select("*")
-        .eq("organization_id", organizationId)
-        .eq("user_id", userId);
+        .eq("organization_id", organizationUuid)
+        .eq("user_id", currentUserId);
       
       if (error) throw error;
       
       if (existingCarts && existingCarts.length > 0) {
-        // Transformar datos de JSONB a nuestro formato
-        const loadedCarts = await Promise.all(
-          existingCarts.map(async (cart) => {
-            const cartData = cart.cart_data || {};
-            
-            // Obtener datos del cliente
-            let customer = cartData.customer;
-            if (customer?.id && !customer?.full_name) {
-              // Validar que el ID del cliente sea un UUID válido
-              if (isValidUUID(customer.id)) {
-                const { data: customerData } = await supabase
-                  .from("customers")
-                  .select("*")
-                  .eq("id", customer.id)
-                  .single();
-                
-                if (customerData) {
-                  customer = customerData;
-                }
-              } else {
-                console.warn("ID de cliente inválido, no es un UUID:", customer.id);
-                // Asignar un cliente temporal con información existente
-                customer = {
-                  ...customer,
-                  id: undefined, // Permitirá que se cree un nuevo cliente si se guarda
-                  full_name: customer.name || customer.full_name || "Cliente sin nombre"
-                };
-              }
-            }
-            
-            return {
-              id: cart.id,
-              customer: customer || { 
-                // Generar un ID temporal con formato UUID v4 compatible con Supabase
-                id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-0000-0000-000000000000', 
-                full_name: "Cliente sin nombre",
-                organization_id: organizationId // organization_id es de tipo number
-              },
-              items: cartData.items || [],
-              active: false
-            };
-          })
-        );
-        
-        // Activar el primer carrito
-        if (loadedCarts.length > 0) {
-          loadedCarts[0].active = true;
-        }
-        
+        console.log("Carritos cargados:", existingCarts.length);
+        const loadedCarts = existingCarts.map((cart: any) => ({
+          id: cart.id,
+          customer: {
+            id: cart.customer_id || "",
+            full_name: cart.customer_name || "Cliente sin nombre",
+            organization_id: orgId || 0
+          },
+          items: cart.items || [],
+          active: cart.active || false
+        }));
         setCarts(loadedCarts);
       } else {
+        console.log("No se encontraron carritos guardados");
         // Crear un carrito inicial si no hay ninguno
         setCarts([{
           id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-0000-0000-000000000000',
           customer: { 
             id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-0000-0000-000000000000', 
             full_name: "Nuevo Cliente",
-            organization_id: organizationId // organization_id es de tipo number
+            organization_id: orgId || 0 // Usamos el ID numérico para el objeto customer
           },
           items: [],
           active: true
@@ -250,17 +316,17 @@ export function useMultiClient(userId: string | undefined) {
     } catch (error) {
       // Mejorar el log para depuración
       console.error("Error al cargar carritos guardados:", error);
-      console.log("Organization ID recibido:", organizationId);
-      console.log("User ID utilizado:", userId);
+      console.log("Organization UUID recibido:", organizationUuid);
+      console.log("User ID utilizado:", userIdState);
       
       // Crear un carrito inicial en caso de error
-      if (organizationId) {
+      if (orgId) {
         setCarts([{
           id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-0000-0000-000000000000',
           customer: { 
             id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-0000-0000-000000000000', 
             full_name: "Nuevo Cliente", 
-            organization_id: organizationId // organization_id es de tipo number
+            organization_id: orgId || 0 // Usamos el ID numérico para el objeto customer
           },
           items: [],
           active: true
@@ -271,13 +337,22 @@ export function useMultiClient(userId: string | undefined) {
 
   // Guardar carritos en Supabase
   const saveAllCarts = async (): Promise<boolean> => {
-    if (!orgId || !branchId || !userId || !isValidUUID(userId)) {
-      console.error("No se puede guardar sin organización, sucursal o usuario válidos");
+    // Usar userIdState que mantenemos en el estado de React
+    const currentUserId = userIdState;
+    
+    if (!orgUuid || !currentUserId || !isValidUUID(currentUserId) || !isValidUUID(orgUuid)) {
+      console.error("No se puede guardar sin organización UUID o usuario UUID válidos");
+      console.log("Valores actuales:", {
+        orgUuid,
+        esOrgUuidValido: orgUuid ? isValidUUID(orgUuid) : false,
+        userIdState: currentUserId,
+        esUserIdValido: currentUserId ? isValidUUID(currentUserId) : false
+      });
       return false;
     }
     
     try {
-      const savePromises = carts.map(cart => {
+      const savePromises = carts.map((cart: MultiClientCart) => {
         const cartData = {
           customer: cart.customer,
           items: cart.items
@@ -288,8 +363,8 @@ export function useMultiClient(userId: string | undefined) {
           cartId: cart.id,
           isUUID: isValidUUID(cart.id),
           orgId,
-          branchId,
-          userId,
+          orgUuid,
+          userIdState: currentUserId,
         });
         
         // Usar upsert para crear o actualizar carritos existentes
@@ -297,9 +372,8 @@ export function useMultiClient(userId: string | undefined) {
           .from("carts")
           .upsert({
             id: isValidUUID(cart.id) ? cart.id : undefined,
-            organization_id: orgId,        // Debe ser un integer según la estructura BD
-            branch_id: branchId,           // Debe ser un integer según la estructura BD
-            user_id: userId,               // Debe ser un UUID según la estructura BD
+            organization_id: orgUuid,      // Debe ser un UUID según la estructura BD
+            user_id: currentUserId,        // Debe ser un UUID según la estructura BD
             cart_data: cartData,
             expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 horas
           });
@@ -315,11 +389,13 @@ export function useMultiClient(userId: string | undefined) {
 
   // Procesar checkout de uno o varios carritos
   const processCheckout = async (cartId?: string) => {
-    // Validar que userId sea un UUID válido
-    if (!isValidUUID(userId)) {
-      console.error("Error: userId no es un UUID válido:", {
-        userId,
-        isUserIdUUID: isValidUUID(userId)
+    // Validar que userIdState sea un UUID válido
+    const currentUserId = userIdState;
+    
+    if (!currentUserId || !isValidUUID(currentUserId)) {
+      console.error("Error: userIdState no es un UUID válido:", {
+        userIdState: currentUserId,
+        isUserIdUUID: currentUserId ? isValidUUID(currentUserId) : false
       });
       
       return { success: false, error: "ID de usuario inválido" };
@@ -327,9 +403,10 @@ export function useMultiClient(userId: string | undefined) {
     
     console.log("Procesando checkout con:", {
       orgId, 
-      branchId, 
-      userId,
-      isUserIdUUID: isValidUUID(userId)
+      orgUuid,
+      userIdState: currentUserId,
+      isUserIdUUID: isValidUUID(currentUserId),
+      isOrgUuidValid: orgUuid ? isValidUUID(orgUuid) : false
     });
     
     try {
@@ -343,17 +420,16 @@ export function useMultiClient(userId: string | undefined) {
       }
       
       // Procesar cada carrito como una venta separada
-      const results = await Promise.all(cartsToProcess.map(async (cart) => {
+      const results = await Promise.all(cartsToProcess.map(async (cart: MultiClientCart) => {
         // 1. Crear encabezado de venta
         const summary = calculateSummary(cart.items);
         
         const { data: salesData, error: salesError } = await supabase
           .from("sales")
           .insert({
-            organization_id: orgId,
-            branch_id: branchId,
+            organization_id: orgUuid, // Usar UUID en lugar de ID numérico
             customer_id: cart.customer.id,
-            user_id: userId,
+            user_id: currentUserId, // Usar userIdState (guardado en currentUserId)
             subtotal: summary.subtotal,
             tax_total: summary.tax_total,
             total: summary.total,
@@ -371,7 +447,7 @@ export function useMultiClient(userId: string | undefined) {
         const saleId = salesData.id;
         
         // 2. Crear items de venta
-        const saleItems = cart.items.map(item => ({
+        const saleItems = cart.items.map((item: CartItem) => ({
           sale_id: saleId,
           product_id: item.product_id,
           quantity: item.quantity,
@@ -403,8 +479,8 @@ export function useMultiClient(userId: string | undefined) {
       }));
       
       // 4. Actualizar estado local
-      setCarts(prevCarts => 
-        prevCarts.filter(cart => !cartsToProcess.some(c => c.id === cart.id))
+      setCarts((prevCarts: MultiClientCart[]) => 
+        prevCarts.filter((cart: MultiClientCart) => !cartsToProcess.some((c: MultiClientCart) => c.id === cart.id))
       );
       
       // Si no quedan carritos, crear uno nuevo
@@ -443,19 +519,19 @@ export function useMultiClient(userId: string | undefined) {
   };
 
 // Funciones para manejar los carritos
-const addToCart = (product: Product) => {
-  setCarts(currentCarts => 
-    currentCarts.map(cart => {
+const addToCart = (product: Product): void => {
+  setCarts((currentCarts: MultiClientCart[]) => 
+    currentCarts.map((cart: MultiClientCart) => {
       if (!cart.active) return cart;
       
       // Verificar si el producto ya está en el carrito
-      const existingItem = cart.items.find(item => item.product_id === product.id);
+      const existingItem = cart.items.find((item: CartItem) => item.product_id === product.id);
       
       if (existingItem) {
         // Incrementar cantidad
         return {
           ...cart,
-          items: cart.items.map(item => 
+          items: cart.items.map((item: CartItem) => 
             item.product_id === product.id 
               ? { 
                   ...item, 
@@ -478,7 +554,7 @@ const addToCart = (product: Product) => {
               quantity: 1,
               unit_price: product.price,
               total: product.price
-            }
+            } as CartItem
           ]
         };
       }
@@ -486,14 +562,14 @@ const addToCart = (product: Product) => {
   );
 };
 
-const increaseQuantity = (itemId: string | number) => {
-  setCarts(currentCarts => 
-    currentCarts.map(cart => {
+const increaseQuantity = (itemId: string | number): void => {
+  setCarts((currentCarts: MultiClientCart[]) => 
+    currentCarts.map((cart: MultiClientCart) => {
       if (!cart.active) return cart;
       
       return {
         ...cart,
-        items: cart.items.map(item => 
+        items: cart.items.map((item: CartItem) => 
           item.id === itemId 
             ? { 
                 ...item, 
@@ -507,14 +583,14 @@ const increaseQuantity = (itemId: string | number) => {
   );
 };
 
-const decreaseQuantity = (itemId: string | number) => {
-  setCarts(currentCarts => 
-    currentCarts.map(cart => {
+const decreaseQuantity = (itemId: string | number): void => {
+  setCarts((currentCarts: MultiClientCart[]) => 
+    currentCarts.map((cart: MultiClientCart) => {
       if (!cart.active) return cart;
       
       return {
         ...cart,
-        items: cart.items.map(item => 
+        items: cart.items.map((item: CartItem) => 
           item.id === itemId && item.quantity > 1
             ? { 
                 ...item, 
@@ -522,35 +598,35 @@ const decreaseQuantity = (itemId: string | number) => {
                 total: (item.quantity - 1) * item.unit_price 
               } 
             : item
-        ).filter(item => !(item.id === itemId && item.quantity === 1))
+        ).filter((item: CartItem) => !(item.id === itemId && item.quantity === 1))
       };
     })
   );
 };
 
-const removeFromCart = (itemId: string | number) => {
-  setCarts(currentCarts => 
-    currentCarts.map(cart => {
+const removeFromCart = (itemId: string | number): void => {
+  setCarts((currentCarts: MultiClientCart[]) => 
+    currentCarts.map((cart: MultiClientCart) => {
       if (!cart.active) return cart;
       
       return {
         ...cart,
-        items: cart.items.filter(item => item.id !== itemId)
+        items: cart.items.filter((item: CartItem) => item.id !== itemId)
       };
     })
   );
 };
 
-const setActiveCart = (cartId: string) => {
-  setCarts(currentCarts => 
-    currentCarts.map(cart => ({
+const setActiveCart = (cartId: string): void => {
+  setCarts((currentCarts: MultiClientCart[]) => 
+    currentCarts.map((cart: MultiClientCart) => ({
       ...cart,
       active: cart.id === cartId
     }))
   );
 };
 
-const addNewCart = () => {
+const addNewCart = (): void => {
   // Crear un nuevo carrito con datos por defecto
   const newCart: MultiClientCart = {
     id: crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-0000-0000-000000000000',
@@ -563,23 +639,23 @@ const addNewCart = () => {
     active: false
   };
   
-  setCarts(currentCarts => 
-    currentCarts.map(cart => ({
+  setCarts((currentCarts: MultiClientCart[]) => 
+    currentCarts.map((cart: MultiClientCart) => ({
       ...cart,
       active: false
     })).concat(newCart)
   );
 };
 
-const removeCart = (cartId: string | number) => {
+const removeCart = (cartId: string | number): void => {
   // Agregar logs para depurar problemas con tipos de ID
   console.log('Eliminando carrito con ID:', cartId, 'tipo:', typeof cartId);
   
-  setCarts(currentCarts => {
-    const filtered = currentCarts.filter(cart => cart.id !== cartId);
+  setCarts((currentCarts: MultiClientCart[]) => {
+    const filtered = currentCarts.filter((cart: MultiClientCart) => cart.id !== cartId);
     
     // Si eliminamos el carrito activo, activar el primero
-    if (filtered.length > 0 && !filtered.some(cart => cart.active)) {
+    if (filtered.length > 0 && !filtered.some((cart: MultiClientCart) => cart.active)) {
       filtered[0].active = true;
     }
     
@@ -588,7 +664,7 @@ const removeCart = (cartId: string | number) => {
 };
 
 // Buscar cliente en Supabase
-const searchCustomers = async (query: string) => {
+const searchCustomers = async (query: string): Promise<Customer[]> => {
   if (!orgId || query.length < 2) return [];
   
   try {
@@ -608,9 +684,9 @@ const searchCustomers = async (query: string) => {
 };
 
 // Asignar cliente al carrito activo
-const assignCustomer = (customer: Customer) => {
-  setCarts(currentCarts => 
-    currentCarts.map(cart => {
+const assignCustomer = (customer: Customer): void => {
+  setCarts((currentCarts: MultiClientCart[]) => 
+    currentCarts.map((cart: MultiClientCart) => {
       if (!cart.active) return cart;
       
       return {
@@ -622,7 +698,7 @@ const assignCustomer = (customer: Customer) => {
 };
 
 // Crear nuevo cliente en Supabase
-const createCustomer = async (customerData: Omit<Customer, 'id' | 'organization_id'>) => {
+const createCustomer = async (customerData: Omit<Customer, 'id' | 'organization_id'>): Promise<Customer | null> => {
   if (!orgId) return null;
   
   try {
@@ -647,7 +723,7 @@ const createCustomer = async (customerData: Omit<Customer, 'id' | 'organization_
       return null;
     }
     
-    return data;
+    return data as Customer;
   } catch (error) {
     console.error('Error inesperado al crear cliente:', error);
     return null;
@@ -660,7 +736,7 @@ const createCustomer = async (customerData: Omit<Customer, 'id' | 'organization_
   // Se eliminó la duplicación de createCustomer, usando la versión declarada arriba
 
   // Obtener carrito activo
-  const activeCart = carts.find(cart => cart.active) || carts[0];
+  const activeCart = carts.find((cart: MultiClientCart) => cart.active) || carts[0];
 
   return {
     carts,
@@ -669,6 +745,8 @@ const createCustomer = async (customerData: Omit<Customer, 'id' | 'organization_
     loading,
     orgId,
     branchId,
+    orgUuid,         // Agregado para dar visibilidad al UUID de organización
+    userIdState,     // Agregado para dar visibilidad al UUID de usuario
     activeCart,
     addToCart,
     increaseQuantity,

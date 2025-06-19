@@ -91,54 +91,86 @@ export const getUserRole = async (userId: string) => {
     .single()
 }
 
-export const getUserOrganization = async (userId: string) => {
+export const getUserOrganization = async (userId: string, requestedOrgId?: string) => {
   try {
     if (!userId) {
       console.error('Error: Se requiere un ID de usuario válido');
       return { organization: null, role: null, error: 'Se requiere un ID de usuario válido', branches: [] };
     }
     
-    // Primero obtenemos el perfil del usuario con su organization_id
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('organization_id, branch_id')
-      .eq('id', userId)
-      .maybeSingle(); // Usar maybeSingle en lugar de single para evitar errores
-    
-    if (profileError) {
-      console.error('Error obteniendo perfil de usuario:', profileError);
-      return { organization: null, role: null, error: profileError?.message || 'Error al consultar el perfil', branches: [] };
+    // Obtenemos todas las membresías activas del usuario desde organization_members
+    const { data: allMemberData, error: memberError } = await supabase
+      .from('organization_members')
+      .select('id, organization_id, role, role_id, is_active')
+      .eq('user_id', userId)
+      .eq('is_active', true);
+      
+    // Verificamos si hay error en la consulta
+    if (memberError) {
+      console.error('Error obteniendo datos de membresías:', memberError);
+      return { organization: null, role: null, error: memberError?.message || 'Error al consultar las membresías', branches: [] };
     }
     
-    // Si no hay datos de perfil, devolver información clara
-    if (!profileData) {
-      console.log('No se encontró perfil para el usuario:', userId);
+    // Si no hay datos de membresía, devolver información clara
+    if (!allMemberData || allMemberData.length === 0) {
+      console.log('No se encontró membresía activa para el usuario:', userId);
       return { 
         organization: null, 
         role: null, 
-        error: 'No se encontró perfil para este usuario', 
+        error: 'No se encontró membresía activa para este usuario', 
         branches: [],
-        needsProfile: true // Flag para indicar que el usuario necesita crear un perfil
+        needsOrganization: true // Flag para indicar que el usuario necesita ser asignado a una organización
       };
     }
     
-    // Si no hay organization_id, devolver información específica
-    if (!profileData.organization_id) {
-      console.log('El usuario no tiene organización asignada:', userId);
-      return { 
-        organization: null, 
-        role: null, 
-        error: 'Usuario sin organización asignada', 
-        branches: [],
-        needsOrganization: true // Flag para indicar que el usuario necesita seleccionar organización
-      };
+    // Seleccionamos la membresía a utilizar: si se especificó un ID, usamos esa, si no, la primera
+    let memberData;
+    
+    // Si hay un ID de organización solicitado, buscamos esa membresía
+    if (requestedOrgId) {
+      memberData = allMemberData.find(m => m.organization_id === requestedOrgId);
+      if (!memberData) {
+        return { 
+          organization: null, 
+          role: null, 
+          error: 'No tiene acceso a la organización solicitada',
+          branches: [],
+          availableOrganizations: allMemberData.map(m => m.organization_id)
+        };
+      }
+    } else {
+      // Si no hay organización solicitada, tomamos la primera
+      memberData = allMemberData[0];
+    }
+    
+    // Ya manejamos los errores y verificación de existencia de membresías arriba
+    
+    // Si tenemos la organización, continuamos
+    const organizationId = memberData.organization_id;
+    
+    // Inicializamos variables para el rol
+    let userRoleName = null;
+    
+    // Obtenemos el rol del usuario en la organización usando role_id de organization_members
+    if (memberData.role_id) {
+      const { data: roleFromId, error: roleFromIdError } = await supabase
+        .from('roles')
+        .select('id, name, description')
+        .eq('id', memberData.role_id)
+        .maybeSingle();
+      
+      if (!roleFromIdError && roleFromId) {
+        userRoleName = roleFromId.name;
+      } else if (roleFromIdError) {
+        console.error('Error obteniendo rol desde role_id:', roleFromIdError);
+      }
     }
     
     // Ahora obtenemos la información de la organización
     const { data: orgData, error: orgError } = await supabase
       .from('organizations')
       .select('id, name, status, types')
-      .eq('id', profileData.organization_id)
+      .eq('id', organizationId)
       .maybeSingle(); // Usar maybeSingle para manejo seguro
     
     if (orgError) {
@@ -148,7 +180,7 @@ export const getUserOrganization = async (userId: string) => {
     
     // Si no se encuentra la organización
     if (!orgData) {
-      console.log(`Organización no encontrada. ID: ${profileData.organization_id}`);
+      console.log(`Organización no encontrada. ID: ${organizationId}`);
       return { 
         organization: null, 
         role: null, 
@@ -158,62 +190,67 @@ export const getUserOrganization = async (userId: string) => {
       };
     }
     
-    // Obtenemos todas las sucursales de la organización
-    const { data: branchesData, error: branchesError } = await supabase
+    // Obtenemos las sucursales
+    const { data: branchData, error: branchesError } = await supabase
       .from('branches')
-      .select('*')
-      .eq('organization_id', orgData.id)
+      .select('id, name, address, city, state, country, latitude, longitude, is_main, branch_code')
+      .eq('organization_id', organizationId)
       .eq('is_active', true);
     
     if (branchesError) {
       console.error('Error obteniendo sucursales:', branchesError);
-      // Continuamos a pesar del error, con branchesData como array vacío
+      // Continuamos a pesar del error
     }
     
-    const branches = branchesData || [];
+    // Aseguramos que branches siempre sea un array
+    const branchesData = branchData || [];
     
-    // Determinamos la sucursal activa del usuario
-    let activeBranchId = profileData.branch_id;
+    // Determinamos la sucursal predeterminada
+    let defaultBranchId = null;
     
-    // Si el usuario no tiene sucursal asignada, usamos la principal
-    if (!activeBranchId && branches.length > 0) {
-      const mainBranch = branches.find(branch => branch.is_main === true);
-      activeBranchId = mainBranch ? mainBranch.id : branches[0].id;
-    }
-    
-    // Si no hay sucursales disponibles
-    if (branches.length === 0) {
+    if (branchesData.length > 0) {
+      defaultBranchId = branchesData[0].id;
+    } else {
       console.log(`La organización ${orgData.id} no tiene sucursales activas`);
     }
     
-    // Obtenemos el rol del usuario - si falla, no bloqueamos el flujo
-    let roleData = null;
-    try {
-      const { data: roleResult, error: roleError } = await supabase
-        .from('user_roles')
-        .select('roles(name)')
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (!roleError && roleResult) {
-        roleData = roleResult;
-      } else if (roleError) {
-        console.error('Error obteniendo rol del usuario:', roleError);
+    // Si aún no tenemos un rol, intentamos obtenerlo de user_roles
+    if (!userRoleName) {
+      try {
+        const { data: userRoleData, error: userRoleError } = await supabase
+          .from('user_roles')
+          .select('roles(name)')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        if (!userRoleError && userRoleData) {
+          // Utilizamos type assertion para manejar la estructura de datos
+          // ya que la respuesta puede variar dependiendo del query
+          const roleData = userRoleData as any;
+          if (roleData && roleData.roles) {
+            if (Array.isArray(roleData.roles)) {
+              // Verificamos que exista al menos un elemento y que tenga la propiedad name
+              if (roleData.roles.length > 0 && roleData.roles[0] && 'name' in roleData.roles[0]) {
+                userRoleName = roleData.roles[0].name;
+              }
+            } else if (roleData.roles && typeof roleData.roles === 'object') {
+              // Verificamos explícitamente que el objeto tenga la propiedad name
+              if ('name' in roleData.roles) {
+                userRoleName = roleData.roles.name;
+              }
+            }
+          }
+        } else if (userRoleError) {
+          console.error('Error obteniendo rol del usuario:', userRoleError);
+        }
+      } catch (roleErr) {
+        console.error('Error inesperado al obtener rol:', roleErr);
       }
-    } catch (roleErr) {
-      console.error('Error inesperado al obtener rol:', roleErr);
     }
     
-    // Extraer el nombre del rol de manera segura
-    let roleName = null;
-    if (roleData && roleData.roles) {
-      // Manejar tanto si roles es un objeto como si es un array
-      if (Array.isArray(roleData.roles)) {
-        roleName = roleData.roles.length > 0 ? roleData.roles[0].name : null;
-      } else if (roleData.roles && typeof roleData.roles === 'object') {
-        // Verificar que roles es un objeto y que tiene la propiedad name
-        roleName = roleData.roles.name || null;
-      }
+    // Como último recurso, usamos el rol almacenado en memberData si existe
+    if (!userRoleName && memberData.role) {
+      userRoleName = memberData.role;
     }
     
     return { 
@@ -222,12 +259,12 @@ export const getUserOrganization = async (userId: string) => {
         name: orgData.name,
         status: orgData.status,
         types: orgData.types,
-        branch_id: activeBranchId // Mantenemos branch_id dentro de organization para compatibilidad
+        branch_id: defaultBranchId // Añadimos la sucursal predeterminada para compatibilidad
       },
-      branch_id: activeBranchId, // También lo dejamos en la raíz para el nuevo código
-      branches,
-      role: roleName,
-      hasBranches: branches.length > 0
+      branch_id: defaultBranchId, // También lo dejamos en la raíz para el nuevo código
+      branches: branchesData,
+      role: userRoleName,
+      hasBranches: branchesData.length > 0
     };
   } catch (error) {
     console.error('Error general obteniendo organización:', error);

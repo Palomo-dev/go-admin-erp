@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, SortDesc, Clock } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -35,6 +37,8 @@ interface ClientesFilterProps {
   onCityFilterChange: (city: string | null) => void;
   balanceFilter: string | null;
   onBalanceFilterChange: (balance: string | null) => void;
+  sortOrder?: string | null;
+  onSortOrderChange?: (sortOrder: string | null) => void;
   customers: Customer[];
 }
 
@@ -49,6 +53,8 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
   onCityFilterChange,
   balanceFilter,
   onBalanceFilterChange,
+  sortOrder = null,
+  onSortOrderChange = () => {},
   customers,
 }) => {
   // Extraer opciones únicas de los clientes para los filtros
@@ -88,11 +94,34 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
     onTagFilterChange(null);
     onCityFilterChange(null);
     onBalanceFilterChange(null);
+    onSortOrderChange(null);
   };
+  
+  // Calcular si hay filtros activos
+  const hasActiveFilters = searchQuery || roleFilter || tagFilter || cityFilter || balanceFilter || sortOrder;
 
   return (
     <div className="bg-white dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700 p-4 space-y-4">
-      <h2 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Filtros</h2>
+      <div className="flex flex-row justify-between items-center">
+        <div className="flex items-center gap-2">
+          <h2 className="font-medium text-gray-800 dark:text-gray-200">Filtros y opciones</h2>
+          {hasActiveFilters && (
+            <Badge variant="secondary" className="text-xs">
+              {Object.values({searchQuery, roleFilter, tagFilter, cityFilter, balanceFilter, sortOrder}).filter(Boolean).length} activos
+            </Badge>
+          )}
+        </div>
+        {hasActiveFilters && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleClearFilters} 
+            className="text-xs h-8 px-2"
+          >
+            Limpiar todo
+          </Button>
+        )}
+      </div>
       
       {/* Búsqueda global */}
       <div className="relative">
@@ -107,19 +136,19 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
       </div>
       
       {/* Filtros avanzados */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         {/* Filtro por rol */}
         <div>
           <Select 
-            value={roleFilter || ""} 
-            onValueChange={(value) => onRoleFilterChange(value || null)}
+            value={roleFilter || "all_roles"} 
+            onValueChange={(value) => onRoleFilterChange(value === "all_roles" ? null : value)}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Rol" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="">Todos los roles</SelectItem>
+                <SelectItem value="all_roles">Todos los roles</SelectItem>
                 {uniqueRoles.map(role => (
                   <SelectItem key={role} value={role}>
                     {role}
@@ -133,15 +162,15 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
         {/* Filtro por etiqueta */}
         <div>
           <Select 
-            value={tagFilter || ""} 
-            onValueChange={(value) => onTagFilterChange(value || null)}
+            value={tagFilter || "all_tags"} 
+            onValueChange={(value) => onTagFilterChange(value === "all_tags" ? null : value)}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Etiqueta" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="">Todas las etiquetas</SelectItem>
+                <SelectItem value="all_tags">Todas las etiquetas</SelectItem>
                 {uniqueTags.map(tag => (
                   <SelectItem key={tag} value={tag}>
                     {tag}
@@ -155,15 +184,15 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
         {/* Filtro por ciudad */}
         <div>
           <Select 
-            value={cityFilter || ""} 
-            onValueChange={(value) => onCityFilterChange(value || null)}
+            value={cityFilter || "all_cities"} 
+            onValueChange={(value) => onCityFilterChange(value === "all_cities" ? null : value)}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Ciudad" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="">Todas las ciudades</SelectItem>
+                <SelectItem value="all_cities">Todas las ciudades</SelectItem>
                 {uniqueCities.map(city => (
                   <SelectItem key={city} value={city}>
                     {city}
@@ -177,15 +206,15 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
         {/* Filtro por saldo */}
         <div>
           <Select 
-            value={balanceFilter || ""} 
-            onValueChange={(value) => onBalanceFilterChange(value || null)}
+            value={balanceFilter || "all_balances"} 
+            onValueChange={(value) => onBalanceFilterChange(value === "all_balances" ? null : value)}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Saldo" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="">Todos los saldos</SelectItem>
+                <SelectItem value="all_balances">Todos los saldos</SelectItem>
                 <SelectItem value="pending">Con saldo pendiente</SelectItem>
                 <SelectItem value="paid">Sin saldo pendiente</SelectItem>
               </SelectGroup>
@@ -193,17 +222,55 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
           </Select>
         </div>
         
-        {/* Botón para limpiar filtros */}
+        {/* Ordenar por última compra */}
         <div>
-          <Button
-            variant="outline"
-            className="w-full flex items-center"
-            onClick={handleClearFilters}
-            disabled={!searchQuery && !roleFilter && !tagFilter && !cityFilter && !balanceFilter}
+          <Select 
+            value={sortOrder || "no_sort"} 
+            onValueChange={(value) => onSortOrderChange(value === "no_sort" ? null : value)}
           >
-            <Filter className="mr-2 h-4 w-4" />
-            Limpiar filtros
-          </Button>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="no_sort">Sin orden específico</SelectItem>
+                <SelectItem value="latest_purchase">Última compra (más reciente)</SelectItem>
+                <SelectItem value="oldest_purchase">Última compra (más antigua)</SelectItem>
+                <SelectItem value="balance_desc">Mayor saldo</SelectItem>
+                <SelectItem value="balance_asc">Menor saldo</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Contador de filtros activos con tooltip */}
+        <div className="hidden sm:block">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`w-full flex items-center ${hasActiveFilters ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : ''}`}
+                  onClick={handleClearFilters}
+                  disabled={!hasActiveFilters}
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  {hasActiveFilters ? 'Filtros aplicados' : 'Sin filtros'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-sm">
+                  {searchQuery && <div>• Búsqueda: "{searchQuery}"</div>}
+                  {roleFilter && <div>• Rol: {roleFilter}</div>}
+                  {tagFilter && <div>• Etiqueta: {tagFilter}</div>}
+                  {cityFilter && <div>• Ciudad: {cityFilter}</div>}
+                  {balanceFilter && <div>• Saldo: {balanceFilter === 'pending' ? 'Con pendientes' : 'Sin pendientes'}</div>}
+                  {sortOrder && <div>• Orden: {sortOrder}</div>}
+                  {hasActiveFilters && <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700">Click para limpiar todo</div>}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     </div>

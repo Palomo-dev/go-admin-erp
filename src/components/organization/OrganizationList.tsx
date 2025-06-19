@@ -61,7 +61,7 @@ export default function OrganizationList({ showActions = false, onDelete }: Orga
         name: org.name,
         type_id: { name: org.organization_types?.name || 'Unknown' },
         role_id: 2, // Owner role
-        is_current: org.id === currentMembership.organization_id
+        is_current: org.id === profile.organization_id
       }));
 
       setOrganizations(orgs);

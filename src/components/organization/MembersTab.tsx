@@ -2,61 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
-
-// Importar las utilidades de roles directamente en lugar de usando importación con ruta relativa
-// Esto ayuda a evitar problemas de carga de chunks
-const roleCodeMap: {[key: number]: string} = {
-  1: 'super_admin',
-  2: 'org_admin',
-  3: 'manager',
-  4: 'employee',
-  5: 'customer'
-};
-
-const roleNameMap: {[key: number]: string} = {
-  1: 'Super Admin',
-  2: 'Admin',
-  3: 'Manager',
-  4: 'Employee',
-  5: 'Customer'
-};
-
-const roleIdMap: {[key: string]: number} = {
-  'super_admin': 1,
-  'org_admin': 2,
-  'manager': 3,
-  'employee': 4,
-  'customer': 5
-};
-
-const roleDisplayMap: {[key: string]: string} = {
-  'super_admin': 'Super Admin',
-  'org_admin': 'Admin',
-  'manager': 'Manager',
-  'employee': 'Employee',
-  'customer': 'Customer'
-};
-
-const getRoleInfoById = (roleId: number | null): { name: string; code: string } => {
-  if (!roleId) return { name: 'Sin rol', code: '' };
-  
-  return {
-    name: roleNameMap[roleId] || `Rol ${roleId}`,
-    code: roleCodeMap[roleId] || `role_${roleId}`
-  };
-};
-
-const getRoleIdByCode = (code: string): number | null => {
-  return roleIdMap[code] || null;
-};
-
-const formatRolesForDropdown = (roles: any[]): any[] => {
-  return roles.map(role => ({
-    id: role.id,
-    code: roleCodeMap[role.id] || `role_${role.id}`,
-    name: role.name
-  }));
-};
+import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 
 interface MemberProps {
   id: string;
@@ -97,14 +43,14 @@ export default function MembersTab({ orgId }: { orgId: number }) {
     try {
       setLoading(true);
 
-      // Fetch members from organization_members joined with profiles and roles
+      // Fetch members from profiles with a join to roles and branches to get role and branch names
       const { data: membersData, error: membersError } = await supabase
         .rpc('get_profiles_by_organization', { org_id: orgId });
 
       console.log('Members data:', membersData);
 
       if (membersError) {
-        console.error('Error al obtener información de miembro:', membersError);
+        console.error('Error al obtener miembros:', membersError);
         throw membersError;
       }
 
@@ -113,21 +59,6 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         setMembers([]);
         return;
       }
-      
-      // Eliminar duplicados basados en user_id
-      // Esto asegura que cada usuario aparezca solo una vez en la lista
-      const uniqueUserIds = new Set<string>();
-      const uniqueMembersData = membersData.filter(member => {
-        // Si ya hemos visto este user_id, lo filtramos
-        if (uniqueUserIds.has(member.user_id)) {
-          return false;
-        }
-        // Si es la primera vez que vemos este user_id, lo mantenemos
-        uniqueUserIds.add(member.user_id);
-        return true;
-      });
-      
-      console.log('Datos de miembros sin duplicados:', uniqueMembersData.length, 'de', membersData.length, 'registros originales');
 
       // We'll use the roleUtils functions instead of defining the map here
 
@@ -135,37 +66,27 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       type MemberData = any;
 
       // Format the member data with proper role names
-      const formattedMembers = uniqueMembersData.map((member: MemberData) => {
-        const profile = member.profiles || {};
-        const role = member.roles || {};
-        const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Sin nombre';
-        
-        // Para obtener información de roles, ahora usamos los datos relacionados directamente
-        const roleName = role.name || 'Sin rol';
-        const roleCode = roleName.toLowerCase().replace(' ', '_');
-        
-        // Obtener información de la primera sucursal asignada (si existe)
-        let branchId = null;
+      const formattedMembers = membersData.map((member: MemberData) => {
+        const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Sin nombre';
+        const roleInfo = getRoleInfoById(member.role_id);
+      
         let branchName = 'Sin sucursal';
-        
-        if (member.branchAssignments && member.branchAssignments.length > 0) {
-          branchId = member.branchAssignments[0].branch_id;
-          branchName = member.branchAssignments[0].branch_name;
+        if (member.profiles_branch_id_fkey && typeof member.profiles_branch_id_fkey === 'object') {
+          branchName = member.profiles_branch_id_fkey.name || 'Sin sucursal';
         }
-        
+      
         return {
           id: member.id,
-          user_id: member.user_id,
+          user_id: member.id,
           full_name: fullName,
-          email: profile.email || 'Sin email',
-          role: roleName,
+          email: member.email || 'Sin email',
+          role: roleInfo.name,
           role_id: member.role_id,
-          role_code: roleCode,
-          is_admin: member.is_super_admin || false,
-          status: member.is_active ? "Activo" : "Inactivo",
-          branch_id: branchId,
+          role_code: roleInfo.code,
+          is_admin: member.is_owner,
+          status: member.status ? "Activo" : "Inactivo",
+          branch_id: member.branch_id,
           branch_name: branchName,
-          branch_assignments: member.branchAssignments || [],
           created_at: new Date(member.created_at).toLocaleDateString()
         };
       });
@@ -441,10 +362,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       onChange={(e) => updateMemberRole(member.id, e.target.value)}
                       disabled={member.is_admin} // Disable changing role for owners/admins
                     >
-                      <option key={`select-role-default-${member.id}`} value="">Seleccionar rol</option>
-                      {roles.map((role, roleIndex) => (
-                        <option key={`role-${role.id || roleIndex}-${member.id}`} value={role.code}>
-                          {role.name}
+                      <option value="">Seleccionar rol</option>
+                      {roles.map(role => (
+                        <option key={role.id} value={role.code}>
+                          {roleDisplayMap[role.code] || role.name}
                         </option>
                       ))}
                     </select>
@@ -456,9 +377,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       onChange={(e) => updateMemberBranch(member.id, e.target.value)}
                       disabled={member.is_admin} // Disable changing branch for owners/admins
                     >
-                      <option key={`no-branch-default-${member.id}`} value="">Sin sucursal</option>
-                      {branches.map((branch, branchIndex) => (
-                        <option key={`branch-${branch.id || branchIndex}-${member.id}`} value={branch.id}>
+                      <option value="">Sin sucursal</option>
+                      {branches.map(branch => (
+                        <option key={branch.id} value={branch.id}>
                           {branch.name}
                         </option>
                       ))}

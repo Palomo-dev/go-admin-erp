@@ -7,12 +7,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/pos/dialog";
-import { Button } from "@/components/pos/button";
-import { Input } from "@/components/pos/input";
-import { Label } from "@/components/pos/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/pos/tabs";
-import { Users, Clock } from "lucide-react";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users } from "lucide-react";
 import { TableView } from "./table-view";
 
 export interface TableData {

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useTheme } from "next-themes";
-import { cn } from "@/utils/posUtils";
+import { cn } from "@/utils/Utils";
 
 export interface ProductItemProps {
   id: number;

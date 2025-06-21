@@ -5,7 +5,7 @@ import { CartSummary } from "./cart-summary";
 import { CustomerSelector } from "./customer-selector";
 import { MultiCartManager } from "./multi-cart-manager";
 import { BarcodeScanner } from "./barcode-scanner";
-import { Button } from "./button";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Printer, ShoppingCart, User } from "lucide-react";

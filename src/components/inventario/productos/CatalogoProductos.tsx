@@ -1,441 +1,404 @@
 "use client";
 
-import React, { useState } from 'react';
-// Importamos los tipos centralizados
-import { Producto, FiltrosProducto, MovimientoInventario, TipoMovimientoInventario } from '@/components/inventario/productos/types';
-import ProductosPageHeader from '@/components/inventario/productos/ProductosPageHeader';
-import FiltrosProductos from '@/components/inventario/productos/FiltrosProductos';
-import ProductosTable from '@/components/inventario/productos/ProductosTable';
-import FormularioProducto from '@/components/inventario/productos/FormularioProducto';
-import DetalleProducto from '@/components/inventario/productos/DetalleProducto';
-import ImportarProductos from '@/components/inventario/productos/ImportarProductos';
-import Proveedores from './Proveedores';
-import OrdenesCompra from './OrdenesCompra';
-import { Proveedor } from './types';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { Producto, FiltrosProductos, StockSucursal } from './types';
+import { supabase } from '@/lib/supabase/config';
+import { Button } from "@/components/ui/button";
+import { toast } from '@/components/ui/use-toast';
+import { Loader2 } from 'lucide-react';
+
+// Importaciones de los componentes
+// @ts-ignore - Ignorar errores de importación
+import ProductosPageHeader from './ProductosPageHeader';
+// @ts-ignore - Ignorar errores de importación
+import FiltrosProductosComponent from './FiltrosProductos';
+// @ts-ignore - Ignorar errores de importación
+import ProductosTable from './ProductosTable';
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 
 /**
- * Componente principal para el catálogo maestro de productos
+ * Componente principal para el catálogo de productos
  * 
  * Este componente orquesta la visualización y gestión de productos,
  * incluyendo listado, filtrado, creación, edición y visualización de detalles.
  */
 const CatalogoProductos: React.FC = () => {
-  // Estados para gestionar la interfaz y los datos
-  const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [isViewing, setIsViewing] = useState<boolean>(false);
-  const [isImporting, setIsImporting] = useState<boolean>(false);
-  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
-  const [filters, setFilters] = useState<FiltrosProducto>({
-    categoria: '',
-    estado: 'todos',
-    busqueda: ''
-  });
+  // Tema actual
+  const { theme } = useTheme();
+  // Router para navegación
+  const router = useRouter();
   
-  // Estado para los movimientos de inventario (Kardex)
-  const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
-
-  // Estado para proveedores (levantado para compartir entre componentes)
-  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
-
-  // Movimientos de inventario de ejemplo (en producción vendrían de Supabase)
-  React.useEffect(() => {
-    // Generar algunos movimientos de ejemplo para demostración
-    const movimientosEjemplo: MovimientoInventario[] = [
-      {
-        id: '1',
-        fecha: new Date(2025, 5, 1, 9, 30),
-        productoId: '1',
-        productoNombre: 'Camiseta Básica',
-        productoSku: 'CAM-001',
-        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
-        cantidad: 20,
-        stockPrevio: 30,
-        stockResultante: 50,
-        motivo: 'Ingreso inicial de inventario',
-        responsable: 'Juan Pérez',
-        documentoReferencia: 'OC-2025-001'
-      },
-      {
-        id: '2',
-        fecha: new Date(2025, 5, 2, 14, 15),
-        productoId: '1',
-        productoNombre: 'Camiseta Básica',
-        productoSku: 'CAM-001',
-        tipoMovimiento: TipoMovimientoInventario.SALIDA,
-        cantidad: -5,
-        stockPrevio: 50,
-        stockResultante: 45,
-        motivo: 'Venta en tienda',
-        responsable: 'María González',
-        documentoReferencia: 'FAC-2025-042'
-      },
-      {
-        id: '3',
-        fecha: new Date(2025, 5, 3, 11, 0),
-        productoId: '1',
-        productoNombre: 'Camiseta Básica',
-        productoSku: 'CAM-001',
-        tipoMovimiento: TipoMovimientoInventario.AJUSTE,
-        cantidad: 5,
-        stockPrevio: 45,
-        stockResultante: 50,
-        motivo: 'Ajuste por inventario físico',
-        responsable: 'Carlos López',
-        documentoReferencia: 'INV-2025-001'
-      },
-      {
-        id: '4',
-        fecha: new Date(2025, 5, 4, 16, 20),
-        productoId: '2',
-        productoNombre: 'Pantalón Vaquero',
-        productoSku: 'PAN-001',
-        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
-        cantidad: 15,
-        stockPrevio: 15,
-        stockResultante: 30,
-        motivo: 'Recepción de mercancía',
-        responsable: 'Juan Pérez',
-        documentoReferencia: 'OC-2025-002'
-      },
-      {
-        id: '5',
-        fecha: new Date(2025, 5, 5, 10, 45),
-        productoId: '3',
-        productoNombre: 'Zapatillas Running',
-        productoSku: 'ZAP-001',
-        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
-        cantidad: 10,
-        stockPrevio: 5,
-        stockResultante: 15,
-        motivo: 'Compra de mercancía',
-        responsable: 'Ana Torres',
-        documentoReferencia: 'OC-2025-004'
-      }
-    ];
-    
-    setMovimientos(movimientosEjemplo);
-  }, []); // Array vacío para que solo se ejecute una vez al montar el componente
-
-  // Productos de ejemplo (en producción vendrían de Supabase)
-  const [productos, setProductos] = useState<Producto[]>([  
-    { 
-      id: '1', 
-      nombre: 'Camiseta Básica', 
-      sku: 'CAM-001', 
-      categoria: 'Ropa', 
-      precio: 25000, 
-      stock: 50,
-      estado: 'activo',
-      tieneVariantes: true
-    },
-    { 
-      id: '2', 
-      nombre: 'Pantalón Vaquero', 
-      sku: 'PAN-001', 
-      categoria: 'Ropa', 
-      precio: 59900, 
-      stock: 30,
-      estado: 'activo',
-      tieneVariantes: true
-    },
-    { 
-      id: '3', 
-      nombre: 'Zapatillas Running', 
-      sku: 'ZAP-001', 
-      categoria: 'Calzado', 
-      precio: 89900, 
-      stock: 15,
-      estado: 'inactivo',
-      tieneVariantes: true
-    }
-  ]);
-
-  // Manejadores de eventos
-  const handleCreateNew = () => {
-    setIsCreating(true);
-    setIsEditing(false);
-    setIsViewing(false);
-    setIsImporting(false);
-    setSelectedProduct(null);
-  };
-
-  const handleImport = () => {
-    setIsImporting(true);
-    setIsCreating(false);
-    setIsEditing(false);
-    setIsViewing(false);
-    setSelectedProduct(null);
-  };
-
-  const handleEdit = (product: Producto) => {
-    setSelectedProduct(product);
-    setIsEditing(true);
-    setIsCreating(false);
-    setIsViewing(false);
-    setIsImporting(false);
-  };
-
-  const handleView = (product: Producto) => {
-    setSelectedProduct(product);
-    setIsViewing(true);
-    setIsEditing(false);
-    setIsCreating(false);
-    setIsImporting(false);
-  };
-
-  const handleSave = (productData: Producto) => {
-    let savedProduct: Producto;
-
-    if (isCreating) {
-      // En producción: guardar en Supabase
-      const newProduct = {
-        ...productData,
-        id: Date.now().toString(), // En producción: ID generado por Supabase
-      };
-      setProductos([...productos, newProduct]);
-      savedProduct = newProduct;
-
-      // Registrar automáticamente un movimiento de entrada inicial
-      const nuevoMovimiento: Omit<MovimientoInventario, 'id'> = {
-        fecha: new Date(),
-        productoId: savedProduct.id,
-        productoNombre: savedProduct.nombre,
-        productoSku: savedProduct.sku,
-        tipoMovimiento: TipoMovimientoInventario.ENTRADA,
-        cantidad: savedProduct.stock,
-        stockPrevio: 0,
-        stockResultante: savedProduct.stock,
-        motivo: 'Creación inicial de producto',
-        responsable: 'Admin', // Idealmente vendría del contexto de usuario
-        documentoReferencia: 'NUEVO-PROD'
-      };
-
-      // Guardar el movimiento (en producción: guardar en Supabase)
-      handleRegistrarMovimiento(nuevoMovimiento);
-
-    } else if (isEditing && selectedProduct) {
-      // En producción: actualizar en Supabase
-      const updatedProduct = { ...selectedProduct, ...productData };
-      const updatedProducts = productos.map((p) => 
-        p.id === selectedProduct.id ? updatedProduct : p
-      );
-      setProductos(updatedProducts);
-      savedProduct = updatedProduct;
-
-      // Si el stock cambió, registrar un movimiento de ajuste
-      if (updatedProduct.stock !== selectedProduct.stock) {
-        const diferencia = updatedProduct.stock - selectedProduct.stock;
-        const nuevoMovimiento: Omit<MovimientoInventario, 'id'> = {
-          fecha: new Date(),
-          productoId: updatedProduct.id,
-          productoNombre: updatedProduct.nombre,
-          productoSku: updatedProduct.sku,
-          tipoMovimiento: TipoMovimientoInventario.AJUSTE,
-          cantidad: diferencia,
-          stockPrevio: selectedProduct.stock,
-          stockResultante: updatedProduct.stock,
-          motivo: 'Ajuste por edición de producto',
-          responsable: 'Admin', // Idealmente vendría del contexto de usuario
-          documentoReferencia: 'EDIT-' + updatedProduct.id
-        };
-
-        // Guardar el movimiento (en producción: guardar en Supabase)
-        handleRegistrarMovimiento(nuevoMovimiento);
-      }
-    } else {
-      // Caso no esperado, pero necesario para TypeScript
-      return;
-    }
-    
-    // Limpiar estados de edición y creación
-    setIsCreating(false);
-    setIsEditing(false);
-    
-    // Establecer el producto guardado como seleccionado y mostrar su vista de detalle
-    setSelectedProduct(savedProduct);
-    setIsViewing(true);
-  };
-
-  const handleDelete = (productId: string) => {
-    const producto = productos.find(p => p.id === productId);
-    if (producto) {
-      // Registrar movimiento de eliminación de inventario
-      const nuevoMovimiento: Omit<MovimientoInventario, 'id'> = {
-        fecha: new Date(),
-        productoId: producto.id,
-        productoNombre: producto.nombre,
-        productoSku: producto.sku,
-        tipoMovimiento: TipoMovimientoInventario.AJUSTE,
-        cantidad: -producto.stock,
-        stockPrevio: producto.stock,
-        stockResultante: 0,
-        motivo: 'Producto eliminado del catálogo',
-        responsable: 'Admin', // Idealmente vendría del contexto de usuario
-        documentoReferencia: 'DEL-' + producto.id
-      };
-      handleRegistrarMovimiento(nuevoMovimiento);
-    }
-    
-    // En producción: eliminar de Supabase
-    setProductos(productos.filter((p) => p.id !== productId));
-  };
-
-  const handleCancel = () => {
-    setIsCreating(false);
-    setIsEditing(false);
-    setIsViewing(false);
-    setIsImporting(false);
-    setSelectedProduct(null);
-  };
-
-  // Función para registrar un movimiento de inventario
-  const handleRegistrarMovimiento = (movimientoDatos: Omit<MovimientoInventario, 'id'>) => {
-    // En producción: guardar en Supabase
-    const nuevoMovimiento: MovimientoInventario = {
-      ...movimientoDatos,
-      id: Date.now().toString(), // En producción: ID generado por Supabase
-    };
-    
-    setMovimientos([...movimientos, nuevoMovimiento]);
-    
-    // Actualizar el stock del producto afectado
-    if (movimientoDatos.productoId) {
-      const productoActualizado = productos.find(p => p.id === movimientoDatos.productoId);
-      if (productoActualizado) {
-        // Actualizar el stock según el movimiento
-        const stockActualizado = movimientoDatos.stockResultante;
-        
-        // Actualizar el producto en el estado
-        setProductos(productos.map(p => 
-          p.id === movimientoDatos.productoId 
-            ? {...p, stock: stockActualizado}
-            : p
-        ));
-        
-        // Si se está viendo el producto afectado, actualizar también el selectedProduct
-        if (selectedProduct && selectedProduct.id === movimientoDatos.productoId) {
-          setSelectedProduct({...selectedProduct, stock: stockActualizado});
-        }
-      }
-    }
-  };
-
-  // Función para manejar los datos importados
-  const handleImportComplete = (productosImportados: Producto[]) => {
-    // Asignar IDs únicos a los productos importados
-    const nuevosProductos = productosImportados.map((producto, index) => ({
-      ...producto,
-      id: `imported-${Date.now()}-${index}`, // En producción: ID generado por Supabase
-    }));
-
-    // Agregar los productos importados a la lista existente
-    setProductos([...productos, ...nuevosProductos]);
-    
-    // Cerrar la vista de importación
-    setIsImporting(false);
-  };
-
-  const filteredProducts = productos.filter(product => {
-    const matchesCategoria = !filters.categoria || product.categoria === filters.categoria;
-    const matchesEstado = filters.estado === 'todos' || product.estado === filters.estado;
-    const matchesBusqueda = !filters.busqueda || 
-      product.nombre.toLowerCase().includes(filters.busqueda.toLowerCase()) ||
-      product.sku.toLowerCase().includes(filters.busqueda.toLowerCase());
-    
-    return matchesCategoria && matchesEstado && matchesBusqueda;
+  // Estados para gestionar la interfaz y los datos
+  const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [filters, setFilters] = useState<FiltrosProductos>({
+    busqueda: '',
+    categoria: null,
+    estado: '',
+    ordenarPor: 'name'
   });
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [productoToDelete, setProductoToDelete] = useState<number | null>(null);
 
-  // Renderizado condicional según el estado
-  if (isImporting) {
-    return (
-      <div className="space-y-6">
-        <ProductosPageHeader 
-          title="Importar Productos" 
-          onBack={handleCancel}
-        />
-        <ImportarProductos 
-          onImportComplete={handleImportComplete}
-          onCancel={handleCancel}
-        />
-      </div>
-    );
-  }
 
-  if (isCreating || isEditing) {
-    return (
-      <div className="space-y-6">
-        <ProductosPageHeader 
-          title={isCreating ? "Nuevo Producto" : "Editar Producto"} 
-          onBack={handleCancel}
-        />
-        <FormularioProducto 
-          initialData={isEditing && selectedProduct ? selectedProduct : undefined}
-          onSave={handleSave}
-          onCancel={handleCancel}
-          proveedores={proveedores}
-        />
-      </div>
-    );
-  }
 
-  if (isViewing && selectedProduct) {
-    return (
-      <div className="space-y-6">
-        <ProductosPageHeader 
-          title="Detalle del Producto" 
-          onBack={handleCancel}
-          showActions 
-          onEdit={() => handleEdit(selectedProduct)}
-        />
-        <DetalleProducto 
-          product={selectedProduct}
-          onEdit={() => handleEdit(selectedProduct)}
-          movimientos={movimientos.filter(m => m.productoId === selectedProduct.id)}
-          onRegistrarMovimiento={handleRegistrarMovimiento}
-        />
-      </div>
-    );
-  }
+  // Cargar productos desde Supabase
+  useEffect(() => {
+    const fetchProductos = async () => {
+      try {
+        setLoading(true);
+        
+        // Obtener el ID de organización del almacenamiento local
+        let organizationId = null;
+        
+        if (typeof window !== 'undefined') {
+          // Obtener directamente el currentOrganizationId guardado durante la autenticación
+          const orgId = localStorage.getItem('currentOrganizationId');
+          if (orgId) {
+            organizationId = parseInt(orgId, 10);
+          }
+          
+          // Si no existe en localStorage, buscar en sessionStorage
+          if (!organizationId) {
+            const sessionOrgId = sessionStorage.getItem('currentOrganizationId');
+            if (sessionOrgId) {
+              organizationId = parseInt(sessionOrgId, 10);
+            }
+          }
+          
+          // Si aún no hay ID, buscar en el formato anterior (selectedOrganization)
+          if (!organizationId) {
+            // Intentar formato anterior (compatibilidad)
+            const storedOrg = localStorage.getItem('selectedOrganization');
+            if (storedOrg) {
+              try {
+                const parsedOrg = JSON.parse(storedOrg);
+                organizationId = parsedOrg.id || parsedOrg.organization_id;
+              } catch (e) {
+                console.error('Error al parsear organización del localStorage:', e);
+              }
+            }
+
+            // Verificar en sessionStorage con formato anterior
+            if (!organizationId) {
+              const sessionOrg = sessionStorage.getItem('selectedOrganization');
+              if (sessionOrg) {
+                try {
+                  const parsedOrg = JSON.parse(sessionOrg);
+                  organizationId = parsedOrg.id || parsedOrg.organization_id;
+                } catch (e) {
+                  console.error('Error al parsear organización del sessionStorage:', e);
+                }
+              }
+            }
+          }
+        }
+
+        if (!organizationId) {
+          throw new Error('No se encontró el ID de la organización');
+        }
+
+        // Construir consulta base
+        let query = supabase
+          .from('products')
+          .select('*, categories(id, name)') // Incluir información de categorías
+          .eq('organization_id', organizationId);
+        
+        // Aplicar filtros
+        if (filters.busqueda) {
+          query = query.or(`name.ilike.%${filters.busqueda}%,sku.ilike.%${filters.busqueda}%,barcode.ilike.%${filters.busqueda}%`);
+        }
+        
+        if (filters.categoria) {
+          query = query.eq('category_id', filters.categoria);
+        }
+        
+        if (filters.estado) {
+          query = query.eq('status', filters.estado);
+        }
+        
+        // Ordenar resultados
+        query = query.order(filters.ordenarPor, { ascending: true });
+        
+        // Ejecutar consulta
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        // Formatear productos y obtener información adicional de stock
+        const formattedProductos = data.map((producto: any) => ({
+          ...producto,
+          category: producto.categories
+        }));
+        
+        // Obtener información de stock para cada producto
+        await fetchStockInfo(formattedProductos);
+
+      } catch (error) {
+        console.error('Error al cargar productos:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudieron cargar los productos. Intente de nuevo más tarde."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductos();
+  }, [filters]);
+
+  // Función para obtener información de stock por sucursal para un producto específico
+  const fetchStockPorSucursal = async (productId: number) => {
+    try {
+      // Obtener stock por sucursal para el producto seleccionado
+      const { data: stockData, error: stockError } = await supabase
+        .from('stock_levels')
+        .select('branch_id, qty_on_hand, branches(id, name)')
+        .eq('product_id', productId);
+      
+      if (stockError) throw stockError;
+      
+      // Formatear datos de stock por sucursal
+      const formattedStockData: StockSucursal[] = stockData.map((item: any) => ({
+        branch_id: item.branch_id,
+        branch_name: item.branches?.name || 'Sucursal sin nombre',
+        product_id: productId,
+        qty: item.qty_on_hand || 0
+      }));
+      
+      setStockPorSucursal(formattedStockData);
+    } catch (error) {
+      console.error('Error al obtener stock por sucursal:', error);
+      setStockPorSucursal([]);
+    }
+  };
+
+  // Función para obtener información de stock agregada
+  const fetchStockInfo = async (productsArray: Producto[]) => {
+    try {
+      // IDs de los productos para consulta
+      const productIds = productsArray.map((p: any) => p.id);
+      
+      if (productIds.length === 0) {
+        setProductos([]);
+        return;
+      }
+      
+      // Obtener stock por producto y sucursal
+      const { data: stockData, error: stockError } = await supabase
+        .from('stock_levels')
+        .select('product_id, branch_id, qty_on_hand')
+        .in('product_id', productIds);
+      
+      if (stockError) throw stockError;
+      
+      // Agrupar stock por producto
+      const stockByProduct: { [key: number]: number } = {};
+      
+      stockData?.forEach((item: any) => {
+        if (!stockByProduct[item.product_id]) {
+          stockByProduct[item.product_id] = 0;
+        }
+        stockByProduct[item.product_id] += item.qty_on_hand || 0;
+      });
+      
+      // Actualizar productos con información de stock
+      const productsWithStock = productsArray.map((producto: any) => ({
+        ...producto,
+        stock: stockByProduct[producto.id] || 0
+      }));
+      
+      setProductos(productsWithStock);
+    } catch (error) {
+      console.error('Error al obtener información de stock:', error);
+    }
+  };
+
+  // Funciones para gestionar los dialogos y acciones CRUD
+  const handleCrear = () => {
+    // Redireccionar a la nueva página de creación de productos
+    router.push('/app/inventario/productos/nuevo');
+  };
+
+  const handleEditar = (producto: Producto) => {
+    // Redireccionar a la página de edición del producto
+    router.push(`/app/inventario/productos/${producto.id}/editar`);
+  };
+
+  const handleDuplicar = (producto: Producto) => {
+    // Clonar el producto pero eliminar el ID y modificar SKU para que sea único
+    const duplicatedProduct = {
+      ...producto,
+      id: 0, // Usar 0 temporalmente, se asignará un nuevo ID al guardar
+      sku: `${producto.sku}-COPIA`,
+      name: `${producto.name} (Copia)`
+    } as Producto;
+    
+    setSelectedProducto(duplicatedProduct);
+  };
+
+  const handleVer = async (producto: Producto) => {
+    // Redireccionar a la página de detalle del producto
+    router.push(`/app/inventario/productos/${producto.id}`);
+  };
+
+  const handleEliminarClick = (id: number) => {
+    setProductoToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!productoToDelete) return;
+
+    try {
+      setLoading(true);
+      
+      // Primero verificar si hay registros relacionados
+      const { count: stockCount, error: stockError } = await supabase
+        .from('stock_levels')
+        .select('id', { count: 'exact', head: true })
+        .eq('product_id', productoToDelete);
+        
+      if (stockError) throw stockError;
+      
+      if (stockCount && stockCount > 0) {
+        toast({
+          variant: "destructive",
+          title: "No se puede eliminar",
+          description: "Este producto tiene registros de stock asociados."
+        });
+        setIsDeleteDialogOpen(false);
+        setProductoToDelete(null);
+        return;
+      }
+      
+      // Proceder con la eliminación
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productoToDelete);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Producto eliminado",
+        description: "El producto ha sido eliminado correctamente."
+      });
+      
+      // Actualizar lista de productos
+      setProductos(productos.filter(p => p.id !== productoToDelete));
+    } catch (error) {
+      console.error('Error al eliminar producto:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar el producto. Intente de nuevo más tarde."
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setProductoToDelete(null);
+      setLoading(false);
+    }
+  };
+
+  // Render de botones de acciones por producto
+  const RenderAcciones = ({ producto }: { producto: Producto }) => (
+    <div className="flex flex-row justify-end gap-2">
+      <Button
+        variant="outline"
+        onClick={() => handleEditar(producto)}
+        className={theme === 'dark' ? 'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700' : ''}
+      >
+        Editar
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => handleVer(producto)}
+        className={theme === 'dark' ? 'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700' : ''}
+      >
+        Ver
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => handleDuplicar(producto)}
+        className={theme === 'dark' ? 'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700' : ''}
+      >
+        Duplicar
+      </Button>
+      <Button
+        variant="destructive"
+        onClick={() => handleEliminarClick(producto.id)}
+        disabled={loading}
+      >
+        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+        Eliminar
+      </Button>
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
-      <ProductosPageHeader 
-        title="Catálogo de Productos" 
-        showActions
-        onCreateNew={handleCreateNew}
-        onImport={handleImport}
-      />
-      <FiltrosProductos 
+    <div className="flex flex-col gap-5">
+      {/* Header con título y botón de nuevo */}
+      <ProductosPageHeader onCrearClick={handleCrear} />
+      
+      {/* Filtros de búsqueda */}
+      <FiltrosProductosComponent 
         filters={filters}
-        onFilterChange={setFilters}
+        onFiltersChange={setFilters}
       />
+      
+      {/* Tabla de productos */}
       <ProductosTable 
-        productos={filteredProducts}
-        onView={handleView}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        productos={productos}
+        loading={loading}
+        onEdit={(producto: Producto) => handleEditar(producto)}
+        onView={(producto: Producto) => handleVer(producto)}
+        onDelete={(id: number) => handleEliminarClick(id)}
+        onDuplicate={(producto: Producto) => handleDuplicar(producto)}
+        renderAcciones={(producto: Producto) => <RenderAcciones producto={producto} />}
       />
-      {/* Sección de proveedores y órdenes de compra */}
-      <div className="mt-10">
-        {/* Proveedores */}
-        <details className="mb-4 border rounded">
-          <summary className="cursor-pointer px-4 py-2 bg-gray-100 text-gray-800 font-semibold rounded-t select-none">Proveedores</summary>
-          <div className="p-4">
-            {/* No se comparte estado real, solo ejemplo */}
-            {/* En producción, los proveedores vendrían de Supabase */}
-            <Proveedores proveedoresIniciales={proveedores} onProveedoresChange={setProveedores} />
-          </div>
-        </details>
-        {/* Órdenes de compra */}
-        <details className="border rounded">
-          <summary className="cursor-pointer px-4 py-2 bg-gray-100 text-gray-800 font-semibold rounded-t select-none">Órdenes de compra</summary>
-          <div className="p-4">
-            {/* En producción, productos y proveedores vendrían de Supabase */}
-            <OrdenesCompra productosDisponibles={productos} proveedores={proveedores} />
-          </div>
-        </details>
-      </div>
+      
+      {/* Diálogo de confirmación para eliminar */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className={`sm:max-w-md ${theme === 'dark' ? 'dark:bg-gray-950 dark:text-gray-200' : 'bg-white text-gray-800'}`}>
+          <DialogHeader>
+            <DialogTitle>¿Eliminar producto?</DialogTitle>
+            <DialogDescription className={theme === 'dark' ? 'dark:text-gray-400' : 'text-gray-500'}>
+              Esta acción no se puede deshacer. ¿Está seguro de que desea eliminar este producto?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-row justify-end gap-3 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              className={theme === 'dark' ? 'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700' : ''}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

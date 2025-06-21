@@ -2,10 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { TableView, TableViewProps } from './table-view';
-import { Button } from '@/components/pos/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/pos/select';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Grid, Move, Plus, Save } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/pos/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // Omitimos las propiedades que manejará el FloorPlan
 type TableFloorProps = Omit<

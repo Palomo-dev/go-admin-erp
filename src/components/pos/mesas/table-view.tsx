@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { Badge } from "@/components/pos/badge";
-import { Button } from "@/components/pos/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/pos/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Clock, Users, Coffee, MoreVertical, MoveRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 

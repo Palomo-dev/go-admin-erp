@@ -45,3 +45,26 @@ export function formatDate(date: Date, locale: string = 'es-ES'): string {
     minute: '2-digit',
   }).format(date);
 }
+
+/**
+ * Función de debounce que limita la frecuencia de ejecución de una función
+ * 
+ * @param func - La función a ejecutar con debounce
+ * @param wait - Tiempo de espera en milisegundos (por defecto 300ms)
+ * @returns Función con debounce aplicado
+ */
+export function debounce<T extends (...args: any[]) => any>(func: T, wait: number = 300): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  return function(...args: Parameters<T>) {
+    const later = () => {
+      timeout = null;
+      func(...args);
+    };
+    
+    if (timeout !== null) {
+      clearTimeout(timeout);
+    }
+    timeout = setTimeout(later, wait);
+  };
+}

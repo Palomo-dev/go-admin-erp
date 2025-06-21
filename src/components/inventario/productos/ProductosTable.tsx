@@ -1,237 +1,215 @@
 "use client";
 
 import React from 'react';
-import { Producto, EtiquetaProducto } from './types';
+import { useTheme } from 'next-themes';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { 
+  BadgeCheck, 
+  Loader2, 
+  MoreHorizontal, 
+  Pencil, 
+  Eye, 
+  Trash2,
+  Copy 
+} from 'lucide-react';
+import { formatCurrency } from '@/utils/Utils';
+import { Producto } from './types';
 
 interface ProductosTableProps {
   productos: Producto[];
-  onView: (producto: Producto) => void;
+  loading: boolean;
   onEdit: (producto: Producto) => void;
-  onDelete: (id: string) => void;
+  onView: (producto: Producto) => void;
+  onDelete: (id: number) => void;
+  onDuplicate: (producto: Producto) => void;
 }
 
 /**
- * Tabla de productos para el catálogo maestro
- * 
- * Muestra los productos con sus principales atributos y acciones disponibles
+ * Tabla para mostrar el listado de productos con sus acciones
  */
 const ProductosTable: React.FC<ProductosTableProps> = ({
   productos,
-  onView,
+  loading,
   onEdit,
+  onView,
   onDelete,
+  onDuplicate
 }) => {
-  // Función para determinar el color del texto según el nivel de stock
-  const getStockTextColor = (stock: number): string => {
-    if (stock > 10) return 'text-green-600';
-    if (stock > 0) return 'text-amber-600';
-    return 'text-red-600';
+  const { theme } = useTheme();
+  
+  // Función para renderizar estado del producto
+  const renderEstado = (estado: string) => {
+    switch (estado?.toLowerCase()) {
+      case 'active':
+        return (
+          <div className="flex items-center">
+            <span className={`w-2 h-2 rounded-full mr-2 ${theme === 'dark' ? 'bg-green-500' : 'bg-green-500'}`}></span>
+            <span>Activo</span>
+          </div>
+        );
+      case 'inactive':
+        return (
+          <div className="flex items-center">
+            <span className={`w-2 h-2 rounded-full mr-2 ${theme === 'dark' ? 'bg-gray-500' : 'bg-gray-400'}`}></span>
+            <span>Inactivo</span>
+          </div>
+        );
+      case 'discontinued':
+        return (
+          <div className="flex items-center">
+            <span className={`w-2 h-2 rounded-full mr-2 ${theme === 'dark' ? 'bg-red-500' : 'bg-red-500'}`}></span>
+            <span>Descontinuado</span>
+          </div>
+        );
+      default:
+        return <span>{estado || 'No definido'}</span>;
+    }
   };
-  // Función para formatear precio en formato de moneda colombiana
-  const formatCurrency = (value: number): string => {
-    // Verificar que el valor sea un número válido
-    if (isNaN(value) || value === null || value === undefined) {
-      return '$0';
+  
+  // Función para determinar el color de fondo según stock
+  const getBgColorByStock = (stock: number | undefined, trackStock: boolean) => {
+    // Si no se rastrea el stock, no hay color especial
+    if (!trackStock) return '';
+    
+    // Si no hay stock definido, dejamos el color predeterminado
+    if (stock === undefined) return '';
+    
+    if (stock <= 0) {
+      return theme === 'dark' 
+        ? 'bg-red-950/30 dark:border-red-800/30' 
+        : 'bg-red-50 border-red-100';
+    } else if (stock < 5) { // Esto debería ser un umbral configurable
+      return theme === 'dark' 
+        ? 'bg-amber-950/30 dark:border-amber-800/30' 
+        : 'bg-amber-50 border-amber-100';
     }
     
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(value);
+    return '';
   };
 
+  if (loading) {
+    return (
+      <div className={`rounded-lg border p-8 text-center ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+        <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+          Cargando productos...
+        </p>
+      </div>
+    );
+  }
+
+  if (productos.length === 0) {
+    return (
+      <div className={`rounded-lg border p-8 text-center ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
+        <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+          No se encontraron productos
+        </p>
+        <p className={`mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+          Intente con otros filtros o cree un nuevo producto.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {productos.length === 0 ? (
-        <div className="p-8 text-center">
-          <p className="text-gray-500">No se encontraron productos con los filtros actuales.</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Producto
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  SKU
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Categoría
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Precio
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Precio Mayorista
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Stock
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Etiquetas
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Variantes
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {productos.map((producto) => (
-                <tr key={producto.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-800">{producto.nombre}</div>
-                    {producto.codigoBarras && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Cod: {producto.codigoBarras}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {producto.sku}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {producto.categoria}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {formatCurrency(producto.precio)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {producto.precios?.mayorista !== undefined ? formatCurrency(producto.precios.mayorista) : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`font-medium ${getStockTextColor(producto.stock)}`}>
-                      {producto.stock}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        producto.estado === 'activo'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {producto.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex flex-wrap gap-1 max-w-xs">
-                      {producto.etiquetas && producto.etiquetas.length > 0 ? (
-                        producto.etiquetas.map((etiqueta: EtiquetaProducto) => (
-                          <span
-                            key={etiqueta.id}
-                            className="inline-flex items-center px-2 py-0.5 text-xs rounded-full"
-                            style={{ 
-                              backgroundColor: etiqueta.color + '20',
-                              color: etiqueta.color
-                            }}
-                            title={etiqueta.nombre}
-                          >
-                            {etiqueta.nombre}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-gray-500">-</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {producto.tieneVariantes ? (
-                      <span className="text-blue-600">Sí</span>
-                    ) : (
-                      <span>No</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right space-x-2">
-                    <button
-                      onClick={() => onView(producto)}
-                      className="text-gray-600 hover:text-gray-900"
-                      aria-label="Ver detalles"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+    <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader className={theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}>
+            <TableRow>
+              <TableHead className="w-[100px]">Código</TableHead>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Categoría</TableHead>
+              <TableHead className="text-right">Precio</TableHead>
+              <TableHead className="text-right">Costo</TableHead>
+              <TableHead className="text-center">Stock</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="w-[100px] text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {productos.map((producto) => (
+              <TableRow 
+                key={producto.id}
+                className={`${getBgColorByStock(producto.stock, producto.track_stock)}`}
+              >
+                <TableCell className="font-mono">{producto.sku}</TableCell>
+                <TableCell className="font-medium">{producto.name}</TableCell>
+                <TableCell>{producto.category?.name || '-'}</TableCell>
+                <TableCell className="text-right">{formatCurrency(producto.price)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(producto.cost)}</TableCell>
+                <TableCell className="text-center">
+                  {producto.track_stock 
+                    ? <span className={producto.stock && producto.stock <= 0 ? 'text-red-500 font-semibold' : ''}>{producto.stock || 0}</span>
+                    : <span className="text-gray-400">N/A</span>
+                  }
+                </TableCell>
+                <TableCell>{renderEstado(producto.status)}</TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="h-8 w-8 p-0"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => onEdit(producto)}
-                      className="text-blue-600 hover:text-blue-800"
-                      aria-label="Editar"
+                        <span className="sr-only">Abrir menú</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent 
+                      align="end"
+                      className={theme === 'dark' ? 'dark:bg-gray-950 dark:border-gray-800' : ''}
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                      <DropdownMenuItem 
+                        onClick={() => onView(producto)}
+                        className={theme === 'dark' ? 'dark:hover:bg-gray-900 dark:focus:bg-gray-900' : ''}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (window.confirm('¿Estás seguro de que deseas eliminar este producto?')) {
-                          onDelete(producto.id);
-                        }
-                      }}
-                      className="text-red-600 hover:text-red-800"
-                      aria-label="Eliminar"
-                      type="button"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                        <Eye className="mr-2 h-4 w-4" />
+                        <span>Ver detalles</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => onEdit(producto)}
+                        className={theme === 'dark' ? 'dark:hover:bg-gray-900 dark:focus:bg-gray-900' : ''}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                        <Pencil className="mr-2 h-4 w-4" />
+                        <span>Editar</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => onDuplicate(producto)}
+                        className={theme === 'dark' ? 'dark:hover:bg-gray-900 dark:focus:bg-gray-900' : ''}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        <span>Duplicar</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => onDelete(producto.id)}
+                        className={`text-red-600 ${theme === 'dark' ? 'dark:hover:bg-gray-900 dark:focus:bg-gray-900' : ''}`}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Eliminar</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };

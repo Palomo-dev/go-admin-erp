@@ -1,6 +1,6 @@
 import React from "react";
 import { ShoppingCart } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "@/components/ui/button";
 import { CartItem } from "./cart-item";
 
 interface Product {

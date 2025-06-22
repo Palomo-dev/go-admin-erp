@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/pos/button";
-import { Input } from "@/components/pos/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useTheme } from "next-themes";
-import { cn } from "@/utils/posUtils";
+import { cn } from "@/utils/Utils";
 import { Customer } from "./use-multi-client";
 
 interface CustomerSelectorProps {

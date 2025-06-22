@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { Button } from "@/components/pos/button";
-import { Badge } from "@/components/pos/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/pos/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Printer, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabase/config";
 import { useTheme } from "next-themes";

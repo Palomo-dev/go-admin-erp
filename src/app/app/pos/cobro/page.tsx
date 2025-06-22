@@ -113,6 +113,31 @@ export default function CobroPage() {
     setPayments(payments.filter(payment => payment.id !== paymentId));
   };
 
+  // Función para cargar detalles completos del cliente desde la base de datos
+  const loadCustomerDetails = async (customerId: string | number) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', customerId)
+        .single();
+        
+      if (error) {
+        console.error('Error al cargar detalles del cliente:', error);
+        return;
+      }
+      
+      if (data) {
+        setCustomer(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar detalles del cliente:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Cargar datos del carrito desde localStorage o desde Supabase si hay cartId
   useEffect(() => {
     const loadCartData = async () => {
@@ -185,22 +210,42 @@ export default function CobroPage() {
             setCustomer(parsedCartData.customer);
           }
         } else {
-          // Cargar desde localStorage
+          // Cargar desde localStorage con verificación de expiración
           const savedCart = localStorage.getItem("posCart");
           
           if (savedCart) {
             try {
               const parsedCart = JSON.parse(savedCart);
               
+              // Verificar si el carrito ha expirado
+              if (parsedCart.expiresAt) {
+                const expiryDate = new Date(parsedCart.expiresAt);
+                if (expiryDate < new Date()) {
+                  console.log("El carrito ha expirado, eliminando datos");
+                  localStorage.removeItem("posCart");
+                  return; // No cargar datos expirados
+                }
+              }
+              
               if (parsedCart.items && Array.isArray(parsedCart.items)) {
                 setCartItems(parsedCart.items);
               }
               
+              // Manejar datos sanitizados del cliente
               if (parsedCart.customer) {
-                setCustomer(parsedCart.customer);
+                // Si necesitamos datos completos del cliente, los cargamos desde la base de datos
+                if (parsedCart.customer.id) {
+                  // Cargar datos completos del cliente desde la base de datos
+                  loadCustomerDetails(parsedCart.customer.id);
+                } else {
+                  // Usar datos sanitizados si no hay ID
+                  setCustomer(parsedCart.customer);
+                }
               }
             } catch (err) {
               console.error("Error al parsear el carrito del localStorage:", err);
+              // Eliminar datos corruptos
+              localStorage.removeItem("posCart");
             }
           }
         }

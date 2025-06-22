@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Search, Loader2, Barcode } from "lucide-react";
-import { Input } from "./input";
-import { Button } from "./button";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface Product {
   id: string;

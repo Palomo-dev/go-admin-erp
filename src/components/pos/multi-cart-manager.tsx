@@ -1,7 +1,9 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { ShoppingCart, Trash2, Loader2, Plus } from "lucide-react";
-import { Card, CardContent } from "./card";
-import { Button } from "./button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase/config";
 
 interface Product {

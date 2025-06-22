@@ -11,9 +11,6 @@ export const branchService = {
       .select('*')
       .eq('organization_id', organizationId)
       
-      console.log("Organization ID:", organizationId);
-      console.log("Branch data:", data);
-
     if (error) {
       console.error('Error fetching branches:', error);
       throw new Error(error.message);

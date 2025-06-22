@@ -18,6 +18,9 @@ interface Organization {
     name: string;
   };
   role_id?: number;
+  plan_id: {
+    name: string;
+  };
 }
 
 export interface EmailLoginParams {
@@ -27,7 +30,7 @@ export interface EmailLoginParams {
   setError: (error: string | null) => void;
   setUserOrganizations: (orgs: Organization[]) => void;
   setShowOrgPopup: (show: boolean) => void;
-  proceedWithLogin: (data: any) => void;
+  proceedWithLogin: (rememberMe: boolean, email: string) => void;
 }
 
 export const handleEmailLogin = async ({
@@ -63,16 +66,19 @@ export const handleEmailLogin = async ({
 
     // Get user's organizations where they are owner
     const { data: ownedOrgs, error: ownedError } = await supabase
-  .from('organizations')
-  .select(`
-    id,
-    name,
-    type_id,
-    organization_types:organization_types!fk_organizations_organization_type(name)
-  `)
-  .eq('owner_user_id', data.user.id);
+      .from('organizations')
+      .select(`
+        id,
+        name,
+        type_id,
+        organization_types:organization_types!fk_organizations_organization_type(name),
+        plan_id (
+          id,
+          name
+        )
+      `)
+      .eq('owner_user_id', data.user.id);
 
-    console.log(ownedOrgs);
 
     if (ownedError) {
       throw ownedError;
@@ -83,11 +89,12 @@ export const handleEmailLogin = async ({
       id: org.id,
       name: org.name,
       type_id: { name: org.organization_types ? org.organization_types.name : 'Unknown' },
-      role_id: 2 // Owner role
+      role_id: 2, // Owner role
+      plan_id: { name: org.plan_id ? org.plan_id.name : 'Unknown'  }
     }));
 
     // If user has organizations, show selection popup
-    if (organizations.length > 0) {
+    if (organizations.length > 1) {
       setUserOrganizations(organizations);
       setShowOrgPopup(true);
       setLoading(false);
@@ -96,7 +103,8 @@ export const handleEmailLogin = async ({
 
     // If no organizations found, proceed with login
     // The user might be invited to join an organization later
-    proceedWithLogin(data);
+    proceedWithLogin(rememberMe, email);
+
     setLoading(false);
   } catch (err: any) {
     setError(err.message || 'Error al iniciar sesión');

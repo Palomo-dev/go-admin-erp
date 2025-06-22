@@ -5,7 +5,7 @@ import { CartSummary } from "./cart-summary";
 import { CustomerSelector } from "./customer-selector";
 import { MultiCartManager } from "./multi-cart-manager";
 import { BarcodeScanner } from "./barcode-scanner";
-import { Button } from "./button";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Printer, ShoppingCart, User } from "lucide-react";
@@ -367,12 +367,21 @@ export function MainPOS({
         cartId = data.id;
       }
       
-      // Guardar también en localStorage como respaldo (mejor manejo de datos)
+      // Guardar en localStorage como respaldo, pero sanitizando datos sensibles
+      const sanitizedCustomer = cart.customer ? {
+        id: cart.customer.id,
+        name: cart.customer.name,
+        // Omitir datos sensibles como documentos de identidad, tarjetas, etc.
+        // Solo mantener información mínima necesaria para la UI
+      } : null;
+      
       localStorage.setItem('posCart', JSON.stringify({
         items: cart.items,
-        customer: cart.customer,
+        customer: sanitizedCustomer,
         notes: cart.notes || '',
-        cartId: cartId // Incluir ID del carrito guardado
+        cartId: cartId, // Incluir ID del carrito guardado
+        timestamp: new Date().toISOString(), // Añadir timestamp para expiración
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Expira en 24 horas
       }));
       
       // Redireccionar a cobro con parámetros

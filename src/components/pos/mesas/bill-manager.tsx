@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-import { Button } from "@/components/pos/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/pos/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Receipt, CreditCard, FileText, Send } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/pos/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase/config";
 import { useTheme } from "next-themes";
 import { format } from "date-fns";

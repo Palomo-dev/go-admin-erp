@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button } from "@/components/pos/button";
-import { Input } from "@/components/pos/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/pos/dialog";
-import { Checkbox } from "@/components/pos/checkbox";
-import { Label } from "@/components/pos/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { PlusCircle, Flame, Leaf, AlignLeft, Check } from "lucide-react";
 import { useTheme } from "next-themes";
 

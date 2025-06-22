@@ -2,25 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase, getOrganizations } from '@/lib/supabase/config';
+import { useSearchParams } from 'next/navigation';
 import { 
   handleEmailLogin, 
   handleGoogleLogin, 
   handleMicrosoftLogin, 
   selectOrganizationFromPopup,
   proceedWithLogin,
+  Organization
 } from '@/lib/auth';
-
-// Define organization type
-type Organization = {
-  id: number;
-  name: string;
-  type_id: {
-    name: string;
-  };
-  role_id?: number;
-};
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -61,7 +51,7 @@ export default function LoginPage() {
       setError,
       setUserOrganizations,
       setShowOrgPopup,
-      proceedWithLogin: (data) => proceedWithLogin(data, rememberMe, email)
+      proceedWithLogin: (rememberMe: boolean, email: string) => proceedWithLogin(rememberMe, email)
     });
   };
 
@@ -86,18 +76,38 @@ export default function LoginPage() {
       organization: org,
       email,
       setShowOrgPopup,
-      proceedWithLogin: (data) => proceedWithLogin(data, rememberMe, email)
+      proceedWithLogin: (rememberMe, email) => proceedWithLogin(rememberMe, email)
     });
   };
   
   // Load remembered email on component mount
   useEffect(() => {
-    if (localStorage.getItem('rememberMe') === 'true') {
-      const savedEmail = localStorage.getItem('userEmail');
-      if (savedEmail) {
-        setEmail(savedEmail);
+    // Verificar si hay un email guardado para "recordarme"
+    const savedEmail = localStorage.getItem('userEmail');
+    if (savedEmail) {
+      try {
+        // Intentar decodificar el email (base64 + reverse)
+        const decodedEmail = atob(savedEmail.split('').reverse().join(''));
+        setEmail(decodedEmail);
         setRememberMe(true);
+      } catch (e) {
+        // Si hay un error al decodificar, limpiar el valor corrupto
+        localStorage.removeItem('userEmail');
       }
+    }
+    
+    // Limpiar cualquier token de Supabase que pudiera estar en localStorage
+    // para asegurar que solo se usen cookies para la autenticación
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('sb-access-token');
+    localStorage.removeItem('sb-refresh-token');
+    
+    // Limpiar cualquier token específico del proyecto
+    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
+      : '';
+    if (projectRef) {
+      localStorage.removeItem(`sb-${projectRef}-auth-token`);
     }
   }, []);
   
@@ -145,9 +155,37 @@ export default function LoginPage() {
                     key={org.id}
                     type="button"
                     onClick={() => onSelectOrganizationFromPopup(org)}
-                    className="block w-full text-left px-4 py-3 mb-2 text-sm text-gray-700 hover:bg-gray-100 border border-gray-200 rounded-md"
+                    className="flex items-center w-full text-left px-4 py-3 mb-2 hover:bg-gray-100 border border-gray-200 rounded-md"
                   >
-                    {org.name}
+                    {/* Organization logo or placeholder */}
+                    <div className="flex-shrink-0 mr-3">
+                      {org.logo_url ? (
+                        <img 
+                          src={org.logo_url} 
+                          alt={`${org.name} logo`} 
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                          {org.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Organization details */}
+                    <div className="flex-grow">
+                      <div className="font-medium text-gray-800">{org.name}</div>
+                      <div className="text-xs text-gray-500">{org.type_id?.name || 'Organización'}</div>
+                    </div>
+                    
+                    {/* Subscription plan */}
+                    <div className="flex-shrink-0 ml-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {org.plan_id?.name}
+                        </span>
+                    </div>
+                    
+                    
                   </button>
                 ))}
               </div>

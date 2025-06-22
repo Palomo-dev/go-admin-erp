@@ -1,23 +1,76 @@
 import { createClient, type Provider } from '@supabase/supabase-js'
 
+// Extrae la referencia del proyecto de la URL de Supabase
+export const getProjectRef = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  return supabaseUrl.split('.')[0].replace('https://', '');
+}
+
+// Función para obtener el valor de una cookie
+const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [cookieName, cookieValue] = cookie.trim().split('=');
+    if (cookieName === name) {
+      return decodeURIComponent(cookieValue);
+    }
+  }
+  return null;
+}
+
+// Función para establecer una cookie
+const setCookie = (name: string, value: string, maxAge: number = 604800) => {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Strict${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+}
+
+// Función para eliminar una cookie
+const removeCookie = (name: string) => {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Strict${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+}
+
 // Creación del cliente de Supabase
 export const createSupabaseClient = () => {
-  // Usamos una URL por defecto para modo desarrollo cuando no hay variables de entorno configuradas
+  // Verificamos que existan las variables de entorno necesarias
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
-  // Creamos el cliente con los valores reales o los de demostración
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase credentials')
   }
+  
+  const projectRef = getProjectRef();
+  const storageKey = projectRef ? `sb-${projectRef}-auth-token` : 'sb-auth-token';
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true,
+      detectSessionInUrl: false, // Cambiado a false para evitar problemas con NextJS router
       flowType: 'pkce',
-      storageKey: 'go-admin-erp-auth'
+      storageKey: storageKey,
+      storage: {
+        getItem: (key) => {
+          return getCookie(key);
+        },
+        setItem: (key, value) => {
+          setCookie(key, value);
+          // También eliminamos cualquier token del localStorage para mantener la seguridad
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(key);
+          }
+        },
+        removeItem: (key) => {
+          removeCookie(key);
+          // También eliminamos cualquier token del localStorage para mantener la seguridad
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(key);
+          }
+        }
+      }
     }
   })
 }
@@ -52,12 +105,21 @@ export const signInWithMicrosoft = async () => {
 }
 
 export const  signOut = async () => {
-  // Eliminar todas las cookies relacionadas con la autenticación
+  // Eliminar todas las cookies  // Extraer referencia del proyecto dinámicamente desde la URL de Supabase
+  const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
+    : '';
+    
+  // Limpiar cookies de autenticación
+  document.cookie = 'go-admin-erp-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
   document.cookie = 'sb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
   document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
   document.cookie = 'sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  document.cookie = 'go-admin-erp-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  document.cookie = 'sb-jgmgphmzusbluqhuqihj-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+  
+  // Limpiar cookie específica del proyecto usando la referencia dinámica
+  if (projectRef) {
+    document.cookie = `sb-${projectRef}-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+  }
   
   // Limpiar localStorage de tokens relacionados con la autenticación
   localStorage.removeItem('supabase.auth.token');
@@ -298,18 +360,42 @@ export const updatePassword = async (newPassword: string) => {
 }
 
 // Obtener organizaciones disponibles
+// Obtener organizaciones disponibles
 export const getOrganizations = async () => {
   const { data, error } = await supabase
     .from('organizations')
-    .select('id, name, status')
+    .select(`
+      id, 
+      name, 
+      status, 
+      logo_url,
+      type_id (
+        id, 
+        name
+      ),
+      plan_id (
+        id,
+        name
+      )
+    `)
     .order('name');
+
+  console.log("data", data);
   
   if (error) {
     console.error('Error al obtener organizaciones:', error);
     return [];
   }
   
-  return data || [];
+  // Return organizations without plan information if plans couldn't be fetched
+  return data?.map(org => ({
+    id: org.id,
+    name: org.name,
+    status: org.status,
+    logo_url: org.logo_url,
+    type_id: org.type_id,
+    plan_id: org.plan_id
+  })) || [];
 };
 
 // Función específica para registro con manejo mejorado de verificación

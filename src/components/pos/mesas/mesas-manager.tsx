@@ -2,17 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/pos/card";
-import { Badge } from "@/components/pos/badge";
-import { Button } from "@/components/pos/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/pos/tabs";
-import { LayoutGrid, Grid, Plus, Filter, Settings } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LayoutGrid, Grid, Settings } from "lucide-react";
 import { customToast } from "@/components/pos/custom-toast";
 import { FloorPlan } from "./floor-plan";
 import { TableActionsModal, TableData } from "./table-actions-modal";
 import { supabase } from "@/lib/supabase/config";
-import { Switch } from "@/components/pos/switch";
-import { Label } from "@/components/pos/label";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface Mesa {
   id: number;

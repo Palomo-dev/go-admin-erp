@@ -1,187 +1,173 @@
 /**
- * Tipos compartidos para el módulo de productos
- * 
- * Este archivo centraliza las definiciones de tipos para evitar 
- * inconsistencias entre componentes y permitir una fácil reutilización.
+ * Tipos para el módulo de Productos
  */
 
-/**
- * Interfaz para las etiquetas de producto
- */
-export interface EtiquetaProducto {
-  id: string;
-  nombre: string;
-  color?: string; // Color en formato hexadecimal para visualizar la etiqueta
-}
-
-/**
- * Interfaz para los productos del catálogo
- */
-/**
- * Interfaz para los productos del catálogo
- *
- * Si el producto se gestiona por lotes, usar el campo `lotes`.
- */
 export interface Producto {
-  proveedorId?: string; // Relación con proveedor principal (opcional)
-  proveedor?: Proveedor; // Objeto proveedor (opcional, para visualización)
-  id: string;
-  nombre: string;
+  id: number;
+  organization_id: number;
   sku: string;
-  categoria: string;
-  /**
-   * Precio principal (legacy). Usar 'precios' para nuevos desarrollos.
-   */
-  precio: number;
-  /**
-   * Precios múltiples por segmento de cliente.
-   * - mayorista: precio para clientes mayoristas
-   * - minorista: precio para clientes minoristas/retail
-   */
-  precios?: {
-    mayorista: number;
-    minorista: number;
-  };
-  stock: number;
-  estado: string;
-  tieneVariantes: boolean;
-  descripcion?: string;
-  // Nuevos campos para gestión de etiquetas, códigos de barras y QR
-  codigoBarras?: string;
-  codigoQR?: string;
-  etiquetas?: EtiquetaProducto[];
-  ubicacion?: string; // Para facilitar el seguimiento en el inventario físico
-  variantes?: { id?: string; nombre: string; valor: string; sku: string; stock: number; precio: number }[]; // Variantes completas agregadas desde el formulario
-
-  /**
-   * Lotes asociados al producto (gestión de vencimientos y trazabilidad).
-   * Si el producto no requiere control de lotes, dejar vacío o no usar.
-   */
-  lotes?: LoteProducto[];
-
-  /**
-   * Números de serie asociados al producto (gestión individual y trazabilidad).
-   * Si el producto requiere seguimiento individual, llenar este campo.
-   */
-  numerosSerie?: NumeroSerieProducto[];
+  name: string;
+  description: string;
+  category_id: number;
+  category?: Categoria; // Relación con categorías
+  unit_code: string;
+  unit?: UnidadMedida; // Relación con unidades
+  supplier_id: number | null;
+  supplier?: Proveedor; // Relación con proveedor
+  track_stock: boolean;
+  cost: number;
+  price: number;
+  image_url: string | null;
+  image_type: string | null;
+  image_path: string | null;
+  barcode: string | null;
+  status: string;
+  is_menu_item: boolean;
+  created_at?: string;
+  updated_at?: string;
+  stock?: number; // Campo calculado
+  lots?: Lote[]; // Relación con lotes
+  serial_numbers?: NumeroSerie[]; // Relación con números de serie
+  images?: ProductoImagen[]; // Múltiples imágenes
+  tags?: Etiqueta[]; // Etiquetas
+  variants?: ProductoVariante[]; // Variantes
+  initial_stock?: number; // Stock inicial (solo para creación)
+  selected_branch_id?: number; // Sucursal para el stock inicial
 }
 
-/**
- * Interfaz para la gestión de números de serie de productos
- */
-export interface NumeroSerieProducto {
-  id: string; // Identificador único del número de serie
-  numeroSerie: string; // Número de serie único
-  observaciones?: string; // Campo opcional para notas adicionales
-  vendido?: boolean; // Indica si el artículo fue vendido
-  fechaVenta?: string; // Fecha de venta (ISO) si aplica
+export interface Categoria {
+  id: number;
+  organization_id: number;
+  parent_id: number | null;
+  name: string;
+  slug: string;
+  rank: number;
+  created_at?: string;
+  updated_at?: string;
+  parent?: Categoria;
 }
 
-/**
- * Interfaz para la gestión de lotes y fechas de vencimiento de productos
- */
-export interface LoteProducto {
-  id: string; // Identificador único del lote
-  numeroLote: string; // Número o código del lote
-  cantidad: number; // Cantidad de unidades en el lote
-  fechaVencimiento: string; // Fecha de vencimiento en formato ISO (YYYY-MM-DD)
-  observaciones?: string; // Campo opcional para notas adicionales
+export interface UnidadMedida {
+  code: string;
+  name: string;
+  conversion_factor: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
-
-
-/**
- * Interfaz para los filtros de búsqueda de productos
- */
-export interface FiltrosProducto {
-  categoria: string;
-  estado: string;
-  busqueda: string;
+export interface Lote {
+  id: number;
+  product_id: number;
+  lot_code: string;
+  expiry_date: string;
+  supplier_id: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
-/**
- * Interfaz para las variantes de producto
- */
-export interface VarianteProducto {
-  id: string;
-  productoId: string; 
-  nombre: string;
-  sku: string;
-  precio?: number;
-  stock: number;
-  atributos?: Record<string, string>; // Por ejemplo: {color: 'rojo', talla: 'XL'}
+export interface NumeroSerie {
+  id: number;
+  product_id: number;
+  serial: string;
+  status: string;
+  sale_id: string | null;
+  purchase_id: string | null;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
-/**
- * Tipos de movimientos para el Kardex de inventario
- */
-export enum TipoMovimientoInventario {
-  ENTRADA = 'entrada',       // Compras, devoluciones de clientes
-  SALIDA = 'salida',        // Ventas, envíos
-  AJUSTE = 'ajuste',        // Correcciones de inventario
-  TRASLADO = 'traslado',    // Movimiento entre ubicaciones
-  MERMA = 'merma',          // Pérdida, deterioro, caducidad
-  INVENTARIO = 'inventario' // Ajuste por conteo de inventario
+export interface StockSucursal {
+  branch_id: number;
+  branch_name?: string;
+  product_id: number;
+  qty: number;
 }
 
-/**
- * Interfaz para los movimientos de inventario (Kardex)
- */
-/**
- * Interfaz para proveedores
- */
+export interface ProductoImagen {
+  id?: number;
+  product_id: number;
+  image_url: string;
+  storage_path: string;
+  display_order: number;
+  is_primary: boolean;
+  alt_text?: string;
+}
+
+export interface Etiqueta {
+  id: number;
+  organization_id: number;
+  name: string;
+}
+
+export interface VariantTypeFormValue {
+  name: string;
+  values: string[];
+}
+
+export interface TipoVariante {
+  id: number;
+  organization_id: number;
+  name: string;
+  values?: ValorVariante[];
+}
+
+export interface ValorVariante {
+  id: number;
+  variant_type_id: number;
+  value: string;
+  display_order: number;
+}
+
+export interface ProductoVariante {
+  id?: number;
+  product_id: number;
+  sku?: string;
+  price?: number;
+  cost?: number;
+  stock_quantity?: number;
+  attributes: ProductoVarianteAtributo[];
+}
+
+export interface ProductoVarianteAtributo {
+  variant_type_id: number;
+  variant_value_id: number;
+}
+
 export interface Proveedor {
-  id: string; // Identificador único del proveedor
-  nombre: string; // Nombre comercial
-  contacto?: string; // Nombre de contacto
-  telefono?: string;
+  id: number;
+  organization_id: number;
+  name: string;
+  nit?: string;
+  contact?: string;
+  phone?: string;
   email?: string;
-  direccion?: string;
-  notas?: string;
+  notes?: string;
 }
 
-/**
- * Interfaz para órdenes de compra
- */
-export interface OrdenCompra {
-  id: string; // Identificador único de la orden
-  proveedorId: string; // Relación con proveedor
-  proveedor?: Proveedor; // Objeto proveedor (opcional para visualización)
-  fecha: string; // Fecha de emisión (ISO)
-  estado: 'pendiente' | 'recibida' | 'cancelada';
-  productos: OrdenCompraProducto[]; // Productos solicitados
-  total: number;
-  notas?: string;
+export interface FiltrosProductos {
+  busqueda: string;
+  categoria: number | null;
+  estado: string;
+  ordenarPor: string;
 }
 
-/**
- * Producto dentro de una orden de compra
- */
-export interface OrdenCompraProducto {
-  productoId: string;
-  nombre: string;
-  cantidad: number;
-  precioUnitario: number;
-  subtotal: number;
-  loteAsignado?: string;
-  numeroSerieAsignado?: string;
-}
-
-export interface MovimientoInventario {
-  id: string;
-  fecha: Date;
-  productoId: string;
-  productoNombre: string;   // Para facilitar la visualización sin joins
-  productoSku: string;      // Para facilitar la visualización sin joins
-  varianteId?: string;      // Si el movimiento es específico a una variante
-  tipoMovimiento: TipoMovimientoInventario;
-  cantidad: number;         // Cantidad positiva o negativa según el tipo
-  stockPrevio: number;      // Stock antes del movimiento
-  stockResultante: number;  // Stock después del movimiento
-  precioUnitario?: number;  // Para calcular valores de inventario
-  motivo: string;           // Descripción detallada del motivo
-  documentoReferencia?: string; // Número de factura, orden, etc.
-  responsable: string;      // Usuario que realizó el movimiento
-  ubicacion?: string;       // Ubicación física del producto
-  notas?: string;           // Información adicional
+export interface ProductoFormValues {
+  sku: string;
+  name: string;
+  description: string;
+  category_id: number | null;
+  unit_code: string;
+  supplier_id: number | null;
+  track_stock: boolean;
+  cost: number;
+  price: number;
+  barcode: string;
+  status: string;
+  is_menu_item: boolean;
+  initial_stock?: number;
+  selected_branch_id?: number;
+  tags?: number[];
+  variant_types?: VariantTypeFormValue[];
+  images?: FileList | File[];
 }

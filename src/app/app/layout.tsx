@@ -582,7 +582,7 @@ const SidebarNavigation = ({
           submenu: [
             { name: "Productos", href: "/app/inventario/productos" },
             { name: "Categorías", href: "/app/inventario/categorias" },
-            { name: "Movimientos", href: "/app/inventario/movimientos" }
+            { name: "Proveedores", href: "/app/inventario/proveedores" }
           ]
         },
       ]

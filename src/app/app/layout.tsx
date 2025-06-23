@@ -171,35 +171,55 @@ export default function AppLayout({
   // Cargar datos del perfil del usuario desde Supabase al montar el componente o cuando se actualiza el perfil
   useEffect(() => {
     async function loadUserProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        try {
-          // Obtener datos del perfil del usuario
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-            
-          // Obtener datos del rol del usuario
-          const { data: userRoleData } = await supabase
-            .from('organization_members')
-            .select('role')
-            .eq('user_id', user.id)
-            .eq('organization_id', localStorage.getItem('currentOrganizationId'))
-            .single();
-          
-          // Actualizar el estado del userData
-          setUserData({
-            name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
-            email: user.email,
-            role: userRoleData?.role,
-            avatar: profileData?.avatar_url
-          });
-        } catch (error) {
-          console.error('Error al cargar datos del perfil:', error);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log('No hay usuario autenticado');
+          return;
         }
+        
+        // Obtener datos del perfil del usuario usando el cliente de Supabase configurado
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError) {
+          console.error('Error al obtener perfil:', profileError);
+          throw profileError;
+        }
+        
+        // Asegurar que tenemos el organizationId en localStorage
+        const currentOrgId = localStorage.getItem('currentOrganizationId');
+        if (!currentOrgId) {
+          console.log('No hay organización seleccionada');
+          return;
+        }
+        
+        // Obtener datos del rol del usuario con manejo adecuado de errores
+        const { data: userRoleData, error: roleError } = await supabase
+          .from('organization_members')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('organization_id', currentOrgId)
+          .single();
+          
+        if (roleError) {
+          console.error('Error al obtener rol:', roleError);
+          // Continuar aunque no tengamos el rol
+        }
+        
+        // Actualizar el estado del userData
+        setUserData({
+          name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
+          email: user.email,
+          role: userRoleData?.role,
+          avatar: profileData?.avatar_url
+        });
+      } catch (error) {
+        console.error('Error al cargar datos del perfil:', error);
       }
     }
     

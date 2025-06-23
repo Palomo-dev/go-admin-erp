@@ -108,54 +108,18 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     setError('');
 
     try {
-      // Get current user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No se encontró sesión de usuario');
-
-      // Create organization
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert([
-          {
-            name: formData.name,
-            type_id: parseInt(formData.typeId),
-            description: formData.description,
-            email: formData.email,
-            phone: formData.phone,
-            address: formData.address,
-            city: formData.city,
-            country: formData.country,
-            postal_code: formData.postalCode,
-            tax_id: formData.taxId,
-            website: formData.website,
-            owner_user_id: session.user.id,
-            status: 'active',
-            primary_color: formData.primaryColor,
-            secondary_color: formData.secondaryColor,
-            logo_url: formData.logoUrl,
-          }
-        ])
-        .select()
-        .single();
-
-      if (orgError) throw orgError;
-
-      // Update user's profile with organization
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          organization_id: orgData.id,
-          role_id: 2 // Admin role
-        })
-        .eq('id', session.user.id);
-
-      if (profileError) throw profileError;
-
+      // In signup flow, we don't need to check for a session
+      // We just collect the data and pass it to the parent component
+      // The actual database operations will be handled during the final signup step
+      
+      // Return organization data to parent component
       onSuccess({
-        name: orgData.name,
-        type_id: orgData.type_id,
-        logo_url: orgData.logo_url,
+        name: formData.name,
+        type_id: parseInt(formData.typeId),
+        logo_url: formData.logoUrl,
       });
+
+      // Success data already passed above
     } catch (err: any) {
       setError(err.message || 'Error al crear la organización');
     } finally {

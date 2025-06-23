@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import PersonalInfoStep from '../../../components/auth/PersonalInfoStep';
 import OrganizationStep from '../../../components/auth/OrganizationStep';
+import BranchStep from '../../../components/auth/BranchStep';
 import VerificationStep from '../../../components/auth/VerificationStep';
 import SubscriptionStep from '../../../components/auth/SubscriptionStep';
 import { supabase, signUpWithEmail } from '@/lib/supabase/config';
@@ -25,6 +26,17 @@ type SignupData = {
   organizationType: number | null;
   // Si se une con código
   invitationCode: string;
+  // Datos de sucursal principal
+  branchName: string;
+  branchCode: string;
+  branchAddress?: string;
+  branchCity?: string;
+  branchState?: string;
+  branchCountry?: string;
+  branchPostalCode?: string;
+  branchPhone?: string;
+  branchEmail?: string;
+  organizationId?: number;
 };
 
 export default function SignupPage() {
@@ -43,6 +55,15 @@ export default function SignupPage() {
     organizationName: '',
     organizationType: null,
     invitationCode: '',
+    branchName: 'Sucursal Principal',
+    branchCode: 'MAIN-001',
+    branchAddress: '',
+    branchCity: '',
+    branchState: '',
+    branchCountry: '',
+    branchPostalCode: '',
+    branchPhone: '',
+    branchEmail: '',
   });
 
   // Actualizar datos del formulario
@@ -141,6 +162,27 @@ export default function SignupPage() {
           });
 
         if (profileError) throw profileError;
+        
+        // Crear sucursal principal
+        const { error: branchError } = await supabase
+          .from('branches')
+          .insert({
+            name: signupData.branchName,
+            branch_code: signupData.branchCode,
+            address: signupData.branchAddress,
+            city: signupData.branchCity,
+            state: signupData.branchState,
+            country: signupData.branchCountry,
+            postal_code: signupData.branchPostalCode,
+            phone: signupData.branchPhone,
+            email: signupData.branchEmail,
+            organization_id: orgData.id,
+            is_main: true,
+            is_active: true,
+            status: 'active',
+          });
+
+        if (branchError) throw branchError;
       } else {
         // Unirse con código de invitación
         const { data: invitationData, error: invitationError } = await supabase
@@ -222,6 +264,10 @@ export default function SignupPage() {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 4
               </div>
+              <div className={`w-16 h-1 ${currentStep >= 5 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                5
+              </div>
             </div>
           </div>
         </div>
@@ -254,6 +300,16 @@ export default function SignupPage() {
         )}
         
         {currentStep === 3 && (
+          <BranchStep 
+            formData={signupData} 
+            updateFormData={updateFormData} 
+            onNext={nextStep}
+            onBack={prevStep}
+            loading={loading}
+          />
+        )}
+        
+        {currentStep === 4 && (
           <SubscriptionStep 
             formData={signupData} 
             updateFormData={updateFormData} 
@@ -263,7 +319,7 @@ export default function SignupPage() {
           />
         )}
         
-        {currentStep === 4 && (
+        {currentStep === 5 && (
           <VerificationStep 
             email={signupData.email}
           />

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Branch, BranchFormData } from '@/types/branch';
-import { BranchForm } from '@/components/branches/BranchForm';
+import { BranchForm, BranchFormRef } from '@/components/branches/BranchForm';
 
 interface FormData {
   // Branch data
@@ -38,6 +38,7 @@ export default function BranchStep({
 }: BranchStepProps) {
   const [error, setError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState<boolean>(false);
+  const formRef = useRef<BranchFormRef>(null);
 
   // Handle form submission
   const handleSubmit = async (branchData: BranchFormData) => {
@@ -104,10 +105,13 @@ export default function BranchStep({
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <BranchForm
+          ref={formRef}
           initialData={initialBranchData}
           onSubmit={handleSubmit}
           isLoading={loading || formLoading}
           submitLabel="Continuar"
+          hideSubmitButton={true}
+          noFormWrapper={true}
         />
       </div>
 
@@ -119,6 +123,32 @@ export default function BranchStep({
           disabled={loading || formLoading}
         >
           Atrás
+        </button>
+        
+        <button
+          type="button"
+          onClick={() => {
+            // Submit the form using the ref
+            if (formRef.current) {
+              formRef.current.submitForm();
+            }
+          }}
+          className="btn btn-primary flex items-center gap-2 shadow-sm hover:shadow transition-all duration-200"
+          disabled={loading || formLoading}
+        >
+          {loading || formLoading ? (
+            <>
+              <span className="loading loading-spinner loading-xs"></span>
+              <span>Guardando...</span>
+            </>
+          ) : (
+            <>
+              <span>Continuar</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </>
+          )}
         </button>
       </div>
     </div>

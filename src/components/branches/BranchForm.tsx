@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef, useImperativeHandle, FormEvent } from 'react';
 import { Branch, BranchFormData, OpeningHours, BranchFeatures } from '@/types/branch';
 import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon } from '@heroicons/react/24/outline';
 
@@ -7,7 +7,13 @@ type BranchFormProps = {
   onSubmit: (data: BranchFormData) => Promise<void>;
   isLoading?: boolean;
   submitLabel?: string;
+  hideSubmitButton?: boolean;
+  noFormWrapper?: boolean;
 };
+
+export interface BranchFormRef {
+  submitForm: () => void;
+}
 
 const defaultOpeningHours = JSON.stringify({
   monday: { open: '09:00', close: '18:00', closed: false },
@@ -28,12 +34,17 @@ const defaultFeatures = JSON.stringify({
   has_air_conditioning: false,
 }, null, 2);
 
-export const BranchForm: React.FC<BranchFormProps> = ({
-  initialData = {},
-  onSubmit,
-  isLoading = false,
-  submitLabel = 'Guardar Sucursal',
-}) => {
+export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
+  {
+    initialData = {},
+    onSubmit,
+    isLoading = false,
+    submitLabel = 'Guardar Sucursal',
+    hideSubmitButton = false,
+    noFormWrapper = false,
+  },
+  ref
+) => {
   // Parse JSON strings to objects for UI manipulation
   const parseOpeningHours = (json: string | undefined): OpeningHours => {
     try {
@@ -133,10 +144,25 @@ export const BranchForm: React.FC<BranchFormProps> = ({
       setError(err.message || 'Error al guardar la sucursal');
     }
   };
+  
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    submitForm: () => {
+      // Manually trigger form validation and submission
+      const formWithJson = {
+        ...form,
+        opening_hours: JSON.stringify(openingHoursObj),
+        features: JSON.stringify(featuresObj)
+      };
+      onSubmit(formWithJson).catch((err: any) => {
+        setError(err.message || 'Error al guardar la sucursal');
+      });
+    }
+  }));
 
-  return (
-    <div className="w-full max-w-5xl mx-auto bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-      <form onSubmit={handleSubmit} className="h-full max-h-[80vh] overflow-y-auto">
+  // Form content to be rendered inside or outside a form element
+  const formContent = (
+    <>
       {/* Toolbar */}
       <div className="sticky top-0 z-10 flex justify-between items-center p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
         <div className="flex items-center gap-3">
@@ -147,27 +173,29 @@ export const BranchForm: React.FC<BranchFormProps> = ({
             {initialData.id ? 'Editar Sucursal' : 'Nueva Sucursal'}
           </h2>
         </div>
-        <div className="flex space-x-2">
-          <button
-            type="submit"
-            className="btn btn-primary btn-sm md:btn-md flex items-center gap-2 shadow-sm hover:shadow transition-all duration-200"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <span className="loading loading-spinner loading-xs"></span>
-                <span>Guardando...</span>
-              </>
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>{submitLabel}</span>
-              </>
-            )}
-          </button>
-        </div>
+        {!hideSubmitButton && (
+          <div className="flex space-x-2">
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm md:btn-md flex items-center gap-2 shadow-sm hover:shadow transition-all duration-200"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <span className="loading loading-spinner loading-xs"></span>
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>{submitLabel}</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
       {/* Contenido del formulario */}
       <div className="p-4 sm:p-6 space-y-8">
@@ -469,9 +497,9 @@ export const BranchForm: React.FC<BranchFormProps> = ({
         </div>
       </div>
 
-      {/* Estado */}
-      <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm mb-8">
-        <div className="flex items-center gap-2 mb-4">
+        {/* Estado */}
+        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm mb-8">
+          <div className="flex items-center gap-2 mb-4">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -518,7 +546,15 @@ export const BranchForm: React.FC<BranchFormProps> = ({
           </div>
         )}
       </div>
-      </form>
-    </div>
+    </>
   );
-};
+  
+  return noFormWrapper ? (
+    <div className="branch-form">{formContent}</div>
+  ) : (
+    <form onSubmit={handleSubmit} className="branch-form">{formContent}</form>
+  );
+});
+
+// Add display name for debugging
+BranchForm.displayName = 'BranchForm';

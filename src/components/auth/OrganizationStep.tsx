@@ -35,7 +35,6 @@ export default function OrganizationStep({
 }: OrganizationStepProps) {
   const [error, setError] = useState<string>('');
   const [innerStep, setInnerStep] = useState<number>(1); // Track inner steps: 1 = selection, 2 = form
-  const [organizationCreated, setOrganizationCreated] = useState<boolean>(false); // Track if organization was created
 
   // Handle inner step navigation
   const nextInnerStep = () => {
@@ -133,32 +132,11 @@ export default function OrganizationStep({
                     organizationType: data.type_id,
                     logoUrl: data.logo_url !== null ? data.logo_url : undefined
                   });
-                  // Don't call onNext() here - we'll handle this with a confirmation step
-                  setOrganizationCreated(true);
+                  onNext();
                 }}
                 onCancel={prevInnerStep}
                 defaultEmail={formData.email}
               />
-              
-              {organizationCreated && (
-                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-                  <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <h3 className="text-sm font-medium text-green-800">Organización creada correctamente</h3>
-                  </div>
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={onNext}
-                      className="bg-green-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
-                      Continuar a configuración de sucursal
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <div className="max-w-4xl mx-auto">

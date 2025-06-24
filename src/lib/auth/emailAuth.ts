@@ -21,11 +21,13 @@ interface Organization {
   plan_id: {
     name: string;
   };
+  status?: string;
 }
 
 export interface EmailLoginParams {
   email: string;
   password: string;
+  rememberMe: boolean;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setUserOrganizations: (orgs: Organization[]) => void;
@@ -36,6 +38,7 @@ export interface EmailLoginParams {
 export const handleEmailLogin = async ({
   email,
   password,
+  rememberMe,
   setLoading,
   setError,
   setUserOrganizations,
@@ -64,7 +67,7 @@ export const handleEmailLogin = async ({
       throw new Error('No se pudo obtener la información del usuario');
     }
 
-    // Get user's organizations where they are owner
+    // Get user's ACTIVE organizations where they are owner
     const { data: ownedOrgs, error: ownedError } = await supabase
       .from('organizations')
       .select(`
@@ -75,9 +78,11 @@ export const handleEmailLogin = async ({
         plan_id (
           id,
           name
-        )
+        ),
+        status
       `)
-      .eq('owner_user_id', data.user.id);
+      .eq('owner_user_id', data.user.id)
+      .eq('status', 'active'); // Filtrar para obtener solo organizaciones activas
 
 
     if (ownedError) {
@@ -90,7 +95,8 @@ export const handleEmailLogin = async ({
       name: org.name,
       type_id: { name: org.organization_types ? org.organization_types.name : 'Unknown' },
       role_id: 2, // Owner role
-      plan_id: { name: org.plan_id ? org.plan_id.name : 'Unknown'  }
+      plan_id: { name: org.plan_id ? org.plan_id.name : 'Unknown' },
+      status: org.status || 'active'
     }));
 
     // If user has organizations, show selection popup

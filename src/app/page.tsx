@@ -16,6 +16,7 @@ export default function Home() {
       localStorage.removeItem('currentOrganizationName');
       localStorage.removeItem('userRole');
       localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('rememberMe');
       
       // Redireccionar a la página de login
       window.location.replace('/auth/login'); 

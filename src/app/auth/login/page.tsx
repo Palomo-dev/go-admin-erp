@@ -179,11 +179,18 @@ export default function LoginPage() {
                       <div className="text-xs text-gray-500">{org.type_id?.name || 'Organización'}</div>
                     </div>
                     
-                    {/* Subscription plan */}
-                    <div className="flex-shrink-0 ml-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {org.plan_id?.name}
+                    <div className="flex flex-col items-end ml-2 space-y-1">
+                      {/* Subscription plan */}
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        {org.plan_id?.name || 'Free'}
+                      </span>
+                      
+                      {/* Status badge - only active organizations are shown, but keeping the code in case needed */}
+                      {org.status && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Activa
                         </span>
+                      )}
                     </div>
                     
                     

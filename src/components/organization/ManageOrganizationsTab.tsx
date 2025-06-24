@@ -84,10 +84,20 @@ export default function ManageOrganizationsTab() {
           />
         </Suspense>
       ) : (
-        <OrganizationList
-          showActions={true}
-          onDelete={handleDeleteOrganization}
-        />
+        <div>
+          <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+            <p className="text-sm text-blue-700">
+              Aquí puedes gestionar todas tus organizaciones. Las organizaciones inactivas no aparecerán en el selector de organizaciones durante el inicio de sesión.
+            </p>
+          </div>
+          {/* Mostrar todas las organizaciones con capacidad de filtrado */}
+          <OrganizationList
+            showActions={true}
+            onDelete={handleDeleteOrganization}
+            filterActive={false}
+            showFilters={true}
+          />
+        </div>
       )}
     </div>
   );

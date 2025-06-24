@@ -16,6 +16,7 @@ export interface Organization {
   plan_id?: {
     name: string;
   };
+  status?: string; // Campo para indicar si la organización está activa o inactiva
 }
 
 export interface SelectOrganizationParams {

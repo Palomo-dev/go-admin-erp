@@ -111,7 +111,7 @@ export default function OrganizacionPage() {
           </div>
           
           <Suspense fallback={<div>Cargando organizaciones...</div>}>
-            <OrganizationList />
+            <OrganizationList showActions={true} filterActive={true} />
           </Suspense>
         </div>
       </div>
@@ -191,7 +191,7 @@ export default function OrganizacionPage() {
                 onClick={() => setActiveTab('info')}
                 className={`${activeTab === 'info' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
               >
-                Información
+                Información de la organización
               </button>
               <button
                 onClick={() => setActiveTab('branches')}

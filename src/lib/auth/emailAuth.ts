@@ -26,6 +26,7 @@ interface Organization {
 export interface EmailLoginParams {
   email: string;
   password: string;
+  rememberMe: boolean;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setUserOrganizations: (orgs: Organization[]) => void;
@@ -36,6 +37,7 @@ export interface EmailLoginParams {
 export const handleEmailLogin = async ({
   email,
   password,
+  rememberMe,
   setLoading,
   setError,
   setUserOrganizations,

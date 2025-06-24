@@ -47,6 +47,7 @@ export default function LoginPage() {
     await handleEmailLogin({
       email,
       password,
+      rememberMe,
       setLoading,
       setError,
       setUserOrganizations,

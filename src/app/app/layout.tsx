@@ -178,6 +178,8 @@ export default function AppLayout({
           console.log('No hay usuario autenticado');
           return;
         }
+
+        console.log(user);
         
         // Obtener datos del perfil del usuario usando el cliente de Supabase configurado
         const { data: profileData, error: profileError } = await supabase

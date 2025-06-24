@@ -13,6 +13,9 @@ export interface Organization {
     id: number;
     name: string
   };
+  plan_id?: {
+    name: string;
+  };
 }
 
 export interface SelectOrganizationParams {

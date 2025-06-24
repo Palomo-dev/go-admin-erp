@@ -1,7 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactElement } from 'react';
 import { supabase } from '@/lib/supabase/config';
+
+type ProfileData = {
+  organization_id: number | null;
+  role_id: number | null;
+};
+
+type SupabaseOrganization = {
+  id: number;
+  name: string;
+  type_id: number;
+  organization_types?: {
+    name: string;
+  };
+  plan_id?: {
+    id: number;
+    name: string;
+  };
+  status?: string;
+};
 
 interface Organization {
   id: number;
@@ -9,6 +28,8 @@ interface Organization {
   type_id: { name: string };
   role_id?: number;
   is_current?: boolean;
+  plan_name: string;
+  status: string;
 }
 
 interface OrganizationListProps {
@@ -16,7 +37,7 @@ interface OrganizationListProps {
   onDelete?: (orgId: number) => void;
 }
 
-export default function OrganizationList({ showActions = false, onDelete }: OrganizationListProps) {
+export default function OrganizationList({ showActions = false, onDelete }: OrganizationListProps): ReactElement {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,14 +54,16 @@ export default function OrganizationList({ showActions = false, onDelete }: Orga
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No se encontró sesión de usuario');
     
-      // Get user's organizations with role information and current organization
       // Get user's profile to know their current organization
-      const { data: profile, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('organization_members')
         .select('organization_id, role_id')
         .eq('user_id', session.user.id)
+        .single();
     
       if (profileError) throw profileError;
+      
+      const profile = profileData || { organization_id: null, role_id: null };
 
       // Get organizations where user is owner
       const { data: ownedOrgs, error: ownedError } = await supabase
@@ -49,21 +72,41 @@ export default function OrganizationList({ showActions = false, onDelete }: Orga
           id,
           name,
           type_id,
-          organization_types!fk_organizations_organization_type(name)
+          organization_types!fk_organizations_organization_type(name),
+          plan_id (id, name),
+          status
         `)
         .eq('owner_user_id', session.user.id);
 
       if (ownedError) throw ownedError;
 
-      // Transform organizations data
-      const orgs = ownedOrgs.map(org => ({
-        id: org.id,
-        name: org.name,
-        type_id: { name: org.organization_types?.name || 'Unknown' },
-        role_id: 2, // Owner role
-        is_current: org.id === profile.organization_id
-      }));
+      console.log("orgs", ownedOrgs);
+      console.log("profile", profile);
 
+      // Transform organizations data
+      const orgs = (ownedOrgs || []).map(org => {
+        // Safely extract organization type name
+        const typeName = org.organization_types && typeof org.organization_types === 'object' && 'name' in org.organization_types
+          ? String(org.organization_types.name) || 'Unknown'
+          : 'Unknown';
+        
+        // Safely extract plan name
+        let planName = 'Free';
+        if (org.plan_id && typeof org.plan_id === 'object' && 'name' in org.plan_id) {
+          planName = String(org.plan_id.name) || 'Free';
+        }
+        
+        return {
+          id: org.id,
+          name: org.name,
+          type_id: { name: typeName },
+          role_id: profile.role_id || 2, // Default to owner/admin role if not found
+          is_current: org.id === profile.organization_id,
+          plan_name: planName,
+          status: typeof org.status === 'string' ? org.status : 'inactive'
+        };
+      });
+    
       setOrganizations(orgs);
     } catch (err: any) {
       console.error('Error fetching organizations:', err);
@@ -72,6 +115,7 @@ export default function OrganizationList({ showActions = false, onDelete }: Orga
       setLoading(false);
     }
   };
+
 
   const handleSelectOrganization = async (orgId: number) => {
     try {
@@ -150,9 +194,17 @@ export default function OrganizationList({ showActions = false, onDelete }: Orga
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <p className="text-sm text-gray-500">
-                      {org.role_id === 2 ? 'Administrador' : 'Miembro'}
-                    </p>
+                    <div className="flex space-x-4">
+                      <p className="text-sm text-gray-500">
+                        {org.role_id === 2 ? 'Administrador' : 'Miembro'}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Plan: <span className="font-medium text-purple-600">{org.plan_name}</span>
+                      </p>
+                    </div>
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${org.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {org.status === 'active' ? 'Activo' : 'Inactivo'}
+                    </span>
                   </div>
                 </div>
                 <div className="ml-5 flex space-x-3 items-center">

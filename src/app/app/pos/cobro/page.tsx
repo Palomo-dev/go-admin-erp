@@ -162,13 +162,18 @@ export default function CobroPage() {
           return;
         }
         
-        // Obtener sucursal primaria
+        // Obtener la sucursal seleccionada por el usuario
+        const currentBranchId = localStorage.getItem('currentBranchId');
+        if (!currentBranchId) {
+          setError("No se ha seleccionado una sucursal");
+          setLoading(false);
+          return;
+        }
+        
         const { data: branchData, error: branchError } = await supabase
           .from("branches")
           .select("*")
-          .eq("organization_id", userData.organization.id)
-          .eq("is_primary", true)
-          .limit(1)
+          .eq("id", currentBranchId)
           .single();
           
         if (branchError) {

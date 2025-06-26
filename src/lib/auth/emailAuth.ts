@@ -100,14 +100,14 @@ export const handleEmailLogin = async ({
     }));
 
     // If user has organizations, show selection popup
-    if (organizations.length > 1) {
+    if (organizations.length >= 1) {
       setUserOrganizations(organizations);
       setShowOrgPopup(true);
       setLoading(false);
       return;
     }
 
-    // If no organizations found, proceed with login
+    // If no organizations or exactly one organization found, proceed with login
     // The user might be invited to join an organization later
     proceedWithLogin(rememberMe, email);
 

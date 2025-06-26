@@ -152,7 +152,7 @@ export default function ClientesPage() {
       // Consulta para cuentas por cobrar - convertimos orgId a string para la comparación UUID
       const { data: balances, error: balancesError } = await supabase
         .from("accounts_receivable")
-        .select("customer_id, sum(balance)")
+        .select("customer_id, balance")
         .in("customer_id", customerIds)
         .eq("organization_id", orgId.toString()) // Convertimos a string ya que organization_id es UUID
         .gt("balance", 0);
@@ -165,9 +165,10 @@ export default function ClientesPage() {
       // Consulta para última compra - manejando incompatibilidades de tipo UUID vs string
       const { data: lastPurchases, error: purchasesError } = await supabase
         .from("sales")
-        .select("customer_id, MAX(sale_date) as last_purchase")
+        .select("customer_id, sale_date")
         .eq("organization_id", orgId)
-        .eq("status", "paid");
+        .eq("status", "paid")
+        .order('sale_date', { ascending: false });
         
       if (purchasesError) {
         console.warn("Error obteniendo historial de compras:", purchasesError);
@@ -178,18 +179,29 @@ export default function ClientesPage() {
       const balanceMap = new Map();
       const lastPurchaseMap = new Map();
       
+      // Procesar saldos - agrupar por cliente y sumar balances
       if (balances) {
+        // Agrupar por customer_id y sumar los balances
         balances.forEach(item => {
-          if (item.customer_id && item.sum !== undefined) {
-            balanceMap.set(item.customer_id.toString(), item.sum);
+          if (item.customer_id && item.balance !== undefined) {
+            const customerId = item.customer_id.toString();
+            const currentBalance = balanceMap.get(customerId) || 0;
+            balanceMap.set(customerId, currentBalance + item.balance);
           }
         });
       }
       
+      // Procesar últimas compras - encontrar la fecha más reciente por cliente
       if (lastPurchases) {
+        // Agrupar por customer_id y encontrar la fecha más reciente
         lastPurchases.forEach(item => {
-          if (item.customer_id && item.last_purchase) {
-            lastPurchaseMap.set(item.customer_id.toString(), item.last_purchase);
+          if (item.customer_id && item.sale_date) {
+            const customerId = item.customer_id.toString();
+            const currentDate = lastPurchaseMap.get(customerId);
+            // Si no hay fecha registrada o la nueva es más reciente, actualizar
+            if (!currentDate || new Date(item.sale_date) > new Date(currentDate)) {
+              lastPurchaseMap.set(customerId, item.sale_date);
+            }
           }
         });
       }

@@ -231,7 +231,7 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
     // Ahora obtenemos la información de la organización
     const { data: orgData, error: orgError } = await supabase
       .from('organizations')
-      .select('id, name, status, types')
+      .select('id, name, status, type_id, organization_types!fk_organizations_organization_type(name)')
       .eq('id', organizationId)
       .maybeSingle(); // Usar maybeSingle para manejo seguro
     
@@ -320,7 +320,8 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
         id: orgData.id,
         name: orgData.name,
         status: orgData.status,
-        types: orgData.types,
+        type_id: orgData.type_id,
+        organization_type: orgData.organization_types && orgData.organization_types.length > 0 ? orgData.organization_types[0].name : null,
         branch_id: defaultBranchId // Añadimos la sucursal predeterminada para compatibilidad
       },
       branch_id: defaultBranchId, // También lo dejamos en la raíz para el nuevo código

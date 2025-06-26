@@ -100,39 +100,11 @@ export const handleEmailLogin = async ({
     }));
 
     // If user has organizations, show selection popup
-    if (organizations.length > 1) {
+    if (organizations.length >= 1) {
       setUserOrganizations(organizations);
       setShowOrgPopup(true);
       setLoading(false);
       return;
-    }
-    
-    // If user has exactly one organization, automatically select it
-    if (organizations.length === 1) {
-      const organization = organizations[0];
-      
-      // Save organization info to localStorage
-      localStorage.setItem('currentOrganizationId', organization.id.toString());
-      localStorage.setItem('currentOrganizationName', organization.name);
-      
-      // Get the main branch for this organization
-      const { data: branchData, error: branchError } = await supabase
-        .from('branches')
-        .select('id, name')
-        .eq('organization_id', organization.id)
-        .eq('is_main', true)
-        .single();
-      
-      if (!branchError && branchData) {
-        // Save branch info to localStorage
-        localStorage.setItem('currentBranchId', branchData.id.toString());
-        localStorage.setItem('currentBranchName', branchData.name);
-        console.log('Automatically selected branch:', branchData.name);
-      } else {
-        console.error('Error fetching main branch:', branchError);
-      }
-      
-      console.log('Automatically selected organization:', organization.name);
     }
 
     // If no organizations or exactly one organization found, proceed with login

@@ -3,18 +3,20 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, ForwardRefRenderFunction } from 'react'
 import { supabase } from '@/lib/supabase/config'
 import toast from 'react-hot-toast'
+import { getOrganizationId } from '@/lib/utils/useOrganizacion'
 
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 
-import { VariantesRef, VariantType, VariantCombination, VariantAttribute } from './types'
+import { VariantesRef, VariantType, VariantCombination, VariantAttribute, VariantesProps } from './types'
 // Importaciones de componentes
 import { SelectorTipoVariante } from './SelectorTipoVariante'
 import { ListaTiposVariante } from './ListaTiposVariante'
 import { ModalNuevoTipo } from './ModalNuevoTipo'
 import { TablaVariantes } from './TablaVariantes'
 
-const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
+const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props, ref) => {
+  const { defaultCost = 0, defaultPrice = 0, defaultSku = '', stockInicial = [] } = props
   // Estados del componente
   const [isLoading, setIsLoading] = useState(true)
   const [variantTypes, setVariantTypes] = useState<VariantType[]>([])
@@ -24,30 +26,16 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
   const [showNewTypeModal, setShowNewTypeModal] = useState(false)
   const [organizationId, setOrganizationId] = useState<number | null>(null)
 
-  // Obtener la organización activa del localStorage o usar ID 2 como respaldo
-  const getOrganizacionActiva = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        const orgData = localStorage.getItem('organizacionActiva')
-        return orgData ? JSON.parse(orgData) : { id: 2 } // Usar ID 2 como valor por defecto
-      } catch (err) {
-        console.error('Error al obtener organización del localStorage:', err)
-        return { id: 2 } // Valor de respaldo si hay error
-      }
-    }
-    return { id: 2 } // Valor de respaldo para SSR
-  }
-
   // Inicializar organization_id al montar el componente y cargar tipos de variantes
   useEffect(() => {
-    const organizacion = getOrganizacionActiva()
-    setOrganizationId(organizacion.id)
-    // Eliminado console.log para reducir ruido
+    const orgId = getOrganizationId()
+    setOrganizationId(orgId)
+    console.log('Variantes usando organization_id:', orgId)
     
     // Cargar los tipos de variantes inmediatamente después de obtener la organización
     const cargarTipos = async () => {
       try {
-        await cargarTiposVariantes(organizacion.id)
+        await cargarTiposVariantes(orgId)
       } catch (error) {
         console.error('Error al cargar tipos de variantes:', error)
       }
@@ -232,7 +220,7 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
       setVariantCombinations([])
       return
     }
-
+  
     // Filtrar solo los tipos que tienen valores seleccionados
     const tiposConValores = tiposSeleccionados.filter(tipo => 
       tipo.selectedValues && tipo.selectedValues.length > 0
@@ -242,17 +230,17 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
       setVariantCombinations([])
       return
     }
-
+  
     // Estructura para almacenar las combinaciones de atributos
     const combinacionesAtributos: VariantAttribute[][] = []
-
+  
     function generarCombinacion(tipoIndex: number, combinacionActual: VariantAttribute[]) {
       // Si hemos procesado todos los tipos, guardar la combinación
       if (tipoIndex >= tiposConValores.length) {
         combinacionesAtributos.push(combinacionActual)
         return
       }
-
+  
       // Obtener el tipo actual y sus valores seleccionados
       const tipoActual = tiposConValores[tipoIndex]
       const valoresSeleccionados = tipoActual.selectedValues || []
@@ -276,34 +264,52 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
     generarCombinacion(0, [])
     
     // Convertir las combinaciones de atributos a VariantCombination
-    const nuevasCombinaciones: VariantCombination[] = combinacionesAtributos.map(attrs => ({
-      sku: '',
-      price: 0,
-      cost: 0,
-      stock_quantity: 0,
-      attributes: attrs
-    }))
+    const nuevasCombinaciones: VariantCombination[] = combinacionesAtributos.map(attrs => {
+      // Generar un SKU para la variante basado en el SKU principal + valores de atributos
+      const sufijo = attrs
+        .map(attr => attr.value.substring(0, 3).toUpperCase())
+        .join('-');
+      const skuVariante = defaultSku ? `${defaultSku}-${sufijo}` : sufijo;
+  
+      // Crear objeto de stock por sucursal similar al principal si está disponible
+      const stockPorSucursal = stockInicial && stockInicial.length > 0
+        ? stockInicial.map(item => ({
+            branch_id: item.branch_id,
+            qty_on_hand: item.qty_on_hand,
+            avg_cost: item.avg_cost
+          }))
+        : [];
+        
+      return {
+        sku: skuVariante,
+        price: defaultPrice, // Usar el precio del formulario principal
+        cost: defaultCost,   // Usar el costo del formulario principal
+        stock_quantity: 0,
+        stock_por_sucursal: stockPorSucursal,
+        attributes: attrs
+      };
+    });
     
     setVariantCombinations(nuevasCombinaciones)
   }
 
-  const actualizarCampoVariante = (index: number, campo: keyof VariantCombination, valor: any) => {
-    const nuevasCombinaciones = [...variantCombinations]
-    if (index >= 0 && index < nuevasCombinaciones.length) {
-      nuevasCombinaciones[index] = {
-        ...nuevasCombinaciones[index],
-        [campo]: valor
-      }
-      setVariantCombinations(nuevasCombinaciones)
+const actualizarCampoVariante = (index: number, campo: keyof VariantCombination, valor: any) => {
+  const nuevasCombinaciones = [...variantCombinations]
+  if (index >= 0 && index < nuevasCombinaciones.length) {
+    nuevasCombinaciones[index] = {
+      ...nuevasCombinaciones[index],
+      [campo]: valor
     }
+    setVariantCombinations(nuevasCombinaciones)
   }
+}
 
   // Generar un SKU basado en el SKU base y la combinación
   const generarSkus = (skuBase: string) => {
     const nuevasCombinaciones = variantCombinations.map(comb => {
       // Crear un sufijo a partir de los valores de la variante
       const sufijo = comb.attributes
-        .map(attr => attr.value.substring(0, 2).toUpperCase())
+        .map(attr => attr.value.substring(0, 3).toUpperCase())
         .join('-')
       
       return {

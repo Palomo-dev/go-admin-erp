@@ -28,6 +28,13 @@ export interface VariantAttribute {
   value: string;
 }
 
+// Interfaz para el stock por sucursal
+export interface StockPorSucursal {
+  branch_id: number | null;
+  qty_on_hand: number;
+  avg_cost: number;
+}
+
 export interface VariantCombination {
   id?: number;
   sku: string;
@@ -36,9 +43,18 @@ export interface VariantCombination {
   stock_quantity: number;
   image?: string;
   attributes: VariantAttribute[];
+  stock_por_sucursal?: StockPorSucursal[];
 }
 
 // Interfaz para exponer métodos al componente padre
 export interface VariantesRef {
   getVariantes: () => Array<VariantCombination>
+}
+
+// Props para el componente Variantes
+export interface VariantesProps {
+  defaultCost?: number;
+  defaultPrice?: number;
+  defaultSku?: string;
+  stockInicial?: Array<{branch_id: number | null, qty_on_hand: number, avg_cost: number}>;
 }

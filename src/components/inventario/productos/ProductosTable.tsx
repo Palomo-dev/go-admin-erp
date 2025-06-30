@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { 
   Table, 
@@ -24,10 +24,14 @@ import {
   Pencil, 
   Eye, 
   Trash2,
-  Copy 
+  Copy,
+  PackageIcon
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
+import Image from 'next/image';
+import { supabase } from '@/lib/supabase/config';
+
 
 interface ProductosTableProps {
   productos: Producto[];
@@ -36,6 +40,15 @@ interface ProductosTableProps {
   onView: (producto: Producto) => void;
   onDelete: (id: number) => void;
   onDuplicate: (producto: Producto) => void;
+}
+
+// Interfaz para las imágenes de productos
+interface ProductImage {
+  id: number;
+  product_id: number;
+  image_url: string;
+  storage_path: string;
+  is_primary: boolean;
 }
 
 /**
@@ -50,6 +63,53 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   onDuplicate
 }) => {
   const { theme } = useTheme();
+  
+  // Estado para la paginación
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(25);
+  
+  // Estado para almacenar las imágenes principales de los productos
+  const [productImages, setProductImages] = useState<Record<number, string>>({});
+  
+  // Cálculo de productos por página
+  const indexOfLastProduct = currentPage * pageSize;
+  const indexOfFirstProduct = indexOfLastProduct - pageSize;
+  const currentProductos = productos.slice(indexOfFirstProduct, indexOfLastProduct);
+  const totalPages = Math.ceil(productos.length / pageSize);
+  
+  // Cargar las imágenes principales de los productos cuando cambia la lista
+  useEffect(() => {
+    const fetchProductImages = async () => {
+      if (productos.length === 0) return;
+      
+      // Obtener IDs de productos para filtrar
+      const productIds = productos.map(p => p.id);
+      
+      // Consultar imágenes principales (is_primary = true)
+      const { data, error } = await supabase
+        .from('product_images')
+        .select('id, product_id, image_url, storage_path, is_primary')
+        .in('product_id', productIds)
+        .eq('is_primary', true);
+        
+      if (error) {
+        console.error('Error al cargar imágenes de productos:', error);
+        return;
+      }
+      
+      // Crear un mapa de productId -> imageUrl
+      const imageMap: Record<number, string> = {};
+      if (data) {
+        data.forEach((img: ProductImage) => {
+          imageMap[img.product_id] = img.image_url;
+        });
+      }
+      
+      setProductImages(imageMap);
+    };
+    
+    fetchProductImages();
+  }, [productos]);
   
   // Función para renderizar estado del producto
   const renderEstado = (estado: string) => {
@@ -73,6 +133,13 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
           <div className="flex items-center">
             <span className={`w-2 h-2 rounded-full mr-2 ${theme === 'dark' ? 'bg-red-500' : 'bg-red-500'}`}></span>
             <span>Descontinuado</span>
+          </div>
+        );
+      case 'deleted':
+        return (
+          <div className="flex items-center">
+            <span className={`w-2 h-2 rounded-full mr-2 ${theme === 'dark' ? 'bg-purple-500' : 'bg-purple-500'}`}></span>
+            <span>Eliminado</span>
           </div>
         );
       default:
@@ -131,6 +198,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
         <Table>
           <TableHeader className={theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}>
             <TableRow>
+              <TableHead className="w-[80px]">Imagen</TableHead>
               <TableHead className="w-[100px]">Código</TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead>Categoría</TableHead>
@@ -142,11 +210,41 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {productos.map((producto) => (
+            {currentProductos.map((producto) => (
               <TableRow 
                 key={producto.id}
                 className={`${getBgColorByStock(producto.stock, producto.track_stock)}`}
               >
+                <TableCell>
+                  <div className="relative h-14 w-14 rounded-md overflow-hidden border bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    {productImages[producto.id] ? (
+                      <img
+                        src={productImages[producto.id]}
+                        alt={producto.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          // Evitar bucles infinitos verificando si ya intentamos cargar la imagen de respaldo
+                          const target = e.target as HTMLImageElement;
+                          if (!target.dataset.usedFallback) {
+                            target.dataset.usedFallback = 'true';
+                            target.src = '/placeholder-image.png';
+                          } else {
+                            // Si ya intentamos cargar la imagen de respaldo y también falló,
+                            // mostrar un elemento alternativo en lugar de intentar cargar otra imagen
+                            target.style.display = 'none';
+                            target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'text-gray-400 text-xs';
+                            placeholder.textContent = 'Sin imagen';
+                            target.parentElement?.appendChild(placeholder);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-xs">Sin imagen</span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="font-mono">{producto.sku}</TableCell>
                 <TableCell className="font-medium">{producto.name}</TableCell>
                 <TableCell>{producto.category?.name || '-'}</TableCell>
@@ -209,6 +307,52 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
             ))}
           </TableBody>
         </Table>
+      </div>
+      
+      {/* Paginación */}
+      <div className={`flex justify-between items-center px-4 py-3 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+        <div className="flex items-center space-x-2">
+          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Mostrar</span>
+          <select
+            className={`border rounded-md px-1 py-1 text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'}`}
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1); // Reset a la primera página al cambiar el tamaño
+            }}
+          >
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            de {productos.length} productos
+          </span>
+        </div>
+        
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev: number) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+          
+          <span className={`flex items-center px-3 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+            {currentPage} de {totalPages || 1}
+          </span>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev: number) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage >= totalPages}
+          >
+            Siguiente
+          </Button>
+        </div>
       </div>
     </div>
   );

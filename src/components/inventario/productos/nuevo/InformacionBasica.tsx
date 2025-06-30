@@ -29,6 +29,12 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
   const [proveedores, setProveedores] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
+  
+  // Estados para validación de SKU y código de barras
+  const [skuExistente, setSkuExistente] = useState(false)
+  const [validandoSku, setValidandoSku] = useState(false)
+  const [barcodeExistente, setBarcodeExistente] = useState(false)
+  const [validandoBarcode, setValidandoBarcode] = useState(false)
 
   // Obtener la organización activa del localStorage o usar ID 2 como respaldo
   const getOrganizacionActiva = () => {
@@ -47,6 +53,67 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
   const organizacion = getOrganizacionActiva()
   const organization_id = organizacion?.id
 
+  // Función para validar si un SKU ya existe en la base de datos
+  const validarSkuExistente = async (sku: string) => {
+    if (!sku || sku.trim() === '') {
+      setSkuExistente(false);
+      return;
+    }
+    
+    setValidandoSku(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id')
+        .eq('sku', sku)
+        .single();
+        
+      if (error && error.code === 'PGRST116') {
+        // No se encontró ningún producto con ese SKU (es válido)
+        setSkuExistente(false);
+      } else if (data) {
+        // Se encontró un producto con ese SKU (ya existe)
+        setSkuExistente(true);
+      }
+    } catch (error) {
+      console.error('Error al validar SKU:', error);
+    } finally {
+      setValidandoSku(false);
+    }
+  };
+  
+  // Función para validar si un código de barras ya existe en la base de datos
+  const validarBarcodeExistente = async (barcode: string) => {
+    if (!barcode || barcode.trim() === '') {
+      setBarcodeExistente(false);
+      return;
+    }
+    
+    setValidandoBarcode(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id')
+        .eq('barcode', barcode)
+        .single();
+        
+      if (error && error.code === 'PGRST116') {
+        // No se encontró ningún producto con ese código de barras (es válido)
+        setBarcodeExistente(false);
+      } else if (data) {
+        // Se encontró un producto con ese código de barras (ya existe)
+        setBarcodeExistente(true);
+      }
+    } catch (error) {
+      console.error('Error al validar código de barras:', error);
+    } finally {
+      setValidandoBarcode(false);
+    }
+  };
+
+  // Efecto para cargar los datos iniciales
   useEffect(() => {
     const cargarDatos = async () => {
       setIsLoading(true)
@@ -125,12 +192,34 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Código SKU</FormLabel>
-              <FormControl>
-                <Input placeholder="SKU001" {...field} />
-              </FormControl>
-              <FormDescription>
-                Código único para identificar el producto
-              </FormDescription>
+              <div className="relative">
+                <FormControl>
+                  <Input 
+                    placeholder="SKU001" 
+                    {...field} 
+                    className={skuExistente ? "border-red-500 pr-10" : ""}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      validarSkuExistente(e.target.value);
+                    }}
+                  />
+                </FormControl>
+                {validandoSku && (
+                  <div className="absolute right-3 top-2.5">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              {skuExistente ? (
+                <div className="text-sm font-medium text-destructive mt-1 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  Este SKU ya está en uso. Por favor, elige otro.
+                </div>
+              ) : (
+                <FormDescription>
+                  Código único para identificar el producto
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -142,12 +231,39 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Código de Barras</FormLabel>
-              <FormControl>
-                <Input placeholder="7891234567890" {...field} />
-              </FormControl>
-              <FormDescription>
-                Código de barras (opcional)
-              </FormDescription>
+              <div className="relative">
+                <FormControl>
+                  <Input 
+                    placeholder="7891234567890" 
+                    {...field} 
+                    className={barcodeExistente ? "border-red-500 pr-10" : ""}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      // Solo validar si hay contenido (es opcional)
+                      if (e.target.value.trim()) {
+                        validarBarcodeExistente(e.target.value);
+                      } else {
+                        setBarcodeExistente(false);
+                      }
+                    }}
+                  />
+                </FormControl>
+                {validandoBarcode && (
+                  <div className="absolute right-3 top-2.5">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              {barcodeExistente ? (
+                <div className="text-sm font-medium text-destructive mt-1 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  Este código de barras ya está en uso. Por favor, elige otro.
+                </div>
+              ) : (
+                <FormDescription>
+                  Código de barras (opcional)
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}

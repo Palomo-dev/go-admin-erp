@@ -19,10 +19,10 @@ export interface ImageItem {
 
 interface ImageTabsProps {
   onImageSelect: (image: ImageItem) => void;
-  organization_id?: number;
+  // Eliminamos organization_id ya que ahora usamos getOrganizationId en cada componente
 }
 
-export function ImageTabs({ onImageSelect, organization_id }: ImageTabsProps) {
+export function ImageTabs({ onImageSelect }: ImageTabsProps) {
   
   return (
     <div className="space-y-4">
@@ -40,10 +40,10 @@ export function ImageTabs({ onImageSelect, organization_id }: ImageTabsProps) {
         
         <div className="py-4">
           <TabsContent value="subir" className="mt-0">
-            <SubirImagenes onImageSelect={onImageSelect} organization_id={organization_id} />
+            <SubirImagenes onImageSelect={onImageSelect} />
           </TabsContent>
           <TabsContent value="organizacion" className="mt-0">
-            <ImagenesOrganizacion onImageSelect={onImageSelect} organization_id={organization_id} />
+            <ImagenesOrganizacion onImageSelect={onImageSelect} />
           </TabsContent>
           <TabsContent value="compartidas" className="mt-0">
             <ImagenesCompartidas onImageSelect={onImageSelect} />

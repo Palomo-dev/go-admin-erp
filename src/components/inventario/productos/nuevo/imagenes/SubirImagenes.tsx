@@ -4,7 +4,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
 import { Loader2, UploadCloud } from 'lucide-react';
-import { getOrganizationId } from '@/lib/utils/useOrganizacion';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 // Constantes para validación de archivos
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -26,7 +26,7 @@ export function SubirImagenes({ organization_id, onImageSelect }: SubirImagenesP
   const [orgId, setOrgId] = useState<number | undefined>(organization_id);
 
   useEffect(() => {
-    const loadOrganizationId = async () => {
+    const loadOrganizationId = () => {
       // Si ya tenemos organization_id por props, usarlo
       if (organization_id) {
         setOrgId(organization_id);
@@ -40,23 +40,18 @@ export function SubirImagenes({ organization_id, onImageSelect }: SubirImagenesP
         setOrgId(currentOrgId);
         return;
       }
-
-      // Si aún no tenemos ID, verificar con la sesión
-      console.log('No se encontró organización, verificando sesión');
-      const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session?.user) {
-        toast({
-          title: "Error",
-          description: "No se pudo determinar la organización. Por favor, inicia sesión nuevamente.",
-          variant: "destructive"
-        });
-      }
+      // No mostramos errores explícitos para evitar alertas redundantes
+      // Dejamos que el sistema de autenticación maneje esto
+      console.log('No se encontró ID de organización');
     };
     
     loadOrganizationId();
-  }, [organization_id, supabase.auth, toast]);
+  }, [organization_id]); // Eliminar dependencias innecesarias
   
+  // Esta bandera previene que se guarde el producto automáticamente al subir imágenes
+  const [imagenProcesada, setImagenProcesada] = useState(false);
+    
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     // Usar orgId del state en lugar de organization_id de props
     if (!orgId) {
@@ -69,6 +64,7 @@ export function SubirImagenes({ organization_id, onImageSelect }: SubirImagenesP
     }
     
     setIsUploading(true);
+    setImagenProcesada(true); // Activamos la bandera para saber que se procesó una imagen
     
     for (const file of acceptedFiles) {
       try {
@@ -168,12 +164,17 @@ export function SubirImagenes({ organization_id, onImageSelect }: SubirImagenesP
             newImage.width = dimensions.width;
             newImage.height = dimensions.height;
             
+            // Agregar imagen al estado local
             setUploadedImages(prev => [...prev, newImage]);
             
+            // Notificar que la imagen se subió temporalmente (no guardada en BD todavía)
             toast({
-              title: "Éxito",
-              description: `Imagen ${file.name} subida correctamente`,
+              title: "Imagen lista",
+              description: `Imagen ${file.name} lista para guardar con el producto. No olvides hacer clic en 'Guardar Producto' para confirmar los cambios.`,
             });
+            
+            // Llamamos a onImageSelect para que el componente padre reciba la imagen
+            onImageSelect(newImage);
           } else {
             console.error('Error en la respuesta de admin_register_image:', data);
             toast({

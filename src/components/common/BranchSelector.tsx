@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Building, ChevronDown } from 'lucide-react';
 import { Branch } from '@/types/branch';
 import { branchService } from '@/lib/services/branchService';
-import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/utils/useOrganizacion';
+import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 interface BranchSelectorProps {
   organizationId?: number;

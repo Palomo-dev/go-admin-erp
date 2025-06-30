@@ -182,6 +182,7 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
                 <SelectItem value="active">Activo</SelectItem>
                 <SelectItem value="inactive">Inactivo</SelectItem>
                 <SelectItem value="discontinued">Descontinuado</SelectItem>
+                <SelectItem value="deleted">Eliminado</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>

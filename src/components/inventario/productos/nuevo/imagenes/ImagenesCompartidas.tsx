@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Search } from 'lucide-react';
 import { ImageItem } from './ImageDialog';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getPublicImageUrl } from '@/lib/supabase/imageUtils';
 
 interface ImagenesCompartidasProps {
   onImageSelect: (image: ImageItem) => void;
@@ -19,6 +21,7 @@ type ImagenItem = {
   dimensions: { width: number; height: number } | null;
   created_at: string;
   organization_id: number;
+  storage_path?: string; // Añadida para manejar las rutas de almacenamiento
 };
 
 export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps) {
@@ -30,19 +33,18 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
   
   // Cargar imágenes compartidas de todas las organizaciones
   useEffect(() => {
+    // Creamos una variable para el cliente Supabase y evitar recrearlo
+    const supabaseClient = supabase;
+    
     const cargarImagenesCompartidas = async () => {
       try {
         setIsLoading(true);
         
-        // Obtener el ID de la organización actual para excluir sus imágenes
-        let currentOrgId: number | null = null;
-        const savedOrgId = localStorage.getItem('organization_id');
-        if (savedOrgId) {
-          currentOrgId = parseInt(savedOrgId);
-        }
+        // Obtener el ID de la organización actual para excluir sus imágenes usando utilidad centralizada
+        const currentOrgId = getOrganizationId();
         
         // Consultar las imágenes públicas o compartidas
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from('shared_images')
           .select('*')
           .eq('is_public', true)
@@ -58,7 +60,21 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
           filteredData = data.filter(img => img.organization_id !== currentOrgId);
         }
         
-        setImagenes(filteredData || []);
+        // Corregir las URLs de las imágenes para usar rutas públicas
+        const imgsWithFixedUrls = filteredData.map(img => {
+          // Si la URL tiene el formato de URL firmada, convertirla a pública
+          if (img.image_url && img.image_url.includes('/object/sign/')) {
+            // Extraer la ruta del bucket y el objeto
+            const urlParts = img.image_url.split('/object/sign/');
+            if (urlParts.length > 1) {
+              let objectPath = urlParts[1].split('?')[0]; // Eliminar el query string con el token
+              img.image_url = `${urlParts[0]}/object/public/${objectPath}`;
+            }
+          }
+          return img;
+        });
+        
+        setImagenes(imgsWithFixedUrls || []);
       } catch (error: any) {
         console.error('Error al cargar imágenes compartidas:', error);
         toast({
@@ -72,7 +88,8 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
     };
     
     cargarImagenesCompartidas();
-  }, [supabase, toast]);
+    // Eliminamos dependencia de supabase para evitar múltiples solicitudes
+  }, []);
   
   // Filtrar imágenes por término de búsqueda
   const filteredImagenes = searchTerm 
@@ -82,11 +99,18 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
     : imagenes;
   
   // Función para seleccionar una imagen para el producto
-  const handleSelectImage = (imagen: ImagenItem) => {
+  const handleSelectImage = (e: React.MouseEvent, imagen: ImagenItem) => {
+    // Prevenir el comportamiento por defecto del evento que podría causar envío del formulario
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Asegurar que la URL de la imagen sea pública permanente
+    const publicUrl = getPublicImageUrl(imagen.image_url, imagen.storage_path || '');
+    
     // Crear un objeto con la estructura esperada por el componente principal
     const selectedImage = {
-      url: imagen.image_url,
-      path: '', // Esto se podría obtener si es necesario
+      url: publicUrl, // Usar URL pública permanente
+      path: imagen.storage_path || '', // Guardar la ruta para futuras conversiones si es necesario
       displayOrder: 1, // Por defecto será la primera
       isPrimary: true, // Por defecto será la principal
       shared_image_id: imagen.id,
@@ -96,6 +120,13 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
       mime_type: imagen.mime_type
     };
     
+    // Notificar al usuario que debe hacer clic en 'Guardar Producto' para confirmar
+    toast({
+      title: "Imagen seleccionada",
+      description: `La imagen ${imagen.file_name} ha sido seleccionada. No olvides hacer clic en 'Guardar Producto' para confirmar los cambios.`,
+    });
+    
+    // Llamar al callback con la imagen seleccionada
     onImageSelect(selectedImage);
   };
   
@@ -128,7 +159,7 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
             <div 
               key={imagen.id}
               className="group relative rounded-md overflow-hidden border cursor-pointer"
-              onClick={() => handleSelectImage(imagen)}
+              onClick={(e) => handleSelectImage(e, imagen)}
             >
               <img 
                 src={imagen.image_url} 
@@ -142,7 +173,17 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
                 </p>
               </div>
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                <Button size="sm" variant="secondary">Usar imagen</Button>
+                <Button 
+                  size="sm" 
+                  variant="secondary"
+                  type="button" /* Importante: especificar tipo button para evitar envío de formulario */
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectImage(e, imagen);
+                  }}
+                >
+                  Usar imagen
+                </Button>
               </div>
             </div>
           ))}

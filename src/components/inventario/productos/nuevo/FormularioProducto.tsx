@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { getOrganizationId } from '@/lib/utils/useOrganizacion'
+import { getOrganizationId } from '@/lib/hooks/useOrganization'
 import { v4 as uuidv4 } from 'uuid'
+import { ArrowLeft } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase/config'
 import { Form } from '@/components/ui/form'
@@ -19,6 +20,8 @@ import PrecionyCostos from './PrecioysCostos'
 import Inventario from './Inventario'
 import Imagenes from './Imagenes'
 import Variantes from './Variantes'
+import Notas, { NotasRef } from './Notas'
+import Etiquetas, { EtiquetasRef } from './Etiquetas'
 
 // Esquema de validación con Zod
 const productoSchema = z.object({
@@ -70,6 +73,8 @@ export default function FormularioProducto() {
   // Referencias a componentes hijos para acceder a sus datos
   const imagenesRef = useRef<any>(null);
   const variantesRef = useRef<any>(null);
+  const notasRef = useRef<NotasRef>(null);
+  const etiquetasRef = useRef<EtiquetasRef>(null);
   
   // Obtener el ID de la organización activa usando la utilidad centralizada
   const organization_id = getOrganizationId();
@@ -113,11 +118,36 @@ export default function FormularioProducto() {
     setIsLoading(true);
     
     try {
+      // Funcion para verificar si un SKU ya existe en la base de datos
+      const verificarSkuUnico = async (sku: string): Promise<string> => {
+        if (!sku) return ''; // Si no hay SKU, retornar vacío
+        
+        // Verificar si ya existe un producto con ese SKU en esta organización
+        const { data } = await supabase
+          .from('products')
+          .select('id')
+          .eq('organization_id', organization_id)
+          .eq('sku', sku)
+          .maybeSingle();
+          
+        if (!data) {
+          // No existe, este SKU es único
+          return sku;
+        }
+        
+        // Si ya existe, generar un SKU alternativo con timestamp
+        const timestamp = Date.now().toString().slice(-6);
+        return `${sku}-${timestamp}`;
+      };
+      
       // Agregar el ID de organización a los datos
       const productoData = {
         ...data,
         organization_id
       };
+      
+      // Verificar que el SKU del producto principal sea único antes de insertarlo
+      productoData.sku = await verificarSkuUnico(productoData.sku);
       
       // Extraer los datos de stock inicial antes de guardar el producto
       const stockInicial = productoData.stock_inicial || [];
@@ -129,7 +159,7 @@ export default function FormularioProducto() {
       // Obtener variantes del componente de variantes
       const variantes = variantesRef.current?.getVariantes() || [];
       
-      // 1. Insertar el producto
+      // Insertar el producto con SKU verificado
       const { data: producto, error } = await supabase
         .from('products')
         .insert(productoData)
@@ -159,8 +189,8 @@ export default function FormularioProducto() {
           direction: 'in',
           qty: item.qty_on_hand,
           unit_cost: item.avg_cost || 0,
-          source: 'initial',
-          source_id: producto.id,
+          source: 'adjustment',  // Cambiado de 'initial' a 'adjustment' para cumplir con la restricción
+          source_id: producto.id.toString(),  // Convertir a string para ser consistente
           note: 'Stock inicial'
         }));
         
@@ -192,12 +222,15 @@ export default function FormularioProducto() {
       // 5. Guardar variantes del producto
       if (variantes.length > 0 && producto) {
         for (const variante of variantes) {
-          // Insertar la variante
+          // Asegurar que el SKU sea único antes de insertar
+          const skuUnico = await verificarSkuUnico(variante.sku);
+          
+          // Insertar la variante con el SKU único
           const { data: varData, error: varError } = await supabase
             .from('product_variants')
             .insert({
               product_id: producto.id,
-              sku: variante.sku,
+              sku: skuUnico,
               price: variante.price || productoData.price,
               cost: variante.cost || productoData.cost,
               stock_quantity: variante.stock_quantity || 0
@@ -254,8 +287,8 @@ export default function FormularioProducto() {
                 direction: 'in',
                 qty: stockItem.qty_on_hand,
                 unit_cost: stockItem.avg_cost || variante.cost || productoData.cost || 0,
-                source: 'initial_variant',
-                source_id: varData.id,
+                source: 'adjustment',
+                source_id: varData.id.toString(), // Convertir a string para cumplir con el tipo
                 note: `Stock inicial variante ${variante.sku} (Sucursal ${stockItem.branch_id})`
               }));
               
@@ -291,8 +324,8 @@ export default function FormularioProducto() {
                 direction: 'in',
                 qty: variante.stock_quantity,
                 unit_cost: variante.cost || productoData.cost || 0,
-                source: 'initial_variant',
-                source_id: varData.id,
+                source: 'adjustment',
+                source_id: varData.id.toString(), // Convertir a string para cumplir con el tipo
                 note: `Stock inicial variante ${variante.sku}`
               });
             }
@@ -300,15 +333,60 @@ export default function FormularioProducto() {
         }
       }
       
+      // 6. Guardar las notas del producto
+      if (notasRef.current && producto) {
+        try {
+          const { success, error } = await notasRef.current.guardarNotasEnBD(producto.id);
+          if (!success) {
+            console.error('Error al guardar notas del producto:', error);
+            // No lanzamos error para no interrumpir el flujo principal
+          }
+        } catch (notasError: any) {
+          console.error('Error al guardar notas del producto:', notasError);
+          // No lanzamos error para no interrumpir el flujo principal
+        }
+      }
+      
+      // 7. Guardar las etiquetas del producto
+      if (etiquetasRef.current && producto) {
+        try {
+          const { success, error } = await etiquetasRef.current.guardarEtiquetasEnBD(producto.id);
+          if (!success) {
+            console.error('Error al guardar etiquetas del producto:', error);
+            // No lanzamos error para no interrumpir el flujo principal
+          }
+        } catch (tagsError: any) {
+          console.error('Error al guardar etiquetas del producto:', tagsError);
+          // No lanzamos error para no interrumpir el flujo principal
+        }
+      }
+      
+      // Mostrar mensaje de éxito
       toast({
         title: "Éxito",
         description: "Producto creado correctamente",
       });
       
-      // Redirigir a la página de detalle
-      router.push(`/app/inventario/productos/${producto.id}`);
+      // Log para diagnóstico
+      console.log('Producto guardado exitosamente:', producto.id);
+      
+      // Asegurarnos de que la redirección ocurra con un setTimeout para darle tiempo al sistema
+      setTimeout(() => {
+        try {
+          // Intentar navegar a la página de detalle
+          router.push(`/app/inventario/productos/${producto.id}`);
+        } catch (navError) {
+          console.error('Error al redireccionar:', navError);
+          // Alternativa de navegación si router.push falla
+          window.location.href = `/app/inventario/productos/${producto.id}`;
+        }
+      }, 500);
       
     } catch (error: any) {
+      // Mostrar mensaje detallado del error
+      console.error('Error al guardar el producto:', error);
+      
+      // Mostrar toast con detalles del error
       toast({
         title: "Error",
         description: error.message || "Ocurrió un error al guardar el producto",
@@ -320,26 +398,35 @@ export default function FormularioProducto() {
   };
 
   return (
-    <Card className="w-full">
-      <CardContent className="p-4">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid gap-4">
-              <InformacionBasica form={form} />
-              <PrecionyCostos form={form} />
-              <Inventario form={form} />
-              <Imagenes ref={imagenesRef} />
-              <Variantes 
-                ref={variantesRef} 
-                defaultCost={Number(form.watch('cost') || 0)} 
-                defaultPrice={Number(form.watch('price') || 0)}
-                defaultSku={form.watch('sku')}
-                stockInicial={form.watch('stock_inicial')?.map(item => ({
-                  branch_id: item.branch_id,
-                  qty_on_hand: item.qty_on_hand,
-                  avg_cost: item.avg_cost || 0
-                }))}
-              />
+    <>
+      <Card className="w-full">
+        <CardContent className="p-4">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid gap-4">
+                <InformacionBasica form={form} />
+                <PrecionyCostos form={form} />
+                <Inventario form={form} />
+                <Imagenes ref={imagenesRef} />
+                <Variantes 
+                  ref={variantesRef} 
+                  defaultCost={Number(form.watch('cost') || 0)} 
+                  defaultPrice={Number(form.watch('price') || 0)}
+                  defaultSku={form.watch('sku')}
+                  stockInicial={form.watch('stock_inicial')?.map(item => ({
+                    branch_id: item.branch_id,
+                    qty_on_hand: item.qty_on_hand,
+                    avg_cost: item.avg_cost || 0
+                  }))}
+                />
+                
+                <Notas 
+                  ref={notasRef}
+                />
+
+                <Etiquetas
+                  ref={etiquetasRef}
+                />
               
               <div className="flex justify-end space-x-4 mt-8">
                 <Button 
@@ -361,5 +448,6 @@ export default function FormularioProducto() {
         </Form>
       </CardContent>
     </Card>
+    </>
   );
 }

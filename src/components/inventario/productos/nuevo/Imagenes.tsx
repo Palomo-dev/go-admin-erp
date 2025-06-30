@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, forwardRef, useImperativeHandle, useCallback, useEffect } from 'react'
-import { X, ImagePlus } from 'lucide-react'
+import { X, ImagePlus, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/config'
 import { v4 as uuidv4 } from 'uuid'
+import { getPublicImageUrl, updateImageUrlsInArray } from '@/lib/supabase/imageUtils'
 
 import { Button } from '@/components/ui/button'
 import { 
@@ -32,9 +33,14 @@ export interface ImagenesRef {
   guardarImagenesEnBD: (product_id: number) => Promise<{success: boolean, error?: any}>
 }
 
-const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
+interface ImagenesProps {
+  productoId?: number; // ID del producto para modo edición (opcional)
+}
+
+const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) => {
   const { toast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
+  const [isLoadingImages, setIsLoadingImages] = useState(false)
   const [images, setImages] = useState<Array<{
     url: string
     path: string
@@ -68,6 +74,58 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
 
   // Garantizar que tenemos una organización válida antes de continuar
   // Esto se ejecuta una vez al montar el componente y cada vez que se actualice localStorage
+  // Cargar imágenes existentes del producto si estamos en modo edición
+  useEffect(() => {
+    if (!productoId) return;
+
+    const cargarImagenesExistentes = async () => {
+      try {
+        setIsLoadingImages(true);
+        // Utilizamos JOIN directo para obtener datos de ambas tablas en un formato más predecible
+        const { data: productImages, error } = await supabase
+          .from('product_images')
+          .select('*, shared_image:shared_image_id(id, image_url, storage_path, file_name, file_size, mime_type, dimensions)')
+          .eq('product_id', productoId)
+          .order('display_order');
+          
+        if (error) throw error;
+        
+        if (productImages && productImages.length > 0) {
+          // 2. Formatear los datos al formato que espera el estado images
+          let formattedImages = productImages.map(img => ({
+            url: img.shared_image.image_url,
+            path: img.shared_image.storage_path,
+            displayOrder: img.display_order,
+            isPrimary: img.is_primary,
+            shared_image_id: img.shared_image.id,
+            width: img.shared_image.dimensions?.width,
+            height: img.shared_image.dimensions?.height,
+            size: img.shared_image.file_size,
+            mime_type: img.shared_image.mime_type
+          }));
+          
+          // Actualizar las URLs para asegurar que no expiren
+          formattedImages = updateImageUrlsInArray(formattedImages);
+          console.log('Imágenes con URLs actualizadas:', formattedImages);
+          
+          // 3. Establecer las imágenes en el estado
+          setImages(formattedImages);
+        }
+      } catch (error: any) {
+        console.error('Error al cargar imágenes existentes:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las imágenes del producto",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingImages(false);
+      }
+    };
+    
+    cargarImagenesExistentes();
+  }, [productoId, toast]);
+
   useEffect(() => {
     // Verificar si ya tenemos una organización
     if (!organization_id) {
@@ -125,31 +183,123 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
 
   // Función para guardar imágenes en la tabla product_images cuando ya se tiene el product_id
   const guardarImagenesEnBD = async (product_id: number) => {
+    // Verificar organization_id para debugging
+    console.log('Guardando imágenes para producto', product_id, 'con organización', organization_id);
+    // Si estamos en modo edición, necesitamos manejar la actualización de imágenes existentes
+    if (productoId) {
+      try {
+        // 1. Obtener las imágenes actuales del producto
+        const { data: existingImages, error: fetchError } = await supabase
+          .from('product_images')
+          .select('id, shared_image_id')
+          .eq('product_id', product_id);
+          
+        if (fetchError) throw fetchError;
+        
+        // 2. Identificar imágenes que hay que eliminar (las que ya no están en el estado actual)
+        const currentImageIds = images.filter(img => img.shared_image_id).map(img => img.shared_image_id);
+        const imagesToDelete = existingImages?.filter(img => !currentImageIds.includes(img.shared_image_id)) || [];
+        
+        // 3. Eliminar registros de imágenes que ya no están en el estado
+        if (imagesToDelete.length > 0) {
+          const deleteIds = imagesToDelete.map(img => img.id);
+          const { error: deleteError } = await supabase
+            .from('product_images')
+            .delete()
+            .in('id', deleteIds);
+            
+          if (deleteError) throw deleteError;
+        }
+      } catch (error: any) {
+        console.error('Error al actualizar imágenes existentes:', error);
+        return { success: false, error };
+      }
+    }
     try {
       if (images.length === 0) {
         return { success: true } // No hay imágenes que guardar
       }
+      
+      // Obtener el máximo display_order actual para este producto
+      // para evitar conflictos de clave única
+      let maxDisplayOrder = 0;
+      try {
+        const { data: existingImages, error: fetchError } = await supabase
+          .from('product_images')
+          .select('display_order')
+          .eq('product_id', product_id)
+          .order('display_order', { ascending: false })
+          .limit(1);
+          
+        if (fetchError) {
+          console.warn('Error al obtener orden máximo de imágenes:', fetchError);
+        } else if (existingImages && existingImages.length > 0) {
+          maxDisplayOrder = existingImages[0].display_order || 0;
+          console.log('Orden máximo actual de imágenes:', maxDisplayOrder);
+        }
+      } catch (e) {
+        console.warn('Error al calcular orden máximo de imágenes:', e);
+      }
 
       // Si las imágenes tienen shared_image_id, usamos la función associate_image_to_product
       // para cada imagen compartida
-      const insertPromises = images.map(async (image) => {
+      const insertPromises = images.map(async (image, index) => {
+        // Asignar un display_order único y secuencial para evitar conflictos
+        // Empezamos desde el máximo actual + 1 para evitar duplicados
+        const displayOrder = maxDisplayOrder + index + 1;
         if (image.shared_image_id) {
           // Para imágenes que ya se han subido con upload_temporary_image
-          // Asegurarse de que shared_image_id es un número
-          const sharedImageId = typeof image.shared_image_id === 'number' ? image.shared_image_id : Number(image.shared_image_id);
+          // Crear una variable para almacenar el resultado fuera del scope del try-catch
+          let resultData = null;
           
-          const { data, error } = await supabase.rpc('associate_image_to_product', {
-            p_product_id: product_id,
-            p_shared_image_id: sharedImageId,
-            p_is_primary: image.isPrimary,
-            p_display_order: image.displayOrder
-          })
-          
-          if (error) {
-            console.error('Error al asociar imagen compartida:', error)
-            throw error
+          try {
+            // Asegurarse de que shared_image_id es un número válido
+            const sharedImageId = typeof image.shared_image_id === 'number' 
+              ? image.shared_image_id 
+              : parseInt(String(image.shared_image_id), 10);
+            
+            if (isNaN(sharedImageId) || sharedImageId <= 0) {
+              console.error('ID de imagen compartida inválido:', image.shared_image_id);
+              throw new Error(`ID de imagen compartida inválido: ${image.shared_image_id}`);
+            }
+            
+            if (!product_id || isNaN(product_id) || product_id <= 0) {
+              console.error('ID de producto inválido:', product_id);
+              throw new Error(`ID de producto inválido: ${product_id}`);
+            }
+            
+            console.log('Asociando imagen compartida con los siguientes parámetros:', {
+              p_product_id: product_id,
+              p_shared_image_id: sharedImageId,
+              p_is_primary: !!image.isPrimary, // Asegurar que sea boolean
+              p_display_order: displayOrder // Usar el mismo valor que se enviará al servidor
+            });
+            
+            const { data, error } = await supabase.rpc('associate_image_to_product', {
+              p_shared_image_id: sharedImageId, // Parámetro correcto según definición de la función
+              p_product_id: product_id,
+              p_display_order: displayOrder, // Usar el nuevo display_order calculado
+              p_is_primary: !!image.isPrimary
+            });
+            
+            if (error) {
+              console.error('Error al asociar imagen compartida:', error);
+              throw new Error(`Error al asociar imagen: ${error.message || JSON.stringify(error)}`);
+            }
+            
+            // Guardar el resultado en la variable externa al try-catch
+            resultData = data;
+            
+            if (!resultData) {
+              console.warn('Respuesta vacía al asociar imagen');
+            } else {
+              console.log('Imagen asociada correctamente, ID:', resultData);
+            }
+          } catch (imgError: any) {
+            console.error(`Error procesando imagen compartida:`, imgError);
+            throw new Error(`Error procesando imagen: ${imgError?.message || 'Error desconocido'}`);
           }
-          return data
+          return resultData
         } else {
           // Para imágenes que se subieron con el sistema antiguo (mantener compatibilidad)
           const { error } = await supabase
@@ -160,7 +310,7 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
               url: image.url,
               path: image.path,
               is_primary: image.isPrimary,
-              display_order: image.displayOrder
+              display_order: displayOrder // Usar el nuevo display_order calculado
             })
           
           if (error) {
@@ -452,15 +602,23 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Imágenes del Producto</h3>
-        
+        {isLoadingImages && (
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Cargando imágenes...
+          </div>
+        )}
         <Button 
           variant="outline" 
           size="sm"
-          disabled={isUploading}
+          disabled={isUploading || !organization_id}
           onClick={() => document.getElementById('dropzone-area')?.click()}
         >
           {isUploading ? (
-            <>Subiendo...</>
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Subiendo...
+            </>
           ) : (
             <>
               <ImagePlus className="mr-2 h-4 w-4" /> Subir Imagen
@@ -524,7 +682,6 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
               isPrimary: prev.length === 0
             }])
           }} 
-          organization_id={organization_id || undefined} 
         />
       </div>
     </div>

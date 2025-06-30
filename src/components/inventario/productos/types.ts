@@ -150,6 +150,7 @@ export interface FiltrosProductos {
   categoria: number | null;
   estado: string;
   ordenarPor: string;
+  mostrarEliminados?: boolean;
 }
 
 export interface ProductoFormValues {

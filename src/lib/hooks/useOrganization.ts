@@ -1,4 +1,94 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { supabase } from "../supabase/config";
+
+// Constante para el almacenamiento local de la organización
+const STORAGE_KEY = 'organizacionActiva';
+
+// Interfaz para la organización almacenada localmente
+export type Organizacion = {
+  id: number;
+  name?: string;
+  slug?: string;
+  logo_url?: string;
+};
+
+/**
+ * Guarda la organización activa en localStorage y sessionStorage como respaldo
+ */
+export function guardarOrganizacionActiva(organizacion: Organizacion): void {
+  try {
+    // Guardar en localStorage como fuente principal
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
+    
+    // Guardar en sessionStorage como respaldo
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
+    
+    console.log('Organización guardada correctamente:', organizacion.id);
+  } catch (error) {
+    console.error('Error al guardar organización:', error);
+  }
+}
+
+/**
+ * Obtiene la organización activa de forma robusta
+ * Intenta recuperarla de múltiples fuentes para mayor resiliencia
+ */
+export function obtenerOrganizacionActiva(): Organizacion {
+  // Valor predeterminado si todo falla
+  const valorPredeterminado: Organizacion = { id: 1 };
+  
+  if (typeof window === 'undefined') {
+    return valorPredeterminado; // Para SSR
+  }
+  
+  try {
+    // Intentar recuperar del localStorage (fuente principal)
+    const localData = localStorage.getItem(STORAGE_KEY);
+    if (localData) {
+      const parsed = JSON.parse(localData);
+      console.log('Organización recuperada de localStorage:', parsed.id);
+      return parsed;
+    }
+    
+    // Intentar recuperar del sessionStorage (fuente de respaldo)
+    const sessionData = sessionStorage.getItem(STORAGE_KEY);
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      console.log('Organización recuperada de sessionStorage:', parsed.id);
+      return parsed;
+    }
+    
+    // Si no se encontró nada, verificar otras posibles claves (para migración)
+    const alternativas = ['currentOrganization', 'activeOrganization', 'organizacion'];
+    for (const key of alternativas) {
+      const altData = localStorage.getItem(key);
+      if (altData) {
+        const parsed = JSON.parse(altData);
+        console.log(`Organización recuperada de clave alternativa (${key}):`, parsed.id);
+        // Migrar a la clave estándar
+        guardarOrganizacionActiva(parsed);
+        return parsed;
+      }
+    }
+    
+    console.log('No se encontró organización guardada, usando predeterminada');
+    return valorPredeterminado;
+  } catch (error) {
+    console.error('Error al recuperar organización:', error);
+    return valorPredeterminado;
+  }
+}
+
+/**
+ * Para uso en componentes: obtiene la organización y proporciona el organization_id
+ * Se recomienda usar este método siempre para obtener el ID de organización
+ */
+export function getOrganizationId(): number {
+  const organizacion = obtenerOrganizacionActiva();
+  return organizacion?.id || 1;
+}
 
 // Interfaces para tipos base de datos
 interface DbBranch {
@@ -176,3 +266,188 @@ export async function getMainBranch(organizationId: number) {
     return { data: null, error };
   }
 }
+
+/**
+ * Hook para usar la organización del usuario en componentes React
+ * Combina los datos almacenados en localStorage con datos actuales de Supabase
+ * Integra las funcionalidades de almacenamiento local para mayor resiliencia
+ */
+export function useOrganization() {
+  // Intentamos obtener la organización del localStorage en la inicialización
+  const initOrg = () => {
+    try {
+      const organizacionLocal = obtenerOrganizacionActiva();
+      if (organizacionLocal && organizacionLocal.id) {
+        // Crear un objeto FormattedOrganization válido desde el inicio
+        return {
+          organization: {
+            id: organizacionLocal.id,
+            name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
+            created_at: null,
+            branches: [],
+            slug: organizacionLocal.slug || '',
+            logo_url: organizacionLocal.logo_url || ''
+          } as FormattedOrganization,
+          branch_id: null,
+          isLoading: false,
+          error: null
+        };
+      }
+    } catch (e) {
+      console.error('Error al inicializar organización:', e);
+    }
+    return {
+      organization: null,
+      branch_id: null,
+      isLoading: true,
+      error: null
+    };
+  };
+
+  const [organizationData, setOrganizationData] = useState<{
+    organization: FormattedOrganization | null;
+    branch_id: number | null;
+    isLoading: boolean;
+    error: Error | string | null;
+  }>(initOrg());
+
+  useEffect(() => {
+    // Intentamos recuperar el usuario actual del localStorage y consultar datos actuales
+    const fetchOrganizationData = async () => {
+      try {
+        // Primero intentamos recuperar la organización del almacenamiento local
+        const organizacionLocal = obtenerOrganizacionActiva();
+        
+        // Recuperamos datos del usuario para obtener más información de la organización
+        const userDataStr = localStorage.getItem('userData');
+        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        const userId = userData?.id;
+        
+        if (!userId) {
+          // Si no hay usuario pero hay organización en local, usamos esa
+          if (organizacionLocal && organizacionLocal.id) {
+            console.log('Usando organización del almacenamiento local:', organizacionLocal.id);
+            // Crear un objeto FormattedOrganization válido a partir de los datos locales
+            const formattedOrg: FormattedOrganization = {
+              id: organizacionLocal.id,
+              name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
+              created_at: null,
+              branches: [],
+              // Agregar cualquier otro campo requerido por FormattedOrganization
+              slug: organizacionLocal.slug || '',
+              logo_url: organizacionLocal.logo_url || ''
+            };
+            
+            setOrganizationData({
+              organization: formattedOrg,
+              branch_id: null, // No tenemos datos de sucursal en este punto
+              isLoading: false,
+              error: null
+            });
+            return;
+          }
+          throw new Error('No se encontró ID de usuario');
+        }
+        
+        // Obtenemos datos completos de la organización desde Supabase
+        const { data, error } = await getUserOrganization(userId);
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          // Guardar datos actualizados en almacenamiento local
+          const orgData = data[0].organization;
+          guardarOrganizacionActiva({
+            id: orgData.id,
+            name: orgData.name,
+            slug: orgData.slug || undefined,
+            logo_url: orgData.logo_url || undefined
+          });
+          
+          // Actualizar estado del componente
+          setOrganizationData({
+            organization: orgData,
+            branch_id: data[0].branch_id,
+            isLoading: false,
+            error: null
+          });
+        } else if (organizacionLocal && organizacionLocal.id) {
+          // Si no hay datos de API pero sí tenemos datos locales, usamos esos
+          console.log('No se encontraron datos en API, usando almacenamiento local:', organizacionLocal.id);
+          // Crear un objeto FormattedOrganization válido a partir de los datos locales
+          const formattedOrg: FormattedOrganization = {
+            id: organizacionLocal.id,
+            name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
+            created_at: null,
+            branches: [],
+            // Agregar cualquier otro campo requerido por FormattedOrganization
+            slug: organizacionLocal.slug || '',
+            logo_url: organizacionLocal.logo_url || ''
+          };
+          
+          setOrganizationData({
+            organization: formattedOrg,
+            branch_id: null,
+            isLoading: false,
+            error: null
+          });
+        } else {
+          setOrganizationData({
+            organization: null,
+            branch_id: null,
+            isLoading: false,
+            error: 'No se encontraron datos de organización'
+          });
+        }
+      } catch (err: any) {
+        console.error('Error al obtener datos de organización:', err);
+        
+        // Intentar usar datos locales como respaldo si hay un error en la API
+        const organizacionLocal = obtenerOrganizacionActiva();
+        if (organizacionLocal && organizacionLocal.id) {
+          console.log('Error en API, usando datos de respaldo del almacenamiento local:', organizacionLocal.id);
+          // Crear un objeto FormattedOrganization válido a partir de los datos locales
+          const formattedOrg: FormattedOrganization = {
+            id: organizacionLocal.id,
+            name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
+            created_at: null,
+            branches: [],
+            // Agregar cualquier otro campo requerido por FormattedOrganization
+            slug: organizacionLocal.slug || '',
+            logo_url: organizacionLocal.logo_url || ''
+          };
+          
+          setOrganizationData({
+            organization: formattedOrg,
+            branch_id: null,
+            isLoading: false,
+            error: null
+          });
+        } else {
+          setOrganizationData({
+            organization: null,
+            branch_id: null,
+            isLoading: false,
+            error: err?.message || 'Error al cargar datos de organización'
+          });
+        }
+      }
+    };
+    
+    fetchOrganizationData();
+  }, []);
+
+  return organizationData;
+}
+
+// Exportar todo como objeto por defecto para compatibilidad con código existente
+export default {
+  useOrganization,
+  getUserOrganization,
+  getMainBranch,
+  guardarOrganizacionActiva,
+  obtenerOrganizacionActiva,
+  getOrganizationId
+};

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/config";
 import { getUserOrganization } from "@/lib/hooks/useOrganization";
@@ -66,6 +66,8 @@ interface CartItem {
 }
 
 export default function MesaDetailPage({ params }: { params: { id: string } }) {
+  // Desenvolver params usando React.use() para compatibilidad con Next.js
+  const resolvedParams = React.use(params as any) as { id: string };
   const router = useRouter();
   // Estados y referencias
   const [mesa, setMesa] = useState<Mesa | null>(null);
@@ -128,7 +130,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
         setBranchId(branchData.id);
         
         // Cargar datos de la mesa
-        const mesaObj = await loadMesa(orgId, branchData.id, parseInt(params.id));
+        const mesaObj = await loadMesa(orgId, branchData.id, parseInt(resolvedParams.id));
         setMesa(mesaObj);
         
         // Cargar productos disponibles
@@ -136,7 +138,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
         setProducts(productosFormateados);
         
         // Cargar items del carrito para la mesa
-        const cartItemsFormateados = await loadCartItems(orgId, branchData.id, parseInt(params.id));
+        const cartItemsFormateados = await loadCartItems(orgId, branchData.id, parseInt(resolvedParams.id));
         // Asegurarnos de que siempre tenemos un array para setCartItems
         setCartItems(Array.isArray(cartItemsFormateados) ? cartItemsFormateados : []);
       } catch (error) {
@@ -148,7 +150,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
     };
     
     loadData();
-  }, [params.id]);
+  }, [resolvedParams.id]);
   
   // Cargar datos de la mesa
   const loadMesa = async (orgId: number, branchId: number, tableId: number) => {
@@ -761,7 +763,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
                     <KitchenTicket
                       cartItems={cartItems.filter(item => item.status === 'ordered')} 
                       saleId={saleId}
-                      tableId={parseInt(params.id)}
+                      tableId={parseInt(resolvedParams.id)}
                       organizationId={organizationId || 0}
                       branchId={branchId || 0}
                       onTicketCreated={() => loadCartItems(
@@ -772,7 +774,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
                       className="flex-1"
                     />
                     <TransferItems 
-                      tableId={parseInt(params.id)}
+                      tableId={parseInt(resolvedParams.id)}
                       tableSessionId={mesa?.session_id || 0}
                       saleId={saleId}
                       organizationId={organizationId || 0}
@@ -788,7 +790,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
                   
                   <div className="flex gap-2">
                     <BillManager 
-                      tableId={parseInt(params.id)}
+                      tableId={parseInt(resolvedParams.id)}
                       tableSessionId={mesa?.session_id || 0}
                       saleId={saleId}
                       organizationId={organizationId || 0}
@@ -807,7 +809,7 @@ export default function MesaDetailPage({ params }: { params: { id: string } }) {
                       className="flex-1"
                     />
 
-                    <Link href={`/app/pos/cobro?mesa=${params.id}`} className="flex-1">
+                    <Link href={`/app/pos/cobro?mesa=${resolvedParams.id}`} className="flex-1">
                       <Button className="w-full bg-primary text-primary-foreground shadow hover:bg-primary/90">
                         Cobrar
                       </Button>

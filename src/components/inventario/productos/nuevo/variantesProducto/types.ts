@@ -56,5 +56,10 @@ export interface VariantesProps {
   defaultCost?: number;
   defaultPrice?: number;
   defaultSku?: string;
-  stockInicial?: Array<{branch_id: number | null, qty_on_hand: number, avg_cost: number}>;
+  stockInicial?: Array<{
+    branch_id: number;
+    qty_on_hand: number;
+    avg_cost: number;
+  }>;
+  productoId?: number; // ID del producto para modo de edición
 }

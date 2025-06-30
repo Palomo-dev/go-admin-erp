@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Search } from 'lucide-react';
 import { ImageItem } from './ImageDialog';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 interface ImagenesOrganizacionProps {
   organization_id?: number;
@@ -30,23 +31,23 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
   
   // Cargar imágenes de la organización actual
   useEffect(() => {
+    // Creamos una variable para el cliente Supabase y evitar recrearlo
+    const supabaseClient = supabase;
+    
     const cargarImagenes = async () => {
       try {
         setIsLoading(true);
         
-        // Asegurarse de que tenemos un organization_id
-        let org_id = organization_id;
+        // Asegurarse de que tenemos un organization_id usando la utilidad centralizada
+        const org_id = organization_id || getOrganizationId();
         if (!org_id) {
-          const savedOrgId = localStorage.getItem('organization_id');
-          if (savedOrgId) {
-            org_id = parseInt(savedOrgId);
-          } else {
-            throw new Error('No se pudo determinar la organización');
-          }
+          console.log('No se encontró ID de organización en ImagenesOrganizacion');
+          setIsLoading(false);
+          return;
         }
         
         // Consultar las imágenes de esta organización
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from('shared_images')
           .select('*')
           .eq('organization_id', org_id)
@@ -70,7 +71,8 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
     };
     
     cargarImagenes();
-  }, [organization_id, supabase, toast]);
+    // Eliminamos dependencias que causan re-renders innecesarios
+  }, [organization_id]);
   
   // Filtrar imágenes por término de búsqueda
   const filteredImagenes = searchTerm 
@@ -80,7 +82,11 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
     : imagenes;
   
   // Función para seleccionar una imagen para el producto
-  const handleSelectImage = (imagen: ImagenItem) => {
+  const handleSelectImage = (e: React.MouseEvent, imagen: ImagenItem) => {
+    // Prevenir el comportamiento por defecto del evento que podría causar envío del formulario
+    e.preventDefault();
+    e.stopPropagation();
+    
     // Crear un objeto con la estructura esperada por el componente principal
     const selectedImage = {
       url: imagen.image_url,
@@ -93,6 +99,12 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
       size: imagen.file_size,
       mime_type: imagen.mime_type
     };
+    
+    // Notificar al usuario que debe hacer clic en 'Guardar Producto' para confirmar
+    toast({
+      title: "Imagen seleccionada",
+      description: `La imagen ${imagen.file_name} ha sido seleccionada. No olvides hacer clic en 'Guardar Producto' para confirmar los cambios.`,
+    });
     
     onImageSelect(selectedImage);
   };
@@ -126,7 +138,7 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
             <div 
               key={imagen.id}
               className="group relative rounded-md overflow-hidden border cursor-pointer"
-              onClick={() => handleSelectImage(imagen)}
+              onClick={(e) => handleSelectImage(e, imagen)}
             >
               <img 
                 src={imagen.image_url} 
@@ -140,7 +152,17 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
                 </p>
               </div>
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                <Button size="sm" variant="secondary">Seleccionar</Button>
+                <Button 
+                  size="sm" 
+                  variant="secondary"
+                  type="button" /* Importante: especificar tipo button para evitar envío de formulario */
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectImage(e, imagen);
+                  }}
+                >
+                  Seleccionar
+                </Button>
               </div>
             </div>
           ))}

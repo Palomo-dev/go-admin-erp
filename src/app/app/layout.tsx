@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image'; // Importación del componente Image de Next.js
 import { signOut, supabase } from '@/lib/supabase/config';
+import { getOptimizedSession, isAuthenticated } from '@/lib/supabase/auth-manager';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import BranchSelector from '@/components/common/BranchSelector';
@@ -172,12 +173,14 @@ export default function AppLayout({
   useEffect(() => {
     async function loadUserProfile() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
+        // Usar el gestor optimizado para verificar autenticación
+        const { isAuthenticated: isAuth, session } = await isAuthenticated();
+        if (!isAuth || !session?.user) {
           console.log('No hay usuario autenticado');
           return;
         }
+        
+        const user = session.user;
 
         console.log(user);
         

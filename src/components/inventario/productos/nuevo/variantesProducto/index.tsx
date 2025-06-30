@@ -3,20 +3,23 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, ForwardRefRenderFunction } from 'react'
 import { supabase } from '@/lib/supabase/config'
 import toast from 'react-hot-toast'
+import { getOrganizationId } from '@/lib/hooks/useOrganization'
 
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 
-import { VariantesRef, VariantType, VariantCombination, VariantAttribute } from './types'
+import { VariantesRef, VariantType, VariantCombination, VariantAttribute, VariantesProps, VariantValue, StockPorSucursal } from './types'
 // Importaciones de componentes
 import { SelectorTipoVariante } from './SelectorTipoVariante'
 import { ListaTiposVariante } from './ListaTiposVariante'
 import { ModalNuevoTipo } from './ModalNuevoTipo'
 import { TablaVariantes } from './TablaVariantes'
 
-const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
+const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props, ref) => {
+  const { defaultCost = 0, defaultPrice = 0, defaultSku = '', stockInicial = [], productoId } = props
   // Estados del componente
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingVariants, setIsLoadingVariants] = useState(false)
   const [variantTypes, setVariantTypes] = useState<VariantType[]>([])
   const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>([])
   const [selectedVariantTypes, setSelectedVariantTypes] = useState<VariantType[]>([])
@@ -24,30 +27,16 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
   const [showNewTypeModal, setShowNewTypeModal] = useState(false)
   const [organizationId, setOrganizationId] = useState<number | null>(null)
 
-  // Obtener la organización activa del localStorage o usar ID 2 como respaldo
-  const getOrganizacionActiva = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        const orgData = localStorage.getItem('organizacionActiva')
-        return orgData ? JSON.parse(orgData) : { id: 2 } // Usar ID 2 como valor por defecto
-      } catch (err) {
-        console.error('Error al obtener organización del localStorage:', err)
-        return { id: 2 } // Valor de respaldo si hay error
-      }
-    }
-    return { id: 2 } // Valor de respaldo para SSR
-  }
-
   // Inicializar organization_id al montar el componente y cargar tipos de variantes
   useEffect(() => {
-    const organizacion = getOrganizacionActiva()
-    setOrganizationId(organizacion.id)
-    // Eliminado console.log para reducir ruido
+    const orgId = getOrganizationId()
+    setOrganizationId(orgId)
+    console.log('Variantes usando organization_id:', orgId)
     
     // Cargar los tipos de variantes inmediatamente después de obtener la organización
     const cargarTipos = async () => {
       try {
-        await cargarTiposVariantes(organizacion.id)
+        await cargarTiposVariantes(orgId)
       } catch (error) {
         console.error('Error al cargar tipos de variantes:', error)
       }
@@ -55,11 +44,169 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
     
     cargarTipos()
   }, [])
+  
+  // Cargar variantes existentes si estamos en modo edición
+  useEffect(() => {
+    const cargarVariantesExistentes = async () => {
+      if (!productoId || !organizationId) return;
+      
+      try {
+        setIsLoadingVariants(true);
+        
+        // 1. Obtener las variantes del producto
+        const { data: variants, error } = await supabase
+          .from('product_variants')
+          .select(`
+            id, 
+            sku,
+            price,
+            cost,
+            product_id,
+            product_variant_attributes (variant_id, variant_type_id, variant_value_id)
+          `)
+          .eq('product_id', productoId);
+        
+        if (error) throw error;
+        
+        if (variants && variants.length > 0) {
+          // Necesitamos obtener toda la información de los tipos de variantes y valores
+          const tiposYValores = await obtenerTiposYValoresVariantes(variants);
+          
+          // 2. Establecer los tipos de variante seleccionados
+          if (tiposYValores.tiposSeleccionados.length > 0) {
+            setSelectedVariantTypes(tiposYValores.tiposSeleccionados);
+            setShowVariantes(true);
+          }
+          
+          // 3. Formatear y establecer las combinaciones de variantes
+          const combinacionesFormateadas = await formatearVariantes(variants, tiposYValores.mapaTipos, tiposYValores.mapaValores);
+          setVariantCombinations(combinacionesFormateadas);
+        }
+      } catch (error: any) {
+        console.error('Error al cargar variantes existentes:', error);
+        toast.error('No se pudieron cargar las variantes del producto');
+      } finally {
+        setIsLoadingVariants(false);
+      }
+    };
+    
+    cargarVariantesExistentes();
+  }, [productoId, organizationId]);
 
   // Exponer métodos al componente padre usando useImperativeHandle
   useImperativeHandle(ref, () => ({
     getVariantes: () => variantCombinations
   }))
+  
+  // Función para obtener información completa de tipos y valores de variantes
+  const obtenerTiposYValoresVariantes = async (variants: any[]) => {
+    const tipoIds = new Set<number>();
+    const valorIds = new Set<number>();
+    
+    // Recolectar todos los IDs únicos de tipos y valores de variantes
+    variants.forEach(variant => {
+      if (variant.product_variant_attributes && variant.product_variant_attributes.length > 0) {
+        variant.product_variant_attributes.forEach((attr: any) => {
+          tipoIds.add(attr.variant_type_id);
+          valorIds.add(attr.variant_value_id);
+        });
+      }
+    });
+    
+    // Consultar todos los tipos de variantes necesarios
+    const { data: tiposData } = await supabase
+      .from('variant_types')
+      .select(`
+        id,
+        name,
+        organization_id,
+        variant_values (id, value, display_order)
+      `)
+      .in('id', Array.from(tipoIds));
+    
+    // Crear un mapa de tipos y valores para acceso rápido
+    const mapaTipos: Record<number, VariantType> = {};
+    const mapaValores: Record<number, VariantValue & { type_id: number, type_name: string }> = {};
+    
+    const tiposSeleccionados: VariantType[] = [];
+    
+    if (tiposData && tiposData.length > 0) {
+      tiposData.forEach(tipo => {
+        mapaTipos[tipo.id] = tipo;
+        tiposSeleccionados.push({
+          ...tipo,
+          values: tipo.variant_values,
+          selectedValues: tipo.variant_values.map(v => v.id)
+        });
+        
+        tipo.variant_values.forEach(valor => {
+          mapaValores[valor.id] = {
+            ...valor,
+            type_id: tipo.id,
+            type_name: tipo.name
+          };
+        });
+      });
+    }
+    
+    return {
+      tiposSeleccionados,
+      mapaTipos,
+      mapaValores
+    };
+  };
+  
+  // Función para formatear variantes desde la base de datos al formato interno
+  const formatearVariantes = async (variants: any[], mapaTipos: Record<number, VariantType>, mapaValores: Record<number, any>) => {
+    // Obtener los niveles de stock para las variantes
+    const variantIds = variants.map(v => v.id);
+    const { data: stockData } = await supabase
+      .from('stock_levels')
+      .select('*')
+      .in('variant_id', variantIds);
+    
+    // Crear un mapa de stock por variante
+    const stockPorVariante: Record<number, StockPorSucursal[]> = {};
+    if (stockData && stockData.length > 0) {
+      stockData.forEach((stock: any) => {
+        if (!stockPorVariante[stock.variant_id]) {
+          stockPorVariante[stock.variant_id] = [];
+        }
+        stockPorVariante[stock.variant_id].push({
+          branch_id: stock.branch_id,
+          qty_on_hand: stock.qty_on_hand || 0,
+          avg_cost: stock.avg_cost || 0
+        });
+      });
+    }
+    
+    return variants.map(variant => {
+      // Formatear los atributos de la variante
+      const attributes: VariantAttribute[] = variant.product_variant_attributes.map((attr: any) => {
+        const valor = mapaValores[attr.variant_value_id];
+        return {
+          type_id: attr.variant_type_id,
+          type_name: valor ? valor.type_name : 'Desconocido',
+          value_id: attr.variant_value_id,
+          value: valor ? valor.value : 'Desconocido'
+        };
+      });
+      
+      // Calcular el stock total sumando de todas las sucursales
+      const stockVariante = stockPorVariante[variant.id] || [];
+      const stockTotal = stockVariante.reduce((sum, item) => sum + (item.qty_on_hand || 0), 0);
+      
+      return {
+        id: variant.id,
+        sku: variant.sku,
+        price: variant.price || 0,
+        cost: variant.cost || 0,
+        stock_quantity: stockTotal,
+        attributes,
+        stock_por_sucursal: stockVariante
+      } as VariantCombination;
+    });
+  };
 
   // Función para cargar tipos de variantes disponibles
   const cargarTiposVariantes = async (idOrg?: number) => {
@@ -232,7 +379,7 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
       setVariantCombinations([])
       return
     }
-
+  
     // Filtrar solo los tipos que tienen valores seleccionados
     const tiposConValores = tiposSeleccionados.filter(tipo => 
       tipo.selectedValues && tipo.selectedValues.length > 0
@@ -242,17 +389,17 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
       setVariantCombinations([])
       return
     }
-
+  
     // Estructura para almacenar las combinaciones de atributos
     const combinacionesAtributos: VariantAttribute[][] = []
-
+  
     function generarCombinacion(tipoIndex: number, combinacionActual: VariantAttribute[]) {
       // Si hemos procesado todos los tipos, guardar la combinación
       if (tipoIndex >= tiposConValores.length) {
         combinacionesAtributos.push(combinacionActual)
         return
       }
-
+  
       // Obtener el tipo actual y sus valores seleccionados
       const tipoActual = tiposConValores[tipoIndex]
       const valoresSeleccionados = tipoActual.selectedValues || []
@@ -276,34 +423,64 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
     generarCombinacion(0, [])
     
     // Convertir las combinaciones de atributos a VariantCombination
-    const nuevasCombinaciones: VariantCombination[] = combinacionesAtributos.map(attrs => ({
-      sku: '',
-      price: 0,
-      cost: 0,
-      stock_quantity: 0,
-      attributes: attrs
-    }))
+    const nuevasCombinaciones: VariantCombination[] = combinacionesAtributos.map((attrs, index) => {
+      // Generar un identificador único basado en los IDs de los valores seleccionados
+      const uniqueId = attrs
+        .map(attr => attr.value_id.toString())
+        .join('');
+      
+      // Generar un SKU para la variante basado en el SKU principal + valores de atributos + índice para garantizar unicidad
+      const sufijo = attrs
+        .map(attr => attr.value.substring(0, 3).toUpperCase())
+        .join('-');
+      
+      // Obtener timestamp actual para hacer aún más únicos los SKUs
+      const timestamp = Date.now().toString().slice(-4);
+      
+      // Añadir índice al final para asegurar que sea único incluso con valores similares
+      const skuVariante = defaultSku 
+        ? `${defaultSku}-${sufijo}-${index + 1}-${timestamp}` 
+        : `${sufijo}-${index + 1}-${timestamp}`;
+  
+      // Crear objeto de stock por sucursal similar al principal si está disponible
+      const stockPorSucursal = stockInicial && stockInicial.length > 0
+        ? stockInicial.map(item => ({
+            branch_id: item.branch_id,
+            qty_on_hand: item.qty_on_hand,
+            avg_cost: item.avg_cost
+          }))
+        : [];
+        
+      return {
+        sku: skuVariante,
+        price: defaultPrice, // Usar el precio del formulario principal
+        cost: defaultCost,   // Usar el costo del formulario principal
+        stock_quantity: 0,
+        stock_por_sucursal: stockPorSucursal,
+        attributes: attrs
+      };
+    });
     
     setVariantCombinations(nuevasCombinaciones)
   }
 
-  const actualizarCampoVariante = (index: number, campo: keyof VariantCombination, valor: any) => {
-    const nuevasCombinaciones = [...variantCombinations]
-    if (index >= 0 && index < nuevasCombinaciones.length) {
-      nuevasCombinaciones[index] = {
-        ...nuevasCombinaciones[index],
-        [campo]: valor
-      }
-      setVariantCombinations(nuevasCombinaciones)
+const actualizarCampoVariante = (index: number, campo: keyof VariantCombination, valor: any) => {
+  const nuevasCombinaciones = [...variantCombinations]
+  if (index >= 0 && index < nuevasCombinaciones.length) {
+    nuevasCombinaciones[index] = {
+      ...nuevasCombinaciones[index],
+      [campo]: valor
     }
+    setVariantCombinations(nuevasCombinaciones)
   }
+}
 
   // Generar un SKU basado en el SKU base y la combinación
   const generarSkus = (skuBase: string) => {
     const nuevasCombinaciones = variantCombinations.map(comb => {
       // Crear un sufijo a partir de los valores de la variante
       const sufijo = comb.attributes
-        .map(attr => attr.value.substring(0, 2).toUpperCase())
+        .map(attr => attr.value.substring(0, 3).toUpperCase())
         .join('-')
       
       return {
@@ -319,15 +496,26 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, {}> = (props, ref) => {
     <>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium dark:text-gray-100 light:text-gray-900">Variantes</h3>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setShowVariantes(!showVariantes)}
-            className="dark:text-gray-300 dark:hover:text-white light:text-gray-600 light:hover:text-gray-900"
-          >
-            {showVariantes ? 'Ocultar' : 'Mostrar'} opciones de variantes
-          </Button>
+          <h3 className="text-lg font-medium dark:text-gray-100">Variantes del Producto</h3>
+          <div className="flex items-center gap-2">
+            {isLoadingVariants && (
+              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Cargando variantes...
+              </div>
+            )}
+            <Button 
+              onClick={() => setShowNewTypeModal(true)}
+              variant="outline"
+              size="sm"
+              className="dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-white"
+            >
+              Nuevo Tipo de Variante
+            </Button>
+          </div>
         </div>
         
         {showVariantes && (

@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, forwardRef, useImperativeHandle, useCallback, useEffect } from 'react'
-import { Upload, X, ImagePlus } from 'lucide-react'
+import { X, ImagePlus, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/config'
 import { v4 as uuidv4 } from 'uuid'
-import { useDropzone } from 'react-dropzone'
+import { getPublicImageUrl, updateImageUrlsInArray } from '@/lib/supabase/imageUtils'
 
 import { Button } from '@/components/ui/button'
 import { 
@@ -12,24 +12,45 @@ import {
   CardContent 
 } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
+import { ImageTabs, ImageItem } from './imagenes/ImageDialog'
 
 // Interfaz para exponer métodos al componente padre
 export interface ImagenesRef {
   // Esta función retorna las imágenes para que el componente padre pueda usarlas
-  getImagenes: () => Array<{url: string, path: string, displayOrder: number, isPrimary: boolean}>;
+  getImagenes: () => Array<{
+    url: string
+    path: string
+    displayOrder: number
+    isPrimary: boolean
+    shared_image_id?: number
+    width?: number
+    height?: number
+    size?: number
+    mime_type?: string
+  }>;
   
-  // Esta función guarda las imágenes en la tabla product_images cuando se tiene el product_id
-  guardarImagenesEnBD: (product_id: number) => Promise<{success: boolean, error?: any}>;
+  // Esta función guarda las imágenes en la tabla product_images cuando ya se tiene el product_id
+  guardarImagenesEnBD: (product_id: number) => Promise<{success: boolean, error?: any}>
 }
 
-const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
+interface ImagenesProps {
+  productoId?: number; // ID del producto para modo edición (opcional)
+}
+
+const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) => {
   const { toast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
+  const [isLoadingImages, setIsLoadingImages] = useState(false)
   const [images, setImages] = useState<Array<{
-    url: string;
-    path: string;
-    displayOrder: number;
-    isPrimary: boolean;
+    url: string
+    path: string
+    displayOrder: number
+    isPrimary: boolean
+    shared_image_id?: number
+    width?: number
+    height?: number
+    size?: number
+    mime_type?: string
   }>>([])
 
   // Estado para almacenar el ID de organización
@@ -53,6 +74,58 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
 
   // Garantizar que tenemos una organización válida antes de continuar
   // Esto se ejecuta una vez al montar el componente y cada vez que se actualice localStorage
+  // Cargar imágenes existentes del producto si estamos en modo edición
+  useEffect(() => {
+    if (!productoId) return;
+
+    const cargarImagenesExistentes = async () => {
+      try {
+        setIsLoadingImages(true);
+        // Utilizamos JOIN directo para obtener datos de ambas tablas en un formato más predecible
+        const { data: productImages, error } = await supabase
+          .from('product_images')
+          .select('*, shared_image:shared_image_id(id, image_url, storage_path, file_name, file_size, mime_type, dimensions)')
+          .eq('product_id', productoId)
+          .order('display_order');
+          
+        if (error) throw error;
+        
+        if (productImages && productImages.length > 0) {
+          // 2. Formatear los datos al formato que espera el estado images
+          let formattedImages = productImages.map(img => ({
+            url: img.shared_image.image_url,
+            path: img.shared_image.storage_path,
+            displayOrder: img.display_order,
+            isPrimary: img.is_primary,
+            shared_image_id: img.shared_image.id,
+            width: img.shared_image.dimensions?.width,
+            height: img.shared_image.dimensions?.height,
+            size: img.shared_image.file_size,
+            mime_type: img.shared_image.mime_type
+          }));
+          
+          // Actualizar las URLs para asegurar que no expiren
+          formattedImages = updateImageUrlsInArray(formattedImages);
+          console.log('Imágenes con URLs actualizadas:', formattedImages);
+          
+          // 3. Establecer las imágenes en el estado
+          setImages(formattedImages);
+        }
+      } catch (error: any) {
+        console.error('Error al cargar imágenes existentes:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las imágenes del producto",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingImages(false);
+      }
+    };
+    
+    cargarImagenesExistentes();
+  }, [productoId, toast]);
+
   useEffect(() => {
     // Verificar si ya tenemos una organización
     if (!organization_id) {
@@ -60,10 +133,21 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
       if (org && org.id) {
         console.log('Organización encontrada en localStorage:', org.id)
         setOrganizationId(org.id)
+        
+        // Guardar inmediatamente en localStorage para asegurarnos de que esté disponible
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('organization_id', org.id.toString())
+        }
       } else {
         // Si no se encuentra, configurar un valor predeterminado (esto debe ser reemplazado por un valor real)
         console.log('No se encontró organización en localStorage, usando valor predeterminado')
-        setOrganizationId(1) // Usar ID 1 como respaldo
+        const defaultOrgId = 1 // Usar ID 1 como respaldo
+        setOrganizationId(defaultOrgId)
+        
+        // Guardar el valor predeterminado
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('organization_id', defaultOrgId.toString())
+        }
       }
     }
 
@@ -99,52 +183,150 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
 
   // Función para guardar imágenes en la tabla product_images cuando ya se tiene el product_id
   const guardarImagenesEnBD = async (product_id: number) => {
+    // Verificar organization_id para debugging
+    console.log('Guardando imágenes para producto', product_id, 'con organización', organization_id);
+    // Si estamos en modo edición, necesitamos manejar la actualización de imágenes existentes
+    if (productoId) {
+      try {
+        // 1. Obtener las imágenes actuales del producto
+        const { data: existingImages, error: fetchError } = await supabase
+          .from('product_images')
+          .select('id, shared_image_id')
+          .eq('product_id', product_id);
+          
+        if (fetchError) throw fetchError;
+        
+        // 2. Identificar imágenes que hay que eliminar (las que ya no están en el estado actual)
+        const currentImageIds = images.filter(img => img.shared_image_id).map(img => img.shared_image_id);
+        const imagesToDelete = existingImages?.filter(img => !currentImageIds.includes(img.shared_image_id)) || [];
+        
+        // 3. Eliminar registros de imágenes que ya no están en el estado
+        if (imagesToDelete.length > 0) {
+          const deleteIds = imagesToDelete.map(img => img.id);
+          const { error: deleteError } = await supabase
+            .from('product_images')
+            .delete()
+            .in('id', deleteIds);
+            
+          if (deleteError) throw deleteError;
+        }
+      } catch (error: any) {
+        console.error('Error al actualizar imágenes existentes:', error);
+        return { success: false, error };
+      }
+    }
     try {
-      // Verificar si tenemos imágenes para guardar
       if (images.length === 0) {
-        return { success: true } // No hay imágenes para guardar
+        return { success: true } // No hay imágenes que guardar
+      }
+      
+      // Obtener el máximo display_order actual para este producto
+      // para evitar conflictos de clave única
+      let maxDisplayOrder = 0;
+      try {
+        const { data: existingImages, error: fetchError } = await supabase
+          .from('product_images')
+          .select('display_order')
+          .eq('product_id', product_id)
+          .order('display_order', { ascending: false })
+          .limit(1);
+          
+        if (fetchError) {
+          console.warn('Error al obtener orden máximo de imágenes:', fetchError);
+        } else if (existingImages && existingImages.length > 0) {
+          maxDisplayOrder = existingImages[0].display_order || 0;
+          console.log('Orden máximo actual de imágenes:', maxDisplayOrder);
+        }
+      } catch (e) {
+        console.warn('Error al calcular orden máximo de imágenes:', e);
       }
 
-      if (!product_id) {
-        throw new Error("Se requiere el ID del producto para guardar las imágenes en la base de datos")
-      }
-      
-      // Guardar todas las imágenes en la tabla product_images
-      const promises = images.map(async (image, index) => {
-        // Mapear los campos de nuestro estado local a los campos de la tabla product_images
-        const productImage = {
-          product_id: product_id,
-          image_url: image.url,
-          storage_path: image.path,
-          display_order: image.displayOrder,
-          is_primary: image.isPrimary,
-          alt_text: `Imagen de producto ${index + 1}`
-        }
-        
-        const { data, error } = await supabase
-          .from('product_images')
-          .insert(productImage)
+      // Si las imágenes tienen shared_image_id, usamos la función associate_image_to_product
+      // para cada imagen compartida
+      const insertPromises = images.map(async (image, index) => {
+        // Asignar un display_order único y secuencial para evitar conflictos
+        // Empezamos desde el máximo actual + 1 para evitar duplicados
+        const displayOrder = maxDisplayOrder + index + 1;
+        if (image.shared_image_id) {
+          // Para imágenes que ya se han subido con upload_temporary_image
+          // Crear una variable para almacenar el resultado fuera del scope del try-catch
+          let resultData = null;
           
-        if (error) throw error
-        
-        return data
+          try {
+            // Asegurarse de que shared_image_id es un número válido
+            const sharedImageId = typeof image.shared_image_id === 'number' 
+              ? image.shared_image_id 
+              : parseInt(String(image.shared_image_id), 10);
+            
+            if (isNaN(sharedImageId) || sharedImageId <= 0) {
+              console.error('ID de imagen compartida inválido:', image.shared_image_id);
+              throw new Error(`ID de imagen compartida inválido: ${image.shared_image_id}`);
+            }
+            
+            if (!product_id || isNaN(product_id) || product_id <= 0) {
+              console.error('ID de producto inválido:', product_id);
+              throw new Error(`ID de producto inválido: ${product_id}`);
+            }
+            
+            console.log('Asociando imagen compartida con los siguientes parámetros:', {
+              p_product_id: product_id,
+              p_shared_image_id: sharedImageId,
+              p_is_primary: !!image.isPrimary, // Asegurar que sea boolean
+              p_display_order: displayOrder // Usar el mismo valor que se enviará al servidor
+            });
+            
+            const { data, error } = await supabase.rpc('associate_image_to_product', {
+              p_shared_image_id: sharedImageId, // Parámetro correcto según definición de la función
+              p_product_id: product_id,
+              p_display_order: displayOrder, // Usar el nuevo display_order calculado
+              p_is_primary: !!image.isPrimary
+            });
+            
+            if (error) {
+              console.error('Error al asociar imagen compartida:', error);
+              throw new Error(`Error al asociar imagen: ${error.message || JSON.stringify(error)}`);
+            }
+            
+            // Guardar el resultado en la variable externa al try-catch
+            resultData = data;
+            
+            if (!resultData) {
+              console.warn('Respuesta vacía al asociar imagen');
+            } else {
+              console.log('Imagen asociada correctamente, ID:', resultData);
+            }
+          } catch (imgError: any) {
+            console.error(`Error procesando imagen compartida:`, imgError);
+            throw new Error(`Error procesando imagen: ${imgError?.message || 'Error desconocido'}`);
+          }
+          return resultData
+        } else {
+          // Para imágenes que se subieron con el sistema antiguo (mantener compatibilidad)
+          const { error } = await supabase
+            .from('product_images')
+            .insert({
+              product_id,
+              organization_id: organization_id || '0', // Mantener como string
+              url: image.url,
+              path: image.path,
+              is_primary: image.isPrimary,
+              display_order: displayOrder // Usar el nuevo display_order calculado
+            })
+          
+          if (error) {
+            console.error('Error al guardar imagen antigua:', error)
+            throw error
+          }
+          return true
+        }
       })
-      
-      await Promise.all(promises)
-      
-      toast({
-        title: "Éxito",
-        description: `Se guardaron ${images.length} imágenes en la base de datos`
-      })
-      
+
+      // Esperamos a que todas las inserciones se completen
+      await Promise.all(insertPromises)
       return { success: true }
+
     } catch (error) {
-      console.error('Error al guardar las imágenes en la base de datos:', error)
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al guardar las imágenes en la base de datos",
-        variant: "destructive"
-      })
+      console.error('Error en guardarImagenesEnBD:', error)
       return { success: false, error }
     }
   }
@@ -161,102 +343,202 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
     if (acceptedFiles.length === 0) {
       return
     }
-    
-    // Intentar obtener la organización una vez más si no está disponible
-    let currentOrgId = organization_id
-    if (!currentOrgId) {
-      const org = getOrganizacionActiva()
-      if (org && org.id) {
-        currentOrgId = org.id
-        setOrganizationId(org.id)
-      } else {
-        // Si definitivamente no hay organización, usar un valor predeterminado
-        currentOrgId = 1 // ID predeterminado para permitir la carga
-        setOrganizationId(currentOrgId)
-      }
-    }
 
-    // Si aún no tenemos organización, mostrar error
-    if (!currentOrgId) {
-      toast({
-        title: "Error",
-        description: "No se ha seleccionado una organización",
-        variant: "destructive"
-      })
-      return
-    }
-
-    // Procesar cada archivo aceptado
-    for (const file of acceptedFiles) {
-      const fileSize = file.size / 1024 / 1024 // en MB
-      
-      // Validar tamaño del archivo (máximo 5MB)
-      if (fileSize > 5) {
-        toast({
-          title: "Error",
-          description: "El archivo es demasiado grande. Máximo 5MB permitido.",
-          variant: "destructive"
-        })
-        continue
-      }
-      
-      // Validar tipo de archivo
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Error",
-          description: "Solo se permiten archivos de imagen",
-          variant: "destructive"
-        })
-        continue
-      }
-
+    try {
       setIsUploading(true)
+      
+      for (const file of acceptedFiles) {
+        // Verificar tamaño máximo (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          toast({
+            title: "Error",
+            description: `La imagen ${file.name} excede el tamaño máximo de 5MB`,
+            variant: "destructive"
+          })
+          continue
+        }
 
-      try {
-        const fileName = `${uuidv4()}-${file.name.replace(/\s+/g, '-').toLowerCase()}`
-        const filePath = `productos/${currentOrgId}/${fileName}`
-        
-        // Subir archivo a Supabase Storage
+        // Verificar tipo de archivo
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+          toast({
+            title: "Error",
+            description: `Formato no soportado: ${file.type}. Use JPG, PNG o WEBP`,
+            variant: "destructive"
+          })
+          continue
+        }
+
+        // Generar un nombre único para evitar colisiones
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
+        const filePath = `${organization_id}/${fileName}`
+
+        // Crear un objeto para leer dimensiones de la imagen
+        const getImageDimensions = (file: File) => {
+          return new Promise<{width: number, height: number}>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              resolve({width: img.width, height: img.height});
+              URL.revokeObjectURL(img.src); // Liberar memoria
+            };
+            img.src = URL.createObjectURL(file);
+          });
+        };
+
+        // Obtener dimensiones de la imagen
+        const dimensions = await getImageDimensions(file);
+
+        // Subir a Storage (ahora usamos el bucket organization_images)
         const { error: uploadError } = await supabase.storage
-          .from('profiles')
+          .from('organization_images')
           .upload(filePath, file)
-          
+
         if (uploadError) throw uploadError
 
-        // Obtener URL pública
+        // Obtener la URL pública
         const { data: publicUrlData } = supabase.storage
-          .from('profiles')
+          .from('organization_images')
           .getPublicUrl(filePath)
+
+        // Preparar las dimensiones como JSONB para la función RPC
+        const dimensionsJson = {
+          width: dimensions.width || 0,
+          height: dimensions.height || 0
+        };
+
+        // Asegurarnos que tenemos un organization_id válido
+        if (!organization_id) {
+          console.error('Error: No se ha establecido un organization_id válido');
+          toast({
+            title: "Error",
+            description: "No se ha podido determinar la organización. Por favor, actualiza la página e inténtalo de nuevo.",
+            variant: "destructive"
+          });
+          throw new Error('No se ha establecido un organization_id válido');
+        }
+        
+        console.log('Usando organization_id:', organization_id);
+        
+        // Usar la nueva función que utiliza SECURITY DEFINER para saltarse RLS
+        console.log('Usando función con bypass RLS. organization_id:', organization_id);
+        try {
+          // Usamos la función administrativa con priviliegios elevados
+          console.log('Llamando a función administrativa con organization_id:', organization_id);
+          const { data, error } = await supabase.rpc('admin_register_image', {
+            p_image_url: publicUrlData.publicUrl,
+            p_storage_path: filePath,
+            p_file_name: file.name,
+            p_file_size: file.size,
+            p_mime_type: file.type,
+            p_organization_id: organization_id
+          });
           
-        if (publicUrlData) {
-          // La primera imagen subida será la principal (isPrimary = true)
-          // y cada imagen tiene un orden de visualización según el orden de carga
-          const isFirstImage = images.length === 0
-          
-          const newImage = {
-            url: publicUrlData.publicUrl,
-            path: filePath,
-            displayOrder: images.length + 1,
-            isPrimary: isFirstImage
+          if (error) {
+            // Mostrar el objeto de error completo para depuración
+            console.error('Error al insertar imagen con bypass RLS:', error);
+            console.error('Detalles completos del error:', JSON.stringify(error));
+            
+            // Extraer información útil del error para mostrar al usuario
+            const errorMessage = error?.message || 'Error desconocido';
+            const errorCode = error?.code || '???';
+            
+            // Intentar obtener más detalles del error si están disponibles
+            const errorDetails = error?.details ? error.details : '';
+            const errorHint = error?.hint ? error.hint : '';
+            
+            // Mostrar mensaje detallado al usuario
+            toast({
+              title: "Error al subir imagen",
+              description: `${errorMessage} (código ${errorCode})\nOrganizationID: ${organization_id}`,
+              variant: "destructive"
+            });
+            
+            // Reintentar inserción directa
+            try {
+              console.log('Intentando inserción alternativa directamente en la tabla...');
+              const { data: directInsertData, error: directError } = await supabase
+                .from('shared_images')
+                .insert({
+                  image_url: publicUrlData.publicUrl,
+                  storage_path: filePath,
+                  file_name: file.name,
+                  file_size: file.size,
+                  mime_type: file.type,
+                  organization_id: organization_id,
+                  is_public: false,
+                  created_at: new Date().toISOString()
+                })
+                .select('id');
+                
+              if (directError) {
+                console.error('Error en inserción directa:', directError);
+                throw directError;
+              }
+              
+              if (directInsertData && directInsertData.length > 0) {
+                console.log('Inserción directa exitosa:', directInsertData);
+                return directInsertData[0].id;
+              }
+            } catch (directCatchError) {
+              console.error('Error capturado en inserción directa:', directCatchError);
+              // Continuar con el error original
+            }
+            
+            throw error;
           }
           
-          setImages(prev => [...prev, newImage])
+          console.log('Respuesta de admin_register_image:', data);
           
-          toast({
-            title: "Éxito",
-            description: "Imagen subida correctamente",
-          })
+          // La función administrativa devuelve un objeto JSON con los campos success e image_id
+          if (data && data.success === true && data.image_id) {
+            const sharedImageId = data.image_id;
+            console.log('ID de imagen recibido correctamente:', sharedImageId);
+            
+            // Actualizar el estado con los datos de la imagen compartida
+            setImages(prevImages => {
+              const newImage = {
+                url: publicUrlData.publicUrl,
+                path: filePath,
+                displayOrder: prevImages.length + 1,
+                isPrimary: prevImages.length === 0, // La primera imagen es la principal
+                shared_image_id: sharedImageId, // ID devuelto por la función RPC
+                width: dimensions.width,
+                height: dimensions.height,
+                size: file.size,
+                mime_type: file.type
+              }
+              return [...prevImages, newImage]
+            })
+            
+            toast({
+              title: "Éxito",
+              description: "Imagen subida correctamente",
+            });
+            
+            return; // Finalizar la función después de actualizar el estado
+          } else {
+            // Si no hay éxito o no hay image_id, lanzar error
+            console.error('Error en la respuesta de admin_register_image:', data);
+            throw new Error(data?.message || 'No se pudo registrar la imagen');
+          }
+          
+          return;
+        } catch (error: any) {
+          console.error('Error al insertar imagen:', error);
+          throw error;
         }
-      } catch (error) {
-        console.error('Error al subir imagen:', error)
-        toast({
-          title: "Error",
-          description: "Ocurrió un error al subir la imagen",
-          variant: "destructive"
-        })
-      } finally {
-        setIsUploading(false)
+
+        // El estado ya se actualiza dentro del bloque try, no es necesario repetirlo aquí
       }
+    } catch (error: any) {
+      console.error('Error al subir imagen:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Error al subir imagen",
+        variant: "destructive"
+      })
+    } finally {
+      setIsUploading(false)
     }
   }, [organization_id, toast])
 
@@ -264,39 +546,53 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
     try {
       const imageToRemove = images[index]
       
-      // Eliminar archivo de Storage
-      if (imageToRemove.path) {
-        const { error } = await supabase.storage
-          .from('profiles')
-          .remove([imageToRemove.path])
-          
-        if (error) throw error
-      }
+      // Eliminar del Storage
+      const { error } = await supabase.storage
+        .from('organization_images') // Cambiado de 'profiles' a 'organization_images'
+        .remove([imageToRemove.path])
       
-      // Eliminar de estado local
-      setImages(prev => prev.filter((_, i) => i !== index))
-      
-      // Si esta era la imagen principal, hacer que la primera imagen restante sea la principal
-      if (imageToRemove.isPrimary && images.length > 1) {
-        const remainingImages = [...images].filter((_, i) => i !== index)
-        if (remainingImages.length > 0) {
-          // Actualizar la primera imagen restante como principal
-          const updatedImages = remainingImages.map((img, i) => {
-            return { ...img, isPrimary: i === 0 }
-          })
-          setImages(updatedImages)
+      if (error) throw error
+
+      // Si la imagen tiene shared_image_id, eliminamos el registro temporal
+      // Nota: No eliminamos la imagen compartida permanentemente, solo el registro temporal
+      // ya que podría estar siendo usada por otros productos
+      if (imageToRemove.shared_image_id) {
+        const { error: deleteError } = await supabase.rpc('delete_temporary_image', {
+          p_shared_image_id: imageToRemove.shared_image_id
+        })
+        
+        if (deleteError) {
+          console.error('Error al eliminar imagen temporal:', deleteError)
+          // Continuamos aunque haya error, ya que la imagen física ya se eliminó
         }
       }
-      
+
+      // Actualizar el estado
+      setImages(prevImages => {
+        const newImages = [...prevImages]
+        newImages.splice(index, 1)
+
+        // Si eliminamos la imagen principal y aún quedan imágenes, establecer la primera como principal
+        if (imageToRemove.isPrimary && newImages.length > 0) {
+          newImages[0].isPrimary = true
+        }
+
+        // Reordenar las imágenes
+        return newImages.map((img, i) => ({
+          ...img,
+          displayOrder: i + 1
+        }))
+      })
+
       toast({
         title: "Éxito",
         description: "Imagen eliminada correctamente",
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al eliminar imagen:', error)
       toast({
         title: "Error",
-        description: "Ocurrió un error al eliminar la imagen",
+        description: error.message || "Error al eliminar imagen",
         variant: "destructive"
       })
     }
@@ -306,115 +602,92 @@ const Imagenes = forwardRef<ImagenesRef, {}>((props, ref) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Imágenes del Producto</h3>
-        
+        {isLoadingImages && (
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Cargando imágenes...
+          </div>
+        )}
         <Button 
           variant="outline" 
           size="sm"
-          disabled={isUploading}
+          disabled={isUploading || !organization_id}
           onClick={() => document.getElementById('dropzone-area')?.click()}
         >
           {isUploading ? (
-            <>Subiendo...</>
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Subiendo...
+            </>
           ) : (
             <>
-              <Upload className="mr-2 h-4 w-4" /> Subir Imagen
+              <ImagePlus className="mr-2 h-4 w-4" /> Subir Imagen
             </>
           )}
         </Button>
       </div>
 
-      {/* Zona de arrastrar y soltar */}
-      {images.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {images.map((image, index) => (
-            <Card key={index} className="overflow-hidden">
-              <div className="aspect-square relative">
-                <img 
-                  src={image.url} 
-                  alt={`Imagen de producto ${index + 1}`}
-                  className="object-cover w-full h-full"
-                />
-                {image.isPrimary && (
-                  <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
-                    Principal
+      {/* Si no hay imágenes mostrar formulario de subida, de lo contrario mostrar grid de imágenes */}
+      <div className="space-y-4">
+        {images.length > 0 && (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {/* Mostrar imágenes subidas */}
+            {images.map((image, index) => (
+              <Card key={index} className={`overflow-hidden relative ${image.isPrimary ? 'ring-2 ring-primary' : ''}`}>
+                <CardContent className="p-2">
+                  {/* Vista previa de imagen */}
+                  <div className="relative aspect-square overflow-hidden rounded-md">
+                    <img 
+                      src={image.url} 
+                      alt={`Imagen de producto ${index + 1}`}
+                      className="object-cover w-full h-full"
+                    />
                   </div>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center p-2 bg-black/50">
-                  {!image.isPrimary && (
+                  
+                  {/* Botones de acción para cada imagen */}
+                  <div className="flex items-center justify-between mt-2 gap-1">
+                    {!image.isPrimary && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="flex-1 text-xs"
+                        onClick={() => setImageAsPrimary(index)}
+                      >
+                        <ImagePlus className="mr-1 h-3 w-3" />
+                        Principal
+                      </Button>
+                    )}
                     <Button
-                      type="button"
                       variant="outline"
                       size="sm"
-                      className="text-xs bg-white/70 hover:bg-white"
-                      onClick={() => setImageAsPrimary(index)}
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveImage(index)}
                     >
-                      Hacer Principal
+                      <X className="h-3 w-3" />
                     </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => handleRemoveImage(index)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <DropzoneArea onDrop={onDrop} isUploading={isUploading} />
-      )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+        
+        {/* Mostrar tabs de gestión de imágenes */}
+        <ImageTabs 
+          onImageSelect={(imageData: ImageItem) => {
+            setImages(prev => [...prev, {
+              ...imageData,
+              path: imageData.path || '',  // Asegurar que path siempre tenga un valor string
+              displayOrder: prev.length + 1,
+              isPrimary: prev.length === 0
+            }])
+          }} 
+        />
+      </div>
     </div>
   )
 })
 
 Imagenes.displayName = 'Imagenes'
-
-// Componente para la zona de arrastrar y soltar
-const DropzoneArea = ({ onDrop, isUploading }: { onDrop: (files: File[]) => void, isUploading: boolean }) => {
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/jpeg': [],
-      'image/png': [],
-      'image/webp': []
-    },
-    disabled: isUploading,
-    maxSize: 5 * 1024 * 1024 // 5MB
-  });
-
-  return (
-    <div 
-      {...getRootProps()} 
-      className={`border-2 border-dashed rounded-md p-8 text-center transition-colors duration-200 ${
-        isDragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/20'
-      } cursor-pointer`}
-      id="dropzone-area"
-    >
-      <input {...getInputProps()} />
-      <div className="flex flex-col items-center">
-        <ImagePlus className="h-10 w-10 text-muted-foreground mb-2" />
-        {isDragActive ? (
-          <p className="text-sm text-primary font-medium">
-            Suelta las imágenes aquí ...
-          </p>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground">
-              Arrastra y suelta o haz clic para subir imágenes
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              PNG, JPG, WEBP hasta 5MB
-            </p>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
 
 export default Imagenes

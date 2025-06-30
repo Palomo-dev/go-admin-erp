@@ -37,6 +37,15 @@ export default function Inventario({ form }: InventarioProps) {
   const [error, setError] = useState<string>('')
   const [stockItems, setStockItems] = useState<any[]>([])
 
+  // Sincronizar el estado local con los datos del formulario cuando ya existen
+  useEffect(() => {
+    const stockInicial = form.getValues('stock_inicial');
+    if (stockInicial && Array.isArray(stockInicial) && stockInicial.length > 0) {
+      console.log("Stock inicial detectado en el formulario:", stockInicial);
+      setStockItems(stockInicial);
+    }
+  }, [form]);
+
   // Obtener la organización activa del localStorage o usar ID 2 como respaldo
   const getOrganizacionActiva = () => {
     if (typeof window !== 'undefined') {
@@ -119,6 +128,7 @@ export default function Inventario({ form }: InventarioProps) {
     const nuevosItems = [...stockItems, nuevoItem]
     setStockItems(nuevosItems)
     form.setValue('stock_inicial', nuevosItems)
+    console.log("Sucursal agregada al stock:", nuevosItems)
   }
 
   const eliminarStockItem = (index: number) => {
@@ -229,9 +239,11 @@ export default function Inventario({ form }: InventarioProps) {
                             <SelectContent>
                               {sucursales.length > 0 ? (
                                 sucursales
-                                  .filter((suc: any) => !stockItems.some(
-                                    (si, i) => i !== index && String(si.branch_id) === String(suc.id)
-                                  ))
+                                  .filter((suc: any) => {
+                                    // Permitir la sucursal actual o que no esté en otras filas
+                                    return String(item.branch_id) === String(suc.id) || 
+                                      !stockItems.some((si, i) => i !== index && String(si.branch_id) === String(suc.id));
+                                  })
                                   .map((suc: any) => (
                                     <SelectItem key={suc.id} value={String(suc.id)}>
                                       {suc.name}

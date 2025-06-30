@@ -46,11 +46,12 @@ const CatalogoProductos: React.FC = () => {
     busqueda: '',
     categoria: null,
     estado: '',
-    ordenarPor: 'name'
+    ordenarPor: 'name',
+    mostrarEliminados: false // Nuevo estado para controlar si se muestran productos eliminados
   });
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [productoToDelete, setProductoToDelete] = useState<number | null>(null);
-
+  const [stockPorSucursal, setStockPorSucursal] = useState<StockSucursal[]>([]);
 
 
   // Cargar productos desde Supabase
@@ -124,8 +125,15 @@ const CatalogoProductos: React.FC = () => {
           query = query.eq('category_id', filters.categoria);
         }
         
-        if (filters.estado) {
+        // Si se selecciona un estado específico, filtrar por ese estado
+        if (filters.estado && filters.estado !== 'todos') {
           query = query.eq('status', filters.estado);
+        } else if (filters.estado === 'todos') {
+          // Si se selecciona explícitamente "todos", mostrar todos los productos incluyendo eliminados
+          // No aplicamos ningún filtro adicional
+        } else {
+          // Por defecto (sin filtro de estado), no mostrar productos eliminados
+          query = query.neq('status', 'deleted');
         }
         
         // Ordenar resultados
@@ -266,30 +274,19 @@ const CatalogoProductos: React.FC = () => {
     try {
       setLoading(true);
       
-      // Primero verificar si hay registros relacionados
-      const { count: stockCount, error: stockError } = await supabase
-        .from('stock_levels')
-        .select('id', { count: 'exact', head: true })
-        .eq('product_id', productoToDelete);
-        
-      if (stockError) throw stockError;
+      // Obtener el ID de la organización del localStorage
+      const organizationId = parseInt(localStorage.getItem('organization_id') || '0');
       
-      if (stockCount && stockCount > 0) {
-        toast({
-          variant: "destructive",
-          title: "No se puede eliminar",
-          description: "Este producto tiene registros de stock asociados."
-        });
-        setIsDeleteDialogOpen(false);
-        setProductoToDelete(null);
-        return;
+      if (!organizationId) {
+        throw new Error('No se pudo determinar la organización actual');
       }
       
-      // Proceder con la eliminación
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productoToDelete);
+      // Usar la función deactivate_product con ID de organización explícito
+      const { data, error } = await supabase
+        .rpc('deactivate_product', { 
+          p_product_id: productoToDelete,
+          p_organization_id: organizationId
+        });
         
       if (error) throw error;
       
@@ -298,14 +295,18 @@ const CatalogoProductos: React.FC = () => {
         description: "El producto ha sido eliminado correctamente."
       });
       
-      // Actualizar lista de productos
+      // Actualizar lista de productos (eliminarlo de la vista)
       setProductos(productos.filter(p => p.id !== productoToDelete));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al eliminar producto:', error);
+      
+      // Mensaje de error específico si lo proporciona la función
+      const errorMessage = error.message || "No se pudo eliminar el producto. Intente de nuevo más tarde.";
+      
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo eliminar el producto. Intente de nuevo más tarde."
+        description: errorMessage
       });
     } finally {
       setIsDeleteDialogOpen(false);
@@ -368,7 +369,6 @@ const CatalogoProductos: React.FC = () => {
         onView={(producto: Producto) => handleVer(producto)}
         onDelete={(id: number) => handleEliminarClick(id)}
         onDuplicate={(producto: Producto) => handleDuplicar(producto)}
-        renderAcciones={(producto: Producto) => <RenderAcciones producto={producto} />}
       />
       
       {/* Diálogo de confirmación para eliminar */}

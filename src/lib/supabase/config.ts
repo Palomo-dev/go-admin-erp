@@ -47,25 +47,27 @@ export const createSupabaseClient = () => {
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
-      autoRefreshToken: true,
+      autoRefreshToken: false, // Desactivamos la renovación automática para reducir solicitudes
       persistSession: true,
       detectSessionInUrl: false, // Cambiado a false para evitar problemas con NextJS router
       flowType: 'pkce',
       storageKey: storageKey,
+      // La versión actual del cliente no soporta configurar refreshSessionThreshold
+      // Usaremos el gestor de autenticación auth-manager.ts para controlar esto
       storage: {
         getItem: (key) => {
           return getCookie(key);
         },
         setItem: (key, value) => {
-          setCookie(key, value);
-          // También eliminamos cualquier token del localStorage para mantener la seguridad
+          setCookie(key, value, 86400); // 24 horas para todos los tokens
+          // Eliminamos cualquier token del localStorage para mantener la seguridad
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(key);
           }
         },
         removeItem: (key) => {
           removeCookie(key);
-          // También eliminamos cualquier token del localStorage para mantener la seguridad
+          // Eliminamos cualquier token del localStorage para mantener la seguridad
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(key);
           }

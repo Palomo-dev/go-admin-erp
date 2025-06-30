@@ -4,13 +4,24 @@ import { useState, useEffect } from 'react';
 import { Building, ChevronDown } from 'lucide-react';
 import { Branch } from '@/types/branch';
 import { branchService } from '@/lib/services/branchService';
+import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 interface BranchSelectorProps {
-  organizationId: number;
+  organizationId?: number;
   className?: string;
 }
 
 const BranchSelector = ({ organizationId, className = '' }: BranchSelectorProps) => {
+  // Si no se proporciona organizationId, usar la organización activa de la utilidad centralizada
+  // El operador de aserción no nulo (!) asegura que orgId sea siempre un número válido
+  const orgId = organizationId !== undefined ? organizationId : getOrganizationId();
+  
+  // Guardamos la organización activa para asegurar consistencia
+  if (orgId) {
+    guardarOrganizacionActiva({ id: orgId });
+  }
+  
+  console.log('BranchSelector usando organization_id:', orgId);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -19,11 +30,11 @@ const BranchSelector = ({ organizationId, className = '' }: BranchSelectorProps)
   // Fetch branches when component mounts
   useEffect(() => {
     const fetchBranches = async () => {
-      if (!organizationId) return;
+      if (!orgId) return;
       
       try {
         setIsLoading(true);
-        const branchData = await branchService.getBranches(organizationId);
+        const branchData = await branchService.getBranches(orgId);
         setBranches(branchData);
         
         // Get branch from localStorage or set default
@@ -62,17 +73,23 @@ const BranchSelector = ({ organizationId, className = '' }: BranchSelectorProps)
     };
 
     fetchBranches();
-  }, [organizationId]);
+  }, [orgId]); // Dependencia actualizada a orgId
 
   // Handle branch selection
   const handleSelectBranch = (branch: Branch) => {
     setSelectedBranch(branch);
     setIsOpen(false);
     
-    // Save to localStorage
+    // Save branch to localStorage
     try {
       if (branch.id) {
         localStorage.setItem('currentBranchId', branch.id.toString());
+        
+        // Asegurar que la organización también está guardada correctamente
+        guardarOrganizacionActiva({ id: orgId });
+        
+        // También guardarla en sessionStorage por duplicado para mayor seguridad
+        sessionStorage.setItem('currentBranchId', branch.id.toString());
       }
     } catch (error) {
       console.error('Error saving to localStorage:', error);

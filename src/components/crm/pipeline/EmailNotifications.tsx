@@ -1,0 +1,242 @@
+"use client";
+
+import { supabase } from "@/lib/supabase/config";
+import { Opportunity } from "./KanbanBoard";
+
+interface EmailNotificationProps {
+  opportunityId: string;
+  fromStage: any;
+  toStage: any;
+  organizationId: number;
+  opportunity: Opportunity;
+}
+
+// Este componente maneja las notificaciones por correo electrónico cuando una oportunidad cambia de etapa
+export async function sendStageChangeNotification({
+  opportunityId,
+  fromStage,
+  toStage,
+  organizationId,
+  opportunity,
+}: EmailNotificationProps) {
+  if (!opportunityId || !fromStage || !toStage || !organizationId || !opportunity) {
+    console.error("Datos insuficientes para enviar notificación");
+    return { success: false, error: "Datos insuficientes" };
+  }
+
+  try {
+    // 1. Obtener información del cliente
+    const customer = await getCustomerInfo(opportunity.customer_id);
+    
+    // 2. Obtener información del usuario asignado
+    const assignedUser = opportunity.created_by 
+      ? await getUserInfo(opportunity.created_by)
+      : null;
+    
+    // 3. Determinar el tipo de notificación según la etapa destino
+    const notificationType = determineNotificationType(fromStage, toStage);
+    
+    // 4. Crear la plantilla de correo según el tipo
+    const emailTemplate = createEmailTemplate(
+      notificationType,
+      opportunity,
+      fromStage,
+      toStage,
+      customer,
+      assignedUser
+    );
+    
+    // 5. Registrar la notificación en la base de datos
+    await registerNotification(
+      opportunityId, 
+      organizationId, 
+      notificationType, 
+      emailTemplate.subject, 
+      opportunity.created_by || null
+    );
+
+    // 6. En un entorno de producción real, aquí se enviaría el correo
+    // a través de una función edge o un servicio externo.
+    // Por ahora, simulamos el envío registrando la información.
+    console.log('Email enviado:', {
+      to: assignedUser?.email || 'sin_asignar@example.com',
+      subject: emailTemplate.subject,
+      body: emailTemplate.body
+    });
+    
+    return { 
+      success: true, 
+      message: "Notificación registrada correctamente",
+      notificationType,
+      emailTemplate
+    };
+    
+  } catch (error) {
+    console.error("Error al enviar notificación:", error);
+    return { success: false, error };
+  }
+}
+
+// Obtener información del cliente
+async function getCustomerInfo(customerId: string | null | undefined) {
+  if (!customerId) return null;
+  
+  const { data, error } = await supabase
+    .from("customers")
+    .select("id, name, email, phone")
+    .eq("id", customerId)
+    .single();
+    
+  if (error || !data) {
+    console.error("Error al obtener información del cliente:", error);
+    return null;
+  }
+  
+  return data;
+}
+
+// Obtener información del usuario
+async function getUserInfo(userId: string) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, email, name")
+    .eq("id", userId)
+    .single();
+    
+  if (error || !data) {
+    console.error("Error al obtener información del usuario:", error);
+    return null;
+  }
+  
+  return data;
+}
+
+// Determinar el tipo de notificación según las etapas
+function determineNotificationType(fromStage: any, toStage: any) {
+  // Si se mueve a una etapa final
+  if (toStage.name.toLowerCase().includes("ganado")) {
+    return "opportunity_won";
+  } 
+  
+  if (toStage.name.toLowerCase().includes("perdido")) {
+    return "opportunity_lost";
+  }
+  
+  // Si avanza a una etapa de negociación
+  if (toStage.name.toLowerCase().includes("negociación")) {
+    return "negotiation_started";
+  }
+  
+  // Si avanza a una etapa de propuesta
+  if (toStage.name.toLowerCase().includes("propuesta")) {
+    return "proposal_stage";
+  }
+  
+  // Notificación genérica de cambio de etapa
+  return "stage_change";
+}
+
+// Crear la plantilla de correo según el tipo de notificación
+function createEmailTemplate(
+  notificationType: string,
+  opportunity: any,
+  fromStage: any,
+  toStage: any,
+  customer: any,
+  assignedUser: any
+) {
+  const customerName = customer?.name || "Cliente";
+  const opportunityName = opportunity.name;
+  const amount = opportunity.amount ? new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: opportunity.currency || 'COP'
+  }).format(opportunity.amount) : "No especificado";
+  
+  let subject = "";
+  let body = "";
+  
+  switch (notificationType) {
+    case "opportunity_won":
+      subject = `¡Oportunidad ganada! ${opportunityName}`;
+      body = `
+        <p>Hola ${assignedUser?.name || ""},</p>
+        <p>¡Felicitaciones! La oportunidad <strong>${opportunityName}</strong> con ${customerName} ha sido marcada como ganada.</p>
+        <p>Valor: ${amount}</p>
+        <p>Es importante realizar el seguimiento post-venta para asegurar la satisfacción del cliente.</p>
+        <p>Gracias por tu excelente trabajo.</p>
+      `;
+      break;
+      
+    case "opportunity_lost":
+      subject = `Oportunidad perdida: ${opportunityName}`;
+      body = `
+        <p>Hola ${assignedUser?.name || ""},</p>
+        <p>La oportunidad <strong>${opportunityName}</strong> con ${customerName} ha sido marcada como perdida.</p>
+        <p>Por favor, registra los motivos de la pérdida para aprender de esta experiencia.</p>
+        <p>Valor: ${amount}</p>
+      `;
+      break;
+      
+    case "negotiation_started":
+      subject = `Oportunidad en negociación: ${opportunityName}`;
+      body = `
+        <p>Hola ${assignedUser?.name || ""},</p>
+        <p>La oportunidad <strong>${opportunityName}</strong> con ${customerName} ha avanzado a la etapa de negociación.</p>
+        <p>Valor: ${amount}</p>
+        <p>Es recomendable preparar los puntos de negociación y alternativas para cerrar el trato.</p>
+      `;
+      break;
+      
+    case "proposal_stage":
+      subject = `Propuesta requerida: ${opportunityName}`;
+      body = `
+        <p>Hola ${assignedUser?.name || ""},</p>
+        <p>La oportunidad <strong>${opportunityName}</strong> con ${customerName} ha avanzado a la etapa de propuesta.</p>
+        <p>Valor estimado: ${amount}</p>
+        <p>Por favor, prepara y envía la propuesta comercial lo antes posible.</p>
+      `;
+      break;
+      
+    default: // stage_change genérico
+      subject = `Actualización de oportunidad: ${opportunityName}`;
+      body = `
+        <p>Hola ${assignedUser?.name || ""},</p>
+        <p>La oportunidad <strong>${opportunityName}</strong> con ${customerName} ha cambiado de etapa:</p>
+        <p>De: ${fromStage.name} → A: ${toStage.name}</p>
+        <p>Valor: ${amount}</p>
+      `;
+  }
+  
+  return { subject, body };
+}
+
+// Registrar la notificación en la base de datos
+async function registerNotification(
+  opportunityId: string,
+  organizationId: number,
+  type: string,
+  message: string,
+  userId: string | null
+) {
+  try {
+    const { error } = await supabase.from("notifications").insert({
+      organization_id: organizationId,
+      user_id: userId,
+      related_type: "opportunity",
+      related_id: opportunityId,
+      type,
+      message,
+      is_read: false,
+      created_at: new Date().toISOString()
+    });
+    
+    if (error) {
+      throw error;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error al registrar notificación:", error);
+    return { success: false, error };
+  }
+}

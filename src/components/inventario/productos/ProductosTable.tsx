@@ -31,6 +31,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase/config';
+import { getPublicUrl } from '@/lib/supabase/imageUtils';
 
 
 interface ProductosTableProps {
@@ -46,7 +47,6 @@ interface ProductosTableProps {
 interface ProductImage {
   id: number;
   product_id: number;
-  image_url: string;
   storage_path: string;
   is_primary: boolean;
 }
@@ -88,7 +88,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       // Consultar imágenes principales (is_primary = true)
       const { data, error } = await supabase
         .from('product_images')
-        .select('id, product_id, image_url, storage_path, is_primary')
+        .select('id, product_id, storage_path, is_primary')
         .in('product_id', productIds)
         .eq('is_primary', true);
         
@@ -97,11 +97,12 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
         return;
       }
       
-      // Crear un mapa de productId -> imageUrl
+      // Crear un mapa de productId -> imageUrl usando getPublicUrl
       const imageMap: Record<number, string> = {};
       if (data) {
         data.forEach((img: ProductImage) => {
-          imageMap[img.product_id] = img.image_url;
+          // Usar storage_path con getPublicUrl para obtener la URL pública
+          imageMap[img.product_id] = getPublicUrl(img.storage_path);
         });
       }
       

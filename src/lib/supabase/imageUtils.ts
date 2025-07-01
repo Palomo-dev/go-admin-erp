@@ -1,96 +1,312 @@
-import { supabase } from './config';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 /**
- * Convierte una URL de imagen firmada a su versión pública permanente
- * para evitar problemas de expiración de tokens
+ * Define la estructura de un bucket de Supabase
  */
-export function getPublicImageUrl(imageUrl: string, storagePath: string): string {
-  // Si la URL ya es una URL pública, devolverla tal cual
-  if (imageUrl && !imageUrl.includes('/object/sign/')) {
-    return imageUrl;
-  }
-  
-  // Si no tenemos la ruta de almacenamiento, no podemos generar una URL pública
-  if (!storagePath) {
-    console.warn('No se proporcionó la ruta de almacenamiento para generar URL pública');
-    return imageUrl; // Devolver la URL original como fallback
-  }
-  
-  // Determinar el bucket basado en la URL actual o en la ruta de almacenamiento
-  let bucket = 'organization_images'; // Bucket por defecto
-  
-  if (imageUrl) {
-    // Intentar extraer el bucket de la URL original
-    const urlParts = imageUrl.split('/');
-    const signOrPublicIndex = urlParts.findIndex(part => part === 'sign' || part === 'public');
-    
-    if (signOrPublicIndex > 0 && signOrPublicIndex + 1 < urlParts.length) {
-      bucket = urlParts[signOrPublicIndex + 1];
-    }
-  } else if (storagePath) {
-    // Si no tenemos URL pero sí ruta, intentamos determinar el bucket
-    // Asumimos que la ruta de almacenamiento no incluye el bucket
-  }
+export type StorageBucket = 'organization_images';
 
-  // Construir la URL pública permanente usando la URL base del proyecto Supabase
-  // Evitamos usar la propiedad protegida supabaseUrl directamente
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://jgmgphmzusbluqhuqihj.supabase.co";
-  const publicUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${storagePath}`;
-  
-  return publicUrl;
+/**
+ * Interfaz para imágenes de productos
+ */
+export interface ProductImageType {
+  id?: string;
+  product_id?: number;
+  storage_path: string;
+  bucket?: StorageBucket;
+  display_order?: number;
+  is_primary?: boolean;
+  alt_text?: string;
 }
 
 /**
- * Verifica si una URL de imagen de Supabase está activa y, si es una URL firmada que ha expirado,
- * la regenera utilizando la ruta de almacenamiento
+ * Todas las imágenes ahora se almacenan en organization_images
  */
-export async function ensureValidImageUrl(imageUrl: string, storagePath: string): Promise<string> {
-  // Si no es una URL firmada, simplemente devolvemos la URL pública
-  if (!imageUrl || !imageUrl.includes('/object/sign/')) {
-    return getPublicImageUrl(imageUrl, storagePath);
+export function getBucketName(): StorageBucket {
+  return 'organization_images';
+}
+
+/**
+ * Genera una URL pública para una ruta de almacenamiento usando organization_images
+ */
+export function getPublicUrl(storagePath: string): string {
+  // Validación de entrada
+  if (!storagePath) {
+    console.log('getPublicUrl: Empty storagePath provided');
+    return '';
   }
   
-  // Para imágenes que están marcadas como públicas pero tienen URL firmada,
-  // regeneramos una URL pública
+  // Crear cliente de Supabase
+  const supabase = createClientComponentClient();
+  
+  // Usar directamente organization_images bucket
+  const { data } = supabase.storage
+    .from('organization_images')
+    .getPublicUrl(storagePath);
+  
+  if (!data?.publicUrl) {
+    console.error(`getPublicUrl: Failed to get public URL for ${storagePath}`);
+    return '';
+  }
+  
+  return data.publicUrl;
+}
+
+/**
+ * Carga imágenes de un producto de manera eficiente
+ * Retorna las imágenes con URLs públicas ya calculadas
+ */
+export async function loadProductImages(productId: number): Promise<ProductImageType[]> {
+  if (!productId) {
+    console.log('loadProductImages: No product ID provided');
+    return [];
+  }
+  
   try {
-    // Verificar si la imagen está marcada como pública en la base de datos
-    const { data: imageData, error } = await supabase
-      .from('shared_images')
-      .select('is_public')
-      .eq('storage_path', storagePath)
-      .maybeSingle();
+    console.log(`loadProductImages: Loading images for product ${productId}`);
+    const supabase = createClientComponentClient();
+    
+    // Consulta optimizada para obtener solo los campos necesarios
+    const { data, error } = await supabase
+      .from('product_images')
+      .select('id, product_id, storage_path, display_order, is_primary')
+      .eq('product_id', productId)
+      .order('is_primary', { ascending: false })
+      .order('display_order', { ascending: true });
+    
+    if (error) {
+      console.error('Error al cargar imágenes del producto:', error);
+      return [];
+    }
+    
+    if (!data || data.length === 0) {
+      console.log(`loadProductImages: No images found for product ${productId}`);
+      return [];
+    }
+    
+    console.log(`loadProductImages: Found ${data.length} images for product ${productId}:`, data);
+    return data;
+  } catch (e) {
+    console.error('Error inesperado al cargar imágenes:', e);
+    return [];
+  }
+}
+
+/**
+ * Sube una imagen de producto y crea los registros necesarios
+ */
+export async function uploadProductImage({
+  file,
+  productId,
+  organizationId,
+  isPrimary = false,
+  displayOrder = 1,
+  altText = ''
+}: {
+  file: File;
+  productId: number;
+  organizationId: number;
+  isPrimary?: boolean;
+  displayOrder?: number;
+  altText?: string;
+}): Promise<ProductImageType | null> {
+  if (!file || !productId || !organizationId) {
+    console.error('Faltan datos requeridos para subir imagen');
+    return null;
+  }
+  
+  try {
+    // Validar archivo
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+      throw new Error(`La imagen excede el tamaño máximo de 5MB`);
+    }
+    
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      throw new Error(`Formato no soportado: ${file.type}. Use JPG, PNG, WebP o GIF`);
+    }
+    
+    const supabase = createClientComponentClient();
+    
+    // Generar nombre único para el archivo
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `${productId}/${Date.now()}-${Math.random().toString(36).substring(2, 10)}.${fileExt}`;
+    const filePath = `productos/${fileName}`;
+    
+    // Subir a Storage
+    const { error: uploadError } = await supabase.storage
+      .from('organization_images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    
+    if (uploadError) throw uploadError;
+    
+    // Insertar registro en la base de datos
+    const { data: imageRecord, error: dbError } = await supabase
+      .from('product_images')
+      .insert({
+        product_id: productId,
+        storage_path: filePath,
+        is_primary: isPrimary,
+        display_order: displayOrder,
+        alt_text: altText
+      })
+      .select()
+      .single();
+    
+    if (dbError) throw dbError;
+    
+    return imageRecord;
+  } catch (error: any) {
+    console.error('Error al subir imagen de producto:', error);
+    throw error;
+  }
+}
+
+/**
+ * Elimina una imagen de producto y su archivo asociado
+ */
+export async function deleteProductImage(imageId: string, storagePath?: string): Promise<boolean> {
+  if (!imageId) return false;
+  
+  try {
+    const supabase = createClientComponentClient();
+    
+    // Si no tenemos la ruta de almacenamiento, la buscamos primero
+    let path = storagePath;
+    if (!path) {
+      const { data } = await supabase
+        .from('product_images')
+        .select('storage_path')
+        .eq('id', imageId)
+        .single();
+      
+      path = data?.storage_path;
+    }
+    
+    // Eliminar registro de la base de datos
+    const { error: dbError } = await supabase
+      .from('product_images')
+      .delete()
+      .eq('id', imageId);
+    
+    if (dbError) throw dbError;
+    
+    // Eliminar archivo de Storage si tenemos la ruta
+    if (path) {
+      await supabase.storage
+        .from('organization_images')
+        .remove([path]);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error al eliminar imagen:', error);
+    return false;
+  }
+}
+
+/**
+ * Establece una imagen como principal para un producto
+ */
+export async function setProductPrimaryImage(imageId: string, productId: number): Promise<boolean> {
+  if (!imageId || !productId) return false;
+  
+  try {
+    const supabase = createClientComponentClient();
+    
+    // 1. Quitar marca de principal de todas las imágenes del producto
+    await supabase
+      .from('product_images')
+      .update({ is_primary: false })
+      .eq('product_id', productId);
+    
+    // 2. Marcar la imagen seleccionada como principal
+    const { error } = await supabase
+      .from('product_images')
+      .update({ is_primary: true })
+      .eq('id', imageId)
+      .eq('product_id', productId);
     
     if (error) throw error;
     
-    // Si la imagen está marcada como pública, devolver URL pública permanente
-    if (imageData && imageData.is_public) {
-      return getPublicImageUrl(imageUrl, storagePath);
+    // 3. Actualizar la referencia en la tabla de productos
+    const { data: imageData } = await supabase
+      .from('product_images')
+      .select('storage_path')
+      .eq('id', imageId)
+      .single();
+    
+    if (imageData?.storage_path) {
+      // Actualizar el producto con la referencia a la imagen principal
+      await supabase
+        .from('products')
+        .update({
+          image_path: imageData.storage_path
+        })
+        .eq('id', productId);
     }
     
-    // Si la imagen no es pública, intentar regenerar una URL firmada
-    const bucket = imageUrl.split('/').find((part, i, arr) => 
-      arr[i-1] === 'sign' || arr[i-1] === 'public'
-    ) || 'organization_images';
-    
-    const { data } = await supabase
-      .storage
-      .from(bucket)
-      .createSignedUrl(storagePath, 60 * 60 * 24 * 7); // 7 días de validez
-      
-    return data?.signedUrl || imageUrl; // Devolver la nueva URL o la original como fallback
-  } catch (e) {
-    console.error('Error al regenerar URL de imagen:', e);
-    return imageUrl; // En caso de error, devolver la URL original
+    return true;
+  } catch (error) {
+    console.error('Error al establecer imagen principal:', error);
+    return false;
   }
 }
 
 /**
- * Actualiza todas las URLs de un array de imágenes para garantizar que
- * sean válidas y no expiren
+ * Función helper para renderizar imágenes de producto con manejo de errores
  */
-export function updateImageUrlsInArray<T extends {url: string, path?: string}>(images: T[]): T[] {
-  return images.map(img => ({
-    ...img,
-    url: getPublicImageUrl(img.url, img.path || '')
-  }));
+export function getProductImageUrl(image?: ProductImageType | null): string {
+  if (!image) {
+    console.log('getProductImageUrl: No image object provided');
+    return '/placeholder-product.png';
+  }
+  
+  if (!image.storage_path) {
+    console.log('getProductImageUrl: Image is missing storage_path:', image);
+    return '/placeholder-product.png';
+  }
+  
+  console.log(`getProductImageUrl: Getting URL for image with storage_path ${image.storage_path}`);
+  return getPublicUrl(image.storage_path);
+}
+
+/**
+ * Obtiene la URL pública de una imagen a partir de la ruta de almacenamiento
+ * Esta función es un alias de getPublicUrl para mantener compatibilidad con código existente
+ */
+export function getPublicImageUrl(storagePath: string): string {
+  return getPublicUrl(storagePath);
+}
+
+/**
+ * Actualiza un array de objetos con URLs públicas basadas en sus paths de almacenamiento
+ * @param images Array de imágenes que contienen un campo path
+ * @returns El mismo array con URLs actualizadas
+ */
+export function updateImageUrlsInArray<T extends { path: string, url: string }>(images: T[]): T[] {
+  // Si no hay imágenes, devolver el array vacío
+  if (!images || images.length === 0) return images;
+
+  console.log(`updateImageUrlsInArray: Updating URLs for ${images.length} images`);
+  
+  // Crear cliente de Supabase
+  const supabase = createClientComponentClient();
+  
+  return images.map(image => {
+    // Solo actualizar si hay un path válido
+    if (image.path) {
+      // Generar URL pública directamente desde Supabase
+      const { data } = supabase.storage
+        .from('organization_images')
+        .getPublicUrl(image.path);
+        
+      if (data?.publicUrl) {
+        return { ...image, url: data.publicUrl };
+      }
+    }
+    // Si no hay path o no se pudo generar URL, mantener el objeto original
+    return image;
+  });
 }

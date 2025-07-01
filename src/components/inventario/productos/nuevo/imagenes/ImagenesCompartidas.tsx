@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Search } from 'lucide-react';
 import { ImageItem } from './ImageDialog';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { getPublicImageUrl } from '@/lib/supabase/imageUtils';
+// Using direct Supabase storage calls for URL generation
 
 interface ImagenesCompartidasProps {
   onImageSelect: (image: ImageItem) => void;
@@ -14,14 +14,17 @@ interface ImagenesCompartidasProps {
 
 type ImagenItem = {
   id: number;
-  image_url: string;
+  storage_path: string;
   file_name: string;
   file_size: number;
   mime_type: string;
   dimensions: { width: number; height: number } | null;
   created_at: string;
   organization_id: number;
-  storage_path?: string; // Añadida para manejar las rutas de almacenamiento
+  // Mantenemos image_url para compatibilidad con código existente
+  image_url?: string;
+  // Añadimos url generada directamente para mostrar la imagen
+  url?: string;
 };
 
 export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps) {
@@ -43,12 +46,16 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
         // Obtener el ID de la organización actual para excluir sus imágenes usando utilidad centralizada
         const currentOrgId = getOrganizationId();
         
+        console.log('Cargando imágenes compartidas públicas');
+        
         // Consultar las imágenes públicas o compartidas
         const { data, error } = await supabaseClient
           .from('shared_images')
           .select('*')
           .eq('is_public', true)
           .order('created_at', { ascending: false });
+          
+        console.log('Imágenes públicas recuperadas:', data?.length || 0);
           
         if (error) {
           throw error;
@@ -60,21 +67,28 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
           filteredData = data.filter(img => img.organization_id !== currentOrgId);
         }
         
-        // Corregir las URLs de las imágenes para usar rutas públicas
-        const imgsWithFixedUrls = filteredData.map(img => {
-          // Si la URL tiene el formato de URL firmada, convertirla a pública
-          if (img.image_url && img.image_url.includes('/object/sign/')) {
-            // Extraer la ruta del bucket y el objeto
-            const urlParts = img.image_url.split('/object/sign/');
-            if (urlParts.length > 1) {
-              let objectPath = urlParts[1].split('?')[0]; // Eliminar el query string con el token
-              img.image_url = `${urlParts[0]}/object/public/${objectPath}`;
-            }
+        // Procesar las imágenes para usar storage_path y generar URLs públicas adecuadas
+        const processedImages = filteredData.map(img => {
+          // Generar la URL pública directamente con Supabase storage
+          let url = '';
+          if (img.storage_path) {
+            const { data } = supabaseClient.storage
+              .from('organization_images')
+              .getPublicUrl(img.storage_path);
+            url = data?.publicUrl || '';
           }
-          return img;
+          
+          // Si no hay storage_path pero hay una image_url antigua, intentamos mantenerla como fallback
+          const fallbackUrl = !img.storage_path && img.image_url ? img.image_url : '';
+          
+          return {
+            ...img,
+            url: url || fallbackUrl
+          };
         });
         
-        setImagenes(imgsWithFixedUrls || []);
+        console.log('Imágenes compartidas procesadas con URLs públicas:', processedImages.length);
+        setImagenes(processedImages);
       } catch (error: any) {
         console.error('Error al cargar imágenes compartidas:', error);
         toast({
@@ -104,29 +118,35 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
     e.preventDefault();
     e.stopPropagation();
     
-    // Asegurar que la URL de la imagen sea pública permanente
-    const publicUrl = getPublicImageUrl(imagen.image_url, imagen.storage_path || '');
+    // Generar una URL pública directamente con Supabase storage
+    let publicUrl = '';
+    if (imagen.storage_path) {
+      const { data } = supabase.storage
+        .from('organization_images')
+        .getPublicUrl(imagen.storage_path);
+      publicUrl = data?.publicUrl || '';
+    }
     
-    // Crear un objeto con la estructura esperada por el componente principal
-    const selectedImage = {
-      url: publicUrl, // Usar URL pública permanente
-      path: imagen.storage_path || '', // Guardar la ruta para futuras conversiones si es necesario
-      displayOrder: 1, // Por defecto será la primera
-      isPrimary: true, // Por defecto será la principal
+    const selectedImage: ImageItem = {
+      // Usar la URL pública generada o caer en image_url como última opción
+      url: publicUrl || imagen.image_url || '',
+      path: imagen.storage_path || '', // Siempre incluir storage_path si está disponible
+      displayOrder: 1,
+      isPrimary: true,
       shared_image_id: imagen.id,
-      width: imagen.dimensions?.width || 0,
-      height: imagen.dimensions?.height || 0,
+      width: imagen.dimensions?.width,
+      height: imagen.dimensions?.height,
       size: imagen.file_size,
       mime_type: imagen.mime_type
     };
     
-    // Notificar al usuario que debe hacer clic en 'Guardar Producto' para confirmar
-    toast({
-      title: "Imagen seleccionada",
-      description: `La imagen ${imagen.file_name} ha sido seleccionada. No olvides hacer clic en 'Guardar Producto' para confirmar los cambios.`,
+    console.log('Imagen compartida seleccionada:', { 
+      id: imagen.id, 
+      path: imagen.storage_path,
+      url: publicUrl
     });
     
-    // Llamar al callback con la imagen seleccionada
+    // Llamar al callback para seleccionar esta imagen
     onImageSelect(selectedImage);
   };
   
@@ -162,9 +182,17 @@ export function ImagenesCompartidas({ onImageSelect }: ImagenesCompartidasProps)
               onClick={(e) => handleSelectImage(e, imagen)}
             >
               <img 
-                src={imagen.image_url} 
+                src={imagen.url || imagen.image_url || '/placeholder-image.png'} 
                 alt={imagen.file_name}
                 className="w-full h-32 object-cover"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  if (!target.dataset.usedFallback) {
+                    target.dataset.usedFallback = 'true';
+                    target.src = '/placeholder-image.png';
+                  }
+                }}
               />
               <div className="absolute inset-x-0 bottom-0 bg-black/70 p-2">
                 <p className="text-white text-xs truncate">{imagen.file_name}</p>

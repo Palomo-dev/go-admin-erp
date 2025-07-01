@@ -31,6 +31,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase/config';
+// Using direct Supabase storage calls for URL generation
 
 
 interface ProductosTableProps {
@@ -46,7 +47,6 @@ interface ProductosTableProps {
 interface ProductImage {
   id: number;
   product_id: number;
-  image_url: string;
   storage_path: string;
   is_primary: boolean;
 }
@@ -79,16 +79,19 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   
   // Cargar las imágenes principales de los productos cuando cambia la lista
   useEffect(() => {
+    // Si no hay productos, no hacemos nada
+    if (!productos?.length) return;
+    
     const fetchProductImages = async () => {
-      if (productos.length === 0) return;
+      console.log('Fetching product images for', productos.length, 'products');
       
-      // Obtener IDs de productos para filtrar
+      // Extraer IDs de productos
       const productIds = productos.map(p => p.id);
       
-      // Consultar imágenes principales (is_primary = true)
+      // Consultar imágenes principales para estos productos
       const { data, error } = await supabase
         .from('product_images')
-        .select('id, product_id, image_url, storage_path, is_primary')
+        .select('id, product_id, storage_path, is_primary')
         .in('product_id', productIds)
         .eq('is_primary', true);
         
@@ -97,14 +100,34 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
         return;
       }
       
-      // Crear un mapa de productId -> imageUrl
+      console.log('Received product images data:', data);
+      
+      // Crear un mapa de productId -> imageUrl usando Supabase storage directamente
       const imageMap: Record<number, string> = {};
-      if (data) {
+      if (data && data.length > 0) {
+        console.log('Processing', data.length, 'product images');
+        
         data.forEach((img: ProductImage) => {
-          imageMap[img.product_id] = img.image_url;
+          if (!img.storage_path) {
+            console.warn(`Missing storage_path for image ID ${img.id}, product ID ${img.product_id}`);
+            return;
+          }
+          
+          // Usar storage_path con Supabase storage para obtener la URL pública
+          const { data: urlData } = supabase.storage
+            .from('organization_images')
+            .getPublicUrl(img.storage_path);
+          const publicUrl = urlData?.publicUrl || '';
+          
+          console.log(`Generated URL for product ${img.product_id}:`, publicUrl.substring(0, 60) + '...');
+          
+          imageMap[img.product_id] = publicUrl;
         });
+      } else {
+        console.log('No product images found for these products');
       }
       
+      console.log('Final image map:', imageMap);
       setProductImages(imageMap);
     };
     

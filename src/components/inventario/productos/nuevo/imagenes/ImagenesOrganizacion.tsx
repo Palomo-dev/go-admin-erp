@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Search } from 'lucide-react';
 import { ImageItem } from './ImageDialog';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+// Using direct Supabase storage calls for URL generation
 
 interface ImagenesOrganizacionProps {
   organization_id?: number;
@@ -14,12 +15,15 @@ interface ImagenesOrganizacionProps {
 
 type ImagenItem = {
   id: number;
-  image_url: string;
+  storage_path: string;
   file_name: string;
   file_size: number;
   mime_type: string;
   dimensions: { width: number; height: number } | null;
   created_at: string;
+  organization_id: number;
+  image_url?: string; // Mantenemos para compatibilidad con código existente
+  url?: string; // Para almacenar la URL pública generada directamente
 };
 
 export function ImagenesOrganizacion({ organization_id, onImageSelect }: ImagenesOrganizacionProps) {
@@ -46,6 +50,8 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
           return;
         }
         
+        console.log('Cargando imágenes de la organización:', org_id);
+        
         // Consultar las imágenes de esta organización
         const { data, error } = await supabaseClient
           .from('shared_images')
@@ -53,11 +59,33 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
           .eq('organization_id', org_id)
           .order('created_at', { ascending: false });
           
+        console.log('Imágenes recuperadas:', data?.length || 0);
+          
         if (error) {
           throw error;
         }
         
-        setImagenes(data || []);
+        // Procesar las imágenes para agregar URLs públicas usando directamente Supabase storage
+        const processedImages = (data || []).map(img => {
+          // Generar URL pública directamente con Supabase storage
+          let publicUrl = '';
+          if (img.storage_path) {
+            const { data } = supabaseClient.storage
+              .from('organization_images')
+              .getPublicUrl(img.storage_path);
+            publicUrl = data?.publicUrl || '';
+          }
+          
+          return {
+            ...img,
+            // Agregar la URL generada y mantener image_url como fallback
+            url: publicUrl,
+            image_url: img.image_url || ''
+          };
+        });
+        
+        console.log('Imágenes procesadas con URLs públicas:', processedImages.length);
+        setImagenes(processedImages);
       } catch (error: any) {
         console.error('Error al cargar imágenes:', error);
         toast({
@@ -87,10 +115,20 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
     e.preventDefault();
     e.stopPropagation();
     
+    // Generar URL pública directamente con Supabase storage
+    let publicUrl = '';
+    if (imagen.storage_path) {
+      const { data } = supabase.storage
+        .from('organization_images')
+        .getPublicUrl(imagen.storage_path);
+      publicUrl = data?.publicUrl || '';
+    }
+    
     // Crear un objeto con la estructura esperada por el componente principal
-    const selectedImage = {
-      url: imagen.image_url,
-      path: '', // Esto se podría obtener si es necesario
+    const selectedImage: ImageItem = {
+      // Usar la URL pública generada o la url ya calculada en el objeto imagen
+      url: publicUrl || imagen.url || imagen.image_url || '',
+      path: imagen.storage_path || '', // Usar storage_path en lugar de una cadena vacía
       displayOrder: 1, // Por defecto será la primera
       isPrimary: true, // Por defecto será la principal
       shared_image_id: imagen.id,
@@ -141,9 +179,17 @@ export function ImagenesOrganizacion({ organization_id, onImageSelect }: Imagene
               onClick={(e) => handleSelectImage(e, imagen)}
             >
               <img 
-                src={imagen.image_url} 
+                src={imagen.url || imagen.image_url || '/placeholder-image.png'} 
                 alt={imagen.file_name}
                 className="w-full h-32 object-cover"
+                onError={(e) => {
+                  // Establecer imagen de respaldo si falla la carga
+                  const target = e.target as HTMLImageElement;
+                  if (!target.dataset.usedFallback) {
+                    target.dataset.usedFallback = 'true';
+                    target.src = '/placeholder-image.png';
+                  }
+                }}
               />
               <div className="absolute inset-x-0 bottom-0 bg-black/70 p-2">
                 <p className="text-white text-xs truncate">{imagen.file_name}</p>

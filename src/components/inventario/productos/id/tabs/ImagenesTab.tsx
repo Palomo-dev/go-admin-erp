@@ -7,7 +7,6 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { 
   loadProductImages, 
-  getPublicUrl, 
   uploadProductImage, 
   deleteProductImage,
   setProductPrimaryImage,
@@ -84,11 +83,26 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
     fetchImages();
   }, [organization?.id, producto?.id]);
   
+  // Función para generar URL pública directamente con Supabase storage
+  const generatePublicUrl = (storagePath?: string): string => {
+    if (!storagePath) return '/placeholder-image.png';
+    
+    try {
+      const { data } = supabase.storage
+        .from('organization_images')
+        .getPublicUrl(storagePath);
+      return data?.publicUrl || '/placeholder-image.png';
+    } catch (error) {
+      console.error('Error generating public URL:', error);
+      return '/placeholder-image.png';
+    }
+  };
+  
   // Visualizar imagen en tamaño grande
   const handleViewImage = (storagePath: string | null) => {
     if (storagePath) {
-      // Usar getPublicUrl para obtener la URL pública a partir del storage_path
-      setPreviewImage(getPublicUrl(storagePath));
+      // Usar Supabase storage directamente para obtener la URL pública
+      setPreviewImage(generatePublicUrl(storagePath));
     }
   };
   
@@ -230,7 +244,7 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
         onClick={() => image.storage_path ? handleViewImage(image.storage_path) : null}
       >
         <img 
-          src={image.storage_path ? getPublicUrl(image.storage_path) : '/placeholder-image.png'}
+          src={image.storage_path ? generatePublicUrl(image.storage_path) : '/placeholder-image.png'}
           alt={`Imagen ${image.id}`}
           className="h-full w-full object-cover transition-all group-hover:scale-110"
           onError={(e) => {

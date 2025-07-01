@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { 
   loadProductImages, 
-  getPublicUrl, 
   uploadProductImage, 
   deleteProductImage,
   setProductPrimaryImage,
+  updateImageUrlsInArray,
   ProductImageType
 } from '@/lib/supabase/imageUtils';
+import { supabase } from '@/lib/supabase/config';
 import { Loader2, Plus, Star, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,21 @@ export function ImageGallery({ productId, organizationId, readOnly = false }: Im
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Función para generar URL pública directamente con Supabase storage
+  const generatePublicUrl = (storagePath?: string): string => {
+    if (!storagePath) return '/placeholder-product.png';
+    
+    try {
+      const { data } = supabase.storage
+        .from('organization_images')
+        .getPublicUrl(storagePath);
+      return data?.publicUrl || '/placeholder-product.png';
+    } catch (error) {
+      console.error('Error generating public URL:', error);
+      return '/placeholder-product.png';
+    }
+  };
 
   // Cargar imágenes al iniciar el componente
   useEffect(() => {
@@ -223,18 +239,17 @@ export function ImageGallery({ productId, organizationId, readOnly = false }: Im
                 image.is_primary ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200'
               }`}
             >
-              {/* Imagen usando getPublicUrl para obtener la URL directamente desde la ruta de storage */}
-              <img
-                src={getPublicUrl(image.storage_path)}
-                alt={image.alt_text || `Imagen ${image.display_order}`}
-                className="object-cover w-full h-full transition-all group-hover:scale-105"
-                onClick={() => setPreviewImage(getPublicUrl(image.storage_path))}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/placeholder-product.png';
-                }}
-              />
-              
-              {/* Acciones */}
+              {/* Imagen usando Supabase storage para obtener la URL directamente desde la ruta de storage */}
+                <img
+                  src={generatePublicUrl(image.storage_path)}
+                  alt={image.alt_text || 'Producto'}
+                  className="h-full w-full object-cover transition-all hover:scale-105"
+                  onClick={() => setPreviewImage(generatePublicUrl(image.storage_path))}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/placeholder-product.png';
+                  }}
+                />
+                
               <div className="absolute inset-0 flex items-center justify-center gap-2 transition-opacity bg-black bg-opacity-50 opacity-0 group-hover:opacity-100">
                 <Button
                   variant="ghost"
@@ -242,7 +257,7 @@ export function ImageGallery({ productId, organizationId, readOnly = false }: Im
                   className="p-0 w-8 h-8 text-white hover:bg-white/20"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setPreviewImage(getPublicUrl(image.storage_path));
+                    setPreviewImage(generatePublicUrl(image.storage_path));
                   }}
                 >
                   <Eye className="w-4 h-4" />

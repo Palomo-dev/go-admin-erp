@@ -31,7 +31,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase/config';
-import { getPublicUrl } from '@/lib/supabase/imageUtils';
+// Using direct Supabase storage calls for URL generation
 
 
 interface ProductosTableProps {
@@ -79,13 +79,16 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   
   // Cargar las imágenes principales de los productos cuando cambia la lista
   useEffect(() => {
+    // Si no hay productos, no hacemos nada
+    if (!productos?.length) return;
+    
     const fetchProductImages = async () => {
-      if (productos.length === 0) return;
+      console.log('Fetching product images for', productos.length, 'products');
       
-      // Obtener IDs de productos para filtrar
+      // Extraer IDs de productos
       const productIds = productos.map(p => p.id);
       
-      // Consultar imágenes principales (is_primary = true)
+      // Consultar imágenes principales para estos productos
       const { data, error } = await supabase
         .from('product_images')
         .select('id, product_id, storage_path, is_primary')
@@ -97,15 +100,34 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
         return;
       }
       
-      // Crear un mapa de productId -> imageUrl usando getPublicUrl
+      console.log('Received product images data:', data);
+      
+      // Crear un mapa de productId -> imageUrl usando Supabase storage directamente
       const imageMap: Record<number, string> = {};
-      if (data) {
+      if (data && data.length > 0) {
+        console.log('Processing', data.length, 'product images');
+        
         data.forEach((img: ProductImage) => {
-          // Usar storage_path con getPublicUrl para obtener la URL pública
-          imageMap[img.product_id] = getPublicUrl(img.storage_path);
+          if (!img.storage_path) {
+            console.warn(`Missing storage_path for image ID ${img.id}, product ID ${img.product_id}`);
+            return;
+          }
+          
+          // Usar storage_path con Supabase storage para obtener la URL pública
+          const { data: urlData } = supabase.storage
+            .from('organization_images')
+            .getPublicUrl(img.storage_path);
+          const publicUrl = urlData?.publicUrl || '';
+          
+          console.log(`Generated URL for product ${img.product_id}:`, publicUrl.substring(0, 60) + '...');
+          
+          imageMap[img.product_id] = publicUrl;
         });
+      } else {
+        console.log('No product images found for these products');
       }
       
+      console.log('Final image map:', imageMap);
       setProductImages(imageMap);
     };
     

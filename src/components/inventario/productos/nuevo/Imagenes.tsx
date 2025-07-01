@@ -4,7 +4,6 @@ import { useState, forwardRef, useImperativeHandle, useCallback, useEffect } fro
 import { X, ImagePlus, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/config'
 import { v4 as uuidv4 } from 'uuid'
-import { getPublicImageUrl, updateImageUrlsInArray } from '@/lib/supabase/imageUtils'
 
 import { Button } from '@/components/ui/button'
 import { 
@@ -20,6 +19,7 @@ export interface ImagenesRef {
   getImagenes: () => Array<{
     url: string
     path: string
+    storage_path?: string
     displayOrder: number
     isPrimary: boolean
     shared_image_id?: number
@@ -44,6 +44,7 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
   const [images, setImages] = useState<Array<{
     url: string
     path: string
+    storage_path?: string
     displayOrder: number
     isPrimary: boolean
     shared_image_id?: number
@@ -82,40 +83,65 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
       try {
         setIsLoadingImages(true);
         // Utilizamos JOIN directo para obtener datos de ambas tablas en un formato más predecible
+        // Nota: Ya no usamos image_url porque fue reemplazado por storage_path
         const { data: productImages, error } = await supabase
           .from('product_images')
-          .select('*, shared_image:shared_image_id(id, image_url, storage_path, file_name, file_size, mime_type, dimensions)')
+          .select('*, shared_image:shared_image_id(id, storage_path, file_name, file_size, mime_type, dimensions)')
           .eq('product_id', productoId)
           .order('display_order');
+          
+        console.log('Product images data:', productImages);
           
         if (error) throw error;
         
         if (productImages && productImages.length > 0) {
           // 2. Formatear los datos al formato que espera el estado images
-          let formattedImages = productImages.map(img => ({
-            url: img.shared_image.image_url,
-            path: img.shared_image.storage_path,
-            displayOrder: img.display_order,
-            isPrimary: img.is_primary,
-            shared_image_id: img.shared_image.id,
-            width: img.shared_image.dimensions?.width,
-            height: img.shared_image.dimensions?.height,
-            size: img.shared_image.file_size,
-            mime_type: img.shared_image.mime_type
-          }));
+          let formattedImages = productImages.map(img => {
+            // Ya no usamos image_url, generamos la URL a partir del storage_path
+            const path = img.shared_image?.storage_path || '';
+            
+            return {
+              // La URL la obtendremos a través de updateImageUrlsInArray, usando path
+              url: '',  // Placeholder, se actualizará abajo
+              path: path,
+              displayOrder: img.display_order,
+              isPrimary: img.is_primary,
+              shared_image_id: img.shared_image?.id,
+              width: img.shared_image?.dimensions?.width,
+              height: img.shared_image?.dimensions?.height,
+              size: img.shared_image?.file_size,
+              mime_type: img.shared_image?.mime_type
+            };
+          });
           
-          // Actualizar las URLs para asegurar que no expiren
-          formattedImages = updateImageUrlsInArray(formattedImages);
-          console.log('Imágenes con URLs actualizadas:', formattedImages);
+          // Actualizar las URLs para asegurar que no expiren usando getPublicUrl para cada storage_path
+          const imgsWithUrls = formattedImages.map(img => {
+            // Obtener URL pública directamente de Supabase
+            let url = '';
+            if (img.path) {
+              const { data } = supabase.storage
+                .from('organization_images')
+                .getPublicUrl(img.path);
+              url = data?.publicUrl || '';
+            }
+            
+            return {
+              ...img,
+              url
+            };
+          });
+          
+          console.log('Imágenes con URLs actualizadas:', imgsWithUrls.map(img => ({ id: img.shared_image_id, path: img.path, url: img.url })));
           
           // 3. Establecer las imágenes en el estado
-          setImages(formattedImages);
+          setImages(imgsWithUrls);
         }
       } catch (error: any) {
         console.error('Error al cargar imágenes existentes:', error);
+        // Mostrar el mensaje de error detallado para facilitar la depuración
         toast({
-          title: "Error",
-          description: "No se pudieron cargar las imágenes del producto",
+          title: "Error al cargar imágenes",
+          description: error.message || "No se pudieron cargar las imágenes del producto",
           variant: "destructive"
         });
       } finally {
@@ -275,11 +301,25 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
               p_display_order: displayOrder // Usar el mismo valor que se enviará al servidor
             });
             
+            // Generar URL pública para la imagen usando storage_path o path
+            let publicUrl = '';
+            let storagePath = image.storage_path || image.path; // Usar storage_path si existe, si no, usar path
+            
+            if (storagePath) {
+              const { data: urlData } = supabase.storage
+                .from('organization_images')
+                .getPublicUrl(storagePath);
+              publicUrl = urlData?.publicUrl || '';
+            }
+            
+            // Incluir tanto storage_path como url generada para compatibilidad
             const { data, error } = await supabase.rpc('associate_image_to_product', {
               p_shared_image_id: sharedImageId, // Parámetro correcto según definición de la función
               p_product_id: product_id,
               p_display_order: displayOrder, // Usar el nuevo display_order calculado
-              p_is_primary: !!image.isPrimary
+              p_is_primary: !!image.isPrimary,
+              p_image_url: publicUrl, // Añadimos url generada para compatibilidad con RPC
+              p_storage_path: storagePath // Usamos la variable storagePath que ya contiene el fallback
             });
             
             if (error) {
@@ -638,9 +678,17 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
                   {/* Vista previa de imagen */}
                   <div className="relative aspect-square overflow-hidden rounded-md">
                     <img 
-                      src={image.url} 
+                      src={image.url || '/placeholder-image.png'} 
                       alt={`Imagen de producto ${index + 1}`}
                       className="object-cover w-full h-full"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        if (!target.dataset.usedFallback) {
+                          target.dataset.usedFallback = 'true';
+                          target.src = '/placeholder-image.png';
+                        }
+                      }}
                     />
                   </div>
                   

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
+// No necesitamos el slider
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -329,15 +329,16 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
               
               <div className="space-y-2">
                 <Label htmlFor="position">
-                  Posición {formData.position}
+                  Posición
                 </Label>
-                <Slider
+                <Input
                   id="position"
+                  type="number"
                   min={1}
                   max={1000}
                   step={1}
-                  value={[formData.position]}
-                  onValueChange={(values) => setFormData({...formData, position: values[0]})}
+                  value={formData.position}
+                  onChange={(e) => setFormData({...formData, position: parseInt(e.target.value) || 1})}
                 />
                 <p className="text-xs text-muted-foreground">
                   Posición determina el orden de las etapas de izquierda a derecha. 
@@ -345,21 +346,18 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
                 </p>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="probability">
-                  Probabilidad de cierre: {formData.probability}%
-                </Label>
-                <Slider
+              <div className="grid gap-2 mb-4">
+                <Label htmlFor="probability">Probabilidad (%)</Label>
+                <Input
                   id="probability"
+                  type="number"
+                  value={formData.probability}
                   min={0}
                   max={100}
                   step={5}
-                  value={[formData.probability]}
-                  onValueChange={(values) => setFormData({...formData, probability: values[0]})}
+                  onChange={(e) => setFormData({...formData, probability: parseInt(e.target.value)})}
                 />
-                <p className="text-xs text-muted-foreground">
-                  La probabilidad ayuda a calcular el pronóstico de ingresos.
-                </p>
+                <div className="text-center text-sm">{formData.probability}%</div>
               </div>
               
               <div className="space-y-2">

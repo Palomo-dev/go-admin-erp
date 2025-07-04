@@ -66,7 +66,7 @@ export const ListaTiposVariante = ({
       const tiposActualizados = [...selectedVariantTypes]
       
       // Añadir el nuevo valor al array de valores del tipo
-      tiposActualizados[tipoIndex].values = [...tiposActualizados[tipoIndex].values, data]
+      tiposActualizados[tipoIndex].values = [...(tiposActualizados[tipoIndex].values || []), data]
       
       // IMPORTANTE: También seleccionar automáticamente el nuevo valor para que aparezca en las combinaciones
       // Inicializar selectedValues si no existe
@@ -120,10 +120,12 @@ export const ListaTiposVariante = ({
       
       // Actualizar el estado local
       const tiposActualizados = [...selectedVariantTypes]
-      const valorIndex = tiposActualizados[editingValue.index].values.findIndex((v: any) => v.id === valorId)
+      const valores = tiposActualizados[editingValue.index].values || []
+      const valorIndex = valores.findIndex((v: any) => v.id === valorId)
       
-      if (valorIndex >= 0) {
-        tiposActualizados[editingValue.index].values[valorIndex].value = editingValue.value.trim()
+      if (valorIndex >= 0 && valores[valorIndex]) {
+        valores[valorIndex].value = editingValue.value.trim()
+        tiposActualizados[editingValue.index].values = valores
       }
       
       onUpdateTypes(tiposActualizados)
@@ -155,7 +157,7 @@ export const ListaTiposVariante = ({
       
       // Actualizar estado local
       const tiposActualizados = [...selectedVariantTypes]
-      tiposActualizados[tipoIndex].values = tiposActualizados[tipoIndex].values.filter((v: any) => v.id !== valorId)
+      tiposActualizados[tipoIndex].values = (tiposActualizados[tipoIndex].values || []).filter((v: any) => v.id !== valorId)
       
       // Si era un valor seleccionado, eliminarlo también de los seleccionados
       if (tiposActualizados[tipoIndex].selectedValues && tiposActualizados[tipoIndex].selectedValues.includes(valorId)) {
@@ -208,7 +210,7 @@ export const ListaTiposVariante = ({
             </div>
             
             <div className="space-y-2">
-              {tipo.values && tipo.values.map((valor) => (
+              {(tipo.values || []).map((valor) => (
                 <ValorVariante 
                   key={valor.id}
                   valor={valor}

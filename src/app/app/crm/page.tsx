@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Users, PieChart, BarChart2, Settings2 } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 export default function CrmPage() {
   const [activeTab, setActiveTab] = useState('clientes');
@@ -24,6 +25,7 @@ export default function CrmPage() {
               Pipeline
             </Button>
           </Link>
+          <ThemeToggle />
           <Button variant="outline">
             <Settings2 className="h-4 w-4" />
           </Button>

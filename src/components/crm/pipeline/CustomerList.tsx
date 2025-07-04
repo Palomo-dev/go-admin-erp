@@ -50,14 +50,14 @@ export function CustomerList() {
 
       let query = supabase
         .from("customers")
-        .select("id, name, email, phone")
+        .select("id, full_name, email, phone")
         .eq("organization_id", organizationId);
       
       if (searchQuery) {
-        query = query.ilike("name", `%${searchQuery}%`);
+        query = query.ilike("full_name", `%${searchQuery}%`);
       }
       
-      const { data, error: fetchError } = await query.order("name");
+      const { data, error: fetchError } = await query.order("full_name");
 
       if (fetchError) throw fetchError;
       

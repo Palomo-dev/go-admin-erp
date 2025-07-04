@@ -81,15 +81,29 @@ export function CustomerSummary() {
       const currentDate = new Date();
       const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       
-      const { data: recentContacts, error: contactsError } = await supabase
-        .from("customer_interactions")
-        .select("customer_id")
-        .eq("organization_id", organizationId)
-        .gte("interaction_date", firstDayOfMonth.toISOString());
-
-      if (contactsError) {
+      // Verificar primero si la tabla existe antes de intentar consultarla
+      interface ContactRecord {
+        customer_id: string;
+        [key: string]: any;
+      }
+      let recentContacts: ContactRecord[] = [];
+      
+      try {
+        // Intentar consultar la tabla, pero manejar el error si no existe
+        const { data: contactsData, error: contactsError } = await supabase
+          .from("customer_interactions")
+          .select("customer_id")
+          .eq("organization_id", organizationId)
+          .gte("interaction_date", firstDayOfMonth.toISOString());
+          
+        if (!contactsError) {
+          recentContacts = contactsData || [];
+        } else {
+          console.warn("Error fetching contacts or table doesn't exist:", contactsError);
+        }
+      } catch (error) {
         // Si la tabla no existe, asumimos 0 contactos
-        console.warn("Error fetching contacts or table doesn't exist:", contactsError);
+        console.warn("Error fetching contacts or table doesn't exist:", error);
         
         setStats({
           total: customerCount || 0,

@@ -147,13 +147,11 @@ export default function ClientesPage() {
       if (error) throw error;
       
       // Obtenemos los saldos de cuentas por cobrar
-      const customerIds = customersData.map(customer => customer.id);
-      
-      // Consulta para cuentas por cobrar - convertimos orgId a string para la comparación UUID
+      // NOTA: Verificamos los tipos entre tablas. En customers.id es UUID pero accounts_receivable.customer_id es INTEGER
+      // En lugar de intentar usar los IDs directamente, vamos a consultar por organización
       const { data: balances, error: balancesError } = await supabase
         .from("accounts_receivable")
         .select("customer_id, balance")
-        .in("customer_id", customerIds)
         .eq("organization_id", orgId.toString()) // Convertimos a string ya que organization_id es UUID
         .gt("balance", 0);
         
@@ -182,11 +180,19 @@ export default function ClientesPage() {
       // Procesar saldos - agrupar por cliente y sumar balances
       if (balances) {
         // Agrupar por customer_id y sumar los balances
+        // Pero verificando primero que el tipo de dato sea correcto
         balances.forEach(item => {
-          if (item.customer_id && item.balance !== undefined) {
-            const customerId = item.customer_id.toString();
-            const currentBalance = balanceMap.get(customerId) || 0;
-            balanceMap.set(customerId, currentBalance + item.balance);
+          if (item.customer_id !== null && item.customer_id !== undefined && item.balance !== undefined) {
+            try {
+              // Sólo usamos IDs numéricos para evitar errores de tipo
+              if (typeof item.customer_id === 'number') {
+                const customerId = item.customer_id.toString();
+                const currentBalance = balanceMap.get(customerId) || 0;
+                balanceMap.set(customerId, currentBalance + item.balance);
+              }
+            } catch (err) {
+              console.warn("Error procesando saldo para cliente:", item.customer_id, err);
+            }
           }
         });
       }

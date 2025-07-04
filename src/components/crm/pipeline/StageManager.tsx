@@ -1,18 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings2, PlusCircle, X, Trash2, AlertCircle, Check, ArrowUpCircle, ArrowDownCircle, Edit, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { Settings2, PlusCircle, X, Trash2, AlertCircle, Check, ArrowUpCircle, ArrowDownCircle, Edit, ChevronUp, ChevronDown, GripVertical, Move, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase/config";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// No necesitamos el slider
+import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/utils/Utils";
 import { Stage, Pipeline } from "@/types/crm";
 import { toast } from "@/components/ui/use-toast";
@@ -24,6 +26,7 @@ interface StageFormData {
   probability: number;
   color?: string;
   pipelineId: string;
+  isDefault?: boolean;
 }
 
 interface StageManagerProps {
@@ -38,7 +41,16 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteStageId, setDeleteStageId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const { theme } = useTheme();
+
+  // Cargar las etapas cuando cambia el pipeline
+  useEffect(() => {
+    if (pipeline && pipeline.stages) {
+      setStages(pipeline.stages);
+    }
+  }, [pipeline]);
 
   const getOrganizationId = () => {
     if (typeof window !== "undefined") {

@@ -4,7 +4,7 @@ import { CalendarIcon, User2 } from "lucide-react";
 import { formatCurrency } from "@/utils/Utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTheme } from "next-themes";
-import { Opportunity } from "./KanbanBoard";
+import { Opportunity } from "@/types/crm";
 import { Badge } from "@/components/ui/badge";
 
 interface OpportunityCardProps {
@@ -78,13 +78,13 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
         <div className="mt-2 text-sm font-semibold">{formattedAmount}</div>
 
         <div className="mt-3 flex justify-between items-center text-xs text-muted-foreground">
-          {opportunity.customer?.name && (
+          {opportunity.customer?.full_name && (
             <div
               className="flex items-center gap-1 truncate max-w-[60%]"
-              title={opportunity.customer.name}
+              title={opportunity.customer.full_name}
             >
               <User2 className="h-3 w-3" />
-              <span className="truncate">{opportunity.customer.name}</span>
+              <span className="truncate">{opportunity.customer.full_name}</span>
             </div>
           )}
 

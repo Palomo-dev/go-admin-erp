@@ -47,31 +47,65 @@ export const createSupabaseClient = () => {
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
-      autoRefreshToken: false, // Desactivamos la renovación automática para reducir solicitudes
+      autoRefreshToken: true, // Permitimos renovación automática con la configuración optimizada
       persistSession: true,
-      detectSessionInUrl: false, // Cambiado a false para evitar problemas con NextJS router
-      flowType: 'pkce',
-      storageKey: storageKey,
-      // La versión actual del cliente no soporta configurar refreshSessionThreshold
-      // Usaremos el gestor de autenticación auth-manager.ts para controlar esto
+      detectSessionInUrl: true,
       storage: {
-        getItem: (key) => {
+        getItem: (key: string) => {
           return getCookie(key);
         },
-        setItem: (key, value) => {
+        setItem: (key: string, value: string) => {
           setCookie(key, value, 86400); // 24 horas para todos los tokens
           // Eliminamos cualquier token del localStorage para mantener la seguridad
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(key);
           }
         },
-        removeItem: (key) => {
+        removeItem: (key: string) => {
           removeCookie(key);
           // Eliminamos cualquier token del localStorage para mantener la seguridad
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(key);
           }
         }
+      }
+    },
+    global: {
+      headers: {
+        'x-application-name': 'GoAdminERP'
+      },
+      // Configurar reintentos con backoff exponencial para manejar límites de solicitudes (429)
+      fetch: (url: string | URL | Request, options?: RequestInit) => {
+        const MAX_RETRIES = 3;
+        const BASE_DELAY = 1000; // 1 segundo
+        
+        return new Promise((resolve, reject) => {
+          const attemptFetch = async (retriesLeft: number, delay: number) => {
+            try {
+              const response = await fetch(url, options);
+              
+              // Si recibimos un 429 (Too Many Requests) y aún tenemos reintentos
+              if (response.status === 429 && retriesLeft > 0) {
+                console.log(`Límite de solicitudes alcanzado, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
+                
+                // Esperar antes de reintentar con backoff exponencial
+                await new Promise(res => setTimeout(res, delay));
+                return attemptFetch(retriesLeft - 1, delay * 2);
+              }
+              
+              resolve(response);
+            } catch (error) {
+              if (retriesLeft > 0) {
+                console.log(`Error en solicitud, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
+                await new Promise(res => setTimeout(res, delay));
+                return attemptFetch(retriesLeft - 1, delay * 2);
+              }
+              reject(error);
+            }
+          };
+          
+          attemptFetch(MAX_RETRIES, BASE_DELAY);
+        });
       }
     }
   })

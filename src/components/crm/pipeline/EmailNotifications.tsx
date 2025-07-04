@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase/config";
-import { Opportunity } from "./KanbanBoard";
+import { Opportunity } from "@/types/crm";
 
 interface EmailNotificationProps {
   opportunityId: string;
@@ -25,6 +25,17 @@ export async function sendStageChangeNotification({
   }
 
   try {
+    // Obtener información del pipeline asociado con la etapa actual
+    const { data: stageData } = await supabase
+      .from("stages")
+      .select("pipeline_id")
+      .eq("id", toStage.id)
+      .single();
+    
+    const pipelineId = stageData?.pipeline_id || '';
+    
+    // El campo email_notifications_enabled no existe en la tabla pipelines
+    // Por lo tanto, asumimos que siempre están habilitadas las notificaciones
     // 1. Obtener información del cliente
     const customer = await getCustomerInfo(opportunity.customer_id);
     
@@ -83,7 +94,7 @@ async function getCustomerInfo(customerId: string | null | undefined) {
   
   const { data, error } = await supabase
     .from("customers")
-    .select("id, name, email, phone")
+    .select("id, full_name, email, phone")
     .eq("id", customerId)
     .single();
     
@@ -145,7 +156,7 @@ function createEmailTemplate(
   customer: any,
   assignedUser: any
 ) {
-  const customerName = customer?.name || "Cliente";
+  const customerName = customer?.full_name || "Cliente";
   const opportunityName = opportunity.name;
   const amount = opportunity.amount ? new Intl.NumberFormat('es-CO', {
     style: 'currency',
@@ -221,12 +232,15 @@ async function registerNotification(
   try {
     const { error } = await supabase.from("notifications").insert({
       organization_id: organizationId,
-      user_id: userId,
-      related_type: "opportunity",
-      related_id: opportunityId,
-      type,
-      message,
-      is_read: false,
+      recipient_user_id: userId,
+      channel: "app",
+      status: "pending",
+      payload: { 
+        type,
+        title: type,
+        content: type.replace('_', ' '),
+        opportunity_id: opportunityId // Guardamos el ID de la oportunidad dentro de payload
+      },
       created_at: new Date().toISOString()
     });
     

@@ -22,6 +22,17 @@ interface Sucursal {
   name: string
 }
 
+interface OrdenCompra {
+  id: number
+  supplier_id: number
+  branch_id: number
+  expected_date: string | null
+  notes: string | null
+  status: string
+  total: number
+  created_at: string
+}
+
 interface ProductoEntrada {
   id: number
   product_id: number
@@ -41,10 +52,13 @@ interface FormularioEntradaProps {
 export default function FormularioEntrada({ organizationId }: FormularioEntradaProps) {
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
+  const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>([])
+  const [ordenSeleccionada, setOrdenSeleccionada] = useState<string>('ninguno')
   const [tiposEntrada, setTiposEntrada] = useState(['compra', 'devolucion', 'ajuste'])
   const [productos, setProductos] = useState<ProductoEntrada[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [cargandoLineas, setCargandoLineas] = useState(false)
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
@@ -54,7 +68,8 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
     referencia: '',
     fecha_orden: formatDate(new Date().toISOString(), 'yyyy-MM-dd'),
     fecha_esperada: '',
-    notas: ''
+    notas: '',
+    orden_compra_id: 'ninguno'
   })
 
   useEffect(() => {
@@ -87,9 +102,25 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
         console.error('Error al cargar sucursales:', error)
       }
     }
+    
+    const cargarOrdenesCompra = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('purchase_orders')
+          .select('id, supplier_id, branch_id, expected_date, notes, status, total, created_at')
+          .eq('organization_id', organizationId)
+          .in('status', ['draft', 'pending'])
+          .order('created_at', { ascending: false })
+          
+        if (error) throw error
+        setOrdenesCompra(data || [])
+      } catch (error) {
+        console.error('Error al cargar órdenes de compra:', error)
+      }
+    }
 
     setIsLoading(true)
-    Promise.all([cargarProveedores(), cargarSucursales()])
+    Promise.all([cargarProveedores(), cargarSucursales(), cargarOrdenesCompra()])
       .finally(() => setIsLoading(false))
   }, [organizationId])
 
@@ -100,6 +131,78 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }))
+    
+    // Si se seleccionó una orden de compra, cargar sus datos
+    if (name === 'orden_compra_id' && value) {
+      cargarDatosOrden(value)
+    }
+  }
+  
+  const cargarDatosOrden = async (ordenId: string) => {
+    setCargandoLineas(true)
+    try {
+      // Encontrar la orden seleccionada
+      const orden = ordenesCompra.find(o => o.id.toString() === ordenId)
+      if (!orden) throw new Error('Orden no encontrada')
+      
+      // Actualizar el formulario con los datos de la orden
+      setFormData(prev => ({
+        ...prev,
+        tipo_entrada: 'compra',
+        proveedor_id: orden.supplier_id.toString(),
+        sucursal_id: orden.branch_id.toString(),
+        fecha_esperada: orden.expected_date || '',
+        notas: orden.notes || '',
+      }))
+      
+      // Cargar las líneas de la orden
+      const { data: lineas, error: errorLineas } = await supabase
+        .from('po_items')
+        .select(`
+          id,
+          product_id,
+          quantity,
+          unit_cost,
+          lot_code,
+          status,
+          products:product_id(name, sku)
+        `)
+        .eq('purchase_order_id', ordenId)
+        
+      if (errorLineas) throw errorLineas
+      
+      // Transformar las líneas al formato de ProductoEntrada
+      if (lineas && lineas.length > 0) {
+        const productosDeOrden = lineas.map((linea, index) => ({
+          id: index,
+          product_id: linea.product_id,
+          nombre: linea.products.name,
+          sku: linea.products.sku,
+          cantidad: Number(linea.quantity),
+          costo_unitario: Number(linea.unit_cost),
+          subtotal: Number(linea.quantity) * Number(linea.unit_cost),
+          lote: linea.lot_code || '',
+          fecha_vencimiento: ''
+        }))
+        
+        setProductos(productosDeOrden)
+      }
+      
+      toast({
+        title: "Líneas de orden cargadas",
+        description: "Las líneas de la orden de compra se han cargado exitosamente.",
+      })
+      
+    } catch (error) {
+      console.error('Error al cargar líneas de la orden:', error)
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las líneas de la orden de compra.",
+        variant: "destructive"
+      })
+    } finally {
+      setCargandoLineas(false)
+    }
   }
 
   const handleAddProducto = (producto: ProductoEntrada) => {
@@ -137,116 +240,150 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
     setIsSaving(true)
 
     try {
-      // Determinar el estado inicial según el tipo de entrada
-      let estadoOrdenCompra = 'draft';
-      let estadoItems = 'pending';
+      let ordenId: number | null = null;
       
-      if (formData.tipo_entrada === 'ajuste') {
-        // Los ajustes se registran directamente como recibidos
-        estadoOrdenCompra = 'received';
-        estadoItems = 'received';
-      }
-      
-      // Verificar que haya un proveedor seleccionado si es una compra
-      if (formData.tipo_entrada === 'compra' && !formData.proveedor_id) {
-        toast({
-          title: "Error",
-          description: "Debe seleccionar un proveedor para una entrada por compra.",
-          variant: "destructive"
-        });
-        setIsSaving(false);
-        return;
-      }
+      // Determinar si estamos usando una orden existente o creando una nueva
+      if (formData.tipo_entrada === 'compra' && formData.orden_compra_id !== 'ninguno') {
+        // Estamos procesando una orden existente
+        ordenId = Number(formData.orden_compra_id);
+        
+        // Actualizar la orden existente
+        const { error: updateOrdenError } = await supabase
+          .from('purchase_orders')
+          .update({
+            updated_at: new Date().toISOString(),
+            notes: formData.notas ? formData.notas : null,
+          })
+          .eq('id', ordenId);
+          
+        if (updateOrdenError) throw updateOrdenError;
+      } else {
+        // Crear nueva orden/documento de entrada
+        // Determinar estados según el tipo de entrada
+        const estadoOrdenCompra = formData.tipo_entrada === 'compra' ? 'pending' : 'completed';
+        const estadoItems = formData.tipo_entrada === 'compra' ? 'pending' : 'received';
 
-      // Para ajustes u otros tipos, usaremos un proveedor por defecto si no se seleccionó uno
-      const proveedorId = formData.proveedor_id || 1; // Usar ID 1 como proveedor por defecto si no hay uno seleccionado
-      
-      // Crear la orden de compra
-      const { data: ordenData, error: ordenError } = await supabase
-        .from('purchase_orders')
-        .insert({
-          organization_id: organizationId,
-          branch_id: Number(formData.sucursal_id),
-          supplier_id: Number(proveedorId),
-          notes: formData.notas + (formData.referencia ? ` (Ref: ${formData.referencia})` : ''),
-          expected_date: formData.fecha_esperada || null,
-          status: estadoOrdenCompra,
-          total: calcularTotal(),
-          created_by: (await supabase.auth.getUser()).data.user?.id || null,
+        // Crear la orden de compra (o documento de entrada)
+        const { data: ordenData, error: ordenError } = await supabase
+          .from('purchase_orders')
+          .insert({
+            organization_id: organizationId,
+            branch_id: Number(formData.sucursal_id),
+            supplier_id: formData.tipo_entrada === 'compra' 
+              ? Number(formData.proveedor_id)
+              : 1, // Usar ID 1 como proveedor por defecto para cumplir con NOT NULL
+            notes: formData.referencia 
+              ? `Referencia: ${formData.referencia}\n${formData.notas || ''}` 
+              : formData.notas,
+            status: estadoOrdenCompra,
+            total: calcularTotal(),
+            created_at: formData.fecha_orden,
+            updated_at: new Date().toISOString(),
+            expected_date: formData.fecha_esperada || null
+          })
+          .select('id')
+          .single();
+
+        if (ordenError) throw ordenError;
+        ordenId = ordenData.id;
+        
+        // Crear los ítems de la orden (solo para nuevas órdenes)
+        const itemsParaInsertar = productos.map(producto => ({
+          purchase_order_id: ordenId,
+          product_id: producto.product_id,
+          quantity: producto.cantidad,
+          unit_cost: producto.costo_unitario,
+          lot_code: producto.lote || null,
+          status: estadoItems,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
-        .select('id')
-        .single()
+        }));
 
-      if (ordenError) throw ordenError
-      
-      // Array para almacenar los IDs de lotes creados
-      const lotesCreados = new Map();
-      
-      // Procesar cada producto
-      for (const producto of productos) {
-        // Si tiene código de lote y fecha de vencimiento, crear o buscar el lote
-        let lotId = null;
-        
-        if (producto.lote) {
-          // Verificar si ya existe un lote con este código para este producto
-          const { data: loteExistente, error: loteError } = await supabase
-            .from('lots')
-            .select('id')
-            .eq('product_id', producto.product_id)
-            .eq('lot_code', producto.lote)
-            .maybeSingle();
-          
-          if (loteError) throw loteError;
-          
-          if (loteExistente) {
-            // Usar el lote existente
-            lotId = loteExistente.id;
-          } else {
-            // Crear nuevo lote
-            const { data: nuevoLote, error: nuevoLoteError } = await supabase
-              .from('lots')
-              .insert({
-                product_id: producto.product_id,
-                lot_code: producto.lote,
-                expiry_date: producto.fecha_vencimiento || null,
-                supplier_id: formData.tipo_entrada === 'compra' ? Number(formData.proveedor_id) : null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-              .select('id')
-              .single();
-            
-            if (nuevoLoteError) throw nuevoLoteError;
-            lotId = nuevoLote.id;
-          }
-          
-          // Guardar el ID del lote para usarlo en los movimientos
-          lotesCreados.set(producto.product_id.toString() + '-' + producto.lote, lotId);
-        }
+        const { error: itemsError } = await supabase
+          .from('po_items')
+          .insert(itemsParaInsertar);
+
+        if (itemsError) throw itemsError;
       }
 
-      // Insertar los items de la orden de compra
-      const itemsParaInsertar = productos.map(producto => ({
-        purchase_order_id: ordenData.id,
-        product_id: producto.product_id,
-        quantity: producto.cantidad,
-        unit_cost: producto.costo_unitario,
-        lot_code: producto.lote || null,
-        status: estadoItems,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }));
+      // Crear un mapa para almacenar los IDs de los lotes creados
+      const lotesCreados = new Map<string, number>();
 
-      const { error: itemsError } = await supabase
-        .from('po_items')
-        .insert(itemsParaInsertar);
+      // Crear lotes si es necesario
+      for (const producto of productos) {
+        if (producto.lote) {
+          const { data: loteData, error: loteError } = await supabase
+            .from('lots')
+            .insert({
+              organization_id: organizationId,
+              product_id: producto.product_id,
+              branch_id: Number(formData.sucursal_id),
+              lot_code: producto.lote,
+              expiration_date: producto.fecha_vencimiento || null,
+              created_at: new Date().toISOString()
+            })
+            .select('id')
+            .single();
 
-      if (itemsError) throw itemsError;
+          if (loteError) throw loteError;
+          
+          // Guardar el ID del lote en el mapa
+          lotesCreados.set(producto.product_id.toString() + '-' + producto.lote, loteData.id);
+        }
+      }
       
-      // Si es un ajuste o una recepción inmediata, crear los movimientos de stock
-      if (formData.tipo_entrada === 'ajuste') {
+      // Si estamos procesando una orden existente, actualizar el estado de los ítems a recibidos
+      if (formData.tipo_entrada === 'compra' && formData.orden_compra_id !== 'ninguno') {
+        // Obtener los ítems actuales de la orden
+        const { data: itemsActuales, error: itemsQueryError } = await supabase
+          .from('po_items')
+          .select('id, product_id, quantity, received_qty')
+          .eq('purchase_order_id', ordenId || 0);
+          
+        if (itemsQueryError) throw itemsQueryError;
+        
+        // Crear un mapa de productos recibidos en esta entrada
+        const productosRecibidos = new Map<number, number>();
+        productos.forEach(p => {
+          productosRecibidos.set(p.product_id, p.cantidad);
+        });
+        
+        // Actualizar cada ítem con la cantidad recibida
+        for (const item of itemsActuales) {
+          if (productosRecibidos.has(item.product_id)) {
+            const cantidadRecibida = productosRecibidos.get(item.product_id) || 0;
+            const totalRecibido = (Number(item.received_qty) || 0) + cantidadRecibida;
+            const estado = totalRecibido >= Number(item.quantity) ? 'received' : 'partial';
+            
+            await supabase
+              .from('po_items')
+              .update({
+                received_qty: totalRecibido,
+                status: estado,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', item.id);
+          }
+        }
+        
+        // Verificar si todos los ítems están recibidos para actualizar el estado de la orden
+        const { data: itemsEstado } = await supabase
+          .from('po_items')
+          .select('status')
+          .eq('purchase_order_id', ordenId || 0);
+          
+        const todoRecibido = itemsEstado && itemsEstado.length > 0 && 
+          itemsEstado.every(item => item.status === 'received');
+        if (todoRecibido) {
+          await supabase
+            .from('purchase_orders')
+            .update({ status: 'completed', updated_at: new Date().toISOString() })
+            .eq('id', ordenId || 0);
+        }
+      }
+      
+      // Si es un ajuste o una recepción de compra, crear los movimientos de stock
+      if (formData.tipo_entrada === 'ajuste' || formData.tipo_entrada === 'compra') {
         // Crear movimientos de stock
         const movimientosStock = productos.map(producto => {
           // Obtener el ID del lote si existe
@@ -265,7 +402,7 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
             source: formData.tipo_entrada === 'compra' ? 'purchase' : 
                    formData.tipo_entrada === 'ajuste' ? 'adjustment' : 
                    formData.tipo_entrada === 'devolucion' ? 'return' : 'adjustment', // Mapeo de tipos en español a los valores permitidos en inglés
-            source_id: ordenData.id.toString(),
+            source_id: ordenId ? ordenId.toString() : '0',
             note: formData.notas || `Entrada por ${formData.tipo_entrada}`,
             created_at: new Date().toISOString()
           };
@@ -292,7 +429,8 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
         referencia: '',
         fecha_orden: formatDate(new Date().toISOString(), 'yyyy-MM-dd'),
         fecha_esperada: '',
-        notas: ''
+        notas: '',
+        orden_compra_id: 'ninguno'
       });
       setProductos([]);
     } catch (error: any) {
@@ -330,25 +468,54 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
           </div>
 
           {formData.tipo_entrada === 'compra' && (
-            <div className="space-y-2">
-              <Label htmlFor="proveedor_id">Proveedor</Label>
-              <Select 
-                value={formData.proveedor_id} 
-                onValueChange={(value) => handleSelectChange('proveedor_id', value)}
-                disabled={isLoading || proveedores.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un proveedor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {proveedores.map(proveedor => (
-                    <SelectItem key={proveedor.id} value={proveedor.id.toString()}>
-                      {proveedor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="orden_compra_id">Orden de Compra (opcional)</Label>
+                <Select 
+                  value={formData.orden_compra_id} 
+                  onValueChange={(value) => handleSelectChange('orden_compra_id', value)}
+                  disabled={isLoading || ordenesCompra.length === 0 || cargandoLineas}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una orden de compra" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ninguno">Ninguna (entrada manual)</SelectItem>
+                    {ordenesCompra.map(orden => (
+                      <SelectItem key={orden.id} value={orden.id.toString()}>
+                        #{orden.id} - {formatDate(orden.created_at, 'dd/MM/yyyy')} - ${orden.total.toFixed(2)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {cargandoLineas && (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-t-2 border-blue-600 mr-2"></div>
+                    <span className="text-xs">Cargando líneas...</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="proveedor_id">Proveedor</Label>
+                <Select 
+                  value={formData.proveedor_id} 
+                  onValueChange={(value) => handleSelectChange('proveedor_id', value)}
+                  disabled={isLoading || proveedores.length === 0 || (formData.orden_compra_id !== 'ninguno')}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un proveedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {proveedores.map(proveedor => (
+                      <SelectItem key={proveedor.id} value={proveedor.id.toString()}>
+                        {proveedor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
 
           <div className="space-y-2">
@@ -356,7 +523,7 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
             <Select 
               value={formData.sucursal_id} 
               onValueChange={(value) => handleSelectChange('sucursal_id', value)}
-              disabled={isLoading || sucursales.length === 0}
+              disabled={isLoading || sucursales.length === 0 || (formData.tipo_entrada === 'compra' && formData.orden_compra_id !== 'ninguno')}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona una sucursal" />

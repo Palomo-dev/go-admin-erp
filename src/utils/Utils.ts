@@ -120,3 +120,27 @@ export function debounce<T extends (...args: any[]) => any>(func: T, wait: numbe
     timeout = setTimeout(later, wait);
   };
 }
+
+/**
+ * Maneja eventos de focus y blur para campos numéricos siguiendo la regla UX:
+ * - Al hacer focus en un campo con valor 0, este se borra para facilitar la edición
+ * - Al perder focus, si el campo está vacío, vuelve a 0
+ * 
+ * @param e - Evento de focus o blur del campo numérico
+ * @param setter - Función para actualizar el estado (React setState)
+ * @param currentValue - Valor actual del campo
+ */
+export function handleNumericInput(e: React.FocusEvent<HTMLInputElement>, setter: Function, currentValue: number | string) {
+  // Al obtener foco, si el valor es 0, limpiamos el campo
+  if (e.type === 'focus') {
+    if (currentValue === 0 || currentValue === '0') {
+      setter('');
+    }
+  } 
+  // Al perder foco, si está vacío, volvemos a 0
+  else if (e.type === 'blur') {
+    if (currentValue === '' || currentValue === null || currentValue === undefined) {
+      setter(0);
+    }
+  }
+}

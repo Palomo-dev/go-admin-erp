@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase/config'
 import ListaSalidas from './ListaSalidas'
 import FormularioSalida from './FormularioSalida'
+import FormularioAjusteNegativo from './FormularioAjusteNegativo'
 import { useToast } from '@/components/ui/use-toast'
 
 interface SalidasInventarioProps {
@@ -18,7 +19,7 @@ interface SalidasInventarioProps {
 export default function SalidasInventario({ tipo, organizationId }: SalidasInventarioProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'formulario' | 'masivo'>('formulario')
+  const [activeTab, setActiveTab] = useState<'formulario' | 'ajuste' | 'masivo'>('formulario')
   const { toast } = useToast()
 
   if (!organizationId) {
@@ -74,14 +75,19 @@ export default function SalidasInventario({ tipo, organizationId }: SalidasInven
         <CardTitle className="text-xl font-bold">Nueva Salida de Inventario</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'formulario' | 'masivo')}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'formulario' | 'ajuste' | 'masivo')}>
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="formulario">Formulario de Salida</TabsTrigger>
+            <TabsTrigger value="ajuste">Ajuste Negativo</TabsTrigger>
             <TabsTrigger value="masivo">Salida Masiva</TabsTrigger>
           </TabsList>
           
           <TabsContent value="formulario" className="space-y-4">
             <FormularioSalida organizationId={organizationId} />
+          </TabsContent>
+
+          <TabsContent value="ajuste" className="space-y-4">
+            <FormularioAjusteNegativo organizationId={organizationId} />
           </TabsContent>
           
           <TabsContent value="masivo" className="space-y-4">

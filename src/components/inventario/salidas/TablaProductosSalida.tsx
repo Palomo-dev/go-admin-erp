@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
+// Verificar si el componente ScrollArea existe, si no, usar div normal
+// import { ScrollArea } from '@/components/ui/scroll-area'
 import { Trash2, Plus, Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase/config'
-import { formatCurrency } from '@/utils/Utils'
+import { formatCurrency, handleNumericInput } from '@/utils/Utils'
 import { useToast } from '@/components/ui/use-toast'
 
 interface Producto {
@@ -17,7 +18,8 @@ interface Producto {
   name: string
   sku: string
   price: number
-  has_lots: boolean
+  // Eliminamos has_lots ya que no existe en la tabla
+  track_stock: boolean // Usaremos track_stock como indicador para verificar si debemos buscar lotes
 }
 
 interface ProductoSalida {
@@ -74,7 +76,7 @@ export default function TablaProductosSalida({
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, sku, price, has_lots')
+        .select('id, name, sku, price, track_stock')
         .eq('organization_id', organizationId)
         .or(`name.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%,barcode.eq.${searchTerm}`)
         .order('name')
@@ -98,7 +100,7 @@ export default function TablaProductosSalida({
     if (selectedProduct) {
       setPrecio(selectedProduct.price)
       
-      if (selectedProduct.has_lots) {
+      if (selectedProduct.track_stock) {
         cargarLotesDisponibles(selectedProduct.id)
       }
     }
@@ -108,13 +110,29 @@ export default function TablaProductosSalida({
     setIsLoadingLots(true)
     
     try {
-      // Consulta para obtener lotes con cantidad disponible
-      const { data, error } = await supabase.rpc('get_available_lots', {
-        p_product_id: productId
-      })
+      // Consulta directa para obtener lotes con cantidad disponible
+      const { data, error } = await supabase
+        .from('lots')
+        .select(`
+          id, 
+          lot_code, 
+          expiry_date,
+          stock_levels!inner(qty_on_hand)
+        `)
+        .eq('product_id', productId)
+        .gt('stock_levels.qty_on_hand', 0)
       
       if (error) throw error
-      setLotesDisponibles(data || [])
+      
+      // Transformar los datos al formato esperado
+      const lotesDisponibles = data?.map(lote => ({
+        id: lote.id,
+        lot_code: lote.lot_code,
+        expiry_date: lote.expiry_date,
+        available_qty: lote.stock_levels[0]?.qty_on_hand || 0
+      })) || []
+      
+      setLotesDisponibles(lotesDisponibles)
     } catch (error) {
       console.error('Error al cargar lotes:', error)
       toast({
@@ -139,7 +157,7 @@ export default function TablaProductosSalida({
     if (!selectedProduct) return
     
     // Si el producto requiere lote pero no se ha seleccionado ninguno
-    if (selectedProduct.has_lots && !loteSeleccionado) {
+    if (selectedProduct.track_stock && !loteSeleccionado) {
       toast({
         title: "Error",
         description: "Este producto requiere seleccionar un lote.",
@@ -175,90 +193,86 @@ export default function TablaProductosSalida({
     if (isNaN(value)) value = 0
     
     // Regla UX: Al hacer focus, si es 0, se borra
-    if (event.type === 'focus' && value === 0) {
-      if (index !== undefined) {
-        const target = event.target
-        setTimeout(() => {
-          target.value = ''
-        }, 0)
-      } else {
-        setCantidad(0)
+    if (index !== undefined) {
+      // Actualizar un producto existente
+      const productoActualizado = { ...productos[index] }
+      productoActualizado.cantidad = value
+      productoActualizado.subtotal = value * productoActualizado.precio_unitario
+      onUpdateProducto(index, productoActualizado)
+    } else {
+      // Actualizar el producto que se va a añadir
+      setCantidad(value)
+    }
+  }
+
+  const handleCantidadFocus = (event: React.FocusEvent<HTMLInputElement>, index?: number) => {
+    if (index !== undefined) {
+      const value = productos[index].cantidad
+      if (value === 0) {
+        const productoActualizado = { ...productos[index] }
+        productoActualizado.cantidad = 0
+        event.target.value = ''
+        onUpdateProducto(index, productoActualizado)
+      }
+    } else {
+      if (cantidad === 0) {
         event.target.value = ''
       }
-      return
-    }
-    
-    if (index !== undefined) {
-      // Actualizar producto en la lista
-      const producto = {...productos[index]}
-      producto.cantidad = value
-      producto.subtotal = value * producto.precio_unitario
-      onUpdateProducto(index, producto)
-    } else {
-      // Actualizar cantidad del producto seleccionado
-      setCantidad(value)
     }
   }
 
   const handleCantidadBlur = (event: React.FocusEvent<HTMLInputElement>, index?: number) => {
-    let value = event.target.value === '' ? 0 : parseFloat(event.target.value)
-    if (isNaN(value)) value = 0
-    
-    if (index !== undefined) {
-      // Actualizar producto en la lista
-      const producto = {...productos[index]}
-      producto.cantidad = value
-      producto.subtotal = value * producto.precio_unitario
-      onUpdateProducto(index, producto)
-    } else {
-      // Actualizar cantidad del producto seleccionado
-      setCantidad(value)
+    // Si el campo queda vacío, establecer a 0
+    if ((event.target.value === '' || !event.target.value) && index !== undefined) {
+      const productoActualizado = { ...productos[index] }
+      productoActualizado.cantidad = 0
+      productoActualizado.subtotal = 0
+      onUpdateProducto(index, productoActualizado)
+    } else if ((event.target.value === '' || !event.target.value) && index === undefined) {
+      setCantidad(0)
     }
   }
 
   const handlePrecioChange = (event: React.ChangeEvent<HTMLInputElement>, index?: number) => {
-    let value = event.target.value === '' ? 0 : parseFloat(event.target.value)
-    if (isNaN(value)) value = 0
-    
-    // Regla UX: Al hacer focus, si es 0, se borra
-    if (event.type === 'focus' && value === 0) {
-      if (index !== undefined) {
-        const target = event.target
-        setTimeout(() => {
-          target.value = ''
-        }, 0)
-      } else {
-        setPrecio(0)
-        event.target.value = ''
-      }
-      return
-    }
+    const value = event.target.value ? Number(event.target.value) : 0
     
     if (index !== undefined) {
-      // Actualizar producto en la lista
-      const producto = {...productos[index]}
-      producto.precio_unitario = value
-      producto.subtotal = producto.cantidad * value
-      onUpdateProducto(index, producto)
+      // Actualizar un producto existente
+      const productoActualizado = { ...productos[index] }
+      productoActualizado.precio_unitario = value
+      productoActualizado.subtotal = productoActualizado.cantidad * value
+      onUpdateProducto(index, productoActualizado)
     } else {
-      // Actualizar precio del producto seleccionado
+      // Actualizar el producto que se va a añadir
       setPrecio(value)
     }
   }
 
-  const handlePrecioBlur = (event: React.FocusEvent<HTMLInputElement>, index?: number) => {
-    let value = event.target.value === '' ? 0 : parseFloat(event.target.value)
-    if (isNaN(value)) value = 0
-    
+  const handlePrecioFocus = (event: React.FocusEvent<HTMLInputElement>, index?: number) => {
     if (index !== undefined) {
-      // Actualizar producto en la lista
-      const producto = {...productos[index]}
-      producto.precio_unitario = value
-      producto.subtotal = producto.cantidad * value
-      onUpdateProducto(index, producto)
+      const value = productos[index].precio_unitario
+      if (value === 0) {
+        const productoActualizado = { ...productos[index] }
+        productoActualizado.precio_unitario = 0
+        event.target.value = ''
+        onUpdateProducto(index, productoActualizado)
+      }
     } else {
-      // Actualizar precio del producto seleccionado
-      setPrecio(value)
+      if (precio === 0) {
+        event.target.value = ''
+      }
+    }
+  }
+
+  const handlePrecioBlur = (event: React.FocusEvent<HTMLInputElement>, index?: number) => {
+    // Si el campo queda vacío, establecer a 0
+    if ((event.target.value === '' || !event.target.value) && index !== undefined) {
+      const productoActualizado = { ...productos[index] }
+      productoActualizado.precio_unitario = 0
+      productoActualizado.subtotal = productoActualizado.cantidad * 0
+      onUpdateProducto(index, productoActualizado)
+    } else if ((event.target.value === '' || !event.target.value) && index === undefined) {
+      setPrecio(0)
     }
   }
 
@@ -290,7 +304,7 @@ export default function TablaProductosSalida({
               </div>
 
               {resultados.length > 0 && (
-                <ScrollArea className="h-72 rounded-md border">
+                <div className="h-72 rounded-md border overflow-y-auto">
                   <div className="p-4">
                     <h4 className="mb-4 text-sm font-medium leading-none">Resultados de búsqueda</h4>
                     <div className="space-y-2">
@@ -309,7 +323,7 @@ export default function TablaProductosSalida({
                       ))}
                     </div>
                   </div>
-                </ScrollArea>
+                </div>
               )}
 
               {selectedProduct && (
@@ -321,9 +335,11 @@ export default function TablaProductosSalida({
                       type="number"
                       min="1"
                       value={cantidad === 0 ? '' : cantidad}
-                      onChange={handleCantidadChange}
-                      onFocus={(e) => handleCantidadChange(e as any)}
-                      onBlur={handleCantidadBlur}
+                      onChange={(e) => handleCantidadChange(e)}
+                      onFocus={(e) => handleCantidadFocus(e)}
+                      onBlur={(e) => handleCantidadBlur(e)}
+                      className="w-24 focus:placeholder-transparent"
+                      placeholder="Cantidad"
                     />
                   </div>
                   
@@ -335,13 +351,15 @@ export default function TablaProductosSalida({
                       min="0"
                       step="0.01"
                       value={precio === 0 ? '' : precio}
-                      onChange={handlePrecioChange}
-                      onFocus={(e) => handlePrecioChange(e as any)}
-                      onBlur={handlePrecioBlur}
+                      onChange={(e) => handlePrecioChange(e)}
+                      onFocus={(e) => handlePrecioFocus(e)}
+                      onBlur={(e) => handlePrecioBlur(e)}
+                      className="w-24 focus:placeholder-transparent"
+                      placeholder="Precio"
                     />
                   </div>
                   
-                  {selectedProduct.has_lots && (
+                  {selectedProduct.track_stock && (
                     <div>
                       <Label htmlFor="lote">Lote</Label>
                       <select
@@ -373,7 +391,7 @@ export default function TablaProductosSalida({
                     <Button 
                       type="button" 
                       onClick={handleAddProducto} 
-                      disabled={cantidad <= 0 || (selectedProduct.has_lots && !loteSeleccionado)}
+                      disabled={cantidad <= 0 || (selectedProduct.track_stock && !loteSeleccionado)}
                     >
                       Agregar
                     </Button>
@@ -415,10 +433,10 @@ export default function TablaProductosSalida({
                     <Input
                       type="number"
                       min="1"
-                      className="w-20"
+                      className="w-20 focus:placeholder-transparent"
                       value={producto.cantidad === 0 ? '' : producto.cantidad}
                       onChange={(e) => handleCantidadChange(e, index)}
-                      onFocus={(e) => handleCantidadChange(e as any, index)}
+                      onFocus={(e) => handleCantidadFocus(e, index)}
                       onBlur={(e) => handleCantidadBlur(e, index)}
                     />
                   </TableCell>
@@ -427,10 +445,10 @@ export default function TablaProductosSalida({
                       type="number"
                       min="0"
                       step="0.01"
-                      className="w-24"
+                      className="w-24 focus:placeholder-transparent"
                       value={producto.precio_unitario === 0 ? '' : producto.precio_unitario}
                       onChange={(e) => handlePrecioChange(e, index)}
-                      onFocus={(e) => handlePrecioChange(e as any, index)}
+                      onFocus={(e) => handlePrecioFocus(e, index)}
                       onBlur={(e) => handlePrecioBlur(e, index)}
                     />
                   </TableCell>

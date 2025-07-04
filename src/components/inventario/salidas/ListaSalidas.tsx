@@ -17,11 +17,11 @@ interface ListaSalidasProps {
 
 interface Salida {
   id: number
-  reference_number: string
+  reference_number?: string
   customer_name: string
-  order_date: string
+  sale_date: string
   status: string
-  total_amount: number
+  total: number
   items_count: number
 }
 
@@ -36,16 +36,16 @@ export default function ListaSalidas({ filtro, organizationId, searchTerm }: Lis
       setError(null)
       
       try {
+        // Usamos la tabla 'sales' que es la que realmente existe
         let query = supabase
-          .from('sales_orders')
+          .from('sales')
           .select(`
             id,
-            reference_number,
-            customers(name),
-            order_date,
-            total_amount,
+            customers(full_name, id),
+            sale_date,
+            total,
             status,
-            so_items(count)
+            sale_items(count)
           `)
           .eq('organization_id', organizationId)
         
@@ -53,23 +53,24 @@ export default function ListaSalidas({ filtro, organizationId, searchTerm }: Lis
           query = query.in('status', ['draft', 'processing'])
         }
         
+        // Adaptamos la búsqueda para la estructura de la tabla sales
         if (searchTerm) {
-          query = query.or(`reference_number.ilike.%${searchTerm}%,customers.name.ilike.%${searchTerm}%`)
+          query = query.or(`customers.full_name.ilike.%${searchTerm}%`)
         }
         
         const { data, error: queryError } = await query.order('created_at', { ascending: false })
         
         if (queryError) throw queryError
         
-        // Formatear los datos para la tabla
+        // Formatear los datos para la tabla usando la estructura correcta
         const salidasFormateadas = (data || []).map(salida => ({
           id: salida.id,
-          reference_number: salida.reference_number,
-          customer_name: salida.customers?.name || 'Venta directa',
-          order_date: salida.order_date,
-          total_amount: salida.total_amount,
+          reference_number: `S-${salida.id}`, // Generamos un número de referencia si no existe en la tabla
+          customer_name: salida.customers?.full_name || 'Venta directa',
+          sale_date: salida.sale_date,
+          total: salida.total,
           status: salida.status,
-          items_count: salida.so_items[0]?.count || 0
+          items_count: salida.sale_items[0]?.count || 0
         }))
         
         setSalidas(salidasFormateadas)
@@ -161,9 +162,9 @@ export default function ListaSalidas({ filtro, organizationId, searchTerm }: Lis
             <TableRow key={salida.id}>
               <TableCell className="font-medium">{salida.reference_number}</TableCell>
               <TableCell>{salida.customer_name}</TableCell>
-              <TableCell>{formatDate(salida.order_date)}</TableCell>
+              <TableCell>{formatDate(salida.sale_date)}</TableCell>
               <TableCell>{getStatusBadge(salida.status)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(salida.total_amount)}</TableCell>
+              <TableCell className="text-right">{formatCurrency(salida.total)}</TableCell>
               <TableCell>
                 <div className="flex space-x-1">
                   <Button variant="outline" size="sm">

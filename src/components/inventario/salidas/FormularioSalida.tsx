@@ -14,7 +14,7 @@ import TablaProductosSalida from './TablaProductosSalida'
 
 interface Cliente {
   id: number
-  name: string
+  full_name: string
 }
 
 interface Sucursal {
@@ -61,9 +61,9 @@ export default function FormularioSalida({ organizationId }: FormularioSalidaPro
       try {
         const { data, error } = await supabase
           .from('customers')
-          .select('id, name')
+          .select('id, full_name')
           .eq('organization_id', organizationId)
-          .order('name')
+          .order('full_name')
 
         if (error) throw error
         setClientes(data || [])
@@ -271,7 +271,7 @@ export default function FormularioSalida({ organizationId }: FormularioSalidaPro
                 <SelectContent>
                   {clientes.map(cliente => (
                     <SelectItem key={cliente.id} value={cliente.id.toString()}>
-                      {cliente.name}
+                      {cliente.full_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

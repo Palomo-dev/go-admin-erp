@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image'; // Importación del componente Image de Next.js
 import { signOut, supabase } from '@/lib/supabase/config';
 import { getOptimizedSession, isAuthenticated } from '@/lib/supabase/auth-manager';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import BranchSelector from '@/components/common/BranchSelector';
 // Importación explícita de los iconos para evitar problemas
@@ -425,10 +425,10 @@ export default function AppLayout({
               Panel de Administración
             </h2>
             <div className="flex items-center space-x-3">
-              {/* Branch Selector */}
-              {orgId && (
-                <BranchSelector organizationId={parseInt(orgId)} />
-              )}
+              {/* Branch Selector - Only re-renders when orgId changes */}
+              {useMemo(() => {
+                return orgId ? <BranchSelector organizationId={parseInt(orgId)} /> : null;
+              }, [orgId])}
               
               {/* Botón para cambiar tema */}
               <button

@@ -342,8 +342,40 @@ const CatalogoProductos: React.FC = () => {
 
   // Funciones para gestionar los dialogos y acciones CRUD
   const handleCrear = () => {
-    // Redireccionar a la nueva página de creación de productos
-    router.push('/app/inventario/productos/nuevo');
+    try {
+      // Preparar una estructura de datos de producto vacía como plantilla
+      const emptyProduct = {
+        id: 'new',
+        name: '',
+        description: '',
+        sku: '',
+        barcode: '',
+        status: 'active',
+        price: 0,
+        cost: 0,
+        stock: 0,
+        category_id: null,
+        organization_id: localStorage.getItem('currentOrganizationId') || sessionStorage.getItem('currentOrganizationId'),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        product_prices: [],
+        product_costs: [],
+        stock_levels: [],
+        product_images: [],
+        variants: []
+      };
+      
+      // Guardar la plantilla en sessionStorage para usar en la página de creación
+      sessionStorage.setItem('new_product_template', JSON.stringify(emptyProduct));
+      console.log('Plantilla para nuevo producto guardada en sessionStorage');
+      
+      // Redireccionar a la nueva página de creación de productos
+      router.push('/app/inventario/productos/nuevo');
+    } catch (error) {
+      console.error('Error al preparar la plantilla para nuevo producto:', error);
+      // Redireccionar de todos modos
+      router.push('/app/inventario/productos/nuevo');
+    }
   };
 
   const handleEditar = (producto: Producto) => {
@@ -351,25 +383,114 @@ const CatalogoProductos: React.FC = () => {
     router.push(`/app/inventario/productos/${producto.id}/editar`);
   };
 
-  const handleDuplicar = (producto: Producto) => {
-    // Clonar el producto pero eliminar el ID y modificar SKU para que sea único
-    const duplicatedProduct = {
-      ...producto,
-      id: 0, // Usar 0 temporalmente, se asignará un nuevo ID al guardar
-      sku: `${producto.sku}-COPIA`,
-      name: `${producto.name} (Copia)`
-    } as Producto;
-    
-    setSelectedProducto(duplicatedProduct);
+  const handleDuplicar = async (producto: Producto) => {
+    try {
+      // Obtener datos completos del producto original
+      const { data: originalProductData, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories(id, name),
+          children:products(
+            *,
+            categories(id, name)
+          ),
+          product_prices(id, price, effective_from, effective_to),
+          product_costs(id, cost, effective_from, effective_to),
+          product_images(id, storage_path, is_primary)
+        `)
+        .eq('id', producto.id)
+        .single();
+        
+      if (error) throw error;
+      
+      if (originalProductData) {
+        // Preparar el producto duplicado con cambios en los campos únicos
+        const duplicatedProduct: any = {
+          ...originalProductData,
+          id: 'duplicate', // Marcar como duplicado para la página de creación
+          sku: `${originalProductData.sku}-COPIA`,
+          name: `${originalProductData.name} (Copia)`,
+          barcode: originalProductData.barcode ? `${originalProductData.barcode}-COPIA` : '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          // Mantener referencias a datos relacionados pero quitar IDs para que sean nuevos al guardar
+          product_prices: originalProductData.product_prices ? originalProductData.product_prices.map((p: any) => ({ ...p, id: 'new', product_id: 'duplicate' })) : [],
+          product_costs: originalProductData.product_costs ? originalProductData.product_costs.map((c: any) => ({ ...c, id: 'new', product_id: 'duplicate' })) : [],
+          product_images: [], // No duplicar imágenes directamente
+          // Preparar variantes (productos hijos)
+          children: originalProductData.children ? originalProductData.children.map((child: any) => ({
+            ...child,
+            id: 'new-child',
+            sku: `${child.sku}-COPIA`,
+            name: `${child.name} (Copia)`,
+            parent_product_id: 'duplicate'
+          })) : []
+        };
+        
+        // Guardar el producto duplicado en sessionStorage para la página de creación
+        sessionStorage.setItem('duplicated_product_data', JSON.stringify(duplicatedProduct));
+        console.log('Datos del producto duplicado guardados en sessionStorage');
+        
+        // Redireccionar a la página de creación con indicador de que es una duplicación
+        router.push('/app/inventario/productos/nuevo?from=duplicate');
+      } else {
+        throw new Error('No se encontraron los datos completos del producto');
+      }
+    } catch (error) {
+      console.error('Error al duplicar producto:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo duplicar el producto. Intente de nuevo más tarde."
+      });
+    }
   };
 
   const handleVer = async (producto: Producto) => {
-    // Redireccionar a la página de detalle del producto
-    router.push(`/app/inventario/productos/${producto.id}`);
+    try {
+      // Antes de redireccionar, asegurarse de que tenemos todos los datos del producto
+      // Esto es útil cuando implementamos la vista detallada que necesitará datos completos
+      const { data: productData, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories(id, name),
+          children:products(
+            *,
+            categories(id, name),
+            product_prices(id, price, effective_from, effective_to),
+            product_costs(id, cost, effective_from, effective_to),
+            stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
+            product_images(id, storage_path, is_primary)
+          ),
+          product_prices(id, price, effective_from, effective_to),
+          product_costs(id, cost, effective_from, effective_to),
+          stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
+          product_images(id, storage_path, is_primary)
+        `)
+        .eq('id', producto.id)
+        .single();
+        
+      if (error) throw error;
+      
+      // Almacenamos los datos completos del producto en localStorage para recuperarlos en la página de detalles
+      if (productData) {
+        sessionStorage.setItem(`product_${producto.id}_data`, JSON.stringify(productData));
+        console.log('Datos completos del producto guardados en sessionStorage');
+      }
+      
+      // Redireccionar a la página de detalle del producto
+      router.push(`/app/inventario/productos/${producto.id}`);
+    } catch (error) {
+      console.error('Error al obtener datos detallados del producto:', error);
+      // Redireccionar de todos modos, la página de detalles deberá manejar la carga
+      router.push(`/app/inventario/productos/${producto.id}`);
+    }
   };
 
-  const handleEliminarClick = (id: number) => {
-    setProductoToDelete(id);
+  const handleEliminarClick = async (productoId: number | string) => {
+    setProductoToDelete(productoId);
     setIsDeleteDialogOpen(true);
   };
 
@@ -472,7 +593,7 @@ const CatalogoProductos: React.FC = () => {
         loading={loading}
         onEdit={(producto: Producto) => handleEditar(producto)}
         onView={(producto: Producto) => handleVer(producto)}
-        onDelete={(id: number) => handleEliminarClick(id)}
+        onDelete={(id: string | number) => handleEliminarClick(id)}
         onDuplicate={(producto: Producto) => handleDuplicar(producto)}
       />
       

@@ -101,13 +101,11 @@ interface PreciosTabProps {
 interface PriceHistory {
   id: number;
   product_id: number;
-  old_price: number;
-  new_price: number;
-  percentage_change: number;
-  changed_at: string;
-  changed_by_id: string;
-  changed_by_name: string;
-  notes?: string;
+  price: number; // Current price
+  previous_price?: number; // Calculated from previous record
+  percentage_change?: number; // Calculated
+  effective_from: string;
+  effective_to: string | null;
 }
 
 /**
@@ -161,66 +159,40 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
       try {
         setLoading(true);
         
-        // 1. Primero obtenemos el historial de precios
+        // Obtener historial de precios desde product_prices
         const { data: priceData, error: priceError } = await supabase
-          .from('price_history')
+          .from('product_prices')
           .select('*')
           .eq('product_id', producto.id)
-          .order('changed_at', { ascending: false });
+          .order('effective_from', { ascending: false });
         
         if (priceError) throw priceError;
         
-        // 2. Obtenemos un mapa de usuarios con sus IDs
-        const userIds = priceData
-          .map((item: any) => item.changed_by_id)
-          .filter((id: string) => id !== null);
-        
-        // Filtrar IDs únicos sin usar Set para evitar problemas de compatibilidad
-        const uniqueUserIds: string[] = userIds.filter((id, index) => {
-          return userIds.indexOf(id) === index;
-        });
-        
-        // Solo hacemos la consulta de usuarios si hay IDs
-        let userMap: {[key: string]: any} = {};
-        
-        if (uniqueUserIds.length > 0) {
-          const { data: userData, error: userError } = await supabase
-            .from('profiles')
-            .select('id, email, first_name, last_name')
-            .in('id', uniqueUserIds);
-          
-          if (userError) {
-            console.warn('Error al cargar usuarios:', userError);
-            // Continuamos con la ejecución aunque no se carguen los usuarios
-          } else if (userData) {
-            // Crear mapa de IDs a nombres de usuario
-            userMap = userData.reduce((acc: {[key: string]: any}, user: any) => {
-              acc[user.id] = {
-                name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
-                email: user.email
-              };
-              return acc;
-            }, {});
-          }
+        if (!priceData || priceData.length === 0) {
+          setPriceHistory([]);
+          return;
         }
-        
-        // 3. Combinamos los datos y calculamos el porcentaje de cambio
-        const formattedHistory = priceData.map((item: any) => {
-          const percentageChange = item.old_price > 0 
-            ? ((item.new_price - item.old_price) / item.old_price) * 100 
-            : 0;
+
+        // Procesar los datos para calcular los cambios de precio
+        const processedData: PriceHistory[] = priceData.map((item: any, index: number) => {
+          // El precio anterior es del siguiente registro (más antiguo)
+          const previousItem = priceData[index + 1];
+          const previousPrice = previousItem ? previousItem.price : null;
+          const percentageChange = previousPrice && previousPrice > 0 ?
+            ((item.price - previousPrice) / previousPrice) * 100 : 0;
             
-          const user = userMap[item.changed_by_id] || {};
-          
           return {
-            ...item,
-            percentage_change: parseFloat(percentageChange.toFixed(2)),
-            changed_by_name: user.name || 'Usuario desconocido',
-            user_email: user.email
+            id: item.id,
+            product_id: item.product_id,
+            price: item.price,
+            previous_price: previousPrice || item.price, // Si no hay previo, usar el mismo
+            percentage_change: percentageChange,
+            effective_from: item.effective_from,
+            effective_to: item.effective_to
           };
         });
-        
-        setPriceHistory(formattedHistory);
+
+        setPriceHistory(processedData);
       } catch (error: any) {
         console.error('Error al cargar historial de precios:', error);
         toast({
@@ -250,22 +222,39 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
     try {
       setUpdating(true);
       const priceValue = parseFloat(newPrice);
+      const now = new Date().toISOString();
       
-      // 1. Registrar en historial de precios
-      const { error: historyError } = await supabase
-        .from('price_history')
+      // 1. Cerrar el precio vigente actual estableciendo su effective_to
+      const { data: currentPriceData } = await supabase
+        .from('product_prices')
+        .select('id')
+        .eq('product_id', producto.id)
+        .is('effective_to', null)
+        .order('effective_from', { ascending: false })
+        .limit(1);
+        
+      if (currentPriceData && currentPriceData.length > 0) {
+        const { error: closeError } = await supabase
+          .from('product_prices')
+          .update({ effective_to: now })
+          .eq('id', currentPriceData[0].id);
+          
+        if (closeError) throw closeError;
+      }
+      
+      // 2. Insertar nuevo precio efectivo desde ahora
+      const { error: newPriceError } = await supabase
+        .from('product_prices')
         .insert({
           product_id: producto.id,
-          old_price: producto.price || 0,
-          new_price: priceValue,
-          changed_at: new Date().toISOString(),
-          changed_by_id: (await supabase.auth.getUser()).data.user?.id,
-          notes: 'Actualización manual de precio'
+          price: priceValue,
+          effective_from: now,
+          effective_to: null // Precio actualmente vigente
         });
       
-      if (historyError) throw historyError;
+      if (newPriceError) throw newPriceError;
       
-      // 2. Actualizar precio en producto
+      // 3. Actualizar el precio de referencia en la tabla de productos
       const { error: updateError } = await supabase
         .from('products')
         .update({
@@ -300,13 +289,11 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
       const newHistoryItem: PriceHistory = {
         id: Date.now(), // ID temporal
         product_id: producto.id,
-        old_price: producto.price || 0,
-        new_price: priceValue,
+        price: priceValue,
+        previous_price: producto.price || 0,
         percentage_change: parseFloat(percentageChange.toFixed(2)),
-        changed_at: new Date().toISOString(),
-        changed_by_id: (await supabase.auth.getUser()).data.user?.id || '',
-        changed_by_name: 'Tu (Ahora)',
-        notes: 'Actualización manual de precio'
+        effective_from: new Date().toISOString(),
+        effective_to: null
       };
       
       setPriceHistory([newHistoryItem, ...priceHistory]);
@@ -336,18 +323,24 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
   
   // Preparar datos para el gráfico
   const chartData = [...priceHistory]
-    .sort((a, b) => new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime())
+    .sort((a, b) => new Date(a.effective_from).getTime() - new Date(b.effective_from).getTime())
     .map(item => ({
-      date: format(new Date(item.changed_at), 'dd/MM/yy'),
-      precio: item.new_price
+      date: format(new Date(item.effective_from), 'dd/MM/yy'),
+      precio: item.price
     }));
   
   // Si hay precio actual pero no hay historial, añadirlo al gráfico
-  if (chartData.length === 0 && producto.price) {
-    chartData.push({
-      date: 'Actual',
-      precio: producto.price
-    });
+  if (chartData.length === 0) {
+    // Usar el precio más reciente (del historial o el del producto)
+    const currentPrice = (priceHistory && priceHistory.length > 0) ? 
+      priceHistory[0].price : producto.price || 0;
+    
+    if (currentPrice > 0) {
+      chartData.push({
+        date: 'Actual',
+        precio: currentPrice
+      });
+    }
   }
   
   return (
@@ -362,7 +355,13 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <p className="text-3xl font-semibold">{formatCurrency(producto.price || 0)}</p>
+            <p className="text-3xl font-semibold">
+              {formatCurrency(
+                // Usar el precio más reciente del historial o el precio base si no hay historial
+                (priceHistory && priceHistory.length > 0) ? 
+                  priceHistory[0].price : producto.price || 0
+              )}
+            </p>
           </CardContent>
         </Card>
         
@@ -478,61 +477,60 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
           </CardContent>
         </Card>
       )}
-      
       {/* Tabla de historial de precios */}
       <div className={`rounded-md border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
         <Table>
           <TableHeader className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}>
             <TableRow>
-              <TableHead className="w-[180px]">Fecha</TableHead>
+              <TableHead>Válido Desde</TableHead>
+              <TableHead>Válido Hasta</TableHead>
+              <TableHead>Precio</TableHead>
               <TableHead>Precio Anterior</TableHead>
-              <TableHead>Nuevo Precio</TableHead>
-              <TableHead className="text-center">Cambio</TableHead>
-              <TableHead>Actualizado Por</TableHead>
-              <TableHead>Notas</TableHead>
+              <TableHead>Cambio %</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
+                <TableCell colSpan={5} className="text-center py-4">
+                  <div className="flex justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">Cargando historial...</p>
                 </TableCell>
               </TableRow>
             ) : priceHistory.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-gray-500 dark:text-gray-400">
-                  <div className="flex flex-col items-center justify-center p-4">
-                    <p className="mb-2">No hay historial de cambios de precio disponible</p>
-                  </div>
+                <TableCell colSpan={5} className="text-center py-4">
+                  <p className="text-sm text-gray-500">No hay registro de cambios de precio</p>
                 </TableCell>
               </TableRow>
             ) : (
-              priceHistory.map((item) => (
+              priceHistory.map((item: any) => (
                 <TableRow key={item.id}>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className="font-mono">
                     <div className="flex items-center">
-                      <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                      {formatDate(item.changed_at)}
+                      <CalendarIcon className="h-3 w-3 mr-1 text-gray-400" />
+                      {formatDate(item.effective_from)}
                     </div>
                   </TableCell>
-                  <TableCell>{formatCurrency(item.old_price)}</TableCell>
-                  <TableCell className="font-medium">{formatCurrency(item.new_price)}</TableCell>
-                  <TableCell className="text-center">
-                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                      item.percentage_change > 0
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : item.percentage_change < 0
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
-                    }`}>
-                      {item.percentage_change > 0 && '+'}
-                      {item.percentage_change}%
-                    </span>
+                  <TableCell>
+                    {item.effective_to ? formatDate(item.effective_to) : 'Vigente'}
                   </TableCell>
-                  <TableCell>{item.changed_by_name}</TableCell>
-                  <TableCell className="text-sm text-gray-500 dark:text-gray-400">
-                    {item.notes || '-'}
+                  <TableCell className="font-semibold">{formatCurrency(item.price)}</TableCell>
+                  <TableCell>{formatCurrency(item.previous_price || 0)}</TableCell>
+                  <TableCell>
+                    <span 
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                        ${item.percentage_change > 0 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                          : item.percentage_change < 0
+                            ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}
+                    >
+                      {item.percentage_change > 0 ? '+' : ''}
+                      {item.percentage_change?.toFixed(2)}%
+                    </span>
                   </TableCell>
                 </TableRow>
               ))

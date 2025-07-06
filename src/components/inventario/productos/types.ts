@@ -3,7 +3,7 @@
  */
 
 export interface Producto {
-  id: number;
+  id: number | string; // Puede ser string para casos temporales como "duplicate"
   organization_id: number;
   sku: string;
   name: string;
@@ -13,24 +13,29 @@ export interface Producto {
   unit_code: string;
   unit?: UnidadMedida; // Relación con unidades
   supplier_id: number | null;
-  supplier?: Proveedor; // Relación con proveedor
-  track_stock: boolean;
-  cost: number;
-  price: number;
-  image_url: string | null;
-  image_type: string | null;
-  image_path: string | null;
   barcode: string | null;
   status: string;
   is_menu_item: boolean;
   created_at?: string;
   updated_at?: string;
-  stock?: number; // Campo calculado
-  lots?: Lote[]; // Relación con lotes
-  serial_numbers?: NumeroSerie[]; // Relación con números de serie
-  images?: ProductoImagen[]; // Múltiples imágenes
-  tags?: Etiqueta[]; // Etiquetas
-  variants?: ProductoVariante[]; // Variantes
+  parent_product_id?: number | string | null;
+  
+  // Campos calculados basados en relaciones
+  cost?: number; // Campo calculado del costo actual
+  price?: number; // Campo calculado del precio actual
+  stock?: number; // Campo calculado de stock
+  
+  // Relaciones optimizadas
+  product_prices?: ProductoPrecio[];
+  product_costs?: ProductoCosto[];
+  stock_levels?: StockLevel[];
+  product_images?: ProductoImagen[];
+  children?: Producto[]; // Productos hijos/variantes
+  
+  // Campos adicionales
+  tags?: Etiqueta[];
+  lots?: Lote[];
+  serial_numbers?: NumeroSerie[];
   initial_stock?: number; // Stock inicial (solo para creación)
   selected_branch_id?: number; // Sucursal para el stock inicial
 }
@@ -84,14 +89,51 @@ export interface StockSucursal {
   qty: number;
 }
 
-export interface ProductoImagen {
+export interface ProductoPrecio {
+  id: number | string;
+  product_id: number | string;
+  price: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProductoCosto {
+  id: number | string;
+  product_id: number | string;
+  cost: number;
+  effective_from: string;
+  effective_to: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface StockLevel {
   id?: number;
-  product_id: number;
-  image_url: string;
+  product_id: number | string;
+  branch_id: number;
+  qty_on_hand: number;
+  qty_reserved: number;
+  avg_cost?: number;
+  created_at?: string;
+  updated_at?: string;
+  branches?: {
+    id: number;
+    name: string;
+  };
+}
+
+export interface ProductoImagen {
+  id: number | string;
+  product_id: number | string;
   storage_path: string;
-  display_order: number;
+  file_name?: string;
+  file_type?: string;
+  size?: number;
   is_primary: boolean;
-  alt_text?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Etiqueta {

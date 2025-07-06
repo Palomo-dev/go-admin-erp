@@ -83,15 +83,13 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
     fetchImages();
   }, [organization?.id, producto?.id]);
   
-  // Función para generar URL pública directamente con Supabase storage
+  // Función para generar URL pública directamente con la variable de entorno
   const generatePublicUrl = (storagePath?: string): string => {
     if (!storagePath) return '/placeholder-image.png';
     
     try {
-      const { data } = supabase.storage
-        .from('organization_images')
-        .getPublicUrl(storagePath);
-      return data?.publicUrl || '/placeholder-image.png';
+      // Use direct path construction instead of getPublicUrl() for consistency with catalog
+      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${storagePath}`;
     } catch (error) {
       console.error('Error generating public URL:', error);
       return '/placeholder-image.png';

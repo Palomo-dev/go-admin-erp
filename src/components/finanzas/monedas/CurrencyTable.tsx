@@ -27,15 +27,14 @@ interface CurrencySelectorProps {
 import { useToast } from '@/components/ui/use-toast';
 
 interface Currency {
-  id: string;
   code: string;
-  organization_id: number | null;
   name: string;
   symbol: string;
   decimals: number;
-  is_base: boolean;
   auto_update: boolean;
-  template_code?: string;
+  // Campos de organization_currencies
+  is_base: boolean;
+  org_auto_update?: boolean;
 }
 
 interface CurrencyTableProps {
@@ -60,12 +59,11 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
       setLoading(true);
       setError(null);
 
+      // Consulta las monedas específicas de la organización junto con sus datos del catálogo global
       const { data, error } = await supabase
-        .from('currencies')
-        .select('*')
-        .or(`organization_id.eq.${organizationId},organization_id.is.null`)
-        .order('is_base', { ascending: false })
-        .order('code');
+        .rpc('get_organization_currencies', {
+          p_organization_id: organizationId
+        });
 
       if (error) throw error;
 
@@ -79,23 +77,16 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
   }
 
   // Función para cambiar moneda base
-  async function setBaseCurrency(id: string) {
+  async function setBaseCurrency(code: string) {
     try {
       setLoading(true);
 
-      // Primero, quitar moneda base de todas las monedas
-      const { error: updateError } = await supabase
-        .from('currencies')
-        .update({ is_base: false })
-        .eq('organization_id', organizationId);
-
-      if (updateError) throw updateError;
-
-      // Establecer la nueva moneda base
-      const { error } = await supabase
-        .from('currencies')
-        .update({ is_base: true })
-        .eq('id', id);
+      // Llamamos a la función RPC para establecer la moneda base
+      const { data, error } = await supabase
+        .rpc('set_organization_base_currency', {
+          p_organization_id: organizationId,
+          p_currency_code: code
+        });
 
       if (error) throw error;
 
@@ -121,26 +112,19 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
   }
 
   // Función para cambiar actualización automática
-  async function toggleAutoUpdate(id: string, currentValue: boolean) {
+  async function toggleAutoUpdate(code: string, currentValue: boolean) {
     try {
       setLoading(true);
 
+      // Llamamos a la función RPC para actualizar la configuración de actualización automática
       const { error } = await supabase
-        .from('currencies')
-        .update({ auto_update: !currentValue })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // También llamar a la función RPC para mantener consistencia
-      const { error: rpcError } = await supabase
         .rpc('set_currency_auto_update', {
-          p_currency_code: currencies.find(c => c.id === id)?.code || '',
+          p_currency_code: code,
           p_auto_update: !currentValue,
           p_org_id: organizationId
         });
 
-      if (rpcError) throw rpcError;
+      if (error) throw error;
 
       toast({
         title: 'Configuración actualizada',
@@ -163,9 +147,9 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
   }
 
   // Función para eliminar moneda
-  async function deleteCurrency(id: string) {
+  async function deleteCurrency(code: string) {
     try {
-      if (currencies.find(c => c.id === id)?.is_base) {
+      if (currencies.find(c => c.code === code)?.is_base) {
         toast({
           title: 'Error',
           description: 'No se puede eliminar la moneda base. Cambie la moneda base primero.',
@@ -180,10 +164,12 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
 
       setLoading(true);
 
+      // Elimina la relación organización-moneda
       const { error } = await supabase
-        .from('currencies')
-        .delete()
-        .eq('id', id);
+        .rpc('remove_organization_currency', {
+          p_organization_id: organizationId,
+          p_currency_code: code
+        });
 
       if (error) throw error;
 
@@ -267,12 +253,9 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
               </TableRow>
             ) : (
               currencies.map((currency) => (
-                <TableRow key={currency.id} className="dark:border-gray-700">
+                <TableRow key={currency.code} className="dark:border-gray-700">
                   <TableCell className="font-medium dark:text-gray-200">
                     {currency.code}
-                    {currency.organization_id === null && (
-                      <Badge variant="outline" className="ml-2 dark:text-gray-300">Global</Badge>
-                    )}
                   </TableCell>
                   <TableCell className="dark:text-gray-300">{currency.name}</TableCell>
                   <TableCell className="dark:text-gray-300">{currency.symbol}</TableCell>
@@ -282,8 +265,8 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
                       <Button
                         variant={currency.is_base ? "default" : "outline"}
                         size="sm"
-                        onClick={() => !currency.is_base && setBaseCurrency(currency.id)}
-                        disabled={currency.is_base || currency.organization_id === null}
+                        onClick={() => !currency.is_base && setBaseCurrency(currency.code)}
+                        disabled={currency.is_base}
                         className={
                           currency.is_base 
                             ? "bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800" 
@@ -297,9 +280,8 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
                   <TableCell>
                     <div className="flex justify-center">
                       <Switch
-                        checked={currency.auto_update || false}
-                        disabled={currency.organization_id === null}
-                        onCheckedChange={() => toggleAutoUpdate(currency.id, currency.auto_update || false)}
+                        checked={currency.org_auto_update ?? currency.auto_update}
+                        onCheckedChange={() => toggleAutoUpdate(currency.code, currency.org_auto_update ?? currency.auto_update)}
                       />
                     </div>
                   </TableCell>
@@ -308,8 +290,8 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
                       <Button 
                         variant="destructive" 
                         size="sm"
-                        onClick={() => deleteCurrency(currency.id)}
-                        disabled={currency.organization_id === null || currency.is_base}
+                        onClick={() => deleteCurrency(currency.code)}
+                        disabled={currency.is_base}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

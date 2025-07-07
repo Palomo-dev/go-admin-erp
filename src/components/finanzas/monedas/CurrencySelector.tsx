@@ -23,7 +23,7 @@ interface CurrencyTemplate {
   name: string;
   symbol: string;
   decimals: number;
-  is_active: boolean;
+  auto_update: boolean;
 }
 
 interface CurrencySelectorProps {
@@ -50,8 +50,9 @@ export default function CurrencySelector({ organizationId, onComplete }: Currenc
       setFilteredTemplates([]);
 
       // Obtener plantillas de monedas usando RPC para evitar restricciones de RLS
+      // Pasar el organization_id para filtrar las monedas ya añadidas
       const { data: allTemplates, error: templateError } = await supabase
-        .rpc('get_currency_templates');
+        .rpc('get_currency_templates', { p_organization_id: organizationId });
 
       if (templateError) {
         console.error('Error al llamar a get_currency_templates:', templateError);
@@ -59,44 +60,15 @@ export default function CurrencySelector({ organizationId, onComplete }: Currenc
       }
       
       if (!allTemplates || allTemplates.length === 0) {
-        setError('No se encontraron plantillas de monedas en el sistema');
+        setError('No se encontraron monedas disponibles para añadir');
         return;
       }
       
-      console.log('Total plantillas en el sistema:', allTemplates.length);
+      console.log('Total monedas disponibles para añadir:', allTemplates.length);
 
-      // Obtener monedas ya añadidas a esta organización
-      const { data: existingCurrencies, error: existingError } = await supabase
-        .from('currencies')
-        .select('code')
-        .eq('organization_id', organizationId);
-
-      if (existingError) throw existingError;
-      
-      // Crear conjunto de códigos existentes
-      const existingCodes = new Set<string>();
-      if (existingCurrencies && existingCurrencies.length > 0) {
-        existingCurrencies.forEach(c => {
-          if (c.code) existingCodes.add(c.code);
-        });
-        console.log('Monedas ya existentes en organización:', Array.from(existingCodes));
-      } else {
-        console.log('No hay monedas existentes en esta organización');
-      }
-
-      // Filtrar plantillas que no están añadidas
-      const availableTemplates = allTemplates.filter((template: CurrencyTemplate) => 
-        !existingCodes.has(template.code)
-      );
-      
-      console.log('Plantillas disponibles para añadir:', availableTemplates.length);
-
-      if (availableTemplates.length === 0) {
-        setError('Ya se han añadido todas las plantillas de monedas disponibles');
-      } else {
-        setTemplates(availableTemplates);
-        setFilteredTemplates(availableTemplates);
-      }
+      // La función RPC ya devuelve solo las monedas que no están añadidas a esta organización
+      setTemplates(allTemplates);
+      setFilteredTemplates(allTemplates);
     } catch (err: any) {
       console.error('Error al cargar plantillas de monedas:', err);
       setError('Error al cargar plantillas: ' + err.message);
@@ -151,31 +123,14 @@ export default function CurrencySelector({ organizationId, onComplete }: Currenc
         throw new Error('No se encontró la plantilla seleccionada');
       }
 
-      // Verificar si ya existe esta moneda en la organización
-      const { data: existCheck, error: existError } = await supabase
-        .from('currencies')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('code', templateToAdd.code);
-
-      if (existError) throw existError;
-      
-      if (existCheck && existCheck.length > 0) {
-        throw new Error('Esta moneda ya existe en su organización');
-      }
-
-      // Añadir moneda a la organización
-      const { error } = await supabase
-        .from('currencies')
-        .insert({
-          code: templateToAdd.code,
-          name: templateToAdd.name,
-          symbol: templateToAdd.symbol,
-          decimals: templateToAdd.decimals,
-          organization_id: organizationId,
-          template_code: templateToAdd.code,
-          is_base: false, // Por defecto no es base
-          auto_update: true // Activar actualización automática por defecto
+      // Usar la función RPC con SECURITY DEFINER para añadir la moneda a la organización
+      // Esta función maneja todas las verificaciones y la inserción
+      const { data, error } = await supabase
+        .rpc('add_organization_currency', {
+          p_organization_id: organizationId,
+          p_currency_code: templateToAdd.code,
+          p_is_base: false, // Por defecto no es base
+          p_auto_update: true // Activar actualización automática por defecto
         });
 
       if (error) throw error;

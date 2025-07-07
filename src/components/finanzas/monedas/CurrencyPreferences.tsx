@@ -29,10 +29,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 interface Currency {
-  id: string;
   code: string;
   name: string;
   symbol: string;
+  decimals: number;
+  auto_update: boolean;
+  is_base: boolean;
+  org_auto_update: boolean;
 }
 
 interface OrganizationPreferences {
@@ -89,12 +92,9 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
     try {
       setLoading(true);
 
-      // Obtener monedas de la organización
+      // Obtener monedas de la organización usando la función RPC
       const { data, error } = await supabase
-        .from('currencies')
-        .select('id, code, name, symbol')
-        .eq('organization_id', organizationId)
-        .order('code');
+        .rpc('get_organization_currencies', { p_organization_id: organizationId });
 
       if (error) throw error;
       setCurrencies(data || []);
@@ -115,29 +115,61 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
     try {
       setLoading(true);
 
-      // Obtener preferencias de la organización
-      const { data, error } = await supabase
+      // 1. Obtener moneda base de organization_currencies (prioridad principal)
+      const { data: baseCurrencyData, error: baseCurrencyError } = await supabase
+        .from('organization_currencies')
+        .select('currency_code')
+        .eq('organization_id', organizationId)
+        .eq('is_base', true)
+        .maybeSingle();
+
+      if (baseCurrencyError && baseCurrencyError.code !== 'PGRST116') {
+        throw baseCurrencyError;
+      }
+
+      // 2. Obtener preferencias de la organización como respaldo
+      const { data: prefData, error: prefError } = await supabase
         .from('organization_preferences')
         .select('organization_id, settings')
         .eq('organization_id', organizationId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        // Si no hay preferencias, simplemente no cargamos nada en el formulario
-        if (error.code === 'PGRST116') {
-          console.log('No hay preferencias guardadas para esta organización');
-          return;
-        }
-        throw error;
+      if (prefError && prefError.code !== 'PGRST116') {
+        throw prefError;
       }
 
-      // Cargar datos en el formulario
-      if (data && data.settings) {
-        form.reset({
-          default_currency_code: data.settings.default_currency_code || '',
-          auto_sync_exchange_rates: data.settings.auto_sync_exchange_rates !== false, // por defecto true si es null
-        });
+      // 3. Determinar qué moneda predeterminada usar (con prioridad)
+      let defaultCurrencyCode = '';
+      let autoSyncRates = true;
+      
+      // Prioridad 1: Moneda base de organization_currencies
+      if (baseCurrencyData?.currency_code) {
+        defaultCurrencyCode = baseCurrencyData.currency_code;
+        console.log('Moneda base encontrada en organization_currencies:', defaultCurrencyCode);
+      } 
+      // Prioridad 2: Moneda predeterminada en default_currency_code
+      else if (prefData?.settings?.default_currency_code) {
+        defaultCurrencyCode = prefData.settings.default_currency_code;
+        console.log('Moneda predeterminada encontrada en default_currency_code:', defaultCurrencyCode);
+      } 
+      // Prioridad 3: Moneda en finance.default_currency
+      else if (prefData?.settings?.finance?.default_currency) {
+        defaultCurrencyCode = prefData.settings.finance.default_currency;
+        console.log('Moneda predeterminada encontrada en finance.default_currency:', defaultCurrencyCode);
       }
+      
+      // Configuración de sincronización automática
+      if (prefData?.settings?.auto_sync_exchange_rates !== undefined) {
+        autoSyncRates = prefData.settings.auto_sync_exchange_rates;
+      }
+
+      // 4. Cargar datos en el formulario
+      form.reset({
+        default_currency_code: defaultCurrencyCode,
+        auto_sync_exchange_rates: autoSyncRates
+      });
+      
+      console.log('Cargadas preferencias:', { defaultCurrencyCode, autoSyncRates });
     } catch (err: any) {
       console.error('Error al cargar preferencias:', err);
       toast({
@@ -154,8 +186,9 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
   async function onSubmit(values: PreferencesFormValues) {
     try {
       setSaving(true);
+      console.log('Guardando preferencias con moneda:', values.default_currency_code);
 
-      // Verificar si ya existen preferencias para la organización
+      // PASO 1: Verificar si ya existen preferencias para la organización
       const { data: existingPrefs, error: checkError } = await supabase
         .from('organization_preferences')
         .select('organization_id, settings')
@@ -164,17 +197,40 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
 
       if (checkError) throw checkError;
 
-      let result;
-      
-      // Preparar los valores como objeto JSONB
-      const settingsData = {
+      // PASO 2: Preparar los valores actualizados para organization_preferences
+      // Esto puede ser un objeto nuevo o actualizar el existente
+      let settingsData: any = {
         default_currency_code: values.default_currency_code,
         auto_sync_exchange_rates: values.auto_sync_exchange_rates
       };
       
+      // Si existingPrefs tiene finance, mantenerlo y actualizar solo default_currency
+      if (existingPrefs?.settings?.finance) {
+        settingsData = {
+          ...existingPrefs.settings,
+          finance: {
+            ...existingPrefs.settings.finance,
+            default_currency: values.default_currency_code // Actualizar también el campo finance.default_currency
+          },
+          default_currency_code: values.default_currency_code
+        };
+      }
+      // Si no tiene structure finance, crearlo
+      else if (existingPrefs?.settings) {
+        settingsData = {
+          ...existingPrefs.settings,
+          finance: {
+            default_currency: values.default_currency_code
+          },
+          default_currency_code: values.default_currency_code
+        };
+      }
+      
+      // PASO 3: Actualizar la tabla organization_preferences
+      let preferencesResult;
       if (existingPrefs) {
         // Actualizar preferencias existentes
-        result = await supabase
+        preferencesResult = await supabase
           .from('organization_preferences')
           .update({
             settings: settingsData,
@@ -183,7 +239,7 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
           .eq('organization_id', organizationId);
       } else {
         // Crear nuevas preferencias
-        result = await supabase
+        preferencesResult = await supabase
           .from('organization_preferences')
           .insert({
             organization_id: organizationId,
@@ -193,13 +249,52 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
           });
       }
 
-      if (result.error) throw result.error;
+      if (preferencesResult.error) throw preferencesResult.error;
 
+      // PASO 4: Actualizar tabla organization_currencies para establecer la moneda base
+      // Primero, resetear todas las monedas is_base=false para la organización
+      const { error: resetBaseError } = await supabase
+        .from('organization_currencies')
+        .update({ is_base: false, updated_at: new Date().toISOString() })
+        .eq('organization_id', organizationId);
+
+      if (resetBaseError) throw resetBaseError;
+
+      // Ahora establecer la moneda seleccionada como base
+      const { error: updateBaseError } = await supabase
+        .from('organization_currencies')
+        .update({ is_base: true, updated_at: new Date().toISOString() })
+        .eq('organization_id', organizationId)
+        .eq('currency_code', values.default_currency_code);
+
+      if (updateBaseError) {
+        // Es posible que la moneda no exista en organization_currencies todavía
+        console.log('Error al actualizar moneda base, posiblemente no existe en organization_currencies');
+        // En este caso, intentamos insertarla
+        const { error: insertError } = await supabase
+          .from('organization_currencies')
+          .insert({
+            organization_id: organizationId,
+            currency_code: values.default_currency_code,
+            is_base: true,
+            auto_update: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      // Mostrar mensaje de éxito
       toast({
         title: 'Preferencias guardadas',
-        description: 'Las preferencias de moneda han sido actualizadas correctamente.',
+        description: 'La moneda base ha sido actualizada correctamente en todas las configuraciones.',
         variant: 'default',
       });
+      
+      // Recargar las monedas para reflejar los cambios
+      await loadCurrencies();
+      
     } catch (err: any) {
       console.error('Error al guardar preferencias:', err);
       toast({
@@ -249,7 +344,7 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
                       ) : (
                         currencies.map((currency) => (
                           <SelectItem 
-                            key={currency.id} 
+                            key={currency.code} 
                             value={currency.code}
                             className="dark:text-gray-200 dark:focus:bg-gray-700"
                           >

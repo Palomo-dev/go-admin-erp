@@ -43,6 +43,8 @@ interface Currency {
   symbol?: string;
   decimals?: number;
   is_active?: boolean;
+  is_base?: boolean;
+  auto_update?: boolean;
 }
 
 interface RateHistoryItem {
@@ -96,7 +98,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
     };
     
     initComponent();
-  }, []);
+  }, [organizationId]); // Añadido organizationId como dependencia
 
   // Cargar historial de tasas cuando se selecciona una moneda
   useEffect(() => {
@@ -105,46 +107,80 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
     }
   }, [selectedCurrency]);
 
-  // Función para cargar monedas
+  // Función para cargar monedas con estructura normalizada
   async function loadCurrencies() {
     try {
       setLoading(true);
       console.log('Cargando monedas disponibles para la organización...');
       
-      // Cargar monedas de la organización actual usando la tabla currencies
-      const { data: orgCurrencies, error: orgError } = await supabase
-        .from('currencies')
-        .select('code, name, symbol, decimals, is_base, template_code')
-        .eq('organization_id', organizationId)
-        .order('code');
+      // 1. Cargar monedas asociadas a la organización usando organization_currencies
+      const { data: orgCurrencyRel, error: orgRelError } = await supabase
+        .from('organization_currencies')
+        .select('currency_code, is_base, auto_update')
+        .eq('organization_id', organizationId);
 
-      if (orgError) {
-        console.error('Error al consultar currencies para la organización:', orgError);
-        throw orgError;
+      if (orgRelError) {
+        console.error('Error al consultar organization_currencies:', orgRelError);
+        throw orgRelError;
       }
       
-      // Si no hay monedas específicas de la organización, usar las plantillas globales
-      if (!orgCurrencies || orgCurrencies.length === 0) {
-        console.log('No se encontraron monedas para la organización, usando plantillas globales...');
-        const { data: templateCurrencies, error: templateError } = await supabase
+      console.log(`Relaciones de moneda encontradas: ${orgCurrencyRel?.length || 0}`);
+      
+      if (!orgCurrencyRel || orgCurrencyRel.length === 0) {
+        console.warn('No se encontraron monedas asociadas a esta organización');
+      }
+      
+      // 2. Obtener los códigos de moneda para la organización
+      const currencyCodes = orgCurrencyRel?.map(rel => rel.currency_code) || [];
+      console.log('Códigos de moneda para la organización:', currencyCodes);
+      
+      // 3. Cargar información completa de las monedas
+      let currenciesData: Currency[] = [];
+      
+      if (currencyCodes.length > 0) {
+        // Cargar las monedas específicas de la organización desde el catálogo global
+        const { data: currenciesDetails, error: currenciesError } = await supabase
           .from('currencies')
-          .select('code, name, symbol, decimals, is_base, template_code')
-          .is('organization_id', null)
-          .order('code');
+          .select('code, name, symbol, decimals, is_active')
+          .in('code', currencyCodes);
           
-        if (templateError) {
-          console.error('Error al consultar plantillas de moneda:', templateError);
-          throw templateError;
+        if (currenciesError) {
+          console.error('Error al cargar detalles de monedas:', currenciesError);
+          throw currenciesError;
         }
         
-        const datosMonedas = templateCurrencies || [];
-        console.log(`Monedas de plantilla cargadas: ${datosMonedas.length}`, datosMonedas);
-        setCurrencies(datosMonedas);
-      } else {
-        console.log(`Monedas de organización cargadas: ${orgCurrencies.length}`, orgCurrencies);
-        setCurrencies(orgCurrencies);
+        // Combinar detalles con información de is_base/auto_update
+        currenciesData = (currenciesDetails || []).map(currency => {
+          const orgRelation = orgCurrencyRel.find(rel => rel.currency_code === currency.code);
+          return {
+            ...currency,
+            is_base: orgRelation?.is_base || false,
+            auto_update: orgRelation?.auto_update || false
+          };
+        });
       }
       
+      // Si no hay monedas para la organización, cargar todas las monedas activas como fallback
+      if (currenciesData.length === 0) {
+        console.log('Cargando catálogo global de monedas como fallback...');
+        const { data: allCurrencies, error: allError } = await supabase
+          .from('currencies')
+          .select('code, name, symbol, decimals, is_active')
+          .eq('is_active', true)
+          .order('code');
+          
+        if (allError) {
+          console.error('Error al cargar catálogo global de monedas:', allError);
+          throw allError;
+        }
+        
+        currenciesData = allCurrencies || [];
+      }
+      
+      console.log(`Monedas cargadas: ${currenciesData.length}`, currenciesData);
+      setCurrencies(currenciesData);
+      
+      // 4. Implementación del sistema de fallback para seleccionar moneda
       // Verificar si tenemos tasas disponibles para estas monedas
       const today = format(new Date(), 'yyyy-MM-dd');
       console.log('Fecha para verificar tasas:', today);
@@ -155,40 +191,63 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
         .eq('rate_date', today)
         .order('code');
         
-      if (!errorTasas) {
-        console.log(`Monedas con tasas disponibles hoy: ${tasasHoy?.length || 0}`);
-        if (tasasHoy && tasasHoy.length > 0) {
-          const codigosTasas = tasasHoy.map(t => t.code);
-          console.log('Códigos con tasas disponibles:', codigosTasas);
-          
-          // Preferir monedas que tengan tasas disponibles
-          if (codigosTasas.includes('USD')) {
-            setSelectedCurrency('USD');
-            console.log('Seleccionando USD como moneda predeterminada (tiene tasas).');
-            return;
-          } else if (codigosTasas.length > 0) {
-            setSelectedCurrency(codigosTasas[0]);
-            console.log(`Seleccionando ${codigosTasas[0]} como moneda predeterminada (tiene tasas).`);
-            return;
-          }
+      if (!errorTasas && tasasHoy && tasasHoy.length > 0) {
+        const codigosTasas = tasasHoy.map(t => t.code);
+        console.log('Monedas con tasas disponibles hoy:', codigosTasas);
+        
+        // Preferir monedas que tengan tasas disponibles
+        if (codigosTasas.includes('USD')) {
+          setSelectedCurrency('USD');
+          console.log('Seleccionando USD como moneda predeterminada (tiene tasas).');
+          return;
+        } else if (codigosTasas.length > 0) {
+          setSelectedCurrency(codigosTasas[0]);
+          console.log(`Seleccionando ${codigosTasas[0]} como moneda predeterminada (tiene tasas).`);
+          return;
         }
-      } else {
-        console.error('Error al verificar tasas disponibles:', errorTasas);
       }
       
-      // Si llegamos aquí, no hay tasas o hubo error, usar moneda base u otra disponible
-      const monedas = orgCurrencies || [];
-      const monedaBase = monedas.find(m => m.is_base);
-      
+      // 5. Sistema de fallback de 4 niveles cuando no hay tasas o hay error
+      // Nivel 1: Moneda marcada como base en organization_currencies
+      const monedaBase = currenciesData.find(m => m.is_base);
       if (monedaBase) {
-        console.log('Seleccionando moneda base:', monedaBase.code);
+        console.log('Nivel 1: Seleccionando moneda base de la organización:', monedaBase.code);
         setSelectedCurrency(monedaBase.code);
-      } else if (monedas.length > 0) {
-        console.log('Seleccionando primera moneda disponible:', monedas[0].code);
-        setSelectedCurrency(monedas[0].code);
-      } else {
-        console.warn('No se encontraron monedas activas, usando USD como fallback');
+        return;
+      }
+      
+      // Nivel 2: Buscar preferencia de la organización
+      try {
+        const { data: orgPrefs } = await supabase
+          .from('organization_preferences')
+          .select('settings')
+          .eq('organization_id', organizationId)
+          .single();
+          
+        const defaultCurrency = orgPrefs?.settings?.finance?.default_currency;
+        if (defaultCurrency && currenciesData.some(c => c.code === defaultCurrency)) {
+          console.log('Nivel 2: Seleccionando moneda de preferencias de organización:', defaultCurrency);
+          setSelectedCurrency(defaultCurrency);
+          return;
+        }
+      } catch (prefError) {
+        console.warn('No se encontraron preferencias para la organización');
+      }
+      
+      // Nivel 3: Usar USD como fallback si está disponible
+      if (currenciesData.some(c => c.code === 'USD')) {
+        console.log('Nivel 3: Seleccionando USD como fallback');
         setSelectedCurrency('USD');
+        return;
+      }
+      
+      // Nivel 4: Usar primera moneda disponible
+      if (currenciesData.length > 0) {
+        console.log('Nivel 4: Seleccionando primera moneda disponible:', currenciesData[0].code);
+        setSelectedCurrency(currenciesData[0].code);
+      } else {
+        console.warn('No se encontraron monedas disponibles');
+        setError('No se encontraron monedas disponibles para la organización');
       }
     } catch (err: any) {
       console.error('Error al cargar monedas:', err);
@@ -202,7 +261,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
     }
   }
 
-  // Función para cargar historial de tasas de una moneda
+  // Función para cargar historial de tasas de una moneda (adaptada a estructura normalizada)
   async function loadRateHistory(currencyCode: string) {
     try {
       if (!currencyCode) {
@@ -219,11 +278,10 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
       
       console.log(`Cargando historial para ${currencyCode} desde ${startDate} hasta ${endDate}`);
       
-      // Primero verificar si la moneda existe en currencies para esta organización o global
+      // 1. Verificar si la moneda existe en el catálogo global
       const { data: currencyExists, error: currencyError } = await supabase
         .from('currencies')
         .select('code')
-        .or(`organization_id.eq.${organizationId},organization_id.is.null`)
         .eq('code', currencyCode)
         .single();
         
@@ -231,9 +289,23 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
         console.error(`Error al verificar si existe la moneda ${currencyCode}:`, currencyError);
       }
       
-      console.log(`Moneda ${currencyCode} existe en la organización o global:`, currencyExists ? 'Sí' : 'No');
+      // 2. Verificar si la moneda está asociada a la organización
+      const { data: orgCurrency, error: orgCurrencyError } = await supabase
+        .from('organization_currencies')
+        .select('currency_code, is_base')
+        .eq('organization_id', organizationId)
+        .eq('currency_code', currencyCode)
+        .single();
+        
+      const existeEnCatalogo = Boolean(currencyExists);
+      const esMonedaDeOrganizacion = Boolean(orgCurrency);
+      const esMonedaBase = orgCurrency?.is_base || false;
       
-      // Consultar historial de tasas
+      console.log(`Moneda ${currencyCode} - Existe en catálogo: ${existeEnCatalogo}, ` +
+        `Asignada a organización: ${esMonedaDeOrganizacion}, ` + 
+        `Es moneda base: ${esMonedaBase}`);
+      
+      // 3. Consultar historial de tasas
       const { data, error } = await supabase
         .from('currency_rates')
         .select('rate_date, rate, base_currency_code')
@@ -249,7 +321,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
       
       console.log(`Datos históricos obtenidos para ${currencyCode}:`, data?.length || 0, 'registros');
       
-      // Verificar si todos los datos tienen base_currency_code para debugging
+      // 4. Verificar si todos los datos tienen base_currency_code para debugging
       if (data && data.length > 0) {
         const sinBaseCurrency = data.filter(item => !item.base_currency_code).length;
         if (sinBaseCurrency > 0) {
@@ -263,11 +335,11 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
         console.log('Base currency codes encontrados:', baseCurrencyCodes.join(', '));
       }
       
-      // Si no hay datos, intentar consultar sin restricción de fecha para debugging
+      // 5. Si no hay datos, intentar consultar sin restricción de fecha para debugging
       if (!data || data.length === 0) {
         const { data: allData, error: allError } = await supabase
           .from('currency_rates')
-          .select('rate_date, rate')
+          .select('rate_date, rate, base_currency_code')
           .eq('code', currencyCode)
           .limit(5);
           
@@ -278,16 +350,16 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
         // Consultar todas las monedas disponibles en la tabla currency_rates
         const { data: availableCurrencies, error: availableError } = await supabase
           .from('currency_rates')
-          .select('code')
+          .select('code, base_currency_code')
           .eq('rate_date', format(new Date(), 'yyyy-MM-dd'))
           .order('code');
           
         console.log('Monedas disponibles hoy en currency_rates:', 
-          availableCurrencies?.map(c => c.code).join(', ') || 'Ninguna', 
+          availableCurrencies?.map(c => `${c.code} (base: ${c.base_currency_code || 'N/A'})`).join(', ') || 'Ninguna', 
           availableError ? `Error: ${availableError.message}` : 'Sin error');
       }
       
-      // Formatear fechas para el gráfico - asegurar que todos los campos necesarios estén presentes
+      // 6. Formatear datos para el gráfico
       const formattedData = (data || []).map(item => ({
         ...item,
         formatted_date: format(new Date(item.rate_date), 'dd/MM/yy'),
@@ -576,11 +648,18 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
                   </div>
                 ) : (
                   <div className="h-64">
-                    {rateHistory && rateHistory.length > 0 && rateHistory[0]?.base_currency_code && (
-                      <div className="mb-2 flex items-center justify-end">
-                        <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
-                          Moneda base: {rateHistory[0].base_currency_code}
-                        </Badge>
+                    {rateHistory && rateHistory.length > 0 && (
+                      <div className="mb-2 flex items-center justify-end gap-2">
+                        {rateHistory[0]?.base_currency_code && (
+                          <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
+                            Moneda base: {rateHistory[0].base_currency_code}
+                          </Badge>
+                        )}
+                        {selectedCurrency && (
+                          <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+                            Mostrando: {selectedCurrency}
+                          </Badge>
+                        )}
                       </div>
                     )}
                     <ResponsiveContainer width="100%" height="100%">

@@ -54,7 +54,7 @@ const CatalogoProductos: React.FC = () => {
   const [stockPorSucursal, setStockPorSucursal] = useState<StockSucursal[]>([]);
 
 
-  // Cargar productos desde Supabase
+  // Cargar productos desde Supabase con una sola consulta eficiente
   useEffect(() => {
     const fetchProductos = async () => {
       try {
@@ -62,6 +62,7 @@ const CatalogoProductos: React.FC = () => {
         
         // Obtener el ID de organización del almacenamiento local
         let organizationId = null;
+        let branchId = null;
         
         if (typeof window !== 'undefined') {
           // Obtener directamente el currentOrganizationId guardado durante la autenticación
@@ -70,11 +71,24 @@ const CatalogoProductos: React.FC = () => {
             organizationId = parseInt(orgId, 10);
           }
           
+          // Obtener el ID de la sucursal activa
+          const activeBranch = localStorage.getItem('currentBranchId');
+          if (activeBranch) {
+            branchId = parseInt(activeBranch, 10);
+          }
+          
           // Si no existe en localStorage, buscar en sessionStorage
           if (!organizationId) {
             const sessionOrgId = sessionStorage.getItem('currentOrganizationId');
             if (sessionOrgId) {
               organizationId = parseInt(sessionOrgId, 10);
+            }
+          }
+          
+          if (!branchId) {
+            const sessionBranchId = sessionStorage.getItem('currentBranchId');
+            if (sessionBranchId) {
+              branchId = parseInt(sessionBranchId, 10);
             }
           }
           
@@ -110,49 +124,165 @@ const CatalogoProductos: React.FC = () => {
           throw new Error('No se encontró el ID de la organización');
         }
 
-        // Construir consulta base
-        let query = supabase
+        // Obtener solo productos principales (no variantes)
+        let mainProductsQuery = supabase
           .from('products')
-          .select('*, categories(id, name)') // Incluir información de categorías
-          .eq('organization_id', organizationId);
-        
-        // Aplicar filtros
+          .select(`
+            *,
+            categories(id, name),
+            children:products(
+              *,
+              categories(id, name)
+            ),
+            product_prices(
+              id, 
+              price, 
+              effective_from, 
+              effective_to
+            ),
+            product_costs(
+              id,
+              cost,
+              effective_from,
+              effective_to
+            ),
+            stock_levels(
+              branch_id,
+              qty_on_hand,
+              qty_reserved,
+              avg_cost,
+              branches(id, name)
+            ),
+            product_images(
+              id, 
+              storage_path, 
+              is_primary
+            )
+          `)
+          .eq('organization_id', organizationId)
+          .is('parent_product_id', null); // Solo productos principales
+
+          // Aplicar filtros
         if (filters.busqueda) {
-          query = query.or(`name.ilike.%${filters.busqueda}%,sku.ilike.%${filters.busqueda}%,barcode.ilike.%${filters.busqueda}%`);
+          mainProductsQuery = mainProductsQuery.or(`name.ilike.%${filters.busqueda}%,sku.ilike.%${filters.busqueda}%,barcode.ilike.%${filters.busqueda}%`);
         }
         
         if (filters.categoria) {
-          query = query.eq('category_id', filters.categoria);
+          mainProductsQuery = mainProductsQuery.eq('category_id', filters.categoria);
         }
         
-        // Si se selecciona un estado específico, filtrar por ese estado
+        // Filtrar por estado
         if (filters.estado && filters.estado !== 'todos') {
-          query = query.eq('status', filters.estado);
+          mainProductsQuery = mainProductsQuery.eq('status', filters.estado);
         } else if (filters.estado === 'todos') {
           // Si se selecciona explícitamente "todos", mostrar todos los productos incluyendo eliminados
-          // No aplicamos ningún filtro adicional
         } else {
           // Por defecto (sin filtro de estado), no mostrar productos eliminados
-          query = query.neq('status', 'deleted');
+          mainProductsQuery = mainProductsQuery.neq('status', 'deleted');
         }
         
         // Ordenar resultados
-        query = query.order(filters.ordenarPor, { ascending: true });
+        mainProductsQuery = mainProductsQuery.order(filters.ordenarPor, { ascending: true });
         
         // Ejecutar consulta
-        const { data, error } = await query;
+        const { data: mainProductsData, error } = await mainProductsQuery;
         
         if (error) throw error;
         
-        // Formatear productos y obtener información adicional de stock
-        const formattedProductos = data.map((producto: any) => ({
-          ...producto,
-          category: producto.categories
-        }));
+        if (!mainProductsData || mainProductsData.length === 0) {
+          setProductos([]);
+          setLoading(false);
+          return;
+        }
         
-        // Obtener información de stock para cada producto
-        await fetchStockInfo(formattedProductos);
+        // Procesar y formatear los datos obtenidos
+        const processedProducts = mainProductsData.map((product: any) => {
+          // Obtener el precio actual (el más reciente y vigente)
+          let currentPrice = 0;
+        
+          if (product.product_prices && product.product_prices.length > 0) {
+            const validPrices = product.product_prices
+              .filter((pp: any) => !pp.effective_to || new Date(pp.effective_to) > new Date())
+              .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+            
+            if (validPrices.length > 0) {
+              currentPrice = validPrices[0].price;
+            }
+          }
+          
+          // Obtener el costo actual (el más reciente y vigente)
+          let currentCost = 0;
+          if (product.product_costs && product.product_costs.length > 0) {
+            const validCosts = product.product_costs
+              .filter((pc: any) => !pc.effective_to || new Date(pc.effective_to) > new Date())
+              .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+            
+            if (validCosts.length > 0) {
+              currentCost = validCosts[0].cost;
+            }
+          }
+          
+          // Calcular el stock disponible para la sucursal actual
+          let stockTotal = 0;
+          let stockBranch = 0;
+          
+          if (product.stock_levels && product.stock_levels.length > 0) {
+            // Stock total en todas las sucursales
+            stockTotal = product.stock_levels.reduce((sum: number, sl: any) => {
+              return sum + (sl.qty_on_hand || 0) - (sl.qty_reserved || 0);
+            }, 0);
+            
+            // Stock en la sucursal actual (si se ha seleccionado una)
+            if (branchId) {
+              const branchStock = product.stock_levels.find((sl: any) => sl.branch_id === branchId);
+              if (branchStock) {
+                stockBranch = (branchStock.qty_on_hand || 0) - (branchStock.qty_reserved || 0);
+              }
+            }
+          }
+          
+          // Obtener la ruta de almacenamiento de la imagen principal si existe
+          let imagePath = null;
+          if (product.product_images && product.product_images.length > 0) {
+            const primaryImage = product.product_images.find((img: any) => img.is_primary);
+            if (primaryImage && primaryImage.storage_path) {
+              imagePath = primaryImage.storage_path;
+            }
+          }
+          
+          // Procesar variantes (productos hijos)
+          const variants = product.children ? product.children.map((child: any) => {
+            // Aplicar la misma lógica de procesamiento a cada variante
+            let childPrice = 0;
+            // Para las variantes, podríamos necesitar consultar sus precios por separado si no se incluyen
+            // en la consulta principal, pero por ahora usamos el valor de la variante directamente
+            
+            return {
+              ...child,
+              category: child.categories,
+              price: childPrice || 0,
+              cost: 0, // Similar a price, necesitaríamos consultar esto por separado
+              stock: 0  // Lo mismo para stock
+            };
+          }) : [];
+          
+          // Retornar el producto formateado con toda la información
+          return {
+            ...product,
+            category: product.categories,
+            price: currentPrice,
+            cost: currentCost,
+            stock: stockTotal,
+            stock_branch: stockBranch,
+            image_url: imagePath,
+            variants: variants
+          };
+        });
 
+        console.log('processedProducts', processedProducts);  
+        
+        setProductos(processedProducts);
+        
       } catch (error) {
         console.error('Error al cargar productos:', error);
         toast({
@@ -171,10 +301,26 @@ const CatalogoProductos: React.FC = () => {
   // Función para obtener información de stock por sucursal para un producto específico
   const fetchStockPorSucursal = async (productId: number) => {
     try {
-      // Obtener stock por sucursal para el producto seleccionado
+      // Buscar el producto seleccionado en los productos ya cargados
+      const selectedProduct = productos.find(p => p.id === productId);
+      
+      if (selectedProduct && selectedProduct.stock_levels) {
+        // Ya tenemos la información de stock por sucursal, solo necesitamos formatearla
+        const formattedStockData: StockSucursal[] = selectedProduct.stock_levels.map((item: any) => ({
+          branch_id: item.branch_id,
+          branch_name: item.branches?.name || 'Sucursal sin nombre',
+          product_id: productId,
+          qty: (item.qty_on_hand || 0) - (item.qty_reserved || 0)
+        }));
+        
+        setStockPorSucursal(formattedStockData);
+        return;
+      }
+      
+      // Si no tenemos la información en los productos cargados, hacemos la consulta
       const { data: stockData, error: stockError } = await supabase
         .from('stock_levels')
-        .select('branch_id, qty_on_hand, branches(id, name)')
+        .select('branch_id, qty_on_hand, qty_reserved, branches(id, name)')
         .eq('product_id', productId);
       
       if (stockError) throw stockError;
@@ -184,7 +330,7 @@ const CatalogoProductos: React.FC = () => {
         branch_id: item.branch_id,
         branch_name: item.branches?.name || 'Sucursal sin nombre',
         product_id: productId,
-        qty: item.qty_on_hand || 0
+        qty: (item.qty_on_hand || 0) - (item.qty_reserved || 0)
       }));
       
       setStockPorSucursal(formattedStockData);
@@ -194,51 +340,42 @@ const CatalogoProductos: React.FC = () => {
     }
   };
 
-  // Función para obtener información de stock agregada
-  const fetchStockInfo = async (productsArray: Producto[]) => {
-    try {
-      // IDs de los productos para consulta
-      const productIds = productsArray.map((p: any) => p.id);
-      
-      if (productIds.length === 0) {
-        setProductos([]);
-        return;
-      }
-      
-      // Obtener stock por producto y sucursal
-      const { data: stockData, error: stockError } = await supabase
-        .from('stock_levels')
-        .select('product_id, branch_id, qty_on_hand')
-        .in('product_id', productIds);
-      
-      if (stockError) throw stockError;
-      
-      // Agrupar stock por producto
-      const stockByProduct: { [key: number]: number } = {};
-      
-      stockData?.forEach((item: any) => {
-        if (!stockByProduct[item.product_id]) {
-          stockByProduct[item.product_id] = 0;
-        }
-        stockByProduct[item.product_id] += item.qty_on_hand || 0;
-      });
-      
-      // Actualizar productos con información de stock
-      const productsWithStock = productsArray.map((producto: any) => ({
-        ...producto,
-        stock: stockByProduct[producto.id] || 0
-      }));
-      
-      setProductos(productsWithStock);
-    } catch (error) {
-      console.error('Error al obtener información de stock:', error);
-    }
-  };
-
   // Funciones para gestionar los dialogos y acciones CRUD
   const handleCrear = () => {
-    // Redireccionar a la nueva página de creación de productos
-    router.push('/app/inventario/productos/nuevo');
+    try {
+      // Preparar una estructura de datos de producto vacía como plantilla
+      const emptyProduct = {
+        id: 'new',
+        name: '',
+        description: '',
+        sku: '',
+        barcode: '',
+        status: 'active',
+        price: 0,
+        cost: 0,
+        stock: 0,
+        category_id: null,
+        organization_id: localStorage.getItem('currentOrganizationId') || sessionStorage.getItem('currentOrganizationId'),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        product_prices: [],
+        product_costs: [],
+        stock_levels: [],
+        product_images: [],
+        variants: []
+      };
+      
+      // Guardar la plantilla en sessionStorage para usar en la página de creación
+      sessionStorage.setItem('new_product_template', JSON.stringify(emptyProduct));
+      console.log('Plantilla para nuevo producto guardada en sessionStorage');
+      
+      // Redireccionar a la nueva página de creación de productos
+      router.push('/app/inventario/productos/nuevo');
+    } catch (error) {
+      console.error('Error al preparar la plantilla para nuevo producto:', error);
+      // Redireccionar de todos modos
+      router.push('/app/inventario/productos/nuevo');
+    }
   };
 
   const handleEditar = (producto: Producto) => {
@@ -246,25 +383,114 @@ const CatalogoProductos: React.FC = () => {
     router.push(`/app/inventario/productos/${producto.id}/editar`);
   };
 
-  const handleDuplicar = (producto: Producto) => {
-    // Clonar el producto pero eliminar el ID y modificar SKU para que sea único
-    const duplicatedProduct = {
-      ...producto,
-      id: 0, // Usar 0 temporalmente, se asignará un nuevo ID al guardar
-      sku: `${producto.sku}-COPIA`,
-      name: `${producto.name} (Copia)`
-    } as Producto;
-    
-    setSelectedProducto(duplicatedProduct);
+  const handleDuplicar = async (producto: Producto) => {
+    try {
+      // Obtener datos completos del producto original
+      const { data: originalProductData, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories(id, name),
+          children:products(
+            *,
+            categories(id, name)
+          ),
+          product_prices(id, price, effective_from, effective_to),
+          product_costs(id, cost, effective_from, effective_to),
+          product_images(id, storage_path, is_primary)
+        `)
+        .eq('id', producto.id)
+        .single();
+        
+      if (error) throw error;
+      
+      if (originalProductData) {
+        // Preparar el producto duplicado con cambios en los campos únicos
+        const duplicatedProduct: any = {
+          ...originalProductData,
+          id: 'duplicate', // Marcar como duplicado para la página de creación
+          sku: `${originalProductData.sku}-COPIA`,
+          name: `${originalProductData.name} (Copia)`,
+          barcode: originalProductData.barcode ? `${originalProductData.barcode}-COPIA` : '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          // Mantener referencias a datos relacionados pero quitar IDs para que sean nuevos al guardar
+          product_prices: originalProductData.product_prices ? originalProductData.product_prices.map((p: any) => ({ ...p, id: 'new', product_id: 'duplicate' })) : [],
+          product_costs: originalProductData.product_costs ? originalProductData.product_costs.map((c: any) => ({ ...c, id: 'new', product_id: 'duplicate' })) : [],
+          product_images: [], // No duplicar imágenes directamente
+          // Preparar variantes (productos hijos)
+          children: originalProductData.children ? originalProductData.children.map((child: any) => ({
+            ...child,
+            id: 'new-child',
+            sku: `${child.sku}-COPIA`,
+            name: `${child.name} (Copia)`,
+            parent_product_id: 'duplicate'
+          })) : []
+        };
+        
+        // Guardar el producto duplicado en sessionStorage para la página de creación
+        sessionStorage.setItem('duplicated_product_data', JSON.stringify(duplicatedProduct));
+        console.log('Datos del producto duplicado guardados en sessionStorage');
+        
+        // Redireccionar a la página de creación con indicador de que es una duplicación
+        router.push('/app/inventario/productos/nuevo?from=duplicate');
+      } else {
+        throw new Error('No se encontraron los datos completos del producto');
+      }
+    } catch (error) {
+      console.error('Error al duplicar producto:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo duplicar el producto. Intente de nuevo más tarde."
+      });
+    }
   };
 
   const handleVer = async (producto: Producto) => {
-    // Redireccionar a la página de detalle del producto
-    router.push(`/app/inventario/productos/${producto.id}`);
+    try {
+      // Antes de redireccionar, asegurarse de que tenemos todos los datos del producto
+      // Esto es útil cuando implementamos la vista detallada que necesitará datos completos
+      const { data: productData, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories(id, name),
+          children:products(
+            *,
+            categories(id, name),
+            product_prices(id, price, effective_from, effective_to),
+            product_costs(id, cost, effective_from, effective_to),
+            stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
+            product_images(id, storage_path, is_primary)
+          ),
+          product_prices(id, price, effective_from, effective_to),
+          product_costs(id, cost, effective_from, effective_to),
+          stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
+          product_images(id, storage_path, is_primary)
+        `)
+        .eq('id', producto.id)
+        .single();
+        
+      if (error) throw error;
+      
+      // Almacenamos los datos completos del producto en localStorage para recuperarlos en la página de detalles
+      if (productData) {
+        sessionStorage.setItem(`product_${producto.id}_data`, JSON.stringify(productData));
+        console.log('Datos completos del producto guardados en sessionStorage');
+      }
+      
+      // Redireccionar a la página de detalle del producto
+      router.push(`/app/inventario/productos/${producto.id}`);
+    } catch (error) {
+      console.error('Error al obtener datos detallados del producto:', error);
+      // Redireccionar de todos modos, la página de detalles deberá manejar la carga
+      router.push(`/app/inventario/productos/${producto.id}`);
+    }
   };
 
-  const handleEliminarClick = (id: number) => {
-    setProductoToDelete(id);
+  const handleEliminarClick = async (productoId: number | string) => {
+    setProductoToDelete(productoId);
     setIsDeleteDialogOpen(true);
   };
 
@@ -367,7 +593,7 @@ const CatalogoProductos: React.FC = () => {
         loading={loading}
         onEdit={(producto: Producto) => handleEditar(producto)}
         onView={(producto: Producto) => handleVer(producto)}
-        onDelete={(id: number) => handleEliminarClick(id)}
+        onDelete={(id: string | number) => handleEliminarClick(id)}
         onDuplicate={(producto: Producto) => handleDuplicar(producto)}
       />
       

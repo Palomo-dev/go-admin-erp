@@ -39,7 +39,7 @@ interface ProductosTableProps {
   loading: boolean;
   onEdit: (producto: Producto) => void;
   onView: (producto: Producto) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string | number) => void;
   onDuplicate: (producto: Producto) => void;
 }
 
@@ -69,7 +69,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   const [pageSize, setPageSize] = useState<number>(25);
   
   // Estado para almacenar las imágenes principales de los productos
-  const [productImages, setProductImages] = useState<Record<number, string>>({});
+  const [productImages, setProductImages] = useState<Record<string | number, string>>({});
   
   // Cálculo de productos por página
   const indexOfLastProduct = currentPage * pageSize;
@@ -102,8 +102,8 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       
       console.log('Received product images data:', data);
       
-      // Crear un mapa de productId -> imageUrl usando Supabase storage directamente
-      const imageMap: Record<number, string> = {};
+      // Crear un mapa de productId -> storage_path directamente
+      const imageMap: Record<string | number, string> = {};
       if (data && data.length > 0) {
         console.log('Processing', data.length, 'product images');
         
@@ -113,15 +113,10 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
             return;
           }
           
-          // Usar storage_path con Supabase storage para obtener la URL pública
-          const { data: urlData } = supabase.storage
-            .from('organization_images')
-            .getPublicUrl(img.storage_path);
-          const publicUrl = urlData?.publicUrl || '';
+          // Usar storage_path directamente sin generar URL pública
+          imageMap[img.product_id] = img.storage_path;
           
-          console.log(`Generated URL for product ${img.product_id}:`, publicUrl.substring(0, 60) + '...');
-          
-          imageMap[img.product_id] = publicUrl;
+          console.log(`Stored storage_path for product ${img.product_id}:`, img.storage_path);
         });
       } else {
         console.log('No product images found for these products');
@@ -171,10 +166,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   };
   
   // Función para determinar el color de fondo según stock
-  const getBgColorByStock = (stock: number | undefined, trackStock: boolean) => {
-    // Si no se rastrea el stock, no hay color especial
-    if (!trackStock) return '';
-    
+  const getBgColorByStock = (stock: number | undefined) => {
     // Si no hay stock definido, dejamos el color predeterminado
     if (stock === undefined) return '';
     
@@ -235,14 +227,14 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
           <TableBody>
             {currentProductos.map((producto) => (
               <TableRow 
-                key={producto.id}
-                className={`${getBgColorByStock(producto.stock, producto.track_stock)}`}
+                key={typeof producto.id === 'number' ? producto.id : String(producto.id)}
+                className={`${getBgColorByStock(producto.stock)}`}
               >
                 <TableCell>
                   <div className="relative h-14 w-14 rounded-md overflow-hidden border bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    {productImages[producto.id] ? (
+                    {productImages[String(producto.id)] ? (
                       <img
-                        src={productImages[producto.id]}
+                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImages[String(producto.id)]}`}
                         alt={producto.name}
                         className="h-full w-full object-cover"
                         onError={(e) => {
@@ -271,13 +263,10 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 <TableCell className="font-mono">{producto.sku}</TableCell>
                 <TableCell className="font-medium">{producto.name}</TableCell>
                 <TableCell>{producto.category?.name || '-'}</TableCell>
-                <TableCell className="text-right">{formatCurrency(producto.price)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(producto.cost)}</TableCell>
+                <TableCell className="text-right">{typeof producto.price === 'number' ? formatCurrency(producto.price) : '-'}</TableCell>
+                <TableCell className="text-right">{typeof producto.cost === 'number' ? formatCurrency(producto.cost) : '-'}</TableCell>
                 <TableCell className="text-center">
-                  {producto.track_stock 
-                    ? <span className={producto.stock && producto.stock <= 0 ? 'text-red-500 font-semibold' : ''}>{producto.stock || 0}</span>
-                    : <span className="text-gray-400">N/A</span>
-                  }
+                  <span className={producto.stock && producto.stock <= 0 ? 'text-red-500 font-semibold' : ''}>{producto.stock || 0}</span>
                 </TableCell>
                 <TableCell>{renderEstado(producto.status)}</TableCell>
                 <TableCell className="text-right">

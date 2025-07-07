@@ -49,7 +49,6 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     category_id: producto.category_id || '',
     unit_code: producto.unit_code || '',
     supplier_id: producto.supplier_id || '',
-    track_stock: producto.track_stock || false,
   });
   
   // Cargar datos de categorías, unidades y proveedores al montar el componente
@@ -108,13 +107,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     setFormData({ ...formData, [name]: processedValue });
   };
   
-  // Manejar cambio en switch de seguimiento de stock
-  const handleSwitchChange = (checked: boolean) => {
-    setFormData({
-      ...formData,
-      track_stock: checked,
-    });
-  };
+  // No longer needed - track_stock has been removed
   
   // Guardar cambios en el producto
   const handleSaveChanges = async () => {
@@ -131,7 +124,6 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           category_id: formData.category_id || null,
           unit_code: formData.unit_code || null,
           supplier_id: formData.supplier_id || null,
-          track_stock: formData.track_stock,
           updated_at: new Date().toISOString(),
         })
         .eq('id', producto.id)
@@ -294,14 +286,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           />
         </div>
         
-        <div className="flex items-center space-x-2 py-2">
-          <Switch
-            id="track_stock"
-            checked={formData.track_stock}
-            onCheckedChange={handleSwitchChange}
-          />
-          <Label htmlFor="track_stock">Seguimiento de Stock</Label>
-        </div>
+        {/* Stock tracking removed as it's always on now */}
       </div>
       
       {/* Metadatos y botón guardar */}

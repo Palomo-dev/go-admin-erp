@@ -58,7 +58,7 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
   
   useEffect(() => {
     const fetchStockLevels = async () => {
-      if (!organization?.id || !producto.track_stock) {
+      if (!organization?.id) {
         setLoading(false);
         return;
       }

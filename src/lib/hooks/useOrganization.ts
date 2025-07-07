@@ -48,7 +48,6 @@ export function obtenerOrganizacionActiva(): Organizacion {
     const localData = localStorage.getItem(STORAGE_KEY);
     if (localData) {
       const parsed = JSON.parse(localData);
-      console.log('Organización recuperada de localStorage:', parsed.id);
       return parsed;
     }
     
@@ -326,7 +325,6 @@ export function useOrganization() {
         if (!userId) {
           // Si no hay usuario pero hay organización en local, usamos esa
           if (organizacionLocal && organizacionLocal.id) {
-            console.log('Usando organización del almacenamiento local:', organizacionLocal.id);
             // Crear un objeto FormattedOrganization válido a partir de los datos locales
             const formattedOrg: FormattedOrganization = {
               id: organizacionLocal.id,

@@ -170,9 +170,22 @@ export default function PaymentMethodsList({
                   {method.payment_method?.requires_reference ? "Sí" : "No"}
                 </TableCell>
                 <TableCell>
+                  {/* Lógica para mostrar gateway según el método */}
                   {method.settings?.gateway ? (
                     <Badge variant="outline">
                       {method.settings.gateway}
+                    </Badge>
+                  ) : method.payment_method_code === "stripe" ? (
+                    <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">
+                      stripe
+                    </Badge>
+                  ) : method.payment_method_code === "paypal" ? (
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                      paypal
+                    </Badge>
+                  ) : method.payment_method_code === "mp" ? (
+                    <Badge variant="outline" className="bg-sky-100 text-sky-800 border-sky-300">
+                      mercadopago
                     </Badge>
                   ) : (
                     <span className="text-muted-foreground">N/A</span>

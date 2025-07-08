@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/config";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Filter, SlidersHorizontal } from "lucide-react";
+import { PlusCircle, SlidersHorizontal } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -35,11 +34,43 @@ export default function PipelineHeader({
   const [currentPipeline, setCurrentPipeline] = useState<Pipeline | null>(null);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   
-  // Obtener el ID de la organización del localStorage
+  // Obtener el ID de la organización del localStorage con múltiples opciones de clave
   useEffect(() => {
-    const orgId = localStorage.getItem("currentOrganizationId");
-    if (orgId) {
-      setOrganizationId(Number(orgId));
+    // Lista de posibles claves donde podría estar almacenado el ID de la organización
+    const possibleKeys = [
+      "currentOrganizationId",
+      "organizationId", 
+      "selectedOrganizationId",
+      "orgId",
+      "organization_id"
+    ];
+    
+    // Buscar en localStorage
+    for (const key of possibleKeys) {
+      const orgId = localStorage.getItem(key);
+      if (orgId) {
+        console.log(`Organización encontrada en localStorage con clave: ${key}`, orgId);
+        setOrganizationId(Number(orgId));
+        return;
+      }
+    }
+    
+    // Si no está en localStorage, buscar en sessionStorage
+    for (const key of possibleKeys) {
+      const orgId = sessionStorage.getItem(key);
+      if (orgId) {
+        console.log(`Organización encontrada en sessionStorage con clave: ${key}`, orgId);
+        setOrganizationId(Number(orgId));
+        return;
+      }
+    }
+    
+    // Si no se encuentra, usar un valor predeterminado para desarrollo
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Usando ID de organización predeterminado para desarrollo: 2');
+      setOrganizationId(2); // Valor predeterminado para desarrollo
+    } else {
+      console.error('No se pudo encontrar el ID de organización en el almacenamiento local');
     }
   }, []);
   
@@ -127,15 +158,6 @@ export default function PipelineHeader({
       
       <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
         <Button 
-          variant="outline" 
-          size="sm" 
-          className="border-gray-300 dark:border-gray-600"
-        >
-          <Filter className="h-4 w-4 mr-1" />
-          Filtros
-        </Button>
-        
-        <Button 
           onClick={onNewOpportunity} 
           size="sm" 
           className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -143,8 +165,6 @@ export default function PipelineHeader({
           <PlusCircle className="h-4 w-4 mr-1" />
           Nueva Oportunidad
         </Button>
-        
-        <ThemeToggle />
       </div>
     </header>
   );

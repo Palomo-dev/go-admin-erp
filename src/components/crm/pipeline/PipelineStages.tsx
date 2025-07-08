@@ -6,9 +6,9 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/utils/Utils";
+import { formatCurrency, getCurrentTheme, applyTheme } from "@/utils/Utils";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Calendar, DollarSign } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Stage {
@@ -49,48 +49,77 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Obtener el ID de la organización y el usuario del localStorage
+  // Obtener el ID de la organización y el usuario
   useEffect(() => {
-    // Primero intentamos con currentOrganizationId (clave principal)
-    let orgId = localStorage.getItem("currentOrganizationId");
-    
-    // Si no se encuentra, intentamos con otras posibles claves
-    if (!orgId) {
-      orgId = localStorage.getItem("organizacionActiva");
-    }
-    
-    // Si seguimos sin encontrarlo, intentamos con otra posible clave
-    if (!orgId) {
-      orgId = localStorage.getItem("organizationId");
-    }
-    
-    if (orgId) {
-      console.log("ID de organización encontrado:", orgId);
-      setOrganizationId(Number(orgId));
-    } else {
-      console.error("No se pudo encontrar el ID de organización en localStorage");
-    }
-
-    // Obtener el ID del usuario actual desde la sesión de Supabase
+    // Obtener userId de la sesión de Supabase
     const getUserId = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session?.user) {
-        setUserId(data.session.user.id);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error al obtener la sesión:', error.message);
+          return;
+        }
+        
+        if (session?.user) {
+          console.log('Usuario autenticado:', session.user.email);
+          setUserId(session.user.id);
+        } else {
+          console.log('No hay sesión de usuario activa');
+        }
+      } catch (err) {
+        console.error('Error inesperado al obtener sesión:', err);
       }
     };
-
+    
     getUserId();
+    
+    const possibleKeys = [
+      "currentOrganizationId",
+      "organizationId", 
+      "selectedOrganizationId",
+      "orgId",
+      "organization_id"
+    ];
+    
+    for (const key of possibleKeys) {
+      const orgId = localStorage.getItem(key);
+      if (orgId) {
+        console.log(`Organización encontrada en localStorage con clave: ${key}`, orgId);
+        setOrganizationId(Number(orgId));
+        return;
+      }
+    }
+    
+    for (const key of possibleKeys) {
+      const orgId = sessionStorage.getItem(key);
+      if (orgId) {
+        console.log(`Organización encontrada en sessionStorage con clave: ${key}`, orgId);
+        setOrganizationId(Number(orgId));
+        return;
+      }
+    }
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Usando ID de organización predeterminado para desarrollo: 2');
+      setOrganizationId(2); // Valor predeterminado para desarrollo
+    } else {
+      console.error('No se pudo encontrar el ID de organización en el almacenamiento local');
+    }
   }, []);
 
   // Función para cargar las etapas del pipeline
   const loadStages = async () => {
-    if (!pipelineId || !organizationId) return;
+    if (!pipelineId) {
+      console.error('ID de pipeline no definido');
+      return;
+    }
 
     try {
+      console.log('Cargando etapas para pipeline ID:', pipelineId);
       setLoading(true);
       const { data, error } = await supabase
         .from('stages')
-        .select('id, name, position, pipeline_id')
+        .select('id, name, position, pipeline_id, probability')
         .eq('pipeline_id', pipelineId)
         .order('position');
 
@@ -99,11 +128,19 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         return;
       }
 
+      // Verificar si se encontraron etapas
+      if (!data || data.length === 0) {
+        console.log('No se encontraron etapas para el pipeline', pipelineId);
+        return;
+      }
+
+      console.log('Etapas cargadas:', data.length);
+      
       // Asegurarse de que todos los datos tengan el pipeline_id
-      const stagesWithPipelineId = data ? data.map((stage) => ({ 
+      const stagesWithPipelineId = data.map((stage) => ({ 
         ...stage, 
         pipeline_id: stage.pipeline_id || pipelineId 
-      })) : [];
+      }));
 
       setStages(stagesWithPipelineId);
     } catch (err) {
@@ -115,28 +152,59 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
   // Función para cargar las oportunidades (con useCallback para evitar bucles infinitos)
   const loadOpportunities = useCallback(async () => {
-    if (!pipelineId || !organizationId) return;
+    if (!pipelineId) {
+      console.error('ID de pipeline no definido para cargar oportunidades');
+      return;
+    }
 
     try {
+      console.log('Cargando oportunidades para pipeline ID:', pipelineId);
+      console.log('Organization ID:', organizationId || 'no definido');
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Construir la consulta base
+      let query = supabase
         .from('opportunities')
         .select(`
           id, name, stage_id, customer_id, amount, currency, expected_close_date, status,
           customer:customers!customer_id(id, full_name, email)
         `)
         .eq('pipeline_id', pipelineId)
-        .eq('organization_id', organizationId)
-        .eq('status', 'open')
+        .in('status', ['open', 'won', 'lost']) // Mostrar todas las oportunidades (abiertas, ganadas y perdidas)
         .order('updated_at', { ascending: false });
+        
+      // Agregar filtro de organización solo si está disponible
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+      
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error al cargar oportunidades:', error);
         return;
       }
 
+      // Verificar si se encontraron oportunidades
+      if (!data || data.length === 0) {
+        console.log('No se encontraron oportunidades para el pipeline', pipelineId);
+        // Verificar si hay oportunidades sin filtrar por estado
+        const { data: allOpps, error: allOppsError } = await supabase
+          .from('opportunities')
+          .select('id, status')
+          .eq('pipeline_id', pipelineId);
+          
+        if (!allOppsError && allOpps && allOpps.length > 0) {
+          console.log(`Se encontraron ${allOpps.length} oportunidades totales (incluyendo no abiertas)`);
+          console.log('Estados:', allOpps.map(o => o.status).filter((v, i, a) => a.indexOf(v) === i));
+        }
+        return;
+      }
+
+      console.log('Oportunidades cargadas:', data.length);
+      
       // Las oportunidades ya vienen con el objeto customer desde Supabase
-      const formattedOpps = data ? data.map((opp: any) => {
+      const formattedOpps = data.map((opp: any) => {
         // Si no hay datos del cliente, proporcionamos un valor predeterminado
         if (!opp.customer) {
           return {
@@ -145,7 +213,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
           };
         }
         return opp;
-      }) : [];
+      });
 
       setOpportunities(formattedOpps);
     } catch (err) {
@@ -158,10 +226,13 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   // Cargar datos iniciales cuando el componente se monta
   useEffect(() => {
     if (pipelineId) {
+      console.log('Iniciando carga de datos para pipeline:', pipelineId);
       loadStages();
       loadOpportunities();
+    } else {
+      console.error('No se puede cargar datos: pipelineId no está definido');
     }
-  }, [pipelineId, organizationId]);
+  }, [pipelineId, organizationId, loadOpportunities]);
 
   // Escuchar el evento para recargar datos cuando se crea una nueva oportunidad
   useEffect(() => {    
@@ -209,12 +280,20 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
   // Manejar el arrastre y soltar de oportunidades entre etapas
   const handleDragEnd = async (result: any) => {
-    if (!result.destination || !userId) return;
+    if (!result.destination) {
+      console.log('Drag cancelado: no hay destino');
+      return;
+    }
 
     const { draggableId, source, destination } = result;
 
     // Si la oportunidad se soltó en la misma etapa, no hacemos nada
-    if (source.droppableId === destination.droppableId) return;
+    if (source.droppableId === destination.droppableId) {
+      console.log('Misma etapa: no es necesario actualizar');
+      return;
+    }
+
+    console.log(`Moviendo oportunidad ${draggableId} de etapa ${source.droppableId} a ${destination.droppableId}`);
 
     // Obtener el ID de la oportunidad y las etapas de origen y destino
     const opportunityId = draggableId;
@@ -223,40 +302,88 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
     // Encontrar la oportunidad que se movió
     const movedOpportunity = opportunities.find((opp) => opp.id === opportunityId);
-    if (!movedOpportunity) return;
+    if (!movedOpportunity) {
+      console.error('No se encontró la oportunidad:', opportunityId);
+      return;
+    }
+
+    // Encontrar información de las etapas
+    const fromStage = stages.find((stage) => stage.id === fromStageId);
+    const toStage = stages.find((stage) => stage.id === toStageId);
+
+    if (!fromStage || !toStage) {
+      console.error('No se encontraron las etapas de origen o destino');
+      return;
+    }
+
+    console.log(`Moviendo de "${fromStage.name}" a "${toStage.name}"`);
+
+    // Determinar el nuevo estado basado en el nombre de la etapa destino
+    let newStatus = movedOpportunity.status;
+    
+    // Actualizar estado según el nombre de la etapa
+    if (toStage.name === "Ganado") {
+      newStatus = "won";
+    } else if (toStage.name === "Perdido") {
+      newStatus = "lost";
+    } else if ((movedOpportunity.status === "won" || movedOpportunity.status === "lost") && 
+               toStage.name !== "Ganado" && toStage.name !== "Perdido") {
+      // Si va de ganado/perdido a una etapa normal, vuelve a estado abierto
+      newStatus = "open";
+    }
 
     // Actualizar localmente para una respuesta inmediata en la UI
     setOpportunities((prevOpps) =>
-      prevOpps.map((opp) => (opp.id === opportunityId ? { ...opp, stage_id: toStageId } : opp))
+      prevOpps.map((opp) => {
+        if (opp.id === opportunityId) {
+          return { ...opp, stage_id: toStageId, status: newStatus };
+        }
+        return opp;
+      })
     );
+
+    // Datos a actualizar en la base de datos
+    const updateData: { stage_id: string; status?: string } = { 
+      stage_id: toStageId 
+    };
+    
+    // Solo actualizamos el status si ha cambiado
+    if (newStatus !== movedOpportunity.status) {
+      updateData.status = newStatus;
+    }
+
+    console.log('Actualizando en Supabase:', updateData);
 
     // Actualizar en la base de datos
     const { error } = await supabase
       .from("opportunities")
-      .update({ stage_id: toStageId })
+      .update(updateData)
       .eq("id", opportunityId);
 
     if (error) {
-      console.error("Error al actualizar la etapa de la oportunidad:", error);
+      console.error("Error al actualizar la oportunidad:", error);
       // Revertir el cambio local en caso de error
       setOpportunities((prevOpps) =>
-        prevOpps.map((opp) => (opp.id === opportunityId ? { ...opp, stage_id: fromStageId } : opp))
+        prevOpps.map((opp) => (
+          opp.id === opportunityId ? 
+          { ...opp, stage_id: fromStageId, status: movedOpportunity.status } : 
+          opp
+        ))
       );
       return;
     }
 
-    // Encontrar nombres de etapas para el registro
-    const fromStage = stages.find((stage) => stage.id === fromStageId);
-    const toStage = stages.find((stage) => stage.id === toStageId);
+    console.log('Actualización exitosa');
 
     // Ejecutar automatizaciones (tareas, notificaciones, etc.)
-    if (fromStage && toStage && organizationId && userId) {
+    if (organizationId && userId) {
+      console.log('Ejecutando automatizaciones por cambio de etapa');
       await handleStageChangeAutomation({
         opportunityId: movedOpportunity.id,
         opportunityTitle: movedOpportunity.name,
         customerId: movedOpportunity.customer_id,
-        customerName: movedOpportunity.customer.full_name,
-        stageId: result.destination.droppableId,
+        customerName: movedOpportunity.customer.full_name || 'Cliente',
+        stageId: destination.droppableId,
         stageName: toStage.name,
         userId: userId,
         pipelineId: pipelineId,
@@ -268,14 +395,29 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   // Mostrar esqueletos mientras se cargan los datos
   if (loading) {
     return (
-      <div className="flex flex-wrap gap-6 p-6 overflow-x-auto">
+      <div className="flex flex-wrap gap-6 p-6 overflow-x-auto bg-white/5 dark:bg-black/5 rounded-lg">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="flex-shrink-0 w-72">
-            <Skeleton className="h-10 w-full mb-4" />
-            <Skeleton className="h-32 w-full mb-3" />
-            <Skeleton className="h-32 w-full" />
+          <div key={i} className="flex-shrink-0 w-72 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-blue-100 dark:border-blue-900">
+            <Skeleton className="h-10 w-full mb-4 bg-blue-100 dark:bg-blue-900/30" />
+            <div className="px-3 py-2 mb-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+              <Skeleton className="h-6 w-full bg-blue-100 dark:bg-blue-900/30" />
+            </div>
+            <Skeleton className="h-24 w-full mb-2 bg-blue-100 dark:bg-blue-900/30" />
+            <Skeleton className="h-24 w-full bg-blue-100 dark:bg-blue-900/30" />
           </div>
         ))}
+      </div>
+    );
+  }
+  
+  // Mostrar mensaje si no hay etapas
+  if (!stages || stages.length === 0) {
+    return (
+      <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-lg shadow border border-blue-100 dark:border-blue-900">
+        <h3 className="text-xl font-medium text-blue-700 dark:text-blue-300 mb-2">No hay etapas configuradas</h3>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          Este pipeline no tiene etapas configuradas. Contacte al administrador para configurar el pipeline.
+        </p>
       </div>
     );
   }
@@ -286,9 +428,9 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         {stages.map((stage) => (
           <div 
             key={stage.id} 
-            className="flex-shrink-0 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-all duration-200"
+            className="flex-shrink-0 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-all duration-200 border border-blue-100 dark:border-blue-900"
           >
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="p-3 border-b border-blue-100 dark:border-blue-900 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white dark:from-blue-950 dark:to-gray-900">
               <h3 className="font-semibold text-gray-800 dark:text-gray-200">
                 {stage.name}
               </h3>
@@ -296,7 +438,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <Badge variant="outline" className="text-xs bg-gray-100 dark:bg-gray-700">
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-800">
                         {getOpportunitiesByStage(stage.id).length}
                       </Badge>
                     </TooltipTrigger>
@@ -309,15 +451,15 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             </div>
             
             {/* Mostrar valor total de etapa */}
-            <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center text-sm border-b border-gray-200 dark:border-gray-700">
+            <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/30 flex justify-between items-center text-sm border-b border-blue-100 dark:border-blue-900">
               <div className="flex items-center">
-                <BarChart3 className="h-4 w-4 text-blue-500 dark:text-blue-400 mr-1.5" />
-                <span className="text-gray-600 dark:text-gray-300">Valor total:</span>
+                <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-1.5" />
+                <span className="text-blue-700 dark:text-blue-300">Valor total:</span>
               </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
-                    <span className="font-medium text-blue-600 dark:text-blue-400">
+                    <span className="font-medium text-blue-700 dark:text-blue-300">
                       {formatCurrency(calculateStageValue(stage.id))}
                     </span>
                   </TooltipTrigger>
@@ -334,7 +476,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                 <div 
                   {...provided.droppableProps}
                   ref={provided.innerRef}
-                  className="min-h-[12rem] p-2 overflow-y-auto"
+                  className="min-h-[12rem] p-2 overflow-y-auto bg-white dark:bg-gray-800"
                 >
                   {getOpportunitiesByStage(stage.id).map((opportunity, index) => (
                     <Draggable 
@@ -347,24 +489,46 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="p-3 mb-2 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer transition-colors duration-200"
+                          className={`p-3 mb-2 cursor-pointer transition-all duration-200 shadow-sm hover:shadow ${opportunity.status === 'won' 
+                            ? 'border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10 hover:border-green-300 hover:bg-green-50 dark:hover:border-green-700 dark:hover:bg-green-900/20' 
+                            : opportunity.status === 'lost'
+                            ? 'border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 hover:border-red-300 hover:bg-red-50 dark:hover:border-red-700 dark:hover:bg-red-900/20'
+                            : 'border border-blue-100 dark:border-blue-900 hover:border-blue-300 hover:bg-blue-50 dark:hover:border-blue-700 dark:hover:bg-blue-900/20'}`}
                         >
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100 flex items-center">
                             {opportunity.name}
+                            {opportunity.status === 'won' && (
+                              <span className="ml-1.5 text-green-600 dark:text-green-400 text-xs bg-green-100 dark:bg-green-900/30 rounded-full px-1.5 py-0.5">
+                                Ganado
+                              </span>
+                            )}
+                            {opportunity.status === 'lost' && (
+                              <span className="ml-1.5 text-red-600 dark:text-red-400 text-xs bg-red-100 dark:bg-red-900/30 rounded-full px-1.5 py-0.5">
+                                Perdido
+                              </span>
+                            )}
                           </h4>
                           
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center">
                             {opportunity.customer?.full_name || 'Cliente no especificado'}
                           </div>
                           
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                            <div className="text-blue-600 dark:text-blue-400 font-medium">
+                          {opportunity.expected_close_date && (
+                            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                              <Calendar className="h-3 w-3 mr-1 text-blue-500 dark:text-blue-400" />
+                              {new Date(opportunity.expected_close_date).toLocaleDateString('es-ES')}
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-50 dark:border-blue-900/50">
+                            <div className={`font-medium flex items-center ${opportunity.status === 'won' ? 'text-green-600 dark:text-green-400' : opportunity.status === 'lost' ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                              <DollarSign className="h-3 w-3 mr-0.5" />
                               {formatCurrency(opportunity.amount)}
                             </div>
                             <Badge 
-                              className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                              className={`capitalize ${opportunity.status === 'won' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : opportunity.status === 'lost' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}`}
                             >
-                              {opportunity.status || 'activo'}
+                              {opportunity.currency || 'COP'}
                             </Badge>
                           </div>
                         </Card>

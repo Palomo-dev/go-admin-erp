@@ -297,11 +297,43 @@ export default function PipelineView() {
   const [loading, setLoading] = useState(true);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
 
-  // Obtener el ID de la organización del localStorage
+  // Obtener el ID de la organización del localStorage con múltiples opciones de clave
   useEffect(() => {
-    const orgId = localStorage.getItem("currentOrganizationId");
-    if (orgId) {
-      setOrganizationId(Number(orgId));
+    // Lista de posibles claves donde podría estar almacenado el ID de la organización
+    const possibleKeys = [
+      "currentOrganizationId",
+      "organizationId", 
+      "selectedOrganizationId",
+      "orgId",
+      "organization_id"
+    ];
+    
+    // Buscar en localStorage
+    for (const key of possibleKeys) {
+      const orgId = localStorage.getItem(key);
+      if (orgId) {
+        console.log(`Organización encontrada en localStorage con clave: ${key}`, orgId);
+        setOrganizationId(Number(orgId));
+        return;
+      }
+    }
+    
+    // Si no está en localStorage, buscar en sessionStorage
+    for (const key of possibleKeys) {
+      const orgId = sessionStorage.getItem(key);
+      if (orgId) {
+        console.log(`Organización encontrada en sessionStorage con clave: ${key}`, orgId);
+        setOrganizationId(Number(orgId));
+        return;
+      }
+    }
+    
+    // Si no se encuentra, usar un valor predeterminado para desarrollo
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Usando ID de organización predeterminado para desarrollo: 2');
+      setOrganizationId(2); // Valor predeterminado para desarrollo
+    } else {
+      console.error('No se pudo encontrar el ID de organización en el almacenamiento local');
     }
   }, []);
 

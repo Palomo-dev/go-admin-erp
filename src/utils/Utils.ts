@@ -68,3 +68,54 @@ export function debounce<T extends (...args: any[]) => any>(func: T, wait: numbe
     timeout = setTimeout(later, wait);
   };
 }
+
+/**
+ * Tipo para el modo de tema
+ */
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+/**
+ * Obtiene el tema actual del sistema
+ * 
+ * @returns El tema actual ('light' o 'dark')
+ */
+export function getCurrentTheme(): ThemeMode {
+  if (typeof window === 'undefined') return 'light';
+  
+  // Verificar si hay un tema guardado en localStorage
+  const savedTheme = localStorage.getItem('theme') as ThemeMode | null;
+  
+  if (savedTheme) return savedTheme;
+  
+  // Si no hay tema guardado, detectar preferencia del sistema
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return prefersDark ? 'dark' : 'light';
+}
+
+/**
+ * Aplica un tema específico a la interfaz
+ * 
+ * @param theme - El tema a aplicar ('light', 'dark' o 'system')
+ */
+export function applyTheme(theme: ThemeMode): void {
+  if (typeof window === 'undefined') return;
+  
+  const root = window.document.documentElement;
+  
+  if (theme === 'system') {
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+    
+    root.classList.toggle('dark', systemTheme === 'dark');
+    return;
+  }
+  
+  // Aplicar tema y color azul principal
+  root.classList.toggle('dark', theme === 'dark');
+  root.style.setProperty('--primary', theme === 'dark' ? '210 100% 50%' : '210 100% 50%');
+  localStorage.setItem('theme', theme);
+  
+  // Disparar evento para que otros componentes actualicen su tema
+  window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme } }));
+}

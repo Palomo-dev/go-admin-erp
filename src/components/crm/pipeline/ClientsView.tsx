@@ -24,9 +24,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { formatCurrency } from "@/utils/Utils";
-import { Mail, Phone, Building, Search, MoreHorizontal, Users, ArrowUpDown, Briefcase } from "lucide-react";
+import { Mail, Phone, Building, Search, MoreHorizontal, Users, ArrowUpDown, Briefcase, MapPin, FileText, Clock, CalendarDays, Calculator, TrendingUp } from "lucide-react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface Customer {
@@ -34,11 +35,25 @@ interface Customer {
   full_name: string;
   email?: string;
   phone?: string;
-  company?: string;
+  address?: string;
+  notes?: string;
+  created_at?: string;
+  organization_id: number;
   total_opportunities: number;
   total_value: number;
   active_opportunities: number;
   won_opportunities: number;
+  lost_opportunities: number;
+  has_opportunities: boolean;
+  latest_opportunity?: {
+    id: string;
+    name?: string;
+    status: string;
+    amount?: number;
+    stage_id?: string;
+    created_at?: string;
+  };
+  opportunities?: any[];
 }
 
 interface ClientsViewProps {
@@ -53,11 +68,43 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
   const [sortField, setSortField] = useState<string>("full_name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  // Obtener el ID de la organización del localStorage
+  // Obtener el ID de la organización de localStorage o sessionStorage
   useEffect(() => {
-    const orgId = localStorage.getItem("currentOrganizationId");
-    if (orgId) {
-      setOrganizationId(Number(orgId));
+    // Lista de posibles claves donde podría estar almacenado el ID de la organización
+    const possibleKeys = [
+      "currentOrganizationId",
+      "organizationId", 
+      "selectedOrganizationId",
+      "orgId",
+      "organization_id"
+    ];
+    
+    // Buscar en localStorage
+    for (const key of possibleKeys) {
+      const orgId = localStorage.getItem(key);
+      if (orgId) {
+        console.log(`Organización encontrada en localStorage con clave: ${key}`, orgId);
+        setOrganizationId(Number(orgId));
+        return;
+      }
+    }
+    
+    // Si no está en localStorage, buscar en sessionStorage
+    for (const key of possibleKeys) {
+      const orgId = sessionStorage.getItem(key);
+      if (orgId) {
+        console.log(`Organización encontrada en sessionStorage con clave: ${key}`, orgId);
+        setOrganizationId(Number(orgId));
+        return;
+      }
+    }
+    
+    // Si no se encuentra, usar un valor predeterminado para desarrollo
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Usando ID de organización predeterminado para desarrollo: 2');
+      setOrganizationId(2); // Valor predeterminado para desarrollo
+    } else {
+      console.error('No se pudo encontrar el ID de organización en el almacenamiento local');
     }
   }, []);
 
@@ -69,76 +116,91 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
       setLoading(true);
       
       try {
-        // Primero obtenemos los clientes con oportunidades en este pipeline
-        const { data: customerOpps, error: oppsError } = await supabase
-          .from("opportunities")
-          .select("customer_id")
-          .eq("organization_id", organizationId)
-          .eq("pipeline_id", pipelineId)
-          .order("customer_id");
-          
-        if (oppsError) throw oppsError;
+        console.log(`Cargando clientes para pipeline ${pipelineId} y organización ${organizationId}`);
         
-        if (!customerOpps || customerOpps.length === 0) {
-          setCustomers([]);
-          setLoading(false);
-          return;
-        }
-        
-        // Extraer IDs de clientes únicos sin usar Set
-        const customerIds: string[] = [];
-        customerOpps.forEach(opp => {
-          if (!customerIds.includes(opp.customer_id)) {
-            customerIds.push(opp.customer_id);
-          }
-        });
-        
-        // Cargar datos de clientes
+        // Consulta optimizada para obtener todos los clientes de la organización
+        // sin filtrar primero por oportunidades para tener una lista completa
         const { data: customersData, error: customersError } = await supabase
           .from("customers")
-          .select("id, full_name, email, phone, company")
-          .in("id", customerIds)
+          .select("id, full_name, email, phone, address, created_at, notes, organization_id")
           .eq("organization_id", organizationId)
           .order("full_name");
           
-        if (customersError) throw customersError;
+        if (customersError) {
+          console.error("Error al cargar clientes:", customersError);
+          throw customersError;
+        }
         
-        if (!customersData) {
+        if (!customersData || customersData.length === 0) {
+          console.log("No se encontraron clientes para esta organización");
           setCustomers([]);
           setLoading(false);
           return;
         }
         
-        // Para cada cliente, obtener estadísticas de oportunidades
-        const customersWithStats = await Promise.all(
-          customersData.map(async (customer) => {
-            // Obtener total de oportunidades y valor
-            const { data: opportunitiesData } = await supabase
-              .from("opportunities")
-              .select("id, amount, status")
-              .eq("customer_id", customer.id)
-              .eq("pipeline_id", pipelineId)
-              .eq("organization_id", organizationId);
-              
-            const opportunities = opportunitiesData || [];
-            const totalValue = opportunities.reduce((sum, opp) => sum + parseFloat(opp.amount || 0), 0);
-            const activeOpportunities = opportunities.filter(opp => opp.status === "active").length;
-            const wonOpportunities = opportunities.filter(opp => opp.status === "won").length;
-            
-            return {
-              ...customer,
-              total_opportunities: opportunities.length,
-              total_value: totalValue,
-              active_opportunities: activeOpportunities,
-              won_opportunities: wonOpportunities
-            };
-          })
-        );
+        console.log(`Se encontraron ${customersData.length} clientes`);
+        
+        // Consulta única para obtener todas las oportunidades relacionadas con estos clientes
+        // en el pipeline actual, para evitar múltiples consultas individuales
+        const customerIds = customersData.map(c => c.id);
+        
+        const { data: opportunitiesData, error: oppsError } = await supabase
+          .from("opportunities")
+          .select("id, customer_id, amount, status, stage_id, name, created_at")
+          .in("customer_id", customerIds)
+          .eq("pipeline_id", pipelineId);
+          
+        if (oppsError) {
+          console.error("Error al cargar oportunidades:", oppsError);
+          throw oppsError;
+        }
+        
+        const opportunities = opportunitiesData || [];
+        console.log(`Se encontraron ${opportunities.length} oportunidades relacionadas`);
+        
+        // Agrupar oportunidades por cliente para un procesamiento eficiente
+        const opportunitiesByCustomer: Record<string, any[]> = {};
+        
+        opportunities.forEach(opp => {
+          if (!opportunitiesByCustomer[opp.customer_id]) {
+            opportunitiesByCustomer[opp.customer_id] = [];
+          }
+          opportunitiesByCustomer[opp.customer_id].push(opp);
+        });
+        
+        // Combinar datos de clientes con estadísticas de oportunidades
+        const customersWithStats = customersData.map(customer => {
+          const customerOpps = opportunitiesByCustomer[customer.id] || [];
+          const totalValue = customerOpps.reduce((sum, opp) => sum + parseFloat(opp.amount || 0), 0);
+          
+          // Contar oportunidades por estado
+          const activeOpportunities = customerOpps.filter(opp => opp.status === "open").length;
+          const wonOpportunities = customerOpps.filter(opp => opp.status === "won").length;
+          const lostOpportunities = customerOpps.filter(opp => opp.status === "lost").length;
+          
+          // Obtener la oportunidad más reciente
+          const latestOpportunity = customerOpps.length > 0 ? 
+            customerOpps.reduce((latest, current) => {
+              return new Date(current.created_at || 0) > new Date(latest.created_at || 0) ? current : latest;
+            }) : null;
+          
+          return {
+            ...customer,
+            total_opportunities: customerOpps.length,
+            active_opportunities: activeOpportunities,
+            won_opportunities: wonOpportunities,
+            lost_opportunities: lostOpportunities,
+            total_value: totalValue,
+            has_opportunities: customerOpps.length > 0,
+            latest_opportunity: latestOpportunity,
+            opportunities: customerOpps
+          };
+        });
         
         setCustomers(customersWithStats);
-        setLoading(false);
       } catch (error) {
         console.error("Error al cargar datos de clientes:", error);
+      } finally {
         setLoading(false);
       }
     };
@@ -155,19 +217,51 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
       setSortDirection("asc");
     }
   };
+  
+  // Funciones para manejar acciones del menú de cliente
+  const handleViewCustomerDetails = (customer: Customer) => {
+    console.log("Ver detalles del cliente", customer.id);
+    // Aquí se podría navegar a la página de detalles del cliente
+    // o abrir un modal con los detalles completos
+  };
+  
+  const handleEditCustomer = (customer: Customer) => {
+    console.log("Editar información del cliente", customer.id);
+    // Aquí se podría abrir un formulario de edición
+  };
+  
+  const handleCreateOpportunity = (customer: Customer) => {
+    console.log("Crear nueva oportunidad para el cliente", customer.id);
+    // Aquí se podría navegar a la página de creación de oportunidades
+    // o abrir un modal para crear una nueva oportunidad
+  };
+  
+  const handleSendEmail = (customer: Customer) => {
+    if (customer.email) {
+      window.location.href = `mailto:${customer.email}?subject=GoAdmin: Seguimiento`;
+    } else {
+      alert("Este cliente no tiene dirección de correo electrónico registrada.");
+    }
+  };
+  
+  const handleViewHistory = (customer: Customer) => {
+    console.log("Ver historial del cliente", customer.id);
+    // Aquí se podría navegar a la página de historial
+    // o abrir un modal con el historial de interacciones
+  };
 
-  // Filtrar y ordenar clientes
-  const filteredCustomers = customers
-    .filter(customer => {
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      return (
-        customer.full_name?.toLowerCase().includes(query) ||
-        customer.email?.toLowerCase().includes(query) ||
-        customer.company?.toLowerCase().includes(query)
-      );
-    })
-    .sort((a, b) => {
+  // Filtrar clientes por búsqueda
+  const filteredCustomers = customers.filter(customer => {
+    if (!searchQuery) return true;
+    
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      (customer.full_name && customer.full_name.toLowerCase().includes(searchLower)) ||
+      (customer.email && customer.email.toLowerCase().includes(searchLower)) ||
+      (customer.address && customer.address.toLowerCase().includes(searchLower)) ||
+      (customer.phone && customer.phone.toLowerCase().includes(searchLower))
+    );
+  }).sort((a, b) => {
       let valueA, valueB;
       
       switch (sortField) {
@@ -175,9 +269,9 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
           valueA = a.full_name;
           valueB = b.full_name;
           break;
-        case "company":
-          valueA = a.company || "";
-          valueB = b.company || "";
+        case "email":
+          valueA = a.email || "";
+          valueB = b.email || "";
           break;
         case "total_opportunities":
           valueA = a.total_opportunities;
@@ -274,19 +368,10 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
             <TableRow className="bg-gray-50 dark:bg-gray-800/50">
               <TableHead 
                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={() => handleSort("name")}
+                onClick={() => handleSort("full_name")}
               >
                 <div className="flex items-center gap-1">
                   Cliente
-                  <ArrowUpDown className="h-3 w-3" />
-                </div>
-              </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={() => handleSort("company")}
-              >
-                <div className="flex items-center gap-1">
-                  Empresa
                   <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
@@ -309,71 +394,163 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
                   <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead></TableHead>
+              <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredCustomers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
                   No se encontraron clientes
                 </TableCell>
               </TableRow>
             ) : (
               filteredCustomers.map((customer) => (
-                <TableRow key={customer.id}>
+                <TableRow key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                   <TableCell className="font-medium">
-                    {customer.full_name}
+                    <div className="flex flex-col">
+                      <span className="text-blue-600 dark:text-blue-400">{customer.full_name}</span>
+                      {customer.address && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>{customer.address}</span>
+                        </div>
+                      )}
+                      {customer.notes && (
+                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 mt-1 italic line-clamp-1">
+                          <FileText className="h-3 w-3" />
+                          <span>{customer.notes}</span>
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    {customer.company ? (
-                      <div className="flex items-center gap-1">
-                        <Building className="h-4 w-4 text-gray-500" />
-                        <span>{customer.company}</span>
+                    <div className="flex items-center gap-1">
+                      <Building className="h-4 w-4 text-blue-500" />
+                      <span className="text-gray-600 dark:text-gray-300 font-medium">{customer.full_name.split(' ')[0]}</span>
+                    </div>
+                    {customer.created_at && (
+                      <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <CalendarDays className="h-3 w-3" />
+                        <span>Desde: {new Date(customer.created_at).toLocaleDateString('es-CO')}</span>
                       </div>
-                    ) : (
-                      <span className="text-gray-400 dark:text-gray-500">No especificado</span>
                     )}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       {customer.email && (
                         <div className="flex items-center gap-1 text-sm">
-                          <Mail className="h-3.5 w-3.5 text-gray-500" />
-                          <span>{customer.email}</span>
+                          <Mail className="h-3.5 w-3.5 text-blue-500" />
+                          <a href={`mailto:${customer.email}`} className="hover:text-blue-600 hover:underline">{customer.email}</a>
                         </div>
                       )}
                       {customer.phone && (
                         <div className="flex items-center gap-1 text-sm">
-                          <Phone className="h-3.5 w-3.5 text-gray-500" />
-                          <span>{customer.phone}</span>
+                          <Phone className="h-3.5 w-3.5 text-blue-500" />
+                          <a href={`tel:${customer.phone}`} className="hover:text-blue-600 hover:underline">{customer.phone}</a>
                         </div>
+                      )}
+                      {!customer.email && !customer.phone && (
+                        <span className="text-gray-400 dark:text-gray-500 text-sm">Sin contacto</span>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div>
-                      <div className="font-medium">{customer.total_opportunities}</div>
-                      <div className="text-xs text-gray-500">
-                        <span className="text-amber-600 dark:text-amber-500">{customer.active_opportunities} activas</span>, 
-                        <span className="text-green-600 dark:text-green-500"> {customer.won_opportunities} ganadas</span>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-500 px-2 py-1 rounded-full text-sm font-medium">
+                        {customer.total_opportunities}
                       </div>
+                      {customer.active_opportunities > 0 && (
+                        <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-500 px-2 py-1 rounded-full text-xs font-medium">
+                          {customer.active_opportunities} activas
+                        </div>
+                      )}
+                      {customer.won_opportunities > 0 && (
+                        <div className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-500 px-2 py-1 rounded-full text-xs font-medium">
+                          {customer.won_opportunities} ganadas
+                        </div>
+                      )}
+                      {customer.lost_opportunities > 0 && (
+                        <div className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-500 px-2 py-1 rounded-full text-xs font-medium">
+                          {customer.lost_opportunities} perdidas
+                        </div>
+                      )}
                     </div>
+                    {customer.latest_opportunity && (
+                      <div className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>Última: {customer.latest_opportunity.name || "Sin nombre"}</span>
+                        {customer.latest_opportunity.status && (
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] ${customer.latest_opportunity.status === 'won' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-500' : customer.latest_opportunity.status === 'lost' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-500' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-500'}`}>
+                            {customer.latest_opportunity.status === 'won' ? 'ganada' : customer.latest_opportunity.status === 'lost' ? 'perdida' : 'activa'}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(customer.total_value)}
+                    <div className="font-medium text-blue-700 dark:text-blue-400">
+                      {formatCurrency(customer.total_value)}
+                    </div>
+                    {customer.total_opportunities > 0 && (
+                      <div className="text-xs text-gray-500 mt-1 flex items-center justify-end gap-1">
+                        <Calculator className="h-3 w-3" />
+                        <span>{formatCurrency(customer.total_value / customer.total_opportunities)} prom.</span>
+                      </div>
+                    )}
+                    {customer.won_opportunities > 0 && (
+                      <div className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center justify-end gap-1">
+                        <TrendingUp className="h-3 w-3" />
+                        <span>Ganado: {formatCurrency(customer.opportunities?.filter(o => o.status === 'won').reduce((sum, opp) => sum + parseFloat(opp.amount || 0), 0))}</span>
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menú</span>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Abrir menú</span>
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver detalle</DropdownMenuItem>
-                        <DropdownMenuItem>Ver oportunidades</DropdownMenuItem>
+                      <DropdownMenuContent align="end" className="w-52">
+                        <DropdownMenuItem 
+                          className="cursor-pointer" 
+                          onClick={() => handleViewCustomerDetails(customer)}
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          Ver detalles del cliente
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => handleEditCustomer(customer)}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Editar información
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => handleCreateOpportunity(customer)}
+                        >
+                          <Briefcase className="h-4 w-4 mr-2" />
+                          Crear nueva oportunidad
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => handleSendEmail(customer)}
+                        >
+                          <Mail className="h-4 w-4 mr-2" />
+                          Enviar correo
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => handleViewHistory(customer)}
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          Ver historial
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

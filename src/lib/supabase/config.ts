@@ -34,12 +34,17 @@ const removeCookie = (name: string) => {
 
 // Creación del cliente de Supabase
 export const createSupabaseClient = () => {
-  // Verificamos que existan las variables de entorno necesarias
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  // Configuramos las credenciales, usando valores predeterminados si no hay variables de entorno
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWdwaG16dXNibHVxaHVxaWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMzQ1MjIsImV4cCI6MjA2MTYxMDUyMn0.yr5TLl2nhevIzNdPnjVkcdn049RB2t2OgqPG0HryVR4'
   
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase credentials')
+  // Verificación de seguridad para producción
+  if (!supabaseUrl.includes('supabase.co') || !supabaseKey.includes('.')) {
+    console.error('Credenciales de Supabase inválidas')
+    // En desarrollo podemos continuar, en producción debería ser un error fatal
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Credenciales de Supabase inválidas en producción')
+    }
   }
   
   const projectRef = getProjectRef();

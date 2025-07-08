@@ -227,7 +227,7 @@ export default function PaymentMethodForm({
       
       // Construir objeto de configuración
       const settings = {
-        gateway: values.gateway, // Mantener el valor vacío para mostrar N/A
+        gateway: values.gateway === "none" ? "" : values.gateway, // Convertir "none" a cadena vacía
         gateway_config: Object.keys(gatewayConfig).length > 0 ? gatewayConfig : undefined,
         account_mapping: Object.keys(accountMapping).length > 0 ? accountMapping : undefined,
       };

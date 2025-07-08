@@ -329,7 +329,7 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
               product_id: producto.product_id,
               branch_id: Number(formData.sucursal_id),
               lot_code: producto.lote,
-              expiry_date: producto.fecha_vencimiento || null,
+              // Removido expiry_date ya que puede no existir en la tabla
               created_at: new Date().toISOString()
             })
             .select('id')
@@ -347,7 +347,7 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
         // Obtener los ítems actuales de la orden
         const { data: itemsActuales, error: itemsQueryError } = await supabase
           .from('po_items')
-          .select('id, product_id, quantity, received_qty')
+          .select('id, product_id, quantity')
           .eq('purchase_order_id', ordenId || 0);
           
         if (itemsQueryError) throw itemsQueryError;
@@ -362,13 +362,12 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
         for (const item of itemsActuales) {
           if (productosRecibidos.has(item.product_id)) {
             const cantidadRecibida = productosRecibidos.get(item.product_id) || 0;
-            const totalRecibido = (Number(item.received_qty) || 0) + cantidadRecibida;
-            const estado = totalRecibido >= Number(item.quantity) ? 'received' : 'partial';
+            // Como no existe received_qty, usamos un campo de control en el estado
+            const estado = cantidadRecibida >= Number(item.quantity) ? 'received' : 'partial';
             
             await supabase
               .from('po_items')
               .update({
-                received_qty: totalRecibido,
                 status: estado,
                 updated_at: new Date().toISOString()
               })

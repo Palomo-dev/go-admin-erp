@@ -26,6 +26,7 @@ export interface Stage {
   position: number;
   probability: number;
   color?: string;
+  description?: string;
   opportunities?: Opportunity[];
   count?: number;
   totalAmount?: number;

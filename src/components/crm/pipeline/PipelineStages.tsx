@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/lib/supabase/config";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Card } from "@/components/ui/card";
@@ -8,12 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, getCurrentTheme, applyTheme } from "@/utils/Utils";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
-import { BarChart3, Calendar, DollarSign } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { BarChart3, Calendar, DollarSign, Settings } from "lucide-react";
 
 interface Stage {
   id: string;
   name: string;
+  color?: string;
+  description?: string;
   position: number;
   pipeline_id: string;
 }
@@ -48,6 +54,14 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   const [loading, setLoading] = useState(true);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  
+  // Estado para el diálogo de configuración de etapas
+  const [configStage, setConfigStage] = useState<Stage | null>(null);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [stageName, setStageName] = useState("");
+  const [stageProbability, setStageProbability] = useState<number | null>(null);
+  const [stageColor, setStageColor] = useState("");
+  const [stageDescription, setStageDescription] = useState("");
 
   // Obtener el ID de la organización y el usuario
   useEffect(() => {
@@ -249,7 +263,6 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     };
   }, [loadOpportunities]);
 
-
   // Filtrar las oportunidades por etapa
   const getOpportunitiesByStage = (stageId: string) => {
     return opportunities.filter((opportunity) => opportunity.stage_id === stageId);
@@ -258,11 +271,76 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   // Calcular el valor total de las oportunidades en una etapa
   const calculateStageValue = (stageId: string): number => {
     const stageOpportunities = getOpportunitiesByStage(stageId);
-    return stageOpportunities.reduce((total, opp) => {
+    return stageOpportunities.reduce((total: number, opp: any) => {
       // Calcular el valor usando el campo amount
-      const weightedValue = opp.amount; // Ya no usamos probability
+      const weightedValue = opp.amount || 0; 
       return total + weightedValue;
     }, 0);
+  };
+  
+  // Función para manejar la configuración de etapas
+  const handleConfigStage = (stageToEdit: any) => {
+    setConfigStage(stageToEdit);
+    setStageName(stageToEdit.name || "");
+    setStageProbability(stageToEdit.probability || null);
+    setStageColor(stageToEdit.color || "#3b82f6"); // Color predeterminado azul
+    setStageDescription(stageToEdit.description || "");
+    setIsConfigOpen(true);
+  };
+
+  // Función para guardar los cambios de la etapa
+  const handleSaveStage = async () => {
+    if (!configStage) return;
+    
+    try {
+      // Convertir la probabilidad a formato decimal (string) como lo espera la BD
+      // De porcentaje (0-100) a decimal (0-1)
+      let probabilityValue = null;
+      if (stageProbability !== null && stageProbability !== undefined) {
+        // Convertir de porcentaje a decimal y formatear como string con 2 decimales
+        probabilityValue = (stageProbability / 100).toFixed(2);
+      }
+      
+      // Preparar los datos a actualizar
+      const updateData = {
+        name: stageName,
+        probability: probabilityValue,
+        color: stageColor,
+        description: stageDescription,
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('Datos a enviar:', updateData);
+      
+      // Actualizar en Supabase
+      const { data, error } = await supabase
+        .from('stages')
+        .update(updateData)
+        .eq('id', configStage.id)
+        .select();
+        
+      if (error) {
+        console.error('Error al actualizar la etapa:', error);
+        return;
+      }
+      
+      console.log('Respuesta de Supabase:', data);
+      
+      // Actualizar localmente
+      setStages(prevStages => 
+        prevStages.map(s => 
+          s.id === configStage.id ? 
+          { ...s, ...updateData } : 
+          s
+        )
+      );
+      
+      // Cerrar el diálogo
+      setIsConfigOpen(false);
+      console.log('Etapa actualizada correctamente');
+    } catch (error) {
+      console.error('Error al actualizar la etapa:', error);
+    }
   };
 
   // Calcular el valor total del pipeline completo
@@ -430,10 +508,28 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             key={stage.id} 
             className="flex-shrink-0 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-all duration-200 border border-blue-100 dark:border-blue-900"
           >
-            <div className="p-3 border-b border-blue-100 dark:border-blue-900 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white dark:from-blue-950 dark:to-gray-900">
-              <h3 className="font-semibold text-gray-800 dark:text-gray-200">
-                {stage.name}
-              </h3>
+            <div 
+              className="p-3 border-b border-blue-100 dark:border-blue-900 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white dark:from-blue-950 dark:to-gray-900"
+              style={{
+                borderLeft: stage.color ? `4px solid ${stage.color}` : undefined,
+                borderTopLeftRadius: '0.375rem',
+                borderTopRightRadius: '0.375rem'
+              }}
+            >
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h3 className="font-semibold text-gray-800 dark:text-gray-200 cursor-help">{stage.name}</h3>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {stage.description ? (
+                      <p>{stage.description}</p>
+                    ) : (
+                      <p>Sin descripción</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <div className="flex items-center gap-2">
                 <TooltipProvider>
                   <Tooltip>
@@ -447,6 +543,16 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                <button 
+                  onClick={() => handleConfigStage(stage)}
+                  className="ml-1 p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400"
+                  title="Configurar etapa"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-settings">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
               </div>
             </div>
             
@@ -542,6 +648,80 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
           </div>
         ))}
       </div>
+      
+      {/* Diálogo de configuración de etapa */}
+      <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configurar etapa</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="stageName" className="text-right">
+                Nombre
+              </Label>
+              <Input
+                id="stageName"
+                value={stageName}
+                onChange={(e) => setStageName(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="probability" className="text-right">
+                Probabilidad (%)
+              </Label>
+              <Input
+                id="probability"
+                type="number"
+                min="0"
+                max="100"
+                value={stageProbability || ''}
+                onChange={(e) => setStageProbability(parseInt(e.target.value) || null)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="color" className="text-right">
+                Color
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <input
+                  type="color"
+                  id="color"
+                  value={stageColor}
+                  onChange={(e) => setStageColor(e.target.value)}
+                  className="h-8 w-8 rounded-md cursor-pointer"
+                />
+                <Input
+                  value={stageColor}
+                  onChange={(e) => setStageColor(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">
+                Descripción
+              </Label>
+              <Input
+                id="description"
+                value={stageDescription}
+                onChange={(e) => setStageDescription(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsConfigOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" onClick={handleSaveStage}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DragDropContext>
   );
 }

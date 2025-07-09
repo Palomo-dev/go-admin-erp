@@ -399,6 +399,25 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
                   (sum, opp) => sum + (parseFloat(opp.amount?.toString() || "0") || 0),
                   0
                 );
+                
+                // Función para actualizar una etapa específica
+                const handleStageUpdate = (updatedStage: Stage) => {
+                  // Crear una copia del pipeline
+                  const updatedPipeline = { ...pipeline };
+                  // Encontrar el índice de la etapa a actualizar
+                  const stageIndex = updatedPipeline.stages.findIndex(
+                    (s) => s.id === updatedStage.id
+                  );
+                  // Si la etapa existe, actualizarla
+                  if (stageIndex !== -1) {
+                    updatedPipeline.stages[stageIndex] = {
+                      ...updatedPipeline.stages[stageIndex],
+                      ...updatedStage,
+                    };
+                    // Actualizar el pipeline
+                    setPipeline(updatedPipeline);
+                  }
+                };
                 return (
                   <div key={stage.id} className="min-w-[300px] max-w-[300px]">
                     <KanbanColumn 
@@ -410,6 +429,7 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
                         // Se incluye para cumplir con la interfaz
                       }}
                       isLoading={isLoading}
+                      onStageUpdate={handleStageUpdate}
                     />
                   </div>
                 );

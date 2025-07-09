@@ -29,11 +29,17 @@ interface AutomationsViewProps {
 }
 
 interface AutomationSettings {
+  id?: string;
   taskCreation: boolean;
   notifications: boolean;
   statusUpdate: boolean;
   activityLog: boolean;
   reminders: boolean;
+  name?: string;
+  description?: string;
+  active?: boolean;
+  trigger_json?: any;
+  actions_json?: any;
 }
 
 const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
@@ -95,31 +101,46 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
       try {
         setLoading(true);
         
-        // Intenta obtener las configuraciones de automatización desde Supabase
-        // Esta consulta dependerá de la estructura de tu tabla de automatizaciones
+        // Intenta obtener las configuraciones de automatización desde la tabla 'automations'
         const { data, error } = await supabase
-          .from('pipeline_automations')
+          .from('automations')
           .select('*')
-          .eq('pipeline_id', pipelineId)
           .eq('organization_id', organizationId)
-          .single();
+          .order('created_at', { ascending: false });
           
         if (error) {
-          // Si hay error pero es porque no existe el registro, usamos los valores por defecto
-          if (error.code === 'PGRST116') {
-            console.log('No se encontraron configuraciones de automatización, usando valores por defecto');
-          } else {
-            console.error('Error al cargar configuraciones de automatización:', error);
-          }
-        } else if (data) {
-          // Si encontramos datos, actualizamos el estado con ellos
-          setAutomationSettings({
-            taskCreation: data.task_creation || true,
-            notifications: data.notifications || true,
-            statusUpdate: data.status_update || true,
-            activityLog: data.activity_log || true,
-            reminders: data.reminders || false
+          console.error('Error al cargar configuraciones de automatización:', error);
+        } else if (data && data.length > 0) {
+          // Si encontramos datos, intentamos extraer la configuración
+          // Buscamos las automatizaciones relacionadas con el pipeline actual
+          const pipelineAutomations = data.filter(auto => {
+            const triggerData = auto.trigger_json || {};
+            return triggerData.pipeline_id === pipelineId;
           });
+          
+          if (pipelineAutomations.length > 0) {
+            // Extraemos datos de la primera automatización del pipeline
+            const autoData = pipelineAutomations[0];
+            const actionsData = autoData.actions_json || {};
+            
+            setAutomationSettings({
+              id: autoData.id,
+              name: autoData.name,
+              description: autoData.description,
+              active: autoData.active || false,
+              taskCreation: actionsData.create_tasks || true,
+              notifications: actionsData.send_notifications || true,
+              statusUpdate: actionsData.update_status || true,
+              activityLog: actionsData.log_activity || true,
+              reminders: actionsData.send_reminders || false,
+              trigger_json: autoData.trigger_json,
+              actions_json: autoData.actions_json
+            });
+          } else {
+            console.log('No se encontraron automatizaciones específicas para este pipeline, usando valores por defecto');
+          }
+        } else {
+          console.log('No se encontraron configuraciones de automatización, usando valores por defecto');
         }
       } catch (err) {
         console.error('Error inesperado al cargar configuraciones:', err);
@@ -148,68 +169,81 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
     }
     
     try {
-      // Mapeo de nombres de propiedades a columnas de BD
-      const dbFieldMap: Record<keyof AutomationSettings, string> = {
-        taskCreation: 'task_creation',
-        notifications: 'notifications',
-        statusUpdate: 'status_update',
-        activityLog: 'activity_log',
-        reminders: 'reminders'
+      // Mapeo de configuraciones a estructura JSON de actions_json
+      const actionsJSON = {
+        create_tasks: automationSettings.taskCreation,
+        send_notifications: automationSettings.notifications,
+        update_status: automationSettings.statusUpdate,
+        log_activity: automationSettings.activityLog,
+        send_reminders: automationSettings.reminders
       };
       
-      // Intentar actualizar registro existente primero
-      const { data: existingData, error: checkError } = await supabase
-        .from('pipeline_automations')
-        .select('id')
-        .eq('pipeline_id', pipelineId)
-        .eq('organization_id', organizationId)
-        .single();
+      // Actualizar el campo específico que cambió
+      // Solo mapeamos las configuraciones de automatizaciones que se modifican en la UI
+      const settingMappings: Partial<Record<keyof AutomationSettings, string>> = {
+        taskCreation: 'create_tasks',
+        notifications: 'send_notifications',
+        statusUpdate: 'update_status',
+        activityLog: 'log_activity',
+        reminders: 'send_reminders'
+      };
       
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw new Error(`Error al verificar configuraciones existentes: ${checkError.message}`);
+      if (settingMappings[setting]) {
+        actionsJSON[settingMappings[setting]] = newValue;
       }
       
-      // Si existe el registro, actualizamos solo el campo específico
-      if (existingData?.id) {
+      // Si tenemos un ID de automatización, actualizamos ese registro
+      if (automationSettings.id) {
         const { error: updateError } = await supabase
-          .from('pipeline_automations')
-          .update({ [dbFieldMap[setting]]: newValue })
-          .eq('id', existingData.id);
+          .from('automations')
+          .update({ 
+            actions_json: actionsJSON,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', automationSettings.id);
           
         if (updateError) {
           throw new Error(`Error al actualizar configuración: ${updateError.message}`);
         }
-        
-        console.log(`Configuración ${setting} actualizada a ${newValue}`);
       } else {
-        // Si no existe, creamos un nuevo registro con todas las configuraciones actuales
-        const newRecord = {
+        // Si no existe, creamos un nuevo registro
+        const triggerJSON = {
           pipeline_id: pipelineId,
+          event_type: 'pipeline_change',
+          conditions: []
+        };
+        
+        const newRecord = {
           organization_id: organizationId,
-          task_creation: automationSettings.taskCreation,
-          notifications: automationSettings.notifications,
-          status_update: automationSettings.statusUpdate,
-          activity_log: automationSettings.activityLog,
-          reminders: automationSettings.reminders,
-          // Sobreescribir con el nuevo valor
-          [dbFieldMap[setting]]: newValue,
+          name: `Automatización para Pipeline ${pipelineId}`,
+          description: 'Configuración de automatización del pipeline',
+          active: true,
+          trigger_json: triggerJSON,
+          actions_json: actionsJSON,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
         
-        const { error: insertError } = await supabase
-          .from('pipeline_automations')
-          .insert([newRecord]);
+        const { data: insertedData, error: insertError } = await supabase
+          .from('automations')
+          .insert([newRecord])
+          .select('id');
           
         if (insertError) {
           throw new Error(`Error al crear configuración: ${insertError.message}`);
         }
         
-        console.log('Nuevas configuraciones de automatización creadas');
+        // Actualizar el ID en el estado local
+        if (insertedData && insertedData[0]) {
+          setAutomationSettings(prev => ({
+            ...prev,
+            id: insertedData[0].id
+          }));
+        }
       }
     } catch (err) {
       console.error('Error al guardar configuración:', err);
-      // Revertir cambio en UI si falla la actualización en BD
+      // Revertir cambio local en caso de error
       setAutomationSettings(prev => ({
         ...prev,
         [setting]: !newValue

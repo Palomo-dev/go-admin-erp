@@ -111,10 +111,16 @@ export function ListaOrdenesCompra({ ordenes, onRefresh }: Readonly<ListaOrdenes
                 <TableRow key={orden.id} className="group">
                   <TableCell className="font-medium">#{orden.id}</TableCell>
                   <TableCell>
-                    {(orden.supplier?.[0]?.name || orden.suppliers?.name || 'Sin proveedor')}
+                    {/* Accedemos directamente al nombre del proveedor */}
+                    {orden.suppliers?.name || 
+                     (orden.supplier && orden.supplier[0] ? orden.supplier[0].name : null) || 
+                     'Sin proveedor'}
                   </TableCell>
                   <TableCell>
-                    {(orden.branch?.[0]?.name || orden.branches?.name || '-')}
+                    {/* Accedemos directamente al nombre de la sucursal */}
+                    {orden.branches?.name || 
+                     (orden.branch && orden.branch[0] ? orden.branch[0].name : null) || 
+                     '-'}
                   </TableCell>
                   <TableCell>
                     <Badge className={getBadgeStyle(orden.status)}>

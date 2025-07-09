@@ -21,9 +21,9 @@ type SupabaseOrderResponse = {
   updated_at: string | null;
   created_by: number | null;
   notes: string | null;
-  // En Supabase, con joins, estos campos llegan como arrays con los nombres definidos en la consulta
-  supplier: { id: number; name: string }[];
-  branch: { id: number; name: string }[];
+  // En Supabase, con joins, estos campos llegan como objetos directos con los nombres de las tablas
+  suppliers: { id: number; name: string };
+  branches: { id: number; name: string };
   // Este campo puede no existir inicialmente
   po_items_count?: number;
 };
@@ -133,6 +133,9 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
     
     try {
       // Crear y aplicar filtros a la consulta - seleccionamos solo campos existentes
+      // Usamos la notación correcta para las relaciones externas en Supabase
+      console.log('Consultando órdenes con ID de organización:', organization?.id);
+      
       let query = supabase
         .from('purchase_orders')
         .select(`
@@ -147,8 +150,8 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
           organization_id,
           created_by,
           notes,
-          supplier:suppliers(id, name),
-          branch:branches(id, name)
+          suppliers(id, name),
+          branches(id, name)
         `)
         .eq('organization_id', organization?.id || '')
         .order('created_at', { ascending: false });
@@ -174,14 +177,26 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
       
       console.log('Datos recibidos:', data?.length || 0, 'órdenes');
       
+      // Log detallado para inspeccionar la estructura completa de la primera orden
+      if (Array.isArray(data) && data.length > 0) {
+        console.log('Estructura detallada de la primera orden:', JSON.stringify(data[0], null, 2));
+      }
+      
       // Obtener el conteo de items para cada orden
       if (Array.isArray(data) && data.length > 0) {
         await obtenerConteoPorOrden(data);
       }
       
       // Procesamiento de los datos para adaptarlos a nuestra interfaz
-      const ordenesConConteo = Array.isArray(data) ? 
-        data.map((orden: SupabaseOrderResponse) => {
+      // Antes de procesar, convertimos el tipado de data explícitamente
+      const dataConTipo = Array.isArray(data) ? data as unknown as SupabaseOrderResponse[] : [];
+      
+      const ordenesConConteo = dataConTipo.map((orden) => {
+          // Log para depurar la estructura del supplier y branch antes de procesarlo
+          console.log('Orden completa:', orden);
+          console.log('Suppliers en la respuesta de Supabase:', orden.suppliers);
+          console.log('Branches en la respuesta de Supabase:', orden.branches);
+          
           // Crear el objeto con tipado correcto
           const ordenProcesada: OrdenCompra = {
             id: orden.id,
@@ -196,22 +211,33 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
             created_by: orden.created_by,
             notes: orden.notes,
             
-            // Extraer el proveedor del array si existe
-            suppliers: Array.isArray(orden.supplier) && orden.supplier.length > 0 
-              ? { id: orden.supplier[0].id, name: orden.supplier[0].name } 
-              : undefined,
+            // Asignar los datos del proveedor
+            // Para mantener compatibilidad con la interfaz OrdenCompra, asignamos el objeto a un array
+            supplier: orden.suppliers ? [orden.suppliers] : [],
+            // Asignamos el objeto suppliers directamente al campo suppliers para mantener la estructura anterior
+            suppliers: orden.suppliers ? { id: orden.suppliers.id, name: orden.suppliers.name } : undefined,
             
-            // Extraer la sucursal del array si existe
-            branches: Array.isArray(orden.branch) && orden.branch.length > 0 
-              ? { id: orden.branch[0].id, name: orden.branch[0].name } 
-              : undefined,
+            // Asignar los datos de la sucursal
+            // Para mantener compatibilidad con la interfaz OrdenCompra, asignamos el objeto a un array
+            branch: orden.branches ? [orden.branches] : [],
+            // Asignamos el objeto branches directamente al campo branches para mantener la estructura anterior
+            branches: orden.branches ? { id: orden.branches.id, name: orden.branches.name } : undefined,
               
             // Asignar el conteo de ítems o 0 si no existe
             po_items_count: orden.po_items_count ?? 0
           };
           
+          // Log para ver el resultado del procesamiento
+          console.log('OrdenProcesada:', {
+            id: ordenProcesada.id,
+            supplier: ordenProcesada.supplier,
+            suppliers: ordenProcesada.suppliers,
+            branch: ordenProcesada.branch,
+            branches: ordenProcesada.branches
+          });
+          
           return ordenProcesada;
-        }) : [];
+        });
       
       setOrdenes(ordenesConConteo);
     } catch (err: any) {

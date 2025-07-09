@@ -191,8 +191,8 @@ export function DetalleOrdenCompra({ orden, items, onRefresh, error }: DetalleOr
       const { error: updateItemsError } = await supabase
         .from('po_items')
         .update({
-          status: 'received',
-          received_quantity: supabase.rpc('get_field', { field: 'quantity' }) // Usa la cantidad original
+          status: 'received'
+          // Eliminamos el campo received_quantity que no existe en la tabla po_items
         })
         .eq('purchase_order_id', orden.id);
         

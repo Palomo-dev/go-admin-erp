@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { 
   Table,
   TableBody,
@@ -20,12 +21,16 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
-  MoreVertical
+  MoreVertical,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrdenCompra } from './types';
 import { formatCurrency } from '@/utils/Utils';
+import { supabase } from '@/lib/supabase/config';
+import { useToast } from '@/components/ui/use-toast';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +45,9 @@ interface ListaOrdenesCompraProps {
 
 export function ListaOrdenesCompra({ ordenes, onRefresh }: Readonly<ListaOrdenesCompraProps>) {
   const router = useRouter();
+  const { toast } = useToast();
+  const { organization } = useOrganization();
+  const [processingOrder, setProcessingOrder] = useState<number | null>(null);
   
   const getBadgeStyle = (status: string) => {
     switch (status) {
@@ -78,6 +86,67 @@ export function ListaOrdenesCompra({ ordenes, onRefresh }: Readonly<ListaOrdenes
   
   const handleEditar = (id: number) => {
     router.push(`/app/inventario/ordenes-compra/${id}/editar`);
+  };
+
+  const handleEnviarAlProveedor = async (orden: OrdenCompra) => {
+    // Verificamos que la orden tenga un proveedor y que el proveedor tenga email
+    const supplier = orden.suppliers || (orden.supplier && orden.supplier[0]);
+    
+    if (!supplier) {
+      toast({
+        title: 'Error',
+        description: 'La orden no tiene proveedor asignado',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    const supplierEmail = supplier.email;
+    if (!supplierEmail) {
+      toast({
+        title: 'Error',
+        description: 'El proveedor no tiene email registrado',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    try {
+      setProcessingOrder(orden.id);
+      
+      // Llamamos a la Edge Function para enviar el email
+      const { data, error } = await supabase.functions.invoke('send-purchase-order-email', {
+        body: {
+          orderId: orden.id,
+          supplierEmail: supplierEmail,
+          supplierName: supplier.name,
+          organizationName: organization?.name,
+          contactName: 'Departamento de Compras' // Podría ser personalizable en el futuro
+        }
+      });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      toast({
+        title: 'Éxito',
+        description: `Orden #${orden.id} enviada al proveedor ${supplier.name}`,
+      });
+      
+      // Actualizamos la lista de órdenes
+      onRefresh();
+      
+    } catch (error) {
+      console.error('Error al enviar orden por email:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo enviar la orden por email. Inténtelo de nuevo.',
+        variant: 'destructive'
+      });
+    } finally {
+      setProcessingOrder(null);
+    }
   };
 
   return (
@@ -167,8 +236,15 @@ export function ListaOrdenesCompra({ ordenes, onRefresh }: Readonly<ListaOrdenes
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {orden.status === 'draft' && (
-                            <DropdownMenuItem>
-                              <Send className="h-4 w-4 mr-2" />
+                            <DropdownMenuItem onSelect={(e) => {
+                              e.preventDefault();
+                              handleEnviarAlProveedor(orden);
+                            }}>
+                              {processingOrder === orden.id ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Send className="h-4 w-4 mr-2" />
+                              )}
                               Enviar al proveedor
                             </DropdownMenuItem>
                           )}

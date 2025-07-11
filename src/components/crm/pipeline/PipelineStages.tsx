@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, getCurrentTheme, applyTheme } from "@/utils/Utils";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
-import { BarChart3, Calendar, DollarSign, Settings } from "lucide-react";
+import { BarChart3, Calendar, DollarSign, Loader2, Settings } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 interface Stage {
   id: string;
@@ -52,73 +53,91 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   const [stages, setStages] = useState<Stage[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [organizationId, setOrganizationId] = useState<number | null>(null);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   
   // Estado para el diálogo de configuración de etapas
-  const [configStage, setConfigStage] = useState<Stage | null>(null);
+  const [configStage, setConfigStage] = useState<any>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [stageName, setStageName] = useState("");
   const [stageProbability, setStageProbability] = useState<number | null>(null);
-  const [stageColor, setStageColor] = useState("");
+  const [stageColor, setStageColor] = useState("#3b82f6");
   const [stageDescription, setStageDescription] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Obtener el ID de la organización y el usuario
+  // Obtener ID de la organización y el usuario
   useEffect(() => {
-    // Obtener userId de la sesión de Supabase
-    const getUserId = async () => {
+    // Obtener ID de la organización desde localStorage
+    const storedOrg = localStorage.getItem('selectedOrganization');
+    if (storedOrg) {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('Error al obtener la sesión:', error.message);
-          return;
-        }
-        
-        if (session?.user) {
-          console.log('Usuario autenticado:', session.user.email);
-          setUserId(session.user.id);
-        } else {
-          console.log('No hay sesión de usuario activa');
-        }
-      } catch (err) {
-        console.error('Error inesperado al obtener sesión:', err);
+        const orgData = JSON.parse(storedOrg);
+        // Asegurar que el ID de organización se maneje como string (UUID)
+        const orgId = String(orgData.id);
+        // Establecer organizationId como string UUID
+        setOrganizationId(orgId);
+      } catch (error) {
+        console.error('Error al parsear la organización:', error);
+        // Si hay error, buscar en otras claves como fallback
+        searchOrganizationInOtherKeys();
       }
-    };
-    
-    getUserId();
-    
+    } else {
+      // Si no está en selectedOrganization, buscar en otras claves
+      searchOrganizationInOtherKeys();
+    }
+  }, []);
+  
+  // Función para buscar el ID de la organización en otras claves del localStorage
+  const searchOrganizationInOtherKeys = () => {
+    // Intentar encontrar el ID con otras posibles claves
     const possibleKeys = [
       "currentOrganizationId",
       "organizationId", 
-      "selectedOrganizationId",
-      "orgId",
-      "organization_id"
+      "selectedOrganizationId"
     ];
     
+    let foundOrgId = false;
+    
+    // Buscar en localStorage
     for (const key of possibleKeys) {
       const orgId = localStorage.getItem(key);
       if (orgId) {
-        console.log(`Organización encontrada en localStorage con clave: ${key}`, orgId);
-        setOrganizationId(Number(orgId));
-        return;
+        console.log(`Organización encontrada en localStorage con clave: ${key}`); // Sin mostrar el ID en logs
+        // Asegurar que el ID de organización se maneje como string (UUID)
+        setOrganizationId(String(orgId));
+        foundOrgId = true;
+        break;
       }
     }
     
-    for (const key of possibleKeys) {
-      const orgId = sessionStorage.getItem(key);
-      if (orgId) {
-        console.log(`Organización encontrada en sessionStorage con clave: ${key}`, orgId);
-        setOrganizationId(Number(orgId));
-        return;
-      }
+    // Si no se encuentra en ninguna clave, usar null (la app manejará este caso)
+    if (!foundOrgId) {
+      console.log('No se encontró ID de organización en localStorage');
+      setOrganizationId(null);
     }
+  }
     
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Usando ID de organización predeterminado para desarrollo: 2');
-      setOrganizationId(2); // Valor predeterminado para desarrollo
-    } else {
-      console.error('No se pudo encontrar el ID de organización en el almacenamiento local');
-    }
+    // Obtener ID del usuario autenticado
+    const getUser = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Error al obtener usuario:', error.message);
+          return;
+        }
+        
+        if (user) {
+          console.log('Usuario autenticado:', user.email);
+          setUserId(user.id);
+        } else {
+          console.warn('No se pudo obtener el usuario autenticado');
+        }
+      } catch (err) {
+        console.error('Error inesperado al obtener usuario:', err);
+      }
+    };
+    
+    getUser();
   }, []);
 
   // Función para cargar las etapas del pipeline
@@ -173,7 +192,10 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
     try {
       console.log('Cargando oportunidades para pipeline ID:', pipelineId);
-      console.log('Organization ID:', organizationId || 'no definido');
+      // Validar que organizationId sea un UUID válido
+      if (organizationId && !isValidUUID(organizationId)) {
+        console.warn('ID de organización no es un UUID válido:', organizationId);
+      }
       setLoading(true);
       
       // Construir la consulta base
@@ -288,43 +310,171 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     setIsConfigOpen(true);
   };
 
+  // Función para validar si un string es un UUID válido
+  const isValidUUID = (uuid: string | null): boolean => {
+    if (!uuid) return false;
+    // Patrón de UUID v4
+    const pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return pattern.test(uuid);
+  };
+
   // Función para guardar los cambios de la etapa
   const handleSaveStage = async () => {
     if (!configStage) return;
+    setIsSaving(true); // Mostrar carga
     
     try {
-      // Convertir la probabilidad a formato decimal (string) como lo espera la BD
+      // Validar campos requeridos y contexto
+      if (!stageName.trim()) {
+        toast({
+          title: "Error",
+          description: "El nombre de la etapa es obligatorio",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      if (!organizationId) {
+        toast({
+          title: "Error",
+          description: "No se pudo determinar la organización actual",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      if (!userId) {
+        toast({
+          title: "Error",
+          description: "No se pudo determinar el usuario actual",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      // Verificar que el usuario pertenece a la organización (cumple con RLS)
+      const { data: memberData, error: memberError } = await supabase
+        .from('organization_members')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (memberError || !memberData) {
+        console.error('Error de verificación de permisos:', memberError);
+        toast({
+          title: "Error de permisos",
+          description: "No tienes permisos para editar etapas en esta organización",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      // Verificar que el pipeline pertenece a la organización correcta
+      const { data: pipelineData, error: pipelineError } = await supabase
+        .from('pipelines')
+        .select('organization_id')
+        .eq('id', configStage.pipeline_id)
+        .maybeSingle();
+      
+      if (pipelineError || !pipelineData || pipelineData.organization_id !== organizationId) {
+        toast({
+          title: "Error de acceso",
+          description: "No se puede modificar esta etapa debido a inconsistencia de datos",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      // Convertir la probabilidad a formato numérico para la BD
       // De porcentaje (0-100) a decimal (0-1)
       let probabilityValue = null;
       if (stageProbability !== null && stageProbability !== undefined) {
-        // Convertir de porcentaje a decimal y formatear como string con 2 decimales
-        probabilityValue = (stageProbability / 100).toFixed(2);
+        // Convertir de porcentaje a decimal como número (sin formatear como string)
+        probabilityValue = stageProbability / 100;
       }
       
       // Preparar los datos a actualizar
       const updateData = {
-        name: stageName,
+        name: stageName.trim(),
         probability: probabilityValue,
-        color: stageColor,
-        description: stageDescription,
+        color: stageColor || "#3b82f6", // Asegurar que siempre haya un color
+        description: stageDescription ? stageDescription.trim() : null,
         updated_at: new Date().toISOString()
       };
       
-      console.log('Datos a enviar:', updateData);
+      // Información de depuración (sin mostrar IDs completos)
+      console.log('Actualizando etapa:', {
+        stage: configStage.name,
+        hasOrganizationId: !!organizationId,
+        updateData: {
+          name: updateData.name,
+          probability: updateData.probability,
+          hasColor: !!updateData.color,
+          hasDescription: !!updateData.description
+        }
+      });
       
-      // Actualizar en Supabase
-      const { data, error } = await supabase
-        .from('stages')
-        .update(updateData)
-        .eq('id', configStage.id)
-        .select();
-        
-      if (error) {
-        console.error('Error al actualizar la etapa:', error);
+      // Validar que el ID de la etapa sea un UUID válido
+      if (!isValidUUID(configStage.id)) {
+        console.error('ID de etapa inválido, no es un UUID');
+        toast({
+          title: "Error",
+          description: "El identificador de la etapa no es válido",
+          variant: "destructive",
+        });
+        setIsSaving(false);
         return;
       }
       
-      console.log('Respuesta de Supabase:', data);
+      // Validar que el pipeline_id también sea un UUID válido
+      if (!isValidUUID(configStage.pipeline_id)) {
+        console.error('ID de pipeline inválido, no es un UUID');
+        toast({
+          title: "Error",
+          description: "El identificador del pipeline no es válido",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      // Utilizar la función RPC segura para actualizar la etapa
+      const { data, error } = await supabase
+        .rpc('update_stage_safe', {
+          p_stage_id: configStage.id,
+          p_name: updateData.name,
+          p_probability: updateData.probability,
+          p_color: updateData.color,
+          p_description: updateData.description
+        });
+        
+      if (error) {
+        console.error('Error al actualizar etapa:', error.message);
+        toast({
+          title: "Error",
+          description: `No se pudo actualizar la etapa: ${error.message || 'Error desconocido'}`,
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      if (!data || data.length === 0) {
+        console.error('Respuesta vacía de Supabase');
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar la etapa: No se recibieron datos de respuesta",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
       
       // Actualizar localmente
       setStages(prevStages => 
@@ -335,11 +485,23 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         )
       );
       
+      // Mostrar mensaje de éxito
+      toast({
+        title: "Éxito",
+        description: "La etapa se ha actualizado correctamente",
+      });
+      
       // Cerrar el diálogo
       setIsConfigOpen(false);
-      console.log('Etapa actualizada correctamente');
     } catch (error) {
       console.error('Error al actualizar la etapa:', error);
+      toast({
+        title: "Error",
+        description: `Error inesperado: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -463,6 +625,8 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         customerName: movedOpportunity.customer.full_name || 'Cliente',
         stageId: destination.droppableId,
         stageName: toStage.name,
+        fromStageId: fromStageId,
+        toStageId: toStageId,
         userId: userId,
         pipelineId: pipelineId,
         organizationId: organizationId,
@@ -713,11 +877,18 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsConfigOpen(false)}>
+            <Button variant="outline" onClick={() => setIsConfigOpen(false)} disabled={isSaving}>
               Cancelar
             </Button>
-            <Button type="submit" onClick={handleSaveStage}>
-              Guardar
+            <Button type="submit" onClick={handleSaveStage} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <span className="mr-2">Guardando</span>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                "Guardar"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

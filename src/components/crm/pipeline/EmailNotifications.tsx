@@ -7,7 +7,7 @@ interface EmailNotificationProps {
   opportunityId: string;
   fromStage: any;
   toStage: any;
-  organizationId: number;
+  organizationId: string | null;
   opportunity: Opportunity;
 }
 
@@ -19,9 +19,24 @@ export async function sendStageChangeNotification({
   organizationId,
   opportunity,
 }: EmailNotificationProps) {
-  if (!opportunityId || !fromStage || !toStage || !organizationId || !opportunity) {
-    console.error("Datos insuficientes para enviar notificación");
-    return { success: false, error: "Datos insuficientes" };
+  // Verificar cada campo requerido e informar específicamente cuál falta
+  const missingFields: string[] = [];
+  
+  if (!opportunityId) missingFields.push('opportunityId');
+  if (!fromStage) missingFields.push('fromStage');
+  if (!toStage) missingFields.push('toStage');
+  if (!organizationId) missingFields.push('organizationId');
+  if (!opportunity) missingFields.push('opportunity');
+  
+  // Si faltan campos, registrar cuáles son exactamente y retornar
+  if (missingFields.length > 0) {
+    console.error(`Datos insuficientes para enviar notificación: Faltan [${missingFields.join(', ')}]`);
+    return { success: false, error: `Datos insuficientes: ${missingFields.join(', ')}` };
+  }
+  
+  // Validación adicional para los campos dentro del objeto opportunity
+  if (!opportunity.customer_id) {
+    console.warn('La oportunidad no tiene un cliente asociado, continuando sin información de cliente');
   }
 
   try {
@@ -90,20 +105,48 @@ export async function sendStageChangeNotification({
 
 // Obtener información del cliente
 async function getCustomerInfo(customerId: string | null | undefined) {
-  if (!customerId) return null;
-  
-  const { data, error } = await supabase
-    .from("customers")
-    .select("id, full_name, email, phone")
-    .eq("id", customerId)
-    .single();
-    
-  if (error || !data) {
-    console.error("Error al obtener información del cliente:", error);
-    return null;
+  if (!customerId) {
+    console.warn("No se proporcionó ID de cliente para obtener información");
+    return {
+      id: null,
+      full_name: "Cliente",
+      email: null,
+      phone: null
+    };
   }
   
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from("customers")
+      .select("id, full_name, email, phone")
+      .eq("id", customerId)
+      .single();
+      
+    if (error) {
+      console.error("Error al obtener información del cliente:", error);
+      throw error;
+    }
+    
+    if (!data) {
+      console.warn(`No se encontró información para el cliente con ID: ${customerId}`);
+      return {
+        id: customerId,
+        full_name: "Cliente no encontrado",
+        email: null,
+        phone: null
+      };
+    }
+    
+    return data;
+  } catch (error) {
+    console.error("Error inesperado al consultar información del cliente:", error);
+    return {
+      id: customerId,
+      full_name: "Cliente",
+      email: null,
+      phone: null
+    };
+  }
 }
 
 // Obtener información del usuario
@@ -224,7 +267,7 @@ function createEmailTemplate(
 // Registrar la notificación en la base de datos
 async function registerNotification(
   opportunityId: string,
-  organizationId: number,
+  organizationId: string | null,
   type: string,
   message: string,
   userId: string | null

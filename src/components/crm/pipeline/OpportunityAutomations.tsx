@@ -14,7 +14,7 @@ interface AutomationProps {
   toStageId?: string;
   userId?: string;
   pipelineId?: string;
-  organizationId: number | null;
+  organizationId: string | null;
 }
 
 interface AutomationTask {
@@ -167,7 +167,7 @@ async function determineAutomations(
   fromStage: any | null,
   toStage: any,
   opportunityId: string,
-  organizationId: number | null
+  organizationId: string | null
 ) {
   const tasks: AutomationTask[] = [];
   let updateOpportunity = false;
@@ -235,8 +235,8 @@ async function determineAutomations(
 async function createTask(
   task: AutomationTask,
   opportunityId: string,
-  organizationId: number,
-  opportunity: any
+  organizationId: string | null,
+  opportunity: any | null
 ) {
   const { title, description, due_date, priority } = task;
 
@@ -290,7 +290,7 @@ async function logStageChange(
   opportunityId: string,
   fromStageId: string | undefined,
   toStageId: string | undefined,
-  organizationId: number | null
+  organizationId: string | null
 ) {
   // Si no tenemos los datos mínimos necesarios, no podemos registrar
   if (!opportunityId || !organizationId) {

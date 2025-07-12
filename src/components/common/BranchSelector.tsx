@@ -21,7 +21,7 @@ const BranchSelector = ({ organizationId, className = '' }: BranchSelectorProps)
     guardarOrganizacionActiva({ id: orgId });
   }
   
-  console.log('BranchSelector usando organization_id:', orgId);
+  // Usar ID de organización sin imprimir en consola
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [isOpen, setIsOpen] = useState(false);

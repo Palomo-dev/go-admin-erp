@@ -293,9 +293,9 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
         .update({ stage_id: destination.droppableId })
         .eq("id", result.draggableId);
 
-      console.log("Oportunidad actualizada en la base de datos");
+      // Oportunidad actualizada en la base de datos
       const finishStage = newPipeline.stages[destStageIndex];
-      console.log(`Oportunidad movida a ${finishStage?.name || 'nueva etapa'}`);
+      // Oportunidad movida a nueva etapa
 
       // Si hay cambios de etapa, ejecutar automatizaciones
       if (result.source.droppableId !== destination.droppableId) {
@@ -306,7 +306,7 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
           setProcessingAutomation(result.draggableId);
           
           // Ejecutar automatizaciones cuando cambia la etapa
-          console.log("Ejecutando automatizaciones para cambio de etapa...");
+          // Ejecutando automatizaciones para cambio de etapa
           handleStageChangeAutomation({
             opportunityId: result.draggableId,
             fromStageId: result.source.droppableId,
@@ -317,7 +317,7 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
             if (!result.success) {
               console.error("Error en automatizaciones:", result.error);
             } else {
-              console.log("Automatizaciones ejecutadas correctamente");
+              // Automatizaciones ejecutadas correctamente
             }
           }).catch(error => {
             setProcessingAutomation(null);

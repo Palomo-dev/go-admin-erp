@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/Utils';
 import { Filter } from 'lucide-react';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import { toast } from "@/components/ui/use-toast";
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend
 } from 'recharts';
@@ -46,25 +47,28 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
 
       setLoading(true);
       try {
-        // 1. Consultar la vista materializada agrupada por etapa
-        const { data: forecastData, error: forecastError } = await supabase
-          .from('mv_crm_forecast')
+        // 1. Consultar directamente las oportunidades agrupadas por etapa
+        const { data: opportunitiesData, error: opportunitiesError } = await supabase
+          .from('opportunities')
           .select(`
             stage_id,
+            amount,
+            status,
             stages:stage_id (
               name,
               probability,
               color
-            ),
-            amount,
-            forecast_amount
+            )
           `)
           .eq('pipeline_id', pipelineId)
-          .eq('organization_id', organizationId)
           .in('status', ['open', 'won']);
 
-        if (forecastError) {
-          console.error('Error al cargar datos de pronóstico por etapa:', forecastError);
+        if (opportunitiesError) {
+          toast({
+            title: "Error",
+            description: "Error al cargar datos de pronóstico por etapa",
+            variant: "destructive"
+          });
           setLoading(false);
           return;
         }
@@ -74,18 +78,21 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
         let totalForecastAmount = 0;
 
         // Procesar cada oportunidad y agregarla a su etapa correspondiente
-        forecastData?.forEach(item => {
+        opportunitiesData?.forEach((item: any) => {
           const stageId = item.stage_id;
-          const amount = parseFloat(item.amount) || 0;
-          const forecastAmount = parseFloat(item.forecast_amount) || 0;
+          const amount = parseFloat(String(item.amount)) || 0;
+          
+          // Calcular el valor ponderado usando la probabilidad de la etapa
+          const probability = item.stages?.probability || 1;
+          const forecastAmount = amount * probability;
           totalForecastAmount += forecastAmount;
           
           if (!stagesMap.has(stageId)) {
             // Acceder correctamente a los datos de la etapa
-            const stageInfo = item.stages as unknown as { name: string; color: string; probability: string };
+            const stageInfo = item.stages as { name: string; color: string; probability: number };
             const stageName = stageInfo?.name || 'Sin etapa';
             const stageColor = stageInfo?.color || '#94a3b8'; // color predeterminado
-            const probability = parseFloat(stageInfo?.probability) || 0;
+            const probability = stageInfo?.probability || 0;
             
             stagesMap.set(stageId, {
               id: stageId,
@@ -118,7 +125,11 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
         setTotalForecast(totalForecastAmount);
 
       } catch (error) {
-        console.error('Error al procesar datos de etapas:', error);
+        toast({
+          title: "Error",
+          description: "Error al procesar datos de etapas",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }

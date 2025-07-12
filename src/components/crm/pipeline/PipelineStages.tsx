@@ -72,41 +72,54 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     if (storedOrg) {
       try {
         const orgData = JSON.parse(storedOrg);
-        // Asegurar que el ID de organización se maneje como string (UUID)
+        // Asegurar que el ID de organización se maneje como string
         const orgId = String(orgData.id);
-        // Establecer organizationId como string UUID
         setOrganizationId(orgId);
+        console.log(`Organización guardada correctamente: ${orgId}`);
       } catch (error) {
         console.error('Error al parsear la organización:', error);
-        // Si hay error, buscar en otras claves como fallback
-        searchOrganizationInOtherKeys();
+        // Si hay error, buscar en otras claves
+        findOrganizationId();
       }
     } else {
       // Si no está en selectedOrganization, buscar en otras claves
-      searchOrganizationInOtherKeys();
+      findOrganizationId();
     }
   }, []);
-  
-  // Función para buscar el ID de la organización en otras claves del localStorage
-  const searchOrganizationInOtherKeys = () => {
-    // Intentar encontrar el ID con otras posibles claves
-    const possibleKeys = [
-      "currentOrganizationId",
-      "organizationId", 
-      "selectedOrganizationId"
-    ];
-    
+
+  // Función para buscar el ID de la organización en otras claves
+  const findOrganizationId = () => {
     let foundOrgId = false;
+    
+    // Posibles claves donde podría estar guardado el organizationId
+    const possibleKeys = [
+      'currentOrganizationId',
+      'organizationId',
+      'organization_id',
+      'orgId',
+    ];
     
     // Buscar en localStorage
     for (const key of possibleKeys) {
       const orgId = localStorage.getItem(key);
       if (orgId) {
-        console.log(`Organización encontrada en localStorage con clave: ${key}`); // Sin mostrar el ID en logs
-        // Asegurar que el ID de organización se maneje como string (UUID)
-        setOrganizationId(String(orgId));
-        foundOrgId = true;
-        break;
+        try {
+          // Intentar convertir a string si es un JSON o asegurar que sea string
+          let orgIdValue = orgId;
+          // Si parece ser JSON, intentar parsearlo
+          if (orgId.startsWith('{') || orgId.startsWith('[')) {
+            const parsed = JSON.parse(orgId);
+            orgIdValue = parsed.id ? String(parsed.id) : String(parsed);
+          }
+          
+          console.log(`Organización encontrada en localStorage con clave: ${key}`);
+          setOrganizationId(String(orgIdValue));
+          console.log(`Organización guardada correctamente: ${orgIdValue}`);
+          foundOrgId = true;
+          break;
+        } catch (error) {
+          console.error('Error al procesar el ID de organización:', error);
+        }
       }
     }
     
@@ -116,8 +129,9 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       setOrganizationId(null);
     }
   }
-    
-    // Obtener ID del usuario autenticado
+
+  // Obtener ID del usuario autenticado
+  useEffect(() => {
     const getUser = async () => {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
@@ -381,10 +395,43 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         .eq('id', configStage.pipeline_id)
         .maybeSingle();
       
-      if (pipelineError || !pipelineData || pipelineData.organization_id !== organizationId) {
+      if (pipelineError) {
+        console.error('Error al verificar el pipeline:', pipelineError);
         toast({
           title: "Error de acceso",
-          description: "No se puede modificar esta etapa debido a inconsistencia de datos",
+          description: "No se pudo verificar los permisos de la etapa",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      if (!pipelineData) {
+        toast({
+          title: "Error de acceso",
+          description: "No se encontró el pipeline asociado a esta etapa",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      // Convertir ambos a String para comparar
+      // El organization_id en la BD es entero mientras que el del frontend puede ser string
+      const dbOrgId = String(pipelineData.organization_id);
+      const currentOrgId = String(organizationId);
+      
+      console.log('Verificando organización:', { 
+        dbOrgId, 
+        currentOrgId, 
+        match: dbOrgId === currentOrgId 
+      });
+      
+      if (dbOrgId !== currentOrgId) {
+        console.error(`Error de acceso: organización no coincide (DB: ${dbOrgId}, Current: ${currentOrgId})`);
+        toast({
+          title: "Error de acceso",
+          description: "No tienes permisos para modificar etapas en este pipeline",
           variant: "destructive",
         });
         setIsSaving(false);
@@ -408,17 +455,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         updated_at: new Date().toISOString()
       };
       
-      // Información de depuración (sin mostrar IDs completos)
-      console.log('Actualizando etapa:', {
-        stage: configStage.name,
-        hasOrganizationId: !!organizationId,
-        updateData: {
-          name: updateData.name,
-          probability: updateData.probability,
-          hasColor: !!updateData.color,
-          hasDescription: !!updateData.description
-        }
-      });
+      // Preparar datos para actualización
       
       // Validar que el ID de la etapa sea un UUID válido
       if (!isValidUUID(configStage.id)) {
@@ -444,14 +481,20 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         return;
       }
       
-      // Utilizar la función RPC segura para actualizar la etapa
+      // Usar la función RPC mejorada que desactiva temporalmente los triggers
+      console.log('Intentando actualizar etapa desactivando triggers:', {
+        id: configStage.id,
+        name: updateData.name,
+        color: updateData.color
+      });
+      
       const { data, error } = await supabase
-        .rpc('update_stage_safe', {
+        .rpc('update_stage_without_triggers', {
           p_stage_id: configStage.id,
           p_name: updateData.name,
-          p_probability: updateData.probability,
           p_color: updateData.color,
-          p_description: updateData.description
+          p_description: updateData.description,
+          p_probability: updateData.probability
         });
         
       if (error) {
@@ -480,7 +523,13 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       setStages(prevStages => 
         prevStages.map(s => 
           s.id === configStage.id ? 
-          { ...s, ...updateData } : 
+          { 
+            ...s, 
+            name: updateData.name,
+            probability: updateData.probability,
+            color: updateData.color,
+            description: updateData.description || undefined
+          } : 
           s
         )
       );
@@ -496,8 +545,8 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     } catch (error) {
       console.error('Error al actualizar la etapa:', error);
       toast({
-        title: "Error",
-        description: `Error inesperado: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        title: "Error al guardar",
+        description: "No se pudo actualizar la etapa",
         variant: "destructive",
       });
     } finally {
@@ -544,6 +593,11 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     const movedOpportunity = opportunities.find((opp) => opp.id === opportunityId);
     if (!movedOpportunity) {
       console.error('No se encontró la oportunidad:', opportunityId);
+      toast({
+        title: "Error",
+        description: "No se encontró la oportunidad",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -553,13 +607,18 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
     if (!fromStage || !toStage) {
       console.error('No se encontraron las etapas de origen o destino');
+      toast({
+        title: "Error",
+        description: "No se encontraron las etapas",
+        variant: "destructive"
+      });
       return;
     }
 
     console.log(`Moviendo de "${fromStage.name}" a "${toStage.name}"`);
 
     // Determinar el nuevo estado basado en el nombre de la etapa destino
-    let newStatus = movedOpportunity.status;
+    let newStatus = movedOpportunity.status || 'open';
     
     // Actualizar estado según el nombre de la etapa
     if (toStage.name === "Ganado") {
@@ -582,26 +641,60 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       })
     );
 
-    // Datos a actualizar en la base de datos
-    const updateData: { stage_id: string; status?: string } = { 
-      stage_id: toStageId 
-    };
-    
-    // Solo actualizamos el status si ha cambiado
-    if (newStatus !== movedOpportunity.status) {
-      updateData.status = newStatus;
-    }
-
-    console.log('Actualizando en Supabase:', updateData);
-
-    // Actualizar en la base de datos
-    const { error } = await supabase
-      .from("opportunities")
-      .update(updateData)
-      .eq("id", opportunityId);
-
-    if (error) {
+    try {
+      // Usar la nueva función SQL que devuelve JSON con información detallada
+      console.log(`Actualizando oportunidad ${opportunityId} a etapa ${toStageId} con estado ${newStatus}`);
+      toast({
+        title: "Actualizando",
+        description: "Guardando cambios...",
+      });
+      
+      // Llamada a la función SQL con SECURITY DEFINER
+      const { data, error } = await supabase.rpc('direct_update_opportunity', {
+        p_opportunity_id: opportunityId,
+        p_stage_id: toStageId,
+        p_status: newStatus
+      });
+      
+      // Manejo de errores explícitos de Supabase
+      if (error) {
+        console.error('Error explícito de Supabase:', error);
+        toast({
+          title: "Error de servidor",
+          description: error.message || "Error al comunicarse con el servidor",
+          variant: "destructive",
+        });
+        throw error;
+      }
+      
+      // Verificar la respuesta detallada de la función SQL
+      console.log('Respuesta de la actualización:', data);
+      
+      if (!data || data.success === false) {
+        console.warn('Error detallado de la actualización:', data?.message, data?.error_code);
+        toast({
+          title: "No se pudo actualizar",
+          description: data?.message || "Error al actualizar la oportunidad",
+          variant: "destructive",
+        });
+        throw new Error(data?.message || "Error desconocido al actualizar");
+      }
+      
+      // Notificar éxito
+      toast({
+        title: "Actualizado",
+        description: "La oportunidad se movió correctamente",
+      });
+      
+      console.log('Actualización exitosa a etapa', toStageId, 'con estado', newStatus);
+    } catch (error: any) {
       console.error("Error al actualizar la oportunidad:", error);
+      toast({
+        title: "Error",
+        description: `No se pudo actualizar la oportunidad: ${error.message || "Error desconocido"}`,
+        variant: "destructive",
+      });
+      
       // Revertir el cambio local en caso de error
       setOpportunities((prevOpps) =>
         prevOpps.map((opp) => (
@@ -613,24 +706,35 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       return;
     }
 
-    console.log('Actualización exitosa');
-
-    // Ejecutar automatizaciones (tareas, notificaciones, etc.)
-    if (organizationId && userId) {
-      console.log('Ejecutando automatizaciones por cambio de etapa');
-      await handleStageChangeAutomation({
-        opportunityId: movedOpportunity.id,
-        opportunityTitle: movedOpportunity.name,
-        customerId: movedOpportunity.customer_id,
-        customerName: movedOpportunity.customer.full_name || 'Cliente',
-        stageId: destination.droppableId,
-        stageName: toStage.name,
-        fromStageId: fromStageId,
-        toStageId: toStageId,
-        userId: userId,
-        pipelineId: pipelineId,
-        organizationId: organizationId,
-      });
+    // Intentar ejecutar automatizaciones (tareas, notificaciones, etc.)
+    try {
+      // Obtener organizationId y userId del localStorage si no están disponibles
+      const orgId = organizationId || (localStorage.getItem('selectedOrganization') ? 
+        JSON.parse(localStorage.getItem('selectedOrganization') || '{}').id : 
+        null);
+        
+      const usrId = userId || (await supabase.auth.getUser()).data.user?.id || null;
+      
+      if (orgId && usrId) {
+        console.log('Ejecutando automatizaciones por cambio de etapa');
+        await handleStageChangeAutomation({
+          opportunityId: movedOpportunity.id,
+          opportunityTitle: movedOpportunity.name,
+          customerId: movedOpportunity.customer_id,
+          customerName: movedOpportunity.customer?.full_name || 'Cliente',
+          stageId: destination.droppableId,
+          stageName: toStage.name,
+          fromStageId: fromStageId,
+          toStageId: toStageId,
+          userId: usrId,
+          pipelineId: pipelineId,
+          organizationId: orgId
+        });
+      }
+    } catch (error) {
+      console.error("Error al ejecutar automatizaciones:", error);
+      // No mostramos toast aquí para no sobrecargar al usuario con mensajes
+      // Las automatizaciones no son críticas para la operación principal
     }
   };
 
@@ -666,7 +770,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-6 p-6 overflow-x-auto min-h-[calc(100vh-10rem)] bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+      <div className="flex gap-6 p-6 min-h-[calc(100vh-10rem)] bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         {stages.map((stage) => (
           <div 
             key={stage.id} 
@@ -746,7 +850,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                 <div 
                   {...provided.droppableProps}
                   ref={provided.innerRef}
-                  className="min-h-[12rem] p-2 overflow-y-auto bg-white dark:bg-gray-800"
+                  className="min-h-[12rem] p-2 bg-white dark:bg-gray-800"
                 >
                   {getOpportunitiesByStage(stage.id).map((opportunity, index) => (
                     <Draggable 
@@ -822,18 +926,19 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="stageName" className="text-right">
-                Nombre
+                Nombre <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="stageName"
                 value={stageName}
                 onChange={(e) => setStageName(e.target.value)}
                 className="col-span-3"
+                required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="probability" className="text-right">
-                Probabilidad (%)
+                Probabilidad (%) <span className="text-gray-400 text-xs">(Opcional)</span>
               </Label>
               <Input
                 id="probability"
@@ -847,7 +952,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="color" className="text-right">
-                Color
+                Color <span className="text-gray-400 text-xs">(Opcional)</span>
               </Label>
               <div className="col-span-3 flex items-center gap-2">
                 <input
@@ -866,7 +971,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">
-                Descripción
+                Descripción <span className="text-gray-400 text-xs">(Opcional)</span>
               </Label>
               <Input
                 id="description"

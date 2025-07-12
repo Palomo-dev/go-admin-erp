@@ -83,7 +83,7 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
     for (const key of possibleKeys) {
       const orgId = localStorage.getItem(key);
       if (orgId) {
-        console.log(`Organización encontrada en localStorage con clave: ${key}`, orgId);
+        // Organización encontrada en localStorage
         setOrganizationId(Number(orgId));
         return;
       }
@@ -93,7 +93,7 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
     for (const key of possibleKeys) {
       const orgId = sessionStorage.getItem(key);
       if (orgId) {
-        console.log(`Organización encontrada en sessionStorage con clave: ${key}`, orgId);
+        // Organización encontrada en sessionStorage
         setOrganizationId(Number(orgId));
         return;
       }
@@ -101,10 +101,10 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
     
     // Si no se encuentra, usar un valor predeterminado para desarrollo
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Usando ID de organización predeterminado para desarrollo: 2');
+      // Usando ID de organización predeterminado para desarrollo
       setOrganizationId(2); // Valor predeterminado para desarrollo
     } else {
-      console.error('No se pudo encontrar el ID de organización en el almacenamiento local');
+      // No se pudo encontrar el ID de organización en el almacenamiento local
     }
   }, []);
 
@@ -116,7 +116,7 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
       setLoading(true);
       
       try {
-        console.log(`Cargando clientes para pipeline ${pipelineId} y organización ${organizationId}`);
+        // Cargando clientes para pipeline y organización
         
         // Consulta optimizada para obtener todos los clientes de la organización
         // sin filtrar primero por oportunidades para tener una lista completa
@@ -132,13 +132,13 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
         }
         
         if (!customersData || customersData.length === 0) {
-          console.log("No se encontraron clientes para esta organización");
+          // No se encontraron clientes para esta organización
           setCustomers([]);
           setLoading(false);
           return;
         }
         
-        console.log(`Se encontraron ${customersData.length} clientes`);
+        // Clientes encontrados
         
         // Consulta única para obtener todas las oportunidades relacionadas con estos clientes
         // en el pipeline actual, para evitar múltiples consultas individuales
@@ -156,7 +156,7 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
         }
         
         const opportunities = opportunitiesData || [];
-        console.log(`Se encontraron ${opportunities.length} oportunidades relacionadas`);
+        // Oportunidades relacionadas encontradas
         
         // Agrupar oportunidades por cliente para un procesamiento eficiente
         const opportunitiesByCustomer: Record<string, any[]> = {};
@@ -220,18 +220,18 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
   
   // Funciones para manejar acciones del menú de cliente
   const handleViewCustomerDetails = (customer: Customer) => {
-    console.log("Ver detalles del cliente", customer.id);
+    // Ver detalles del cliente
     // Aquí se podría navegar a la página de detalles del cliente
     // o abrir un modal con los detalles completos
   };
   
   const handleEditCustomer = (customer: Customer) => {
-    console.log("Editar información del cliente", customer.id);
+    // Editar información del cliente
     // Aquí se podría abrir un formulario de edición
   };
   
   const handleCreateOpportunity = (customer: Customer) => {
-    console.log("Crear nueva oportunidad para el cliente", customer.id);
+    // Crear nueva oportunidad para el cliente
     // Aquí se podría navegar a la página de creación de oportunidades
     // o abrir un modal para crear una nueva oportunidad
   };
@@ -245,7 +245,7 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
   };
   
   const handleViewHistory = (customer: Customer) => {
-    console.log("Ver historial del cliente", customer.id);
+    // Ver historial del cliente
     // Aquí se podría navegar a la página de historial
     // o abrir un modal con el historial de interacciones
   };

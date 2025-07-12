@@ -1,40 +1,41 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase/config";
-import { formatCurrency, formatDate } from "@/utils/Utils";
+import { useRouter } from "next/navigation";
+import { formatCurrency } from "@/utils/Utils";
+
+// Importaciones de UI
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "@/components/ui/use-toast";
 import { ArrowUpDown, MoreHorizontal, Search, Filter } from "lucide-react";
-import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface Stage {
   id: string;
@@ -78,6 +79,9 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [deleteOpportunityId, setDeleteOpportunityId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const router = useRouter();
 
   // Obtener el ID de la organización del localStorage
   useEffect(() => {
@@ -267,9 +271,17 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
     setIsDeleteDialogOpen(true);
   };
   
+  // Función para editar oportunidad
+  const editOpportunity = (id: string) => {
+    // Navegar a la página de edición de oportunidad
+    router.push(`/app/crm/pipeline/edit-opportunity?id=${id}`);
+  };
+
   // Función para eliminar oportunidad
   const deleteOpportunity = async () => {
     if (!deleteOpportunityId) return;
+    
+    setIsDeleting(true);
     
     try {
       const { error } = await supabase
@@ -284,11 +296,22 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
         prevOpps.filter(opp => opp.id !== deleteOpportunityId)
       );
       
+      toast({
+        title: "Oportunidad eliminada",
+        description: "La oportunidad ha sido eliminada correctamente.",
+      });
+      
       setIsDeleteDialogOpen(false);
       setDeleteOpportunityId(null);
     } catch (error) {
       console.error("Error al eliminar oportunidad:", error);
-      setIsDeleteDialogOpen(false);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la oportunidad. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
   
@@ -383,6 +406,42 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      
+      {/* Diálogo de confirmación de eliminación */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Estás seguro?</DialogTitle>
+            <DialogDescription>
+              Esta acción no se puede deshacer. Esta eliminará permanentemente la oportunidad
+              y todos los datos asociados a ella.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={deleteOpportunity}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <span className="mr-2">Eliminando</span>
+                  <LoadingSpinner size="sm" />
+                </>
+              ) : (
+                "Eliminar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* Tabla de oportunidades */}
       <div className="rounded-md border border-gray-200 dark:border-gray-800">
@@ -491,8 +550,11 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => confirmDeleteOpportunity(opportunity.id)}>
+                        <DropdownMenuItem onClick={() => editOpportunity(opportunity.id)}>Editar</DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => confirmDeleteOpportunity(opportunity.id)}
+                          className="text-red-600 dark:text-red-400"
+                        >
                           Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -505,23 +567,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
         </Table>
       </div>
       
-      {/* Diálogo de confirmación para eliminar */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción eliminará permanentemente la oportunidad y no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={deleteOpportunity} className="bg-red-600 hover:bg-red-700">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Este contenido fue eliminado porque ya tenemos un diálogo de confirmación implementado correctamente */}
     </div>
   );
 };

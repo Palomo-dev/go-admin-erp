@@ -44,7 +44,7 @@ export function PipelineInitializer({ organizationId, onInitComplete }: Pipeline
 
         // Si ya existe un pipeline predeterminado, terminamos
         if (existingPipeline) {
-          console.log("Pipeline predeterminado encontrado:", existingPipeline.id);
+          // Pipeline predeterminado encontrado
           setIsInitializing(false);
           onInitComplete();
           return;
@@ -105,7 +105,7 @@ export function PipelineInitializer({ organizationId, onInitComplete }: Pipeline
           return;
         }
 
-        console.log("Pipeline y etapas creados correctamente");
+        // Pipeline y etapas creados correctamente
         setMessage("Pipeline configurado correctamente");
         
         // Esperar un momento antes de notificar la finalización

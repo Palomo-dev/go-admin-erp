@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/Utils';
 import { Target, TrendingUp } from 'lucide-react';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import { toast } from "@/components/ui/use-toast";
 
 interface GoalCompletionWidgetProps {
   pipelineId: string;
@@ -60,19 +61,32 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
           return;
         }
 
-        // 2. Obtener pronóstico utilizando la vista materializada
-        const { data: forecastData, error: forecastError } = await supabase
-          .from('mv_crm_forecast')
-          .select('forecast_amount, amount')
+        // 2. Obtener datos de oportunidades y sus etapas directamente (sin usar la vista materializada)
+        const { data: opportunitiesData, error: opportunitiesError } = await supabase
+          .from('opportunities')
+          .select(`
+            id,
+            amount,
+            stages:stage_id (probability)
+          `)
           .eq('pipeline_id', pipelineId)
-          .eq('organization_id', organizationId)
           .eq('status', 'open');
 
-        if (forecastError) {
-          console.error('Error al cargar datos de pronóstico:', forecastError);
+        if (opportunitiesError) {
+          toast({
+            title: "Error",
+            description: "Error al cargar datos de oportunidades",
+            variant: "destructive"
+          });
           setLoading(false);
           return;
         }
+        
+        // Calcular montos ponderados basados en la probabilidad de cada etapa
+        const forecastData = opportunitiesData?.map(opp => ({
+          amount: opp.amount || 0,
+          forecast_amount: (opp.amount || 0) * (opp.stages?.probability || 1)
+        }));
 
         // 3. Calcular totales
         let totalForecastAmount = 0;

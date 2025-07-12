@@ -49,7 +49,7 @@ export default function PipelineHeader({
     for (const key of possibleKeys) {
       const orgId = localStorage.getItem(key);
       if (orgId) {
-        console.log(`Organización encontrada en localStorage con clave: ${key}`, orgId);
+        // Organización encontrada en localStorage
         setOrganizationId(Number(orgId));
         return;
       }
@@ -59,7 +59,7 @@ export default function PipelineHeader({
     for (const key of possibleKeys) {
       const orgId = sessionStorage.getItem(key);
       if (orgId) {
-        console.log(`Organización encontrada en sessionStorage con clave: ${key}`, orgId);
+        // Organización encontrada en sessionStorage
         setOrganizationId(Number(orgId));
         return;
       }
@@ -67,10 +67,10 @@ export default function PipelineHeader({
     
     // Si no se encuentra, usar un valor predeterminado para desarrollo
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Usando ID de organización predeterminado para desarrollo: 2');
+      // Usando ID de organización predeterminado para desarrollo
       setOrganizationId(2); // Valor predeterminado para desarrollo
     } else {
-      console.error('No se pudo encontrar el ID de organización en el almacenamiento local');
+      // No se pudo encontrar el ID de organización en el almacenamiento local
     }
   }, []);
   

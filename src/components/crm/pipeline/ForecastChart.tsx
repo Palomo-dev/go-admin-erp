@@ -42,19 +42,43 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
 
       setLoading(true);
       try {
-        // Consulta a la vista materializada mv_crm_forecast
-        const { data: forecastData, error: forecastError } = await supabase
-          .from('mv_crm_forecast')
-          .select('*')
-          .eq('organization_id', organizationId)
+        // Consulta directamente a la tabla de oportunidades en lugar de la vista materializada
+        const { data: opportunitiesData, error: opportunitiesError } = await supabase
+          .from('opportunities')
+          .select(`
+            id, 
+            name, 
+            amount, 
+            expected_close_date,
+            status,
+            stage_id, 
+            stages:stage_id (name, probability)
+          `)
           .eq('pipeline_id', pipelineId)
           .in('status', ['open', 'won']);
 
-        if (forecastError) {
-          console.error('Error al cargar datos de pronóstico:', forecastError);
+        if (opportunitiesError) {
+          toast({
+            title: "Error",
+            description: "Error al cargar datos de pronóstico",
+            variant: "destructive"
+          });
           setLoading(false);
           return;
         }
+        
+        // Adaptar los datos para que coincidan con el formato esperado
+        const forecastData = opportunitiesData?.map(opp => ({
+          id: opp.id,
+          amount: opp.amount || 0,
+          expected_close_date: opp.expected_close_date,
+          status: opp.status,
+          stage_id: opp.stage_id,
+          stage_name: opp.stages?.name || '',
+          stage_probability: opp.stages?.probability || 1,
+          weighted_amount: (opp.amount || 0) * (opp.stages?.probability || 1)
+        }));
+        
 
         // Obtener los objetivos del pipeline
         const { data: pipelineData, error: pipelineError } = await supabase

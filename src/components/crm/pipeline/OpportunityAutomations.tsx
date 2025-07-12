@@ -101,7 +101,7 @@ export async function handleStageChangeAutomation({
           opportunityId,
           fromStage,
           toStage,
-          organizationId,
+          organizationId: organizationId ? Number(organizationId) : 0, // Convertir a number
           opportunity
         })
       );
@@ -294,7 +294,7 @@ async function logStageChange(
 ) {
   // Si no tenemos los datos mínimos necesarios, no podemos registrar
   if (!opportunityId || !organizationId) {
-    console.log("Datos insuficientes para registrar cambio de etapa");
+    // Datos insuficientes para registrar cambio de etapa
     return { success: false, error: "Datos insuficientes" };
   }
   try {
@@ -332,9 +332,7 @@ async function logStageChange(
     if (error) {
       console.error("Error al registrar actividad:", error);
       // Si hay error al registrar, al menos dejamos constancia en el log
-      console.log(
-        `Cambio de etapa: ${fromStageName} → ${toStageName} para oportunidad ${opportunityId}`
-      );
+      // Cambio de etapa registrado en log
       return { success: false, error };
     }
     

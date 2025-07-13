@@ -23,13 +23,21 @@ const getCookie = (name: string): string | null => {
 // Función para establecer una cookie
 const setCookie = (name: string, value: string, maxAge: number = 604800) => {
   if (typeof document === 'undefined') return;
-  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Lax;HttpOnly${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+  
+  // La cookie de autenticación de Supabase necesita estar disponible para JavaScript
+  const isAuthCookie = name.includes('-auth-token');
+  
+  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
 }
 
 // Función para eliminar una cookie
 const removeCookie = (name: string) => {
   if (typeof document === 'undefined') return;
-  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax;HttpOnly${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+  
+  // La cookie de autenticación de Supabase necesita estar disponible para JavaScript
+  const isAuthCookie = name.includes('-auth-token');
+  
+  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
 }
 
 // Creación del cliente de Supabase
@@ -106,31 +114,48 @@ export const signInWithMicrosoft = async () => {
   })
 }
 
-export const  signOut = async () => {
-  // Eliminar todas las cookies  // Extraer referencia del proyecto dinámicamente desde la URL de Supabase
-  const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
-    : '';
+export const signOut = async () => {
+  try {
+    // Extraer referencia del proyecto dinámicamente desde la URL de Supabase
+    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
+      : '';
+      
+    // Limpiar cookies de autenticación usando las mismas configuraciones con las que fueron creadas
+    // Para cookies generales del sistema
+    document.cookie = 'go-admin-erp-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    document.cookie = 'go-admin-user-id=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
     
-  // Limpiar cookies de autenticación
-  document.cookie = 'go-admin-erp-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  document.cookie = 'sb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  document.cookie = 'sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  
-  // Limpiar cookie específica del proyecto usando la referencia dinámica
-  if (projectRef) {
-    document.cookie = `sb-${projectRef}-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+    // Cookies de Supabase Auth
+    document.cookie = 'sb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    document.cookie = 'sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    
+    // Limpiar cookie específica del proyecto usando la referencia dinámica
+    if (projectRef) {
+      document.cookie = `sb-${projectRef}-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+    }
+    
+    // También limpiar la cookie CSRF
+    document.cookie = 'csrf_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax; HttpOnly';
+    
+    // Limpiar localStorage de datos relacionados con la sesión
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('sb-access-token');
+    localStorage.removeItem('sb-refresh-token');
+    localStorage.removeItem('go-admin-erp-auth');
+    localStorage.removeItem('currentOrganizationId');
+    localStorage.removeItem('currentOrganizationName');
+    localStorage.removeItem('currentOrganizationType');
+    localStorage.removeItem('rememberMe');
+    localStorage.removeItem('userEmail');
+    
+    // Cerrar sesión en Supabase
+    return await supabase.auth.signOut();
+  } catch (error) {
+    console.error('Error durante el cierre de sesión:', error);
+    throw error;
   }
-  
-  // Limpiar localStorage de tokens relacionados con la autenticación
-  localStorage.removeItem('supabase.auth.token');
-  localStorage.removeItem('sb-access-token');
-  localStorage.removeItem('sb-refresh-token');
-  localStorage.removeItem('go-admin-erp-auth');
-  
-  // Cerrar sesión en Supabase
-  return await supabase.auth.signOut()
 }
 
 // Get session with simplified response format for components that need the session object directly

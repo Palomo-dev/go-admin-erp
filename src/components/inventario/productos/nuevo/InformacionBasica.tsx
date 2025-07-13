@@ -66,16 +66,11 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
       const { data, error } = await supabase
         .from('products')
         .select('id')
-        .eq('sku', sku)
-        .single();
+        .filter('sku', 'eq', sku.toString())
+        .filter('organization_id', 'eq', organization_id)
+        .maybeSingle();
         
-      if (error && error.code === 'PGRST116') {
-        // No se encontró ningún producto con ese SKU (es válido)
-        setSkuExistente(false);
-      } else if (data) {
-        // Se encontró un producto con ese SKU (ya existe)
-        setSkuExistente(true);
-      }
+      setSkuExistente(!!data);
     } catch (error) {
       console.error('Error al validar SKU:', error);
     } finally {
@@ -84,6 +79,7 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
   };
   
   // Función para validar si un código de barras ya existe en la base de datos
+  // Modify your validarBarcodeExistente function:
   const validarBarcodeExistente = async (barcode: string) => {
     if (!barcode || barcode.trim() === '') {
       setBarcodeExistente(false);
@@ -93,19 +89,15 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
     setValidandoBarcode(true);
     
     try {
+      // Explicitly use string comparison and include organization_id 
       const { data, error } = await supabase
         .from('products')
         .select('id')
-        .eq('barcode', barcode)
-        .single();
+        .filter('barcode', 'eq', barcode.toString())
+        .filter('organization_id', 'eq', organization_id)
+        .maybeSingle();
         
-      if (error && error.code === 'PGRST116') {
-        // No se encontró ningún producto con ese código de barras (es válido)
-        setBarcodeExistente(false);
-      } else if (data) {
-        // Se encontró un producto con ese código de barras (ya existe)
-        setBarcodeExistente(true);
-      }
+      setBarcodeExistente(!!data);
     } catch (error) {
       console.error('Error al validar código de barras:', error);
     } finally {

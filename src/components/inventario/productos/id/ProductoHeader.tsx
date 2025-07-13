@@ -299,9 +299,11 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                   </div>
                   <p className="mt-1 text-2xl font-semibold">
                     {formatCurrency(
-                      producto.product_costs.reduce((prev: any, current: any) =>
-                        current.effective_from > prev.effective_from ? current : prev
-                      ).cost
+                      producto.product_costs && producto.product_costs.length > 0
+                        ? producto.product_costs.reduce((prev: any, current: any) =>
+                            current.effective_from > prev.effective_from ? current : prev
+                          ).cost
+                        : 0
                     )}
                   </p>
                 </div>

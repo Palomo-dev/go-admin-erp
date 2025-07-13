@@ -237,11 +237,11 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
               <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
               <AlertDialogDescription className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
                 Esta acción marcará el producto como eliminado y dejará de aparecer en los listados regulares.
-                <div className="mt-4 flex items-center p-3 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                  <AlertTriangle className="h-5 w-5 mr-2" />
-                  <span>Esta acción no borra el producto de la base de datos.</span>
-                </div>
               </AlertDialogDescription>
+              <div className="mt-4 flex items-center p-3 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                <span>Esta acción no borra el producto de la base de datos.</span>
+              </div>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel className={theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : ''}>

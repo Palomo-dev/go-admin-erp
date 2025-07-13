@@ -23,13 +23,13 @@ const getCookie = (name: string): string | null => {
 // Función para establecer una cookie
 const setCookie = (name: string, value: string, maxAge: number = 604800) => {
   if (typeof document === 'undefined') return;
-  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Strict${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Lax;HttpOnly${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
 }
 
 // Función para eliminar una cookie
 const removeCookie = (name: string) => {
   if (typeof document === 'undefined') return;
-  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Strict${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax;HttpOnly${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
 }
 
 // Creación del cliente de Supabase

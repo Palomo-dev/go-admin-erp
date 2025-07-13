@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 
+// Especificar el runtime para este middleware
+export const config = {
+  runtime: 'edge',
+  matcher: [
+    /*
+     * Excluir rutas para archivos estáticos, api routes, y otros que no deban
+     * procesarse con este middleware
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+};
+
 export async function middleware(request: NextRequest) {
   // Obtener credenciales de Supabase desde variables de entorno
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -12,6 +24,24 @@ export async function middleware(request: NextRequest) {
 
   // Obtener el token de autenticación de las cookies
   const authCookie = request.cookies.get(`sb-${projectRef}-auth-token`);
+  
+  // Verificar si es una solicitud POST, PUT, DELETE o PATCH que requiere protección CSRF
+  const requiresCsrfCheck = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method) &&
+    !request.nextUrl.pathname.startsWith('/auth/') &&
+    !request.nextUrl.pathname.includes('/api/csrf') &&
+    !request.nextUrl.pathname.includes('/auth/v1/');
+  
+  if (requiresCsrfCheck) {
+    const csrfToken = request.headers.get('X-CSRF-Token');
+    const csrfCookie = request.cookies.get('csrf_token');
+    
+    if (!csrfToken || !csrfCookie || csrfToken !== csrfCookie.value) {
+      return new NextResponse(JSON.stringify({ error: 'Invalid CSRF token' }), { 
+        status: 403,
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+  }
 
   // Crear configuración personalizada para el cliente de Supabase
   const supabaseClientOptions = {
@@ -19,7 +49,7 @@ export async function middleware(request: NextRequest) {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
-      flowType: 'pkce',
+      flowType: 'pkce' as const, // Usar as const para evitar problemas de tipos
       // Si tenemos un token de autenticación en la cookie, lo usamos como sesión inicial
       ...(authCookie && {
         storageKey: `sb-${projectRef}-auth-token`,
@@ -114,34 +144,42 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  // Generar una respuesta base
+  let response = NextResponse.next();
+  
+  // Verificar CSRF solo para métodos que modifican datos
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method) && 
+      !request.nextUrl.pathname.startsWith('/api/csrf') && 
+      !request.nextUrl.pathname.includes('/auth/v1/')) {
+    
+    const csrfToken = request.headers.get('X-CSRF-Token');
+    const csrfCookie = request.cookies.get('csrf_token');
+    
+    // Si no hay token CSRF o no coincide con la cookie, rechazar la solicitud
+    if (!csrfToken || !csrfCookie || csrfToken !== csrfCookie.value) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Invalid CSRF token' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+  
   // Check for organization in subdomain
   const hostname = request.headers.get('host') || '';
   const subdomain = hostname.split('.')[0];
   
   // If there's a subdomain that's not 'www' and not localhost, set it in a cookie
   if (subdomain !== 'www' && !hostname.includes('localhost')) {
-    const response = NextResponse.next();
     response.cookies.set('organization', subdomain, { 
       path: '/',
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production'
+      httpOnly: false, // Necesitamos acceder a esto desde JavaScript
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 86400 * 30 // 30 días
     });
-    return response;
   }
 
-  return NextResponse.next();
+  return response;
 }
 
-// See "Matching Paths" below to learn more
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public (public files)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
-  ],
-};
+// La configuración ya está definida arriba

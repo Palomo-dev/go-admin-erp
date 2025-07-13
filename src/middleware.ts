@@ -4,7 +4,6 @@ import type { NextRequest } from 'next/server';
 
 // Especificar el runtime para este middleware
 export const config = {
-  runtime: 'edge',
   matcher: [
     /*
      * Excluir rutas para archivos estáticos, api routes, y otros que no deban

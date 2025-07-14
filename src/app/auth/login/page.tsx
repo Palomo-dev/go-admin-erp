@@ -40,6 +40,19 @@ export default function LoginPage() {
       // Store it in session storage for after login
       sessionStorage.setItem('redirectTo', redirectTo);
     }
+    
+    // Check if coming from session expired page
+    const fromExpired = searchParams.get('fromExpired') === 'true';
+    if (fromExpired) {
+      // Clear any stored credentials to prevent auto-login
+      localStorage.removeItem('rememberMe');
+      localStorage.removeItem('userEmail');
+      setEmail('');
+      setRememberMe(false);
+      
+      // Show a message about the expired session
+      setError('Tu sesión anterior ha expirado. Por favor, inicia sesión nuevamente.');
+    }
   }, [searchParams, userOrganizations]);
 
   const onEmailLogin = async (e: React.FormEvent) => {
@@ -83,6 +96,12 @@ export default function LoginPage() {
   
   // Load remembered email on component mount
   useEffect(() => {
+    // No intentar recuperar el email guardado si venimos de una sesión expirada
+    const fromExpired = searchParams.get('fromExpired') === 'true';
+    if (fromExpired) {
+      return;
+    }
+    
     // Verificar si hay un email guardado para "recordarme"
     const savedEmail = localStorage.getItem('userEmail');
     if (savedEmail) {

@@ -1,16 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/config';
 
 export default function SessionExpiredPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // Clear all authentication data when the component mounts
+  useEffect(() => {
+    // Clear authentication data
+    clearAuthData();
+  }, []);
+
+  const clearAuthData = async () => {
+    try {
+      // Clear localStorage items related to authentication
+      localStorage.removeItem('rememberMe');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('currentOrganizationId');
+      localStorage.removeItem('currentOrganizationType');
+      
+      // Get Supabase project ref to target the specific cookie
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const projectRef = supabaseUrl.split('.')[0].replace('https://', '');
+      
+      // Clear the auth cookie
+      if (projectRef) {
+        document.cookie = `sb-${projectRef}-auth-token=; path=/; max-age=0; SameSite=Lax`;
+      }
+      
+      // Clear user info cookie
+      document.cookie = `go-admin-user-id=; path=/; max-age=0; SameSite=Lax`;
+      
+      // Force Supabase sign out
+      await supabase.auth.signOut({ scope: 'local' });
+      
+      console.log('Auth data cleared successfully');
+    } catch (error) {
+      console.error('Error clearing auth data:', error);
+    }
+  };
+
   const handleRelogin = () => {
     setLoading(true);
-    router.push('/auth/login');
+    // Add a query parameter to indicate this is coming from an expired session
+    router.push('/auth/login?fromExpired=true');
   };
 
   return (

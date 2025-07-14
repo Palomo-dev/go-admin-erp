@@ -1,5 +1,5 @@
 ---
-trigger: manual
+trigger: always_on
 ---
 
 ---
@@ -35,6 +35,7 @@ Módulos disponibles (rutas base):
 2. Si necesitas tocar algo fuera de ese scope, *pregunta antes*.  
 3. Ejecuta lint, build (next build) y tests (npm test) *antes* de generar PR.  
 4. Simepre aplica buenas prcticas de programacion. (Division en funciones, archivos, nombramientos de variables, etc)
+5. Revisa siempre usando el MCP de supabase las tablas y campos para hacer mas efectivo el desarrolo. El proyecto es "jgmgphmzusbluqhuqihj"
 
 *Commit*:
 - *Commit*: feat(SCRUM-[ID]): <breve descripción>  

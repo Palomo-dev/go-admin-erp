@@ -21,6 +21,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { NavItem } from './NavItem';
+import { NavSection } from './NavSection';
 import { SidebarNavigationProps } from '../types';
 
 // Componente para la navegación lateral
@@ -138,16 +139,15 @@ export const SidebarNavigation = ({
   
   return (
     <div className="space-y-1 transition-all duration-300">
-      {/* Secciones de navegación */}
+      {/* Secciones de navegación utilizando el componente NavSection */}
       {navSections.map((section, idx) => (
-        <div key={idx} className="mb-4">
-          <h3 className={`px-3 mb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider ${collapsed ? 'lg:text-center lg:px-0' : ''}`}>
-            {collapsed ? (idx === 0 ? '•' : '•') : section.title}
-          </h3>
-          {section.items.map((item, itemIdx) => (
-            <NavItem key={itemIdx} item={item} collapsed={collapsed} />
-          ))}
-        </div>
+        <NavSection
+          key={idx}
+          title={section.title}
+          items={section.items}
+          collapsed={collapsed}
+          sectionIdx={idx}
+        />
       ))}
       
       {/* Sección de perfil */}

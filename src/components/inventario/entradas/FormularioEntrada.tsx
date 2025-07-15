@@ -53,12 +53,26 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
   const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>([])
-  const [ordenSeleccionada, setOrdenSeleccionada] = useState<string>('ninguno')
-  const [tiposEntrada, setTiposEntrada] = useState(['compra', 'devolucion', 'ajuste'])
+  // Definir el tipo de movimientos de stock
+  type StockMovementSource = 'purchase' | 'adjustment' | 'return'
+  
+  // Handlers para implementar la regla UX de inputs numéricos
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (e.target.value === '0') {
+      e.target.value = '';
+    }
+  };
+  
+  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (e.target.value === '') {
+      e.target.value = '0';
+    }
+  };
+  const tiposEntrada = ['compra', 'devolucion', 'ajuste']
   const [productos, setProductos] = useState<ProductoEntrada[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [cargandoLineas, setCargandoLineas] = useState(false)
+  const [errorCargaSucursales, setErrorCargaSucursales] = useState(false)
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
@@ -90,6 +104,7 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
 
     const cargarSucursales = async () => {
       try {
+        setErrorCargaSucursales(false);
         const { data, error } = await supabase
           .from('branches')
           .select('id, name')
@@ -97,9 +112,27 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
           .order('name')
 
         if (error) throw error
-        setSucursales(data || [])
+        
+        const sucursalesDisponibles = data || [];
+        setSucursales(sucursalesDisponibles)
+        
+        // Si no hay sucursales disponibles, mostrar un mensaje de error
+        if (sucursalesDisponibles.length === 0) {
+          toast({
+            title: "Advertencia",
+            description: "No hay sucursales disponibles. Debe crear al menos una sucursal para registrar entradas.",
+            variant: "destructive"
+          });
+          setErrorCargaSucursales(true);
+        }
       } catch (error) {
         console.error('Error al cargar sucursales:', error)
+        setErrorCargaSucursales(true);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las sucursales. Por favor intente nuevamente.",
+          variant: "destructive"
+        });
       }
     }
     
@@ -122,7 +155,7 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
     setIsLoading(true)
     Promise.all([cargarProveedores(), cargarSucursales(), cargarOrdenesCompra()])
       .finally(() => setIsLoading(false))
-  }, [organizationId])
+  }, [organizationId, toast])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -182,18 +215,26 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
       if (itemsError) throw itemsError
       
       if (itemsData) {
+        // Definir el tipo del producto para evitar any
+        interface ProductItem {
+          id: number;
+          name: string;
+          sku: string;
+        }
+        
         const productosFormateados = itemsData.map(item => {
-          const producto = item.products as { id: number, name: string, sku: string }
+          // Aplicar tipo explícito para evitar any
+          const producto = item.products as unknown as ProductItem;
           
           return {
             id: item.id,
             product_id: item.product_id,
             nombre: producto.name,
             sku: producto.sku,
-            cantidad: item.quantity,
-            costo_unitario: item.unit_cost,
-            subtotal: item.quantity * item.unit_cost,
-            lote: item.lot_code || undefined
+            cantidad: Number(item.quantity),
+            costo_unitario: Number(item.unit_cost),
+            subtotal: Number(item.quantity) * Number(item.unit_cost),
+            lote: item.lot_code || ''
           }
         })
         
@@ -220,13 +261,19 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
     setProductos(prev => prev.filter((_, i) => i !== index))
   }
 
-  const handleUpdateProducto = (index: number, producto: ProductoEntrada) => {
+  const handleUpdateProducto = (index: number, productoActualizado: ProductoEntrada) => {
     setProductos(prev => {
-      const nuevosProductos = [...prev]
-      nuevosProductos[index] = producto
-      return nuevosProductos
-    })
+      const nuevosProductos = [...prev];
+      nuevosProductos[index] = {
+        ...productoActualizado,
+        // Recalcular subtotal para asegurar consistencia
+        subtotal: productoActualizado.cantidad * productoActualizado.costo_unitario
+      };
+      return nuevosProductos;
+    });
   }
+  
+  // Implementación de la regla UX para inputs numéricos se hace directamente en los campos Input
 
   const calcularTotal = () => {
     return productos.reduce((total, producto) => total + producto.subtotal, 0)
@@ -234,6 +281,16 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Verificar si hay sucursales disponibles
+    if (sucursales.length === 0 || errorCargaSucursales) {
+      toast({
+        title: "Error",
+        description: "No hay sucursales disponibles. Debe crear al menos una sucursal para registrar entradas.",
+        variant: "destructive"
+      })
+      return
+    }
     
     if (productos.length === 0) {
       toast({
@@ -272,6 +329,29 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
         const estadoOrdenCompra = formData.tipo_entrada === 'compra' ? 'draft' : 'received';
         const estadoItems = formData.tipo_entrada === 'compra' ? 'pending' : 'received';
 
+        // Validar que exista una sucursal seleccionada
+        if (!formData.sucursal_id) {
+          toast({
+            title: "Error",
+            description: "Debe seleccionar una sucursal para la entrada.",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+        
+        // Verificar que la sucursal exista en la lista de sucursales
+        const sucursalExiste = sucursales.some(s => s.id.toString() === formData.sucursal_id);
+        if (!sucursalExiste) {
+          toast({
+            title: "Error",
+            description: "La sucursal seleccionada no es válida. Por favor seleccione otra.",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+        
         // Crear la orden de compra (o documento de entrada)
         const { data: ordenData, error: ordenError } = await supabase
           .from('purchase_orders')
@@ -325,9 +405,9 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
           const { data: loteData, error: loteError } = await supabase
             .from('lots')
             .insert({
-              organization_id: organizationId,
+              // Removido organization_id ya que no existe en la tabla lots
               product_id: producto.product_id,
-              branch_id: Number(formData.sucursal_id),
+              // Removido branch_id ya que no existe en la tabla lots
               lot_code: producto.lote,
               // Removido expiry_date ya que puede no existir en la tabla
               created_at: new Date().toISOString()
@@ -393,24 +473,62 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
       
       // Si es un ajuste o una recepción de compra, crear los movimientos de stock
       if (formData.tipo_entrada === 'ajuste' || formData.tipo_entrada === 'compra') {
-        // Crear movimientos de stock
-        const movimientosStock = productos.map(producto => {
+        // Validar que exista una sucursal seleccionada para los movimientos de stock
+        if (!formData.sucursal_id) {
+          toast({
+            title: "Error",
+            description: "Debe seleccionar una sucursal para registrar movimientos de inventario.",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+        
+        // Verificar que la sucursal exista en la lista de sucursales
+        const sucursalExiste = sucursales.some(s => s.id.toString() === formData.sucursal_id);
+        if (!sucursalExiste) {
+          toast({
+            title: "Error",
+            description: "La sucursal seleccionada no es válida. Por favor seleccione otra.",
+            variant: "destructive"
+          });
+          setIsSaving(false);
+          return;
+        }
+
+        // Definir un tipo específico para los movimientos de stock
+        interface StockMovementInsert {
+          organization_id: number; // Agregado para cumplir con la política RLS
+          branch_id: number;
+          product_id: number;
+          lot_id: number | null;
+          direction: 'in' | 'out';
+          qty: number;
+          unit_cost: number;
+          source: StockMovementSource;
+          source_id: string;
+          note: string;
+          created_at: string;
+        }
+
+        // Crear movimientos de stock con el tipo específico
+        const movimientosStock: StockMovementInsert[] = productos.map(producto => {
           // Obtener el ID del lote si existe
           const lotId = producto.lote ? 
-            lotesCreados.get(producto.product_id.toString() + '-' + producto.lote) : 
+            lotesCreados.get(producto.product_id.toString() + '-' + producto.lote) || null : 
             null;
           
           return {
-            organization_id: organizationId,
+            organization_id: organizationId, // Agregado para cumplir con la política RLS
             branch_id: Number(formData.sucursal_id),
             product_id: producto.product_id,
             lot_id: lotId,
             direction: 'in', // Entrada de inventario
             qty: producto.cantidad,
             unit_cost: producto.costo_unitario,
-            source: formData.tipo_entrada === 'compra' ? 'purchase' : 
+            source: (formData.tipo_entrada === 'compra' ? 'purchase' : 
                    formData.tipo_entrada === 'ajuste' ? 'adjustment' : 
-                   formData.tipo_entrada === 'devolucion' ? 'return' : 'adjustment', // Mapeo de tipos en español a los valores permitidos en inglés
+                   formData.tipo_entrada === 'devolucion' ? 'return' : 'adjustment') as StockMovementSource,
             source_id: ordenId ? ordenId.toString() : '0',
             note: formData.notas || `Entrada por ${formData.tipo_entrada}`,
             created_at: new Date().toISOString()
@@ -422,12 +540,21 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
           .from('stock_movements')
           .insert(movimientosStock);
         
-        if (movimientosError) throw movimientosError;
+        if (movimientosError) {
+          console.error('Error en inserción de stock_movements:', movimientosError);
+          toast({
+            title: "Error en movimientos de stock",
+            description: `${movimientosError.message}. Verifique que tiene permisos para esta operación.`,
+            variant: "destructive"
+          });
+          throw movimientosError;
+        }
       }
 
       toast({
         title: "Éxito",
         description: "La entrada de inventario se ha creado correctamente.",
+        variant: "default"
       });
 
       // Resetear formulario
@@ -442,13 +569,28 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
         orden_compra_id: 'ninguno'
       });
       setProductos([]);
-    } catch (error: any) {
+    } catch (error) {
+      // Tipificar el error para acceder a sus propiedades
+      const supabaseError = error as { message?: string; code?: string };
       console.error('Error al guardar la entrada:', error);
+      // Mostrar detalles más específicos del error
+      let errorMessage = "No se pudo guardar la entrada de inventario.";
+      
+      // Si es un error de Supabase con detalles
+      if (supabaseError && supabaseError.message) {
+        if (supabaseError.code === '42501') {
+          errorMessage = `Error de permisos: ${supabaseError.message}. Verifique que esté usando la organización correcta.`;
+        } else {
+          errorMessage = `${supabaseError.message}`;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "No se pudo guardar la entrada. " + error.message,
+        description: errorMessage,
         variant: "destructive"
       });
+      setIsSaving(false);
     } finally {
       setIsSaving(false);
     }
@@ -456,6 +598,20 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Banner de advertencia cuando no hay sucursales disponibles */}
+      {(sucursales.length === 0 || errorCargaSucursales) && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+          <div className="flex items-center">
+            <svg className="w-6 h-6 mr-2" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <div>
+              <p className="font-bold">No hay sucursales disponibles</p>
+              <p className="text-sm">Debe crear al menos una sucursal para registrar entradas de inventario.</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div className="space-y-2">
@@ -491,7 +647,7 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ninguno">-- Nueva Orden --</SelectItem>
-                  {ordenesCompra.map(orden => (
+                  {ordenesCompra.map((orden: OrdenCompra) => (
                     <SelectItem key={orden.id} value={orden.id.toString()}>
                       {`OC-${orden.id} (${formatDate(orden.created_at)})`}
                     </SelectItem>
@@ -556,6 +712,11 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
               onChange={handleChange}
               placeholder="PO-0001"
               disabled={isLoading}
+              type="text"
+              pattern="[0-9]*"
+              inputMode="numeric"
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
             />
           </div>
 
@@ -618,7 +779,10 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
           <Button type="button" variant="outline">
             Cancelar
           </Button>
-          <Button type="submit" disabled={isLoading || isSaving || productos.length === 0}>
+          <Button 
+            type="submit" 
+            disabled={isSaving || isLoading || sucursales.length === 0 || errorCargaSucursales} 
+          >
             {isSaving ? (
               <>
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -627,7 +791,7 @@ export default function FormularioEntrada({ organizationId }: FormularioEntradaP
                 </svg>
                 Guardando...
               </>
-            ) : "Guardar Entrada"}
+            ) : (sucursales.length === 0 || errorCargaSucursales) ? "No hay sucursales disponibles" : "Guardar Entrada"}
           </Button>
         </div>
       </div>

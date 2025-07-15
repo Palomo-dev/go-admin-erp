@@ -23,8 +23,8 @@ interface ClientsViewProps {
  * Esta versión utiliza componentes modulares y hooks personalizados
  * para mejorar la mantenibilidad y organización del código.
  */
-const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
-  // Utilizar el hook personalizado para toda la lógica de pipeline
+const ClientsViewRefactorizado: React.FC<ClientsViewProps> = ({ pipelineId }) => {
+  // Usar el hook personalizado para toda la lógica de pipeline
   const {
     // Estado
     filteredCustomers,
@@ -44,7 +44,6 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
     opportunityFormData,
     formMessage,
     isSaving,
-    error,
     
     // Setters
     setSearchQuery,
@@ -65,9 +64,7 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
     handleSort
   } = usePipeline(pipelineId);
 
-  // Ya tenemos acceso al estado de error desde el hook
-
-  // Si estamos cargando, mostrar spinner
+  // Si no hay clientes y estamos cargando, mostrar spinner
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[60vh]">
@@ -76,18 +73,6 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
     );
   }
 
-  // Si hay un error, mostrarlo
-  if (error) {
-    return (
-      <div className="flex flex-col justify-center items-center h-[60vh]">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-lg">
-          <h3 className="font-bold mb-2">Error al cargar datos</h3>
-          <p>{error}</p>
-          <p className="mt-4 text-sm">Sugerencia: Verifica la conexión a Supabase y el ID de organización.</p>
-        </div>
-      </div>
-    );
-  }
   return (
     <div className="space-y-6">
       {/* Título y descripción */}
@@ -180,4 +165,4 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
   );
 };
 
-export default ClientsView;
+export default ClientsViewRefactorizado;

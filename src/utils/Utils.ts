@@ -15,18 +15,26 @@ export function cn(...inputs: ClassValue[]): string {
 /**
  * Formatea un valor decimal como una cadena de moneda
  * 
- * @param amount - Monto a formatear
+ * @param value - Monto a formatear
  * @param currency - Código de moneda (por defecto COP)
- * @param locale - Configuración regional (por defecto es-CO)
  * @returns Cadena formateada como moneda
  */
-export function formatCurrency(amount: number, currency: string = 'COP', locale: string = 'es-CO'): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+// Esta función queda obsoleta y solo redirige al servicio
+// Se mantiene por compatibilidad con el código existente
+export function formatCurrency(value: number, currency: string = "COP"): string {
+  // Importar el servicio causaría un error de dependencia circular
+  // así que implementamos el formato aquí
+  try {
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  } catch (error) {
+    // Si hay error con el formato (ej: moneda inválida), usar formato simple
+    return `${currency} ${value.toFixed(2)}`;
+  }
 }
 
 /**

@@ -1,15 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
-import { Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase/config";
+import { Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/utils/Utils";
 import KanbanColumn from "./KanbanColumn";
 import { KanbanSummary } from "./KanbanSummary";
 import { useTheme } from "next-themes";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
-import { Customer, Opportunity, Stage, Pipeline } from "@/types/crm";
+import { Customer, Opportunity, Stage, Pipeline, OpportunityBase } from "@/types/crm";
+import { 
+  loadPipelineData, 
+  updateOpportunityStage, 
+  calculateStageStatistics,
+  getOrganizationId 
+} from "@/lib/services/kanbanService";
+import { 
+  RealtimeSubscription, 
+  subscribeToOpportunities,
+  subscribeToStages,
+  RealtimeChangeHandler
+} from "@/lib/services/realtimeService";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
 
 interface KanbanBoardProps {
   showStageManager?: boolean;
@@ -22,43 +35,13 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [realtimeEnabled, setRealtimeEnabled] = useState(true);
+  
+  // Referencias para mantener suscripciones activas
+  const stagesSubscriptionRef = useRef<RealtimeSubscription | null>(null);
+  const opportunitiesSubscriptionsRef = useRef<Record<string, RealtimeSubscription>>({});
 
-  // Función para asignar colores por defecto según la posición de la etapa
-  const getDefaultColorByPosition = (position: number): string => {
-    // Colores para diferentes etapas del pipeline
-    if (position >= 1000) return "#27ae60"; // Ganado
-    if (position >= 999) return "#7f8c8d"; // Perdido
-    if (position >= 40) return "#e74c3c"; // Negociación
-    if (position >= 30) return "#f39c12"; // Propuesta
-    if (position >= 20) return "#2ecc71"; // Contacto Inicial
-    return "#3498db"; // Lead (default)
-  };
-
-  const getOrganizationId = () => {
-    if (typeof window !== "undefined") {
-      // Intentar obtener primero de currentOrganizationId
-      const orgId = localStorage.getItem("currentOrganizationId");
-      if (orgId) {
-        return Number(orgId);
-      }
-      
-      // Si no existe, intentar el formato alternativo
-      const orgData = localStorage.getItem("organizacionActiva");
-      if (orgData) {
-        try {
-          const parsed = JSON.parse(orgData);
-          return parsed?.id || null;
-        } catch (err) {
-          console.error(
-            "Error parsing organization data from localStorage",
-            err
-          );
-          return null;
-        }
-      }
-    }
-    return null;
-  };
+  // Esta función ahora se importa desde kanbanService
 
   const handleStagesUpdate = () => {
     setRefreshTrigger((prev) => prev + 1);
@@ -69,148 +52,16 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     setError(null);
 
     try {
-      const organizationId = getOrganizationId();
-      if (!organizationId) {
-        setError("No se encontró la organización activa");
-        setIsLoading(false);
+      // Utilizamos el servicio kanban para cargar todos los datos del pipeline
+      const pipelineData = await loadPipelineData();
+      
+      if (!pipelineData) {
+        setError("No se pudo cargar el pipeline. Verifique que exista un pipeline predeterminado.");
         return;
       }
-
-      // 1. Obtener el pipeline principal (is_default = true) para la organización
-      const { data: pipelineData, error: pipelineError } = await supabase
-        .from("pipelines")
-        .select("id, name")
-        .eq("organization_id", organizationId)
-        .eq("is_default", true)
-        .single();
-
-      if (pipelineError) throw pipelineError;
-      if (!pipelineData)
-        throw new Error("No se encontró un pipeline por defecto");
-
-      // 2. Obtener todas las etapas del pipeline
-      let { data: stagesData, error: stagesError } = await supabase
-        .from("stages")
-        .select("id, name, position, probability")
-        .eq("pipeline_id", pipelineData.id)
-        .order("position");
-
-      if (stagesError) throw stagesError;
-
-      // Si no hay etapas, crear algunas por defecto
-      if (!stagesData || stagesData.length === 0) {
-        const defaultStages = [
-          { name: "Lead", position: 10, probability: 10 },
-          { name: "Contacto Inicial", position: 20, probability: 25 },
-          { name: "Propuesta", position: 30, probability: 50 },
-          { name: "Negociación", position: 40, probability: 75 },
-          { name: "Ganado", position: 1000, probability: 100 },
-          { name: "Perdido", position: 999, probability: 0 }
-        ];
-
-        for (const stage of defaultStages) {
-          await supabase.from("stages").insert({
-            id: crypto.randomUUID(),
-            name: stage.name,
-            pipeline_id: pipelineData.id,
-            position: stage.position,
-            probability: stage.probability,
-            // Eliminamos el campo color que no existe en la tabla
-            // color: stage.color,
-            organization_id: organizationId,
-            created_at: new Date().toISOString()
-          });
-        }
-
-        // Volver a obtener las etapas después de crear las predeterminadas
-        const { data: refreshedStages, error: refreshError } = await supabase
-          .from("stages")
-          .select("id, name, position, probability")
-          .eq("pipeline_id", pipelineData.id)
-          .order("position");
-
-        if (refreshError) throw refreshError;
-        if (refreshedStages) {
-          // Usar las etapas refrescadas en lugar de las originales
-          stagesData = refreshedStages;
-        }
-      }
-
-      // 3. Obtener oportunidades para cada etapa
-      const stagesWithOpportunities = await Promise.all(
-        (stagesData || []).map(async (stage) => {
-          const { data: opportunities, error: oppsError } = await supabase
-            .from("opportunities")
-            .select(
-              `
-              id, name, amount, currency, expected_close_date, status, customer_id,
-              created_by, created_at, updated_at,
-              customer:customer_id (id, full_name)
-            `
-            )
-            .eq("organization_id", organizationId)
-            .eq("stage_id", stage.id);
-
-          if (oppsError) throw oppsError;
-
-          // Asegurar que las oportunidades tengan la propiedad stage_id
-          const opportunitiesWithStageId = (opportunities || []).map((opp) => {
-            // Fix para el customer - verificamos si es un array o un objeto
-            let customerObj = null;
-            if (opp.customer) {
-              if (Array.isArray(opp.customer)) {
-                // Si es un array, tomamos el primer elemento
-                customerObj = opp.customer[0] ? {
-                  id: opp.customer_id,
-                  full_name: opp.customer[0].full_name
-                } : null;
-              } else {
-                // Si es un objeto, lo usamos directamente
-                // Verificar que customer tenga la propiedad full_name antes de acceder
-                const customerName = opp.customer && typeof opp.customer === 'object' ? 
-                  (opp.customer as any).full_name || 'Cliente sin nombre' : 'Cliente sin nombre';
-                  
-                customerObj = {
-                  id: opp.customer_id,
-                  full_name: customerName
-                };
-              }
-            }
-
-            return {
-              id: opp.id,
-              name: opp.name,
-              amount: opp.amount,
-              currency: opp.currency,
-              expected_close_date: opp.expected_close_date,
-              status: opp.status,
-              customer_id: opp.customer_id,
-              customer: customerObj,
-              stage_id: stage.id,
-              created_by: opp.created_by,
-              created_at: opp.created_at,
-              updated_at: opp.updated_at
-            };
-          });
-
-          return {
-            ...stage,
-            opportunities: opportunitiesWithStageId,
-          };
-        })
-      );
-
-      // Agregar un color por defecto a cada etapa para la UI
-      const stagesWithDefaultColor = stagesWithOpportunities.map(stage => ({
-        ...stage,
-        color: getDefaultColorByPosition(stage.position)
-      }));
-
-      setPipeline({
-        id: pipelineData.id,
-        name: pipelineData.name,
-        stages: stagesWithDefaultColor,
-      });
+      
+      // Actualizamos el estado con los datos del pipeline
+      setPipeline(pipelineData);
     } catch (err: any) {
       console.error("Error al cargar el pipeline:", err);
       setError(err.message || "Error al cargar los datos del pipeline");
@@ -219,9 +70,224 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     }
   };
 
+  // Función para configurar las suscripciones en tiempo real
+  const setupRealtimeSubscriptions = () => {
+    if (!realtimeEnabled || !pipeline || !pipeline.id) return;
+    
+    // Cancelar suscripciones previas
+    cleanupRealtimeSubscriptions();
+
+    // Suscribirse a cambios en las etapas del pipeline
+    stagesSubscriptionRef.current = subscribeToStages(pipeline.id, {
+      onInsert: (newStage) => {
+        // Cuando se inserta una nueva etapa, actualizamos el pipeline
+        console.log('Nueva etapa creada:', newStage);
+        setPipeline(prev => {
+          if (!prev) return prev;
+          // Convertir el objeto StageRecord a un objeto Stage completo
+          const completeStage: Stage = {
+            id: newStage.id,
+            pipeline_id: newStage.pipeline_id,
+            name: newStage.name || 'Nueva etapa',
+            position: newStage.position || 0,
+            probability: newStage.probability || 0,
+            color: newStage.color,
+            description: newStage.description,
+            opportunities: []
+          };
+          return {
+            ...prev,
+            stages: [...prev.stages, completeStage]
+          };
+        });
+      },
+      onUpdate: (updatedStage) => {
+        // Cuando se actualiza una etapa existente
+        console.log('Etapa actualizada:', updatedStage);
+        setPipeline(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            stages: prev.stages.map(stage => 
+              stage.id === updatedStage.id ? { ...stage, ...updatedStage, opportunities: stage.opportunities } : stage
+            )
+          };
+        });
+      },
+      onDelete: (deletedStage) => {
+        // Cuando se elimina una etapa
+        console.log('Etapa eliminada:', deletedStage);
+        setPipeline(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            stages: prev.stages.filter(stage => stage.id !== deletedStage.id)
+          };
+        });
+      }
+    });
+
+    // Suscribirse a cambios en las oportunidades de cada etapa
+    if (pipeline.stages && pipeline.stages.length > 0) {
+      pipeline.stages.forEach(stage => {
+        const stageId = stage.id;
+        // Suscribirse a oportunidades de esta etapa
+        opportunitiesSubscriptionsRef.current[stageId] = subscribeToOpportunities(stageId, {
+          onInsert: (newOpportunity) => {
+            // Cuando se crea una nueva oportunidad en esta etapa
+            console.log(`Nueva oportunidad en etapa ${stageId}:`, newOpportunity);
+            setPipeline(prev => {
+              if (!prev) return prev;
+              
+              // Convertir OpportunityRecord a una Opportunity completa
+              const completeOpportunity: Opportunity = {
+                ...newOpportunity,
+                name: newOpportunity.name || `Oportunidad ${newOpportunity.id.substring(0, 5)}`,
+                customer: newOpportunity.customer_id ? { id: newOpportunity.customer_id, full_name: 'Cliente' } : null
+              };
+              
+              return {
+                ...prev,
+                stages: prev.stages.map(s => {
+                  if (s.id === stageId) {
+                    return {
+                      ...s,
+                      opportunities: [...(s.opportunities || []), completeOpportunity]
+                    };
+                  }
+                  return s;
+                })
+              };
+            });
+          },
+          onUpdate: (updatedOpportunity) => {
+            // Cuando se actualiza una oportunidad
+            console.log(`Oportunidad actualizada en etapa ${stageId}:`, updatedOpportunity);
+            setPipeline(prev => {
+              if (!prev) return prev;
+              
+              // Convertir OpportunityRecord a una Opportunity completa
+              const completeOpportunity: Opportunity = {
+                ...updatedOpportunity,
+                name: updatedOpportunity.name || `Oportunidad ${updatedOpportunity.id.substring(0, 5)}`,
+                customer: updatedOpportunity.customer_id ? { id: updatedOpportunity.customer_id, full_name: 'Cliente' } : null
+              };
+              
+              // Si la oportunidad cambió de etapa, la actualizamos en la etapa correcta
+              const currentStageId = updatedOpportunity.stage_id;
+              
+              if (currentStageId !== stageId) {
+                // La oportunidad cambió de etapa, hay que moverla
+                // Eliminarla de la etapa actual
+                const updatedStages = prev.stages.map(s => {
+                  if (s.id === stageId) {
+                    return {
+                      ...s,
+                      opportunities: (s.opportunities || []).filter(o => o.id !== updatedOpportunity.id)
+                    };
+                  }
+                  // Agregarla a la nueva etapa
+                  if (s.id === currentStageId) {
+                    return {
+                      ...s,
+                      opportunities: [...(s.opportunities || []), completeOpportunity]
+                    };
+                  }
+                  return s;
+                });
+                
+                return {
+                  ...prev,
+                  stages: updatedStages
+                };
+              } else {
+                // Solo actualizamos la oportunidad en su etapa actual
+                return {
+                  ...prev,
+                  stages: prev.stages.map(s => {
+                    if (s.id === stageId) {
+                      return {
+                        ...s,
+                        opportunities: (s.opportunities || []).map(o => 
+                          o.id === updatedOpportunity.id ? completeOpportunity : o
+                        )
+                      };
+                    }
+                    return s;
+                  })
+                };
+              }
+            });
+          },
+          onDelete: (deletedOpportunity) => {
+            // Cuando se elimina una oportunidad
+            console.log(`Oportunidad eliminada de etapa ${stageId}:`, deletedOpportunity);
+            setPipeline(prev => {
+              if (!prev) return prev;
+              // Aseguramos eliminar la oportunidad de la etapa correcta
+              return {
+                ...prev,
+                stages: prev.stages.map(s => {
+                  if (s.id === stageId) {
+                    return {
+                      ...s,
+                      opportunities: (s.opportunities || []).filter(o => o.id !== deletedOpportunity.id)
+                    };
+                  }
+                  return s;
+                })
+              };
+            });
+            
+            // Mostrar notificación de eliminación
+            toast({
+              description: "Oportunidad eliminada correctamente",
+              duration: 2000,
+              variant: "destructive"
+            });
+          }
+        });
+      });
+    }
+
+    toast({
+      title: "Actualizaciones en tiempo real activadas",
+      description: "El tablero se actualizará automáticamente con los cambios",
+      duration: 3000,
+    });
+  };
+
+  // Limpiar suscripciones
+  const cleanupRealtimeSubscriptions = () => {
+    // Cancelar suscripción a etapas
+    if (stagesSubscriptionRef.current) {
+      stagesSubscriptionRef.current.unsubscribe();
+      stagesSubscriptionRef.current = null;
+    }
+    
+    // Cancelar suscripciones a oportunidades
+    Object.values(opportunitiesSubscriptionsRef.current).forEach(subscription => {
+      subscription.unsubscribe();
+    });
+    opportunitiesSubscriptionsRef.current = {};
+  };
+
+  // Efecto para cargar datos iniciales
   useEffect(() => {
     fetchPipelineData();
   }, [refreshTrigger]);
+  
+  // Configurar suscripciones en tiempo real cuando el pipeline cambia
+  useEffect(() => {
+    if (pipeline) {
+      setupRealtimeSubscriptions();
+    }
+    
+    // Limpiar suscripciones al desmontar
+    return () => {
+      cleanupRealtimeSubscriptions();
+    };
+  }, [pipeline?.id, realtimeEnabled]);
 
   const handleDragEnd = async (result: DropResult) => {
     // Validación básica para asegurarnos de que el drag terminó en un lugar válido
@@ -286,12 +352,17 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     // Actualizar el estado local
     setPipeline(newPipeline);
 
-    // Actualizar en Supabase
+    // Actualizar en Supabase usando el servicio
     try {
-      await supabase
-        .from("opportunities")
-        .update({ stage_id: destination.droppableId })
-        .eq("id", result.draggableId);
+      // Utilizamos el servicio kanban para actualizar la etapa de la oportunidad
+      const updateResult = await updateOpportunityStage(
+        result.draggableId, 
+        destination.droppableId
+      );
+      
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || "Error al actualizar la oportunidad");
+      }
 
       // Oportunidad actualizada en la base de datos
       const finishStage = newPipeline.stages[destStageIndex];
@@ -311,7 +382,7 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
             opportunityId: result.draggableId,
             fromStageId: result.source.droppableId,
             toStageId: destination.droppableId,
-            organizationId: organizationId
+            organizationId: String(organizationId) // Convertir a string para compatibilidad con la función
           }).then((result) => {
             setProcessingAutomation(null);
             if (!result.success) {
@@ -350,95 +421,188 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     );
   }
   
-  // Calcular el total por etapa
-  const stageStats = pipeline.stages.map((stage) => {
-    const opportunities = stage.opportunities || [];
-    const totalAmount = opportunities.reduce(
-      (sum, opp) => sum + (parseFloat(opp.amount?.toString() || "0") || 0),
-      0
-    );
+  // Calcular el total por etapa usando el servicio
+  const stageStats = calculateStageStatistics(pipeline.stages);
 
-    // Calcular el pronóstico basado en la probabilidad de la etapa
-    const forecast = (totalAmount * (stage.probability || 0)) / 100;
+  // Clasificar las etapas para la visualización
+  const classifyStageType = (stageName: string | undefined) => {
+    const name = (stageName || '').toLowerCase();
+    if (name.includes('nuevo') || name.includes('lead') || name.includes('prospecto')) {
+      return 'new';
+    } else if (name.includes('ganado') || name.includes('cerrado') && name.includes('positivo') || name.includes('won')) {
+      return 'won';
+    } else if (name.includes('perdido') || name.includes('cerrado') && name.includes('negativo') || name.includes('lost')) {
+      return 'lost';
+    } else {
+      return 'inProgress';
+    }
+  };
 
-    return {
-      id: stage.id,
-      name: stage.name,
-      count: opportunities.length,
-      totalAmount,
-      forecast,
-    };
-  });
+  // Ordenar etapas por su posición
+  const sortedStages = [...pipeline.stages].sort((a, b) => a.position - b.position);
 
   return (
-    <div className="h-full">
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : error ? (
-        <div className="bg-destructive/20 p-4 rounded-md text-center">
-          <p className="text-destructive font-medium">Error: {error}</p>
-        </div>
-      ) : (
-        <>
-          {showStageManager && StageManagerComponent && (
-            <StageManagerComponent 
-              pipeline={pipeline} 
-              onPipelineChange={setPipeline} 
-              onStagesUpdate={handleStagesUpdate}
+  <div className="flex flex-col w-full h-full">
+    <div className="flex justify-between items-center mb-4">
+      <div className="flex items-center gap-2">
+        <h2 className="text-2xl font-bold">{pipeline?.name || "Pipeline"}</h2>
+        {showStageManager && StageManagerComponent && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs"
+            onClick={() => {}}
+            title="Configurar etapas"
+          >
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            Editar etapas
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="flex items-center mr-4">
+          <label htmlFor="realtime-toggle" className="mr-2 text-sm">
+            Tiempo real
+          </label>
+          <div className="relative inline-block w-10 mr-2 align-middle select-none">
+            <input
+              type="checkbox"
+              id="realtime-toggle"
+              className="sr-only"
+              checked={realtimeEnabled}
+              onChange={() => {
+                setRealtimeEnabled(!realtimeEnabled);
+                if (!realtimeEnabled) {
+                  // Si estamos activando las suscripciones
+                  toast({
+                    title: "Actualizaciones en tiempo real activadas",
+                    description: "El tablero se sincronizará automáticamente",
+                    duration: 3000,
+                  });
+                } else {
+                  // Si estamos desactivando las suscripciones
+                  cleanupRealtimeSubscriptions();
+                  toast({
+                    title: "Actualizaciones en tiempo real desactivadas",
+                    description: "Deberá actualizar manualmente para ver cambios",
+                    duration: 3000,
+                  });
+                }
+              }}
             />
-          )}
-          <KanbanSummary stages={stageStats} />
-
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="flex overflow-x-auto pb-4 gap-4">
-              {pipeline.stages.map((stage) => {
-                const opportunities = stage.opportunities || [];
-                const stageTotal = opportunities.reduce(
-                  (sum, opp) => sum + (parseFloat(opp.amount?.toString() || "0") || 0),
-                  0
-                );
-                
-                // Función para actualizar una etapa específica
-                const handleStageUpdate = (updatedStage: Stage) => {
-                  // Crear una copia del pipeline
-                  const updatedPipeline = { ...pipeline };
-                  // Encontrar el índice de la etapa a actualizar
-                  const stageIndex = updatedPipeline.stages.findIndex(
-                    (s) => s.id === updatedStage.id
-                  );
-                  // Si la etapa existe, actualizarla
-                  if (stageIndex !== -1) {
-                    updatedPipeline.stages[stageIndex] = {
-                      ...updatedPipeline.stages[stageIndex],
-                      ...updatedStage,
-                    };
-                    // Actualizar el pipeline
-                    setPipeline(updatedPipeline);
-                  }
-                };
-                return (
-                  <div key={stage.id} className="min-w-[300px] max-w-[300px]">
-                    <KanbanColumn 
-                      stage={stage} 
-                      opportunities={opportunities}
-                      stageTotal={stageTotal}
-                      onOpportunityDrop={async (opportunityId: string, sourceStageId: string, destinationStageId: string) => {
-                        // Esta función ya se maneja en handleDragEnd
-                        // Se incluye para cumplir con la interfaz
-                      }}
-                      isLoading={isLoading}
-                      onStageUpdate={handleStageUpdate}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </DragDropContext>
-
-        </>
-      )}
+            <div className={`block w-10 h-6 rounded-full transition-colors ${realtimeEnabled ? 'bg-green-400' : 'bg-gray-300'}`}></div>
+            <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform ${realtimeEnabled ? 'translate-x-4' : ''}`}></div>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setRefreshTrigger((prev) => prev + 1)}
+          disabled={isLoading}
+        >
+          <RefreshCw className={cn("h-4 w-4 mr-1", { "animate-spin": isLoading })} />
+          Actualizar
+        </Button>
+      </div>
     </div>
+    
+    {/* Indicadores de progreso y estadísticas */}
+    <div className="bg-muted/20 p-2 rounded-md mb-4 flex items-center justify-between text-xs">
+      <span className="font-medium">
+        {stageStats.length} etapas - {stageStats.reduce((sum, stat) => sum + (stat.count || 0), 0)} oportunidades
+      </span>
+      <span className="font-medium">
+        Total: {stageStats.reduce((sum, stat) => sum + (stat.totalAmount || 0), 0).toLocaleString('es-ES')} {sortedStages[0]?.opportunities?.[0]?.currency || 'COP'}
+      </span>
+    </div>
+    {showStageManager && StageManagerComponent && (
+      <StageManagerComponent 
+        pipeline={pipeline} 
+        onPipelineChange={setPipeline} 
+        onStagesUpdate={handleStagesUpdate}
+      />
+    )}
+    <KanbanSummary stages={stageStats} />
+
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <div className="flex overflow-x-auto pb-4 gap-4">
+        {/* Usar las etapas ordenadas por posición */}
+        {sortedStages.map((stage) => {
+          const opportunities = stage.opportunities || [];
+          const stageTotal = opportunities.reduce(
+            (sum, opp) => sum + (parseFloat(opp.amount?.toString() || "0") || 0),
+            0
+          );
+          
+          // Clasificar el tipo de etapa
+          const stageType = classifyStageType(stage.name);
+          
+          // Función para actualizar una etapa específica
+          const handleStageUpdate = (updatedStage: Stage) => {
+            // Crear una copia del pipeline
+            const updatedPipeline = { ...pipeline };
+            // Encontrar el índice de la etapa a actualizar
+            const stageIndex = updatedPipeline.stages.findIndex(
+              (s) => s.id === updatedStage.id
+            );
+            // Si la etapa existe, actualizarla
+            if (stageIndex !== -1) {
+              updatedPipeline.stages[stageIndex] = {
+                ...updatedPipeline.stages[stageIndex],
+                ...updatedStage,
+              };
+              // Actualizar el pipeline
+              setPipeline(updatedPipeline);
+            }
+          };
+          
+          // Determinar clases de estilo basadas en el tipo de etapa
+          const getStageClasses = () => {
+            // Clase base para todas las columnas
+            let classes = "min-w-[280px] max-w-[280px] ";
+            
+            // Añadir clases específicas según el tipo de etapa
+            switch(stageType) {
+              case 'new':
+                classes += "border-l-4 border-blue-500 pl-1 ";
+                break;
+              case 'won':
+                classes += "border-l-4 border-green-500 pl-1 ";
+                break;
+              case 'lost':
+                classes += "border-l-4 border-red-500 pl-1 ";
+                break;
+              default:
+                classes += "border-l border-gray-300 dark:border-gray-700 pl-1 ";
+            }
+            
+            return classes;
+          };
+          
+          return (
+            <div key={stage.id} className={getStageClasses()}>
+              <KanbanColumn 
+                stage={stage} 
+                opportunities={opportunities}
+                stageTotal={stageTotal}
+                onOpportunityDrop={async (opportunityId: string, sourceStageId: string, destinationStageId: string) => {
+                  // Esta función ya se maneja en handleDragEnd
+                  // Se incluye para cumplir con la interfaz
+                }}
+                isLoading={isLoading}
+                onStageUpdate={handleStageUpdate}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </DragDropContext>
+    {isLoading && (
+      <div className="flex items-center justify-center mt-4">
+        <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+        <span>Sincronizando datos...</span>
+      </div>
+    )}
+  </div>
   );
 }

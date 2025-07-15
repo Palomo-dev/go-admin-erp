@@ -35,6 +35,27 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
   const currency =
     opportunities.length > 0 ? opportunities[0].currency || "COP" : "COP";
 
+  // Función para determinar el color de la barra indicadora según la probabilidad
+  const getStageColorClass = () => {
+    // Si stage.color está definido, usar ese color
+    if (stage.color) {
+      return `bg-[${stage.color}]`;
+    }
+    
+    // Si no hay color definido, usar la probabilidad
+    const probability = stage.probability || 0;
+    if (probability < 25) return 'bg-red-500'; // Etapa inicial
+    if (probability < 50) return 'bg-amber-500'; // Etapa intermedia
+    if (probability < 75) return 'bg-blue-500'; // Etapa avanzada
+    return 'bg-green-500'; // Etapa final
+  };
+
+  // Determinar el nombre de la etapa para mostrar iconos
+  const stageName = stage.name?.toLowerCase() || '';
+  const isNewStage = stageName.includes('nuevo') || stageName.includes('lead');
+  const isWonStage = stageName.includes('ganado') || stageName.includes('cerrado') || stageName.includes('won');
+  const isLostStage = stageName.includes('perdido') || stageName.includes('lost');
+
   return (
     <>
       <div
@@ -42,10 +63,12 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
           theme === "dark"
             ? "bg-gray-950 border-gray-800"
             : "bg-gray-50 border-gray-200"
-        } border shadow-sm`}
+        } border shadow-sm relative overflow-hidden`}
       >
+        <div className={`absolute top-0 left-0 w-full h-1 ${getStageColorClass()}`} />
+        
         <div
-          className={`p-3 ${
+          className={`p-3 pt-4 ${
             theme === "dark"
               ? "bg-gray-900 text-gray-100"
               : "bg-gray-100 text-gray-900"
@@ -55,8 +78,14 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
         >
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
+              {isNewStage && <span className="text-blue-500 text-sm">●</span>}
+              {isWonStage && <span className="text-green-500 text-sm">✓</span>}
+              {isLostStage && <span className="text-red-500 text-sm">✗</span>}
               <h3 className="font-medium text-sm">{stage.name}</h3>
-              <Badge variant="secondary" className="text-xs font-normal">
+              <Badge 
+                variant={isWonStage ? "success" : (isLostStage ? "destructive" : "secondary")} 
+                className="text-xs font-normal"
+              >
                 {opportunities.length}
               </Badge>
             </div>
@@ -65,20 +94,25 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
                 {formatCurrency(totalValue, currency)}
               </div>
               <Button 
-                variant="secondary" 
+                variant="ghost" 
                 size="sm" 
-                className="h-6 ml-1 flex items-center text-xs gap-1" 
+                className="h-6 ml-1 flex items-center text-xs gap-1 opacity-70 hover:opacity-100" 
                 onClick={() => setIsConfigOpen(true)}
                 title="Configurar etapa"
               >
                 <Settings className="h-3.5 w-3.5" />
-                Config
               </Button>
             </div>
           </div>
           {stage.probability !== null && (
-            <div className="mt-1 text-xs text-muted-foreground">
-              Prob: {stage.probability}%
+            <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 h-1 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full ${getStageColorClass()}`}
+                  style={{ width: `${stage.probability}%` }}
+                />
+              </div>
+              <span>{stage.probability}%</span>
             </div>
           )}
         </div>

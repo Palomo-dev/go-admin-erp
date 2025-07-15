@@ -6,11 +6,16 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/utils/Utils";
-import { BarChart3, Calendar } from "lucide-react";
+import { currencyService } from "@/lib/services/currencyService";
+import { BarChart3, Calendar, LineChart, Filter } from "lucide-react";
 import ForecastChart from "./ForecastChart";
 import GoalCompletionWidget from "./GoalCompletionWidget";
 import ForecastByStageChart from "./ForecastByStageChart";
+import MonthlyForecastView from "./MonthlyForecastView";
+import ForecastSidebar from "./ForecastSidebar";
+import WeightedFunnelChart from "./WeightedFunnelChart";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { forecastRealTimeService } from "@/lib/services/forecastRealTimeService";
 
 interface ForecastMonth {
   month: string; // formato: YYYY-MM
@@ -25,10 +30,12 @@ interface Opportunity {
   id: string;
   name: string;
   amount: number;
+  currency: string; // Moneda de la oportunidad (ISO 4217)
+  convertedAmount?: number; // Monto convertido a la moneda base
   expected_close_date: string;
   stage_id: string;
   stage_name?: string;
-  probability: number;       // Valor decimal (0-1)
+  probability: number; // Valor decimal (0-1)
   probabilityPercent: number; // Valor porcentual (0-100)
   customer_name?: string;
   status: string;
@@ -42,97 +49,169 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [forecastData, setForecastData] = useState<ForecastMonth[]>([]);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
+  const [baseCurrency, setBaseCurrency] = useState<string>('USD');
   const [totalForecast, setTotalForecast] = useState({
     totalAmount: 0,
     weightedAmount: 0,
     opportunityCount: 0,
   });
 
-  // Obtener el ID de la organización del localStorage
+  // Obtener el ID de la organización y la moneda base
   useEffect(() => {
     const orgId = localStorage.getItem("currentOrganizationId");
     if (orgId) {
-      setOrganizationId(Number(orgId));
+      const orgIdNum = Number(orgId);
+      setOrganizationId(orgIdNum);
+      
+      // Cargar la moneda base de la organización
+      const loadBaseCurrency = async () => {
+        try {
+          // Usamos un bloque try-catch más robusto
+          if (!orgIdNum) {
+            console.log("ID de organización no disponible, usando USD");
+            setBaseCurrency("USD");
+            return;
+          }
+          
+          const baseCurrency = await currencyService.getBaseCurrency(orgIdNum);
+          setBaseCurrency(baseCurrency);
+          console.log(`Moneda base cargada: ${baseCurrency}`);
+        } catch (error) {
+          console.error("Error al cargar la moneda base:", error);
+          setBaseCurrency("USD"); // Valor por defecto si hay error
+        }
+      };
+      
+      loadBaseCurrency();
     }
   }, []);
 
-  useEffect(() => {
-    const loadForecastData = async () => {
-      if (!organizationId || !pipelineId) return;
+  // Función para cargar oportunidades (extraída para poder llamarla desde múltiples lugares)
+  const loadOpportunities = async () => {
+    if (!organizationId || !pipelineId) return;
 
-      setLoading(true);
+    setLoading(true);
 
+    try {
+      // Cargar oportunidades con información de etapas para obtener probabilidades
+      const { data, error } = await supabase
+        .from("opportunities")
+        .select(
+          `
+          id, name, amount, currency, expected_close_date, stage_id, status, customer_id,
+          stages:stage_id(name, probability),
+          customers:customer_id(full_name)
+        `
+        )
+        .eq("organization_id", organizationId)
+        .eq("pipeline_id", pipelineId)
+        // Solo incluir oportunidades abiertas o ganadas
+        .in("status", ["open", "won"])
+        .order("expected_close_date");
+
+      if (error) {
+        console.error("Error al cargar datos para el pronóstico:", error);
+        setLoading(false);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        setForecastData([]);
+        setLoading(false);
+        return;
+      }
+
+      // Procesar y agrupar oportunidades por mes (ahora es async)
       try {
-        // Cargar oportunidades con información de etapas para obtener probabilidades
-        const { data, error } = await supabase
-          .from("opportunities")
-          .select(`
-            id, name, amount, expected_close_date, stage_id, status, customer_id,
-            stages:stage_id(name, probability),
-            customers:customer_id(full_name)
-          `)
-          .eq("organization_id", organizationId)
-          .eq("pipeline_id", pipelineId)
-          // Solo incluir oportunidades abiertas o ganadas
-          .in("status", ["open", "won"])
-          .order("expected_close_date");
-
-        if (error) {
-          console.error("Error al cargar datos para el pronóstico:", error);
-          setLoading(false);
-          return;
-        }
-
-        if (!data || data.length === 0) {
-          setForecastData([]);
-          setLoading(false);
-          return;
-        }
-
-        // Procesar y agrupar oportunidades por mes
-        const processedData = processOpportunitiesByMonth(data);
+        const processedData = await processOpportunitiesByMonth(data);
         setForecastData(processedData.monthData);
         setTotalForecast({
           totalAmount: processedData.totalAmount,
           weightedAmount: processedData.weightedAmount,
           opportunityCount: processedData.totalCount,
         });
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Error al procesar datos de pronóstico:", error);
-        setLoading(false);
+      } catch (processingError) {
+        console.error("Error al procesar y convertir montos:", processingError);
       }
-    };
 
-    loadForecastData();
+      setLoading(false);
+    } catch (error) {
+      console.error("Error al procesar datos de pronóstico:", error);
+      setLoading(false);
+    }
+  };
+
+  // Efecto para cargar datos iniciales y configurar suscripciones en tiempo real
+  useEffect(() => {
+    if (!organizationId || !pipelineId) return;
+    
+    // Inicializar el servicio de tiempo real
+    forecastRealTimeService.initialize();
+    
+    // Suscribirse a cambios en el pipeline
+    const unsubscribe = forecastRealTimeService.subscribeToPipelineChanges(
+      pipelineId, 
+      () => {
+        // Recargar datos cuando ocurra un cambio
+        loadOpportunities();
+      }
+    );
+
+    // Carga inicial de datos
+    loadOpportunities();
+    
+    // Limpiar suscripción al desmontar
+    return () => {
+      unsubscribe();
+    };
   }, [pipelineId, organizationId]);
 
   // Procesar y agrupar oportunidades por mes
-  const processOpportunitiesByMonth = (data: any[]) => {
+  const processOpportunitiesByMonth = async (data: any[]) => {
     const monthMap = new Map<string, ForecastMonth>();
     let totalAmount = 0;
     let weightedAmount = 0;
     let totalCount = 0;
 
     // Crear un grupo para oportunidades sin fecha
-    const noDateKey = 'sin-fecha';
+    const noDateKey = "sin-fecha";
     monthMap.set(noDateKey, {
       month: noDateKey,
-      monthName: 'Sin fecha',
+      monthName: "Sin fecha",
       totalValue: 0,
       weightedValue: 0,
       opportunityCount: 0,
       opportunities: [],
     });
 
-    data.forEach((opp) => {
+    // Procesar cada oportunidad con conversión de moneda
+    for (const opp of data) {
       // Calcular monto ponderado usando la probabilidad de la etapa
       const probability = opp.stages ? Number(opp.stages.probability) / 100 : 0;
-      const amount = Number(opp.amount) || 0;
-      const weightedAmountForOpp = amount * probability;
+      
+      // Extraer moneda y monto
+      const originalAmount = Number(opp.amount) || 0;
+      const currency = opp.currency || baseCurrency;
+      
+      // Convertir el monto a la moneda base si es necesario
+      let convertedAmount = originalAmount;
+      if (currency !== baseCurrency && organizationId) {
+        try {
+          convertedAmount = await currencyService.convertAmount(
+            originalAmount,
+            currency,
+            baseCurrency,
+            organizationId
+          );
+        } catch (error) {
+          console.warn(`No se pudo convertir ${currency} a ${baseCurrency}:`, error);
+        }
+      }
+      
+      // Usar el monto convertido para cálculos
+      const weightedAmountForOpp = convertedAmount * probability;
 
-      totalAmount += amount;
+      totalAmount += convertedAmount;
       weightedAmount += weightedAmountForOpp;
       totalCount++;
 
@@ -143,14 +222,16 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
       const opportunity: Opportunity = {
         id: opp.id,
         name: opp.name,
-        amount,
+        amount: originalAmount,
+        currency: currency,
+        convertedAmount: convertedAmount,
         expected_close_date: opp.expected_close_date,
         stage_id: opp.stage_id,
         stage_name: stageName,
         probability: probability,
         probabilityPercent: probabilityPercent,
         customer_name: customerName,
-        status: opp.status
+        status: opp.status,
       };
 
       let key;
@@ -160,22 +241,35 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
       if (!opp.expected_close_date) {
         // Sin fecha, agregarlo al grupo especial
         key = noDateKey;
-        monthName = 'Sin fecha';
+        monthName = "Sin fecha";
       } else {
         // Con fecha, procesar normalmente
         const closeDate = new Date(opp.expected_close_date);
         const year = closeDate.getFullYear();
         const month = closeDate.getMonth(); // 0-indexed para arrays
-        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-        
-        key = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const monthNames = [
+          "Enero",
+          "Febrero",
+          "Marzo",
+          "Abril",
+          "Mayo",
+          "Junio",
+          "Julio",
+          "Agosto",
+          "Septiembre",
+          "Octubre",
+          "Noviembre",
+          "Diciembre",
+        ];
+
+        key = `${year}-${String(month + 1).padStart(2, "0")}`;
         monthName = `${monthNames[month]} ${year}`;
       }
 
       // Actualizar o crear el grupo del mes
       if (monthMap.has(key)) {
         const monthData = monthMap.get(key)!;
-        monthData.totalValue += amount;
+        monthData.totalValue += convertedAmount;
         monthData.weightedValue += weightedAmountForOpp;
         monthData.opportunityCount++;
         monthData.opportunities.push(opportunity);
@@ -183,29 +277,29 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
         monthMap.set(key, {
           month: key,
           monthName: monthName,
-          totalValue: amount,
+          totalValue: convertedAmount,
           weightedValue: weightedAmountForOpp,
           opportunityCount: 1,
-          opportunities: [opportunity]
+          opportunities: [opportunity],
         });
       }
-    });
+    } // Cierre correcto del bucle for
 
     // Convertir el mapa a un array ordenado por mes
-    const monthData = Array.from(monthMap.values()).sort(
-      (a, b) => {
-        // Colocar "Sin fecha" al final
-        if (a.month === noDateKey) return 1;
-        if (b.month === noDateKey) return -1;
-        // Ordenar el resto cronológicamente
-        return new Date(a.month).getTime() - new Date(b.month).getTime();
-      }
-    );
-    
+    const monthData = Array.from(monthMap.values()).sort((a, b) => {
+      // Colocar "Sin fecha" al final
+      if (a.month === noDateKey) return 1;
+      if (b.month === noDateKey) return -1;
+      // Ordenar el resto cronológicamente
+      return new Date(a.month).getTime() - new Date(b.month).getTime();
+    });
+
     // Eliminar el grupo "Sin fecha" si está vacío
-    if (monthData.length > 0 && 
-        monthData[monthData.length - 1].month === noDateKey && 
-        monthData[monthData.length - 1].opportunityCount === 0) {
+    if (
+      monthData.length > 0 &&
+      monthData[monthData.length - 1].month === noDateKey &&
+      monthData[monthData.length - 1].opportunityCount === 0
+    ) {
       monthData.pop();
     }
 
@@ -228,10 +322,12 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
     return (
       <div className="p-4">
         <Card className="p-8 text-center">
-          <h3 className="text-lg font-medium mb-2">No hay datos de pronóstico disponibles</h3>
+          <h3 className="text-lg font-medium mb-2">
+            No hay datos de pronóstico disponibles
+          </h3>
           <p className="text-gray-500 dark:text-gray-400">
-            No se encontraron oportunidades en este pipeline. 
-            Añade oportunidades para ver un pronóstico mensual.
+            No se encontraron oportunidades en este pipeline. Añade
+            oportunidades para ver un pronóstico mensual.
           </p>
         </Card>
       </div>
@@ -241,127 +337,137 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
   // Renderizar el pronóstico
   return (
     <div className="p-4 space-y-6">
-      {/* Selector de vistas */}
-      <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="monthly">Vista mensual</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="dashboard" className="space-y-6">
-          {/* KPIs de resumen */}
-          <Card className="p-4 bg-white dark:bg-gray-800 shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex flex-col p-3 border-r border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Total de oportunidades</span>
-                <span className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                  {totalForecast.opportunityCount}
-                </span>
-              </div>
-              <div className="flex flex-col p-3 border-r border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Valor total</span>
-                <span className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                  {formatCurrency(totalForecast.totalAmount)}
-                </span>
-              </div>
-              <div className="flex flex-col p-3">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Valor ponderado</span>
-                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatCurrency(totalForecast.weightedAmount)}
-                </span>
-              </div>
-            </div>
-          </Card>
-          
-          {/* Gráficos de pronóstico */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Gráfico de pronóstico acumulado */}
-            <ForecastChart pipelineId={pipelineId} />
-            
-            {/* Widget de cumplimiento de objetivos */}
-            <GoalCompletionWidget pipelineId={pipelineId} />
-            
-            {/* Gráfico de distribución por etapas */}
-            <ForecastByStageChart pipelineId={pipelineId} className="lg:col-span-2" />
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="monthly" className="space-y-6">
-          {/* Vista detallada por mes */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {forecastData.map((month) => (
-              <Card key={month.month} className="overflow-hidden bg-white dark:bg-gray-800 shadow-sm">
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Calendar className="w-5 h-5 text-blue-500 dark:text-blue-400 mr-2" />
-                    <h3 className="font-medium text-gray-800 dark:text-gray-100">{month.monthName}</h3>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">{month.opportunityCount} oportunidades</span>
-                  </div>
-                </div>
-                
-                <div className="p-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center">
-                      <BarChart3 className="w-5 h-5 text-blue-500 dark:text-blue-400 mr-2" />
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                        Total esperado
-                      </span>
-                    </div>
-                    <span className="font-semibold text-gray-800 dark:text-gray-100">
-                      {formatCurrency(month.totalValue)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <BarChart3 className="w-5 h-5 text-green-500 dark:text-green-400 mr-2" />
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                        Ponderado por probabilidad
-                      </span>
-                    </div>
-                    <span className="font-semibold text-green-600 dark:text-green-400">
-                      {formatCurrency(month.weightedValue)}
-                    </span>
-                  </div>
-                </div>
+      {/* Sidebar de pronóstico - siempre visible */}
+      <ForecastSidebar pipelineId={pipelineId} />
+      
+      <div className="flex-1 space-y-4">
+        <Tabs defaultValue="chart" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="chart">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Gráfico de pronóstico
+            </TabsTrigger>
+            <TabsTrigger value="monthly">
+              <LineChart className="h-4 w-4 mr-2" />
+              Pronóstico Mensual
+            </TabsTrigger>
+            <TabsTrigger value="table">
+              <Calendar className="h-4 w-4 mr-2" />
+              Tabla de oportunidades
+            </TabsTrigger>
+          </TabsList>
 
-                <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50">
-                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Oportunidades destacadas:
-                  </h4>
-                  
-                  <div className="space-y-2">
-                    {month.opportunities.slice(0, 3).map((opp) => (
-                      <div 
-                        key={opp.id}
-                        className="flex justify-between items-center p-2 rounded-md bg-white dark:bg-gray-800 text-sm border border-gray-100 dark:border-gray-700"
-                      >
-                        <div>
-                          <div className="font-medium text-gray-800 dark:text-gray-200">{opp.name}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {opp.customer_name} · {opp.stage_name} ({Math.round(opp.probabilityPercent)}%)
-                          </div>
-                        </div>
-                        <div className="font-medium text-gray-800 dark:text-gray-200">
-                          {formatCurrency(opp.amount)}
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {month.opportunities.length > 3 && (
-                      <div className="text-xs text-center text-gray-500 dark:text-gray-400">
-                        + {month.opportunities.length - 3} más
-                      </div>
+          <TabsContent value="chart" className="space-y-4">
+            <ForecastChart pipelineId={pipelineId} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ForecastByStageChart pipelineId={pipelineId} />
+              <GoalCompletionWidget pipelineId={pipelineId} />
+            </div>
+            <div className="mt-4">
+              <WeightedFunnelChart pipelineId={pipelineId} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="monthly" className="space-y-4">
+            <MonthlyForecastView pipelineId={pipelineId} />
+          </TabsContent>
+
+          <TabsContent value="table" className="space-y-4">
+            <Card>
+              <div className="p-4 border-b">
+                <h3 className="font-medium">Oportunidades por mes</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-800/50">
+                    <tr>
+                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Nombre
+                      </th>
+                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Cliente
+                      </th>
+                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Fecha esperada
+                      </th>
+                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Etapa
+                      </th>
+                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Monto
+                      </th>
+                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Prob.
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {forecastData.flatMap((month) =>
+                      month.opportunities.map((opp) => (
+                        <tr
+                          key={opp.id}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-800/80"
+                        >
+                          <td className="p-3 text-sm">{opp.name}</td>
+                          <td className="p-3 text-sm">{opp.customer_name}</td>
+                          <td className="p-3 text-sm">
+                            {opp.expected_close_date
+                              ? new Date(
+                                  opp.expected_close_date
+                                ).toLocaleDateString()
+                              : "Sin fecha"}
+                          </td>
+                          <td className="p-3 text-sm">{opp.stage_name}</td>
+                          <td className="p-3 text-sm font-medium">
+                            {opp.currency === baseCurrency ? 
+                              formatCurrency(opp.convertedAmount || opp.amount, baseCurrency) :
+                              <>
+                                <div>{formatCurrency(opp.amount, opp.currency)}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  ({formatCurrency(opp.convertedAmount || opp.amount, baseCurrency)})
+                                </div>
+                              </>
+                            }
+                          </td>
+                          <td className="p-3 text-sm">
+                            {Math.round(opp.probabilityPercent)}%
+                          </td>
+                        </tr>
+                      ))
                     )}
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
+                  </tbody>
+                  <tfoot className="bg-gray-50 dark:bg-gray-800/50">
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="p-3 text-sm font-medium text-right"
+                      >
+                        Total:
+                      </td>
+                      <td className="p-3 text-sm font-bold">
+                        {formatCurrency(totalForecast.totalAmount, baseCurrency)}
+                      </td>
+                      <td className="p-3 text-sm"></td>
+                    </tr>
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="p-3 text-sm font-medium text-right"
+                      >
+                        Total ponderado:
+                      </td>
+                      <td className="p-3 text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {formatCurrency(totalForecast.weightedAmount, baseCurrency)}
+                      </td>
+                      <td className="p-3 text-sm"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };

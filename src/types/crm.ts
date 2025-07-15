@@ -5,19 +5,29 @@ export interface Customer {
   phone?: string;
 }
 
-export interface Opportunity {
+export interface OpportunityBase {
   id: string;
-  name: string;
+  stage_id: string;
+  customer_id?: string | null;
   amount?: number | null;
   currency?: string | null;
   expected_close_date?: string | null;
   status?: string | null;
-  customer?: Customer | null;
-  customer_id?: string | null;
-  stage_id: string;
+  priority?: 'low' | 'medium' | 'high' | null;
+  win_probability?: number | null;
   created_by?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  tasks_count?: number | null;
+  tasks_completed?: number | null;
+  last_activity_date?: string | null;
+  description?: string | null;
+  [key: string]: any; // Para permitir campos adicionales de Supabase
+}
+
+export interface Opportunity extends OpportunityBase {
+  name: string;
+  customer?: Customer | null;
 }
 
 export interface Stage {
@@ -25,6 +35,7 @@ export interface Stage {
   name: string;
   position: number;
   probability: number;
+  pipeline_id: string;
   color?: string;
   description?: string;
   opportunities?: Opportunity[];

@@ -263,7 +263,7 @@ export function NuevaFacturaForm() {
         tax_total: taxTotal,
         total: total,
         balance: total, // Al crear, el balance es igual al total
-        status: 'completed', // Estado por defecto para ventas
+        status: 'pending', // Estado permitido por la restricción sales_status_check
         payment_status: 'pending', // Por defecto pendiente de pago
         notes: notes,
         discount_total: 0 // Valor por defecto

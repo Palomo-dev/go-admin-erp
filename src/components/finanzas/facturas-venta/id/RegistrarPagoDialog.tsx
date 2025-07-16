@@ -8,6 +8,10 @@ import {
   DialogTitle, 
   DialogFooter 
 } from '@/components/ui/dialog';
+import {
+  Alert,
+  AlertDescription
+} from '@/components/ui/alert';
 import { 
   Select, 
   SelectContent, 
@@ -19,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -31,16 +35,41 @@ interface RegistrarPagoDialogProps {
   onSuccess?: () => void;
 }
 
+// Interfaces para tipar correctamente los datos de Supabase
+interface PaymentMethod {
+  code: string;
+  name: string;
+  requires_reference?: boolean;
+}
+
+// Estructura de datos que devuelve Supabase al hacer el join
+interface OrganizationPaymentMethodData {
+  payment_method_code: string;
+  id: number;
+  organization_id: number;
+  is_active: boolean;
+  code: string;
+  name: string;
+  requires_reference?: boolean;
+}
+
+interface FormattedPaymentMethod {
+  code: string;
+  name: string;
+  requires_reference?: boolean;
+}
+
 export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: RegistrarPagoDialogProps) {
   const { toast } = useToast();
   const organizationId = getOrganizationId();
 
   // Estados del formulario
   const [isLoading, setIsLoading] = useState(false);
-  const [metodosPago, setMetodosPago] = useState<any[]>([]);
+  const [metodosPago, setMetodosPago] = useState<FormattedPaymentMethod[]>([]);
   const [metodoPago, setMetodoPago] = useState<string>('');
   const [monto, setMonto] = useState<string>('');
   const [referencia, setReferencia] = useState<string>('');
+  const [montoExcedido, setMontoExcedido] = useState(false);
 
   // Cargar métodos de pago disponibles
   useEffect(() => {
@@ -48,18 +77,29 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       if (!organizationId) return;
 
       try {
+        // Consultar los métodos de pago de la organización uniendo con payment_methods
         const { data, error } = await supabase
-          .from('payment_methods')
-          .select('code, name')
-          .eq('is_active', true)
-          .or(`organization_id.eq.${organizationId},is_system.eq.true`);
+          .from('organization_payment_methods')
+          .select(`
+            *,
+            payment_methods:payment_method_code(*)
+          `)
+          .eq('organization_id', organizationId)
+          .eq('is_active', true);
 
         if (error) throw error;
         
-        setMetodosPago(data || []);
+        // Transformar los datos para facilitar su uso
+        const metodosPagoFormateados = data?.map((item): FormattedPaymentMethod => ({
+          code: item.payment_method_code,
+          name: item.payment_methods ? item.payment_methods.name : item.payment_method_code,
+          requires_reference: item.payment_methods ? item.payment_methods.requires_reference : false
+        })) || [];
+        
+        setMetodosPago(metodosPagoFormateados);
         // Establecer método de pago predeterminado si existe
-        if (data && data.length > 0) {
-          setMetodoPago(data[0].code);
+        if (metodosPagoFormateados.length > 0) {
+          setMetodoPago(metodosPagoFormateados[0].code);
         }
       } catch (error: any) {
         console.error('Error al cargar métodos de pago:', error);
@@ -79,6 +119,20 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
     // Validar que sea un número válido
     if (/^\d*\.?\d*$/.test(value) || value === '') {
       setMonto(value);
+      
+      // Validar que el monto no exceda el saldo pendiente
+      if (value && factura.balance) {
+        const montoNumerico = parseFloat(value);
+        const saldoPendiente = parseFloat(factura.balance);
+        
+        if (montoNumerico > saldoPendiente) {
+          setMontoExcedido(true);
+        } else {
+          setMontoExcedido(false);
+        }
+      } else {
+        setMontoExcedido(false);
+      }
     }
   };
 
@@ -94,6 +148,8 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
     }
 
     const montoNumerico = parseFloat(monto);
+    const saldoPendiente = parseFloat(factura.balance || '0');
+    
     if (isNaN(montoNumerico) || montoNumerico <= 0) {
       toast({
         title: "Error",
@@ -102,12 +158,13 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       });
       return;
     }
-
-    // Validar que el monto no sea mayor al saldo pendiente
-    if (montoNumerico > factura.balance) {
+    
+    // Validar que el monto no exceda el saldo pendiente
+    if (montoNumerico > saldoPendiente) {
+      setMontoExcedido(true);
       toast({
         title: "Error",
-        description: `El monto no puede ser mayor al saldo pendiente (${formatCurrency(factura.balance)})`,
+        description: `El monto no puede exceder el saldo pendiente (${formatCurrency(saldoPendiente)})`,
         variant: "destructive",
       });
       return;
@@ -243,7 +300,21 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
               value={monto}
               onChange={handleMontoChange}
               placeholder="0.00"
+              className={montoExcedido ? "border-red-500" : ""}
             />
+            {montoExcedido && (
+              <Alert 
+                variant="destructive" 
+                className="py-2 bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 text-red-800 dark:text-red-300 transition-all animate-fadeIn"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
+                  <AlertDescription className="text-sm font-medium">
+                    El monto ingresado ({formatCurrency(parseFloat(monto) || 0)}) excede el saldo pendiente ({formatCurrency(factura.balance || 0)})
+                  </AlertDescription>
+                </div>
+              </Alert>
+            )}
           </div>
           
           {requiereReferencia() && (

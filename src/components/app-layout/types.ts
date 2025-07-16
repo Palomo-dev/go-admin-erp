@@ -64,6 +64,7 @@ export interface AppHeaderProps {
   orgId: string | null;
   handleSignOut: () => Promise<void>;
   loading: boolean;
+  setSidebarOpen?: (open: boolean) => void;
 }
 
 export interface UserMenuProps {

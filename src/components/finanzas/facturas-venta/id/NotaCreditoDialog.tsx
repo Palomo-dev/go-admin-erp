@@ -135,20 +135,62 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
 
   // Función para generar la nota de crédito
   const handleSubmit = async () => {
-    if (!organizationId || !notaNumero || !motivo) {
+    // Obtener el ID del usuario actual
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id;
+    
+    if (!currentUserId) {
       toast({
         title: "Error",
-        description: "Por favor completa todos los campos requeridos",
-        variant: "destructive",
+        description: "No se pudo obtener la información del usuario actual.",
+        variant: "destructive"
       });
       return;
     }
-
+    
+    if (!organizationId) {
+      toast({
+        title: "Error",
+        description: "No se pudo determinar la organización",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validaciones
+    if (!notaNumero.trim()) {
+      toast({
+        title: "Error",
+        description: "Debe ingresar un número de nota de crédito",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!motivo.trim()) {
+      toast({
+        title: "Error",
+        description: "Debe ingresar un motivo para la nota de crédito",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (montoTotal <= 0) {
       toast({
         title: "Error",
-        description: "Debes seleccionar al menos un ítem para generar la nota de crédito",
-        variant: "destructive",
+        description: "Debe seleccionar al menos un ítem y especificar cantidades válidas",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Comprobar que la factura existe
+    if (!factura || !factura.id) {
+      toast({
+        title: "Error",
+        description: "No se encontró la factura original",
+        variant: "destructive"
       });
       return;
     }
@@ -188,7 +230,9 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
           status: 'issued',
           description: `Nota de crédito para factura ${factura.number}. Motivo: ${motivo}`,
           related_invoice_id: factura.id,
-          document_type: 'credit_note'
+          document_type: 'credit_note',
+          created_by: currentUserId  // Añadimos el ID del usuario que crea la nota
+          // No incluimos sale_id porque tiene una restricción a la tabla sales
         })
         .select();
 
@@ -217,7 +261,8 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
             const impuestoMonto = (lineaTotal * impuestoTasa) / 100;
             
             itemsNotaCredito.push({
-              invoice_id: notaCreditoId,
+              invoice_id: notaCreditoId, // Campo obligatorio NOT NULL
+              invoice_sales_id: notaCreditoId, // Campo para política RLS
               invoice_type: 'sale',
               product_id: item.product_id,
               description: item.description,
@@ -301,10 +346,22 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
 
     } catch (error: any) {
       console.error('Error al generar nota de crédito:', error);
+      
+      // Manejo de errores específicos
+      let mensajeError = 'Error al generar nota de crédito';
+      
+      if (error?.code === '23503' && error?.message?.includes('fk_invoice_sales_sale')) {
+        mensajeError = 'Error de referencia: La factura original no puede ser referenciada como venta.';
+      } else if (error?.code === 'PGRST204') {
+        mensajeError = 'Error en la estructura de la base de datos. Por favor contacte al administrador.';
+      } else if (error?.message) {
+        mensajeError = `${mensajeError}: ${error.message}`;
+      }
+      
       toast({
-        title: "Error al generar nota de crédito",
-        description: error.message || "Ocurrió un error inesperado",
-        variant: "destructive",
+        title: 'Error',
+        description: mensajeError,
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);

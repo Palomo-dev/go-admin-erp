@@ -311,28 +311,31 @@ export function DetalleFactura({ factura }: { factura: any }) {
             variant="outline" 
             size="sm"
             onClick={generarPDF}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs"
+            title="Descargar PDF"
           >
-            <Download size={16} />
-            <span>Descargar PDF</span>
+            <Download size={14} />
+            <span className="hidden sm:inline">PDF</span>
           </Button>
           <Button 
             variant="outline" 
             size="sm"
             onClick={enviarPorEmail}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs"
+            title="Enviar por Email"
           >
-            <Mail size={16} />
-            <span>Enviar Email</span>
+            <Mail size={14} />
+            <span className="hidden sm:inline">Email</span>
           </Button>
           <Button 
             variant="outline" 
             size="sm"
             onClick={enviarPorWhatsApp}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs"
+            title="Enviar por WhatsApp"
           >
-            <Send size={16} />
-            <span>WhatsApp</span>
+            <Send size={14} />
+            <span className="hidden sm:inline">WhatsApp</span>
           </Button>
           
           {facturaActual.status !== 'paid' && facturaActual.status !== 'void' && (
@@ -344,15 +347,23 @@ export function DetalleFactura({ factura }: { factura: any }) {
               >
                 Generar Nota de Crédito
               </Button>
-              {facturaActual.status === 'partial' || facturaActual.balance < facturaActual.total ? (
-                <Button onClick={() => setDialogPagoOpen(true)}>
-                  Registrar Abono
-                </Button>
-              ) : (
-                <Button onClick={marcarComoPagada}>
-                  Marcar como Pagada
-                </Button>
-              )}
+              {/* Siempre mostrar el botón Registrar Abono si no está pagada o anulada */}
+              <Button 
+                onClick={() => {
+                  console.log("Abriendo diálogo de pago", facturaActual);
+                  setDialogPagoOpen(true);
+                }}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Registrar Abono
+              </Button>
+              {/* Mantener la opción de marcar como pagada directamente */}
+              <Button 
+                onClick={marcarComoPagada}
+                variant="outline"
+              >
+                Marcar como Pagada
+              </Button>
             </>
           )}
         </div>

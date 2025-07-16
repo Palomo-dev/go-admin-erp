@@ -1,7 +1,7 @@
 // Exportación de todos los componentes del Header para facilitar las importaciones
 
 export { AppHeader } from './AppHeader';
-export { UserMenu } from './UserMenu';
+export { ProfileDropdownMenu } from '../ProfileDropdownMenu';
 export { NotificationsMenu } from './NotificationsMenu';
 export { BranchSelectorWrapper } from './BranchSelectorWrapper';
 

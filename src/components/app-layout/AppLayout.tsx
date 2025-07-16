@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Menu, ChevronsLeft, ChevronsRight, Building2 } from 'lucide-react';
+import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
 import { AppHeader } from './Header/AppHeader';
@@ -28,7 +29,7 @@ export const AppLayout = ({
   
   // Estados para control del sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Colapsado por defecto
   
   // Estado para almacenar el ID de la organización
   const [orgId, setOrgId] = useState<string | null>(null);
@@ -239,26 +240,57 @@ export const AppLayout = ({
             </div>
           </div>
           
-          {/* Información de la organización */}
-          {orgName && (
-            <div className={`m-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-sm border border-blue-100 dark:border-blue-800 ${sidebarCollapsed ? 'lg:relative lg:group' : ''}`}>
-              <div className="relative">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 flex items-center">
-                  <Building2 size={16} className={`${sidebarCollapsed ? 'lg:mx-auto' : 'mr-2'}`} />
-                  {!sidebarCollapsed && orgName}
-                  {sidebarCollapsed && <span className="lg:hidden">{orgName}</span>}
-                </p>
-                
-                {/* Tooltip para mostrar el nombre de la organización cuando está contraído */}
-                {sidebarCollapsed && (
+          {/* Selector de Organización */}
+          {orgId && (
+            <div className={`m-3 ${sidebarCollapsed ? 'p-2 lg:relative lg:group' : 'p-3'} bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-md border border-blue-100 dark:border-blue-800 transition-all duration-200 hover:shadow-lg`}>
+              {/* Organización para sidebar colapsado */}
+              {sidebarCollapsed && (
+                <>
+                  {/* Icono/Logo centrado cuando está colapsado */}
+                  <div className="flex justify-center items-center">
+                    {localStorage.getItem('organizacionActiva') && JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url ? (
+                      <div className="w-7 h-7 lg:mx-auto">
+                        <img 
+                          src={JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url}
+                          alt="Logo"
+                          className="w-full h-full object-cover rounded-full border-2 border-blue-200 dark:border-blue-700 shadow-sm"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-7 h-7 lg:mx-auto flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 text-white font-medium shadow-sm border-2 border-blue-200 dark:border-blue-700">
+                        {orgName && orgName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="ml-2 lg:hidden text-sm font-medium text-blue-900 dark:text-blue-100">{orgName}</span>
+                  </div>
+                  
+                  {/* Tooltip para mostrar el nombre de la organización cuando está contraído */}
                   <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 pl-2 hidden lg:group-hover:block z-50 whitespace-nowrap">
                     <div className="bg-gray-800 text-white text-sm py-1 px-3 rounded shadow-lg flex items-center">
-                      <Building2 size={16} className="mr-2" />
+                      {localStorage.getItem('organizacionActiva') && JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url ? (
+                        <img 
+                          src={JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url}
+                          alt="Logo"
+                          className="w-5 h-5 rounded-full mr-2 object-cover border border-gray-300 dark:border-gray-700 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-5 h-5 mr-2 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs font-medium shadow-sm border border-gray-300 dark:border-gray-700">
+                          {orgName && orgName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       {orgName}
                     </div>
                   </div>
-                )}
-              </div>
+                </>
+              )}
+              
+              {/* Selector de organizaciones (solo visible cuando no está colapsado) */}
+              {!sidebarCollapsed && (
+                <OrganizationSelectorWrapper 
+                  className="w-full" 
+                  showCreateOption={true} 
+                />
+              )}
             </div>
           )}
           
@@ -275,16 +307,6 @@ export const AppLayout = ({
         </div>
       </div>
       
-      {/* Botón de menú hamburguesa para mostrar sidebar en móvil */}
-      <button 
-        onClick={() => setSidebarOpen(true)}
-        className="fixed top-4 left-4 z-40 lg:hidden p-2 rounded-md bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-colors"
-        aria-label="Abrir menú"
-        title="Abrir menú"
-      >
-        <Menu size={24} />
-      </button>
-      
       {/* Área de contenido principal */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header del panel de administración */}
@@ -295,6 +317,7 @@ export const AppLayout = ({
           orgId={orgId}
           handleSignOut={handleSignOut}
           loading={loading}
+          setSidebarOpen={setSidebarOpen}
         />
         
         {/* Contenido principal */}

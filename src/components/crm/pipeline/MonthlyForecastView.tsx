@@ -266,8 +266,8 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedMonthData.opportunities.map((opp) => (
-                      <TableRow key={opp.id}>
+                    {selectedMonthData.opportunities.map((opp, index) => (
+                      <TableRow key={`${opp.id}-${index}`}>
                         <TableCell className="font-medium">{opp.name}</TableCell>
                         <TableCell>{opp.customer_name || "-"}</TableCell>
                         <TableCell>{opp.stage_name}</TableCell>

@@ -80,11 +80,13 @@ export const SidebarNavigation = ({
           href: "/app/finanzas", 
           icon: <FileText size={18} />,
           submenu: [
-            { name: "Factura de venta", href: "/app/finanzas/facturas-venta" },
-            { name: "Factura de compra", href: "/app/finanzas/facturas-compra" },
+            { name: "Facturas de venta", href: "/app/finanzas/facturas-venta" },
+            { name: "Facturas de compra", href: "/app/finanzas/facturas-compra" },
+            { name: "Cuentas por cobrar", href: "/app/finanzas/cuentas-por-cobrar" },
+            { name: "Cuentas por pagar", href: "/app/finanzas/cuentas-por-pagar" },
             { name: "Impuestos", href: "/app/finanzas/impuestos" },
             { name: "Monedas", href: "/app/finanzas/monedas" },
-            { name: "Métodos de pagos", href: "/app/finanzas/metodos-pagos" }
+            { name: "Métodos de pago", href: "/app/finanzas/metodos-pago" }
           ]
         },
         { 
@@ -107,19 +109,19 @@ export const SidebarNavigation = ({
           href: "/app/pos", 
           icon: <ShoppingCart size={18} />,
           submenu: [
+            { name: "POS", href: "/app/pos" },
             { name: "Carritos", href: "/app/pos/carritos" },
-            { name: "Mesas", href: "/app/pos/mesas" },
             { name: "Cajas", href: "/app/pos/cajas" },
             { name: "Clientes Multiples", href: "/app/pos/clientes-multiples" },
             { name: "Cobro", href: "/app/pos/cobro" },
-            { name: "Comandas", href: "/app/pos/comandas" },
-            { name: "Configuración", href: "/app/pos/configuración" },
             { name: "Cuentas por Cobrar", href: "/app/pos/cuentas-por-cobrar" },
             { name: "Devoluciones", href: "/app/pos/devoluciones" },
-            { name: "Habitaciones", href: "/app/pos/habitaciones" },
-            { name: "Mesas", href: "/app/pos/mesas" },
             { name: "Pagos Pendientes", href: "/app/pos/pagos-pendientes" },
-            { name: "Reportes", href: "/app/pos/reportes" },
+            /*{ name: "Reportes", href: "/app/pos/reportes" },
+            { name: "Configuración", href: "/app/pos/configuración" },
+            { name: "Mesas", href: "/app/pos/mesas" },
+            { name: "Habitaciones", href: "/app/pos/habitaciones" },
+            { name: "Comandas", href: "/app/pos/comandas" },*/  
           ]
         },
         /*{ 

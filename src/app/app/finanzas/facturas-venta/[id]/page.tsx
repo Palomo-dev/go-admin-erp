@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { DetalleFactura } from '@/components/finanzas/facturas-venta/id/DetalleFactura';
+import DetalleFactura from '@/components/finanzas/facturas-venta/id/DetalleFactura';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';

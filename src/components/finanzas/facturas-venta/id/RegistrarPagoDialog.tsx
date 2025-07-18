@@ -148,23 +148,10 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
     }
 
     const montoNumerico = parseFloat(monto);
-    const saldoPendiente = parseFloat(factura.balance || '0');
-    
     if (isNaN(montoNumerico) || montoNumerico <= 0) {
       toast({
-        title: "Error",
-        description: "El monto debe ser un número mayor que cero",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Validar que el monto no exceda el saldo pendiente
-    if (montoNumerico > saldoPendiente) {
-      setMontoExcedido(true);
-      toast({
-        title: "Error",
-        description: `El monto no puede exceder el saldo pendiente (${formatCurrency(saldoPendiente)})`,
+        title: "Error de validación",
+        description: "El monto debe ser un número mayor a cero",
         variant: "destructive",
       });
       return;
@@ -173,6 +160,19 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
     setIsLoading(true);
 
     try {
+      // Convertir todos los UUIDs a string para evitar errores de tipo
+      const facturaIdString = typeof factura.id === 'string' ? factura.id : factura.id?.toString() || '';
+      const customerIdString = typeof factura.customer_id === 'string' ? factura.customer_id : factura.customer_id?.toString() || '';
+      const saleIdString = typeof factura.sale_id === 'string' ? factura.sale_id : factura.sale_id?.toString() || '';
+
+      console.log('Datos para registro de pago:', {
+        organization_id: organizationId,
+        branch_id: factura.branch_id,
+        source: 'invoice_sales',
+        source_id: facturaIdString,
+        invoice_id: facturaIdString,
+      });
+
       // Insertar el registro de pago
       const { data: paymentData, error: paymentError } = await supabase
         .from('payments')
@@ -180,49 +180,64 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
           organization_id: organizationId,
           branch_id: factura.branch_id,
           source: 'invoice_sales',
-          source_id: factura.id,
+          source_id: facturaIdString, // Conversión explícita de UUID a string
           method: metodoPago,
           amount: montoNumerico,
           currency: factura.currency || 'COP',
           reference: referencia || null,
           status: 'completed'
-        })
-        .select();
+        });
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        console.error('Error al insertar pago:', paymentError);
+        throw paymentError;
+      }
 
       // Actualizar el saldo y estado de la factura
       const nuevoSaldo = factura.balance - montoNumerico;
       const nuevoEstado = nuevoSaldo <= 0 ? 'paid' : nuevoSaldo < factura.total ? 'partial' : factura.status;
       
+      console.log('Actualizando factura:', {
+        id: facturaIdString,
+        balance: nuevoSaldo,
+        status: nuevoEstado
+      });
+
       const { error: updateError } = await supabase
         .from('invoice_sales')
         .update({
           balance: nuevoSaldo,
           status: nuevoEstado
         })
-        .eq('id', factura.id);
+        .eq('id', facturaIdString);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error al actualizar factura:', updateError);
+        throw updateError;
+      }
 
-      // Actualizar accounts_receivable si existe
-      const { data: arData, error: arFindError } = await supabase
-        .from('accounts_receivable')
-        .select('id, balance')
-        .eq('invoice_id', factura.id)
-        .maybeSingle();
+      // Si es factura en draft y registramos un pago parcial, creamos/actualizamos la cuenta por cobrar
+      // O si la factura ya está emitida (issued, partial, paid)
+      if (factura.status !== 'draft' || (factura.status === 'draft' && nuevoSaldo > 0)) {
+        try {
+          console.log('Llamando a create_account_receivable con ID:', facturaIdString);
+          
+          // Usamos la función RPC para crear/actualizar cuenta por cobrar
+          const { data: createARData, error: createARError } = await supabase
+            .rpc('create_account_receivable', { 
+              invoice_id_param: facturaIdString
+            });
 
-      if (!arFindError && arData) {
-        const nuevoSaldoAR = arData.balance - montoNumerico;
-        const { error: arUpdateError } = await supabase
-          .from('accounts_receivable')
-          .update({
-            balance: nuevoSaldoAR,
-            status: nuevoSaldoAR <= 0 ? 'current' : 'overdue'
-          })
-          .eq('id', arData.id);
-
-        if (arUpdateError) console.error('Error al actualizar cuentas por cobrar:', arUpdateError);
+          if (createARError) {
+            console.error('Error al gestionar la cuenta por cobrar:', createARError);
+            // No interrumpimos el flujo principal por error en cuenta por cobrar
+          } else {
+            console.log('Cuenta por cobrar gestionada correctamente con ID:', createARData);
+          }
+        } catch (arError) {
+          console.error('Excepción al gestionar cuenta por cobrar:', arError);
+          // Seguimos con el flujo normal
+        }
       }
 
       toast({
@@ -235,10 +250,30 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       if (onSuccess) onSuccess();
 
     } catch (error: any) {
+      // Manejo detallado de errores para evitar el error vacío {}
       console.error('Error al registrar pago:', error);
+      
+      let mensajeError = "Ocurrió un error inesperado";
+      
+      if (error?.code) {
+        if (error.code === '42883') {
+          mensajeError = "Error de compatibilidad de tipos en la consulta. Por favor, contacte al soporte técnico.";
+        } else if (error.code === '23503') {
+          mensajeError = "Error de integridad referencial. Revise las relaciones entre tablas.";
+        } else if (error.message) {
+          mensajeError = error.message;
+        }
+      } else if (error?.message) {
+        mensajeError = error.message;
+      } else if (typeof error === 'string') {
+        mensajeError = error;
+      } else if (error && Object.keys(error).length === 0) {
+        mensajeError = "Error desconocido en la operación. Por favor, intente nuevamente.";
+      }
+      
       toast({
         title: "Error al registrar pago",
-        description: error.message || "Ocurrió un error inesperado",
+        description: mensajeError,
         variant: "destructive",
       });
     } finally {

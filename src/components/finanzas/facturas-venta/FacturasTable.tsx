@@ -14,7 +14,7 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
-import { FacturaDetalles } from './FacturaDetalles';
+import DetalleFactura from './id/DetalleFactura';
 
 // Función para formatear fechas sin usar Date (evita errores de tipo)
 const formatearFecha = (fechaStr: string | null): string => {

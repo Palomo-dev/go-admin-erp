@@ -19,13 +19,20 @@ export type Organizacion = {
  */
 export function guardarOrganizacionActiva(organizacion: Organizacion): void {
   try {
+    // Verificar si la organización ya está guardada para evitar logs innecesarios
+    const existingData = localStorage.getItem(STORAGE_KEY);
+    const isAlreadySaved = existingData && JSON.parse(existingData)?.id === organizacion.id;
+    
     // Guardar en localStorage como fuente principal
     localStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
     
     // Guardar en sessionStorage como respaldo
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
     
-    console.log('Organización guardada correctamente:', organizacion.id);
+    // Solo hacer log si es una organización nueva o diferente
+    if (!isAlreadySaved) {
+      console.log('Organización guardada correctamente:', organizacion.id);
+    }
   } catch (error) {
     console.error('Error al guardar organización:', error);
   }

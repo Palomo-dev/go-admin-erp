@@ -31,6 +31,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase/config';
+// Using direct Supabase storage calls for URL generation
 
 
 interface ProductosTableProps {
@@ -38,7 +39,7 @@ interface ProductosTableProps {
   loading: boolean;
   onEdit: (producto: Producto) => void;
   onView: (producto: Producto) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string | number) => void;
   onDuplicate: (producto: Producto) => void;
 }
 
@@ -46,7 +47,6 @@ interface ProductosTableProps {
 interface ProductImage {
   id: number;
   product_id: number;
-  image_url: string;
   storage_path: string;
   is_primary: boolean;
 }
@@ -69,7 +69,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   const [pageSize, setPageSize] = useState<number>(25);
   
   // Estado para almacenar las imágenes principales de los productos
-  const [productImages, setProductImages] = useState<Record<number, string>>({});
+  const [productImages, setProductImages] = useState<Record<string | number, string>>({});
   
   // Cálculo de productos por página
   const indexOfLastProduct = currentPage * pageSize;
@@ -79,16 +79,19 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   
   // Cargar las imágenes principales de los productos cuando cambia la lista
   useEffect(() => {
+    // Si no hay productos, no hacemos nada
+    if (!productos?.length) return;
+    
     const fetchProductImages = async () => {
-      if (productos.length === 0) return;
+      console.log('Fetching product images for', productos.length, 'products');
       
-      // Obtener IDs de productos para filtrar
+      // Extraer IDs de productos
       const productIds = productos.map(p => p.id);
       
-      // Consultar imágenes principales (is_primary = true)
+      // Consultar imágenes principales para estos productos
       const { data, error } = await supabase
         .from('product_images')
-        .select('id, product_id, image_url, storage_path, is_primary')
+        .select('id, product_id, storage_path, is_primary')
         .in('product_id', productIds)
         .eq('is_primary', true);
         
@@ -97,14 +100,29 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
         return;
       }
       
-      // Crear un mapa de productId -> imageUrl
-      const imageMap: Record<number, string> = {};
-      if (data) {
+      console.log('Received product images data:', data);
+      
+      // Crear un mapa de productId -> storage_path directamente
+      const imageMap: Record<string | number, string> = {};
+      if (data && data.length > 0) {
+        console.log('Processing', data.length, 'product images');
+        
         data.forEach((img: ProductImage) => {
-          imageMap[img.product_id] = img.image_url;
+          if (!img.storage_path) {
+            console.warn(`Missing storage_path for image ID ${img.id}, product ID ${img.product_id}`);
+            return;
+          }
+          
+          // Usar storage_path directamente sin generar URL pública
+          imageMap[img.product_id] = img.storage_path;
+          
+          console.log(`Stored storage_path for product ${img.product_id}:`, img.storage_path);
         });
+      } else {
+        console.log('No product images found for these products');
       }
       
+      console.log('Final image map:', imageMap);
       setProductImages(imageMap);
     };
     
@@ -148,10 +166,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   };
   
   // Función para determinar el color de fondo según stock
-  const getBgColorByStock = (stock: number | undefined, trackStock: boolean) => {
-    // Si no se rastrea el stock, no hay color especial
-    if (!trackStock) return '';
-    
+  const getBgColorByStock = (stock: number | undefined) => {
     // Si no hay stock definido, dejamos el color predeterminado
     if (stock === undefined) return '';
     
@@ -212,14 +227,14 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
           <TableBody>
             {currentProductos.map((producto) => (
               <TableRow 
-                key={producto.id}
-                className={`${getBgColorByStock(producto.stock, producto.track_stock)}`}
+                key={typeof producto.id === 'number' ? producto.id : String(producto.id)}
+                className={`${getBgColorByStock(producto.stock)}`}
               >
                 <TableCell>
                   <div className="relative h-14 w-14 rounded-md overflow-hidden border bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    {productImages[producto.id] ? (
+                    {productImages[String(producto.id)] ? (
                       <img
-                        src={productImages[producto.id]}
+                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImages[String(producto.id)]}`}
                         alt={producto.name}
                         className="h-full w-full object-cover"
                         onError={(e) => {
@@ -248,13 +263,10 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 <TableCell className="font-mono">{producto.sku}</TableCell>
                 <TableCell className="font-medium">{producto.name}</TableCell>
                 <TableCell>{producto.category?.name || '-'}</TableCell>
-                <TableCell className="text-right">{formatCurrency(producto.price)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(producto.cost)}</TableCell>
+                <TableCell className="text-right">{typeof producto.price === 'number' ? formatCurrency(producto.price) : '-'}</TableCell>
+                <TableCell className="text-right">{typeof producto.cost === 'number' ? formatCurrency(producto.cost) : '-'}</TableCell>
                 <TableCell className="text-center">
-                  {producto.track_stock 
-                    ? <span className={producto.stock && producto.stock <= 0 ? 'text-red-500 font-semibold' : ''}>{producto.stock || 0}</span>
-                    : <span className="text-gray-400">N/A</span>
-                  }
+                  <span className={producto.stock && producto.stock <= 0 ? 'text-red-500 font-semibold' : ''}>{producto.stock || 0}</span>
                 </TableCell>
                 <TableCell>{renderEstado(producto.status)}</TableCell>
                 <TableCell className="text-right">

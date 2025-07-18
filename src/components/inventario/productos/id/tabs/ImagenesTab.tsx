@@ -5,6 +5,13 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
+import { 
+  loadProductImages, 
+  uploadProductImage, 
+  deleteProductImage,
+  setProductPrimaryImage,
+  ProductImageType
+} from '@/lib/supabase/imageUtils';
 
 import { Upload, Trash2, Eye, Star, Loader2, PackageIcon, ImageIcon } from 'lucide-react';
 
@@ -34,15 +41,7 @@ interface ImagenesTabProps {
   producto: any;
 }
 
-interface ProductImage {
-  id: string;
-  product_id: string;
-  image_url?: string;
-  storage_path?: string;
-  display_order?: number;
-  is_primary?: boolean;
-  created_at?: string;
-}
+
 
 /**
  * Pestaña para gestionar las imágenes del producto
@@ -54,35 +53,19 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
   
   const [loading, setLoading] = useState<boolean>(true);
   const [uploading, setUploading] = useState<boolean>(false);
-  const [images, setImages] = useState<ProductImage[]>([]);
+  const [images, setImages] = useState<ProductImageType[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   
-  // Función para obtener las imágenes del producto desde la base de datos
+  // Función para obtener las imágenes del producto usando nuestro nuevo imageUtils
   const fetchImages = async () => {
     try {
       setLoading(true);
       
-      // 1. Obtener las imágenes del producto
-      const { data, error } = await supabase
-        .from('product_images')
-        .select('*')
-        .eq('product_id', producto.id)
-        .order('is_primary', { ascending: false })
-        .order('display_order', { ascending: true });
-        
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        // 2. No necesitamos procesar las imágenes para obtener URLs públicas
-        // ya que usaremos directamente las URLs almacenadas en la base de datos
-        const processedImages = data;
-        
-        setImages(processedImages);
-      } else {
-        setImages([]);
-      }
+      // Usamos el tipo ProductImageType de imageUtils para mantener consistencia
+      const productImages = await loadProductImages(producto.id);
+      setImages(productImages);
     } catch (error: unknown) {
       console.error('Error al cargar imágenes:', error);
       toast({
@@ -100,14 +83,28 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
     fetchImages();
   }, [organization?.id, producto?.id]);
   
-  // Visualizar imagen en tamaño grande
-  const handleViewImage = (url: string | null) => {
-    if (url) {
-      setPreviewImage(url);
+  // Función para generar URL pública directamente con la variable de entorno
+  const generatePublicUrl = (storagePath?: string): string => {
+    if (!storagePath) return '/placeholder-image.png';
+    
+    try {
+      // Use direct path construction instead of getPublicUrl() for consistency with catalog
+      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${storagePath}`;
+    } catch (error) {
+      console.error('Error generating public URL:', error);
+      return '/placeholder-image.png';
     }
   };
   
-  // Manejar carga de imágenes nuevas
+  // Visualizar imagen en tamaño grande
+  const handleViewImage = (storagePath: string | null) => {
+    if (storagePath) {
+      // Usar Supabase storage directamente para obtener la URL pública
+      setPreviewImage(generatePublicUrl(storagePath));
+    }
+  };
+  
+  // Manejar carga de imágenes nuevas usando el nuevo uploadProductImage
   const handleUploadImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -115,59 +112,25 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
     setUploading(true);
     
     try {
-      const uploadedImages: ProductImage[] = [];
-      
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${organization?.id}/${producto.id}/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        
-        // 1. Subir archivo a Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('shared_images')
-          .upload(`productos/${producto.id}/${fileName}`, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-        
-        if (uploadError) throw uploadError;
-        
-        // 2. Obtener URL pública
-        const { data: publicURL } = supabase.storage
-          .from('shared_images')
-          .getPublicUrl(uploadData.path);
-        
-        if (!publicURL || !publicURL.publicUrl) throw new Error('No se pudo obtener la URL pública');
-        
-        // 3. Insertar referencia en base de datos
-        const isPrimary = images.length === 0 && i === 0; // Primera imagen como principal
-        
-        const { data: imageRecord, error: dbError } = await supabase
-          .from('product_images')
-          .insert({
-            product_id: producto.id,
-            image_url: publicURL.publicUrl,
-            storage_path: uploadData.path,
-            is_primary: isPrimary,
-            display_order: images.length + i + 1
-          })
-          .select()
-          .single();
-        
-        if (dbError) throw dbError;
-        
-        uploadedImages.push(imageRecord);
+        // Usar nuestra función uploadProductImage del nuevo imageUtils
+        await uploadProductImage({
+          file,
+          productId: producto.id,
+          organizationId: organization?.id || 0, // Aseguramos que no sea undefined
+          isPrimary: images.length === 0 && i === 0,  // Primera imagen como principal
+          displayOrder: images.length + i + 1
+        });
       }
       
-      setImages([...images, ...uploadedImages]);
+      // Recargar imágenes
+      await fetchImages();
       
       toast({
         title: "Imágenes cargadas",
         description: `Se han subido ${files.length} imágenes correctamente`,
       });
-      
-      // Recargar la página para mostrar las nuevas imágenes
-      router.refresh();
       
     } catch (error: unknown) {
       console.error('Error al subir imágenes:', error);
@@ -183,51 +146,23 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
     }
   };
   
-  // Establecer imagen como principal
+  // Establecer imagen como principal usando setProductPrimaryImage
   const handleSetPrimary = async (imageId: string) => {
     setLoading(true);
     
     try {
-      // 1. Obtener la imagen actual
-      const { data: imageData, error: imageError } = await supabase
-        .from('product_images')
-        .select('*')
-        .eq('id', imageId)
-        .single();
+      // Usar nuestra función setProductPrimaryImage del nuevo imageUtils
+      const success = await setProductPrimaryImage(imageId, producto.id);
       
-      if (imageError) throw imageError;
-      if (!imageData) throw new Error('No se encontró la imagen');
-      
-      // Determinar el bucket correcto basado en la ruta de almacenamiento
-      let imageType = 'shared_images';
-      if (imageData.storage_path) {
-        if (imageData.storage_path.startsWith('profiles/')) {
-          imageType = 'profiles';
-        } else if (imageData.storage_path.includes('organization') || 
-                  imageData.storage_path.includes(organization?.id?.toString() || '')) {
-          imageType = 'organization_images';
-        }
+      if (success) {
+        // 3. Recargar datos
+        fetchImages();
+        toast({
+          variant: "default",
+          title: "Éxito",
+          description: "Imagen principal actualizada"
+        });
       }
-      
-      // 2. Actualizar el producto con la URL de la imagen principal
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({
-          image_url: imageData.image_url,
-          image_type: imageType,
-          image_path: imageData.storage_path
-        })
-        .eq('id', producto.id);
-      
-      if (updateError) throw updateError;
-      
-      // 3. Recargar datos
-      fetchImages();
-      toast({
-        variant: "default",
-        title: "Éxito",
-        description: "Imagen principal actualizada"
-      });
     } catch (error: unknown) {
       console.error('Error al establecer imagen principal:', error);
       toast({
@@ -260,63 +195,28 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
     }
   };
 
-  // Eliminar imagen
+  // Eliminar imagen usando deleteProductImage
   const handleDeleteImage = async (imageId: string) => {
     try {
       setLoading(true);
       
-      // 1. Obtener información de la imagen
+      // Encontrar la imagen en el estado actual para obtener su storage_path
       const imageToDelete = images.find(img => img.id === imageId);
       if (!imageToDelete) throw new Error('Imagen no encontrada');
       
-      // 2. Eliminar registro de la base de datos
-      const { error: dbError } = await supabase
-        .from('product_images')
-        .delete()
-        .eq('id', imageId)
-        .eq('product_id', producto.id);
+      // Usar nuestra función deleteProductImage del nuevo imageUtils
+      // Si storage_path es undefined, pasamos una cadena vacía como fallback
+      const success = await deleteProductImage(imageId, imageToDelete.storage_path || '');
       
-      if (dbError) throw dbError;
-      
-      // 3. Eliminar archivo de Storage si existe el path
-      if (imageToDelete.storage_path) {
-        // Determinar el bucket correcto
-        let bucketName = 'shared_images';
+      if (success) {
+        // Actualizar estado local
+        setImages(images.filter(img => img.id !== imageId));
         
-        if (imageToDelete.storage_path.startsWith('profiles/')) {
-          bucketName = 'profiles';
-        } else if (imageToDelete.storage_path.includes('organization') || 
-                   imageToDelete.storage_path.includes(organization?.id?.toString() || '')) {
-          bucketName = 'organization_images';
-        }
-        
-        const { error: storageError } = await supabase.storage
-          .from(bucketName)
-          .remove([imageToDelete.storage_path]);
-        
-        // No bloqueamos si hay error al borrar el archivo físico
-        if (storageError) console.error('Error al eliminar archivo:', storageError);
+        toast({
+          title: "Imagen eliminada",
+          description: "La imagen se ha eliminado correctamente",
+        });
       }
-      
-      // 4. Si la imagen era principal, establecer otra como principal
-      if (imageToDelete.is_primary && images.length > 1) {
-        const nextImage = images.find(img => String(img.id) !== String(imageId));
-        if (nextImage) {
-          await supabase
-            .from('product_images')
-            .update({ is_primary: true })
-            .eq('id', nextImage.id);
-        }
-      }
-      
-      // 5. Actualizar estado local
-      setImages(images.filter(img => img.id !== imageId));
-      
-      toast({
-        title: "Imagen eliminada",
-        description: "La imagen se ha eliminado correctamente",
-      });
-      
     } catch (error: unknown) {
       console.error('Error al eliminar imagen:', error);
       toast({
@@ -330,7 +230,7 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
   };
   
   // Renderizar la miniatura de una imagen
-  const renderImagePreview = (image: ProductImage) => {
+  const renderImagePreview = (image: ProductImageType) => {
     return (
       <div 
         key={image.id}
@@ -339,10 +239,10 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
             ? 'border-blue-500 ring-2 ring-blue-500' 
             : 'border-gray-200 dark:border-gray-700'
         }`}
-        onClick={() => handleViewImage(image.image_url || null)}
+        onClick={() => image.storage_path ? handleViewImage(image.storage_path) : null}
       >
         <img 
-          src={image.image_url || '/placeholder-image.png'}
+          src={image.storage_path ? generatePublicUrl(image.storage_path) : '/placeholder-image.png'}
           alt={`Imagen ${image.id}`}
           className="h-full w-full object-cover transition-all group-hover:scale-110"
           onError={(e) => {
@@ -371,7 +271,9 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
             className="h-8 w-8 p-0 text-white hover:bg-white/20"
             onClick={(e) => {
               e.stopPropagation();
-              handleViewImage(image.image_url || null);
+              if (image.storage_path) {
+                handleViewImage(image.storage_path);
+              }
             }}
           >
             <Eye className="h-4 w-4" />
@@ -385,7 +287,9 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
               className="h-8 w-8 p-0 text-white hover:bg-white/20"
               onClick={(e) => {
                 e.stopPropagation();
-                handleSetPrimary(image.id);
+                if (image.id) {
+                  handleSetPrimary(image.id);
+                }
               }}
             >
               <Star className="h-4 w-4" />
@@ -399,7 +303,9 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
             className="h-8 w-8 p-0 text-white hover:text-red-500 hover:bg-white/20"
             onClick={(e) => {
               e.stopPropagation();
-              handleDeleteClick(image.id);
+              if (image.id) {
+                handleDeleteClick(image.id);
+              }
             }}
           >
             <Trash2 className="h-4 w-4" />

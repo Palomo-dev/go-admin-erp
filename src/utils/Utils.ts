@@ -55,6 +55,19 @@ export function formatDate(date: Date, locale: string = 'es-ES'): string {
 }
 
 /**
+ * Formatea un número como porcentaje
+ * 
+ * @param value - Valor a formatear como porcentaje
+ * @param decimalPlaces - Número de decimales a mostrar (por defecto 2)
+ * @param includeSymbol - Incluir el símbolo % (por defecto true)
+ * @returns Cadena formateada como porcentaje
+ */
+export function formatPercent(value: number, decimalPlaces: number = 2, includeSymbol: boolean = true): string {
+  const formatted = Number(value).toFixed(decimalPlaces);
+  return includeSymbol ? `${formatted}%` : formatted;
+}
+
+/**
  * Función de debounce que limita la frecuencia de ejecución de una función
  * 
  * @param func - La función a ejecutar con debounce

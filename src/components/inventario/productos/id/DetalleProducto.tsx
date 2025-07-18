@@ -66,35 +66,48 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
   const handleDuplicateProduct = async () => {
     setLoading(true);
     try {
-      // Crear una copia del producto con nuevo SKU
-      const nuevoSku = `${producto.sku}-COPIA`;
+      // Preparar el producto duplicado con cambios en los campos únicos
+      const duplicatedProduct = {
+        ...producto,
+        id: 'duplicate', // Marcar como duplicado para la página de creación
+        sku: `${producto.sku}-COPIA`,
+        name: `${producto.name} (Copia)`,
+        barcode: producto.barcode ? `${producto.barcode}-COPIA` : '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        // Mantener referencias a datos relacionados pero quitar IDs para que sean nuevos al guardar
+        product_prices: producto.product_prices ? producto.product_prices.map((p: any) => ({
+          ...p,
+          id: 'new',
+          product_id: 'duplicate'
+        })) : [],
+        product_costs: producto.product_costs ? producto.product_costs.map((c: any) => ({
+          ...c,
+          id: 'new',
+          product_id: 'duplicate'
+        })) : [],
+        product_images: [], // No duplicar imágenes directamente
+        // Preparar variantes (productos hijos)
+        children: producto.children ? producto.children.map((child: any) => ({
+          ...child,
+          id: 'new-child',
+          sku: `${child.sku}-COPIA`,
+          name: `${child.name} (Copia)`,
+          parent_product_id: 'duplicate'
+        })) : []
+      };
       
-      const { data: newProduct, error } = await supabase
-        .from('products')
-        .insert({
-          ...producto,
-          id: undefined, // Eliminar ID para crear uno nuevo
-          sku: nuevoSku,
-          name: `${producto.name} (Copia)`,
-          organization_id: organization?.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
+      // Guardar el producto duplicado en sessionStorage para la página de creación
+      sessionStorage.setItem('duplicated_product_data', JSON.stringify(duplicatedProduct));
+      console.log('Datos del producto duplicado guardados en sessionStorage');
       
       toast({
-        title: "Producto duplicado",
-        description: "El producto se ha duplicado correctamente",
+        title: "Producto preparado para duplicar",
+        description: "Complete la información en el formulario y guarde para crear la copia.",
       });
       
-      // Redirigir al nuevo producto
-      if (newProduct?.id) {
-        router.push(`/app/inventario/productos/${newProduct.id}`);
-      }
-      
+      // Redirigir a la página de creación con indicador de que es una duplicación
+      router.push('/app/inventario/productos/nuevo?from=duplicate');
     } catch (error) {
       console.error('Error al duplicar producto:', error);
       toast({
@@ -224,11 +237,11 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
               <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
               <AlertDialogDescription className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
                 Esta acción marcará el producto como eliminado y dejará de aparecer en los listados regulares.
-                <div className="mt-4 flex items-center p-3 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                  <AlertTriangle className="h-5 w-5 mr-2" />
-                  <span>Esta acción no borra el producto de la base de datos.</span>
-                </div>
               </AlertDialogDescription>
+              <div className="mt-4 flex items-center p-3 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                <span>Esta acción no borra el producto de la base de datos.</span>
+              </div>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel className={theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : ''}>

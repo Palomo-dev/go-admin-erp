@@ -4,7 +4,6 @@ import { useState, forwardRef, useImperativeHandle, useCallback, useEffect } fro
 import { X, ImagePlus, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/config'
 import { v4 as uuidv4 } from 'uuid'
-import { getPublicImageUrl, updateImageUrlsInArray } from '@/lib/supabase/imageUtils'
 
 import { Button } from '@/components/ui/button'
 import { 
@@ -20,6 +19,7 @@ export interface ImagenesRef {
   getImagenes: () => Array<{
     url: string
     path: string
+    storage_path?: string
     displayOrder: number
     isPrimary: boolean
     shared_image_id?: number
@@ -44,6 +44,7 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
   const [images, setImages] = useState<Array<{
     url: string
     path: string
+    storage_path?: string
     displayOrder: number
     isPrimary: boolean
     shared_image_id?: number
@@ -82,40 +83,65 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
       try {
         setIsLoadingImages(true);
         // Utilizamos JOIN directo para obtener datos de ambas tablas en un formato más predecible
+        // Nota: Ya no usamos image_url porque fue reemplazado por storage_path
         const { data: productImages, error } = await supabase
           .from('product_images')
-          .select('*, shared_image:shared_image_id(id, image_url, storage_path, file_name, file_size, mime_type, dimensions)')
+          .select('*, shared_image:shared_image_id(id, storage_path, file_name, file_size, mime_type, dimensions)')
           .eq('product_id', productoId)
           .order('display_order');
+          
+        console.log('Product images data:', productImages);
           
         if (error) throw error;
         
         if (productImages && productImages.length > 0) {
           // 2. Formatear los datos al formato que espera el estado images
-          let formattedImages = productImages.map(img => ({
-            url: img.shared_image.image_url,
-            path: img.shared_image.storage_path,
-            displayOrder: img.display_order,
-            isPrimary: img.is_primary,
-            shared_image_id: img.shared_image.id,
-            width: img.shared_image.dimensions?.width,
-            height: img.shared_image.dimensions?.height,
-            size: img.shared_image.file_size,
-            mime_type: img.shared_image.mime_type
-          }));
+          let formattedImages = productImages.map(img => {
+            // Ya no usamos image_url, generamos la URL a partir del storage_path
+            const path = img.shared_image?.storage_path || '';
+            
+            return {
+              // La URL la obtendremos a través de updateImageUrlsInArray, usando path
+              url: '',  // Placeholder, se actualizará abajo
+              path: path,
+              displayOrder: img.display_order,
+              isPrimary: img.is_primary,
+              shared_image_id: img.shared_image?.id,
+              width: img.shared_image?.dimensions?.width,
+              height: img.shared_image?.dimensions?.height,
+              size: img.shared_image?.file_size,
+              mime_type: img.shared_image?.mime_type
+            };
+          });
           
-          // Actualizar las URLs para asegurar que no expiren
-          formattedImages = updateImageUrlsInArray(formattedImages);
-          console.log('Imágenes con URLs actualizadas:', formattedImages);
+          // Actualizar las URLs para asegurar que no expiren usando getPublicUrl para cada storage_path
+          const imgsWithUrls = formattedImages.map(img => {
+            // Obtener URL pública directamente de Supabase
+            let url = '';
+            if (img.path) {
+              const { data } = supabase.storage
+                .from('organization_images')
+                .getPublicUrl(img.path);
+              url = data?.publicUrl || '';
+            }
+            
+            return {
+              ...img,
+              url
+            };
+          });
+          
+          console.log('Imágenes con URLs actualizadas:', imgsWithUrls.map(img => ({ id: img.shared_image_id, path: img.path, url: img.url })));
           
           // 3. Establecer las imágenes en el estado
-          setImages(formattedImages);
+          setImages(imgsWithUrls);
         }
       } catch (error: any) {
         console.error('Error al cargar imágenes existentes:', error);
+        // Mostrar el mensaje de error detallado para facilitar la depuración
         toast({
-          title: "Error",
-          description: "No se pudieron cargar las imágenes del producto",
+          title: "Error al cargar imágenes",
+          description: error.message || "No se pudieron cargar las imágenes del producto",
           variant: "destructive"
         });
       } finally {
@@ -249,57 +275,62 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
         const displayOrder = maxDisplayOrder + index + 1;
         if (image.shared_image_id) {
           // Para imágenes que ya se han subido con upload_temporary_image
-          // Crear una variable para almacenar el resultado fuera del scope del try-catch
-          let resultData = null;
-          
           try {
             // Asegurarse de que shared_image_id es un número válido
             const sharedImageId = typeof image.shared_image_id === 'number' 
               ? image.shared_image_id 
               : parseInt(String(image.shared_image_id), 10);
-            
-            if (isNaN(sharedImageId) || sharedImageId <= 0) {
-              console.error('ID de imagen compartida inválido:', image.shared_image_id);
-              throw new Error(`ID de imagen compartida inválido: ${image.shared_image_id}`);
+              
+            if (isNaN(sharedImageId)) {
+              console.error('shared_image_id inválido:', image.shared_image_id);
+              throw new Error(`ID de imagen inválido: ${image.shared_image_id}`);
             }
             
-            if (!product_id || isNaN(product_id) || product_id <= 0) {
-              console.error('ID de producto inválido:', product_id);
-              throw new Error(`ID de producto inválido: ${product_id}`);
+            // Generar URL pública para la imagen usando storage_path o path
+            let publicUrl = '';
+            let storagePath = image.storage_path || image.path; // Usar storage_path si existe, si no, usar path
+            
+            if (storagePath) {
+              const { data: urlData } = supabase.storage
+                .from('organization_images')
+                .getPublicUrl(storagePath);
+              publicUrl = urlData?.publicUrl || '';
             }
             
-            console.log('Asociando imagen compartida con los siguientes parámetros:', {
-              p_product_id: product_id,
-              p_shared_image_id: sharedImageId,
-              p_is_primary: !!image.isPrimary, // Asegurar que sea boolean
-              p_display_order: displayOrder // Usar el mismo valor que se enviará al servidor
-            });
+            // Preparar datos para inserción en product_images
+            // Nota: Verificamos la estructura de la tabla - sin organization_id
+            const productImageData = {
+              product_id,
+              shared_image_id: sharedImageId,
+              storage_path: storagePath, // Add required storage_path field
+              is_primary: !!image.isPrimary,
+              display_order: displayOrder,
+            };
             
-            const { data, error } = await supabase.rpc('associate_image_to_product', {
-              p_shared_image_id: sharedImageId, // Parámetro correcto según definición de la función
-              p_product_id: product_id,
-              p_display_order: displayOrder, // Usar el nuevo display_order calculado
-              p_is_primary: !!image.isPrimary
-            });
+            // La columna url no existe en la tabla product_images
+            // Guardamos solo los campos requeridos
             
-            if (error) {
-              console.error('Error al asociar imagen compartida:', error);
-              throw new Error(`Error al asociar imagen: ${error.message || JSON.stringify(error)}`);
+            console.log('Insertando en product_images:', productImageData);
+            
+            // Inserción directa en la tabla product_images
+            const { data: insertData, error: insertError } = await supabase
+              .from('product_images')
+              .insert(productImageData)
+              .select();
+              
+            if (insertError) {
+              console.error('Error al insertar en product_images:', insertError);
+              console.error('Detalles completos del error:', JSON.stringify(insertError));
+              throw new Error(`Error al asociar imagen: ${insertError.message || JSON.stringify(insertError)}`);
             }
             
-            // Guardar el resultado en la variable externa al try-catch
-            resultData = data;
+            console.log('Imagen asociada correctamente:', insertData);
+            return true;
             
-            if (!resultData) {
-              console.warn('Respuesta vacía al asociar imagen');
-            } else {
-              console.log('Imagen asociada correctamente, ID:', resultData);
-            }
           } catch (imgError: any) {
             console.error(`Error procesando imagen compartida:`, imgError);
             throw new Error(`Error procesando imagen: ${imgError?.message || 'Error desconocido'}`);
           }
-          return resultData
         } else {
           // Para imágenes que se subieron con el sistema antiguo (mantener compatibilidad)
           const { error } = await supabase
@@ -638,9 +669,17 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
                   {/* Vista previa de imagen */}
                   <div className="relative aspect-square overflow-hidden rounded-md">
                     <img 
-                      src={image.url} 
+                      src={image.url || '/placeholder-image.png'} 
                       alt={`Imagen de producto ${index + 1}`}
                       className="object-cover w-full h-full"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        if (!target.dataset.usedFallback) {
+                          target.dataset.usedFallback = 'true';
+                          target.src = '/placeholder-image.png';
+                        }
+                      }}
                     />
                   </div>
                   

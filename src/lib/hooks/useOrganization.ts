@@ -19,13 +19,20 @@ export type Organizacion = {
  */
 export function guardarOrganizacionActiva(organizacion: Organizacion): void {
   try {
+    // Verificar si la organización ya está guardada para evitar logs innecesarios
+    const existingData = localStorage.getItem(STORAGE_KEY);
+    const isAlreadySaved = existingData && JSON.parse(existingData)?.id === organizacion.id;
+    
     // Guardar en localStorage como fuente principal
     localStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
     
     // Guardar en sessionStorage como respaldo
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
     
-    console.log('Organización guardada correctamente:', organizacion.id);
+    // Solo hacer log si es una organización nueva o diferente
+    if (!isAlreadySaved) {
+      console.log('Organización guardada correctamente:', organizacion.id);
+    }
   } catch (error) {
     console.error('Error al guardar organización:', error);
   }
@@ -48,7 +55,6 @@ export function obtenerOrganizacionActiva(): Organizacion {
     const localData = localStorage.getItem(STORAGE_KEY);
     if (localData) {
       const parsed = JSON.parse(localData);
-      console.log('Organización recuperada de localStorage:', parsed.id);
       return parsed;
     }
     
@@ -326,7 +332,6 @@ export function useOrganization() {
         if (!userId) {
           // Si no hay usuario pero hay organización en local, usamos esa
           if (organizacionLocal && organizacionLocal.id) {
-            console.log('Usando organización del almacenamiento local:', organizacionLocal.id);
             // Crear un objeto FormattedOrganization válido a partir de los datos locales
             const formattedOrg: FormattedOrganization = {
               id: organizacionLocal.id,

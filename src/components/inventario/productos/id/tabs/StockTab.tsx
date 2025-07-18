@@ -58,7 +58,7 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
   
   useEffect(() => {
     const fetchStockLevels = async () => {
-      if (!organization?.id || !producto.track_stock) {
+      if (!organization?.id) {
         setLoading(false);
         return;
       }
@@ -138,7 +138,7 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
     };
     
     fetchStockLevels();
-  }, [organization?.id, producto.id, producto.track_stock]);
+  }, [organization?.id, producto.id]);
   
   // Redireccionar a página de ajuste de stock
   const handleAdjustStock = (type: 'entrada' | 'salida', branchId?: number) => {
@@ -157,15 +157,6 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
   
   return (
     <div className="space-y-6">
-      {!producto.track_stock ? (
-        <div className={`p-6 text-center rounded-md border ${theme === 'dark' ? 'border-gray-800 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
-          <h3 className="text-lg font-medium mb-2">Control de Stock Desactivado</h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            Este producto no tiene habilitado el seguimiento de stock.
-            Puede activarlo en la pestaña de Detalles.
-          </p>
-        </div>
-      ) : (
         <>
           {/* Resumen de Stock */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -283,7 +274,6 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
             </Table>
           </div>
         </>
-      )}
     </div>
   );
 };

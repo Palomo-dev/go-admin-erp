@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import SessionProvider from '@/lib/context/SessionContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,10 +19,10 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <ThemeProvider defaultTheme="system" storageKey="theme">
+        <SessionProvider>
           {children}
           <Toaster />
-        </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );

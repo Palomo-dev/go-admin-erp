@@ -15,7 +15,8 @@ import {
   CheckCircle,
   Mail,
   Send,
-  Download
+  Download,
+  Printer
 } from 'lucide-react';
 import { 
   Card,
@@ -57,18 +58,37 @@ const estadoColors: Record<string, string> = {
 };
 
 // Función para obtener el texto del estado en español
-const getEstadoText = (estado: string) => {
+const getEstadoText = (estado: string): string => {
   const estadoMap: Record<string, string> = {
     'draft': 'Borrador',
     'issued': 'Emitida',
+    'void': 'Anulada',
     'paid': 'Pagada',
     'partial': 'Pago Parcial',
-    'void': 'Anulada'
+    'overdue': 'Vencida'
   };
+  
   return estadoMap[estado] || estado;
 };
 
-export function DetalleFactura({ factura }: { factura: any }) {
+// Función para traducir el método de pago a español
+const traducirMetodoPago = (metodo: string | null): string => {
+  if (!metodo) return 'N/A';
+  
+  const metodosMap: Record<string, string> = {
+    'cash': 'Efectivo',
+    'credit_card': 'Tarjeta de Crédito',
+    'debit_card': 'Tarjeta de Débito',
+    'bank_transfer': 'Transferencia Bancaria',
+    'check': 'Cheque',
+    'paypal': 'PayPal',
+    'other': 'Otro'
+  };
+  
+  return metodosMap[metodo.toLowerCase()] || metodo;
+};
+
+export default function DetalleFactura({ factura }: { factura: any }) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPaid, setIsPaid] = useState(factura.status === 'paid');
@@ -280,6 +300,42 @@ export function DetalleFactura({ factura }: { factura: any }) {
   // Determinar si la factura está completamente pagada
   const isPagada = factura.status === 'paid';
   
+  // Determinar si la factura está en estado borrador
+  const isDraft = factura.status === 'draft';
+  
+  // Función para emitir la factura (cambiar de draft a issued)
+  const emitirFactura = async () => {
+    try {
+      // Llamamos a la función RPC para emitir la factura
+      const { data, error } = await supabase
+        .rpc('issue_invoice', { invoice_id_param: factura.id });
+        
+      if (error) throw error;
+      
+      // Actualizamos la factura en el estado local
+      setFacturaActual({
+        ...facturaActual,
+        status: 'issued'
+      });
+      
+      toast({
+        title: "Factura emitida",
+        description: "La factura ha sido emitida exitosamente.",
+      });
+      
+      // Recargamos los datos para mostrar la información actualizada
+      actualizarPagos();
+      
+    } catch (error: any) {
+      console.error('Error al emitir la factura:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Ocurrió un error al emitir la factura",
+        variant: "destructive",
+      });
+    }
+  };
+  
   // Manejar la navegación de regreso
   const handleBack = () => {
     router.back();
@@ -307,6 +363,28 @@ export function DetalleFactura({ factura }: { factura: any }) {
         </div>
         
         <div className="flex gap-2 flex-wrap">
+          {isDraft && (
+            <Button 
+              variant="default" 
+              size="sm"
+              onClick={emitirFactura}
+              className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs bg-blue-600 hover:bg-blue-700"
+            >
+              <Send className="h-3.5 w-3.5" />
+              Emitir Factura
+            </Button>
+          )}
+          {!isDraft && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={generarPDF}
+              className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs bg-gray-100 hover:bg-gray-200"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Imprimir
+            </Button>
+          )}
           <Button 
             variant="outline" 
             size="sm"
@@ -361,7 +439,9 @@ export function DetalleFactura({ factura }: { factura: any }) {
               <Button 
                 onClick={marcarComoPagada}
                 variant="outline"
+                className="flex items-center gap-1"
               >
+                <CheckCircle className="h-4 w-4 text-green-600" />
                 Marcar como Pagada
               </Button>
             </>
@@ -412,12 +492,29 @@ export function DetalleFactura({ factura }: { factura: any }) {
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Método de Pago:</span>
-                <span className="text-gray-900 dark:text-gray-100">{factura.payment_method || 'N/A'}</span>
+                <span className="text-gray-900 dark:text-gray-100">{traducirMetodoPago(factura.payment_method)}</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Términos de Pago:</span>
                 <span className="text-gray-900 dark:text-gray-100">
-                  {factura.payment_terms ? `${factura.payment_terms} días` : 'N/A'}
+                  {factura.payment_terms !== null && factura.payment_terms !== undefined ? 
+                    factura.payment_terms === 0 ? 'Contado' : 
+                    (() => {
+                      if (factura.issue_date && factura.payment_terms > 0) {
+                        const fechaEmision = new Date(factura.issue_date);
+                        const fechaVencimiento = new Date(fechaEmision);
+                        fechaVencimiento.setDate(fechaVencimiento.getDate() + factura.payment_terms);
+                        const hoy = new Date();
+                        const diasRestantes = Math.ceil((fechaVencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+                        
+                        return `${factura.payment_terms} días ${diasRestantes > 0 ? 
+                          `(${diasRestantes} días restantes)` : 
+                          diasRestantes === 0 ? '(vence hoy)' : 
+                          `(vencido hace ${Math.abs(diasRestantes)} días)`}`;
+                      }
+                      return `${factura.payment_terms} días`;
+                    })() 
+                    : 'N/A'}
                 </span>
               </div>
             </div>

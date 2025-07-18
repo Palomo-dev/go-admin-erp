@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
+import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 
 // Interfaz para las props del componente
 interface ClienteHeaderProps {
@@ -14,24 +15,11 @@ interface ClienteHeaderProps {
     full_name?: string;
     email?: string;
     tags?: string[];
+    avatar_url?: string | null;
   };
 }
 
-// Componente para el avatar del cliente
-const ClienteAvatar = ({ name, className = '' }: { name: string; className?: string }) => {
-  const initials = name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .substring(0, 2);
-    
-  return (
-    <div className={`relative flex items-center justify-center bg-primary/10 text-primary rounded-full ${className}`}>
-      <span className="text-xl font-semibold">{initials}</span>
-    </div>
-  );
-};
+// Ya no necesitamos este componente porque usaremos UserAvatar
 
 // Componente para mostrar el nivel de fidelidad del cliente
 const NivelFidelidad = ({ nivel = 'Básico' }: { nivel?: string }) => {
@@ -76,7 +64,7 @@ export default function ClienteHeader({ cliente }: ClienteHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
       <div className="flex items-center gap-4">
-        <ClienteAvatar name={nombreCompleto} className="w-16 h-16" />
+        <UserAvatar name={nombreCompleto} avatarUrl={cliente.avatar_url} size="lg" className="w-16 h-16" />
         
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{nombreCompleto}</h1>

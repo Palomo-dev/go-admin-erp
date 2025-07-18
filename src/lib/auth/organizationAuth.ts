@@ -252,9 +252,6 @@ const registerUserDevice = async (session: any) => {
       throw new Error(`Error HTTP: ${response.status}`);
     }
 
-    console.log('Dispositivo registrado exitosamente');
-    console.log(response.json());
-
     const result = await response.json();
     console.log('Dispositivo registrado exitosamente:', result);
   } catch (error) {

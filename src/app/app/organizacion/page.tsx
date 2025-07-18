@@ -12,10 +12,18 @@ const OrganizationList = lazy(() => import('../../../components/organization/Org
 const ManageOrganizationsTab = lazy(() => import('../../../components/organization/ManageOrganizationsTab'));
 const CreateOrganizationForm = lazy(() => import('../../../components/organization/CreateOrganizationForm'));
 
+// Definir interfaces para los tipos de datos
+interface BranchAssignment {
+  branch_id: number;
+  branch_name?: string;
+  role_id?: number;
+}
+
 export default function OrganizacionPage() {
   const [activeTab, setActiveTab] = useState('members');
   const [orgData, setOrgData] = useState<any>(null);
   const [userRole, setUserRole] = useState<number | null>(null);
+  const [userBranches, setUserBranches] = useState<BranchAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -28,7 +36,6 @@ export default function OrganizacionPage() {
         // Get current user session
         const { data: { session } } = await supabase.auth.getSession();
         
-
         if (!session) {
           setError('No se encontró sesión de usuario');
           return;
@@ -36,38 +43,49 @@ export default function OrganizacionPage() {
         
         // Get user ID
         const userId = session.user.id;
-
-        console.log(userId);
+        const currentOrgId = localStorage.getItem('currentOrganizationId');
         
         // Get user's organization and role from organization_members
         const { data: memberData, error: memberError } = await supabase
-        .from('organization_members')
-        .select('role_id, organization_id')
-        .eq('user_id', userId)
-        .eq('organization_id', localStorage.getItem('currentOrganizationId'))
-        .single();
+          .from('organization_members')
+          .select('id, role_id, organization_id')
+          .eq('user_id', userId)
+          .eq('organization_id', currentOrgId)
+          .single();
         
         if (memberError) {
           console.error('Error al obtener información de miembro:', memberError);
           setError('Error al cargar información de usuario');
           return;
         }
-
-        console.log(memberData);
         
-        // Set role directly from organization_members
-        setUserRole(memberData.role_id || 'Sin rol');
-
-        console.log(memberData);  
+        // Set role directly from organization_members (rol general en la organización)
+        setUserRole(memberData.role_id || null);
         
-        // Extract organization data safely
+        // Extract organization data
         if (memberData?.organization_id) {
-          try {
-            // Use type assertion to tell TypeScript about the shape of organizations
-            setOrgData(memberData.organization_id);
-            console.log(orgData);
-          } catch (error) {
-            console.error('Error parsing organization data:', error);
+          setOrgData(memberData.organization_id);
+          
+          // Obtener las sucursales asignadas al miembro
+          const { data: branchAssignments, error: branchError } = await supabase
+            .from('member_branches')
+            .select(`
+              branch_id,
+              branches:branch_id(name)
+            `)
+            .eq('organization_member_id', memberData.id);
+          
+          if (branchError) {
+            console.error('Error al obtener sucursales del miembro:', branchError);
+          } else if (branchAssignments) {
+            // Formatear los datos para establecer en el estado
+            const formattedBranches: BranchAssignment[] = branchAssignments.map(item => ({
+              branch_id: item.branch_id,
+              branch_name: item.branches && typeof item.branches === 'object' ? (item.branches as any).name : undefined
+            }));
+            
+            setUserBranches(formattedBranches);
+            console.log('Sucursales del usuario:', formattedBranches);
           }
         }
       } catch (err: any) {
@@ -83,8 +101,6 @@ export default function OrganizacionPage() {
 
   // Verificar si el usuario tiene permisos de admin
   const isOrgAdmin = userRole === 2;
-
-
 
   if (loading) {
     return (
@@ -163,6 +179,21 @@ export default function OrganizacionPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Administración de Organización</h1>
         </div>
         <p className="mt-2 text-gray-600">Gestiona miembros, invitaciones y configuración de tu organización</p>
+        
+        {userBranches.length > 0 && (
+          <div className="mt-4">
+            <h2 className="text-lg font-medium text-gray-900">Tus Sucursales</h2>
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {userBranches.map((branch) => (
+                <div key={branch.branch_id} className="bg-white overflow-hidden shadow rounded-lg border">
+                  <div className="px-4 py-5 sm:p-6">
+                    <h3 className="text-lg font-medium text-gray-900 truncate">{branch.branch_name || `Sucursal #${branch.branch_id}`}</h3>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       {showCreateForm ? (
         <Suspense fallback={<div>Cargando formulario...</div>}>
@@ -212,7 +243,7 @@ export default function OrganizacionPage() {
               {activeTab === 'members' && <MembersTab orgId={orgData} />}
               {activeTab === 'invitations' && <InvitationsTab orgId={orgData} />}
               {activeTab === 'info' && <OrganizationInfoTab orgData={orgData} />}
-              {activeTab === 'branches' && <BranchesTab orgId={orgData} />}
+              {activeTab === 'branches' && <BranchesTab orgId={orgData} userBranches={userBranches} />}
               {activeTab === 'manage' && <ManageOrganizationsTab />}
             </Suspense>
           </div>
@@ -233,4 +264,9 @@ type InvitationsTabProps = {
 
 type OrganizationInfoTabProps = {
   orgData: any;
+};
+
+type BranchesTabProps = {
+  orgId: string;
+  userBranches?: BranchAssignment[];
 };

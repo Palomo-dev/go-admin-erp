@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
+import BranchAssignmentModal from './BranchAssignmentModal';
 
 interface MemberProps {
   id: string;
@@ -38,6 +39,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   const [branchFilter, setBranchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(true); // Por defecto mostramos los filtros
+  
+  // Estado para el modal de asignación de sucursales
+  const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     if (orgId) {
@@ -88,7 +93,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       
         return {
           id: member.id,
-          user_id: member.id,
+          user_id: member.user_id || member.id, // Priorizar user_id si existe, sino usar id
           full_name: fullName,
           email: member.email || 'Sin email',
           role: roleInfo.name,
@@ -187,6 +192,18 @@ export default function MembersTab({ orgId }: { orgId: number }) {
     }
   };
   
+  const openBranchAssignmentModal = (memberId: string, memberName: string) => {
+    setSelectedMember({id: memberId, name: memberName});
+    setIsBranchModalOpen(true);
+  };
+
+  const closeBranchAssignmentModal = () => {
+    setIsBranchModalOpen(false);
+    // Refrescar la lista de miembros para ver las actualizaciones
+    fetchMembers();
+  };
+
+  // Función heredada - ya no se usa directamente pero se mantiene por compatibilidad
   const updateMemberBranch = async (memberId: string, branchId: string) => {
     try {
       setUpdatingBranch(true);
@@ -618,19 +635,16 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                     </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <select 
-                      className="rounded-md border border-gray-300 p-1"
-                      value={member.branch_id || ""}
-                      onChange={(e) => updateMemberBranch(member.id, e.target.value)}
-                      disabled={member.is_admin} // Disable changing branch for owners/admins
+                    <button
+                      onClick={() => openBranchAssignmentModal(member.user_id, member.full_name)}
+                      className="inline-flex items-center px-2 py-1 border border-primary text-xs font-medium rounded-md text-primary hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      disabled={member.is_admin}
                     >
-                      <option value="">Sin sucursal</option>
-                      {branches.map(branch => (
-                        <option key={branch.id} value={branch.id}>
-                          {branch.name}
-                        </option>
-                      ))}
-                    </select>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      {member.branch_id ? 'Gestionar' : 'Asignar'} Sucursales
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button 
@@ -661,6 +675,16 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         </table>
       </div>
     </div>
+      {/* Modal de asignación de sucursales */}
+      {isBranchModalOpen && selectedMember && (
+        <BranchAssignmentModal
+          isOpen={isBranchModalOpen}
+          onClose={closeBranchAssignmentModal}
+          memberId={selectedMember.id}
+          memberName={selectedMember.name}
+          organizationId={orgId}
+        />
+      )}
     </div>
   );
 }

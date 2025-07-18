@@ -42,12 +42,17 @@ const removeCookie = (name: string) => {
 
 // Creación del cliente de Supabase
 export const createSupabaseClient = () => {
-  // Verificamos que existan las variables de entorno necesarias
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  // Configuramos las credenciales, usando valores predeterminados si no hay variables de entorno
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWdwaG16dXNibHVxaHVxaWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMzQ1MjIsImV4cCI6MjA2MTYxMDUyMn0.yr5TLl2nhevIzNdPnjVkcdn049RB2t2OgqPG0HryVR4'
   
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase credentials')
+  // Verificación de seguridad para producción
+  if (!supabaseUrl.includes('supabase.co') || !supabaseKey.includes('.')) {
+    console.error('Credenciales de Supabase inválidas')
+    // En desarrollo podemos continuar, en producción debería ser un error fatal
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Credenciales de Supabase inválidas en producción')
+    }
   }
   
   const projectRef = getProjectRef();
@@ -55,31 +60,65 @@ export const createSupabaseClient = () => {
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
-      autoRefreshToken: false, // Desactivamos la renovación automática para reducir solicitudes
+      autoRefreshToken: true, // Permitimos renovación automática con la configuración optimizada
       persistSession: true,
-      detectSessionInUrl: false, // Cambiado a false para evitar problemas con NextJS router
-      flowType: 'pkce',
-      storageKey: storageKey,
-      // La versión actual del cliente no soporta configurar refreshSessionThreshold
-      // Usaremos el gestor de autenticación auth-manager.ts para controlar esto
+      detectSessionInUrl: true,
       storage: {
-        getItem: (key) => {
+        getItem: (key: string) => {
           return getCookie(key);
         },
-        setItem: (key, value) => {
+        setItem: (key: string, value: string) => {
           setCookie(key, value, 86400); // 24 horas para todos los tokens
           // Eliminamos cualquier token del localStorage para mantener la seguridad
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(key);
           }
         },
-        removeItem: (key) => {
+        removeItem: (key: string) => {
           removeCookie(key);
           // Eliminamos cualquier token del localStorage para mantener la seguridad
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(key);
           }
         }
+      }
+    },
+    global: {
+      headers: {
+        'x-application-name': 'GoAdminERP'
+      },
+      // Configurar reintentos con backoff exponencial para manejar límites de solicitudes (429)
+      fetch: (url: string | URL | Request, options?: RequestInit) => {
+        const MAX_RETRIES = 3;
+        const BASE_DELAY = 1000; // 1 segundo
+        
+        return new Promise((resolve, reject) => {
+          const attemptFetch = async (retriesLeft: number, delay: number) => {
+            try {
+              const response = await fetch(url, options);
+              
+              // Si recibimos un 429 (Too Many Requests) y aún tenemos reintentos
+              if (response.status === 429 && retriesLeft > 0) {
+                console.log(`Límite de solicitudes alcanzado, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
+                
+                // Esperar antes de reintentar con backoff exponencial
+                await new Promise(res => setTimeout(res, delay));
+                return attemptFetch(retriesLeft - 1, delay * 2);
+              }
+              
+              resolve(response);
+            } catch (error) {
+              if (retriesLeft > 0) {
+                console.log(`Error en solicitud, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
+                await new Promise(res => setTimeout(res, delay));
+                return attemptFetch(retriesLeft - 1, delay * 2);
+              }
+              reject(error);
+            }
+          };
+          
+          attemptFetch(MAX_RETRIES, BASE_DELAY);
+        });
       }
     }
   })

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import PersonalInfoStep from '../../../components/auth/PersonalInfoStep';
 import OrganizationStep from '../../../components/auth/OrganizationStep';
@@ -9,6 +9,7 @@ import BranchStep from '../../../components/auth/BranchStep';
 import VerificationStep from '../../../components/auth/VerificationStep';
 import SubscriptionStep from '../../../components/auth/SubscriptionStep';
 import { supabase, signUpWithEmail } from '@/lib/supabase/config';
+import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
 
 // Definición de tipos
 type SignupData = {
@@ -44,9 +45,12 @@ type SignupData = {
 
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [googleUserData, setGoogleUserData] = useState<any>(null);
   const [signupData, setSignupData] = useState<SignupData>({
     firstName: '',
     lastName: '',
@@ -71,6 +75,51 @@ export default function SignupPage() {
     billingPeriod: 'monthly',
   });
 
+  // Verificar si viene de Google OAuth
+  useEffect(() => {
+    const checkGoogleUser = async () => {
+      const isFromGoogle = searchParams.get('google') === 'true';
+      const stepParam = searchParams.get('step');
+      
+      if (isFromGoogle) {
+        // Verificar sesión activa de Google
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error || !session || session.user.app_metadata?.provider !== 'google') {
+          // No hay sesión de Google válida, redirigir a login
+          router.push('/auth/login?error=google-session-expired');
+          return;
+        }
+        
+        setIsGoogleUser(true);
+        setGoogleUserData(session.user);
+        
+        // Extraer datos del usuario de Google
+        const { firstName, lastName } = extractGoogleUserNames({
+          id: session.user.id,
+          email: session.user.email || '',
+          user_metadata: session.user.user_metadata || {}
+        });
+        
+        // Actualizar datos del formulario con información de Google
+        updateFormData({
+          firstName,
+          lastName,
+          email: session.user.email || '',
+          password: '', // No necesario para usuarios de Google
+          confirmPassword: ''
+        });
+        
+        // Si viene con step=organization, ir directamente al paso 2
+        if (stepParam === 'organization') {
+          setCurrentStep(2);
+        }
+      }
+    };
+    
+    checkGoogleUser();
+  }, [searchParams, router]);
+
   // Actualizar datos del formulario
   const updateFormData = (data: Partial<SignupData>) => {
     setSignupData((prev) => ({ ...prev, ...data }));
@@ -78,11 +127,11 @@ export default function SignupPage() {
 
   // Avanzar al siguiente paso
   const nextStep = async () => {
-    if (currentStep === 1) {
+    if (currentStep === 1 && !isGoogleUser) {
       setLoading(true);
       setError(null);
       
-      // Verificar si el correo ya está registrado
+      // Verificar si el correo ya está registrado (solo para usuarios no-Google)
       const { data: existingUsers } = await supabase
         .from('profiles')
         .select('id')
@@ -113,23 +162,32 @@ export default function SignupPage() {
 
     try {
       console.log('Datos de registro:', signupData);
-      // 1. Crear cuenta de usuario en Supabase Auth usando la función mejorada
-      const { data: authData, error: authError } = await signUpWithEmail(
-        signupData.email,
-        signupData.password,
-        {
-          first_name: signupData.firstName,
-          last_name: signupData.lastName,
-        },
-        `${window.location.origin}/auth/callback?next=/app/inicio`
-      );
       
-      console.log('Respuesta de registro:', authData);
+      let userId: string;
+      
+      if (isGoogleUser && googleUserData) {
+        // Usuario de Google ya autenticado, usar su ID
+        userId = googleUserData.id;
+        console.log('Usuario de Google ya autenticado:', userId);
+      } else {
+        // Usuario regular, crear cuenta nueva
+        const { data: authData, error: authError } = await signUpWithEmail(
+          signupData.email,
+          signupData.password,
+          {
+            first_name: signupData.firstName,
+            last_name: signupData.lastName,
+          },
+          `${window.location.origin}/auth/callback?next=/app/inicio`
+        );
+        
+        console.log('Respuesta de registro:', authData);
 
-      if (authError) throw authError;
-      
-      const userId = authData.user?.id;
-      if (!userId) throw new Error('No se pudo crear el usuario');
+        if (authError) throw authError;
+        
+        if (!authData.user?.id) throw new Error('No se pudo crear el usuario');
+        userId = authData.user.id;
+      }
 
       // 2. Procesar según el tipo de registro (crear organización o unirse)
       if (signupData.joinType === 'create') {
@@ -150,20 +208,34 @@ export default function SignupPage() {
 
         if (orgError) throw orgError;
 
-        // Crear perfil de usuario
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            email: signupData.email,
-            first_name: signupData.firstName,
-            last_name: signupData.lastName,
-            last_org_id: orgData.id, // Campo correcto para última organización
-            status: 'active',
-            phone: signupData.phone,
-          });
+        // Crear o actualizar perfil de usuario
+        if (isGoogleUser) {
+          // Usuario de Google: actualizar perfil existente
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+              last_org_id: orgData.id, // Actualizar última organización
+              phone: signupData.phone || null,
+            })
+            .eq('id', userId);
 
-        if (profileError) throw profileError;
+          if (profileError) throw profileError;
+        } else {
+          // Usuario regular: crear perfil nuevo
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              email: signupData.email,
+              first_name: signupData.firstName,
+              last_name: signupData.lastName,
+              last_org_id: orgData.id, // Campo correcto para última organización
+              status: 'active',
+              phone: signupData.phone,
+            });
+
+          if (profileError) throw profileError;
+        }
 
         // Crear membresía del usuario como administrador de la organización
         const { error: memberError } = await supabase
@@ -250,7 +322,14 @@ export default function SignupPage() {
           .eq('code', signupData.invitationCode);
       }
 
-      // Avanzar al paso de verificación
+      // Para usuarios de Google, redirigir directamente a la app
+      if (isGoogleUser) {
+        // Usuarios de Google ya están verificados, ir directamente a la app
+        router.push('/app/inicio');
+        return;
+      }
+
+      // Para usuarios regulares, avanzar al paso de verificación
       nextStep();
     } catch (err: any) {
       console.error('Error en registro:', err);
@@ -272,8 +351,13 @@ export default function SignupPage() {
             </div>
           </div>
           <h2 className="text-center text-2xl font-bold text-gray-800">
-            Registro en GO Admin ERP
+            {isGoogleUser ? 'Configuración de cuenta' : 'Registro en GO Admin ERP'}
           </h2>
+          {isGoogleUser && (
+            <p className="text-center text-sm text-gray-600 mt-2">
+              Cuenta de Google: {signupData.email}
+            </p>
+          )}
           
           {/* Indicador de pasos */}
           <div className="flex justify-center w-full mt-4 mb-6">
@@ -308,7 +392,7 @@ export default function SignupPage() {
         )}
         
         {/* Pasos del formulario */}
-        {currentStep === 1 && (
+        {currentStep === 1 && !isGoogleUser && (
           <PersonalInfoStep 
             formData={signupData} 
             updateFormData={updateFormData} 
@@ -316,6 +400,31 @@ export default function SignupPage() {
             error={error}
             loading={loading}
           />
+        )}
+        
+        {/* Para usuarios de Google, mostrar información de bienvenida en el paso 1 */}
+        {currentStep === 1 && isGoogleUser && (
+          <div className="text-center py-8">
+            <div className="mb-6">
+              <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                ¡Bienvenido, {signupData.firstName}!
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Tu cuenta de Google ha sido vinculada exitosamente. Ahora necesitas configurar tu organización.
+              </p>
+            </div>
+            <button
+              onClick={nextStep}
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Continuar con la configuración
+            </button>
+          </div>
         )}
         
         {currentStep === 2 && (

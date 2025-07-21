@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
+import { handleGoogleCallback, type GoogleUser } from '@/lib/auth/googleAuth';
+import { getUserOrganization } from '@/lib/supabase/config';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -16,6 +18,9 @@ export default function AuthCallback() {
         // Obtener parámetros de la URL
         const error = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
+        const type = searchParams.get('type');
+        const accessToken = searchParams.get('access_token');
+        const refreshToken = searchParams.get('refresh_token');
         const next = searchParams.get('next') || '/app/inicio';
 
         // Si hay error en la URL, mostrar error
@@ -25,6 +30,35 @@ export default function AuthCallback() {
           setTimeout(() => {
             router.push('/auth/login?error=' + encodeURIComponent(error));
           }, 3000);
+          return;
+        }
+        
+        // Manejar reset de contraseña
+        if (type === 'recovery' && accessToken && refreshToken) {
+          console.log('Password recovery callback detected');
+          setStatus('success');
+          setMessage('Enlace de recuperación válido. Redirigiendo...');
+          
+          // Establecer la sesión con los tokens de recuperación
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (sessionError) {
+            console.error('Error setting recovery session:', sessionError);
+            setStatus('error');
+            setMessage('Error al procesar el enlace de recuperación');
+            setTimeout(() => {
+              router.push('/auth/forgot-password?error=invalid-link');
+            }, 3000);
+            return;
+          }
+          
+          // Redirigir a la página de reset de contraseña
+          setTimeout(() => {
+            router.push('/auth/reset-password');
+          }, 1500);
           return;
         }
 
@@ -40,11 +74,56 @@ export default function AuthCallback() {
           setStatus('success');
           setMessage('¡Autenticación exitosa! Redirigiendo...');
           
+          const user = data.session.user;
+          
+          // Verificar si es un login con Google (OAuth)
+          const isGoogleAuth = user.app_metadata?.provider === 'google';
+          
+          if (isGoogleAuth) {
+            // Manejar callback de Google OAuth
+            const googleUser: GoogleUser = {
+              id: user.id,
+              email: user.email || '',
+              user_metadata: user.user_metadata || {}
+            };
+            
+            const googleResult = await handleGoogleCallback(googleUser);
+            
+            if (!googleResult.success) {
+              setStatus('error');
+              setMessage(googleResult.error || 'Error procesando login con Google');
+              setTimeout(() => {
+                router.push('/auth/login?error=google-callback-failed');
+              }, 3000);
+              return;
+            }
+            
+            // Si el usuario de Google necesita seleccionar organización
+            if (googleResult.needsOrganization) {
+              // Verificar si el usuario tiene organizaciones disponibles
+              const { data: memberData, error: memberError } = await supabase
+                .from('organization_members')
+                .select('organization_id')
+                .eq('user_id', user.id)
+                .eq('is_active', true);
+              
+              if (!memberError && memberData && memberData.length > 0) {
+                // Tiene organizaciones, redirigir a selección
+                router.push('/auth/select-organization');
+                return;
+              } else {
+                // No tiene organizaciones, redirigir a crear una o unirse
+                router.push('/auth/signup?step=organization&google=true');
+                return;
+              }
+            }
+          }
+          
           // Verificar si el usuario tiene perfil completo
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('id, first_name, last_name, last_org_id')
-            .eq('id', data.session.user.id)
+            .eq('id', user.id)
             .single();
 
           if (profileError || !profile) {

@@ -202,10 +202,18 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
 };
 
 // Función para registrar el dispositivo del usuario
-const registerUserDevice = async (session: any) => {
+export const registerUserDevice = async (sessionOrUserId: any) => {
   try {
-    if (!session || !session.access_token || !session.user) {
-      console.error('Sesión no válida para registrar dispositivo');
+    // Determinar si es una sesión completa o solo un userId
+    let userId: string;
+    if (typeof sessionOrUserId === 'string') {
+      // Es solo un userId
+      userId = sessionOrUserId;
+    } else if (sessionOrUserId && sessionOrUserId.user && sessionOrUserId.user.id) {
+      // Es una sesión completa
+      userId = sessionOrUserId.user.id;
+    } else {
+      console.error('Parámetro no válido para registrar dispositivo');
       return;
     }
 
@@ -226,7 +234,7 @@ const registerUserDevice = async (session: any) => {
     
     // Preparar los datos para la API
     const deviceData = {
-      user_id: session.user.id,
+      user_id: userId,
       device_name: deviceName,
       device_type: deviceType,
       user_agent: userAgent,

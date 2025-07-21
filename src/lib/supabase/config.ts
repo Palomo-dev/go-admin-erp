@@ -376,9 +376,31 @@ export const getBranches = async (organizationId: string) => {
 }
 
 export const resetPassword = async (email: string) => {
-  return await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/reset-password`,
-  })
+  try {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+      captchaToken: undefined // Opcional: agregar captcha si es necesario
+    });
+    
+    if (error) {
+      // Manejar errores específicos
+      if (error.message.includes('Email not confirmed')) {
+        throw new Error('Tu cuenta aún no ha sido verificada. Por favor confirma tu email primero.');
+      }
+      if (error.message.includes('Email rate limit exceeded')) {
+        throw new Error('Has enviado demasiados correos de recuperación. Espera unos minutos antes de intentar nuevamente.');
+      }
+      if (error.message.includes('User not found')) {
+        // Por seguridad, no revelamos si el email existe o no
+        return { data, error: null };
+      }
+      throw error;
+    }
+    
+    return { data, error: null };
+  } catch (err: any) {
+    return { data: null, error: err };
+  }
 }
 
 export const updatePassword = async (newPassword: string) => {

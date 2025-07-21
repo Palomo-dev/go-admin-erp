@@ -34,11 +34,11 @@ export default function FacturaDetallesPage() {
         if (facturaError) throw facturaError;
         if (!facturaData) throw new Error('No se encontró la factura');
 
-        // Obtener los items de la factura - usando tax_templates en lugar de taxes
+        // Obtener los items de la factura con información de productos
         const { data: itemsData, error: itemsError } = await supabase
           .from('invoice_items')
-          .select('*')
-          .eq('invoice_id', invoiceId)
+          .select('*, products(id, name, sku, description)')
+          .eq('invoice_sales_id', invoiceId)
           .order('id', { ascending: true });
 
         if (itemsError) throw itemsError;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   FileText, 
@@ -47,6 +47,7 @@ import { RegistrarPagoDialog } from './RegistrarPagoDialog';
 import { NotaCreditoDialog } from './NotaCreditoDialog';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
+import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 // Mapeo de estados a colores de badge
 const estadoColors: Record<string, string> = {
@@ -96,6 +97,53 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const [dialogNotaCreditoOpen, setDialogNotaCreditoOpen] = useState(false);
   const [facturaActual, setFacturaActual] = useState(factura);
   const [pagosActuales, setPagosActuales] = useState(factura.pagos);
+
+  // Función para actualizar los pagos después de registrar uno nuevo usando RPC unificado
+  const actualizarPagos = useCallback(async () => {
+    try {
+      // Obtener factura actualizada
+      const { data: facturaData, error: facturaError } = await supabase
+        .from('invoice_sales')
+        .select('*')
+        .eq('id', facturaActual.id)
+        .single();
+      
+      if (facturaError) throw facturaError;
+      if (facturaData) setFacturaActual(facturaData);
+      
+      // Obtener pagos actualizados usando el RPC unificado
+      const organizacion = obtenerOrganizacionActiva();
+      if (!organizacion?.id) {
+        console.error('No se pudo obtener la organización activa');
+        return;
+      }
+
+      const { data: pagosData, error: pagosError } = await supabase
+        .rpc('get_invoice_payments', {
+          target_invoice_id: facturaActual.id,
+          org_id: organizacion.id
+        });
+      
+      if (pagosError) {
+        console.error('Error al cargar pagos:', pagosError);
+        return;
+      }
+      
+      setPagosActuales(pagosData || []);
+      console.log('✅ Pagos actualizados:', pagosData?.length || 0);
+      
+      // Actualizar estado de pago
+      setIsPaid(facturaData?.status === 'paid');
+      
+    } catch (error: any) {
+      console.error('Error al actualizar datos:', error);
+    }
+  }, [facturaActual.id]);
+
+  // Cargar pagos al montar el componente
+  useEffect(() => {
+    actualizarPagos();
+  }, [actualizarPagos]);
 
   const getBadgeVariant = (status: string) => {
     switch (status) {
@@ -240,37 +288,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
     }
   };
 
-  // Función para actualizar los pagos después de registrar uno nuevo
-  const actualizarPagos = useCallback(async () => {
-    try {
-      // Obtener factura actualizada
-      const { data: facturaData, error: facturaError } = await supabase
-        .from('invoice_sales')
-        .select('*')
-        .eq('id', facturaActual.id)
-        .single();
-      
-      if (facturaError) throw facturaError;
-      if (facturaData) setFacturaActual(facturaData);
-      
-      // Obtener pagos actualizados
-      const { data: pagosData, error: pagosError } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('source', 'invoice_sales')
-        .eq('source_id', facturaActual.id)
-        .order('created_at', { ascending: false });
-      
-      if (pagosError) throw pagosError;
-      if (pagosData) setPagosActuales(pagosData);
-      
-      // Actualizar estado de pago
-      setIsPaid(facturaData?.status === 'paid');
-      
-    } catch (error: any) {
-      console.error('Error al actualizar datos:', error);
-    }
-  }, [facturaActual.id]);
+
 
   // Funciones para enviar la factura por diferentes medios
   const enviarPorEmail = () => {

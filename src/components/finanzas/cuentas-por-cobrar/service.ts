@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { obtenerOrganizacionActiva, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { CuentaPorCobrar, FiltrosCuentasPorCobrar, AgingBucket, Recordatorio, Abono, EstadisticasCxC, ResultadoPaginado } from './types';
 
 export class CuentasPorCobrarService {
@@ -162,74 +162,81 @@ export class CuentasPorCobrarService {
     }
   }
 
-  // Obtener reporte de aging
+  // Obtener reporte de aging usando RPC como las demás funciones
   static async obtenerReporteAging(): Promise<AgingBucket[]> {
     const organizationId = this.getOrganizationId();
-    
-    const { data, error } = await supabase
-      .from('accounts_receivable')
-      .select(`
-        customer_id,
-        amount,
-        balance,
-        due_date,
-        status,
-        customers(
-          full_name,
-          email,
-          phone
-        )
-      `)
-      .eq('organization_id', organizationId)
-      .in('status', ['current', 'overdue', 'partial'])
-      .gt('balance', 0);
 
-    if (error) {
+    try {
+      // Usar función RPC para bypassear RLS, igual que las otras funciones
+      const { data, error } = await supabase
+        .rpc('get_accounts_receivable_paginated', {
+          org_id: organizationId,
+          search_term: null,
+          status_filter: 'todos', // Obtener todos para procesar aging
+          aging_filter: 'todos',
+          customer_id_filter: null,
+          date_from: null,
+          date_to: null,
+          page_size: 1000, // Número grande para obtener todos los registros
+          page_number: 1
+        });
+
+      if (error) {
+        console.error('Error al obtener datos para aging con RPC:', error);
+        throw error;
+      }
+
+      const result = data as any;
+      const cuentas = result.data || [];
+
+      // Procesar los datos para crear buckets de aging
+      const customerMap = new Map<string, AgingBucket>();
+      const today = new Date();
+
+      cuentas.forEach((item: any) => {
+        const customerId = item.customer_id;
+        const balance = parseFloat(item.balance || 0);
+        
+        // Solo procesar cuentas con saldo pendiente
+        if (balance <= 0) return;
+        
+        const dueDate = new Date(item.due_date);
+        const daysDiff = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (!customerMap.has(customerId)) {
+          customerMap.set(customerId, {
+            customer_id: customerId,
+            customer_name: item.customer_name || 'N/A',
+            customer_email: item.customer_email || '',
+            customer_phone: item.customer_phone || '',
+            current: 0,
+            days_31_60: 0,
+            days_61_90: 0,
+            days_90_plus: 0,
+            total: 0,
+          });
+        }
+
+        const bucket = customerMap.get(customerId)!;
+        bucket.total += balance;
+
+        // Clasificar por aging
+        if (daysDiff <= 30) {
+          bucket.current += balance;
+        } else if (daysDiff <= 60) {
+          bucket.days_31_60 += balance;
+        } else if (daysDiff <= 90) {
+          bucket.days_61_90 += balance;
+        } else {
+          bucket.days_90_plus += balance;
+        }
+      });
+
+      return Array.from(customerMap.values());
+    } catch (error) {
       console.error('Error al obtener reporte de aging:', error);
       throw error;
     }
-
-    // Procesar los datos para crear buckets de aging
-    const customerMap = new Map<string, AgingBucket>();
-    const today = new Date();
-
-    data?.forEach((item: any) => {
-      const customerId = item.customer_id;
-      const dueDate = new Date(item.due_date);
-      const daysDiff = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-      const balance = parseFloat(item.balance || 0);
-
-      if (balance <= 0) return; // Saltar cuentas sin balance
-
-      if (!customerMap.has(customerId)) {
-        customerMap.set(customerId, {
-          customer_id: customerId,
-          customer_name: item.customers?.full_name || 'N/A',
-          customer_email: item.customers?.email || '',
-          customer_phone: item.customers?.phone || '',
-          current: 0,
-          days_31_60: 0,
-          days_61_90: 0,
-          days_90_plus: 0,
-          total: 0,
-        });
-      }
-
-      const bucket = customerMap.get(customerId)!;
-      bucket.total += balance;
-
-      if (daysDiff <= 30) {
-        bucket.current += balance;
-      } else if (daysDiff <= 60) {
-        bucket.days_31_60 += balance;
-      } else if (daysDiff <= 90) {
-        bucket.days_61_90 += balance;
-      } else {
-        bucket.days_90_plus += balance;
-      }
-    });
-
-    return Array.from(customerMap.values());
   }
 
   // Obtener cuentas que necesitan recordatorios
@@ -275,28 +282,34 @@ export class CuentasPorCobrarService {
   static async aplicarAbono(accountId: string, abono: Omit<Abono, 'id' | 'account_receivable_id'>): Promise<void> {
     const organizationId = this.getOrganizationId();
     
-    // Primero obtenemos la cuenta por cobrar
-    const { data: account, error: accountError } = await supabase
-      .from('accounts_receivable')
-      .select('*')
-      .eq('id', accountId)
-      .eq('organization_id', organizationId)
-      .single();
+    // Usar RPC para obtener la cuenta y evitar problemas de RLS
+    const { data: accountData, error: accountError } = await supabase
+      .rpc('get_account_receivable_detail', {
+        account_id: accountId,
+        org_id: organizationId
+      });
 
-    if (accountError) {
+    if (accountError || !accountData || accountData.length === 0) {
       console.error('Error al obtener cuenta por cobrar:', accountError);
-      throw accountError;
+      throw new Error('No se pudo encontrar la cuenta por cobrar o no tiene permisos para acceder a ella');
     }
+
+    const account = accountData[0];
 
     const currentBalance = parseFloat(account.balance);
     const abonoAmount = parseFloat(abono.amount.toString());
     const newBalance = currentBalance - abonoAmount;
 
+    // Obtener branch_id y usuario actual desde el contexto del usuario
+    const currentBranchId = getCurrentBranchId();
+    const currentUserId = await getCurrentUserId();
+    
     // Crear el registro de pago
     const { error: paymentError } = await supabase
       .from('payments')
       .insert({
         organization_id: organizationId,
+        branch_id: currentBranchId,
         source: 'account_receivable',
         source_id: accountId,
         method: abono.payment_method,
@@ -304,6 +317,7 @@ export class CuentasPorCobrarService {
         currency: 'COP',
         reference: abono.reference,
         status: 'completed',
+        created_by: currentUserId,
         created_at: abono.payment_date,
       });
 
@@ -312,21 +326,8 @@ export class CuentasPorCobrarService {
       throw paymentError;
     }
 
-    // Actualizar el balance de la cuenta por cobrar
-    const newStatus = newBalance <= 0 ? 'paid' : 'partial';
-    const { error: updateError } = await supabase
-      .from('accounts_receivable')
-      .update({
-        balance: Math.max(0, newBalance),
-        status: newStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', accountId);
-
-    if (updateError) {
-      console.error('Error al actualizar cuenta por cobrar:', updateError);
-      throw updateError;
-    }
+    // El trigger update_accounts_receivable_on_payment se encarga automáticamente
+    // de actualizar el balance y estado de la cuenta por cobrar
   }
 
   // Actualizar fecha de recordatorio

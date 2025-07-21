@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import PaymentMethodsList from "./PaymentMethodsList";
 import PaymentMethodForm from "./PaymentMethodForm";
@@ -43,9 +44,12 @@ export default function PaymentMethodsPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
+  const countryCode = organization?.country_code;
   const [activeTab, setActiveTab] = useState<string>("lista");
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [orgPaymentMethods, setOrgPaymentMethods] = useState<OrganizationPaymentMethod[]>([]);
+  const [recommendedMethods, setRecommendedMethods] = useState<any[]>([]);
+  const [actualCountryCode, setActualCountryCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMethod, setSelectedMethod] = useState<OrganizationPaymentMethod | null>(null);
 
@@ -58,6 +62,8 @@ export default function PaymentMethodsPage() {
 
   // Función para cargar los métodos de pago
   const loadPaymentMethods = async () => {
+    if (!organizationId) return;
+    
     try {
       setIsLoading(true);
       
@@ -65,11 +71,12 @@ export default function PaymentMethodsPage() {
       const { data: methodsData, error: methodsError } = await supabase
         .from("payment_methods")
         .select("*")
+        .eq("is_active", true)
         .order("name");
-
+        
       if (methodsError) throw methodsError;
       
-      // Obtener configuración de métodos de pago para la organización actual
+      // Obtener métodos de pago de la organización
       const { data: orgMethodsData, error: orgMethodsError } = await supabase
         .from("organization_payment_methods")
         .select(`
@@ -84,11 +91,38 @@ export default function PaymentMethodsPage() {
 
       if (orgMethodsError) throw orgMethodsError;
       
+      // Obtener country_code directamente de la base de datos si no está disponible
+      let currentCountryCode = countryCode;
+      if (!currentCountryCode) {
+        const { data: orgData, error: orgError } = await supabase
+          .from("organizations")
+          .select("country_code")
+          .eq("id", organizationId)
+          .single();
+          
+        if (!orgError && orgData) {
+          currentCountryCode = orgData.country_code;
+        }
+      }
+      
+      // Obtener métodos recomendados del país si está disponible
+      let recommendedData = [];
+      if (currentCountryCode) {
+        const { data: recMethodsData, error: recMethodsError } = await supabase
+          .rpc('get_recommended_payment_methods', { country_code: currentCountryCode });
+          
+        if (!recMethodsError && recMethodsData) {
+          recommendedData = recMethodsData;
+        }
+      }
+      
       setPaymentMethods(methodsData || []);
       setOrgPaymentMethods(orgMethodsData?.map(item => ({
         ...item,
         payment_method: item.payment_method as unknown as PaymentMethod
       })) || []);
+      setRecommendedMethods(recommendedData || []);
+      setActualCountryCode(currentCountryCode || null);
     } catch (error: any) {
       console.error("Error al cargar métodos de pago:", error.message);
       toast({
@@ -136,7 +170,7 @@ export default function PaymentMethodsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
-          <TabsTrigger value="lista">Lista de Métodos</TabsTrigger>
+          <TabsTrigger value="lista">Métodos Activos</TabsTrigger>
           <TabsTrigger value="editar">
             {selectedMethod ? "Editar Método" : "Nuevo Método"}
           </TabsTrigger>
@@ -154,6 +188,8 @@ export default function PaymentMethodsPage() {
               <PaymentMethodsList
                 paymentMethods={paymentMethods}
                 orgPaymentMethods={orgPaymentMethods}
+                recommendedMethods={recommendedMethods}
+                countryCode={actualCountryCode}
                 onEdit={handleEditMethod}
                 isLoading={isLoading}
                 onRefresh={loadPaymentMethods}
@@ -179,6 +215,8 @@ export default function PaymentMethodsPage() {
                 <PaymentMethodForm
                   organizationId={organizationId}
                   globalMethods={paymentMethods}
+                  recommendedMethods={recommendedMethods}
+                  countryCode={actualCountryCode}
                   selectedMethod={selectedMethod}
                   onSaveComplete={handleSaveComplete}
                   onCancel={() => setActiveTab("lista")}

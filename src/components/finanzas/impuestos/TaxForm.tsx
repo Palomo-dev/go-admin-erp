@@ -65,24 +65,45 @@ const TaxForm: React.FC<TaxFormProps> = ({
   const [useTemplate, setUseTemplate] = useState(false);
   const { toast } = useToast();
 
-  // Cargar datos de plantillas de impuestos
+  // Cargar datos de plantillas de impuestos filtradas por país de la organización
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
         const { data, error } = await supabase
-          .from('tax_templates')
-          .select('*')
-          .order('name');
+          .rpc('get_tax_templates_by_organization_country', {
+            org_id: organizationId
+          });
 
         if (error) throw error;
         setTemplates(data || []);
+        
+        // Si hay plantillas disponibles y no estamos en modo edición, 
+        // activar automáticamente el uso de plantillas
+        if (!editMode && data && data.length > 0) {
+          setUseTemplate(true);
+        }
       } catch (error) {
         console.error('Error al cargar plantillas:', error);
+        // En caso de error, intentar cargar todas las plantillas como fallback
+        try {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('tax_templates')
+            .select('*')
+            .order('name');
+          
+          if (!fallbackError && fallbackData) {
+            setTemplates(fallbackData);
+          }
+        } catch (fallbackErrorFinal) {
+          console.error('Error en fallback de plantillas:', fallbackErrorFinal);
+        }
       }
     };
 
-    fetchTemplates();
-  }, []);
+    if (organizationId) {
+      fetchTemplates();
+    }
+  }, [organizationId, editMode]);
 
   // Inicializar formulario con datos del impuesto si estamos en modo edición
   useEffect(() => {
@@ -226,6 +247,15 @@ const TaxForm: React.FC<TaxFormProps> = ({
           </DialogTitle>
         </DialogHeader>
         
+        {!editMode && templates.length > 0 && (
+          <div className="mx-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              ℹ️ <strong>Plantillas sugeridas:</strong> Se muestran automáticamente los impuestos 
+              configurados para su país de operación. Puede usar una plantilla o crear un impuesto personalizado.
+            </p>
+          </div>
+        )}
+        
         <div className="grid gap-4 py-4">
           {!editMode && (
             <div className="flex flex-col gap-2">
@@ -243,21 +273,39 @@ const TaxForm: React.FC<TaxFormProps> = ({
               {useTemplate && (
                 <div className="grid grid-cols-1 gap-2">
                   <Label htmlFor="template" className="dark:text-gray-300">
-                    Plantilla
+                    Plantillas de Impuestos Disponibles
+                    {templates.length > 0 && templates[0]?.country && (
+                      <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                        ({templates[0].country})
+                      </span>
+                    )}
                   </Label>
-                  <select
-                    id="template"
-                    value={selectedTemplate || ''}
-                    onChange={(e) => setSelectedTemplate(Number(e.target.value))}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 dark:border-gray-700 dark:bg-gray-900"
-                  >
-                    <option value="">Seleccionar plantilla</option>
-                    {templates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name} ({template.rate}%) - {template.code}
-                      </option>
-                    ))}
-                  </select>
+                  {templates.length === 0 ? (
+                    <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800 text-center">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No hay plantillas de impuestos disponibles para su país
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        id="template"
+                        value={selectedTemplate || ''}
+                        onChange={(e) => setSelectedTemplate(Number(e.target.value))}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        <option value="">Seleccionar plantilla del país</option>
+                        {templates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name} - {template.rate}% {template.description ? `(${template.description})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Se muestran solo las plantillas específicas para su país de operación
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </div>

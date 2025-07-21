@@ -60,7 +60,7 @@ export const SidebarNavigation = ({
           icon: <Users size={18} />,
           submenu: [
             { name: "Clientes", href: "/app/crm/clientes" },
-            { name: "Pipelines", href: "/app/crm/pipelines" },
+            { name: "Pipelines", href: "/app/crm/pipeline" },
             { name: "Tareas", href: "/app/crm/tareas" }
           ]
         },
@@ -110,13 +110,11 @@ export const SidebarNavigation = ({
           icon: <ShoppingCart size={18} />,
           submenu: [
             { name: "POS", href: "/app/pos" },
-            { name: "Carritos", href: "/app/pos/carritos" },
             { name: "Cajas", href: "/app/pos/cajas" },
-            { name: "Clientes Multiples", href: "/app/pos/clientes-multiples" },
-            { name: "Cobro", href: "/app/pos/cobro" },
             { name: "Cuentas por Cobrar", href: "/app/pos/cuentas-por-cobrar" },
             { name: "Devoluciones", href: "/app/pos/devoluciones" },
             { name: "Pagos Pendientes", href: "/app/pos/pagos-pendientes" },
+            { name: "Carritos", href: "/app/pos/carritos" },
             /*{ name: "Reportes", href: "/app/pos/reportes" },
             { name: "Configuración", href: "/app/pos/configuración" },
             { name: "Mesas", href: "/app/pos/mesas" },

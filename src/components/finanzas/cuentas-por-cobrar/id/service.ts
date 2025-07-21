@@ -1,12 +1,15 @@
 import { supabase } from '@/lib/supabase/config';
-import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { obtenerOrganizacionActiva, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { CuentaPorCobrarDetalle, PaymentRecord, AgingInfo, AccountActions } from './types';
 
 export class CuentaPorCobrarDetailService {
   private static getOrganizationId(): number {
     const org = obtenerOrganizacionActiva();
+    console.log('🏢 DEBUG getOrganizationId:', { org: org?.id, orgData: org });
     return org.id;
   }
+
+
 
   // Obtener detalles de una cuenta por cobrar específica
   static async obtenerDetallesCuentaPorCobrar(accountId: string): Promise<CuentaPorCobrarDetalle | null> {
@@ -182,6 +185,10 @@ export class CuentaPorCobrarDetailService {
   // Aplicar pago
   static async aplicarPago(accountId: string, amount: number, method: string, reference?: string): Promise<void> {
     const organizationId = this.getOrganizationId();
+    const branchId = getCurrentBranchId();
+    const createdBy = await getCurrentUserId();
+    
+    console.log('💰 DEBUG aplicarPago:', { accountId, amount, method, organizationId, branchId, createdBy });
     
     try {
       // Crear registro de pago
@@ -189,6 +196,8 @@ export class CuentaPorCobrarDetailService {
         .from('payments')
         .insert({
           organization_id: organizationId,
+          branch_id: branchId,
+          created_by: createdBy,
           source: 'account_receivable',
           source_id: accountId,
           amount: amount,

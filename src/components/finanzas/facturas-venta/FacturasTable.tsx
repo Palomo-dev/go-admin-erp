@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle } from 'lucide-react';
+import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle, ChevronDown, ChevronRight, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -15,6 +15,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
 import DetalleFactura from './id/DetalleFactura';
+import { PagosFactura } from './PagosFactura';
 
 // Función para formatear fechas sin usar Date (evita errores de tipo)
 const formatearFecha = (fechaStr: string | null): string => {
@@ -101,6 +102,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
   const [error, setError] = useState<string | null>(null);
   const [facturaSeleccionadaId, setFacturaSeleccionadaId] = useState<string | null>(null);
   const [mostrarDetalles, setMostrarDetalles] = useState(false);
+  const [filasExpandidas, setFilasExpandidas] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   
   // Estado para la paginación
@@ -236,6 +238,17 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
     return pageNumbers;
   };
   
+  // Función para alternar el estado expandido de una fila
+  const toggleFilaExpandida = (facturaId: string) => {
+    const nuevasFilasExpandidas = new Set(filasExpandidas);
+    if (nuevasFilasExpandidas.has(facturaId)) {
+      nuevasFilasExpandidas.delete(facturaId);
+    } else {
+      nuevasFilasExpandidas.add(facturaId);
+    }
+    setFilasExpandidas(nuevasFilasExpandidas);
+  };
+  
   // Manejar cambio de tamaño de página
   const handlePageSizeChange = (value: string) => {
     const newSize = parseInt(value);
@@ -254,97 +267,108 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
           return;
         }
 
-        // Consulta a Supabase para obtener las facturas
-        const { data, error } = await supabase
-          .from('invoice_sales')
-          .select(`
-            id,
-            number,
-            customer_id,
-            sale_id,
-            issue_date,
-            due_date,
-            subtotal,
-            tax_total,
-            total,
-            balance,
-            status,
-            currency,
-            payment_method,
-            notes,
-            created_at,
-            tax_included,
-            payment_terms
-          `)
-          .eq('organization_id', organizationId)
-          .order('issue_date', { ascending: false });
+        // Ejecutar queries en paralelo para optimizar rendimiento
+        const [facturaResult, customersResult, paymentMethodsResult] = await Promise.all([
+          // Query 1: Obtener todas las facturas
+          supabase
+            .from('invoice_sales')
+            .select(`
+              id,
+              number,
+              customer_id,
+              sale_id,
+              issue_date,
+              due_date,
+              subtotal,
+              tax_total,
+              total,
+              balance,
+              status,
+              currency,
+              payment_method,
+              notes,
+              created_at,
+              tax_included,
+              payment_terms
+            `)
+            .eq('organization_id', organizationId)
+            .order('issue_date', { ascending: false }),
+          
+          // Query 2: Obtener todos los clientes de la organización
+          supabase
+            .from('customers')
+            .select('id, full_name, first_name, last_name')
+            .eq('organization_id', organizationId),
+          
+          // Query 3: Obtener todos los métodos de pago
+          supabase
+            .from('payment_methods')
+            .select('code, name')
+        ]);
 
-        if (error) {
-          throw error;
+        if (facturaResult.error) {
+          throw facturaResult.error;
         }
 
-        // Formatear los datos para la tabla
-        const facturasFormateadas = data.map(item => ({
-          id: item.id,
-          number: item.number,
-          customer_id: item.customer_id,
-          customer_name: `Cliente #${item.customer_id}`, // Usamos ID como identificador temporal
-          sale_id: item.sale_id,
-          issue_date: item.issue_date,
-          due_date: item.due_date,
-          subtotal: item.subtotal,
-          tax_total: item.tax_total,
-          total: item.total,
-          balance: item.balance,
-          status: item.status,
-          currency: item.currency || 'COP',
-          payment_method: item.payment_method || 'cash',
-          payment_method_name: 'Pendiente', // Se actualizará después
-          notes: item.notes,
-          created_at: item.created_at,
-          tax_included: item.tax_included,
-          payment_terms: item.payment_terms
-        }));
-        
-        // Para cada factura, intentamos obtener el nombre del cliente y método de pago
-        for (const factura of facturasFormateadas) {
-          try {
-            // Solo si tenemos un ID de cliente válido
-            if (factura.customer_id) {
-              const { data: clienteData } = await supabase
-                .from('customers')
-                .select('full_name, first_name, last_name')
-                .eq('id', factura.customer_id)
-                .maybeSingle();
-              
-              if (clienteData) {
-                // Usamos el nombre completo si existe, o combinamos nombre y apellido
-                factura.customer_name = clienteData.full_name || 
-                  `${clienteData.first_name || ''} ${clienteData.last_name || ''}`.trim() || 
-                  `Cliente #${factura.customer_id}`;
-              }
-            }
-            
-            // Obtenemos el nombre del método de pago
-            if (factura.payment_method) {
-              const { data: pagoData } = await supabase
-                .from('payment_methods')
-                .select('name')
-                .eq('code', factura.payment_method)
-                .maybeSingle();
-              
-              if (pagoData) {
-                factura.payment_method_name = pagoData.name;
-              } else {
-                factura.payment_method_name = factura.payment_method; // Fallback al código si no encontramos el nombre
-              }
-            } else {
-              factura.payment_method_name = 'No especificado';
-            }
-          } catch (err) {
-            console.error(`Error al obtener datos relacionados a factura ${factura.id}:`, err);
+        // Crear mapas para búsqueda rápida
+        const customersMap = new Map();
+        if (customersResult.data) {
+          customersResult.data.forEach(customer => {
+            customersMap.set(customer.id, customer);
+          });
+        }
+
+        const paymentMethodsMap = new Map();
+        if (paymentMethodsResult.data) {
+          paymentMethodsResult.data.forEach(method => {
+            paymentMethodsMap.set(method.code, method);
+          });
+        }
+
+        // Formatear los datos para la tabla usando los mapas
+        const facturasFormateadas = facturaResult.data.map(item => {
+          // Obtener nombre del cliente usando el mapa
+          let customerName = 'Cliente sin nombre';
+          const customer = customersMap.get(item.customer_id);
+          if (customer) {
+            customerName = customer.full_name || 
+              `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 
+              `Cliente #${item.customer_id}`;
+          } else if (item.customer_id) {
+            customerName = `Cliente #${item.customer_id}`;
           }
-        }
+
+          // Obtener nombre del método de pago usando el mapa
+          let paymentMethodName = 'No especificado';
+          const paymentMethod = paymentMethodsMap.get(item.payment_method);
+          if (paymentMethod && paymentMethod.name) {
+            paymentMethodName = paymentMethod.name;
+          } else if (item.payment_method) {
+            paymentMethodName = item.payment_method;
+          }
+
+          return {
+            id: item.id,
+            number: item.number,
+            customer_id: item.customer_id,
+            customer_name: customerName,
+            sale_id: item.sale_id,
+            issue_date: item.issue_date,
+            due_date: item.due_date,
+            subtotal: item.subtotal,
+            tax_total: item.tax_total,
+            total: item.total,
+            balance: item.balance,
+            status: item.status,
+            currency: item.currency || 'COP',
+            payment_method: item.payment_method || 'cash',
+            payment_method_name: paymentMethodName,
+            notes: item.notes,
+            created_at: item.created_at,
+            tax_included: item.tax_included,
+            payment_terms: item.payment_terms
+          };
+        });
 
         setFacturas(facturasFormateadas);
       } catch (err: any) {
@@ -429,6 +453,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
       <Table>
         <TableHeader>
           <TableRow className="dark:border-gray-700">
+            <TableHead className="w-12 dark:text-gray-300"></TableHead>
             <TableHead className="w-12 dark:text-gray-300">#</TableHead>
             <TableHead className="dark:text-gray-300">Número</TableHead>
             <TableHead className="dark:text-gray-300">Cliente</TableHead>
@@ -442,14 +467,30 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {facturasPaginadas.map((factura, index) => (
-            <TableRow 
-              key={factura.id} 
-              className="hover:bg-gray-50 dark:hover:bg-gray-800/50 dark:border-gray-700"
-            >
-              <TableCell className="text-center font-medium text-gray-500 dark:text-gray-400 w-12">
-                {(currentPage - 1) * pageSize + index + 1}
-              </TableCell>
+          {facturasPaginadas.map((factura, index) => {
+            const estaExpandida = filasExpandidas.has(factura.id);
+            return (
+              <React.Fragment key={factura.id}>
+                <TableRow 
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50 dark:border-gray-700"
+                >
+                  <TableCell className="w-12">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => toggleFilaExpandida(factura.id)}
+                    >
+                      {estaExpandida ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-center font-medium text-gray-500 dark:text-gray-400 w-12">
+                    {(currentPage - 1) * pageSize + index + 1}
+                  </TableCell>
               <TableCell className="font-medium dark:text-gray-200">
                 {factura.number}
               </TableCell>
@@ -520,9 +561,66 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                 </DropdownMenu>
               </TableCell>
             </TableRow>
-          ))}
+            
+            {/* Fila expandida para mostrar los pagos */}
+            {estaExpandida && (
+              <TableRow className="bg-gray-50 dark:bg-gray-900/50">
+                <TableCell colSpan={10} className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Historial de Pagos</span>
+                  </div>
+                  <PagosFactura facturaId={factura.id} factura={factura} />
+                </TableCell>
+              </TableRow>
+            )}
+          </React.Fragment>
+            );
+          })}
         </TableBody>
       </Table>
+      
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between space-x-2 py-4">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Mostrando {((currentPage - 1) * pageSize) + 1} a {Math.min(currentPage * pageSize, facturasFiltradas.length)} de {facturasFiltradas.length} facturas
+          </div>
+          
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => changePage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                />
+              </PaginationItem>
+              
+              {getPageNumbers().map((pageNumber, index) => (
+                <PaginationItem key={index}>
+                  {typeof pageNumber === 'string' ? (
+                    <PaginationEllipsis />
+                  ) : (
+                    <PaginationLink
+                      onClick={() => changePage(pageNumber as number)}
+                      isActive={pageNumber === currentPage}
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  )}
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => changePage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   );
 }

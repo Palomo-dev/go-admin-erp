@@ -10,21 +10,96 @@
  * - exchange_rates_logs: Registro de actualizaciones
  */
 
+import { supabase } from '@/lib/supabase/config';
+
+/**
+ * Valida que la API key funcione correctamente
+ * @param apiKey - La API key a validar
+ * @returns Promise<boolean> - true si la API key es válida
+ */
+export async function validarAPIKey(apiKey: string): Promise<boolean> {
+  try {
+    const testUrl = `https://openexchangerates.org/api/latest.json?app_id=${apiKey}&symbols=EUR`;
+    const response = await fetch(testUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'GO-Admin-ERP/1.0'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    console.log('Validación de API Key - Status:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      return !!(data && data.rates && data.base);
+    }
+    
+    if (response.status === 401) {
+      console.error('API Key inválida o expirada');
+      return false;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error al validar API Key:', error);
+    return false;
+  }
+}
+
 /**
  * Obtiene las tasas de cambio actuales desde OpenExchangeRates en tiempo real
  * @param baseCurrency - Código de la moneda base (default: USD)
  * @returns Un objeto con las tasas de cambio actualizadas
  */
+async function intentarSolicitudAPI(url: string, intento: number = 1): Promise<Response> {
+  console.log(`Intento ${intento} de solicitud a OpenExchangeRates`);
+  
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Accept': 'application/json',
+        'User-Agent': 'GO-Admin-ERP/1.0'
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15000) // 15 segundos timeout
+    });
+    
+    return response;
+  } catch (error: any) {
+    if (intento < 3) {
+      console.log(`Intento ${intento} falló, reintentando en 2 segundos...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return intentarSolicitudAPI(url, intento + 1);
+    }
+    throw error;
+  }
+}
+
 export async function obtenerTasasDeCambio(baseCurrency: string = 'USD') {
   // Obtenemos la API key de las variables de entorno
   const API_KEY = process.env.NEXT_PUBLIC_OPENEXCHANGERATES_API_KEY;
   
   console.log('Iniciando consulta en tiempo real para tasas de cambio con base:', baseCurrency);
+  console.log('API Key disponible:', API_KEY ? 'Sí (***masked***)' : 'No');
   
   if (!API_KEY) {
     console.error('API key no encontrada en variables de entorno');
     throw new Error('API key de OpenExchangeRates no configurada');
   }
+
+  // Validar API key antes de proceder
+  console.log('Validando API key...');
+  const esAPIKeyValida = await validarAPIKey(API_KEY);
+  if (!esAPIKeyValida) {
+    throw new Error('API key de OpenExchangeRates es inválida o ha expirado. Verifique su configuración.');
+  }
+  console.log('API key validada exitosamente');
 
   try {
     // NOTA: La API gratuita solo permite USD como base
@@ -33,21 +108,25 @@ export async function obtenerTasasDeCambio(baseCurrency: string = 'USD') {
     // Generamos un timestamp para evitar caché del navegador o de la red
     const timestamp = Date.now();
     const url = `https://openexchangerates.org/api/latest.json?app_id=${API_KEY}&nocache=${timestamp}`;
-    console.log('URL de consulta:', url.replace(API_KEY, '[API_KEY]'));
+    console.log('URL de consulta:', url.replace(API_KEY, '[API_KEY_MASKED]'));
 
-    // Configurar la solicitud para evitar caché en todos los niveles
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      },
-      cache: 'no-store'
-    });
+    // Usar la función de reintentos
+    const response = await intentarSolicitudAPI(url);
+    
+    console.log('Status de respuesta:', response.status, response.statusText);
+    console.log('Headers de respuesta:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
-      throw new Error(`Error al consultar API en tiempo real: ${response.status} ${response.statusText}`);
+      let errorDetails = '';
+      try {
+        const errorText = await response.text();
+        console.log('Contenido de error de la API:', errorText);
+        errorDetails = errorText;
+      } catch (e) {
+        console.log('No se pudo leer el contenido del error');
+      }
+      
+      throw new Error(`Error al consultar API en tiempo real: ${response.status} ${response.statusText}. Detalles: ${errorDetails}`);
     }
 
     const data = await response.json();
@@ -92,8 +171,25 @@ export async function obtenerTasasDeCambio(baseCurrency: string = 'USD') {
       timestamp: data.timestamp
     };
   } catch (error: any) {
-    console.error('Error al obtener tasas de cambio en tiempo real:', error);
-    throw new Error(`Error en consulta de tasas: ${error.message}`);
+    console.warn('Error de conectividad detectado (usando fallback):', error.message);
+    
+    let errorMessage = 'Error desconocido';
+    let diagnosticInfo = '';
+    
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      diagnosticInfo = 'Posibles causas: 1) Sin conexión a internet, 2) API de OpenExchangeRates no disponible, 3) Bloqueado por CORS, 4) Firewall bloqueando la solicitud';
+      errorMessage = 'Error de conectividad - No se puede conectar con OpenExchangeRates';
+    } else if (error.name === 'NetworkError') {
+      diagnosticInfo = 'Error de red detectado';
+      errorMessage = 'Error de red al conectar con OpenExchangeRates';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    console.warn('Diagnóstico:', diagnosticInfo);
+    console.warn('Activando sistema de fallback automático...');
+    
+    throw new Error(`Error en consulta de tasas: ${errorMessage}${diagnosticInfo ? '. ' + diagnosticInfo : ''}`);
   }
 }
 
@@ -193,6 +289,88 @@ export async function guardarTasasDeCambio(
   } catch (error: any) {
     console.error('Error al guardar tasas en la base de datos:', error);
     throw new Error(`No se pudieron guardar las tasas: ${error.message}`);
+  }
+}
+
+/**
+ * Función de emergencia que usa RPC de Supabase para obtener tasas
+ * Evita problemas de CORS y navegador usando funciones del servidor
+ * @returns Resultado de la actualización de tasas
+ */
+export async function actualizarTasasViaRPC(): Promise<{
+  success: boolean;
+  message: string;
+  updated_count?: number;
+  timestamp?: number;
+}> {
+  try {
+    console.log('Iniciando fallback usando función RPC de Supabase...');
+
+    // Obtener tasas de cambio usando fetch directamente (desde servidor)
+    const apiKey = process.env.NEXT_PUBLIC_OPENEXCHANGERATES_API_KEY || process.env.OPENEXCHANGERATES_API_KEY;
+    if (!apiKey) {
+      return {
+        success: false,
+        message: 'API key no disponible para fallback RPC'
+      };
+    }
+
+    const url = `https://openexchangerates.org/api/latest.json?app_id=${apiKey}`;
+
+    // Usar fetch básico para obtener tasas (esto funciona desde el servidor)
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `Error HTTP ${response.status}: ${response.statusText}`
+      };
+    }
+
+    const exchangeRatesData = await response.json();
+
+    if (!exchangeRatesData.rates) {
+      return {
+        success: false,
+        message: 'Datos de tasas no válidos en respuesta de API'
+      };
+    }
+
+    // Usar función RPC para guardar las tasas obtenidas
+    const { data, error } = await supabase.rpc('update_global_exchange_rates', {
+      rates: exchangeRatesData.rates,
+      source: 'openexchangerates-fallback',
+      api_timestamp: exchangeRatesData.timestamp,
+      rate_date: new Date().toISOString().split('T')[0]
+    });
+
+    if (error) {
+      console.error('Error en RPC update_global_exchange_rates:', error);
+      return {
+        success: false,
+        message: `Error en función RPC: ${error.message}`
+      };
+    }
+
+    console.log('RPC exitoso con update_global_exchange_rates:', data);
+    return {
+      success: true,
+      message: 'Tasas actualizadas usando RPC fallback',
+      updated_count: data?.updated_count || 0,
+      timestamp: exchangeRatesData.timestamp
+    };
+
+  } catch (error: any) {
+    console.error('Error general en fallback RPC:', error);
+    return {
+      success: false,
+      message: `Error en fallback RPC: ${error.message}`
+    };
   }
 }
 
@@ -382,7 +560,50 @@ export async function actualizarTasasDeCambioGlobal(): Promise<{
       message: `Tasas de cambio actualizadas exitosamente. Total: ${updatedCount} registros`
     };
   } catch (error: any) {
-    console.error('Error crítico en actualización global de tasas:', error.message);
+    console.warn('Error en conexión directa a OpenExchangeRates API:', error.message);
+    
+    // Si el error es de conectividad (Failed to fetch, timeout, etc.), intentar RPC como fallback
+    // Detectar múltiples variantes de errores de conectividad
+    const isConnectivityError = 
+      error.message?.includes('Failed to fetch') || 
+      error.message?.includes('conectividad') || 
+      error.message?.includes('timeout') ||
+      error.message?.includes('NetworkError') ||
+      error.message?.includes('TypeError: Failed to fetch') ||
+      error.message?.includes('Error de conectividad') ||
+      error.message?.includes('Error en consulta de tasas: Error de conectividad') ||
+      error.message?.includes('Sin conexión a internet') ||
+      error.message?.includes('Bloqueado por CORS') ||
+      error.message?.includes('API de OpenExchangeRates no disponible') ||
+      error.name === 'TypeError' ||
+      error.code === 'FETCH_ERROR' ||
+      (error instanceof TypeError && error.message?.includes('fetch'));
+    
+    console.log('Analizando error para fallback:', {
+      message: error.message,
+      name: error.name,
+      type: typeof error,
+      isConnectivityError
+    });
+    
+    if (isConnectivityError) {
+        
+      console.log('Detectado error de conectividad, intentando fallback con RPC...');
+      
+      try {
+        const fallbackResult = await actualizarTasasViaRPC();
+        
+        if (fallbackResult.success) {
+          console.log('✅ ÉXITO: Sistema de fallback RPC funcionó correctamente');
+          console.log(`✅ ${fallbackResult.updated_count || 0} tasas actualizadas via fallback`);
+          return fallbackResult;
+        } else {
+          console.error('Fallback también falló:', fallbackResult.message);
+        }
+      } catch (fallbackError) {
+        console.error('Error en fallback de RPC:', fallbackError);
+      }
+    }
     
     // Intentar registrar el error
     try {
@@ -396,7 +617,8 @@ export async function actualizarTasasDeCambioGlobal(): Promise<{
         p_details: [
           {
             operation: 'global_update',
-            error: error.message
+            error: error.message,
+            fallback_attempted: true
           }
         ]
       });

@@ -413,19 +413,44 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
   // Cargar tasas del día anterior para comparar tendencias
   async function loadPreviousRates() {
     try {
-      const yesterday = new Date(date);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
+      const currentDate = format(date, 'yyyy-MM-dd');
       
+      // Buscar tasas ANTERIORES a la fecha actual (lógica mejorada como en el conversor)
       const { data, error } = await supabase
         .from('currency_rates')
         .select('*')
-        .eq('rate_date', yesterdayStr);
-
+        .lt('rate_date', currentDate) // Buscar fechas anteriores a la actual
+        .order('rate_date', { ascending: false }) // Ordenar por fecha descendente
+        .limit(50); // Suficientes registros para encontrar fechas coincidentes
+      
       if (error) throw error;
-      setPreviousRates(data || []);
-    } catch (err) {
-      console.error('Error al cargar tasas anteriores:', err);
+      
+      // Agrupar por fecha para encontrar la fecha más reciente con datos
+      const ratesByDate: { [key: string]: CurrencyRate[] } = {};
+      
+      if (data && data.length > 0) {
+        data.forEach(rate => {
+          const dateKey = rate.rate_date.split('T')[0];
+          if (!ratesByDate[dateKey]) {
+            ratesByDate[dateKey] = [];
+          }
+          ratesByDate[dateKey].push(rate);
+        });
+        
+        // Obtener las tasas de la fecha más reciente disponible
+        const sortedDates = Object.keys(ratesByDate).sort().reverse();
+        if (sortedDates.length > 0) {
+          const mostRecentDate = sortedDates[0];
+          console.log(`Usando tasas del ${mostRecentDate} para comparar tendencias`);
+          setPreviousRates(ratesByDate[mostRecentDate] || []);
+        } else {
+          setPreviousRates([]);
+        }
+      } else {
+        setPreviousRates([]);
+      }
+    } catch (error) {
+      console.error('Error al cargar tasas anteriores:', error);
       setPreviousRates([]);
     }
   }
@@ -437,20 +462,6 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       
       console.log('Iniciando sincronización de tasas globales para fecha:', format(date, 'yyyy-MM-dd'));
       
-      // Verificar que la variable de entorno esté configurada
-      const apiKeyEnv = process.env.NEXT_PUBLIC_OPENEXCHANGERATES_API_KEY;
-      if (!apiKeyEnv) {
-        console.error('Variable de entorno NEXT_PUBLIC_OPENEXCHANGERATES_API_KEY no configurada');
-        if (showNotifications) {
-          toast({
-            title: 'Error de configuración',
-            description: 'La API key de OpenExchangeRates no está configurada. Contacte al administrador.',
-            variant: 'destructive',
-          });
-        }
-        return;
-      }
-
       // Mostrar toast de proceso iniciado solo si se solicita
       if (showNotifications) {
         toast({
@@ -463,7 +474,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       // Importar la función para actualización global de tasas
       const { actualizarTasasDeCambioGlobal } = await import('@/lib/services/openexchangerates');
 
-      // Llamar a la función de actualización global de tasas (ya no requiere fecha como parámetro)
+      // Llamar a la función de actualización global de tasas
       const result = await actualizarTasasDeCambioGlobal();
       console.log('Resultado de sincronización en tiempo real:', result);
       
@@ -691,15 +702,17 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
                 </TableCell>
                 <TableCell>
                   <Badge 
-                    variant={rate.source === 'openexchangerates' ? 'default' : 'outline'}
-                    className={rate.source === 'openexchangerates' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' : ''}
+                    variant={(rate.source === 'openexchangerates' || rate.source === 'openexchangerates-fallback') ? 'default' : 'outline'}
+                    className={(rate.source === 'openexchangerates' || rate.source === 'openexchangerates-fallback') ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' : ''}
                   >
-                    {rate.source === 'openexchangerates' ? (
+                    {(rate.source === 'openexchangerates' || rate.source === 'openexchangerates-fallback') ? (
                       <div className="flex items-center">
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1 animate-pulse"></div>
-                        API
+                        <span className="font-semibold">OpenExchangeRates</span>
                       </div>
-                    ) : 'Manual'}
+                    ) : (
+                      <span className="font-semibold">Manual</span>
+                    )}
                   </Badge>
                 </TableCell>
               </TableRow>

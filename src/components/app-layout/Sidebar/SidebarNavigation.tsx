@@ -135,7 +135,19 @@ export const SidebarNavigation = ({
       items: [
         /*{ name: "Calendario", href: "/app/calendario", icon: <Calendar size={18} /> },*/
         { name: "Clientes", href: "/app/clientes", icon: <Users size={18} /> },
-        { name: "Organización", href: "/app/organizacion", icon: <Building2 size={18} /> },
+        { 
+          name: "Organización", 
+          href: "/app/organizacion", 
+          icon: <Building2 size={18} />,
+          submenu: [
+            { name: "Miembros", href: "/app/organizacion/miembros" },
+            { name: "Invitaciones", href: "/app/organizacion/invitaciones" },
+            { name: "Información", href: "/app/organizacion/informacion" },
+            { name: "Mi Plan", href: "/app/organizacion/plan" },
+            { name: "Sucursales", href: "/app/organizacion/sucursales" },
+            { name: "Mis Organizaciones", href: "/app/organizacion/mis-organizaciones" }
+          ]
+        },
        /*{{ name: "Reportes", href: "/app/reportes", icon: <BarChart3 size={18} /> },
         { name: "Timeline", href: "/app/timeline", icon: <CalendarClock size={18} /> },
         { name: "Transporte", href: "/app/transporte", icon: <Bus size={18} /> }*/

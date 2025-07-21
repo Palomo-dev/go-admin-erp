@@ -11,6 +11,8 @@ import {
   proceedWithLogin,
   Organization
 } from '@/lib/auth';
+import GeolocationModal from '@/components/auth/GeolocationModal';
+import { type GeolocationPreference, shouldShowGeolocationModal, saveGeolocationPreference } from '@/lib/utils/geolocation';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,6 +22,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [userOrganizations, setUserOrganizations] = useState<Organization[]>([]);
   const [showOrgPopup, setShowOrgPopup] = useState(false);
+  const [showGeolocationModal, setShowGeolocationModal] = useState(false);
   const searchParams = useSearchParams();
   
  
@@ -52,6 +55,14 @@ export default function LoginPage() {
       
       // Show a message about the expired session
       setError('Tu sesión anterior ha expirado. Por favor, inicia sesión nuevamente.');
+    }
+    
+    // Verificar si necesitamos mostrar el modal de geolocalización
+    if (shouldShowGeolocationModal()) {
+      // No hay preferencia guardada, mostrar modal después de un breve delay
+      setTimeout(() => {
+        setShowGeolocationModal(true)
+      }, 1000)
     }
   }, [searchParams, userOrganizations]);
 
@@ -92,6 +103,22 @@ export default function LoginPage() {
       setShowOrgPopup,
       proceedWithLogin: (rememberMe, email) => proceedWithLogin(rememberMe, email)
     });
+  };
+  
+  // Manejar selección de geolocalización
+  const handleGeolocationSelection = (preference: GeolocationPreference) => {
+    console.log('Preferencia de geolocalización seleccionada:', preference);
+    // El modal ya guarda la preferencia en cookies
+    setShowGeolocationModal(false);
+  };
+  
+  const handleCloseGeolocationModal = () => {
+    // Si el usuario cierra el modal sin seleccionar, asumir "denied"
+    if (shouldShowGeolocationModal()) {
+      saveGeolocationPreference('denied')
+    }
+    
+    setShowGeolocationModal(false);
   };
   
   // Load remembered email on component mount
@@ -353,6 +380,13 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+      
+      {/* Modal de Geolocalización */}
+      <GeolocationModal
+        isOpen={showGeolocationModal}
+        onClose={handleCloseGeolocationModal}
+        onSelection={handleGeolocationSelection}
+      />
     </div>
   );
 }

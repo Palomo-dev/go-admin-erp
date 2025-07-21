@@ -136,8 +136,7 @@ export default function SignupPage() {
             type_id: signupData.organizationType,
             owner_user_id: userId,
             status: 'active',
-            subscription_status: 'trial',
-            subscription_plan: 'free',
+            plan_id: 1, // Plan gratuito por defecto
             primary_color: '#3B82F6', // Color azul por defecto
             secondary_color: '#1E40AF',
           })
@@ -146,7 +145,7 @@ export default function SignupPage() {
 
         if (orgError) throw orgError;
 
-        // Crear perfil de usuario con rol de administrador
+        // Crear perfil de usuario
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -154,14 +153,26 @@ export default function SignupPage() {
             email: signupData.email,
             first_name: signupData.firstName,
             last_name: signupData.lastName,
-            organization_id: orgData.id,
-            role_id: 2, // org_admin
-            is_owner: true,
+            last_org_id: orgData.id, // Campo correcto para última organización
             status: 'active',
             phone: signupData.phone,
           });
 
         if (profileError) throw profileError;
+
+        // Crear membresía del usuario como administrador de la organización
+        const { error: memberError } = await supabase
+          .from('organization_members')
+          .insert({
+            organization_id: orgData.id,
+            user_id: userId,
+            role: 'org_admin',
+            role_id: 2, // org_admin
+            is_super_admin: true, // El propietario es super admin
+            is_active: true,
+          });
+
+        if (memberError) throw memberError;
         
         // Crear sucursal principal
         const { error: branchError } = await supabase
@@ -194,7 +205,7 @@ export default function SignupPage() {
 
         if (invitationError) throw new Error('Código de invitación inválido o expirado');
 
-        // Crear perfil de usuario con rol asignado en la invitación
+        // Crear perfil de usuario
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -202,14 +213,27 @@ export default function SignupPage() {
             email: signupData.email,
             first_name: signupData.firstName,
             last_name: signupData.lastName,
-            organization_id: invitationData.organization_id,
-            role_id: invitationData.role_id || 4, // employee por defecto
-            is_owner: false,
+            last_org_id: invitationData.organization_id, // Campo correcto
             status: 'active',
             phone: signupData.phone,
           });
 
         if (profileError) throw profileError;
+
+        // Crear membresía del usuario con el rol asignado en la invitación
+        const { error: memberError } = await supabase
+          .from('organization_members')
+          .insert({
+            organization_id: invitationData.organization_id,
+            user_id: userId,
+            role: invitationData.role_id === 2 ? 'org_admin' : 
+                  invitationData.role_id === 3 ? 'employee' : 'client',
+            role_id: invitationData.role_id || 4, // employee por defecto
+            is_super_admin: false, // Los invitados no son super admin
+            is_active: true,
+          });
+
+        if (memberError) throw memberError;
 
         // Marcar invitación como utilizada
         await supabase

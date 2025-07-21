@@ -40,7 +40,12 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
         .order('name');
 
       if (error) throw error;
-      setBranches(data || []);
+      // Convert branch IDs to strings for consistency with assignedBranches
+      const branchesWithStringIds = (data || []).map(branch => ({
+        ...branch,
+        id: branch.id.toString()
+      }));
+      setBranches(branchesWithStringIds);
     } catch (err: any) {
       console.error('Error al obtener sucursales:', err);
       setError('No se pudieron cargar las sucursales');
@@ -73,7 +78,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
       if (assignmentsError) throw assignmentsError;
         
       // Convertimos a array de IDs
-      const assignedIds = assignmentsData?.map(item => item.branch_id) || [];
+      const assignedIds = assignmentsData?.map(item => item.branch_id.toString()) || [];
       setAssignedBranches(assignedIds);
     } catch (err: any) {
       console.error('Error al obtener asignaciones:', err);

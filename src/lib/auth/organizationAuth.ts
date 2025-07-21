@@ -220,6 +220,10 @@ const registerUserDevice = async (session: any) => {
     // Generar una huella digital simple del dispositivo
     const deviceFingerprint = await generateDeviceFingerprint();
     
+    // Obtener ubicación del navegador según preferencia guardada
+    const { getLocationFromBrowser } = await import('@/lib/utils/geolocation')
+    const location = await getLocationFromBrowser()
+    
     // Preparar los datos para la API
     const deviceData = {
       user_id: session.user.id,
@@ -231,6 +235,7 @@ const registerUserDevice = async (session: any) => {
       os: browserInfo.os,
       os_version: browserInfo.osVersion,
       device_fingerprint: deviceFingerprint,
+      location: location, // Incluir ubicación si está disponible
       // La IP se captura en el servidor
       is_active: true,
       first_seen_at: new Date().toISOString(),

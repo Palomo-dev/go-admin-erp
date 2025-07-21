@@ -63,10 +63,45 @@ export function DeviceSessions() {
   const [renameLoading, setRenameLoading] = useState(false)
   const [trustLoading, setTrustLoading] = useState<string | null>(null)
   
+  // Generar device fingerprint simple (debe coincidir con organizationAuth.ts)
+  const generateDeviceFingerprint = async (): Promise<string> => {
+    const components = [
+      window.navigator.userAgent,
+      window.navigator.language,
+      window.screen.colorDepth,
+      window.screen.width + 'x' + window.screen.height,
+      new Date().getTimezoneOffset(),
+      !!window.sessionStorage,
+      !!window.localStorage,
+      !!window.indexedDB,
+    ];
+    
+    const fingerprint = components.join('###');
+    
+    // Crear hash usando SubtleCrypto si está disponible
+    if (window.crypto && window.crypto.subtle) {
+      try {
+        const msgBuffer = new TextEncoder().encode(fingerprint);
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        // Fallback si falla la API de Crypto
+        return btoa(fingerprint).substring(0, 64);
+      }
+    } else {
+      // Fallback para navegadores que no soportan SubtleCrypto
+      return btoa(fingerprint).substring(0, 64);
+    }
+  }
+
   // Cargar sesiones
   const loadSessions = async () => {
     try {
-      const response = await fetch('/api/sessions', {
+      // Generar fingerprint del dispositivo actual
+      const currentFingerprint = await generateDeviceFingerprint()
+      
+      const response = await fetch(`/api/sessions?current_fingerprint=${encodeURIComponent(currentFingerprint)}`, {
         method: 'GET',
         credentials: 'include', // Incluir cookies en la petición
         headers: {
@@ -105,7 +140,10 @@ export function DeviceSessions() {
     
     setRevokeLoading(true)
     try {
-      const response = await fetch(`/api/sessions`, {
+      // Generar fingerprint del dispositivo actual para la validación
+      const currentFingerprint = await generateDeviceFingerprint()
+      
+      const response = await fetch(`/api/sessions?current_fingerprint=${encodeURIComponent(currentFingerprint)}`, {
         method: 'DELETE',
         credentials: 'include',
         headers: {
@@ -210,7 +248,10 @@ export function DeviceSessions() {
   // Cerrar todas las demás sesiones
   const signOutFromOtherSessions = async () => {
     try {
-      const response = await fetch(`/api/sessions`, {
+      // Generar fingerprint del dispositivo actual
+      const currentFingerprint = await generateDeviceFingerprint()
+      
+      const response = await fetch(`/api/sessions?current_fingerprint=${encodeURIComponent(currentFingerprint)}`, {
         method: 'DELETE',
         credentials: 'include',
         headers: {

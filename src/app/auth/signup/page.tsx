@@ -37,6 +37,9 @@ type SignupData = {
   branchPhone?: string;
   branchEmail?: string;
   organizationId?: number;
+  // Datos de suscripción
+  subscriptionPlan?: string;
+  billingPeriod?: 'monthly' | 'yearly';
 };
 
 export default function SignupPage() {
@@ -64,6 +67,8 @@ export default function SignupPage() {
     branchPostalCode: '',
     branchPhone: '',
     branchEmail: '',
+    subscriptionPlan: 'free',
+    billingPeriod: 'monthly',
   });
 
   // Actualizar datos del formulario

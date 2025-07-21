@@ -138,8 +138,8 @@ export default function OrganizationList({ showActions = false, onDelete, filter
         
         // Safely extract plan name
         let planName = 'Free';
-        if (org.plan_id && typeof org.plan_id === 'object' && 'name' in org.plan_id) {
-          planName = String(org.plan_id.name) || 'Free';
+        if (org.plans && Array.isArray(org.plans) && org.plans.length > 0) {
+          planName = String(org.plans[0].name) || 'Free';
         }
         
         return {

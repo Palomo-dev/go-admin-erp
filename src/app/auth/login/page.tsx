@@ -12,6 +12,7 @@ import {
   Organization
 } from '@/lib/auth';
 import GeolocationModal from '@/components/auth/GeolocationModal';
+import EmailNotConfirmedAlert from '@/components/auth/EmailNotConfirmedAlert';
 import { type GeolocationPreference, shouldShowGeolocationModal, saveGeolocationPreference } from '@/lib/utils/geolocation';
 
 export default function LoginPage() {
@@ -23,6 +24,8 @@ export default function LoginPage() {
   const [userOrganizations, setUserOrganizations] = useState<Organization[]>([]);
   const [showOrgPopup, setShowOrgPopup] = useState(false);
   const [showGeolocationModal, setShowGeolocationModal] = useState(false);
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
   const searchParams = useSearchParams();
   
  
@@ -35,6 +38,13 @@ export default function LoginPage() {
           ? 'Error al iniciar sesión con proveedor externo' 
           : 'Error al iniciar sesión'
       );
+    }
+    
+    // Check for message parameter (like email-not-confirmed)
+    const messageParam = searchParams.get('message');
+    if (messageParam === 'email-not-confirmed') {
+      setEmailNotConfirmed(true);
+      setError('Tu cuenta aún no ha sido verificada.');
     }
     
     // Check for redirectTo parameter
@@ -68,6 +78,9 @@ export default function LoginPage() {
 
   const onEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Resetear estado de email no confirmado
+    setEmailNotConfirmed(false);
+    
     await handleEmailLogin({
       email,
       password,
@@ -76,7 +89,9 @@ export default function LoginPage() {
       setError,
       setUserOrganizations,
       setShowOrgPopup,
-      proceedWithLogin: (rememberMe: boolean, email: string) => proceedWithLogin(rememberMe, email)
+      proceedWithLogin: (rememberMe: boolean, email: string) => proceedWithLogin(rememberMe, email),
+      setEmailNotConfirmed,
+      setResendingEmail
     });
   };
 
@@ -176,7 +191,7 @@ export default function LoginPage() {
           {/* Organization selector - hidden now, will show popup when needed */}
         </div>
         
-        {error && (
+        {error && !emailNotConfirmed && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
             <span className="block sm:inline">{error}</span>
             {error.includes('El usuario no existe') && (
@@ -187,6 +202,17 @@ export default function LoginPage() {
               </div>
             )}
           </div>
+        )}
+        
+        {/* Componente especial para email no confirmado */}
+        {emailNotConfirmed && (
+          <EmailNotConfirmedAlert 
+            email={email}
+            onClose={() => {
+              setEmailNotConfirmed(false);
+              setError(null);
+            }}
+          />
         )}
         
         {/* Organization selection popup */}

@@ -146,7 +146,6 @@ export default function ClientesPage() {
           customer_ids: customerIds,
           org_id: orgId
         });
-        
       if (balancesError) {
         console.warn("Error obteniendo saldos:", balancesError);
         // Continuamos sin datos de saldo en lugar de fallar toda la carga

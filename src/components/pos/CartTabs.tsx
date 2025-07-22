@@ -189,7 +189,7 @@ export function CartTabs({
                         variant="secondary" 
                         className="text-xs px-1 py-0 h-5 dark:bg-gray-700 light:bg-gray-200"
                       >
-                        {formatCurrency(cart.total, 'COP', 'es-CO').replace(/\$\s?/, '$').replace(/,\d{3}$/, 'k')}
+                        {formatCurrency(cart.total, 'COP').replace(/\$\s?/, '$').replace(/,\d{3}$/, 'k')}
                       </Badge>
                     )}
 

@@ -31,6 +31,7 @@ interface Cliente {
   preferences: any;
   created_at: string;
   updated_at: string;
+  avatar_url?: string | null;
 }
 
 export default function PerfilCliente() {
@@ -53,7 +54,7 @@ export default function PerfilCliente() {
         
         const { data, error } = await supabase
           .from('customers')
-          .select('*')
+          .select('*, avatar_url')
           .eq('id', id)
           .single();
           

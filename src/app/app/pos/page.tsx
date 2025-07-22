@@ -1,305 +1,329 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
-import { getUserOrganization, supabase } from "@/lib/supabase/config";
-import { MainPOS } from "@/components/pos/main-pos";
-
-// Definición de interfaces para el componente MainPOS
-// Estas definiciones son duplicadas de las que hay en main-pos.tsx
-// para evitar problemas de compatibilidad
-interface Product {
-  id: string; 
-  name: string;
-  price: number;
-  sku: string;
-  image_url?: string;
-  image_path?: string;
-  image_type?: string;
-  category_id?: string;
-  description?: string;
-  is_menu_item?: boolean;
-  status?: string;
-  organization_id: string;
-  barcode?: string;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  slug?: string;
-  parent_id?: number | null;
-  rank?: number;
-  organization_id: string;
-}
-
-// Definición de las interfaces para la base de datos
-// Estas interfaces reflejan la estructura real de las tablas en Supabase
-interface DbProduct {
-  id: number;
-  name: string;
-  price: number;
-  sku: string;
-  image_url?: string;
-  image_path?: string;
-  image_type?: string;
-  category_id?: number;
-  description?: string;
-  is_menu_item?: boolean;
-  status?: string;
-  organization_id: number;
-  barcode?: string;
-}
-
-interface DbCategory {
-  id: number;
-  name: string;
-  slug: string;
-  parent_id?: number | null;
-  rank: number;
-  organization_id: number;
-}
-
-// Adaptamos la interfaz UserData para que coincida con los tipos esperados por MainPOS
-type UserData = {
-  user_id: string;
-  organization_id: string; // Cambiado a string para coincidir con MainPOS
-  branch_id: string; // Cambiado a string para coincidir con MainPOS
-};
+import { useState, useEffect } from 'react';
+import { ShoppingCart, Users, Package, Settings, RefreshCw, Clock } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { ProductSearch } from '@/components/pos/ProductSearch';
+import { CustomerSelector } from '@/components/pos/CustomerSelector';
+import { CartView } from '@/components/pos/CartView';
+import { CartTabs } from '@/components/pos/CartTabs';
+import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
+import { POSService } from '@/lib/services/posService';
+import { PrintService } from '@/lib/services/printService';
+import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { Product, Customer, Cart, Sale } from '@/components/pos/types';
+import { formatCurrency } from '@/utils/Utils';
 
 export default function POSPage() {
-  // Estados para datos principales
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  
-  // Estados para UI
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { organization, isLoading: orgLoading } = useOrganization();
+  const [carts, setCarts] = useState<Cart[]>([]);
+  const [activeCartId, setActiveCartId] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>();
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [checkoutCart, setCheckoutCart] = useState<Cart | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  // Cargar sesión del usuario y productos
+  // Cargar datos iniciales
   useEffect(() => {
-    const loadUserDataAndProducts = async () => {
-      try {
-        setLoading(true);
-        
-        // Obtener la sesión actual
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session) {
-          throw new Error(sessionError?.message || "No se pudo obtener la sesión del usuario");
-        }
-        
-        // Intentar obtener datos de organización - Implementación directa ignorando getUserOrganization
-        console.log("Obteniendo datos de organización directamente");
-        
-        // PASO 1: Obtener miembros activos para el usuario
-        const { data: memberData, error: memberError } = await supabase
-          .from("organization_members")
-          .select("id, organization_id, role, role_id")
-          .eq("user_id", session.user.id)
-          .eq("is_active", true);
-        
-        if (memberError) {
-          console.error("Error al consultar miembros:", memberError);
-          throw new Error(`Error al consultar miembros: ${memberError.message || "Error desconocido"}`);
-        }
-        
-        console.log("Miembros encontrados:", JSON.stringify(memberData));
-        
-        if (!memberData || memberData.length === 0) {
-          console.error("Usuario no asociado a ninguna organización");
-          throw new Error("Usuario no asociado a ninguna organización");
-        }
-        
-        // Usar el primer miembro activo encontrado
-        const member = memberData[0];
-        const organizationId = member.organization_id;
-        let defaultBranchId = null; // Inicialmente no hay sucursal asignada
-        
-        // PASO 2: Obtener datos de la organización
-        const { data: organization, error: orgError } = await supabase
-          .from("organizations")
-          .select("*")
-          .eq("id", organizationId)
-          .single();
-        
-        if (orgError || !organization) {
-          console.error("Error al obtener organización:", orgError);
-          throw new Error(`Error al obtener organización: ${orgError?.message || "Error desconocido"}`);
-        }
-        
-        console.log("Organización encontrada:", JSON.stringify(organization));
-        
-        // PASO 3: Obtener sucursales
-        const { data: branches, error: branchesError } = await supabase
-          .from("branches")
-          .select("*")
-          .eq("organization_id", organizationId);
-        
-        if (branchesError) {
-          console.error("Error al obtener sucursales:", branchesError);
-          // Continuamos aunque no haya sucursales
-        }
-        
-        // Si hay sucursales, usamos la primera como predeterminada
-        if (branches && branches.length > 0) {
-          defaultBranchId = branches[0].id.toString();
-          console.log("Usando la primera sucursal como predeterminada:", defaultBranchId);
-        }
-        
-        // Preparamos la estructura de datos esperada
-        const formattedData = [
-          {
-            id: member.id,
-            organization: {
-              // Copiamos todos los campos menos estos específicos
-              ...Object.fromEntries(
-                Object.entries(organization).filter(([key]) => 
-                  key !== 'id' && key !== 'name' && key !== 'created_at'
-                )
-              ),
-              // Luego asignamos explícitamente los campos esenciales
-              id: organization.id,
-              name: organization.name,
-              created_at: organization.created_at || null,
-              // Asignamos las sucursales
-              branches: branches || []
-            },
-            branch_id: defaultBranchId
-          }
-        ];
-        
-        console.log("Datos formateados directamente:", JSON.stringify(formattedData));
-        
-        // Asignamos los datos formateados
-        const orgData = formattedData;
-        
-        // Verificación de seguridad final
-        if (!orgData || !orgData[0] || !orgData[0].organization) {
-          console.error("Estructura de datos final incorrecta", JSON.stringify(orgData));
-          throw new Error("No se pudo generar la estructura de datos de organización correctamente");
-        }
-        
-        // Verificamos que el ID de organización sea válido
-        // No necesitamos redeclarar organizationId ya que ya existe
-        console.log("ID de organización obtenido:", organizationId);
-        
-        // Como branch_id no viene en la respuesta, buscamos la sucursal principal
-        // Usamos las sucursales que ya obtuvimos anteriormente
-        // Si no hay datos, usamos un arreglo vacío
-        console.log("Sucursales disponibles:", JSON.stringify(branches || []));
-        
-        // Buscamos la sucursal principal o usamos la primera
-        const mainBranch = (branches || []).find(branch => branch.is_main === true) || (branches && branches.length > 0 ? branches[0] : null);
-                          
-        if (!mainBranch) {
-          throw new Error("No se encontró ninguna sucursal para esta organización");
-        }
-        
-        const branchId = mainBranch.id;
-        console.log("ID de sucursal obtenido:", branchId);
+    if (organization?.id) {
+      initializePOS();
+    }
+  }, [organization]);
 
-        if (!branchId) {
-          throw new Error("No se encontró ninguna sucursal para esta organización");
-        }
-        
-        // Guardar información de usuario, organización y sucursal
-        // Adaptamos los datos para que coincidan con lo que espera MainPOS
-        const userDataObj = {
-          user_id: session.user.id,
-          id: session.user.id, // También añadimos id como lo espera MainPOS 
-          organization_id: String(organizationId), // Convertir a string como espera MainPOS
-          branch_id: String(branchId || orgData[0]?.branch_id || ''), // Convertir a string como espera MainPOS
-          // Guardamos datos adicionales por si son necesarios
-          organization: orgData[0]?.organization,
-          branches: orgData[0]?.organization?.branches || []
-        };
-        
-        setUserData(userDataObj);
-        
-        // Cargar categorías desde Supabase
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from("categories")
-          .select("id, name, slug, parent_id, rank, organization_id")
-          .eq("organization_id", organizationId)
-          .order("rank", { ascending: true });
-          
-        if (categoriesError) {
-          console.error("Error al cargar categorías:", categoriesError);
-        } else if (categoriesData) {
-          // Convertir explícitamente los datos al formato esperado por MainPOS
-          const formattedCategories = categoriesData.map((category: DbCategory): Category => ({
-            id: Number(category.id),
-            name: category.name,
-            slug: category.slug,
-            parent_id: category.parent_id ? Number(category.parent_id) : null,
-            rank: category.rank,
-            organization_id: String(category.organization_id)
-          }));
-          
-          setCategories(formattedCategories);
-        }
-        
-        // Cargar productos desde Supabase con todos los campos relevantes
-        const { data: productsData, error: productsError } = await supabase
-          .from("products")
-          .select("*")
-          .eq("organization_id", organizationId)
-          .eq("status", "active");
-        
-        if (productsError) {
-          console.error("Error al cargar productos:", productsError);
-          setError("Error al cargar los productos");
-        } else if (productsData) {
-          // Convertir explícitamente los datos al formato esperado por MainPOS
-          const formattedProducts = productsData.map((product: DbProduct): Product => ({
-            id: String(product.id),
-            name: product.name,
-            price: Number(product.price),
-            sku: product.sku,
-            image_url: product.image_url,
-            image_path: product.image_path,
-            image_type: product.image_type,
-            category_id: product.category_id ? String(product.category_id) : undefined,
-            description: product.description,
-            is_menu_item: product.is_menu_item,
-            status: product.status,
-            organization_id: String(product.organization_id),
-            barcode: product.barcode
-          }));
-          
-          setProducts(formattedProducts);
-        }
-        
-        setLoading(false);
-      } catch (err) {
-        console.error("Error al cargar datos:", err);
-        setError("Error al cargar datos de usuario y productos");
-        setLoading(false);
+  const initializePOS = async () => {
+    setIsLoading(true);
+    try {
+      // Cargar carritos existentes
+      const existingCarts = await POSService.getActiveCarts();
+      
+      if (existingCarts.length > 0) {
+        setCarts(existingCarts);
+        setActiveCartId(existingCarts[0].id);
+      } else {
+        // Crear primer carrito
+        await createNewCart();
       }
-    };
-    
-    loadUserDataAndProducts();
-  }, []);
+    } catch (error) {
+      console.error('Error initializing POS:', error);
+      // Crear carrito por defecto en caso de error
+      await createNewCart();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createNewCart = async () => {
+    try {
+      // Usar branch_id actual seleccionado por el usuario
+      const branchId = getCurrentBranchId(); // Obtener branch_id actual del selector
+      const newCart = await POSService.createCart(branchId);
+      
+      setCarts(prevCarts => [...prevCarts, newCart]);
+      setActiveCartId(newCart.id);
+      setSelectedCustomer(undefined);
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error('Error creating new cart:', error);
+      alert('Error al crear nuevo carrito');
+    }
+  };
+
+  const removeCart = async (cartId: string) => {
+    try {
+      const updatedCarts = carts.filter(cart => cart.id !== cartId);
+      setCarts(updatedCarts);
+      
+      // Si el carrito activo fue eliminado, cambiar a otro
+      if (cartId === activeCartId && updatedCarts.length > 0) {
+        setActiveCartId(updatedCarts[0].id);
+      } else if (updatedCarts.length === 0) {
+        // Crear nuevo carrito si no quedan
+        await createNewCart();
+      }
+    } catch (error) {
+      console.error('Error removing cart:', error);
+    }
+  };
+
+  const handleProductSelect = async (product: Product) => {
+    if (!activeCartId) {
+      alert('No hay carrito activo');
+      return;
+    }
+
+    try {
+      const updatedCart = await POSService.addItemToCart(activeCartId, product);
+      updateCartInState(updatedCart);
+    } catch (error) {
+      console.error('Error adding product to cart:', error);
+      alert('Error al agregar producto al carrito');
+    }
+  };
+
+  const handleCustomerSelect = async (customer?: Customer) => {
+    if (!activeCartId) return;
+
+    try {
+      const updatedCart = await POSService.setCartCustomer(activeCartId, customer?.id);
+      updateCartInState(updatedCart);
+      setSelectedCustomer(customer);
+    } catch (error) {
+      console.error('Error setting cart customer:', error);
+      alert('Error al asignar cliente al carrito');
+    }
+  };
+
+  const updateCartInState = (updatedCart: Cart) => {
+    setCarts(prevCarts => 
+      prevCarts.map(cart => 
+        cart.id === updatedCart.id ? updatedCart : cart
+      )
+    );
+    setLastUpdate(new Date());
+  };
+
+  const handleCartUpdate = (updatedCart: Cart) => {
+    updateCartInState(updatedCart);
+  };
+
+  const handleCheckout = (cart: Cart) => {
+    setCheckoutCart(cart);
+    setShowCheckout(true);
+  };
+
+  const handleCheckoutComplete = async (sale: Sale) => {
+    try {
+      // Obtener datos para impresión
+      const saleItems = checkoutCart?.items.map(item => ({
+        id: crypto.randomUUID(),
+        sale_id: sale.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total: item.total,
+        tax_amount: item.tax_amount,
+        tax_rate: item.tax_rate,
+        discount_amount: item.discount_amount,
+        notes: { product_name: item.product.name },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })) || [];
+
+      // Imprimir ticket automáticamente
+      PrintService.smartPrint(
+        sale,
+        saleItems,
+        checkoutCart?.customer,
+        [], // payments se obtendrían de la BD en implementación completa
+        organization?.name || 'Mi Empresa',
+        'Dirección de la sucursal'
+      );
+
+      // Remover el carrito completado
+      if (checkoutCart) {
+        const updatedCarts = carts.filter(cart => cart.id !== checkoutCart.id);
+        setCarts(updatedCarts);
+        
+        // Crear nuevo carrito si era el único
+        if (updatedCarts.length === 0) {
+          await createNewCart();
+        } else {
+          setActiveCartId(updatedCarts[0].id);
+        }
+      }
+
+      alert(`Venta completada: ${formatCurrency(sale.total)}`);
+    } catch (error) {
+      console.error('Error completing checkout:', error);
+    }
+  };
+
+  const handleHoldCart = (cart: Cart, reason?: string) => {
+    updateCartInState(cart);
+    alert(`Carrito puesto en espera${reason ? ': ' + reason : ''}`);
+  };
+
+  // Obtener carrito activo
+  const activeCart = carts.find(cart => cart.id === activeCartId);
+
+  // Estados de carga
+  if (orgLoading || isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen dark:bg-gray-900 light:bg-gray-50">
+        <div className="text-center space-y-4">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto dark:text-blue-400 light:text-blue-600" />
+          <p className="dark:text-gray-400 light:text-gray-600">Cargando sistema POS...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!organization) {
+    return (
+      <div className="flex items-center justify-center h-screen dark:bg-gray-900 light:bg-gray-50">
+        <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+          <CardContent className="p-6 text-center">
+            <Settings className="h-12 w-12 mx-auto mb-4 dark:text-gray-400 light:text-gray-500" />
+            <h2 className="text-lg font-semibold mb-2 dark:text-white light:text-gray-900">
+              Organización no encontrada
+            </h2>
+            <p className="dark:text-gray-400 light:text-gray-600">
+              Configure su organización para usar el sistema POS
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-[calc(100vh-4rem)] overflow-hidden">
-      {loading ? (
-        <div className="flex h-full justify-center items-center">
-          <div className="flex flex-col items-center">
-            <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
-            <p className="text-gray-500">Cargando datos...</p>
-            {error && <p className="text-red-500 mt-2">{error}</p>}
+    <div className="h-screen dark:bg-gray-900 light:bg-gray-50 p-2">
+      <div className="w-full h-full space-y-1">
+        {/* Header */}
+        <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-full dark:bg-blue-500/20 light:bg-blue-100">
+                  <ShoppingCart className="h-6 w-6 dark:text-blue-400 light:text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="dark:text-white light:text-gray-900">
+                    Sistema POS - {organization?.name || 'Organización'}
+                  </CardTitle>
+                  <p className="text-sm dark:text-gray-400 light:text-gray-600">
+                    Caja rápida / Venta clásica
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4 dark:text-gray-400 light:text-gray-500" />
+                    <span className="text-sm dark:text-gray-400 light:text-gray-600">
+                      {lastUpdate.toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Badge variant="outline" className="dark:border-green-500 dark:text-green-400 light:border-green-500 light:text-green-600">
+                      {carts.filter(c => c.status === 'active').length} Activos
+                    </Badge>
+                    <Badge variant="outline" className="dark:border-yellow-500 dark:text-yellow-400 light:border-yellow-500 light:text-yellow-600">
+                      {carts.filter(c => c.status === 'hold').length} En Espera
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Contenido principal - Layout 3:1 columnas FULLSCREEN */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-[calc(100vh-120px)]">
+          {/* Columna izquierda: Catálogo de productos (3/4) */}
+          <div className="lg:col-span-3 h-full">
+            <ProductSearch 
+              onProductSelect={handleProductSelect}
+            />
+          </div>
+
+          {/* Columna derecha: Cliente y Carritos (1/4) */}
+          <div className="lg:col-span-1 space-y-2 overflow-y-auto h-full">
+            {/* Selector de cliente - Compacto */}
+            <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center space-x-2 text-sm dark:text-white light:text-gray-900">
+                  <Users className="h-4 w-4" />
+                  <span>Cliente</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 pb-2">
+                <CustomerSelector 
+                  selectedCustomer={activeCart?.customer}
+                  onCustomerSelect={handleCustomerSelect}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Pestañas de carritos - Compactas */}
+            <div className="space-y-2 flex-1">
+              <CartTabs
+                carts={carts}
+                activeCartId={activeCartId}
+                onCartSelect={setActiveCartId}
+                onNewCart={createNewCart}
+                onRemoveCart={removeCart}
+              />
+
+              {/* Vista del carrito activo - Compacta */}
+              {activeCart && (
+                <div className="flex-1">
+                  <CartView
+                    cart={activeCart}
+                    onCartUpdate={handleCartUpdate}
+                    onCheckout={handleCheckout}
+                    onHold={handleHoldCart}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      ) : (
-        <MainPOS 
-          initialProducts={products} 
-          initialCategories={categories} 
-          initialUser={userData} 
-        />
-      )}
+
+        {/* Dialog de checkout */}
+        {checkoutCart && (
+          <CheckoutDialog
+            cart={checkoutCart}
+            open={showCheckout}
+            onOpenChange={setShowCheckout}
+            onCheckoutComplete={handleCheckoutComplete}
+          />
+        )}
+      </div>
     </div>
   );
 }

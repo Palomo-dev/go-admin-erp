@@ -23,23 +23,36 @@ const getCookie = (name: string): string | null => {
 // Función para establecer una cookie
 const setCookie = (name: string, value: string, maxAge: number = 604800) => {
   if (typeof document === 'undefined') return;
-  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Strict${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+  
+  // La cookie de autenticación de Supabase necesita estar disponible para JavaScript
+  const isAuthCookie = name.includes('-auth-token');
+  
+  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
 }
 
 // Función para eliminar una cookie
 const removeCookie = (name: string) => {
   if (typeof document === 'undefined') return;
-  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Strict${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+  
+  // La cookie de autenticación de Supabase necesita estar disponible para JavaScript
+  const isAuthCookie = name.includes('-auth-token');
+  
+  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
 }
 
 // Creación del cliente de Supabase
 export const createSupabaseClient = () => {
-  // Verificamos que existan las variables de entorno necesarias
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  // Configuramos las credenciales, usando valores predeterminados si no hay variables de entorno
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWdwaG16dXNibHVxaHVxaWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMzQ1MjIsImV4cCI6MjA2MTYxMDUyMn0.yr5TLl2nhevIzNdPnjVkcdn049RB2t2OgqPG0HryVR4'
   
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase credentials')
+  // Verificación de seguridad para producción
+  if (!supabaseUrl.includes('supabase.co') || !supabaseKey.includes('.')) {
+    console.error('Credenciales de Supabase inválidas')
+    // En desarrollo podemos continuar, en producción debería ser un error fatal
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Credenciales de Supabase inválidas en producción')
+    }
   }
   
   const projectRef = getProjectRef();
@@ -47,31 +60,65 @@ export const createSupabaseClient = () => {
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
-      autoRefreshToken: false, // Desactivamos la renovación automática para reducir solicitudes
+      autoRefreshToken: true, // Permitimos renovación automática con la configuración optimizada
       persistSession: true,
-      detectSessionInUrl: false, // Cambiado a false para evitar problemas con NextJS router
-      flowType: 'pkce',
-      storageKey: storageKey,
-      // La versión actual del cliente no soporta configurar refreshSessionThreshold
-      // Usaremos el gestor de autenticación auth-manager.ts para controlar esto
+      detectSessionInUrl: true,
       storage: {
-        getItem: (key) => {
+        getItem: (key: string) => {
           return getCookie(key);
         },
-        setItem: (key, value) => {
+        setItem: (key: string, value: string) => {
           setCookie(key, value, 86400); // 24 horas para todos los tokens
           // Eliminamos cualquier token del localStorage para mantener la seguridad
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(key);
           }
         },
-        removeItem: (key) => {
+        removeItem: (key: string) => {
           removeCookie(key);
           // Eliminamos cualquier token del localStorage para mantener la seguridad
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(key);
           }
         }
+      }
+    },
+    global: {
+      headers: {
+        'x-application-name': 'GoAdminERP'
+      },
+      // Configurar reintentos con backoff exponencial para manejar límites de solicitudes (429)
+      fetch: (url: string | URL | Request, options?: RequestInit) => {
+        const MAX_RETRIES = 3;
+        const BASE_DELAY = 1000; // 1 segundo
+        
+        return new Promise((resolve, reject) => {
+          const attemptFetch = async (retriesLeft: number, delay: number) => {
+            try {
+              const response = await fetch(url, options);
+              
+              // Si recibimos un 429 (Too Many Requests) y aún tenemos reintentos
+              if (response.status === 429 && retriesLeft > 0) {
+                console.log(`Límite de solicitudes alcanzado, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
+                
+                // Esperar antes de reintentar con backoff exponencial
+                await new Promise(res => setTimeout(res, delay));
+                return attemptFetch(retriesLeft - 1, delay * 2);
+              }
+              
+              resolve(response);
+            } catch (error) {
+              if (retriesLeft > 0) {
+                console.log(`Error en solicitud, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
+                await new Promise(res => setTimeout(res, delay));
+                return attemptFetch(retriesLeft - 1, delay * 2);
+              }
+              reject(error);
+            }
+          };
+          
+          attemptFetch(MAX_RETRIES, BASE_DELAY);
+        });
       }
     }
   })
@@ -106,31 +153,48 @@ export const signInWithMicrosoft = async () => {
   })
 }
 
-export const  signOut = async () => {
-  // Eliminar todas las cookies  // Extraer referencia del proyecto dinámicamente desde la URL de Supabase
-  const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
-    : '';
+export const signOut = async () => {
+  try {
+    // Extraer referencia del proyecto dinámicamente desde la URL de Supabase
+    const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
+      : '';
+      
+    // Limpiar cookies de autenticación usando las mismas configuraciones con las que fueron creadas
+    // Para cookies generales del sistema
+    document.cookie = 'go-admin-erp-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    document.cookie = 'go-admin-user-id=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
     
-  // Limpiar cookies de autenticación
-  document.cookie = 'go-admin-erp-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  document.cookie = 'sb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  document.cookie = 'sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-  
-  // Limpiar cookie específica del proyecto usando la referencia dinámica
-  if (projectRef) {
-    document.cookie = `sb-${projectRef}-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+    // Cookies de Supabase Auth
+    document.cookie = 'sb-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    document.cookie = 'sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    
+    // Limpiar cookie específica del proyecto usando la referencia dinámica
+    if (projectRef) {
+      document.cookie = `sb-${projectRef}-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+    }
+    
+    // También limpiar la cookie CSRF
+    document.cookie = 'csrf_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax; HttpOnly';
+    
+    // Limpiar localStorage de datos relacionados con la sesión
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('sb-access-token');
+    localStorage.removeItem('sb-refresh-token');
+    localStorage.removeItem('go-admin-erp-auth');
+    localStorage.removeItem('currentOrganizationId');
+    localStorage.removeItem('currentOrganizationName');
+    localStorage.removeItem('currentOrganizationType');
+    localStorage.removeItem('rememberMe');
+    localStorage.removeItem('userEmail');
+    
+    // Cerrar sesión en Supabase
+    return await supabase.auth.signOut();
+  } catch (error) {
+    console.error('Error durante el cierre de sesión:', error);
+    throw error;
   }
-  
-  // Limpiar localStorage de tokens relacionados con la autenticación
-  localStorage.removeItem('supabase.auth.token');
-  localStorage.removeItem('sb-access-token');
-  localStorage.removeItem('sb-refresh-token');
-  localStorage.removeItem('go-admin-erp-auth');
-  
-  // Cerrar sesión en Supabase
-  return await supabase.auth.signOut()
 }
 
 // Get session with simplified response format for components that need the session object directly

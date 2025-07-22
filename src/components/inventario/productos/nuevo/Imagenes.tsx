@@ -275,31 +275,16 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
         const displayOrder = maxDisplayOrder + index + 1;
         if (image.shared_image_id) {
           // Para imágenes que ya se han subido con upload_temporary_image
-          // Crear una variable para almacenar el resultado fuera del scope del try-catch
-          let resultData = null;
-          
           try {
             // Asegurarse de que shared_image_id es un número válido
             const sharedImageId = typeof image.shared_image_id === 'number' 
               ? image.shared_image_id 
               : parseInt(String(image.shared_image_id), 10);
-            
-            if (isNaN(sharedImageId) || sharedImageId <= 0) {
-              console.error('ID de imagen compartida inválido:', image.shared_image_id);
-              throw new Error(`ID de imagen compartida inválido: ${image.shared_image_id}`);
+              
+            if (isNaN(sharedImageId)) {
+              console.error('shared_image_id inválido:', image.shared_image_id);
+              throw new Error(`ID de imagen inválido: ${image.shared_image_id}`);
             }
-            
-            if (!product_id || isNaN(product_id) || product_id <= 0) {
-              console.error('ID de producto inválido:', product_id);
-              throw new Error(`ID de producto inválido: ${product_id}`);
-            }
-            
-            console.log('Asociando imagen compartida con los siguientes parámetros:', {
-              p_product_id: product_id,
-              p_shared_image_id: sharedImageId,
-              p_is_primary: !!image.isPrimary, // Asegurar que sea boolean
-              p_display_order: displayOrder // Usar el mismo valor que se enviará al servidor
-            });
             
             // Generar URL pública para la imagen usando storage_path o path
             let publicUrl = '';
@@ -312,34 +297,40 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
               publicUrl = urlData?.publicUrl || '';
             }
             
-            // Incluir tanto storage_path como url generada para compatibilidad
-            const { data, error } = await supabase.rpc('associate_image_to_product', {
-              p_shared_image_id: sharedImageId, // Parámetro correcto según definición de la función
-              p_product_id: product_id,
-              p_display_order: displayOrder, // Usar el nuevo display_order calculado
-              p_is_primary: !!image.isPrimary,
-              p_image_url: publicUrl, // Añadimos url generada para compatibilidad con RPC
-              p_storage_path: storagePath // Usamos la variable storagePath que ya contiene el fallback
-            });
+            // Preparar datos para inserción en product_images
+            // Nota: Verificamos la estructura de la tabla - sin organization_id
+            const productImageData = {
+              product_id,
+              shared_image_id: sharedImageId,
+              storage_path: storagePath, // Add required storage_path field
+              is_primary: !!image.isPrimary,
+              display_order: displayOrder,
+            };
             
-            if (error) {
-              console.error('Error al asociar imagen compartida:', error);
-              throw new Error(`Error al asociar imagen: ${error.message || JSON.stringify(error)}`);
+            // La columna url no existe en la tabla product_images
+            // Guardamos solo los campos requeridos
+            
+            console.log('Insertando en product_images:', productImageData);
+            
+            // Inserción directa en la tabla product_images
+            const { data: insertData, error: insertError } = await supabase
+              .from('product_images')
+              .insert(productImageData)
+              .select();
+              
+            if (insertError) {
+              console.error('Error al insertar en product_images:', insertError);
+              console.error('Detalles completos del error:', JSON.stringify(insertError));
+              throw new Error(`Error al asociar imagen: ${insertError.message || JSON.stringify(insertError)}`);
             }
             
-            // Guardar el resultado en la variable externa al try-catch
-            resultData = data;
+            console.log('Imagen asociada correctamente:', insertData);
+            return true;
             
-            if (!resultData) {
-              console.warn('Respuesta vacía al asociar imagen');
-            } else {
-              console.log('Imagen asociada correctamente, ID:', resultData);
-            }
           } catch (imgError: any) {
             console.error(`Error procesando imagen compartida:`, imgError);
             throw new Error(`Error procesando imagen: ${imgError?.message || 'Error desconocido'}`);
           }
-          return resultData
         } else {
           // Para imágenes que se subieron con el sistema antiguo (mantener compatibilidad)
           const { error } = await supabase

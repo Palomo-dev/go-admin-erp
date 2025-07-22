@@ -36,6 +36,8 @@ import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 interface PaymentMethodsListProps {
   paymentMethods: PaymentMethod[];
   orgPaymentMethods: OrganizationPaymentMethod[];
+  recommendedMethods: any[]; // Agregar métodos recomendados
+  countryCode: string | null;
   onEdit: (method: OrganizationPaymentMethod) => void;
   isLoading: boolean;
   onRefresh: () => void;
@@ -44,6 +46,8 @@ interface PaymentMethodsListProps {
 export default function PaymentMethodsList({
   paymentMethods,
   orgPaymentMethods,
+  recommendedMethods,
+  countryCode,
   onEdit,
   isLoading,
   onRefresh
@@ -86,15 +90,44 @@ export default function PaymentMethodsList({
   // Función para obtener el icono según el tipo de método de pago
   const getPaymentIcon = (code: string) => {
     const lowerCode = code.toLowerCase();
-    if (lowerCode.includes("card") || lowerCode.includes("tarjeta")) {
-      return <CreditCard className="h-4 w-4" />;
-    } else if (lowerCode.includes("cash") || lowerCode.includes("efectivo")) {
-      return <Banknote className="h-4 w-4" />;
-    } else if (lowerCode.includes("transfer") || lowerCode.includes("transferencia")) {
-      return <Building2 className="h-4 w-4" />;
-    } else {
-      return <Wallet className="h-4 w-4" />;
+    
+    // Métodos específicos por código
+    switch (lowerCode) {
+      case 'nequi':
+        return <div className="h-4 w-4 bg-purple-600 text-white rounded text-xs flex items-center justify-center font-bold">N</div>;
+      case 'daviplata':
+        return <div className="h-4 w-4 bg-red-500 text-white rounded text-xs flex items-center justify-center font-bold">D</div>;
+      case 'pse':
+        return <div className="h-4 w-4 bg-blue-600 text-white rounded text-xs flex items-center justify-center font-bold">P</div>;
+      case 'payu':
+        return <div className="h-4 w-4 bg-green-600 text-white rounded text-xs flex items-center justify-center font-bold">U</div>;
+      case 'mp':
+        return <div className="h-4 w-4 bg-sky-400 text-white rounded text-xs flex items-center justify-center font-bold">M</div>;
+      case 'oxxo':
+        return <div className="h-4 w-4 bg-yellow-600 text-white rounded text-xs flex items-center justify-center font-bold">O</div>;
+      case 'spei':
+        return <div className="h-4 w-4 bg-red-600 text-white rounded text-xs flex items-center justify-center font-bold">S</div>;
+      case 'stripe':
+        return <div className="h-4 w-4 bg-purple-600 text-white rounded text-xs flex items-center justify-center font-bold">S</div>;
+      case 'conekta':
+        return <div className="h-4 w-4 bg-indigo-600 text-white rounded text-xs flex items-center justify-center font-bold">C</div>;
+      default:
+        // Iconos genéricos
+        if (lowerCode.includes("card") || lowerCode.includes("tarjeta")) {
+          return <CreditCard className="h-4 w-4" />;
+        } else if (lowerCode.includes("cash") || lowerCode.includes("efectivo")) {
+          return <Banknote className="h-4 w-4" />;
+        } else if (lowerCode.includes("transfer") || lowerCode.includes("transferencia")) {
+          return <Building2 className="h-4 w-4" />;
+        } else {
+          return <Wallet className="h-4 w-4" />;
+        }
     }
+  };
+
+  // Función para verificar si un método es recomendado para el país
+  const isRecommended = (methodCode: string) => {
+    return recommendedMethods.some(rec => rec.code === methodCode || rec.payment_method_code === methodCode);
   };
 
   // Combinamos los métodos de pago globales con los de la organización
@@ -134,6 +167,7 @@ export default function PaymentMethodsList({
             <TableHead className="w-10"></TableHead>
             <TableHead>Método de Pago</TableHead>
             <TableHead>Código</TableHead>
+            <TableHead>Recomendación</TableHead>
             <TableHead>Requiere Referencia</TableHead>
             <TableHead>Integración</TableHead>
             <TableHead>Estado</TableHead>
@@ -143,13 +177,13 @@ export default function PaymentMethodsList({
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8">
+              <TableCell colSpan={8} className="text-center py-8">
                 Cargando métodos de pago...
               </TableCell>
             </TableRow>
           ) : combinedMethods.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8">
+              <TableCell colSpan={8} className="text-center py-8">
                 No se encontraron métodos de pago.
               </TableCell>
             </TableRow>
@@ -167,29 +201,57 @@ export default function PaymentMethodsList({
                 </TableCell>
                 <TableCell>{method.payment_method_code}</TableCell>
                 <TableCell>
+                  {isRecommended(method.payment_method_code) ? (
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                      ★ Recomendado {countryCode && `(${countryCode})`}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
                   {method.payment_method?.requires_reference ? "Sí" : "No"}
                 </TableCell>
                 <TableCell>
-                  {/* Lógica para mostrar gateway según el método */}
+                  {/* Mostrar configuración específica según el método */}
                   {method.settings?.gateway ? (
                     <Badge variant="outline">
                       {method.settings.gateway}
                     </Badge>
-                  ) : method.payment_method_code === "stripe" ? (
-                    <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">
-                      stripe
-                    </Badge>
-                  ) : method.payment_method_code === "paypal" ? (
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                      paypal
-                    </Badge>
-                  ) : method.payment_method_code === "mp" ? (
-                    <Badge variant="outline" className="bg-sky-100 text-sky-800 border-sky-300">
-                      mercadopago
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">N/A</span>
-                  )}
+                  ) : (() => {
+                    const code = method.payment_method_code.toLowerCase();
+                    
+                    // Métodos colombianos específicos
+                    if (code === 'nequi') {
+                      return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">Bancolombia</Badge>;
+                    } else if (code === 'daviplata') {
+                      return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">Davivienda</Badge>;
+                    } else if (code === 'pse') {
+                      return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">ACH Colombia</Badge>;
+                    } else if (code === 'payu') {
+                      return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">PayU Latam</Badge>;
+                    } else if (code === 'mp') {
+                      return <Badge variant="outline" className="bg-sky-100 text-sky-800 border-sky-300">Mercado Pago</Badge>;
+                    
+                    // Métodos mexicanos
+                    } else if (code === 'oxxo') {
+                      return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">OXXO Pay</Badge>;
+                    } else if (code === 'spei') {
+                      return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">Banxico SPEI</Badge>;
+                    } else if (code === 'conekta') {
+                      return <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-300">Conekta</Badge>;
+                    
+                    // Métodos internacionales
+                    } else if (code === 'stripe') {
+                      return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300">Stripe</Badge>;
+                    } else if (code === 'paypal') {
+                      return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">PayPal</Badge>;
+                    } else if (['cash', 'card', 'transfer', 'check', 'credit'].includes(code)) {
+                      return <Badge variant="secondary">Nativo</Badge>;
+                    } else {
+                      return <span className="text-muted-foreground">N/A</span>;
+                    }
+                  })()}
                 </TableCell>
                 <TableCell>
                   <Switch 

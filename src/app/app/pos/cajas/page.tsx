@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase, getUserOrganization } from "@/lib/supabase/config";
-import { Button } from "@/components/pos/button";
+import { Button } from "@/components/ui/button";
 
 export default function CajasPage() {
   const [loading, setLoading] = useState(true);

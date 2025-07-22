@@ -19,13 +19,20 @@ export type Organizacion = {
  */
 export function guardarOrganizacionActiva(organizacion: Organizacion): void {
   try {
+    // Verificar si la organización ya está guardada para evitar logs innecesarios
+    const existingData = localStorage.getItem(STORAGE_KEY);
+    const isAlreadySaved = existingData && JSON.parse(existingData)?.id === organizacion.id;
+    
     // Guardar en localStorage como fuente principal
     localStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
     
     // Guardar en sessionStorage como respaldo
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
     
-    console.log('Organización guardada correctamente:', organizacion.id);
+    // Solo hacer log si es una organización nueva o diferente
+    if (!isAlreadySaved) {
+      console.log('Organización guardada correctamente:', organizacion.id);
+    }
   } catch (error) {
     console.error('Error al guardar organización:', error);
   }
@@ -37,7 +44,7 @@ export function guardarOrganizacionActiva(organizacion: Organizacion): void {
  */
 export function obtenerOrganizacionActiva(): Organizacion {
   // Valor predeterminado si todo falla
-  const valorPredeterminado: Organizacion = { id: 1 };
+  const valorPredeterminado: Organizacion = { id: 2 };
   
   if (typeof window === 'undefined') {
     return valorPredeterminado; // Para SSR
@@ -142,6 +149,7 @@ interface FormattedOrganization {
   name: string;
   created_at: string | null;
   branches: FormattedBranch[];
+  country_code?: string | null;  // Agregar country_code
   [key: string]: any;
 }
 
@@ -194,7 +202,7 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
     // Paso 2: Obtener datos de la organización
     const { data: orgData, error: orgError } = await supabase
       .from("organizations")
-      .select("*")
+      .select("id, name, created_at, country_code")
       .eq("id", member.organization_id)
       .single();
 
@@ -277,6 +285,29 @@ export async function getMainBranch(organizationId: number) {
   }
 }
 
+// Función para obtener el branch_id actual desde localStorage
+export function getCurrentBranchId(): number {
+  try {
+    const branchId = localStorage.getItem('currentBranchId');
+    console.log('🏪 DEBUG getCurrentBranchId:', { branchId, parsed: branchId ? parseInt(branchId, 10) : null });
+    return branchId ? parseInt(branchId, 10) : 2; // Default: Sede Principal (ID: 2)
+  } catch (error) {
+    console.error('Error obteniendo branch_id:', error);
+    return 2; // Default: Sede Principal (ID: 2)
+  }
+}
+
+// Función para obtener el usuario actual desde Supabase Auth
+export async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id || null;
+  } catch (error) {
+    console.error('Error obteniendo current user:', error);
+    return null;
+  }
+}
+
 /**
  * Hook para usar la organización del usuario en componentes React
  * Combina los datos almacenados en localStorage con datos actuales de Supabase
@@ -298,7 +329,7 @@ export function useOrganization() {
             slug: organizacionLocal.slug || '',
             logo_url: organizacionLocal.logo_url || ''
           } as FormattedOrganization,
-          branch_id: null,
+          branch_id: getCurrentBranchId(), // Obtener branch_id actual desde localStorage
           isLoading: false,
           error: null
         };
@@ -349,7 +380,7 @@ export function useOrganization() {
             
             setOrganizationData({
               organization: formattedOrg,
-              branch_id: null, // No tenemos datos de sucursal en este punto
+              branch_id: getCurrentBranchId(), // Obtener branch_id actual desde localStorage
               isLoading: false,
               error: null
             });
@@ -398,7 +429,7 @@ export function useOrganization() {
           
           setOrganizationData({
             organization: formattedOrg,
-            branch_id: null,
+            branch_id: getCurrentBranchId(), // Obtener branch_id actual desde localStorage
             isLoading: false,
             error: null
           });
@@ -430,7 +461,7 @@ export function useOrganization() {
           
           setOrganizationData({
             organization: formattedOrg,
-            branch_id: null,
+            branch_id: getCurrentBranchId(), // Obtener branch_id actual desde localStorage
             isLoading: false,
             error: null
           });
@@ -458,5 +489,7 @@ export default {
   getMainBranch,
   guardarOrganizacionActiva,
   obtenerOrganizacionActiva,
-  getOrganizationId
+  getOrganizationId,
+  getCurrentBranchId,
+  getCurrentUserId
 };

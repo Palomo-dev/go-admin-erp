@@ -117,34 +117,56 @@ export function SubirImagenes({ organization_id, onImageSelect }: SubirImagenesP
           
         console.log('Usando organization_id:', orgId);
         
-        // Registrar la imagen en la base de datos usando la función segura para usuarios
+        // Registrar la imagen en la base de datos directamente en shared_images
         try {
-          const { data, error } = await supabase.rpc('user_register_image', {
-            p_image_url: signedUrlData?.signedUrl || '',
-            p_storage_path: filePath,
-            p_file_name: file.name,
-            p_file_size: file.size,
-            p_mime_type: file.type,
-            p_organization_id: orgId
+          console.log('Insertando imagen directamente en shared_images:', {
+            storage_path: filePath,
+            file_name: file.name,
+            file_size: file.size,
+            mime_type: file.type,
+            organization_id: orgId
           });
+
+          // Preparamos los datos para la inserción asegurándonos que sean válidos
+          const imageData = {
+            storage_path: filePath,
+            file_name: file.name,
+            file_size: file.size,
+            mime_type: file.type,
+            organization_id: orgId,
+            created_at: new Date().toISOString()
+          };
+
+          console.log('Datos de shared_images a insertar:', JSON.stringify(imageData));
+
+          // Insertamos directamente en la tabla shared_images en lugar de usar RPC
+          const { data, error } = await supabase
+            .from('shared_images')
+            .insert(imageData)
+            .select()
+            .single();
           
           if (error) {
-            console.error('Error al insertar imagen:', error);
+            console.error('Error al insertar en shared_images:', error);
+            console.error('Código de error:', error.code);
+            console.error('Mensaje de error:', error.message);
             console.error('Detalles completos del error:', JSON.stringify(error));
             
             toast({
-              title: "Error al subir imagen",
-              description: `${error.message || 'Error al procesar la imagen.'} (código ${error.code || 'desconocido'})`,
+              title: "Error al registrar imagen",
+              description: `No se pudo guardar la información de la imagen: ${error.message || 'Error desconocido'}`,
               variant: "destructive"
             });
             continue;
           }
           
-          console.log('Respuesta de user_register_image:', data);
+          console.log('Respuesta de shared_images insert:', data);
           
-          if (data && data.success === true && data.image_id) {
-            const sharedImageId = data.image_id;
-            console.log('ID de imagen recibido correctamente:', sharedImageId);
+          // Obtenemos el ID directamente del objeto insertado
+          const sharedImageId = data?.id;
+          
+          if (sharedImageId) {
+            console.log('ID de imagen recibido:', sharedImageId);
             
             // Crear objeto de imagen para el estado local
             const newImage = {
@@ -176,10 +198,10 @@ export function SubirImagenes({ organization_id, onImageSelect }: SubirImagenesP
             // Llamamos a onImageSelect para que el componente padre reciba la imagen
             onImageSelect(newImage);
           } else {
-            console.error('Error en la respuesta de admin_register_image:', data);
+            console.error('Error: No se pudo obtener ID de imagen de la respuesta:', data || {});
             toast({
               title: "Error al registrar imagen",
-              description: data?.message || 'No se pudo registrar la imagen',
+              description: 'No se pudo obtener ID de la imagen subida. Inténtelo de nuevo.',
               variant: "destructive"
             });
           }

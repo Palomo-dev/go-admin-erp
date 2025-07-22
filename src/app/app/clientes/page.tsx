@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/hooks/useSession";
-import { getUserOrganization, supabase } from "@/lib/supabase/config";
+import { supabase } from "@/lib/supabase/config";
+import { useOrganization } from "@/lib/hooks/useOrganization";
 import ClientesTable from "@/components/clientes/ClientesTable";
 import ClientesFilter from "@/components/clientes/ClientesFilter";
 import ClientesActions from "@/components/clientes/ClientesActions";
@@ -21,6 +22,10 @@ interface Customer {
   is_active?: boolean;
   last_purchase_date?: string;
   balance?: number;
+  days_overdue?: number;
+  ar_status?: string | null;
+  sales_count?: number;
+  total_sales?: number;
 }
 
 export default function ClientesPage() {
@@ -43,70 +48,56 @@ export default function ClientesPage() {
   const [balanceFilter, setBalanceFilter] = useState<string | null>(null); // 'all', 'pending', 'paid'
   const [sortOrder, setSortOrder] = useState<string | null>(null);
   
-  // Usar desestructuración con tipado explícito
-  const { session, loading: sessionLoading } = useSession();
-  // session es de tipo Session | null
+  // Usamos el hook de sesión y organización
+  const { session } = useSession();
+  const organizationData = useOrganization();
+  
+  // Extraemos el estado de carga de la sesión para mejor manejo
+  const { loading: sessionLoading } = useSession();
   
   useEffect(() => {
-    async function loadUserData() {
-      if (sessionLoading) {
-        console.log('Sesión cargando todavía');
+    async function loadOrganizationData() {
+      // Si la sesión o la organización aún está cargando, esperamos
+      if (sessionLoading || organizationData.isLoading) {
+        // Mantenemos el estado de carga pero no mostramos mensajes de error durante la carga
+        setIsLoading(true);
+        setError("");
         return;
       }
       
-      if (!session) {
-        console.log('No hay sesión activa');
+      // Solo verificamos la sesión después de que termine de cargar
+      if (!sessionLoading && !session) {
+        console.log("Sesión verificada: No hay sesión activa después de carga completa");
         setError('No hay sesión activa. Por favor inicie sesión.');
         setIsLoading(false);
         return;
       }
       
-      if (!session || !session.user?.id) {
-        console.error('ID de usuario no disponible en la sesión');
-        setError('No se pudo obtener la información del usuario');
+      // Manejamos errores específicos de organización
+      if (organizationData.error) {
+        const errorMsg = typeof organizationData.error === 'string' 
+          ? organizationData.error 
+          : "Error cargando datos de la organización";
+        
+        console.log("Error de organización:", errorMsg);
+        setError(errorMsg);
         setIsLoading(false);
         return;
       }
       
-      try {
-        // Verificamos que session y session.user existan
-        if (!session || !session.user) {
-          setError('No se encontró información del usuario');
-          setIsLoading(false);
-          return;
-        }
-        
-        console.log('Obteniendo organización para usuario:', session.user.id);
-        const userData = await getUserOrganization(session.user.id);
-        
-        // Registrar respuesta para depuración
-        console.log('Respuesta de getUserOrganization:', userData);
-        
-        if (userData.error) {
-          console.error('Error obteniendo organización:', userData.error);
-          setError(userData.error || "Error cargando datos del usuario");
-          setIsLoading(false);
-          return;
-        }
-        
-        if (userData.organization?.id) {
-          console.log('ID de organización encontrada:', userData.organization.id);
-          setOrganizationId(userData.organization.id);
-          await loadCustomers(userData.organization.id);
-        } else {
-          console.error('No se encontró una organización válida');
-          setError('No se encontró información de la organización del usuario');
-          setIsLoading(false);
-        }
-      } catch (error: any) {
-        console.error("Error cargando datos:", error);
-        setError(error.message || "Error desconocido al cargar datos del usuario");
+      // Si tenemos organización, procedemos a cargar los clientes
+      if (organizationData.organization?.id) {
+        console.log("Organización encontrada:", organizationData.organization.id);
+        setOrganizationId(organizationData.organization.id);
+        await loadCustomers(organizationData.organization.id);
+      } else {
+        setError('No se encontró información de la organización');
         setIsLoading(false);
       }
     }
     
-    loadUserData();
-  }, [session, sessionLoading]);
+    loadOrganizationData();
+  }, [session, sessionLoading, organizationData]);
 
 
   // Función para cargar clientes con paginación y última fecha de compra
@@ -149,25 +140,23 @@ export default function ClientesPage() {
       // Obtenemos los saldos de cuentas por cobrar
       const customerIds = customersData.map(customer => customer.id);
       
-      // Consulta para cuentas por cobrar - convertimos orgId a string para la comparación UUID
+      // Consulta para cuentas por cobrar usando función RPC (bypasea RLS)
       const { data: balances, error: balancesError } = await supabase
-        .from("accounts_receivable")
-        .select("customer_id, balance")
-        .in("customer_id", customerIds)
-        .eq("organization_id", orgId.toString()) // Convertimos a string ya que organization_id es UUID
-        .gt("balance", 0);
-        
+        .rpc('get_accounts_receivable_for_customers', {
+          customer_ids: customerIds,
+          org_id: orgId
+        });
       if (balancesError) {
         console.warn("Error obteniendo saldos:", balancesError);
         // Continuamos sin datos de saldo en lugar de fallar toda la carga
       }
         
-      // Consulta para última compra - manejando incompatibilidades de tipo UUID vs string
-      const { data: lastPurchases, error: purchasesError } = await supabase
+      // Consulta para ventas con información adicional
+      const { data: salesData, error: purchasesError } = await supabase
         .from("sales")
-        .select("customer_id, sale_date")
+        .select("customer_id, sale_date, total, balance, status, payment_status")
+        .in("customer_id", customerIds)
         .eq("organization_id", orgId)
-        .eq("status", "paid")
         .order('sale_date', { ascending: false });
         
       if (purchasesError) {
@@ -175,43 +164,115 @@ export default function ClientesPage() {
         // Continuamos sin datos de historial en lugar de fallar toda la carga
       }
       
-      // Crear un mapa de saldos e historial de compras con manejo seguro de tipos
+      // Crear mapas para almacenar los datos procesados por cliente
       const balanceMap = new Map();
       const lastPurchaseMap = new Map();
+      const maxDaysOverdueMap = new Map();
+      const salesCountMap = new Map();
+      const totalSalesMap = new Map();
+      const arStatusMap = new Map();
       
-      // Procesar saldos - agrupar por cliente y sumar balances
+      // Procesar cuentas por cobrar - agrupar por cliente y obtener estadísticas
       if (balances) {
-        // Agrupar por customer_id y sumar los balances
-        balances.forEach(item => {
+        balances.forEach((item: any) => {
           if (item.customer_id && item.balance !== undefined) {
             const customerId = item.customer_id.toString();
+            
+            // Convertir explícitamente balance a número y acumular
+            const itemBalance = typeof item.balance === 'string' ? parseFloat(item.balance) : Number(item.balance);
             const currentBalance = balanceMap.get(customerId) || 0;
-            balanceMap.set(customerId, currentBalance + item.balance);
+            const newBalance = currentBalance + itemBalance;
+            balanceMap.set(customerId, newBalance);
+            
+            // Obtener días de vencimiento máximo
+            if (item.days_overdue !== undefined && item.days_overdue !== null) {
+              const daysOverdue = Number(item.days_overdue);
+              const currentDaysOverdue = maxDaysOverdueMap.get(customerId) || 0;
+              maxDaysOverdueMap.set(customerId, Math.max(currentDaysOverdue, daysOverdue));
+            }
+            
+            // Almacenar estado de cuenta por cobrar con mayor riesgo (vencido > parcial > pendiente > pagado)
+            const currentStatus = arStatusMap.get(customerId) || '';
+            
+            // Prioridad: overdue > partial > pending > paid
+            const prioridadEstado: Record<string, number> = {
+              'overdue': 4,
+              'partial': 3,
+              'pending': 2,
+              'paid': 1,
+              '': 0
+            };
+            
+            // Verificar que el estado sea válido y tenga prioridad
+            const estadoActual = item.status || '';
+            const prioridadActual = prioridadEstado[estadoActual] || 0;
+            const prioridadAlmacenada = prioridadEstado[currentStatus] || 0;
+            
+            // Si el estado actual tiene mayor prioridad que el almacenado, actualizamos
+            if (prioridadActual > prioridadAlmacenada) {
+              arStatusMap.set(customerId, estadoActual);
+            }
           }
         });
       }
       
-      // Procesar últimas compras - encontrar la fecha más reciente por cliente
-      if (lastPurchases) {
-        // Agrupar por customer_id y encontrar la fecha más reciente
-        lastPurchases.forEach(item => {
-          if (item.customer_id && item.sale_date) {
+      // Procesar ventas - estadísticas y última fecha
+      if (salesData) {
+        // Para cada cliente, calcular totales y encontrar la venta más reciente
+        salesData.forEach(item => {
+          if (item.customer_id) {
             const customerId = item.customer_id.toString();
-            const currentDate = lastPurchaseMap.get(customerId);
-            // Si no hay fecha registrada o la nueva es más reciente, actualizar
-            if (!currentDate || new Date(item.sale_date) > new Date(currentDate)) {
-              lastPurchaseMap.set(customerId, item.sale_date);
+            
+            // Conteo de ventas
+            const currentCount = salesCountMap.get(customerId) || 0;
+            salesCountMap.set(customerId, currentCount + 1);
+            
+            // Convertir explícitamente el total a número y sumarlo
+            if (item.total !== undefined && item.total !== null) {
+              const itemTotal = typeof item.total === 'string' ? parseFloat(item.total) : Number(item.total);
+              const currentTotal = totalSalesMap.get(customerId) || 0;
+              totalSalesMap.set(customerId, currentTotal + itemTotal);
+            }
+            
+            // Actualizar última fecha de compra
+            if (item.sale_date) {
+              const currentDate = lastPurchaseMap.get(customerId);
+              if (!currentDate || new Date(item.sale_date) > new Date(currentDate)) {
+                lastPurchaseMap.set(customerId, item.sale_date);
+              }
             }
           }
         });
       }
       
       // Combinar datos asegurando compatibilidad de tipos entre UUIDs y strings
-      const enhancedCustomers = customersData.map(customer => ({
-        ...customer,
-        balance: balanceMap.get(customer.id.toString()) || 0,
-        last_purchase_date: lastPurchaseMap.get(customer.id.toString()) || null
-      }));
+      const enhancedCustomers = customersData.map(customer => {
+        const customerId = customer.id.toString();
+        
+        // Asegurar que todos los valores numéricos son de tipo number
+        const rawBalance = balanceMap.get(customerId);
+        const balance = Number(rawBalance || 0);
+        const sales_count = Number(salesCountMap.get(customerId) || 0);
+        const total_sales = Number(totalSalesMap.get(customerId) || 0);
+        const days_overdue = Number(maxDaysOverdueMap.get(customerId) || 0);
+        
+        // Eliminar logs una vez que hayamos identificado el problema
+        /* 
+        console.log(`Cliente ${customer.full_name} (${customerId}):`); 
+        console.log(`  - Balance: ${balance} (${typeof balance})`); 
+        console.log(`  - Ventas: ${sales_count} compras por ${total_sales}`); 
+        */
+        
+        return {
+          ...customer,
+          balance,
+          last_purchase_date: lastPurchaseMap.get(customerId) || null,
+          days_overdue,
+          ar_status: arStatusMap.get(customerId) || null,
+          sales_count, 
+          total_sales
+        };
+      });
       
       console.log('Clientes cargados:', enhancedCustomers.length);
       
@@ -364,25 +425,21 @@ export default function ClientesPage() {
           <button
             className="bg-red-500 text-white px-4 py-2 rounded mt-2"
             onClick={() => {
+              // Simplificamos la lógica del botón de reintentar
               setError("");
               setIsLoading(true);
-              if (session && session.user && session.user.id) {
-                getUserOrganization(session.user.id)
-                  .then(data => {
-                    if (data?.organization?.id) {
-                      loadCustomers(data.organization.id);
-                    } else {
-                      setError("No se pudo recuperar la organización");
-                      setIsLoading(false);
-                    }
-                  })
+              
+              // Verificamos si tenemos los datos necesarios para cargar clientes
+              if (organizationData.organization?.id) {
+                loadCustomers(organizationData.organization.id)
                   .catch(err => {
                     setError(err.message || "Error desconocido");
                     setIsLoading(false);
                   });
               } else {
-                setError("No hay sesión de usuario");
-                setIsLoading(false);
+                // Si no hay organización, simplemente refrescamos la página
+                // para reiniciar todo el proceso de carga
+                window.location.reload();
               }
             }}
           >

@@ -38,71 +38,63 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
         setLoading(true);
         setError(null);
         
-        // Intentamos obtener datos del cliente para encontrar un ID numérico
-        // Para compatibilidad con accounts_receivable que usa INTEGER como customer_id
-        let numericId: number | null = null;
+        // La tabla accounts_receivable usa UUID como customer_id, no INTEGER
+        // Usamos directamente el clienteId que ya es un UUID
         
-        // Intentar extraer un ID numérico del documento del cliente
         if (clienteId && clienteId.length > 0) {
           try {
-            // Obtener los datos del cliente para buscar un posible ID numérico en alguna propiedad
-            const { data: clienteData } = await supabase
-              .from('customers')
-              .select('identification_number, organization_id, metadata')
-              .eq('id', clienteId)
-              .single();
+            // Consultar cuentas por cobrar usando el UUID del cliente directamente
+            console.log('Consultando cuentas para cliente UUID:', clienteId);
+            console.log('Consultando accounts_receivable con organizationId:', organizationId);
+            
+            // Utilizamos la función RPC con SECURITY DEFINER para evitar problemas con RLS
+            const { data, error } = await supabase
+              .rpc('obtener_cuentas_por_cobrar_cliente', {
+                p_customer_id: clienteId,
+                p_organization_id: organizationId
+              });
+            
+            if (error) {
+              console.log('Error en consulta de cuentas:', error);
+              setError('Error al cargar las cuentas por cobrar');
+            } else {
+              console.log('Datos recibidos de cuentas:', data);
               
-            if (clienteData) {
-              // Si hay un número de identificación, intentamos convertirlo a número
-              if (clienteData.identification_number) {
-                const potentialId = parseInt(clienteData.identification_number);
-                if (!isNaN(potentialId)) {
-                  numericId = potentialId;
-                }
-              }
-              
-              // Si no pudimos extraer un ID del número de identificación, usamos organization_id
-              if (numericId === null) {
-                numericId = clienteData.organization_id;
+              if (data && data.length > 0) {
+                // Convertir los datos recibidos al formato que espera el componente
+                const cuentasFormateadas = data.map((cuenta: any) => ({
+                  ...cuenta,
+                  amount: parseFloat(cuenta.amount || '0'),
+                  balance: parseFloat(cuenta.balance || '0')
+                }));
+                
+                console.log('Cuentas formateadas:', cuentasFormateadas);
+                setCuentas(cuentasFormateadas);
+                
+                // Calcular resumen de deudas con los datos ya convertidos
+                const totalDeuda = cuentasFormateadas.reduce((sum: number, cuenta: any) => 
+                  sum + cuenta.amount, 0);
+                const totalPendiente = cuentasFormateadas.reduce((sum: number, cuenta: any) => 
+                  sum + cuenta.balance, 0);
+                const totalVencido = cuentasFormateadas
+                  .filter((cuenta: any) => cuenta.days_overdue > 0 && cuenta.status !== 'paid')
+                  .reduce((sum: number, cuenta: any) => sum + cuenta.balance, 0);
+                
+                setResumen({
+                  totalDeuda,
+                  totalVencido,
+                  totalPendiente
+                });
+                
+                // Ya tenemos datos, salimos de la función
+                setLoading(false);
+                return;
+              } else {
+                console.log('No se encontraron cuentas por cobrar para el cliente');
               }
             }
           } catch (idErr) {
-            console.log('No se pudo determinar ID numérico del cliente:', idErr);
-          }
-        }
-        
-        // Si tenemos un ID numérico, intentamos la consulta
-        if (numericId !== null) {
-          const { data, error } = await supabase
-            .from('accounts_receivable')
-            .select('*')
-            .eq('customer_id', numericId)
-            .order('due_date', { ascending: false });
-          
-          if (error) {
-            console.log('Error en consulta de cuentas:', error);
-          } else if (data && data.length > 0) {
-            setCuentas(data);
-            
-            // Calcular resumen de deudas
-            const totalDeuda = data.reduce((sum: number, cuenta: any) => 
-              sum + parseFloat(cuenta.amount || '0'), 0);
-            const totalPendiente = data.reduce((sum: number, cuenta: any) => 
-              sum + parseFloat(cuenta.balance || '0'), 0);
-            const totalVencido = data
-              .filter((cuenta: any) => cuenta.days_overdue > 0 && cuenta.status !== 'paid')
-              .reduce((sum: number, cuenta: any) => 
-                sum + parseFloat(cuenta.balance || '0'), 0);
-            
-            setResumen({
-              totalDeuda,
-              totalVencido,
-              totalPendiente
-            });
-            
-            // Ya tenemos datos, salimos de la función
-            setLoading(false);
-            return;
+            console.error('Error al consultar cuentas:', idErr);
           }
         }
         

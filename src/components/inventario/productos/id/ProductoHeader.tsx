@@ -36,15 +36,16 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
     available: 0
   });
   const [loadingStock, setLoadingStock] = useState(false);
-  
+  console.log('Producto:', producto);
   // Obtener imágenes del producto
   const images = producto.product_images || [];
-  const mainImage = images.length > 0 ? images[selectedImage]?.image_url : null;
+  // Get the storage_path instead of image_url
+  const mainImage = images.length > 0 ? images[selectedImage]?.storage_path : null;
 
   // Obtener stock total (similar a StockTab)
   useEffect(() => {
     const fetchStockData = async () => {
-      if (!organization?.id || !producto.track_stock) return;
+      if (!organization?.id) return;
       
       try {
         setLoadingStock(true);
@@ -83,7 +84,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
     };
     
     fetchStockData();
-  }, [organization?.id, producto.id, producto.track_stock]);
+  }, [organization?.id, producto.id]);
 
   // Función para renderizar el badge de estado
   const renderEstado = (estado: string) => {
@@ -121,7 +122,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
           <div className="relative aspect-square w-full overflow-hidden rounded-lg border bg-gray-100 dark:bg-gray-800">
             {mainImage ? (
               <img 
-                src={mainImage} 
+                src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${mainImage}`} 
                 alt={producto.name} 
                 className="h-full w-full object-contain"
                 onError={(e) => {
@@ -165,7 +166,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                   onClick={() => setSelectedImage(index)}
                 >
                   <img 
-                    src={image.image_url} 
+                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${image.storage_path}`} 
                     alt={`Imagen ${index + 1}`} 
                     className="h-full w-full object-cover"
                     onError={(e) => {
@@ -272,7 +273,11 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                     </Tooltip>
                   </div>
                   <p className="mt-1 text-2xl font-semibold">
-                    {formatCurrency(producto.price)}
+                    {formatCurrency(
+                      producto.product_prices.reduce((prev: any, current: any) =>
+                        current.effective_from > prev.effective_from ? current : prev
+                      ).price
+                    )}
                   </p>
                 </div>
               </TooltipProvider>
@@ -293,7 +298,13 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                     </Tooltip>
                   </div>
                   <p className="mt-1 text-2xl font-semibold">
-                    {formatCurrency(producto.cost)}
+                    {formatCurrency(
+                      producto.product_costs && producto.product_costs.length > 0
+                        ? producto.product_costs.reduce((prev: any, current: any) =>
+                            current.effective_from > prev.effective_from ? current : prev
+                          ).cost
+                        : 0
+                    )}
                   </p>
                 </div>
               </TooltipProvider>
@@ -314,12 +325,9 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                     </Tooltip>
                   </div>
                   <p className="mt-1 text-2xl font-semibold">
-                    {producto.track_stock ? 
-                      (loadingStock ? 
-                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : 
-                        totalStock.total
-                      ) : 
-                      <span className="text-gray-400">N/A</span>
+                    {loadingStock ? 
+                      <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : 
+                      totalStock.total
                     }
                   </p>
                 </div>

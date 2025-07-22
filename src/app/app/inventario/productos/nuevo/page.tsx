@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Metadata } from 'next'
 import { ArrowLeft } from 'lucide-react'
-import FormularioProducto from '@/components/inventario/productos/nuevo/FormularioProducto'
+import NuevoProductoForm from '@/components/inventario/productos/NuevoProductoForm'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 
 export default function NuevoProductoPage() {
@@ -21,7 +21,7 @@ export default function NuevoProductoPage() {
         <p className="text-gray-500 dark:text-gray-400">Completa el formulario para crear un nuevo producto en el catálogo.</p>
       </div>
       
-      <FormularioProducto />
+      <NuevoProductoForm />
     </div>
   )
 }

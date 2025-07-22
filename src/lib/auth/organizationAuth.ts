@@ -147,13 +147,15 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
         const sessionValue = JSON.stringify({
           access_token: sessionData.session.access_token,
           refresh_token: sessionData.session.refresh_token,
-          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          expires_at: sessionData.session.expires_at,
           user: sessionData.session.user
         });
         
         // Cookie específica del proyecto usando la referencia dinámica
         // Esta es la cookie principal que usará Supabase para autenticar
         if (projectRef) {
+          // Usamos configuraciones compatibles con la protección CSRF
+          // No establecemos HttpOnly aquí porque Supabase necesita acceder a esta cookie desde JavaScript
           document.cookie = `sb-${projectRef}-auth-token=${encodeURIComponent(sessionValue)}; path=/; max-age=604800; SameSite=Lax`;
         }
         
@@ -164,9 +166,8 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
         console.log('Sesión establecida correctamente', sessionData.session.user?.email);
         console.log('Auth cookie configurada:', `sb-${projectRef}-auth-token`);
         console.log('Expiración de sesión:', new Date((sessionData.session.expires_at || 0) * 1000).toLocaleString());
-        
-        // Para una implementación completa, se recomienda usar una API del servidor para establecer cookies HTTP-only
-        // Ejemplo: await fetch('/api/auth/set-session', { credentials: 'include' });
+      } else {
+        console.error('No hay datos de sesión disponibles en la respuesta de refreshSession');
       }
       
       setTimeout(() => {

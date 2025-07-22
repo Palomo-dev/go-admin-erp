@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { Building, ChevronDown } from 'lucide-react';
 import { Branch } from '@/types/branch';
 import { branchService } from '@/lib/services/branchService';
@@ -11,17 +11,17 @@ interface BranchSelectorProps {
   className?: string;
 }
 
-const BranchSelector = ({ organizationId, className = '' }: BranchSelectorProps) => {
+const BranchSelector = memo(({ organizationId, className = '' }: BranchSelectorProps) => {
   // Si no se proporciona organizationId, usar la organización activa de la utilidad centralizada
   // El operador de aserción no nulo (!) asegura que orgId sea siempre un número válido
-  const orgId = organizationId !== undefined ? organizationId : getOrganizationId();
-  
-  // Guardamos la organización activa para asegurar consistencia
-  if (orgId) {
-    guardarOrganizacionActiva({ id: orgId });
-  }
-  
-  console.log('BranchSelector usando organization_id:', orgId);
+  const orgId = useMemo(() => {
+    const id = organizationId !== undefined ? organizationId : getOrganizationId();
+    // Guardamos la organización activa para asegurar consistencia
+    if (id) {
+      guardarOrganizacionActiva({ id });
+    }
+    return id;
+  }, [organizationId]); // Solo recalcula cuando cambia organizationId
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -173,6 +173,6 @@ const BranchSelector = ({ organizationId, className = '' }: BranchSelectorProps)
       )}
     </div>
   );
-};
+});
 
 export default BranchSelector;

@@ -6,6 +6,16 @@ import { getOptimizedSession, isAuthenticated } from '@/lib/supabase/auth-manage
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import BranchSelector from '@/components/common/BranchSelector';
+import { Task, TaskStatus } from '@/types/task';
+import { getTasks } from '@/lib/services/taskService';
+import { formatDate } from '@/utils/Utils';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 // Importación explícita de los iconos para evitar problemas
 import { 
   Bell, 
@@ -34,7 +44,10 @@ import {
   BarChart3, 
   ChevronDown, 
   LayoutDashboard, 
-  PieChart 
+  PieChart,
+  Calendar as CalendarIcon,
+  Clock as ClockIcon,
+  AlertCircle as AlertCircleIcon
 } from 'lucide-react';
 
 // Componente para elemento de navegación con posible submenú
@@ -330,10 +343,61 @@ export default function AppLayout({
   // Estado para almacenar el ID de la organización
   const [orgId, setOrgId] = useState<string | null>(null);
   
+  // Estados para notificaciones de tareas (migrado de RecordatorioTareasPopup)
+  const [tareasProximas, setTareasProximas] = useState<Task[]>([]);
+  const [cargandoNotificaciones, setCargandoNotificaciones] = useState(true);
+  const [notificacionesOpen, setNotificacionesOpen] = useState(false);
+  const { toast } = useToast();
+  
+  // Función para cargar tareas próximas (migrado de RecordatorioTareasPopup)
+  const cargarTareasProximas = async () => {
+    try {
+      setCargandoNotificaciones(true);
+      // Mapear estado UI a estado de BD para el filtro
+      const statusDB: TaskStatus = 'open'; // 'open' es el equivalente a 'pendiente' en la BD
+      
+      // Obtenemos tareas con vencimiento en los próximos días
+      const tareas = await getTasks({ timeframe: 'semana', status: statusDB });
+      
+      // Ordenamos por fecha de vencimiento y filtramos las más próximas
+      const tareasOrdenadas = tareas
+        .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+        .slice(0, 5); // Mostramos máximo 5 tareas
+      
+      setTareasProximas(tareasOrdenadas);
+    } catch (error) {
+      console.error('Error al cargar recordatorios de tareas:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los recordatorios de tareas',
+        variant: 'destructive',
+      });
+    } finally {
+      setCargandoNotificaciones(false);
+    }
+  };
+  
+  // Calcular días restantes hasta el vencimiento (migrado de RecordatorioTareasPopup)
+  const calcularDiasRestantes = (fechaVencimiento: string) => {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fechaVence = new Date(fechaVencimiento);
+    const diferencia = fechaVence.getTime() - hoy.getTime();
+    return Math.ceil(diferencia / (1000 * 60 * 60 * 24));
+  };
+  
   // Efecto para obtener el ID de la organización del localStorage (solo en cliente)
   useEffect(() => {
     const storedOrgId = localStorage.getItem('currentOrganizationId');
     setOrgId(storedOrgId);
+  }, []);
+  
+  // Efecto para cargar notificaciones de tareas (migrado de RecordatorioTareasPopup)
+  useEffect(() => {
+    cargarTareasProximas();
+    // Recargar cada 15 minutos para mantener actualizados los recordatorios
+    const intervalo = setInterval(cargarTareasProximas, 15 * 60 * 1000);
+    return () => clearInterval(intervalo);
   }, []);
   
   return (
@@ -444,14 +508,84 @@ export default function AppLayout({
                 )}
               </button>
               
-              {/* Notificaciones */}
-              <button
-                className="p-2 rounded-md text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-                aria-label="Notificaciones"
-                title="Notificaciones"
-              >
-                <Bell size={18} />
-              </button>
+              {/* Notificaciones con recordatorios de tareas */}
+              <Popover open={notificacionesOpen} onOpenChange={setNotificacionesOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className="p-2 rounded-md text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors relative"
+                    aria-label="Notificaciones"
+                    title="Notificaciones"
+                    onClick={() => setNotificacionesOpen(true)}
+                  >
+                    <Bell size={18} />
+                    {tareasProximas.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                        {tareasProximas.length}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="end">
+                  <div className="bg-slate-50 dark:bg-slate-900 p-3 flex items-center justify-between border-b">
+                    <h3 className="font-medium text-sm flex items-center">
+                      <Bell className="h-4 w-4 mr-2 text-blue-500" />
+                      Recordatorios
+                    </h3>
+                    <button
+                      onClick={cargarTareasProximas}
+                      disabled={cargandoNotificaciones}
+                      className="text-xs px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      Actualizar
+                    </button>
+                  </div>
+                  <div className="max-h-72 overflow-auto">
+                    {cargandoNotificaciones ? (
+                      <div className="text-center p-4">Cargando recordatorios...</div>
+                    ) : tareasProximas.length > 0 ? (
+                      <div className="space-y-0">
+                        {tareasProximas.map(tarea => {
+                          const diasRestantes = calcularDiasRestantes(tarea.due_date);
+                          return (
+                            <div key={tarea.id} className="flex items-start p-3 border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-900">
+                              <div className="mr-3 mt-1">
+                                {diasRestantes <= 0 ? (
+                                  <AlertCircleIcon className="h-4 w-4 text-red-500" />
+                                ) : diasRestantes === 1 ? (
+                                  <ClockIcon className="h-4 w-4 text-orange-500" />
+                                ) : (
+                                  <CalendarIcon className="h-4 w-4 text-blue-500" />
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium text-sm">{tarea.title}</div>
+                                <div className="text-xs text-slate-600 dark:text-slate-400">
+                                  Vencimiento: {formatDate(new Date(tarea.due_date))}
+                                </div>
+                              </div>
+                              <Badge
+                                className={`text-xs ml-2 ${
+                                  diasRestantes <= 0 ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100" :
+                                  diasRestantes === 1 ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100" :
+                                  "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+                                }`}
+                              >
+                                {diasRestantes <= 0 ? "Vencida" :
+                                 diasRestantes === 1 ? "Hoy" :
+                                 `${diasRestantes} días`}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-slate-500 dark:text-slate-400">
+                        No hay recordatorios pendientes
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               {/* Perfil de usuario con menú desplegable */}
               <div className="relative" ref={userMenuRef}>

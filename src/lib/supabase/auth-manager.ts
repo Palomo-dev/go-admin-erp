@@ -1,6 +1,49 @@
 // auth-manager.ts - Gestor centralizado de autenticación para reducir solicitudes de tokens
 import { supabase } from './config';
 
+/**
+ * Limpia tokens JWT corruptos o inválidos del almacenamiento
+ */
+const clearCorruptedTokens = () => {
+  try {
+    if (typeof window !== 'undefined') {
+      // Limpiar localStorage
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('auth-token'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Limpiar cookies de Supabase
+      const cookies = document.cookie.split(';');
+      cookies.forEach(cookie => {
+        const [name] = cookie.trim().split('=');
+        if (name && (name.startsWith('sb-') || name.includes('auth-token'))) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+      });
+      
+      console.log('🧹 Tokens JWT corruptos limpiados del almacenamiento');
+    }
+  } catch (error) {
+    console.error('Error al limpiar tokens corruptos:', error);
+  }
+};
+
+/**
+ * Verifica si un error es relacionado con JWT inválido
+ */
+const isJWTError = (error: any): boolean => {
+  const errorMessage = error?.message || error?.toString() || '';
+  return errorMessage.includes('InvalidJWTToken') || 
+         errorMessage.includes('Invalid JWT') ||
+         errorMessage.includes('JWT') ||
+         errorMessage.includes('exp');
+};
+
 // Almacena la última vez que se verificó la sesión para evitar verificaciones frecuentes
 let lastSessionCheck = 0;
 // Tiempo mínimo entre verificaciones (30 minutos en ms para reducir solicitudes)
@@ -107,7 +150,25 @@ export const getOptimizedSession = async () => {
       resolve({ session: data.session, error });
     } catch (e) {
       console.error('Error al obtener sesión:', e);
-      resolve({ session: null, error: e });
+      
+      // Verificar si es un error JWT y limpiar tokens corruptos
+      if (isJWTError(e)) {
+        console.warn('🚨 Error JWT detectado, limpiando tokens corruptos...');
+        clearCorruptedTokens();
+        cachedSession = null;
+        lastSessionCheck = 0;
+        
+        // Intentar obtener sesión nuevamente después de limpiar
+        try {
+          const { data: retryData, error: retryError } = await supabase.auth.getSession();
+          resolve({ session: retryData?.session || null, error: retryError });
+        } catch (retryE) {
+          console.error('Error en reintento después de limpiar tokens:', retryE);
+          resolve({ session: null, error: retryE });
+        }
+      } else {
+        resolve({ session: null, error: e });
+      }
     } finally {
       // Liberar la promesa en curso
       sessionCheckPromise = null;

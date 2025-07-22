@@ -86,7 +86,18 @@ export function obtenerOrganizacionActiva(): Organizacion {
  */
 export function getOrganizationId(): number {
   const organizacion = obtenerOrganizacionActiva();
-  return organizacion?.id || 1;
+  // Usando ID 2 como valor predeterminado ya que es el que existe en la base de datos
+  // y con el que se crearon las tareas
+  return organizacion?.id || 2;
+}
+
+/**
+ * Obtiene el nombre de la organización activa
+ * @returns Nombre de la organización o un valor predeterminado
+ */
+export function getOrganizationName(): string {
+  const organizacion = obtenerOrganizacionActiva();
+  return organizacion?.name || 'Organización por defecto';
 }
 
 // Interfaces para tipos base de datos

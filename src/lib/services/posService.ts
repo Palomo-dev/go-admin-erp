@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculationForLog, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
+import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import {
   Product,
   Customer,
@@ -539,19 +540,24 @@ export class POSService {
 
   static async activateCart(cartId: string): Promise<Cart> {
     try {
-      const carts = await this.getActiveCarts();
-      const cartIndex = carts.findIndex(c => c.id === cartId);
+      // Buscar en TODOS los carritos (incluyendo hold_with_debt)
+      const cartsData = localStorage.getItem(`pos_carts_${this.organizationId}`);
+      if (!cartsData) {
+        throw new Error('No se encontraron carritos almacenados');
+      }
+      const allCarts: Cart[] = JSON.parse(cartsData);
+      const cartIndex = allCarts.findIndex(c => c.id === cartId);
       
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
-      const cart = carts[cartIndex];
+      const cart = allCarts[cartIndex];
       cart.status = 'active';
       cart.hold_reason = undefined;
       cart.updated_at = new Date().toISOString();
 
       // Guardar carrito actualizado
-      carts[cartIndex] = cart;
-      this.saveCartsToStorage(carts);
+      allCarts[cartIndex] = cart;
+      this.saveCartsToStorage(allCarts);
 
       return cart;
     } catch (error) {
@@ -896,7 +902,7 @@ export class POSService {
           tax_total: cart.tax_total,
           discount_total: cart.discount_total,
           total: cart.total,
-          balance: cart.total - checkoutData.total_paid,
+          balance: Math.max(0, cart.total - checkoutData.total_paid),
           status: checkoutData.total_paid >= cart.total ? 'paid' : 'pending',
           payment_status: checkoutData.total_paid >= cart.total ? 'paid' : 'partial',
           sale_date: new Date().toISOString()
@@ -1522,6 +1528,210 @@ export class POSService {
       
     } catch (error) {
       console.error('Error en getInvoiceForCart:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Anular deuda con nota de crédito
+   * Crea una nota de crédito que anula la factura original y salda todos los balances
+   * @param cartId ID del carrito con deuda
+   * @returns Carrito actualizado y datos de la nota de crédito
+   */
+  static async cancelDebtWithCreditNote(cartId: string): Promise<{
+    cart: Cart;
+    creditNote: any;
+  }> {
+    try {
+      // 1. Obtener el carrito y verificar que tenga deuda
+      const cartsData = localStorage.getItem(`pos_carts_${this.organizationId}`);
+      if (!cartsData) {
+        throw new Error('No se encontraron carritos almacenados');
+      }
+      
+      const allCarts: Cart[] = JSON.parse(cartsData);
+      const cartIndex = allCarts.findIndex(c => c.id === cartId);
+      
+      if (cartIndex === -1) {
+        throw new Error('Carrito no encontrado');
+      }
+      
+      const cart = allCarts[cartIndex];
+      
+      if (cart.status !== 'hold_with_debt') {
+        throw new Error('El carrito no tiene deuda pendiente');
+      }
+
+      // 2. Obtener la venta asociada al carrito
+      // Primero necesitamos encontrar la venta por el customer y items del carrito
+      const { data: saleData, error: saleError } = await supabase
+        .from('sales')
+        .select('id')
+        .eq('customer_id', cart.customer_id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (saleError || !saleData) {
+        throw new Error('No se encontró la venta asociada al carrito');
+      }
+
+      // 3. Obtener la factura original asociada a la venta
+      let { data: originalInvoice, error: invoiceError } = await supabase
+        .from('invoice_sales')
+        .select('*')
+        .eq('sale_id', saleData.id)
+        .eq('document_type', 'invoice')
+        .single();
+
+      // Si no se encuentra con document_type 'invoice', buscar con document_type null
+      if (invoiceError || !originalInvoice) {
+        const { data: invoiceWithNullType, error: nullTypeError } = await supabase
+          .from('invoice_sales')
+          .select('*')
+          .eq('sale_id', saleData.id)
+          .is('document_type', null)
+          .single();
+          
+        if (nullTypeError || !invoiceWithNullType) {
+          throw new Error('No se encontró la factura original');
+        }
+        
+        originalInvoice = invoiceWithNullType;
+      }
+
+      // 4. Obtener los items de la factura original
+      const { data: originalItems, error: itemsError } = await supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_sales_id', originalInvoice.id);
+
+      if (itemsError) {
+        throw new Error('Error al obtener los items de la factura original');
+      }
+
+      // 5. Generar número de nota de crédito usando servicio centralizado
+      const creditNoteNumber = await CreditNoteNumberService.generateNextCreditNoteNumber(
+        String(this.organizationId)
+      );
+
+      // 6. Crear la nota de crédito
+      const currentDate = new Date().toISOString();
+      const { data: creditNoteData, error: creditNoteError } = await supabase
+        .from('invoice_sales')
+        .insert({
+          organization_id: this.organizationId,
+          branch_id: originalInvoice.branch_id,
+          customer_id: originalInvoice.customer_id,
+          sale_id: originalInvoice.sale_id,
+          number: creditNoteNumber,
+          issue_date: currentDate,
+          due_date: currentDate, // Misma fecha que issue_date para notas de crédito
+          currency: originalInvoice.currency,
+          subtotal: -originalInvoice.subtotal, // Valores negativos para anular
+          tax_total: -originalInvoice.tax_total,
+          total: -originalInvoice.total,
+          balance: 0, // La nota de crédito no tiene balance pendiente
+          status: 'issued',
+          document_type: 'credit_note',
+          related_invoice_id: originalInvoice.id,
+          tax_included: originalInvoice.tax_included,
+          payment_method: originalInvoice.payment_method || 'credit', // Usar método de pago original
+          description: `Nota de crédito por anulación de factura ${originalInvoice.number}`,
+          created_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .select()
+        .single();
+
+      if (creditNoteError) {
+        throw new Error('Error al crear la nota de crédito: ' + creditNoteError.message);
+      }
+
+      // 7. Crear los items de la nota de crédito (valores negativos)
+      const creditNoteItems = originalItems?.map(item => ({
+        invoice_id: creditNoteData.id, // invoice_id requerido
+        invoice_sales_id: creditNoteData.id,
+        invoice_type: 'sale', // invoice_type requerido
+        product_id: item.product_id,
+        description: item.description || 'Item de nota de crédito', // description requerido
+        qty: -item.qty, // qty (no quantity) - cantidad negativa
+        unit_price: item.unit_price,
+        total_line: -item.total_line, // total_line (no total) - total negativo
+        tax_rate: item.tax_rate || 0,
+        discount_amount: item.discount_amount ? -item.discount_amount : 0,
+        tax_included: item.tax_included || false
+      })) || [];
+
+      if (creditNoteItems.length > 0) {
+        const { error: itemsInsertError } = await supabase
+          .from('invoice_items')
+          .insert(creditNoteItems);
+
+        if (itemsInsertError) {
+          console.error('Error insertando items de nota de crédito:', itemsInsertError);
+          console.error('Datos enviados:', creditNoteItems);
+          throw new Error(`Error al crear los items de la nota de crédito: ${itemsInsertError.message}`);
+        }
+      }
+
+      // 8. Actualizar la factura original (balance a cero)
+      const { error: updateInvoiceError } = await supabase
+        .from('invoice_sales')
+        .update({
+          balance: 0,
+          status: 'paid', // Cambiamos a pagado porque se anuló con nota de crédito
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', originalInvoice.id);
+
+      if (updateInvoiceError) {
+        throw new Error('Error al actualizar la factura original');
+      }
+
+      // 9. Actualizar la venta original (balance a cero)
+      const { error: updateSaleError } = await supabase
+        .from('sales')
+        .update({
+          balance: 0,
+          status: 'paid',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', saleData.id);
+
+      if (updateSaleError) {
+        throw new Error('Error al actualizar la venta original');
+      }
+
+      // 10. Actualizar las cuentas por cobrar (balance a cero)
+      const { error: updateARError } = await supabase
+        .from('accounts_receivable')
+        .update({
+          balance: 0,
+          status: 'paid',
+          updated_at: new Date().toISOString()
+        })
+        .eq('invoice_id', originalInvoice.id);
+
+      if (updateARError) {
+        throw new Error('Error al actualizar las cuentas por cobrar');
+      }
+
+      // 11. Actualizar el carrito (cambiar estado a cancelled)
+      cart.status = 'cancelled';
+      cart.hold_reason = 'Deuda anulada con nota de crédito';
+      cart.updated_at = new Date().toISOString();
+      
+      allCarts[cartIndex] = cart;
+      this.saveCartsToStorage(allCarts);
+
+      return {
+        cart,
+        creditNote: creditNoteData
+      };
+      
+    } catch (error) {
+      console.error('Error al anular deuda con nota de crédito:', error);
       throw error;
     }
   }

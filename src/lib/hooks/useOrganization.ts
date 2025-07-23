@@ -277,8 +277,14 @@ export async function getMainBranch(organizationId: number) {
 // Función para obtener el branch_id actual desde localStorage
 export function getCurrentBranchId(): number {
   try {
+    // Verificar si localStorage está disponible (cliente)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      console.log('🏦 localStorage no disponible (SSR), usando branch_id por defecto: 2');
+      return 2; // Default: Sede Principal (ID: 2)
+    }
+    
     const branchId = localStorage.getItem('currentBranchId');
-    console.log('🏪 DEBUG getCurrentBranchId:', { branchId, parsed: branchId ? parseInt(branchId, 10) : null });
+    console.log('🏦 DEBUG getCurrentBranchId:', { branchId, parsed: branchId ? parseInt(branchId, 10) : null });
     return branchId ? parseInt(branchId, 10) : 2; // Default: Sede Principal (ID: 2)
   } catch (error) {
     console.error('Error obteniendo branch_id:', error);

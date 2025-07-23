@@ -221,8 +221,35 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
 
     setIsProcessing(true);
     try {
+      // Crear cart actualizado con totales calculados con impuestos
+      const updatedItems = cart.items.map(item => {
+        // Calcular proporción de impuestos para este item
+        const itemSubtotal = item.quantity * item.unit_price;
+        const taxProportion = calculatedTotals.subtotal > 0 
+          ? itemSubtotal / calculatedTotals.subtotal 
+          : 0;
+        const itemTaxAmount = calculatedTotals.totalTaxAmount * taxProportion;
+        const itemTaxRate = itemSubtotal > 0 ? (itemTaxAmount / itemSubtotal) * 100 : 0;
+
+        return {
+          ...item,
+          total: itemSubtotal + itemTaxAmount,
+          tax_amount: itemTaxAmount,
+          tax_rate: itemTaxRate
+        };
+      });
+
+      const updatedCart: Cart = {
+        ...cart,
+        items: updatedItems,
+        subtotal: calculatedTotals.subtotal,
+        tax_total: calculatedTotals.totalTaxAmount,
+        tax_amount: calculatedTotals.totalTaxAmount, // Alias for compatibility
+        total: calculatedTotals.finalTotal
+      };
+
       const checkoutData: CheckoutData = {
-        cart,
+        cart: updatedCart,
         payments: payments.map(p => ({ method: p.method, amount: p.amount })),
         change,
         total_paid: totalPaid,

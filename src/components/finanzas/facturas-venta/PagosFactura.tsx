@@ -8,9 +8,11 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { PlusCircle, AlertCircle } from 'lucide-react';
+import { RegistrarPagoDialog } from '@/components/finanzas/facturas-venta/id/RegistrarPagoDialog';
 
 interface PagosFacturaProps {
-  facturaId: number;
+  facturaId: string; // UUID
+  factura?: any; // Objeto de factura para determinar saldo
 }
 
 interface Pago {
@@ -23,12 +25,14 @@ interface Pago {
   status: string;
 }
 
-export function PagosFactura({ facturaId }: PagosFacturaProps) {
+export function PagosFactura({ facturaId, factura }: PagosFacturaProps) {
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalPagado, setTotalPagado] = useState(0);
   const [moneda, setMoneda] = useState('COP');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [facturaCompleta, setFacturaCompleta] = useState<any>(factura);
 
   useEffect(() => {
     if (facturaId) {
@@ -43,37 +47,44 @@ export function PagosFactura({ facturaId }: PagosFacturaProps) {
     try {
       const organizationId = getOrganizationId();
       
-      // Primero obtener la moneda de la factura
-      const { data: facturaData, error: facturaError } = await supabase
-        .from('invoice_sales')
-        .select('currency')
-        .eq('id', facturaId)
-        .eq('organization_id', organizationId)
-        .single();
-      
-      if (facturaError) throw facturaError;
-      if (facturaData?.currency) {
-        setMoneda(facturaData.currency);
+      // Primero obtener la información completa de la factura si no la tenemos
+      if (!facturaCompleta) {
+        const { data: facturaData, error: facturaError } = await supabase
+          .from('invoice_sales')
+          .select('*')
+          .eq('id', facturaId)
+          .eq('organization_id', organizationId)
+          .single();
+        
+        if (facturaError) throw facturaError;
+        setFacturaCompleta(facturaData);
+        if (facturaData?.currency) {
+          setMoneda(facturaData.currency);
+        }
+      } else {
+        // Usar la moneda de la factura que ya tenemos
+        if (facturaCompleta?.currency) {
+          setMoneda(facturaCompleta.currency);
+        }
       }
 
-      // Cargar los pagos asociados a esta factura
-      const { data: pagosData, error: pagosError } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('source', 'invoice_sales')
-        .eq('source_id', facturaId)
-        .order('created_at', { ascending: false });
+    // Cargar todos los pagos asociados a esta factura usando RPC
+    // Incluye tanto pagos directos como pagos a cuentas por cobrar vinculadas
+    const { data: pagosData, error: pagosError } = await supabase
+      .rpc('get_invoice_payments', {
+        target_invoice_id: facturaId,
+        org_id: organizationId
+      });
 
-      if (pagosError) throw pagosError;
+    if (pagosError) throw pagosError;
 
-      setPagos(pagosData || []);
+    setPagos(pagosData || []);
       
       // Calcular total pagado
       if (pagosData?.length > 0) {
         const total = pagosData
-          .filter(pago => pago.status === 'completed')
-          .reduce((sum, pago) => sum + (pago.amount || 0), 0);
+          .filter((pago: any) => pago.status === 'completed')
+          .reduce((sum: number, pago: any) => sum + (pago.amount || 0), 0);
         setTotalPagado(total);
       }
     } catch (err: any) {
@@ -122,14 +133,18 @@ export function PagosFactura({ facturaId }: PagosFacturaProps) {
         <h3 className="font-semibold text-gray-700 dark:text-gray-300">
           Pagos Asociados
         </h3>
-        <Button 
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2 dark:bg-gray-800 dark:border-gray-700"
-        >
-          <PlusCircle size={16} />
-          <span>Registrar Pago</span>
-        </Button>
+        {/* Solo mostrar el botón si hay saldo pendiente */}
+        {facturaCompleta && facturaCompleta.balance > 0 && (
+          <Button 
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2 dark:bg-gray-800 dark:border-gray-700"
+            onClick={() => setDialogOpen(true)}
+          >
+            <PlusCircle size={16} />
+            <span>Registrar Pago</span>
+          </Button>
+        )}
       </div>
 
       {/* Mostrar total pagado */}
@@ -191,6 +206,24 @@ export function PagosFactura({ facturaId }: PagosFacturaProps) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Diálogo para registrar pago */}
+      {facturaCompleta && (
+        <RegistrarPagoDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          factura={{
+            ...facturaCompleta,
+            number: facturaCompleta.number,
+            total: facturaCompleta.total,
+            balance: facturaCompleta.balance
+          }}
+          onSuccess={() => {
+            setDialogOpen(false);
+            cargarPagos(); // Recargar los pagos después de registrar uno nuevo
+          }}
+        />
       )}
     </div>
   );

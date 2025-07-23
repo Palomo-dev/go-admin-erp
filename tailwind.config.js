@@ -9,6 +9,9 @@ module.exports = {
   darkMode: 'class',
   theme: {
     extend: {
+      screens: {
+        'xs': '475px',  // Extra small breakpoint for better mobile responsiveness
+      },
       colors: {
         primary: {
           DEFAULT: '#0070f3',

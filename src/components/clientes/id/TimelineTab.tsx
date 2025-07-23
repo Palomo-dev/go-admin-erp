@@ -10,10 +10,13 @@ interface TimelineItem {
   type: 'sale' | 'reservation' | 'activity';
   date: Date;
   title: string;
-  description?: string;
-  amount?: number;
+  description: string;
   icon: React.ReactNode;
+  amount?: number;
   status?: string;
+  paymentStatus?: string;
+  originalStatus?: string;
+  originalPaymentStatus?: string;
 }
 
 interface TimelineTabProps {
@@ -30,6 +33,23 @@ const formatDate = (date: Date): string => {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date);
+};
+
+// Función para traducir estados de pago
+const traducirEstadoPago = (estado: string | undefined): string => {
+  if (!estado) return 'N/A';
+  
+  const traducciones: Record<string, string> = {
+    'paid': 'Pagado',
+    'partial': 'Parcial',
+    'pending': 'Pendiente',
+    'refunded': 'Reembolsado',
+    'complete': 'Completado',
+    'scheduled': 'Programado',
+    'cancelled': 'Cancelado'
+  };
+
+  return traducciones[estado.toLowerCase()] || estado;
 };
 
 export default function TimelineTab({ clienteId, organizationId }: TimelineTabProps) {
@@ -78,14 +98,18 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
             type: 'sale' as const,
             date: new Date(sale.sale_date),
             title: `Venta #${sale.id}`,
-            description: `Estado: ${sale.status || 'N/A'} | Pago: ${sale.payment_status || 'N/A'}`,
+            description: `Estado: ${traducirEstadoPago(sale.status)} | Pago: ${traducirEstadoPago(sale.payment_status)}`,
+            // Original values for coloring
+            originalStatus: sale.status,
+            originalPaymentStatus: sale.payment_status,
             amount: parseFloat(sale.total) || 0,
             icon: (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
               </svg>
             ),
-            status: sale.status
+            status: traducirEstadoPago(sale.status),
+            paymentStatus: traducirEstadoPago(sale.payment_status)
           })),
           
           // Transformar reservas
@@ -100,7 +124,7 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
                 <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
               </svg>
             ),
-            status: reservation.status as string
+            status: traducirEstadoPago(reservation.status as string)
           })),
           
           // Transformar actividades
@@ -237,11 +261,24 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
                     {item.status && (
                       <div className="mt-2">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
-                          ${item.status.toLowerCase().includes('complete') ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-500' : 
-                            item.status.toLowerCase().includes('pending') ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-500' : 
+                          ${(item.originalStatus || '').toLowerCase().includes('complete') ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-500' : 
+                            (item.originalStatus || '').toLowerCase().includes('pending') ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-500' : 
                               'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-500'}`}
                         >
-                          {item.status}
+                          Estado: {item.status}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {item.paymentStatus && item.type === 'sale' && (
+                      <div className="mt-2">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
+                          ${(item.originalPaymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-500' : 
+                            (item.originalPaymentStatus || '').toLowerCase() === 'partial' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-500' :
+                            (item.originalPaymentStatus || '').toLowerCase() === 'refunded' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-500' :
+                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-500'}`}
+                        >
+                          Pago: {item.paymentStatus}
                         </span>
                       </div>
                     )}

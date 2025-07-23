@@ -139,10 +139,19 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-xl">Facturas Próximas a Vencer</CardTitle>
-        <CardDescription>
-          Facturas que vencerán en los próximos {diasLimite} días
-        </CardDescription>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-xl">Facturas Próximas a Vencer</CardTitle>
+            <CardDescription>
+              Facturas que vencerán en los próximos {diasLimite} días
+            </CardDescription>
+          </div>
+          {facturas.length > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {facturas.length} factura{facturas.length !== 1 ? 's' : ''}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -158,48 +167,50 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
             No hay facturas próximas a vencer en los siguientes {diasLimite} días.
           </div>
         ) : (
-          <div className="space-y-3">
-            {facturas.map((factura) => (
-              <div 
-                key={factura.id} 
-                className="p-3 border rounded-md flex justify-between items-center hover:bg-muted/30 transition-colors"
-              >
-                <div>
-                  <div className="font-medium">{factura.number}</div>
-                  <div className="text-sm text-muted-foreground">{factura.customer_name}</div>
-                  <div className="text-sm mt-1">
-                    Vence: {format(new Date(factura.due_date), "d 'de' MMMM, yyyy", { locale: es })}
+          <div className="max-h-96 overflow-y-auto pr-2">
+            <div className="space-y-3">
+              {facturas.map((factura) => (
+                <div 
+                  key={factura.id} 
+                  className="p-3 border rounded-md flex justify-between items-center hover:bg-muted/30 transition-colors"
+                >
+                  <div>
+                    <div className="font-medium">{factura.number}</div>
+                    <div className="text-sm text-muted-foreground">{factura.customer_name}</div>
+                    <div className="text-sm mt-1">
+                      Vence: {format(new Date(factura.due_date), "d 'de' MMMM, yyyy", { locale: es })}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end space-y-2">
+                    <div className="text-right font-medium">
+                      {new Intl.NumberFormat('es-CO', { 
+                        style: 'currency', 
+                        currency: 'COP',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }).format(factura.balance)}
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={`flex items-center ${obtenerColorPorDias(factura.dias_restantes)}`}
+                    >
+                      {obtenerIconoPorDias(factura.dias_restantes)}
+                      {factura.dias_restantes === 0 
+                        ? 'Vence hoy' 
+                        : `${factura.dias_restantes} día${factura.dias_restantes !== 1 ? 's' : ''}`}
+                    </Badge>
+                    <Link 
+                      href={`/org/finanzas/facturas-venta/${factura.id}`} 
+                      passHref
+                    >
+                      <Button variant="ghost" size="sm" className="text-xs">
+                        Ver factura
+                      </Button>
+                    </Link>
                   </div>
                 </div>
-                <div className="flex flex-col items-end space-y-2">
-                  <div className="text-right font-medium">
-                    {new Intl.NumberFormat('es-CO', { 
-                      style: 'currency', 
-                      currency: 'COP',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0
-                    }).format(factura.balance)}
-                  </div>
-                  <Badge 
-                    variant="outline" 
-                    className={`flex items-center ${obtenerColorPorDias(factura.dias_restantes)}`}
-                  >
-                    {obtenerIconoPorDias(factura.dias_restantes)}
-                    {factura.dias_restantes === 0 
-                      ? 'Vence hoy' 
-                      : `${factura.dias_restantes} día${factura.dias_restantes !== 1 ? 's' : ''}`}
-                  </Badge>
-                  <Link 
-                    href={`/org/finanzas/facturas-venta/${factura.id}`} 
-                    passHref
-                  >
-                    <Button variant="ghost" size="sm" className="text-xs">
-                      Ver factura
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </CardContent>

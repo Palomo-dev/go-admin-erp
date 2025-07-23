@@ -37,6 +37,8 @@ import AccountMappingForm from "@/components/finanzas/metodos-pago/AccountMappin
 interface PaymentMethodFormProps {
   organizationId: number;
   globalMethods: PaymentMethod[];
+  recommendedMethods?: any[]; // Agregar métodos recomendados
+  countryCode?: string | null;
   selectedMethod: OrganizationPaymentMethod | null;
   onSaveComplete: () => void;
   onCancel: () => void;
@@ -73,6 +75,8 @@ interface FormValues {
 export default function PaymentMethodForm({
   organizationId,
   globalMethods,
+  recommendedMethods = [],
+  countryCode,
   selectedMethod,
   onSaveComplete,
   onCancel
@@ -130,21 +134,36 @@ export default function PaymentMethodForm({
       console.log("Método encontrado:", method);
       
       if (method) {
-        // Reiniciar el formulario con todos los valores predeterminados
+        // Buscar si es un método recomendado para aplicar configuración especial
+        const recommendedMethod = recommendedMethods.find(rec => rec.code === code);
+        
+        // Configurar gateway por defecto
+        let defaultGateway = "none";
+        let recommendedConfig = {};
+        
+        if (recommendedMethod && recommendedMethod.settings) {
+          // Si es recomendado y tiene configuración, aplicarla
+          if (recommendedMethod.settings.gateway && typeof recommendedMethod.settings.gateway === 'string') {
+            defaultGateway = recommendedMethod.settings.gateway;
+          }
+          recommendedConfig = recommendedMethod.settings.gateway_config || {};
+        }
+        
+        // Reiniciar el formulario con valores predeterminados
         form.reset({
           payment_method_code: method.code,
           name: method.name,
           code: method.code,
           requires_reference: method.requires_reference,
-          is_active: true, // Por defecto activado
-          gateway: "none", // Usamos "none" en lugar de cadena vacía para evitar errores con SelectItem
+          is_active: true,
+          gateway: defaultGateway,
         });
         
         // Configurar los estados iniciales para settings
-        setGatewayConfig({});
+        setGatewayConfig(recommendedConfig);
         setAccountMapping({});
         
-        console.log("Formulario reiniciado con valores predeterminados para:", method.name);
+        console.log("Formulario configurado para:", method.name, recommendedMethod ? "(Método recomendado)" : "(Método estándar)");
       }
     }
   };
@@ -394,11 +413,41 @@ export default function PaymentMethodForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {globalMethods.map((method) => (
-                      <SelectItem key={method.code} value={method.code}>
-                        {method.name} {method.is_system && "(Sistema)"}
-                      </SelectItem>
-                    ))}
+                    {/* Métodos Recomendados */}
+                    {recommendedMethods.length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border-b">
+                          ★ Recomendados {countryCode && `para ${countryCode}`}
+                        </div>
+                        {recommendedMethods.map((method) => {
+                          const globalMethod = globalMethods.find(gm => gm.code === method.code);
+                          return globalMethod ? (
+                            <SelectItem 
+                              key={method.code} 
+                              value={method.code}
+                              className="bg-blue-50/50 border-l-2 border-l-blue-400"
+                            >
+                              ★ {method.name}
+                              {method.settings && Object.keys(method.settings).length > 0 && (
+                                <span className="ml-2 text-xs text-blue-600">(Pre-configurado)</span>
+                              )}
+                            </SelectItem>
+                          ) : null;
+                        })}
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 border-b">
+                          Otros métodos disponibles
+                        </div>
+                      </>
+                    )}
+                    {/* Métodos restantes (no recomendados) */}
+                    {globalMethods
+                      .filter(method => !recommendedMethods.some(rec => rec.code === method.code))
+                      .map((method) => (
+                        <SelectItem key={method.code} value={method.code}>
+                          {method.name} {method.is_system && "(Sistema)"}
+                        </SelectItem>
+                      ))
+                    }
                     <SelectItem value="new">+ Crear nuevo método</SelectItem>
                   </SelectContent>
                 </Select>
@@ -410,6 +459,7 @@ export default function PaymentMethodForm({
             )}
           />
         )}
+        
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="grid grid-cols-3 mb-4">

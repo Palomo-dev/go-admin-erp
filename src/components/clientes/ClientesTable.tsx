@@ -25,6 +25,10 @@ interface Customer {
   is_active?: boolean;
   last_purchase_date?: string;
   balance?: number;
+  days_overdue?: number;
+  ar_status?: string | null;
+  sales_count?: number;
+  total_sales?: number;
 }
 
 interface ClientesTableProps {
@@ -61,6 +65,22 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
       minimumFractionDigits: 0,
     }).format(amount);
   };
+  
+  // Función para obtener clase de estado de cuenta por cobrar
+  const getARStatusClass = (status: string | null | undefined, days: number | undefined) => {
+    if (status === 'overdue' || (days && days > 30)) return 'text-red-600 dark:text-red-400';
+    if (status === 'partial') return 'text-orange-600 dark:text-orange-400';
+    if (status === 'pending' || (days && days > 0)) return 'text-amber-600 dark:text-amber-400';
+    return 'text-green-600 dark:text-green-400';
+  };
+  
+  // Función para mostrar etiqueta de estado
+  const getARStatusLabel = (status: string | null | undefined, days: number | undefined) => {
+    if (status === 'overdue' || (days && days > 30)) return 'Vencida';
+    if (status === 'partial') return 'Pago parcial';
+    if (status === 'pending' || (days && days > 0)) return 'Pendiente';
+    return 'Al día';
+  };
 
   // Calcular información de paginación
   const totalPages = Math.ceil(count / pageSize);
@@ -84,9 +104,10 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                   <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Cliente</th>
                   <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Contacto</th>
                   <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 hidden md:table-cell">Documento</th>
-                  <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 hidden lg:table-cell">Ciudad</th>
-                  <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 hidden md:table-cell">Etiquetas</th>
-                  <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Saldo CxC</th>
+                  <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 hidden xl:table-cell">Ciudad</th>
+                  <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 hidden lg:table-cell">Etiquetas</th>
+                  <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">Cuentas por Cobrar</th>
+                  <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 hidden md:table-cell">Ventas</th>
                   <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 hidden lg:table-cell">Última compra</th>
                   <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-right">Acciones</th>
                 </tr>
@@ -140,7 +161,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
+                    <td className="px-4 py-3 hidden xl:table-cell">
                       {customer.city ? (
                         <span className="text-sm text-gray-500 dark:text-gray-400">
                           {customer.city}
@@ -151,7 +172,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
+                    <td className="px-4 py-3 hidden lg:table-cell">
                       <div className="flex flex-wrap gap-1">
                         {customer.tags?.length ? (
                           customer.tags.slice(0, 2).map(tag => (
@@ -179,9 +200,32 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-sm ${(customer.balance || 0) > 0 ? 'text-red-600 font-medium dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                        {formatCurrency(customer.balance || 0)}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className={`text-sm font-medium ${getARStatusClass(customer.ar_status, customer.days_overdue)}`}>
+                          {formatCurrency(Number(customer.balance || 0))}
+                        </span>
+                        {(customer.balance || 0) > 0 && (
+                          <div className="flex items-center mt-1">
+                            <Badge 
+                              variant={customer.days_overdue && customer.days_overdue > 30 ? "destructive" : customer.days_overdue && customer.days_overdue > 0 ? "outline" : "secondary"}
+                              className="text-xs"
+                            >
+                              {getARStatusLabel(customer.ar_status, customer.days_overdue)}
+                              {customer.days_overdue ? ` ${customer.days_overdue}d` : ''}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {formatCurrency(Number(customer.total_sales || 0))}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {Number(customer.sales_count || 0)} {Number(customer.sales_count) === 1 ? 'compra' : 'compras'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
                       <span className="text-sm text-gray-500 dark:text-gray-400">

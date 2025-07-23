@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { ClienteSelector } from './ClienteSelector';
 import { ItemsFactura } from './ItemsFactura';
 import { ImpuestosFactura } from './ImpuestosFactura';
@@ -66,7 +67,7 @@ export function NuevaFacturaForm() {
   // Estados para el formulario
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [branchId, setBranchId] = useState<number>(1); // Por defecto usamos la sucursal principal (ID 1)
+  const [branchId, setBranchId] = useState<number>(getCurrentBranchId()); // Usar branch_id actual del selector
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [isDuplicateNumber, setIsDuplicateNumber] = useState<boolean>(false);
   const [isValidatingNumber, setIsValidatingNumber] = useState<boolean>(false);
@@ -148,32 +149,7 @@ export function NuevaFacturaForm() {
   // Función para generar número de factura
   const generateInvoiceNumber = async () => {
     try {
-      // Consultar el número más alto de factura para la organización
-      const { data, error } = await supabase
-        .from('invoice_sales')
-        .select('number')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-        
-      if (error) throw error;
-      
-      let nextNumber = 1;
-      
-      // Si hay facturas existentes, incrementar el número
-      if (data && data.length > 0) {
-        const lastNumber = data[0].number;
-        // Extraer el número si tiene formato como 'FACT-0001'
-        const match = lastNumber.match(/(\d+)$/);
-        if (match) {
-          nextNumber = parseInt(match[1], 10) + 1;
-        } else if (!isNaN(parseInt(lastNumber, 10))) {
-          nextNumber = parseInt(lastNumber, 10) + 1;
-        }
-      }
-      
-      // Formatear el número con ceros a la izquierda
-      const formattedNumber = `FACT-${nextNumber.toString().padStart(4, '0')}`;
+      const formattedNumber = await generateInvoiceNumberUtil(organizationId, 'FACT');
       setInvoiceNumber(formattedNumber);
       setIsDuplicateNumber(false); // Resetear el estado de duplicado al generar un nuevo número
     } catch (error) {
@@ -204,8 +180,7 @@ export function NuevaFacturaForm() {
     }
     
     // Obtener el ID del usuario actual
-    const { data: { session } } = await supabase.auth.getSession();
-    const currentUserId = session?.user?.id;
+    const currentUserId = await getCurrentUserId();
     
     if (!currentUserId) {
       toast({

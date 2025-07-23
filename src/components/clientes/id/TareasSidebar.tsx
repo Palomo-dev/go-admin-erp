@@ -15,6 +15,8 @@ interface Tarea {
   priority: string;
   assigned_to: string | null;
   assigned_name?: string;
+  customer_id: string | null;
+  parent_task_id: string | null;
 }
 
 interface TareasSidebarProps {
@@ -26,6 +28,8 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tareas, setTareas] = useState<Tarea[]>([]);
+  const [tareasPendientes, setTareasPendientes] = useState<Tarea[]>([]);
+  const [tareasCompletadas, setTareasCompletadas] = useState<Tarea[]>([]);
   const [users, setUsers] = useState<{[key: string]: any}>({});
   
   useEffect(() => {
@@ -34,26 +38,34 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
         setLoading(true);
         setError(null);
         
-        // Obtener tareas relacionadas con el cliente
+        // Obtener todas las tareas relacionadas con el cliente usando customer_id
         const { data: tareasData, error: tareasError } = await supabase
           .from('tasks')
           .select('*')
-          .eq('related_type', 'customer')
-          .eq('related_id', clienteId)
+          .eq('customer_id', clienteId)
           .eq('organization_id', organizationId)
-          .in('status', ['pending', 'in_progress'])
           .order('due_date', { ascending: true })
           .order('priority', { ascending: false });
         
         if (tareasError) throw tareasError;
         
         if (tareasData) {
+          // Separar tareas por estado
+          const pendientes = tareasData.filter(task => 
+            ['pending', 'in_progress'].includes(task.status));
+          const completadas = tareasData.filter(task => 
+            ['completed', 'canceled'].includes(task.status));
+            
+          setTareasPendientes(pendientes);
+          setTareasCompletadas(completadas);
+          
           // Recolectar IDs de usuarios únicos para asignados
           const userIds = tareasData
             .map(task => task.assigned_to)
             .filter(id => id !== null) as string[];
           
-          const uniqueUserIds = [...new Set(userIds)];
+          // Usamos Array.from en lugar del spread operator para mayor compatibilidad
+          const uniqueUserIds = Array.from(new Set(userIds));
           
           // Obtener información de los usuarios asignados
           if (uniqueUserIds.length > 0) {
@@ -202,19 +214,20 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
 
   return (
     <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+      {/* Sección de tareas pendientes */}
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-medium text-lg text-gray-900 dark:text-white">
           Tareas Pendientes
         </h3>
         <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-          {tareas.length}
+          {tareasPendientes.length}
         </span>
       </div>
 
-      {tareas.length === 0 ? (
-        <div className="text-center py-8">
-          <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 mx-auto flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      {tareasPendientes.length === 0 ? (
+        <div className="text-center py-4">
+          <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 mx-auto flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
@@ -223,8 +236,8 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
           </p>
         </div>
       ) : (
-        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-          {tareas.map(tarea => (
+        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 mb-6">
+          {tareasPendientes.map(tarea => (
             <div 
               key={tarea.id} 
               className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
@@ -273,14 +286,58 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
               </div>
             </div>
           ))}
-          
-          <div className="pt-2 flex justify-center">
-            <a href="/app/tareas" className="text-xs text-primary hover:underline">
-              Ver todas las tareas
-            </a>
-          </div>
         </div>
       )}
+
+      {/* Sección de tareas completadas/canceladas */}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-medium text-lg text-gray-900 dark:text-white">
+          Tareas Finalizadas
+        </h3>
+        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+          {tareasCompletadas.length}
+        </span>
+      </div>
+
+      {tareasCompletadas.length === 0 ? (
+        <div className="text-center py-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No hay tareas finalizadas para este cliente
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
+          {tareasCompletadas.map(tarea => (
+            <div 
+              key={tarea.id} 
+              className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition opacity-75"
+            >
+              <div className="flex items-start gap-2">
+                <div className="mt-0.5 text-gray-500 dark:text-gray-400">
+                  {getStatusIcon(tarea.status)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-gray-600 dark:text-gray-300 text-sm truncate">
+                    {tarea.title}
+                  </h4>
+                  
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                      {getStatusText(tarea.status)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      <div className="pt-4 flex justify-center border-t border-gray-100 dark:border-gray-700 mt-4">
+        <a href="/app/tareas" className="text-xs text-primary hover:underline">
+          Ver todas las tareas
+        </a>
+      </div>
     </div>
   );
 }

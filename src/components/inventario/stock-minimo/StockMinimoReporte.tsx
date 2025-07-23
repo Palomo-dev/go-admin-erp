@@ -3,13 +3,19 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { StockMinimoHeader } from './';
-import { ProductosBajoUmbralTable } from './';
-import { ConfiguracionUmbralModal } from './';
-import { OrdenesCompraModal } from './';
-import { NotificacionesModal } from './';
+import { 
+  StockMinimoHeader,
+  ProductosBajoUmbralTable,
+  ConfiguracionUmbralModal,
+  OrdenesCompraModal,
+  NotificacionesModal
+} from './';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+
+
+
 
 // Interfaz para los productos bajo umbral
 export interface ProductoBajoUmbral {
@@ -57,30 +63,66 @@ export default function StockMinimoReporte() {
         setLoading(true);
         setError(null);
         
-        // Consulta para obtener productos bajo umbral
-        const { data, error } = await supabase.rpc('get_products_below_min_level', { 
-          p_organization_id: orgId 
-        });
+        // Consulta para obtener productos con umbral definido
+        const { data, error } = await supabase
+          .from('stock_levels')
+          .select(`
+            id,
+            product_id,
+            branch_id,
+            qty_on_hand,
+            min_level,
+            products (
+              id,
+              sku,
+              name,
+              organization_id
+            ),
+            branches (
+              id,
+              name
+            )
+          `)
+          .eq('products.organization_id', orgId)
+          .gt('min_level', 0);
         
         if (error) {
           console.error('Error al cargar productos bajo umbral:', error);
           setError('Error al cargar productos bajo umbral. Por favor intente nuevamente.');
         } else {
-          // Formatear datos
-          const formattedData = data.map((item: any) => ({
-            id: item.id,
-            product_id: item.product_id,
-            sku: item.sku || 'N/A',
-            name: item.name,
-            branch_id: item.branch_id,
-            branch_name: item.branch_name,
-            qty_on_hand: parseFloat(item.qty_on_hand) || 0,
-            min_level: parseFloat(item.min_level) || 0,
-            diferencia: parseFloat(item.min_level) - parseFloat(item.qty_on_hand),
-            supplier_id: item.supplier_id,
-            supplier_name: item.supplier_name,
-            last_cost: parseFloat(item.last_cost) || 0
-          }));
+          // Filtrar y formatear datos (solo productos bajo umbral)
+          const formattedData = (data || [])
+            .filter((item: unknown) => {
+              const stockItem = item as { qty_on_hand: number; min_level: number };
+              const qtyOnHand = Number(stockItem.qty_on_hand) || 0;
+              const minLevel = Number(stockItem.min_level) || 0;
+              return qtyOnHand < minLevel; // Filtrar productos bajo umbral
+            })
+            .map((item: unknown) => {
+              const stockItem = item as {
+                id: number;
+                product_id: number;
+                branch_id: number;
+                qty_on_hand: number;
+                min_level: number;
+                products?: { sku?: string; name?: string };
+                branches?: { name?: string };
+              };
+              return {
+                id: stockItem.id,
+                product_id: stockItem.product_id,
+                sku: stockItem.products?.sku || 'N/A',
+                name: stockItem.products?.name || 'Sin nombre',
+                branch_id: stockItem.branch_id,
+                branch_name: stockItem.branches?.name || 'Sin sucursal',
+                qty_on_hand: Number(stockItem.qty_on_hand) || 0,
+                min_level: Number(stockItem.min_level) || 0,
+                diferencia: Number(stockItem.min_level) - Number(stockItem.qty_on_hand),
+                supplier_id: undefined, // Campo no disponible en DB
+                supplier_name: undefined, // Campo no disponible en DB
+                last_cost: 0 // Campo no disponible en DB
+              };
+            });
           
           setProductos(formattedData);
         }

@@ -2,7 +2,6 @@
 
 import { Button } from '@/components/ui/button';
 import { 
-  ChartBarIcon, 
   BellIcon, 
   ShoppingCartIcon,
   Cog6ToothIcon
@@ -10,10 +9,10 @@ import {
 import type { ProductoBajoUmbral } from './StockMinimoReporte';
 
 interface StockMinimoHeaderProps {
-  onConfigClick: () => void;
-  onGenerarOCClick: () => void;
-  onNotificacionesClick: () => void;
-  selectedProducts: ProductoBajoUmbral[];
+  readonly onConfigClick: () => void;
+  readonly onGenerarOCClick: () => void;
+  readonly onNotificacionesClick: () => void;
+  readonly selectedProducts: ProductoBajoUmbral[];
 }
 
 /**

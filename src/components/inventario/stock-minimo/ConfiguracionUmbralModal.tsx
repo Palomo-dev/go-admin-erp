@@ -25,8 +25,8 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 interface ConfiguracionUmbralModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
 }
 
 interface ProductoItem {
@@ -72,21 +72,28 @@ export default function ConfiguracionUmbralModal({
           return;
         }
         
-        // Formatear datos
-        const formattedProducts = data.map((item: any) => ({
+        // Formatear datos  
+        const formattedProducts = data.map((item: {
+          product_id: number;
+          sku: string;
+          name: string;
+          branch_id: number;
+          branch_name: string;
+          min_level: number;
+        }) => ({
           id: item.product_id,
           sku: item.sku || 'N/A',
           name: item.name,
           branch_id: item.branch_id,
           branch_name: item.branch_name,
-          min_level: parseFloat(item.min_level) || 0
+          min_level: parseFloat(item.min_level.toString()) || 0
         }));
         
         setProductos(formattedProducts);
         
         // Inicializar valores de umbral
         const initialValues: Record<string, number> = {};
-        formattedProducts.forEach(producto => {
+        formattedProducts.forEach((producto: ProductoItem) => {
           initialValues[`${producto.id}-${producto.branch_id}`] = producto.min_level;
         });
         
@@ -139,8 +146,11 @@ export default function ConfiguracionUmbralModal({
       
       if (error) {
         console.error('Error al guardar umbrales:', error);
+        alert('Error al guardar la configuración. Por favor intente nuevamente.');
         return;
       }
+      
+      alert('Configuración de stock mínimo guardada exitosamente.');
       
       onOpenChange(false);
     } catch (err) {
@@ -201,8 +211,8 @@ export default function ConfiguracionUmbralModal({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredProductos.map((producto) => (
-                      <TableRow key={`${producto.id}-${producto.branch_id}`}>
+                    filteredProductos.map((producto, index) => (
+                      <TableRow key={`${producto.id}-${producto.branch_id || 'no-branch'}-${index}`}>
                         <TableCell className="font-mono text-sm">{producto.sku}</TableCell>
                         <TableCell className="font-medium">{producto.name}</TableCell>
                         <TableCell>{producto.branch_name}</TableCell>
@@ -228,15 +238,15 @@ export default function ConfiguracionUmbralModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             disabled={saving}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {saving ? (
               <>
-                <span className="animate-spin inline-block h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full"></span>
-                Guardando...
+                <span className="animate-spin inline-block h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full" />
+                {' '}Guardando...
               </>
             ) : (
               'Guardar cambios'

@@ -55,32 +55,28 @@ export default function ChangePlanModal({
     try {
       setLoading(true);
       setError(null);
+      setSuccess(null);
       
-      // Mapear el ID del plan seleccionado a un nombre legible
-      const planName = selectedPlan === 'free' ? 'Gratis' : 
-                      selectedPlan === 'basic' ? 'Básico' : 
-                      selectedPlan === 'pro' ? 'Profesional' : 'Gratis';
+      // Call the plan change API
+      const response = await fetch('/api/subscriptions/change-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          organizationId,
+          newPlanCode: selectedPlan.replace('-yearly', ''),
+          billingPeriod,
+        }),
+      });
       
-      // Simular un ID de plan basado en el nombre (en una implementación real, esto vendría de la base de datos)
-      const planId = selectedPlan === 'free' ? 1 : 
-                   selectedPlan === 'basic' ? 2 : 
-                   selectedPlan === 'pro' ? 3 : 1;
+      const result = await response.json();
       
-      // Update the organization's plan
-      const { error: updateError } = await supabase
-        .from('organizations')
-        .update({ 
-          plan_id: {
-            id: planId,
-            name: planName
-          },
-          billing_period: billingPeriod
-        })
-        .eq('id', organizationId);
-        
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al cambiar el plan');
+      }
       
-      setSuccess(`Plan actualizado correctamente a ${planName} (${billingPeriod === 'monthly' ? 'Mensual' : 'Anual'}).`);
+      setSuccess(`Plan actualizado correctamente. ${result.message || ''}`);
       
       // Notify parent component that plan was changed
       setTimeout(() => {

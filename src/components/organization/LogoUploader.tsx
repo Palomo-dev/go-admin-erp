@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import Image from 'next/image';
 import { supabase } from '@/lib/supabase/config';
+import { uploadFileToStorage, deleteFileFromStorage } from '@/lib/utils/storage';
+import StorageImage from '@/components/ui/StorageImage';
 
 interface LogoUploaderProps {
   organizationId?: string;
@@ -53,22 +54,12 @@ export default function LogoUploader({
         ? `organizations/${organizationId}/logo_${fileName}`
         : `organizations/temp/logo_${fileName}`;
 
-      // Upload to Supabase Storage
-      const { data, error: uploadError } = await supabase.storage
-        .from('logos')
-        .upload(filePath, file);
+      // Upload to Supabase Storage using utility function
+      const uploadedPath = await uploadFileToStorage(file, filePath, 'logos');
 
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('logos')
-        .getPublicUrl(filePath);
-
-      setLogo(publicUrl);
-      onLogoChange(publicUrl);
+      // Use storage path instead of public URL
+      setLogo(uploadedPath);
+      onLogoChange(uploadedPath);
     } catch (err: any) {
       console.error('Error uploading logo:', err);
       setError('Error al subir la imagen. Intenta nuevamente.');
@@ -81,7 +72,17 @@ export default function LogoUploader({
     fileInputRef.current?.click();
   };
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
+    try {
+      // If there's a logo and it's a storage path (not a URL), delete from storage
+      if (logo && !logo.startsWith('http')) {
+        await deleteFileFromStorage(logo, 'logos');
+      }
+    } catch (err: any) {
+      console.error('Error deleting logo from storage:', err);
+      // Continue with local removal even if storage deletion fails
+    }
+    
     setLogo(null);
     onLogoChange(null);
     if (fileInputRef.current) {
@@ -99,12 +100,13 @@ export default function LogoUploader({
       >
         {logo ? (
           <div className="relative w-32 h-32 rounded-full border-2 border-gray-200 overflow-hidden">
-            <Image 
+            <StorageImage 
               src={logo} 
               alt="Logo de la organización" 
               fill 
               style={{ objectFit: 'cover' }}
               className="rounded-full"
+              bucketName="logos"
             />
             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center">
               <span className="text-white opacity-0 group-hover:opacity-100">Cambiar</span>

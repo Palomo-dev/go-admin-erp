@@ -9,6 +9,7 @@ type BranchFormProps = {
   submitLabel?: string;
   hideSubmitButton?: boolean;
   noFormWrapper?: boolean;
+  hideStatusSection?: boolean; // Hide Estado section (for signup flow)
 };
 
 export interface BranchFormRef {
@@ -42,6 +43,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     submitLabel = 'Guardar Sucursal',
     hideSubmitButton = false,
     noFormWrapper = false,
+    hideStatusSection = false,
   },
   ref
 ) => {
@@ -84,7 +86,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     email: initialData.email || '',
     manager_id: initialData.manager_id || '',
     status: initialData.status || 'active',
-    is_main: initialData.is_main || false,
+    is_main: hideStatusSection ? true : (initialData.is_main || false), // Force true during signup
     tax_identification: initialData.tax_identification || '',
     opening_hours: initialData.opening_hours ? JSON.stringify(initialData.opening_hours, null, 2) : defaultOpeningHours,
     features: initialData.features ? JSON.stringify(initialData.features, null, 2) : defaultFeatures,
@@ -92,7 +94,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     branch_type: initialData.branch_type || '',
     zone: initialData.zone || '',
     branch_code: initialData.branch_code || '',
-    is_active: initialData.is_active ?? true,
+    is_active: hideStatusSection ? true : (initialData.is_active ?? true), // Force true during signup
     metadata: initialData.metadata || {},
     organization_id: initialData.organization_id!,
   });
@@ -497,41 +499,43 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
         </div>
       </div>
 
-        {/* Estado */}
-        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm mb-8">
-          <div className="flex items-center gap-2 mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h3 className="text-lg font-semibold text-gray-800">Estado</h3>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
-          <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name="is_main"
-                checked={!!form.is_main}
-                onChange={handleChange}
-                className="checkbox checkbox-sm checkbox-primary"
-              />
-              <span className="text-sm font-medium">Sucursal principal</span>
-            </label>
+        {/* Estado - Hidden during signup */}
+        {!hideStatusSection && (
+          <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm mb-8">
+            <div className="flex items-center gap-2 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-800">Estado</h3>
           </div>
-          <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name="is_active"
-                checked={!!form.is_active}
-                onChange={handleChange}
-                className="checkbox checkbox-sm checkbox-primary"
-              />
-              <span className="text-sm font-medium">Sucursal activa</span>
-            </label>
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
+            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="is_main"
+                  checked={!!form.is_main}
+                  onChange={handleChange}
+                  className="checkbox checkbox-sm checkbox-primary"
+                />
+                <span className="text-sm font-medium">Sucursal principal</span>
+              </label>
+            </div>
+            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  checked={!!form.is_active}
+                  onChange={handleChange}
+                  className="checkbox checkbox-sm checkbox-primary"
+                />
+                <span className="text-sm font-medium">Sucursal activa</span>
+              </label>
+            </div>
           </div>
         </div>
-      </div>
+        )}
 
       {/* Error */}
       <div className="mt-6">

@@ -11,7 +11,7 @@ import Link from 'next/link';
 // Componentes para las diferentes secciones
 import DatosPersonalesSection from '../../../components/profile/DatosPersonalesSection';
 import SeguridadSection from '../../../components/profile/SeguridadSection';
-import SesionesSection from '../../../components/profile/SesionesSection';
+import { DeviceSessions } from '../../../components/profile/DeviceSessions';
 import OrganizacionDefaultSection from '../../../components/profile/OrganizacionDefaultSection';
 import NotificacionesSection from '../../../components/profile/NotificacionesSection';
 import RolesSection from '../../../components/profile/RolesSection';
@@ -33,13 +33,14 @@ interface Profile {
 }
 
 interface NotificationPreference {
-  id: string;
   user_id: string;
-  email_enabled: boolean;
-  push_enabled: boolean;
-  whatsapp_enabled: boolean;
-  do_not_disturb_start?: string;
-  do_not_disturb_end?: string;
+  channel?: string;
+  mute?: boolean;
+  allowed_types?: string[];
+  dnd_start?: string;
+  dnd_end?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface UserSession {
@@ -123,20 +124,47 @@ export default function PerfilUsuarioPage() {
         }
         
         // Obtener preferencias de notificación
-        const { data: notifData, error: notifError } = await supabase
-          .from('user_notification_preferences')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single();
-          
-        if (notifError && notifError.code !== 'PGRST116') { // No se encontró el registro
-          console.error('Error al obtener preferencias de notificación:', notifError);
-        } else {
-          setNotificationPrefs(notifData || {
+        try {
+          // Usamos la nueva función RPC para obtener preferencias
+          const { data: notifData, error: notifError } = await supabase.rpc('get_user_notification_preferences', {
+            p_user_id: session.user.id,
+            p_channel: 'email'
+          });
+            
+          if (!notifError && notifData) {
+            // La función RPC ya maneja el caso donde no existe el registro,
+            // devolviendo valores predeterminados
+            setNotificationPrefs({
+              user_id: notifData.user_id,
+              channel: notifData.channel,
+              mute: notifData.mute,
+              allowed_types: notifData.allowed_types,
+              dnd_start: notifData.dnd_start,
+              dnd_end: notifData.dnd_end,
+              created_at: notifData.created_at,
+              updated_at: notifData.updated_at
+            });
+            console.log('Preferencias de notificación cargadas correctamente:', notifData);
+          } else {
+            console.error('Error al obtener preferencias de notificación:', notifError);
+            // Usar valores predeterminados como último recurso
+            setNotificationPrefs({
+              user_id: session.user.id,
+              channel: 'email',
+              mute: false,
+              allowed_types: ['all'],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          }
+        } catch (err) {
+          console.error('Excepción al obtener preferencias de notificación:', err);
+          // Usar valores predeterminados en caso de excepción
+          setNotificationPrefs({
             user_id: session.user.id,
-            email_enabled: true,
-            push_enabled: false,
-            whatsapp_enabled: false
+            channel: 'email',
+            mute: false,
+            allowed_types: ['all']
           });
         }
         
@@ -145,7 +173,8 @@ export default function PerfilUsuarioPage() {
           .from('user_devices')
           .select('*')
           .eq('user_id', session.user.id)
-          .order('last_sign_in_at', { ascending: false });
+          .eq('is_active', true)
+          .order('last_active_at', { ascending: false });
           
         if (sessionsError) {
           console.error('Error al obtener sesiones:', sessionsError);
@@ -156,7 +185,7 @@ export default function PerfilUsuarioPage() {
             user_id: device.user_id,
             created_at: device.created_at || new Date().toISOString(),
             updated_at: device.updated_at || new Date().toISOString(),
-            last_sign_in_at: device.last_sign_in_at,
+            last_sign_in_at: device.last_active_at, // Usamos last_active_at
             is_current: device.is_current || false,
             user_agent: device.user_agent || '',
             ip: device.ip_address || '',
@@ -344,14 +373,12 @@ export default function PerfilUsuarioPage() {
           )}
           
           {currentSection === 'sesiones' && (
-            <SesionesSection 
-              user={user}
-              initialSessions={userSessions}
-            />
+            <DeviceSessions />
           )}
           
           {currentSection === 'organizacion-default' && (
             <OrganizacionDefaultSection 
+              user={user}
               profile={profile}
               organizations={organizations}
               onProfileUpdated={setProfile}
@@ -360,15 +387,56 @@ export default function PerfilUsuarioPage() {
           
           {currentSection === 'notificaciones' && (
             <NotificacionesSection 
-              preferences={notificationPrefs}
               user={user}
-              onPreferencesUpdated={setNotificationPrefs}
+              preferences={{
+                // Adaptamos los datos al formato que espera el componente
+                id: 'preferences', // ID genérico ya que no existe en la tabla
+                user_id: notificationPrefs?.user_id || (user?.id || ''),
+                email_enabled: notificationPrefs?.channel === 'email' && !notificationPrefs?.mute,
+                push_enabled: notificationPrefs?.channel === 'push' && !notificationPrefs?.mute,
+                whatsapp_enabled: notificationPrefs?.channel === 'whatsapp' && !notificationPrefs?.mute,
+                do_not_disturb_start: notificationPrefs?.dnd_start || '',
+                do_not_disturb_end: notificationPrefs?.dnd_end || '',
+                do_not_disturb_enabled: notificationPrefs?.dnd_start !== undefined && notificationPrefs?.dnd_end !== undefined,
+                created_at: notificationPrefs?.created_at || new Date().toISOString(),
+                updated_at: notificationPrefs?.updated_at || new Date().toISOString()
+              } as any}
+              onPreferencesUpdated={async (prefs: any) => {
+                try {
+                  // Determinamos el canal activo basado en las opciones seleccionadas
+                  const channel = prefs.email_enabled ? 'email' : prefs.push_enabled ? 'push' : 'whatsapp';
+                  const mute = !(prefs.email_enabled || prefs.push_enabled || prefs.whatsapp_enabled);
+                  
+                  // Guardamos usando la nueva función RPC
+                  const { data: savedPrefs, error } = await supabase.rpc('save_user_notification_preferences', {
+                    p_user_id: prefs.user_id,
+                    p_channel: channel,
+                    p_mute: mute,
+                    p_allowed_types: ['all'],
+                    p_dnd_start: prefs.do_not_disturb_enabled ? prefs.do_not_disturb_start : null,
+                    p_dnd_end: prefs.do_not_disturb_enabled ? prefs.do_not_disturb_end : null
+                  });
+                  
+                  if (error) {
+                    console.error('Error al guardar preferencias:', error);
+                    toast.error('No se pudieron guardar las preferencias de notificación');
+                  } else {
+                    console.log('Preferencias guardadas correctamente:', savedPrefs);
+                    setNotificationPrefs(savedPrefs);
+                    toast.success('Preferencias de notificación actualizadas');
+                  }
+                } catch (err) {
+                  console.error('Excepción al guardar preferencias:', err);
+                  toast.error('Error al procesar la actualización de preferencias');
+                }
+              }}
             />
           )}
           
           {currentSection === 'roles' && (
             <RolesSection 
-              roles={userRoles}
+              roles={userRoles as any}
+              user={user}
             />
           )}
           

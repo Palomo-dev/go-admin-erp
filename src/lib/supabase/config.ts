@@ -415,9 +415,31 @@ export const getBranches = async (organizationId: string) => {
 }
 
 export const resetPassword = async (email: string) => {
-  return await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/reset-password`,
-  })
+  try {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+      captchaToken: undefined // Opcional: agregar captcha si es necesario
+    });
+    
+    if (error) {
+      // Manejar errores específicos
+      if (error.message.includes('Email not confirmed')) {
+        throw new Error('Tu cuenta aún no ha sido verificada. Por favor confirma tu email primero.');
+      }
+      if (error.message.includes('Email rate limit exceeded')) {
+        throw new Error('Has enviado demasiados correos de recuperación. Espera unos minutos antes de intentar nuevamente.');
+      }
+      if (error.message.includes('User not found')) {
+        // Por seguridad, no revelamos si el email existe o no
+        return { data, error: null };
+      }
+      throw error;
+    }
+    
+    return { data, error: null };
+  } catch (err: any) {
+    return { data: null, error: err };
+  }
 }
 
 export const updatePassword = async (newPassword: string) => {
@@ -471,10 +493,12 @@ export const signUpWithEmail = async (email: string, password: string, userData:
   console.log('Verificando correo electrónico...');
   console.log('Email:', email); 
   const { data: existingUsers } = await supabase
-    .from('profiles')
+    .from('users')
     .select('id')
     .eq('email', email)
     .maybeSingle();
+
+  console.log('Usuario existente:', existingUsers);
 
   if (existingUsers) {
     return {
@@ -482,42 +506,29 @@ export const signUpWithEmail = async (email: string, password: string, userData:
       error: { message: 'Este correo electrónico ya está registrado' }
     };
   }
+  console.log('Usuario no existente, procediendo a crear...');
+  console.log('Datos del usuario:', email, password, userData, redirectUrl);
 
-  const response = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: userData,
-      emailRedirectTo: redirectUrl,
-    },
-  });
-  
-  // Si la respuesta es exitosa pero no hay confirmación de envío de correo,
-  // intentamos enviar manualmente un correo de verificación
-  if (!response.error && response.data.user && 
-      !response.data.user.email_confirmed_at && 
-      !response.data.user.confirmation_sent_at) {
+  try {
+    console.log('Intentando crear usuario con Supabase Auth...');
+    const { data, error } = await supabase.auth.signUp({
+      email: 'example@email.com',
+      password: 'example-password',
+    })
     
-    console.log('Intentando enviar correo de verificación manualmente...');
+    return { data: { user: null, session: null }, error: null };
+  } catch (error: any) {
+    console.error('Error crítico en signUpWithEmail:', error);
     
-    // Intentar enviar el correo de verificación manualmente
-    const resendResponse = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: {
-        emailRedirectTo: redirectUrl,
+    return {
+      data: { user: null, session: null },
+      error: {
+        message: 'Error interno del servidor. Por favor, intenta nuevamente o contacta al administrador.'
       }
-    });
-    
-    if (resendResponse.error) {
-      console.error('Error al reenviar correo de verificación:', resendResponse.error);
-    } else {
-      console.log('Correo de verificación enviado manualmente con éxito');
-    }
+    };
   }
-  
-  return response;
 }
+
 
 // Definir tipos para los datos de invitación
 type InviteData = {

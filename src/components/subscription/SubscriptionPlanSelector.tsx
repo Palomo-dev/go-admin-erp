@@ -50,36 +50,42 @@ export default function SubscriptionPlanSelector({
         const transformedPlans: SubscriptionPlan[] = [];
         
         data?.forEach(plan => {
+          console.log('Processing database plan:', plan);
+          
           // Monthly plan
-          transformedPlans.push({
+          const monthlyPlan = {
             id: plan.code,
             name: plan.name,
             description: getDescriptionForPlan(plan.code),
             price: parseFloat(plan.price_usd_month),
-            billingPeriod: 'monthly',
+            billingPeriod: 'monthly' as const,
             features: getFeaturesForPlan(plan),
             isPopular: plan.code === 'pro',
             trialDays: plan.trial_days,
-          });
+          };
+          console.log('Created monthly plan:', monthlyPlan);
+          transformedPlans.push(monthlyPlan);
 
-          // Yearly plan (if different from monthly)
-          if (parseFloat(plan.price_usd_year) !== parseFloat(plan.price_usd_month) * 12) {
-            transformedPlans.push({
-              id: `${plan.code}-yearly`,
-              name: `${plan.name} (Anual)`,
-              description: getDescriptionForPlan(plan.code),
-              price: parseFloat(plan.price_usd_year),
-              billingPeriod: 'yearly',
-              features: [...getFeaturesForPlan(plan), 'Descuento anual'],
-              isPopular: plan.code === 'pro',
-              trialDays: plan.trial_days,
-            });
-          }
+          // Always create yearly plan
+          const yearlyPlan = {
+            id: `${plan.code}-yearly`,
+            name: `${plan.name} (Anual)`,
+            description: getDescriptionForPlan(plan.code),
+            price: parseFloat(plan.price_usd_year),
+            billingPeriod: 'yearly' as const,
+            features: [...getFeaturesForPlan(plan), 'Descuento anual'],
+            isPopular: plan.code === 'pro',
+            trialDays: plan.trial_days,
+          };
+          console.log('Created yearly plan:', yearlyPlan);
+          transformedPlans.push(yearlyPlan);
         });
 
+        console.log('All transformed plans:', transformedPlans);
         setDbPlans(transformedPlans);
       } catch (error) {
         console.error('Error loading plans:', error);
+        console.log('Using default plans instead');
         setDbPlans(defaultPlans);
       } finally {
         setLoading(false);
@@ -96,9 +102,12 @@ export default function SubscriptionPlanSelector({
 
   // Use provided plans or loaded plans
   const availablePlans = plans || dbPlans;
+  console.log('Available plans:', availablePlans);
+  console.log('Billing period:', billingPeriod);
   
   // Filter plans by billing period
   const filteredPlans = availablePlans.filter(plan => plan.billingPeriod === billingPeriod);
+  console.log('Filtered plans:', filteredPlans);
 
   if (loading) {
     return (

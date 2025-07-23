@@ -454,10 +454,12 @@ export const signUpWithEmail = async (email: string, password: string, userData:
   console.log('Verificando correo electrónico...');
   console.log('Email:', email); 
   const { data: existingUsers } = await supabase
-    .from('profiles')
+    .from('users')
     .select('id')
     .eq('email', email)
     .maybeSingle();
+
+  console.log('Usuario existente:', existingUsers);
 
   if (existingUsers) {
     return {
@@ -465,42 +467,29 @@ export const signUpWithEmail = async (email: string, password: string, userData:
       error: { message: 'Este correo electrónico ya está registrado' }
     };
   }
+  console.log('Usuario no existente, procediendo a crear...');
+  console.log('Datos del usuario:', email, password, userData, redirectUrl);
 
-  const response = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: userData,
-      emailRedirectTo: redirectUrl,
-    },
-  });
-  
-  // Si la respuesta es exitosa pero no hay confirmación de envío de correo,
-  // intentamos enviar manualmente un correo de verificación
-  if (!response.error && response.data.user && 
-      !response.data.user.email_confirmed_at && 
-      !response.data.user.confirmation_sent_at) {
+  try {
+    console.log('Intentando crear usuario con Supabase Auth...');
+    const { data, error } = await supabase.auth.signUp({
+      email: 'example@email.com',
+      password: 'example-password',
+    })
     
-    console.log('Intentando enviar correo de verificación manualmente...');
+    return { data: { user: null, session: null }, error: null };
+  } catch (error: any) {
+    console.error('Error crítico en signUpWithEmail:', error);
     
-    // Intentar enviar el correo de verificación manualmente
-    const resendResponse = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: {
-        emailRedirectTo: redirectUrl,
+    return {
+      data: { user: null, session: null },
+      error: {
+        message: 'Error interno del servidor. Por favor, intenta nuevamente o contacta al administrador.'
       }
-    });
-    
-    if (resendResponse.error) {
-      console.error('Error al reenviar correo de verificación:', resendResponse.error);
-    } else {
-      console.log('Correo de verificación enviado manualmente con éxito');
-    }
+    };
   }
-  
-  return response;
 }
+
 
 // Definir tipos para los datos de invitación
 type InviteData = {

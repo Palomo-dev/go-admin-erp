@@ -8,7 +8,7 @@ import OrganizationStep from '../../../components/auth/OrganizationStep';
 import BranchStep from '../../../components/auth/BranchStep';
 import VerificationStep from '../../../components/auth/VerificationStep';
 import SubscriptionStep from '../../../components/auth/SubscriptionStep';
-import { supabase, signUpWithEmail } from '@/lib/supabase/config';
+import { supabase } from '@/lib/supabase/config';
 import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
 
 // Definición de tipos
@@ -155,187 +155,341 @@ export default function SignupPage() {
     setCurrentStep((prev) => prev - 1);
   };
 
-  // Manejar el registro de usuario
-  const handleSignup = async () => {
+  // Manejar el registro de usuario - solo crear en Supabase Auth
+  const handleAuthSignup = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      console.log('Datos de registro:', signupData);
+      console.log('Iniciando proceso de registro para:', signupData.email);
       
-      let userId: string;
+      // Verificar si el email ya existe
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', signupData.email)
+        .maybeSingle();
+
+      if (existingUser) {
+        throw new Error('Este correo electrónico ya está registrado');
+      }
       
       if (isGoogleUser && googleUserData) {
-        // Usuario de Google ya autenticado, usar su ID
-        userId = googleUserData.id;
-        console.log('Usuario de Google ya autenticado:', userId);
-      } else {
-        // Usuario regular, crear cuenta nueva
-        const { data: authData, error: authError } = await signUpWithEmail(
-          signupData.email,
-          signupData.password,
-          {
-            first_name: signupData.firstName,
-            last_name: signupData.lastName,
-          },
-          `${window.location.origin}/auth/callback?next=/app/inicio`
-        );
-        
-        console.log('Respuesta de registro:', authData);
-
-        if (authError) throw authError;
-        
-        if (!authData.user?.id) throw new Error('No se pudo crear el usuario');
-        userId = authData.user.id;
-      }
-
-      // 2. Procesar según el tipo de registro (crear organización o unirse)
-      if (signupData.joinType === 'create') {
-        // Crear nueva organización
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            name: signupData.organizationName,
-            type_id: signupData.organizationType,
-            owner_user_id: userId,
-            status: 'active',
-            plan_id: 1, // Plan gratuito por defecto
-            primary_color: '#3B82F6', // Color azul por defecto
-            secondary_color: '#1E40AF',
-          })
-          .select('id')
-          .single();
-
-        if (orgError) throw orgError;
-
-        // Crear o actualizar perfil de usuario
-        if (isGoogleUser) {
-          // Usuario de Google: actualizar perfil existente
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({
-              last_org_id: orgData.id, // Actualizar última organización
-              phone: signupData.phone || null,
-            })
-            .eq('id', userId);
-
-          if (profileError) throw profileError;
-        } else {
-          // Usuario regular: crear perfil nuevo
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: userId,
-              email: signupData.email,
-              first_name: signupData.firstName,
-              last_name: signupData.lastName,
-              last_org_id: orgData.id, // Campo correcto para última organización
-              status: 'active',
-              phone: signupData.phone,
-            });
-
-          if (profileError) throw profileError;
-        }
-
-        // Crear membresía del usuario como administrador de la organización
-        const { error: memberError } = await supabase
-          .from('organization_members')
-          .insert({
-            organization_id: orgData.id,
-            user_id: userId,
-            role: 'org_admin',
-            role_id: 2, // org_admin
-            is_super_admin: true, // El propietario es super admin
-            is_active: true,
-          });
-
-        if (memberError) throw memberError;
-        
-        // Crear sucursal principal
-        const { error: branchError } = await supabase
-          .from('branches')
-          .insert({
-            name: signupData.branchName,
-            branch_code: signupData.branchCode,
-            address: signupData.branchAddress,
-            city: signupData.branchCity,
-            state: signupData.branchState,
-            country: signupData.branchCountry,
-            postal_code: signupData.branchPostalCode,
-            phone: signupData.branchPhone,
-            email: signupData.branchEmail,
-            organization_id: orgData.id,
-            is_main: true,
-            is_active: true,
-            status: 'active',
-          });
-
-        if (branchError) throw branchError;
-      } else {
-        // Unirse con código de invitación
-        const { data: invitationData, error: invitationError } = await supabase
-          .from('invitations')
-          .select('organization_id, role_id')
-          .eq('code', signupData.invitationCode)
-          .eq('status', 'pending')
-          .single();
-
-        if (invitationError) throw new Error('Código de invitación inválido o expirado');
-
-        // Crear perfil de usuario
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            email: signupData.email,
-            first_name: signupData.firstName,
-            last_name: signupData.lastName,
-            last_org_id: invitationData.organization_id, // Campo correcto
-            status: 'active',
-            phone: signupData.phone,
-          });
-
-        if (profileError) throw profileError;
-
-        // Crear membresía del usuario con el rol asignado en la invitación
-        const { error: memberError } = await supabase
-          .from('organization_members')
-          .insert({
-            organization_id: invitationData.organization_id,
-            user_id: userId,
-            role: invitationData.role_id === 2 ? 'org_admin' : 
-                  invitationData.role_id === 3 ? 'employee' : 'client',
-            role_id: invitationData.role_id || 4, // employee por defecto
-            is_super_admin: false, // Los invitados no son super admin
-            is_active: true,
-          });
-
-        if (memberError) throw memberError;
-
-        // Marcar invitación como utilizada
-        await supabase
-          .from('invitations')
-          .update({
-            status: 'used',
-            used_at: new Date().toISOString(),
-          })
-          .eq('code', signupData.invitationCode);
-      }
-
-      // Para usuarios de Google, redirigir directamente a la app
-      if (isGoogleUser) {
-        // Usuarios de Google ya están verificados, ir directamente a la app
+        // Usuario de Google ya autenticado, crear datos con el flujo completo
+        console.log('Usuario de Google completando signup:', googleUserData.id);
+        await createOrganizationData(googleUserData.id);
         router.push('/app/inicio');
         return;
       }
 
-      // Para usuarios regulares, avanzar al paso de verificación
+      // Crear usuario en Supabase Auth con todos los datos en metadata
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: signupData.email,
+        password: signupData.password,
+        options: {
+          data: {
+            first_name: signupData.firstName,
+            last_name: signupData.lastName,
+            phone: signupData.phone,
+            // Guardar todos los datos del signup para usar después de verificación
+            signup_data: JSON.stringify({
+              joinType: signupData.joinType,
+              organizationName: signupData.organizationName,
+              organizationType: signupData.organizationType,
+              invitationCode: signupData.invitationCode,
+              branchName: signupData.branchName,
+              branchCode: signupData.branchCode,
+              branchAddress: signupData.branchAddress,
+              branchCity: signupData.branchCity,
+              branchState: signupData.branchState,
+              branchCountry: signupData.branchCountry,
+              branchPostalCode: signupData.branchPostalCode,
+              branchPhone: signupData.branchPhone,
+              branchEmail: signupData.branchEmail,
+              subscriptionPlan: signupData.subscriptionPlan,
+              billingPeriod: signupData.billingPeriod
+            })
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback?complete_signup=true`
+        }
+      });
+
+      if (authError) {
+        console.error('Error en Supabase Auth:', authError);
+        throw new Error(authError.message || 'Error al crear la cuenta');
+      }
+
+      if (!authData.user) {
+        throw new Error('No se pudo crear el usuario');
+      }
+
+      console.log('Usuario creado exitosamente en Auth:', authData.user.id);
+      console.log('Email de verificación enviado a:', signupData.email);
+      
+      // Avanzar al paso de verificación
       nextStep();
+      
     } catch (err: any) {
       console.error('Error en registro:', err);
       setError(err.message || 'Error al crear la cuenta');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Crear datos de organización después de verificación de email
+  const createOrganizationData = async (userId: string) => {
+    console.log('Iniciando creación de datos de organización para usuario:', userId);
+    
+    try {
+      // Obtener datos del usuario desde auth metadata o desde signupData
+      const { data: { user } } = await supabase.auth.getUser();
+      const userMetadata = user?.user_metadata || {};
+      const savedSignupData = userMetadata.signup_data ? JSON.parse(userMetadata.signup_data) : signupData;
+      
+      console.log('Datos de signup recuperados:', savedSignupData);
+      
+      if (savedSignupData.joinType === 'create') {
+        console.log('Creando nueva organización...');
+        
+        // 1. Crear nueva organización
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .insert({
+            name: savedSignupData.organizationName,
+            legal_name: savedSignupData.organizationName,
+            type_id: parseInt(savedSignupData.organizationType),
+            owner_user_id: userId,
+            status: 'active',
+            plan_id: 1, // Plan gratuito por defecto
+            primary_color: '#3B82F6',
+            secondary_color: '#1E40AF',
+          })
+          .select('id')
+          .single();
+
+        if (orgError) {
+          console.error('Error creando organización:', orgError);
+          throw new Error(`Error al crear organización: ${orgError.message}`);
+        }
+
+        console.log('Organización creada con ID:', orgData.id);
+
+        // 2. Crear perfil de usuario
+        const profileData = {
+          id: userId,
+          email: userMetadata.email || savedSignupData.email,
+          first_name: userMetadata.first_name || savedSignupData.firstName,
+          last_name: userMetadata.last_name || savedSignupData.lastName,
+          last_org_id: orgData.id,
+          status: 'active',
+          phone: userMetadata.phone || savedSignupData.phone,
+        };
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert(profileData);
+
+        if (profileError) {
+          console.error('Error creando perfil:', profileError);
+          throw new Error(`Error al crear perfil: ${profileError.message}`);
+        }
+
+        console.log('Perfil de usuario creado exitosamente');
+
+        // 3. Crear membresía del usuario como administrador
+        const { data: memberData, error: memberError } = await supabase
+          .from('organization_members')
+          .insert({
+            organization_id: orgData.id,
+            user_id: userId,
+            role: 'org_admin',
+            role_id: 2,
+            is_super_admin: true,
+            is_active: true,
+          })
+          .select('id')
+          .single();
+
+        if (memberError) {
+          console.error('Error creando membresía:', memberError);
+          throw new Error(`Error al crear membresía: ${memberError.message}`);
+        }
+
+        console.log('Membresía de administrador creada exitosamente');
+        
+        // 4. Crear sucursal principal
+        const { data: branchData, error: branchError } = await supabase
+          .from('branches')
+          .insert({
+            name: savedSignupData.branchName,
+            branch_code: savedSignupData.branchCode,
+            address: savedSignupData.branchAddress || '',
+            city: savedSignupData.branchCity || '',
+            state: savedSignupData.branchState || '',
+            country: savedSignupData.branchCountry || '',
+            postal_code: savedSignupData.branchPostalCode || '',
+            phone: savedSignupData.branchPhone || '',
+            email: savedSignupData.branchEmail || '',
+            organization_id: orgData.id,
+            is_main: true,
+            is_active: true,
+          })
+          .select('id')
+          .single();
+
+        if (branchError) {
+          console.error('Error creando sucursal:', branchError);
+          throw new Error(`Error al crear sucursal: ${branchError.message}`);
+        }
+
+        console.log('Sucursal principal creada exitosamente');
+        
+        // 4.1. Asignar usuario a la sucursal principal
+        const { error: memberBranchError } = await supabase
+          .from('member_branches')
+          .insert({
+            organization_member_id: memberData.id,
+            branch_id: branchData.id,
+          });
+        
+        if (memberBranchError) {
+          console.error('Error asignando usuario a sucursal:', memberBranchError);
+          throw new Error(`Error al asignar usuario a sucursal: ${memberBranchError.message}`);
+        }
+        
+        console.log('Usuario asignado a sucursal principal exitosamente');
+        
+        // 5. Habilitar módulos básicos para la organización
+        const basicModules = ['organizations', 'branches', 'roles'];
+        const moduleInserts = basicModules.map(moduleCode => ({
+          organization_id: orgData.id,
+          module_code: moduleCode,
+          is_active: true
+        }));
+        
+        const { error: modulesError } = await supabase
+          .from('organization_modules')
+          .insert(moduleInserts);
+        
+        if (modulesError) {
+          console.error('Error habilitando módulos:', modulesError);
+          // No lanzar error, solo advertir ya que no es crítico
+          console.warn('Continuando sin habilitar módulos básicos');
+        } else {
+          console.log('Módulos básicos habilitados exitosamente');
+        }
+        
+        // 6. Configurar moneda base (COP para Colombia)
+        const { error: currencyError } = await supabase
+          .from('organization_currencies')
+          .insert({
+            organization_id: orgData.id,
+            currency_code: 'COP',
+            is_base: true,
+            auto_update: true
+          });
+        
+        if (currencyError) {
+          console.error('Error configurando moneda:', currencyError);
+          console.warn('Continuando sin configurar moneda base');
+        } else {
+          console.log('Moneda base configurada exitosamente');
+        }
+        
+        // 7. Registrar historial del plan inicial
+        const { error: planHistoryError } = await supabase
+          .from('plan_history')
+          .insert({
+            organization_id: orgData.id,
+            old_plan_id: null,
+            new_plan_id: 1, // Plan gratuito
+            user_id: userId,
+            reason: 'Organización creada con plan gratuito inicial'
+          });
+        
+        if (planHistoryError) {
+          console.error('Error registrando historial de plan:', planHistoryError);
+          console.warn('Continuando sin registrar historial de plan');
+        } else {
+          console.log('Historial de plan registrado exitosamente');
+        }
+        
+      } else if (savedSignupData.joinType === 'join') {
+        console.log('Uniéndose a organización existente con código:', savedSignupData.invitationCode);
+        
+        // 1. Validar código de invitación
+        const { data: invitationData, error: invitationError } = await supabase
+          .from('invitations')
+          .select('organization_id, role_id')
+          .eq('code', savedSignupData.invitationCode)
+          .eq('status', 'pending')
+          .single();
+
+        if (invitationError || !invitationData) {
+          throw new Error('Código de invitación inválido o expirado');
+        }
+
+        console.log('Invitación válida para organización:', invitationData.organization_id);
+
+        // 2. Crear perfil de usuario
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            email: userMetadata.email || savedSignupData.email,
+            first_name: userMetadata.first_name || savedSignupData.firstName,
+            last_name: userMetadata.last_name || savedSignupData.lastName,
+            last_org_id: invitationData.organization_id,
+            status: 'active',
+            phone: userMetadata.phone || savedSignupData.phone,
+          });
+
+        if (profileError) {
+          console.error('Error creando perfil:', profileError);
+          throw new Error(`Error al crear perfil: ${profileError.message}`);
+        }
+
+        console.log('Perfil de usuario creado exitosamente');
+
+        // 3. Crear membresía del usuario en la organización
+        const { error: memberError } = await supabase
+          .from('organization_members')
+          .insert({
+            organization_id: invitationData.organization_id,
+            user_id: userId,
+            role_id: invitationData.role_id,
+            is_super_admin: false,
+            is_active: true,
+          });
+
+        if (memberError) {
+          console.error('Error creando membresía:', memberError);
+          throw new Error(`Error al crear membresía: ${memberError.message}`);
+        }
+
+        console.log('Membresía creada exitosamente');
+
+        // 4. Marcar invitación como usada
+        const { error: updateInvitationError } = await supabase
+          .from('invitations')
+          .update({ 
+            status: 'accepted',
+            used_at: new Date().toISOString(),
+            used_by: userId
+          })
+          .eq('code', savedSignupData.invitationCode);
+
+        if (updateInvitationError) {
+          console.warn('Error actualizando invitación:', updateInvitationError);
+        }
+      }
+      
+      console.log('Proceso de creación de datos completado exitosamente');
+      
+    } catch (error: any) {
+      console.error('Error en createOrganizationData:', error);
+      throw error;
     }
   };
 
@@ -451,7 +605,7 @@ export default function SignupPage() {
           <SubscriptionStep 
             formData={signupData} 
             updateFormData={updateFormData} 
-            onNext={handleSignup}
+            onNext={handleAuthSignup}
             onBack={prevStep}
             loading={loading}
           />

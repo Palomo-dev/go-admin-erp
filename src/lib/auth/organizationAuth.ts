@@ -132,7 +132,7 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
   const redirectTo = sessionStorage.getItem('redirectTo');
 
   // Registrar el dispositivo en la base de datos
-  registerUserDevice(sessionData.session).catch(error => {
+  registerUserDevice(sessionData.session?.user?.id).catch(error => {
     localStorage.setItem('registerDeviceError', JSON.stringify(error));
     console.error('Error al registrar el dispositivo:', error);
   });
@@ -206,14 +206,19 @@ export const registerUserDevice = async (sessionOrUserId: any) => {
   try {
     // Determinar si es una sesión completa o solo un userId
     let userId: string;
-    if (typeof sessionOrUserId === 'string') {
+    if (typeof sessionOrUserId === 'string' && sessionOrUserId.trim() !== '') {
       // Es solo un userId
       userId = sessionOrUserId;
     } else if (sessionOrUserId && sessionOrUserId.user && sessionOrUserId.user.id) {
       // Es una sesión completa
       userId = sessionOrUserId.user.id;
     } else {
-      console.error('Parámetro no válido para registrar dispositivo');
+      console.error('Parámetro no válido para registrar dispositivo:', {
+        type: typeof sessionOrUserId,
+        value: sessionOrUserId,
+        hasUser: sessionOrUserId?.user,
+        hasUserId: sessionOrUserId?.user?.id
+      });
       return;
     }
 

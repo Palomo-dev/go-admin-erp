@@ -49,7 +49,7 @@ export default function OrdenesCompraModal({
   
   const organizationData = useOrganization();
   const orgId = organizationData?.organization?.id;
-  const branchId = organizationData?.currentBranch?.id;
+  const branchId = organizationData?.branch_id;
 
   // Cargar proveedores
   useEffect(() => {
@@ -116,14 +116,14 @@ export default function OrdenesCompraModal({
       }
       
       // Agrupar productos por proveedor
-      const productosPorProveedor: Record<string, any[]> = {};
+      const productosPorProveedor: Record<string, { product_id: number; quantity: number; unit_cost: number }[]> = {};
       
       selectedProducts.forEach(producto => {
         const cantidad = cantidades[producto.id] || 0;
         if (cantidad <= 0) return;
         
-        // Usar el proveedor seleccionado o el del producto si existe
-        const provId = proveedorId || (producto.supplier_id?.toString() || '');
+        // Usar el proveedor seleccionado (requerido)
+        const provId = proveedorId;
         
         if (!productosPorProveedor[provId]) {
           productosPorProveedor[provId] = [];
@@ -132,12 +132,12 @@ export default function OrdenesCompraModal({
         productosPorProveedor[provId].push({
           product_id: producto.product_id,
           quantity: cantidad,
-          unit_cost: producto.last_cost || 0
+          unit_cost: 0 // Se establecerá al recibir la orden
         });
       });
       
       // Crear órdenes de compra por proveedor
-      for (const [providerId, items] of Object.entries(productosPorProveedor)) {
+      for (const [providerId, items] of Object.entries(productosPorProveedor) as [string, { product_id: number; quantity: number; unit_cost: number }[]][]) {
         if (!providerId || items.length === 0) continue;
         
         // Crear orden de compra
@@ -167,7 +167,7 @@ export default function OrdenesCompraModal({
         }));
         
         const { error: itemsError } = await supabase
-          .from('purchase_order_items')
+          .from('po_items')
           .insert(orderItems);
           
         if (itemsError) {
@@ -182,9 +182,9 @@ export default function OrdenesCompraModal({
         setSuccess(false);
       }, 2000);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error inesperado:', err);
-      setError(err.message || 'Ha ocurrido un error al generar las órdenes');
+      setError(err instanceof Error ? err.message : 'Ha ocurrido un error al generar las órdenes');
     } finally {
       setLoading(false);
     }

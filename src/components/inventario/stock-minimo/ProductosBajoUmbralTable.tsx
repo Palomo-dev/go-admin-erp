@@ -189,7 +189,7 @@ export default function ProductosBajoUmbralTable({
                 <TableHead className="w-12">
                   <Checkbox 
                     checked={allSelected} 
-                    {...(someSelected && { indeterminate: true })}
+                    {...(someSelected ? { indeterminate: true } : {})}
                     onCheckedChange={handleSelectAll}
                     aria-label="Seleccionar todos"
                   />

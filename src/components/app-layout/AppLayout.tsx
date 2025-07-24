@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
 import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
-import { ActivityRealtimeIndicator } from '@/components/crm/actividades/ActivityRealtimeIndicator';
+
 
 // Componente principal que organiza todo el layout de la aplicación
 export const AppLayout = ({
@@ -327,8 +327,7 @@ export const AppLayout = ({
         </div>
       </div>
       
-      {/* Indicador de actividades en tiempo real */}
-      <ActivityRealtimeIndicator />
+
     </div>
   );
 };

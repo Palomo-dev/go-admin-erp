@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
-      flowType: 'pkce',
+      flowType: 'pkce' as const,
       // Si tenemos un token de autenticación en la cookie, lo usamos como sesión inicial
       ...(authCookie && {
         storageKey: `sb-${projectRef}-auth-token`,
@@ -141,7 +141,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public (public files)
+     * - api/test (test endpoints - no auth required)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api/test).*)',
   ],
 };

@@ -130,6 +130,14 @@ export function debounce<T extends (...args: any[]) => any>(func: T, wait: numbe
 }
 
 /**
+ * Genera un ID único
+ * @returns String con ID único
+ */
+export function generateId(): string {
+  return Math.random().toString(36).substring(2, 9);
+}
+
+/**
  * Tipo para el modo de tema
  */
 export type ThemeMode = 'light' | 'dark' | 'system';

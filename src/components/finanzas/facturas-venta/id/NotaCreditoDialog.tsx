@@ -17,6 +17,7 @@ import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Table, 
@@ -48,40 +49,43 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
   const [cantidades, setCantidades] = useState<{ [key: string]: number }>({});
   const [ultimoNumero, setUltimoNumero] = useState<string>('');
 
-  // Cargar último número de nota de crédito
-  useEffect(() => {
-    const cargarUltimoNumero = async () => {
-      if (!organizationId) return;
+  // Cargar siguiente número de nota de crédito usando servicio centralizado
+  const cargarSiguienteNumero = async () => {
+    if (!organizationId) return;
+    
+    try {
+      const nextNumber = await CreditNoteNumberService.generateNextCreditNoteNumber(
+        String(organizationId)
+      );
+      setNotaNumero(nextNumber);
       
-      try {
-        const { data, error } = await supabase
-          .from('invoice_sales')
-          .select('number')
-          .eq('organization_id', organizationId)
-          .ilike('number', 'NC%')
-          .order('number', { ascending: false })
-          .limit(1);
-
-        if (error) throw error;
+      // Para mostrar información del último número (opcional)
+      const { data } = await supabase
+        .from('invoice_sales')
+        .select('number')
+        .eq('organization_id', String(organizationId))
+        .eq('document_type', 'credit_note')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
         
-        if (data && data.length > 0) {
-          // Extraer el número y aumentarlo en 1
-          const lastNum = data[0].number;
-          const numericPart = parseInt(lastNum.replace(/\D/g, ''), 10);
-          const newNumber = `NC${String(numericPart + 1).padStart(8, '0')}`;
-          setNotaNumero(newNumber);
-          setUltimoNumero(lastNum);
-        } else {
-          // Si no hay notas de crédito previas
-          setNotaNumero(`NC00000001`);
-        }
-      } catch (error: any) {
-        console.error('Error al cargar último número de nota de crédito:', error);
+      if (data?.number) {
+        setUltimoNumero(data.number);
       }
-    };
+      
+    } catch (error: any) {
+      console.error('Error al generar número de nota de crédito:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo generar el número de nota de crédito',
+        variant: 'destructive'
+      });
+    }
+  };
 
+  useEffect(() => {
     if (open) {
-      cargarUltimoNumero();
+      cargarSiguienteNumero();
       
       // Inicializar cantidades con los valores de la factura original
       const initialCantidades: { [key: string]: number } = {};
@@ -212,7 +216,28 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
     setIsLoading(true);
 
     try {
-      // 1. Crear la nota de crédito (es una factura con tipo credit_note)
+      // 1. Obtener el método de pago de la factura original
+      console.log('🔍 Obteniendo método de pago de la factura original:', factura.id);
+      
+      const { data: originalInvoice, error: invoiceError } = await supabase
+        .from('invoice_sales')
+        .select('payment_method')
+        .eq('id', factura.id)
+        .single();
+
+      if (invoiceError) {
+        console.error('❌ Error obteniendo factura original:', invoiceError);
+        throw new Error('No se pudo obtener la información de la factura original');
+      }
+
+      const paymentMethod = originalInvoice?.payment_method || factura.payment_method || 'credit';
+      console.log('✅ Método de pago a usar en nota de crédito:', paymentMethod);
+
+      // Obtener usuario actual
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentUserId = user?.id;
+
+      // 2. Crear la nota de crédito (es una factura con tipo credit_note)
       const { data: creditNoteData, error: creditNoteError } = await supabase
         .from('invoice_sales')
         .insert({
@@ -231,6 +256,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
           description: `Nota de crédito para factura ${factura.number}. Motivo: ${motivo}`,
           related_invoice_id: factura.id,
           document_type: 'credit_note',
+          payment_method: paymentMethod, // Heredar método de pago de factura original
           created_by: currentUserId  // Añadimos el ID del usuario que crea la nota
           // No incluimos sale_id porque tiene una restricción a la tabla sales
         })

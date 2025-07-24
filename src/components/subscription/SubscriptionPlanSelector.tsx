@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckIcon } from '@heroicons/react/24/solid';
+import { supabase } from '@/lib/supabase/config';
 
 export interface SubscriptionPlan {
   id: string;
@@ -27,10 +28,95 @@ export default function SubscriptionPlanSelector({
   onSelectPlan,
   billingPeriod = 'monthly',
   onChangeBillingPeriod,
-  plans = defaultPlans,
+  plans,
 }: SubscriptionPlanSelectorProps) {
+  const [dbPlans, setDbPlans] = useState<SubscriptionPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load plans from database
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('plans')
+          .select('*')
+          .eq('is_active', true)
+          .order('price_usd_month', { ascending: true });
+
+        if (error) throw error;
+
+        // Transform database plans to component format
+        const transformedPlans: SubscriptionPlan[] = [];
+        
+        data?.forEach(plan => {
+          console.log('Processing database plan:', plan);
+          
+          // Monthly plan
+          const monthlyPlan = {
+            id: plan.code,
+            name: plan.name,
+            description: getDescriptionForPlan(plan.code),
+            price: parseFloat(plan.price_usd_month),
+            billingPeriod: 'monthly' as const,
+            features: getFeaturesForPlan(plan),
+            isPopular: plan.code === 'pro',
+            trialDays: plan.trial_days,
+          };
+          console.log('Created monthly plan:', monthlyPlan);
+          transformedPlans.push(monthlyPlan);
+
+          // Always create yearly plan
+          const yearlyPlan = {
+            id: `${plan.code}-yearly`,
+            name: `${plan.name} (Anual)`,
+            description: getDescriptionForPlan(plan.code),
+            price: parseFloat(plan.price_usd_year),
+            billingPeriod: 'yearly' as const,
+            features: [...getFeaturesForPlan(plan), 'Descuento anual'],
+            isPopular: plan.code === 'pro',
+            trialDays: plan.trial_days,
+          };
+          console.log('Created yearly plan:', yearlyPlan);
+          transformedPlans.push(yearlyPlan);
+        });
+
+        console.log('All transformed plans:', transformedPlans);
+        setDbPlans(transformedPlans);
+      } catch (error) {
+        console.error('Error loading plans:', error);
+        console.log('Using default plans instead');
+        setDbPlans(defaultPlans);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!plans) {
+      loadPlans();
+    } else {
+      setDbPlans(plans);
+      setLoading(false);
+    }
+  }, [plans]);
+
+  // Use provided plans or loaded plans
+  const availablePlans = plans || dbPlans;
+  console.log('Available plans:', availablePlans);
+  console.log('Billing period:', billingPeriod);
+  
   // Filter plans by billing period
-  const filteredPlans = plans.filter(plan => plan.billingPeriod === billingPeriod);
+  const filteredPlans = availablePlans.filter(plan => plan.billingPeriod === billingPeriod);
+  console.log('Filtered plans:', filteredPlans);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Cargando planes...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 w-full max-w-5xl mx-auto">
@@ -227,3 +313,65 @@ const defaultPlans: SubscriptionPlan[] = [
     trialDays: 14,
   },
 ];
+
+// Helper functions
+function getDescriptionForPlan(planCode: string): string {
+  const descriptions: Record<string, string> = {
+    free: 'Para pequeños negocios que están comenzando',
+    pro: 'Para negocios en crecimiento con necesidades avanzadas',
+    enterprise: 'Para grandes empresas con requisitos personalizados'
+  };
+  return descriptions[planCode] || 'Plan personalizado para tu negocio';
+}
+
+function getFeaturesForPlan(plan: any): string[] {
+  const features: string[] = [];
+  
+  // Add module and branch limits
+  if (plan.max_modules) {
+    features.push(`Hasta ${plan.max_modules} módulos`);
+  } else {
+    features.push('Módulos ilimitados');
+  }
+  
+  if (plan.max_branches) {
+    features.push(`Hasta ${plan.max_branches} sucursales`);
+  } else {
+    features.push('Sucursales ilimitadas');
+  }
+  
+  // Add features from JSON
+  if (plan.features) {
+    if (plan.features.storage_gb) {
+      features.push(`${plan.features.storage_gb} GB de almacenamiento`);
+    }
+    
+    if (plan.features.analytics) {
+      features.push('Análisis avanzados');
+    }
+    
+    if (plan.features.custom_reports) {
+      features.push('Reportes personalizados');
+    }
+    
+    if (plan.features.support) {
+      const supportTypes: Record<string, string> = {
+        'community-only': 'Soporte de comunidad',
+        'email': 'Soporte por email',
+        'priority': 'Soporte prioritario 24/7'
+      };
+      features.push(supportTypes[plan.features.support] || 'Soporte incluido');
+    }
+    
+    if (plan.features.dedicated_manager) {
+      features.push('Gerente de cuenta dedicado');
+    }
+  }
+  
+  // Add trial info
+  if (plan.trial_days > 0) {
+    features.push(`${plan.trial_days} días de prueba gratis`);
+  }
+  
+  return features;
+}

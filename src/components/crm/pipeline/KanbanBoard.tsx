@@ -23,9 +23,20 @@ import {
 } from "@/lib/services/realtimeService";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
 interface KanbanBoardProps {
   showStageManager?: boolean;
+}
+
+// Tipo para las estadísticas de etapas
+interface StageStats {
+  id: string;
+  name: string;
+  count: number;
+  totalAmount: number;
+  forecast: number;
+  currency: string;
 }
 
 export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
@@ -33,6 +44,7 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [processingAutomation, setProcessingAutomation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [stageStats, setStageStats] = useState<StageStats[]>([]);
   const { theme } = useTheme();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [realtimeEnabled, setRealtimeEnabled] = useState(true);
@@ -62,6 +74,16 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
       
       // Actualizamos el estado con los datos del pipeline
       setPipeline(pipelineData);
+      
+      // Cargar las estadísticas de las etapas de forma asíncrona
+      try {
+        const stats = await calculateStageStatistics(pipelineData.stages);
+        setStageStats(stats);
+      } catch (statsErr: any) {
+        console.error("Error al cargar estadísticas de etapas:", statsErr);
+        // No mostrar error al usuario, usar array vacío como fallback
+        setStageStats([]);
+      }
     } catch (err: any) {
       console.error("Error al cargar el pipeline:", err);
       setError(err.message || "Error al cargar los datos del pipeline");
@@ -421,9 +443,6 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     );
   }
   
-  // Calcular el total por etapa usando el servicio
-  const stageStats = calculateStageStatistics(pipeline.stages);
-
   // Clasificar las etapas para la visualización
   const classifyStageType = (stageName: string | undefined) => {
     const name = (stageName || '').toLowerCase();

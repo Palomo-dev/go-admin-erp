@@ -15,6 +15,7 @@ import { formatCurrency, getCurrentTheme, applyTheme } from "@/utils/Utils";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
 import { BarChart3, Calendar, DollarSign, Loader2, Settings } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
 interface Stage {
   id: string;
@@ -873,12 +874,12 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                             {opportunity.name}
                             {opportunity.status === 'won' && (
                               <span className="ml-1.5 text-green-600 dark:text-green-400 text-xs bg-green-100 dark:bg-green-900/30 rounded-full px-1.5 py-0.5">
-                                Ganado
+                                {translateOpportunityStatus('won')}
                               </span>
                             )}
                             {opportunity.status === 'lost' && (
                               <span className="ml-1.5 text-red-600 dark:text-red-400 text-xs bg-red-100 dark:bg-red-900/30 rounded-full px-1.5 py-0.5">
-                                Perdido
+                                {translateOpportunityStatus('lost')}
                               </span>
                             )}
                           </h4>

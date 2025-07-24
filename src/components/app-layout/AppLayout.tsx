@@ -7,6 +7,7 @@ import { isAuthenticated } from '@/lib/supabase/auth-manager';
 import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 
+
 // Componente principal que organiza todo el layout de la aplicación
 export const AppLayout = ({
   children
@@ -325,6 +326,8 @@ export const AppLayout = ({
           {children}
         </div>
       </div>
+      
+
     </div>
   );
 };

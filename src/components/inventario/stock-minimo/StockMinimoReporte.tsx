@@ -40,6 +40,10 @@ export default function StockMinimoReporte() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('todos');
   
+  // Estado de paginación
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  
   // Modals
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
   const [showOrdenesModal, setShowOrdenesModal] = useState<boolean>(false);
@@ -152,6 +156,22 @@ export default function StockMinimoReporte() {
     }
     setShowNotificacionesModal(true);
   };
+  
+  // Manejadores de paginación
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+  
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Resetear a la primera página
+  };
+  
+  // Manejar cambio de pestaña
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    setCurrentPage(1); // Resetear a la primera página al cambiar pestaña
+  };
 
   // Filtrar productos según la pestaña activa
   const filteredProductos = activeTab === 'todos' 
@@ -175,7 +195,7 @@ export default function StockMinimoReporte() {
       />
       
       <Card className="p-6">
-        <Tabs defaultValue="todos" onValueChange={setActiveTab} className="space-y-4">
+        <Tabs defaultValue="todos" onValueChange={handleTabChange} className="space-y-4">
           <TabsList>
             <TabsTrigger value="todos">Todos los productos</TabsTrigger>
             <TabsTrigger value="critico">Stock crítico (0)</TabsTrigger>
@@ -188,6 +208,11 @@ export default function StockMinimoReporte() {
               isLoading={loading} 
               error={error}
               onSelectionChange={handleProductSelection}
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
+              totalItems={filteredProductos.length}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
             />
           </TabsContent>
         </Tabs>

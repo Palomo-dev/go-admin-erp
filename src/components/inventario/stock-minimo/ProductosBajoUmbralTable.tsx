@@ -14,6 +14,16 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis
+} from '@/components/ui/pagination';
 import type { ProductoBajoUmbral } from './StockMinimoReporte';
 import { NumericInput } from '@/components/ui/NumericInput';
 
@@ -22,6 +32,12 @@ interface ProductosBajoUmbralTableProps {
   isLoading: boolean;
   error: string | null;
   onSelectionChange: (selectedProducts: ProductoBajoUmbral[]) => void;
+  // Pagination props
+  currentPage?: number;
+  itemsPerPage?: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
+  onItemsPerPageChange?: (itemsPerPage: number) => void;
 }
 
 /**
@@ -32,7 +48,12 @@ export default function ProductosBajoUmbralTable({
   productos, 
   isLoading, 
   error,
-  onSelectionChange
+  onSelectionChange,
+  currentPage = 1,
+  itemsPerPage = 10,
+  totalItems = 0,
+  onPageChange,
+  onItemsPerPageChange
 }: ProductosBajoUmbralTableProps) {
   const [selectedRows, setSelectedRows] = useState<Record<number, boolean>>({});
   const [search, setSearch] = useState('');
@@ -75,6 +96,33 @@ export default function ProductosBajoUmbralTable({
   // Verificar si algunas filas están seleccionadas
   const someSelected = filteredProductos.some(producto => selectedRows[producto.id]) && 
     !allSelected;
+
+  // Cálculos de paginación
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredProductos.length);
+  const currentProducts = filteredProductos.slice(startIndex, endIndex);
+
+  // Generar números de página para mostrar
+  const generatePageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      const start = Math.max(1, currentPage - 2);
+      const end = Math.min(totalPages, start + maxVisiblePages - 1);
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
 
   // Renderizar estado de carga o error
   if (isLoading) {
@@ -133,8 +181,9 @@ export default function ProductosBajoUmbralTable({
           </p>
         </div>
       ) : (
-        <div className="border rounded-md overflow-hidden">
-          <Table>
+        <>
+          <div className="border rounded-md overflow-hidden">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
@@ -155,7 +204,7 @@ export default function ProductosBajoUmbralTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProductos.map((producto) => (
+              {currentProducts.map((producto) => (
                 <TableRow key={producto.id}>
                   <TableCell>
                     <Checkbox 
@@ -196,6 +245,80 @@ export default function ProductosBajoUmbralTable({
             </TableBody>
           </Table>
         </div>
+        
+        {/* Paginación - Siempre visible */}
+        <div className="border-t pt-4 mt-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            {/* Sección izquierda: Items por página e información */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              {/* Items por página */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Mostrar</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => onItemsPerPageChange?.(parseInt(value))}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">por página</span>
+              </div>
+              
+              {/* Información de resultados */}
+              <div className="text-sm text-gray-600 dark:text-gray-400 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md">
+                <span className="font-medium">{startIndex + 1}-{Math.min(endIndex, totalItems)}</span> de <span className="font-medium">{totalItems}</span> resultados
+              </div>
+            </div>
+            
+            {/* Sección derecha: Controles de navegación - Solo si hay más de una página */}
+            {totalPages > 1 && (
+              <div className="flex justify-center lg:justify-end w-full lg:w-auto">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        disabled={currentPage === 1}
+                        onClick={() => onPageChange?.(currentPage - 1)}
+                      />
+                    </PaginationItem>
+                    
+                    {generatePageNumbers().map((page, index) => (
+                      <PaginationItem key={index}>
+                        <PaginationLink
+                          isActive={currentPage === page}
+                          onClick={() => onPageChange?.(page)}
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    
+                    {totalPages > 5 && currentPage < totalPages - 2 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        disabled={currentPage === totalPages}
+                        onClick={() => onPageChange?.(currentPage + 1)}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </div>
+        </div>
+        </>
       )}
     </div>
   );

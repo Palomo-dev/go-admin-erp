@@ -274,22 +274,73 @@ export async function getMainBranch(organizationId: number) {
   }
 }
 
-// Función para obtener el branch_id actual desde localStorage
-export function getCurrentBranchId(): number {
+// Caché para branch_id para evitar múltiples accesos a localStorage
+let _branchIdCache: { value: number | null; timestamp: number } | null = null;
+const BRANCH_ID_CACHE_TTL = 30000; // 30 segundos de TTL
+let _lastBranchIdLogTime = 0;
+
+// Función para obtener el branch_id actual desde localStorage con caché optimizado
+export function getCurrentBranchId(): number | null {
   try {
     // Verificar si localStorage está disponible (cliente)
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      console.log('🏦 localStorage no disponible (SSR), usando branch_id por defecto: 2');
-      return 2; // Default: Sede Principal (ID: 2)
+      // En SSR no retornamos ningún branch_id para evitar consultas innecesarias
+      return null;
     }
     
+    const now = Date.now();
+    
+    // Verificar si tenemos un valor en caché válido
+    if (_branchIdCache && (now - _branchIdCache.timestamp) < BRANCH_ID_CACHE_TTL) {
+      return _branchIdCache.value;
+    }
+    
+    // Obtener valor fresco de localStorage
     const branchId = localStorage.getItem('currentBranchId');
-    console.log('🏦 DEBUG getCurrentBranchId:', { branchId, parsed: branchId ? parseInt(branchId, 10) : null });
-    return branchId ? parseInt(branchId, 10) : 2; // Default: Sede Principal (ID: 2)
+    const parsedBranchId = branchId ? parseInt(branchId, 10) : null;
+    
+    // Actualizar caché
+    _branchIdCache = {
+      value: parsedBranchId,
+      timestamp: now
+    };
+    
+    // Solo loguear debug si han pasado más de 5 segundos desde el último log
+    // Esto reduce significativamente el spam en consola
+    if (now - _lastBranchIdLogTime > 5000) {
+      console.log('🏦 DEBUG getCurrentBranchId (actualizado):', { 
+        branchId, 
+        parsed: parsedBranchId,
+        cached: true,
+        timestamp: new Date(now).toISOString()
+      });
+      _lastBranchIdLogTime = now;
+    }
+    
+    return parsedBranchId;
   } catch (error) {
     console.error('Error obteniendo branch_id:', error);
-    return 2; // Default: Sede Principal (ID: 2)
+    return null; // No retornar valor por defecto en caso de error
   }
+}
+
+// Función para invalidar el caché del branch_id (útil cuando se cambia la sucursal)
+export function invalidateBranchIdCache(): void {
+  _branchIdCache = null;
+  _lastBranchIdLogTime = 0;
+  console.log('🏦 Caché de branch_id invalidado');
+}
+
+// Función auxiliar para obtener branch_id con fallback (solo usar cuando se necesite realmente)
+export function getCurrentBranchIdWithFallback(): number {
+  const branchId = getCurrentBranchId();
+  if (branchId !== null) {
+    return branchId;
+  }
+  
+  // Solo usar fallback cuando sea absolutamente necesario
+  console.warn('🏦 Usando branch_id fallback (ID: 999) - considerar si es necesario');
+  return 2; // Sede Principal como último recurso
 }
 
 // Función para obtener el usuario actual desde Supabase Auth
@@ -486,5 +537,7 @@ export default {
   obtenerOrganizacionActiva,
   getOrganizationId,
   getCurrentBranchId,
-  getCurrentUserId
+  getCurrentUserId,
+  invalidateBranchIdCache,
+  getCurrentBranchIdWithFallback
 };

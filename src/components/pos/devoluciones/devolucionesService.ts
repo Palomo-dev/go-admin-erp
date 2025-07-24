@@ -946,7 +946,7 @@ export class DevolucionesService {
         };
       }
 
-      // Obtener información de ventas relacionadas
+      // Obtener información de ventas relacionadas con impuestos
       const saleIds = returnsData.map(ret => ret.sale_id).filter(Boolean);
       let salesData: any[] = [];
       let customersData: any[] = [];
@@ -954,7 +954,7 @@ export class DevolucionesService {
       if (saleIds.length > 0) {
         const { data: sales, error: salesError } = await supabase
           .from('sales')
-          .select('id, customer_id')
+          .select('id, customer_id, total, subtotal, tax_total')
           .in('id', saleIds);
         
         if (!salesError && sales) {
@@ -979,13 +979,39 @@ export class DevolucionesService {
         // Encontrar customer si existe
         const customer = sale?.customer_id ? customersData.find(c => c.id === sale.customer_id) : null;
         
+        // Calcular impuestos del reembolso proporcionalmente
+        const originalTotal = sale ? Number(sale.total) : 0;
+        const originalSubtotal = sale ? Number(sale.subtotal) : 0;
+        const originalTaxTotal = sale ? Number(sale.tax_total) : 0;
+        const refundAmount = Number(returnItem.total_refund);
+        
+        // Calcular impuestos proporcionales del reembolso
+        let refundTaxAmount = 0;
+        let refundTotalWithTax = refundAmount;
+        
+        if (originalTotal > 0 && originalTaxTotal > 0) {
+          // Si el reembolso es igual al subtotal original, es probablemente un reembolso completo
+          if (Math.abs(refundAmount - originalSubtotal) < 0.01) {
+            // Reembolso completo - incluir todos los impuestos
+            refundTaxAmount = originalTaxTotal;
+            refundTotalWithTax = originalTotal;
+          } else {
+            // Reembolso parcial - calcular impuestos proporcionales
+            const taxRate = originalTaxTotal / originalSubtotal;
+            refundTaxAmount = refundAmount * taxRate;
+            refundTotalWithTax = refundAmount + refundTaxAmount;
+          }
+        }
+        
         return {
           id: returnItem.id,
           organization_id: returnItem.organization_id,
           branch_id: returnItem.branch_id,
           sale_id: returnItem.sale_id,
           user_id: returnItem.user_id,
-          total_refund: Number(returnItem.total_refund),
+          total_refund: refundAmount, // Subtotal del reembolso
+          refund_tax_amount: refundTaxAmount, // Impuestos del reembolso
+          refund_total_with_tax: refundTotalWithTax, // Total con impuestos
           reason: returnItem.reason,
           return_date: returnItem.return_date,
           status: returnItem.status,
@@ -995,6 +1021,9 @@ export class DevolucionesService {
           // Datos de venta y cliente si existen
           sale: sale ? {
             id: sale.id,
+            total: originalTotal,
+            subtotal: originalSubtotal,
+            tax_total: originalTaxTotal,
             customer: customer ? {
               full_name: customer.full_name,
               phone: customer.phone,

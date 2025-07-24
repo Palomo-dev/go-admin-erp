@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Plus, X, Clock, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +28,90 @@ export function CartTabs({
   className 
 }: CartTabsProps) {
   const [isCreatingCart, setIsCreatingCart] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [scrollStartX, setScrollStartX] = useState(0);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Funciones para scroll con drag y arrastrar (click and drag scrolling)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+    if (!viewport) return;
+    
+    // Solo iniciar drag con click izquierdo
+    if (e.button !== 0) return;
+    
+    setIsDragging(true);
+    setDragStartX(e.clientX);
+    setScrollStartX(viewport.scrollLeft);
+    
+    // Prevenir selección de texto durante el drag
+    e.preventDefault();
+    document.body.style.userSelect = 'none';
+  };
+
+
+
+  // Touch events para dispositivos móviles
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+    if (!viewport) return;
+    
+    const touch = e.touches[0];
+    setIsDragging(true);
+    setDragStartX(touch.clientX);
+    setScrollStartX(viewport.scrollLeft);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+    if (!viewport) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - dragStartX;
+    const newScrollX = scrollStartX - deltaX;
+    
+    viewport.scrollLeft = Math.max(0, Math.min(newScrollX, viewport.scrollWidth - viewport.clientWidth));
+    e.preventDefault(); // Prevenir scroll de la página
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Manejar eventos globales de mouse para que el drag funcione fuera del área
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+      if (!viewport) return;
+      
+      const deltaX = e.clientX - dragStartX;
+      const newScrollX = scrollStartX - deltaX;
+      
+      viewport.scrollLeft = Math.max(0, Math.min(newScrollX, viewport.scrollWidth - viewport.clientWidth));
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        document.body.style.userSelect = '';
+      }
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isDragging, dragStartX, scrollStartX]);
 
   const handleNewCart = async () => {
     setIsCreatingCart(true);
@@ -68,8 +152,19 @@ export function CartTabs({
       {carts.length > 0 ? (
         <Tabs value={activeCartId} onValueChange={onCartSelect}>
           <div className="flex items-center justify-between mb-2">
-            <ScrollArea className="flex-1">
-              <div className="flex space-x-1 w-max">
+            <ScrollArea 
+              ref={scrollAreaRef}
+              className="flex-1 select-none"
+              onMouseDown={handleMouseDown}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+            >
+              <div 
+                className="flex space-x-1 w-max"
+                style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
+              >
                 <TabsList className="dark:bg-gray-800 light:bg-gray-100 p-1 inline-flex">
                 {carts.map((cart, index) => (
                   <TabsTrigger
@@ -94,7 +189,7 @@ export function CartTabs({
                         variant="secondary" 
                         className="text-xs px-1 py-0 h-5 dark:bg-gray-700 light:bg-gray-200"
                       >
-                        {formatCurrency(cart.total, 'COP', 'es-CO').replace(/\$\s?/, '$').replace(/,\d{3}$/, 'k')}
+                        {formatCurrency(cart.total, 'COP').replace(/\$\s?/, '$').replace(/,\d{3}$/, 'k')}
                       </Badge>
                     )}
 

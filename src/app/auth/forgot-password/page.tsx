@@ -8,9 +8,50 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
+  const [canResend, setCanResend] = useState(true);
+  const [resendTimer, setResendTimer] = useState(0);
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const startResendTimer = () => {
+    setCanResend(false);
+    setResendTimer(60); // 60 segundos
+    
+    const timer = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email.trim()) {
+      setMessage({
+        type: 'error',
+        text: 'Por favor ingresa tu correo electrónico'
+      });
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setMessage({
+        type: 'error',
+        text: 'Por favor ingresa un correo electrónico válido'
+      });
+      return;
+    }
+    
     setLoading(true);
     setMessage(null);
 
@@ -21,14 +62,49 @@ export default function ForgotPasswordPage() {
         throw error;
       }
 
+      setEmailSent(true);
       setMessage({
         type: 'success',
-        text: 'Se ha enviado un correo con instrucciones para restablecer tu contraseña.'
+        text: 'Se ha enviado un correo con instrucciones para restablecer tu contraseña. Revisa tu bandeja de entrada y la carpeta de spam.'
       });
+      
+      // Iniciar timer para reenvío
+      startResendTimer();
+      
     } catch (err: any) {
       setMessage({
         type: 'error',
         text: err.message || 'Error al enviar el correo de recuperación'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleResendEmail = async () => {
+    if (!canResend) return;
+    
+    setLoading(true);
+    setMessage(null);
+    
+    try {
+      const { error } = await resetPassword(email);
+      
+      if (error) {
+        throw error;
+      }
+      
+      setMessage({
+        type: 'success',
+        text: 'Correo de recuperación reenviado exitosamente.'
+      });
+      
+      startResendTimer();
+      
+    } catch (err: any) {
+      setMessage({
+        type: 'error',
+        text: err.message || 'Error al reenviar el correo'
       });
     } finally {
       setLoading(false);
@@ -93,6 +169,48 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
         </form>
+        
+        {/* Sección de reenvío de email */}
+        {emailSent && (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+            <div className="text-center">
+              <div className="mb-3">
+                <svg className="mx-auto h-12 w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Correo enviado
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Hemos enviado las instrucciones a <strong>{email}</strong>
+              </p>
+              
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  ¿No recibiste el correo? Revisa tu carpeta de spam o correo no deseado.
+                </p>
+                
+                <button
+                  onClick={handleResendEmail}
+                  disabled={!canResend || loading}
+                  className={`w-full py-2 px-4 text-sm font-medium rounded-md ${
+                    canResend && !loading
+                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                      : 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-200'
+                  }`}
+                >
+                  {loading
+                    ? 'Reenviando...'
+                    : canResend
+                    ? 'Reenviar correo'
+                    : `Reenviar en ${resendTimer}s`
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -182,17 +182,30 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="w-full justify-start text-left h-auto p-4 dark:border-gray-700 dark:hover:bg-gray-800/50 dark:hover:border-blue-500/50 light:border-gray-300 light:hover:bg-blue-50 light:hover:border-blue-300 transition-all duration-200"
+                className="w-full justify-start text-left h-auto p-3 sm:p-4 dark:border-gray-700 dark:hover:bg-gray-800/50 dark:hover:border-blue-500/50 light:border-gray-300 light:hover:bg-blue-50 light:hover:border-blue-300 transition-all duration-200"
               >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-full dark:bg-blue-500/20 light:bg-blue-100">
-                    <User className="h-5 w-5 dark:text-blue-400 light:text-blue-600" />
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  {/* Ícono responsive */}
+                  <div className="p-1.5 sm:p-2 rounded-full dark:bg-blue-500/20 light:bg-blue-100 shrink-0">
+                    <User className="h-4 w-4 sm:h-5 sm:w-5 dark:text-blue-400 light:text-blue-600" />
                   </div>
+                  
+                  {/* Contenido de texto responsive */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium dark:text-white light:text-gray-900">Seleccionar cliente</p>
-                    <p className="text-sm dark:text-gray-400 light:text-gray-600 truncate">Buscar por nombre, email o teléfono</p>
+                    <p className="font-medium dark:text-white light:text-gray-900 text-sm sm:text-base truncate">
+                      Seleccionar cliente
+                    </p>
+                    <p className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600 truncate hidden xs:block">
+                      Buscar por nombre, email o teléfono
+                    </p>
+                    {/* Versión móvil más corta */}
+                    <p className="text-xs dark:text-gray-400 light:text-gray-600 truncate block xs:hidden">
+                      Buscar cliente
+                    </p>
                   </div>
-                  <Search className="h-4 w-4 dark:text-gray-400 light:text-gray-500 shrink-0" />
+                  
+                  {/* Ícono de búsqueda responsive */}
+                  <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 dark:text-gray-400 light:text-gray-500 shrink-0" />
                 </div>
               </Button>
             </PopoverTrigger>

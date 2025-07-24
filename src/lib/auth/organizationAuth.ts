@@ -130,6 +130,12 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
 
   // Check if there's a redirectTo in session storage
   const redirectTo = sessionStorage.getItem('redirectTo');
+
+  // Registrar el dispositivo en la base de datos
+  registerUserDevice(sessionData.session?.user?.id).catch(error => {
+    localStorage.setItem('registerDeviceError', JSON.stringify(error));
+    console.error('Error al registrar el dispositivo:', error);
+  });
   
   // Forzar a Supabase a persistir la sesión correctamente
   supabase.auth.refreshSession().then(() => {
@@ -166,6 +172,8 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
         console.log('Sesión establecida correctamente', sessionData.session.user?.email);
         console.log('Auth cookie configurada:', `sb-${projectRef}-auth-token`);
         console.log('Expiración de sesión:', new Date((sessionData.session.expires_at || 0) * 1000).toLocaleString());
+        
+        
       } else {
         console.error('No hay datos de sesión disponibles en la respuesta de refreshSession');
       }
@@ -191,4 +199,216 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
       }, 1000);
     });
   });
+};
+
+// Función para registrar el dispositivo del usuario
+export const registerUserDevice = async (sessionOrUserId: any) => {
+  try {
+    // Determinar si es una sesión completa o solo un userId
+    let userId: string;
+    if (typeof sessionOrUserId === 'string' && sessionOrUserId.trim() !== '') {
+      // Es solo un userId
+      userId = sessionOrUserId;
+    } else if (sessionOrUserId && sessionOrUserId.user && sessionOrUserId.user.id) {
+      // Es una sesión completa
+      userId = sessionOrUserId.user.id;
+    } else {
+      console.error('Parámetro no válido para registrar dispositivo:', {
+        type: typeof sessionOrUserId,
+        value: sessionOrUserId,
+        hasUser: sessionOrUserId?.user,
+        hasUserId: sessionOrUserId?.user?.id
+      });
+      return;
+    }
+
+    // Obtener información del dispositivo
+    const userAgent = window.navigator.userAgent;
+    const deviceName = detectDeviceName(userAgent);
+    const deviceType = detectDeviceType(userAgent);
+    
+    // Obtener más detalles del navegador y sistema operativo
+    const browserInfo = detectBrowserInfo();
+    
+    // Generar una huella digital simple del dispositivo
+    const deviceFingerprint = await generateDeviceFingerprint();
+    
+    // Obtener ubicación del navegador según preferencia guardada
+    const { getLocationFromBrowser } = await import('@/lib/utils/geolocation')
+    const location = await getLocationFromBrowser()
+    
+    // Preparar los datos para la API
+    const deviceData = {
+      user_id: userId,
+      device_name: deviceName,
+      device_type: deviceType,
+      user_agent: userAgent,
+      browser: browserInfo.browser,
+      browser_version: browserInfo.browserVersion,
+      os: browserInfo.os,
+      os_version: browserInfo.osVersion,
+      device_fingerprint: deviceFingerprint,
+      location: location, // Incluir ubicación si está disponible
+      // La IP se captura en el servidor
+      is_active: true,
+      first_seen_at: new Date().toISOString(),
+      last_active_at: new Date().toISOString()
+    };
+
+    console.log('Registrando dispositivo:', deviceData);
+    
+    // Llamar al endpoint API para registrar/actualizar el dispositivo
+    const response = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(deviceData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('Dispositivo registrado exitosamente:', result);
+  } catch (error) {
+    console.error('Error al registrar el dispositivo:', error);
+  }
+};
+
+// Detectar nombre del dispositivo basado en el user agent
+const detectDeviceName = (userAgent: string): string => {
+  // Detectar dispositivo
+  if (userAgent.includes('iPhone')) {
+    return 'iPhone';
+  } else if (userAgent.includes('iPad')) {
+    return 'iPad';
+  } else if (userAgent.includes('Mac')) {
+    return 'Mac';
+  } else if (userAgent.includes('Windows Phone')) {
+    return 'Windows Phone';
+  } else if (userAgent.includes('Android') && userAgent.includes('Mobile')) {
+    // Intentar detectar marca de Android
+    const androidMatch = userAgent.match(/Android [\d\.]+; ([^;]+);/);
+    if (androidMatch && androidMatch[1]) {
+      return `Android - ${androidMatch[1]}`;
+    }
+    return 'Android Phone';
+  } else if (userAgent.includes('Android')) {
+    return 'Android Tablet';
+  } else if (userAgent.includes('Windows')) {
+    return 'Windows PC';
+  } else if (userAgent.includes('Linux')) {
+    return 'Linux PC';
+  }
+  
+  return 'Dispositivo desconocido';
+};
+
+// Detectar tipo de dispositivo
+const detectDeviceType = (userAgent: string): string => {
+  if (userAgent.includes('iPhone') || (userAgent.includes('Android') && userAgent.includes('Mobile')) || userAgent.includes('Windows Phone')) {
+    return 'smartphone';
+  } else if (userAgent.includes('iPad') || userAgent.includes('Tablet') || (userAgent.includes('Android') && !userAgent.includes('Mobile'))) {
+    return 'tablet';
+  } else if (userAgent.includes('Windows') || userAgent.includes('Macintosh') || userAgent.includes('Linux') && !userAgent.includes('Android')) {
+    return 'desktop';
+  } else {
+    return 'unknown';
+  }
+};
+
+// Detectar información detallada del navegador
+const detectBrowserInfo = () => {
+  const ua = window.navigator.userAgent;
+  const platform = window.navigator.platform;
+  const browserInfo: {[key: string]: any} = {
+    browser: 'unknown',
+    browserVersion: 'unknown',
+    os: 'unknown',
+    osVersion: 'unknown',
+    device: 'unknown',
+  };
+  
+  // Detectar navegador y versión
+  if (ua.includes('Firefox/')) {
+    browserInfo.browser = 'Firefox';
+    const version = ua.match(/Firefox\/(\d+\.\d+)/);
+    if (version) browserInfo.browserVersion = version[1];
+  } else if (ua.includes('Edg/')) {
+    browserInfo.browser = 'Edge';
+    const version = ua.match(/Edg\/(\d+\.\d+)/);
+    if (version) browserInfo.browserVersion = version[1];
+  } else if (ua.includes('Chrome/')) {
+    browserInfo.browser = 'Chrome';
+    const version = ua.match(/Chrome\/(\d+\.\d+)/);
+    if (version) browserInfo.browserVersion = version[1];
+  } else if (ua.includes('Safari/') && !ua.includes('Chrome')) {
+    browserInfo.browser = 'Safari';
+    const version = ua.match(/Version\/(\d+\.\d+)/);
+    if (version) browserInfo.browserVersion = version[1];
+  } else if (ua.includes('OPR/') || ua.includes('Opera')) {
+    browserInfo.browser = 'Opera';
+    const version = ua.match(/(?:OPR|Opera)\/(\d+\.\d+)/);
+    if (version) browserInfo.browserVersion = version[1];
+  }
+  
+  // Detectar sistema operativo y versión
+  if (ua.includes('Windows')) {
+    browserInfo.os = 'Windows';
+    if (ua.includes('Windows NT 10.0')) browserInfo.osVersion = '10/11';
+    else if (ua.includes('Windows NT 6.3')) browserInfo.osVersion = '8.1';
+    else if (ua.includes('Windows NT 6.2')) browserInfo.osVersion = '8';
+    else if (ua.includes('Windows NT 6.1')) browserInfo.osVersion = '7';
+    else browserInfo.osVersion = 'Otro';
+  } else if (ua.includes('Mac OS X')) {
+    browserInfo.os = 'MacOS';
+    const version = ua.match(/Mac OS X (\d+[._]\d+)/);
+    if (version) browserInfo.osVersion = version[1].replace('_', '.');
+  } else if (ua.includes('Android')) {
+    browserInfo.os = 'Android';
+    const version = ua.match(/Android (\d+\.\d+)/);
+    if (version) browserInfo.osVersion = version[1];
+  } else if (ua.includes('iOS')) {
+    browserInfo.os = 'iOS';
+    const version = ua.match(/OS (\d+_\d+)/);
+    if (version) browserInfo.osVersion = version[1].replace('_', '.');
+  } else if (ua.includes('Linux')) {
+    browserInfo.os = 'Linux';
+  }
+  
+  return browserInfo;
+};
+
+// Generar huella digital simple del dispositivo
+const generateDeviceFingerprint = async (): Promise<string> => {
+  const components = [
+    window.navigator.userAgent,
+    window.navigator.language,
+    window.screen.colorDepth,
+    window.screen.width + 'x' + window.screen.height,
+    new Date().getTimezoneOffset(),
+    !!window.sessionStorage,
+    !!window.localStorage,
+    !!window.indexedDB,
+  ];
+  
+  const fingerprint = components.join('###');
+  
+  // Crear hash usando SubtleCrypto si está disponible
+  if (window.crypto && window.crypto.subtle) {
+    try {
+      const msgBuffer = new TextEncoder().encode(fingerprint);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+      // Fallback si falla la API de Crypto
+      return btoa(fingerprint).substring(0, 64);
+    }
+  } else {
+    // Fallback para navegadores que no soportan SubtleCrypto
+    return btoa(fingerprint).substring(0, 64);
+  }
 };

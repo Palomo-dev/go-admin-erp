@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
+import BranchAssignmentModal from './BranchAssignmentModal';
 
 interface MemberProps {
   id: string;
@@ -38,6 +39,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   const [branchFilter, setBranchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(true); // Por defecto mostramos los filtros
+  
+  // Estado para el modal de asignación de sucursales
+  const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     if (orgId) {
@@ -55,9 +60,6 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       const { data: membersData, error: membersError } = await supabase
         .rpc('get_profiles_by_organization', { org_id: orgId });
 
-        const { data, error } = await supabase.from('branches').select('*')
-
-        console.log('Members:', data);
       console.log('Members data:', membersData);
 
       if (membersError) {
@@ -71,36 +73,49 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         return;
       }
 
-      // We'll use the roleUtils functions instead of defining the map here
-
-      // Type assertion for the data from Supabase
-      type MemberData = any;
-
-      // Format the member data with proper role names
-      const formattedMembers = membersData.map((member: MemberData) => {
-        const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Sin nombre';
-        const roleInfo = getRoleInfoById(member.role_id);
+      // Group members by organization_member_id to handle multiple branch assignments
+      const memberMap = new Map();
       
-        let branchName = 'Sin sucursal';
-        if (member.profiles_branch_id_fkey && typeof member.profiles_branch_id_fkey === 'object') {
-          branchName = member.profiles_branch_id_fkey.name || 'Sin sucursal';
+      membersData.forEach((member: any) => {
+        const memberId = member.id;
+        
+        if (!memberMap.has(memberId)) {
+          const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Sin nombre';
+          const roleInfo = getRoleInfoById(member.role_id);
+          
+          memberMap.set(memberId, {
+            id: member.id,
+            user_id: member.user_id || member.id,
+            full_name: fullName,
+            email: member.email || 'Sin email',
+            role: roleInfo.name,
+            role_id: member.role_id,
+            role_code: roleInfo.code,
+            is_admin: member.is_super_admin || false,
+            status: member.is_active ? "Activo" : "Inactivo",
+            branch_id: member.branch_id,
+            branch_name: member.branch_name || 'Sin sucursal',
+            branch_names: [], // Array to store all branch names
+            created_at: new Date(member.created_at).toLocaleDateString()
+          });
         }
-      
-        return {
-          id: member.id,
-          user_id: member.id,
-          full_name: fullName,
-          email: member.email || 'Sin email',
-          role: roleInfo.name,
-          role_id: member.role_id,
-          role_code: roleInfo.code,
-          is_admin: member.is_owner,
-          status: member.status ? "Activo" : "Inactivo",
-          branch_id: member.branch_id,
-          branch_name: branchName,
-          created_at: new Date(member.created_at).toLocaleDateString()
-        };
+        
+        // Add branch information if it exists
+        if (member.branch_id && member.branch_name) {
+          const existingMember = memberMap.get(memberId);
+          if (!existingMember.branch_names.includes(member.branch_name)) {
+            existingMember.branch_names.push(member.branch_name);
+          }
+        }
       });
+
+      // Convert map to array and update branch display
+      const formattedMembers = Array.from(memberMap.values()).map(member => ({
+        ...member,
+        branch_name: member.branch_names.length > 0 
+          ? member.branch_names.join(', ') 
+          : 'Sin sucursal'
+      }));
 
       setMembers(formattedMembers);
     } catch (err: any) {
@@ -187,6 +202,18 @@ export default function MembersTab({ orgId }: { orgId: number }) {
     }
   };
   
+  const openBranchAssignmentModal = (memberId: string, memberName: string) => {
+    setSelectedMember({id: memberId, name: memberName});
+    setIsBranchModalOpen(true);
+  };
+
+  const closeBranchAssignmentModal = () => {
+    setIsBranchModalOpen(false);
+    // Refrescar la lista de miembros para ver las actualizaciones
+    fetchMembers();
+  };
+
+  // Función heredada - ya no se usa directamente pero se mantiene por compatibilidad
   const updateMemberBranch = async (memberId: string, branchId: string) => {
     try {
       setUpdatingBranch(true);
@@ -231,10 +258,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       // Toggle the status
       const newStatus = !currentStatus;
       
-      // Update the member's status in profiles table
+      // Update the member's status in organization_members table
       const { error } = await supabase
         .from('organization_members')
-        .update({ status: newStatus })
+        .update({ is_active: newStatus })
         .eq('id', memberId)
         .eq('organization_id', orgId);
       
@@ -478,7 +505,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
                 <select
@@ -618,19 +645,16 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                     </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <select 
-                      className="rounded-md border border-gray-300 p-1"
-                      value={member.branch_id || ""}
-                      onChange={(e) => updateMemberBranch(member.id, e.target.value)}
-                      disabled={member.is_admin} // Disable changing branch for owners/admins
+                    <button
+                      onClick={() => openBranchAssignmentModal(member.user_id, member.full_name)}
+                      className="inline-flex items-center px-2 py-1 border border-primary text-xs font-medium rounded-md text-primary hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      disabled={member.is_admin}
                     >
-                      <option value="">Sin sucursal</option>
-                      {branches.map(branch => (
-                        <option key={branch.id} value={branch.id}>
-                          {branch.name}
-                        </option>
-                      ))}
-                    </select>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      {member.branch_name === 'Sin sucursal' ? 'Asignar' : 'Gestionar'} Sucursales
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button 
@@ -648,7 +672,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
-                      onClick={() => removeMember(member.user_id)}
+                      onClick={() => removeMember(member.id)}
                       className="text-red-600 hover:text-red-900"
                     >
                       Eliminar
@@ -661,7 +685,16 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         </table>
       </div>
     </div>
+      {/* Modal de asignación de sucursales */}
+      {isBranchModalOpen && selectedMember && (
+        <BranchAssignmentModal
+          isOpen={isBranchModalOpen}
+          onClose={closeBranchAssignmentModal}
+          memberId={selectedMember.id}
+          memberName={selectedMember.name}
+          organizationId={orgId}
+        />
+      )}
     </div>
   );
 }
-

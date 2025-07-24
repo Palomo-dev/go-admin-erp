@@ -224,18 +224,18 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
     onCheckout(cart);
   };
 
-  // Cancelar deuda y reactivar carrito
+  // Anular deuda con nota de crédito
   const handleCancelDebt = async () => {
     try {
-      const activeCart = await POSService.activateCart(cart.id);
-      onCartUpdate(activeCart);
-      toast.success('Deuda cancelada', {
-        description: 'El carrito ha sido reactivado. Nota: La factura y cuenta por cobrar permanecen en el sistema.'
+      const result = await POSService.cancelDebtWithCreditNote(cart.id);
+      onCartUpdate(result.cart);
+      toast.success('Deuda anulada exitosamente', {
+        description: `Se creó la nota de crédito ${result.creditNote.number}. Todos los balances han sido saldados.`
       });
     } catch (error: any) {
-      console.error('Error cancelando deuda:', error);
-      toast.error('Error al cancelar deuda', {
-        description: error.message || 'No se pudo reactivar el carrito'
+      console.error('Error anulando deuda:', error);
+      toast.error('Error al anular deuda', {
+        description: error.message || 'No se pudo crear la nota de crédito'
       });
     }
   };
@@ -477,7 +477,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                         className="dark:border-red-500 dark:text-red-400 dark:hover:bg-red-500/10 light:border-red-500 light:text-red-600 light:hover:bg-red-50"
                       >
                         <X className="h-3 w-3 mr-1" />
-                        <span className="text-xs">Cancelar</span>
+                        <span className="text-xs">Anular Deuda</span>
                       </Button>
                     </div>
                   </>

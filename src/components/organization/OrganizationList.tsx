@@ -115,7 +115,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
           name,
           type_id,
           organization_types!fk_organizations_organization_type(name),
-          plan_id (id, name),
+          plans!organizations_plan_id_fkey(id, name),
           status
         `)
         .eq('owner_user_id', session.user.id);
@@ -138,8 +138,8 @@ export default function OrganizationList({ showActions = false, onDelete, filter
         
         // Safely extract plan name
         let planName = 'Free';
-        if (org.plan_id && typeof org.plan_id === 'object' && 'name' in org.plan_id) {
-          planName = String(org.plan_id.name) || 'Free';
+        if (org.plans && Array.isArray(org.plans) && org.plans.length > 0) {
+          planName = String(org.plans[0].name) || 'Free';
         }
         
         return {
@@ -209,7 +209,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
       // Update user's organization
       const { error } = await supabase
         .from('profiles')
-        .update({ organization_id: orgId })
+        .update({ last_org_id: orgId })
         .eq('id', session.user.id);
 
       if (error) throw error;

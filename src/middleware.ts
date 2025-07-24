@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
-      flowType: 'pkce' as const,
+      flowType: 'pkce' as const, // Use const assertion to fix type error
       // Si tenemos un token de autenticación en la cookie, lo usamos como sesión inicial
       ...(authCookie && {
         storageKey: `sb-${projectRef}-auth-token`,
@@ -38,23 +38,94 @@ export async function middleware(request: NextRequest) {
   // Verificar si hay una sesión activa usando el cliente de Supabase
   let session = null;
   let isAuthenticated = false;
+  let isExpired = false;
 
   try {
     // 1. Primero intentamos obtener la sesión actual
     const { data } = await supabase.auth.getSession();
     session = data.session;
 
+    // Comprobar si la sesión está expirada por tiempo
+    if (session) {
+      const expiresAt = session.expires_at;
+      const currentTime = Math.floor(Date.now() / 1000); // Convertir a segundos
+      
+      // Si la sesión ha expirado, marcarla como tal
+      if (expiresAt && expiresAt < currentTime) {
+        console.log('Sesión expirada por tiempo:', expiresAt ? new Date(expiresAt * 1000).toLocaleString() : 'unknown');
+        isExpired = true;
+        session = null; // Invalidar la sesión
+      } else {
+        console.log('Sesión válida hasta:', expiresAt ? new Date(expiresAt * 1000).toLocaleString() : 'unknown');
+      }
+    }
+    
     // 2. Si no hay sesión pero tenemos una cookie de autenticación, intentamos refrescarla
-    if (!session && authCookie) {
-      const { data: refreshData } = await supabase.auth.refreshSession();
-      session = refreshData.session;
+    if (!session && authCookie && !isExpired) {
+      try {
+        const { data: refreshData, error } = await supabase.auth.refreshSession();
+        
+        if (error) {
+          console.error('Error al refrescar sesión:', error.message);
+          if (error.message.includes('expired')) {
+            isExpired = true;
+          }
+        } else {
+          session = refreshData.session;
+        }
+      } catch (refreshError) {
+        console.error('Error en proceso de refresh:', refreshError);
+        isExpired = true;
+      }
     }
 
     // Determinar si el usuario está autenticado en base a la sesión
     isAuthenticated = !!session;
+    
+    // Actualizar la actividad del dispositivo si el usuario está autenticado
+    if (isAuthenticated && session) {
+      try {
+        // Obtener el tiempo de última actualización de actividad de la cookie
+        const lastActivityUpdate = request.cookies.get('last_activity_update')?.value;
+        const currentTime = Date.now();
+        console.log('Tiempo de última actualización:', lastActivityUpdate);
+        // Solo actualizar si han pasado más de 10 minutos desde la última actualización
+        // o si no hay cookie de última actividad
+        if (!lastActivityUpdate || (currentTime - parseInt(lastActivityUpdate)) > 600000) {
+          // Crear respuesta que será modificada y configurar cookie
+          const nextResponse = NextResponse.next();
+          
+          // Registrar la última actualización en la cookie (10 minutos de vigencia)
+          nextResponse.cookies.set('last_activity_update', currentTime.toString(), { 
+            maxAge: 600, // 10 minutos en segundos
+            path: '/' 
+          });
+          
+          // Hacer una petición asíncrona para actualizar la actividad
+          // Usamos el cliente normal en lugar de admin
+          try {
+            // Ejecutamos la consulta de forma asíncrona sin esperar respuesta
+            // para no bloquear la navegación
+            void supabase.from('user_devices')
+              .update({ last_active_at: new Date().toISOString() })
+              .eq('user_id', session.user.id)
+              // La sesión en Supabase no tiene una propiedad 'id' directamente
+              .eq('is_active', true);
+              
+            console.log('Solicitud de actualización de actividad enviada');
+          } catch (activityUpdateError) {
+            console.error('Error al actualizar actividad:', activityUpdateError);
+          }
+        }
+      } catch (activityError) {
+        // Ignoramos errores en la actualización de actividad para no bloquear la navegación
+        console.error('Error al intentar actualizar actividad:', activityError);
+      }
+    }
 
     console.log('Sesión activa:', !!session ? 'Sí' : 'No');
     console.log('Autenticado:', isAuthenticated);
+    console.log('Sesión expirada:', isExpired ? 'Sí' : 'No');
   } catch (error) {
     console.error('Error al verificar/refrescar sesión:', error);
     isAuthenticated = false;
@@ -80,6 +151,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Si la sesión está expirada, redirigir a la página de sesión expirada
+  if (isExpired && !request.nextUrl.pathname.startsWith('/auth/session-expired')) {
+    console.log('Redirigiendo a página de sesión expirada');
+    const redirectUrl = new URL('/auth/session-expired', request.url);
+    return NextResponse.redirect(redirectUrl);
+  }
+  
   // Si el usuario no está autenticado y la ruta actual no es /auth/*, redirigir a /auth/login
   if (!isAuthenticated && !request.nextUrl.pathname.startsWith('/auth/')) {
     console.log('Redirigiendo a login: Usuario no autenticado');
@@ -101,6 +179,13 @@ export async function middleware(request: NextRequest) {
       request.nextUrl.pathname !== '/auth/session-expired' &&
       !request.nextUrl.pathname.startsWith('/auth/invite')) {
     console.log('Redirigiendo a inicio: Usuario autenticado en ruta de autenticación');
+    const redirectUrl = new URL('/app/inicio', request.url);
+    return NextResponse.redirect(redirectUrl);
+  }
+  
+  // No permitir acceso a la página de sesión expirada si la sesión no está expirada
+  if (!isExpired && request.nextUrl.pathname === '/auth/session-expired') {
+    console.log('Redirigiendo a inicio: Usuario intentando acceder a sesión expirada sin estar expirado');
     const redirectUrl = new URL('/app/inicio', request.url);
     return NextResponse.redirect(redirectUrl);
   }

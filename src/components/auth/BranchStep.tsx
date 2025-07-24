@@ -112,6 +112,7 @@ export default function BranchStep({
           submitLabel="Continuar"
           hideSubmitButton={true}
           noFormWrapper={true}
+          hideStatusSection={true}
         />
       </div>
 

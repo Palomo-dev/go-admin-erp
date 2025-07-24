@@ -3,11 +3,18 @@ import { Branch } from '@/types/branch';
 import { branchService } from '@/lib/services/branchService';
 import { BranchForm } from '@/components/branches/BranchForm';
 
-interface BranchesTabProps {
-  orgId: number;
+interface BranchAssignment {
+  branch_id: number;
+  branch_name?: string;
+  role_id?: number;
 }
 
-const BranchesTab: React.FC<BranchesTabProps> = ({ orgId }) => {
+interface BranchesTabProps {
+  orgId: number;
+  userBranches?: BranchAssignment[];
+}
+
+const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -113,6 +120,31 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId }) => {
         </div>
       )}
       
+      {userBranches && userBranches.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Tus Sucursales Asignadas</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userBranches.map((branch) => (
+              <div key={branch.branch_id} className="bg-white overflow-hidden shadow-sm rounded-lg border border-blue-100">
+                <div className="px-4 py-4 flex items-center">
+                  <div className="flex-shrink-0 h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                    {branch.branch_name ? branch.branch_name.substring(0, 2).toUpperCase() : 'BR'}
+                  </div>
+                  <div className="ml-4">
+                    <div className="font-medium text-gray-900">
+                      {branch.branch_name || `Sucursal #${branch.branch_id}`}
+                    </div>
+                    <div className="text-sm text-blue-600">
+                      Miembro asignado
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-8 flex justify-center items-center">
@@ -149,6 +181,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId }) => {
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Ubicación</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Contacto</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Asignación</th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
@@ -199,6 +232,20 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId }) => {
                             <circle cx="4" cy="4" r="3" />
                           </svg>
                           Inactiva
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {userBranches?.some(ub => ub.branch_id === branch.id) ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <svg className="mr-1.5 h-2 w-2 text-blue-500" fill="currentColor" viewBox="0 0 8 8">
+                            <circle cx="4" cy="4" r="3" />
+                          </svg>
+                          Asignado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                          No asignado
                         </span>
                       )}
                     </td>

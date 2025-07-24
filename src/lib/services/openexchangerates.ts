@@ -308,6 +308,13 @@ export async function actualizarTasasViaRPC(): Promise<{
 
     // Obtener tasas de cambio usando fetch directamente (desde servidor)
     const apiKey = process.env.NEXT_PUBLIC_OPENEXCHANGERATES_API_KEY || process.env.OPENEXCHANGERATES_API_KEY;
+    
+    console.log('Verificando API key para fallback RPC:', {
+      hasPublicKey: !!process.env.NEXT_PUBLIC_OPENEXCHANGERATES_API_KEY,
+      hasPrivateKey: !!process.env.OPENEXCHANGERATES_API_KEY,
+      finalApiKey: apiKey ? '***' + apiKey.slice(-4) : 'NO DISPONIBLE'
+    });
+    
     if (!apiKey) {
       return {
         success: false,
@@ -333,6 +340,13 @@ export async function actualizarTasasViaRPC(): Promise<{
     }
 
     const exchangeRatesData = await response.json();
+    
+    console.log('Datos recibidos de la API:', {
+      base: exchangeRatesData.base,
+      timestamp: exchangeRatesData.timestamp,
+      rates_count: exchangeRatesData.rates ? Object.keys(exchangeRatesData.rates).length : 0,
+      has_rates: !!exchangeRatesData.rates
+    });
 
     if (!exchangeRatesData.rates) {
       return {
@@ -340,20 +354,43 @@ export async function actualizarTasasViaRPC(): Promise<{
         message: 'Datos de tasas no válidos en respuesta de API'
       };
     }
+    
+    // Verificar que las tasas sean un objeto válido
+    if (typeof exchangeRatesData.rates !== 'object' || exchangeRatesData.rates === null) {
+      return {
+        success: false,
+        message: 'Formato de tasas inválido en respuesta de API'
+      };
+    }
 
     // Usar función RPC para guardar las tasas obtenidas
+    const currentDate = new Date().toISOString().split('T')[0];
+    
+    console.log('Llamando RPC update_global_exchange_rates con:', {
+      rates: Object.keys(exchangeRatesData.rates).length + ' monedas',
+      source: 'openexchangerates-fallback',
+      api_timestamp: exchangeRatesData.timestamp,
+      rate_date: currentDate
+    });
+    
     const { data, error } = await supabase.rpc('update_global_exchange_rates', {
       rates: exchangeRatesData.rates,
       source: 'openexchangerates-fallback',
-      api_timestamp: exchangeRatesData.timestamp,
-      rate_date: new Date().toISOString().split('T')[0]
+      api_timestamp: exchangeRatesData.timestamp || null,
+      rate_date: currentDate
     });
 
     if (error) {
-      console.error('Error en RPC update_global_exchange_rates:', error);
+      console.error('Error en RPC update_global_exchange_rates:', {
+        error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       return {
         success: false,
-        message: `Error en función RPC: ${error.message}`
+        message: `Error en función RPC: ${error.message || 'Error desconocido'}`
       };
     }
 
@@ -366,10 +403,15 @@ export async function actualizarTasasViaRPC(): Promise<{
     };
 
   } catch (error: any) {
-    console.error('Error general en fallback RPC:', error);
+    console.error('Error general en fallback RPC:', {
+      error,
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return {
       success: false,
-      message: `Error en fallback RPC: ${error.message}`
+      message: `Error en fallback RPC: ${error.message || 'Error desconocido en catch'}`
     };
   }
 }

@@ -6,7 +6,9 @@ export interface Return {
   branch_id: number;
   sale_id: string;
   user_id: string;
-  total_refund: number;
+  total_refund: number; // Subtotal del reembolso
+  refund_tax_amount: number; // Impuestos del reembolso
+  refund_total_with_tax: number; // Total con impuestos
   reason: string;
   return_date: string;
   status: 'processed' | 'pending' | 'cancelled';
@@ -15,6 +17,9 @@ export interface Return {
   updated_at: string;
   sale?: {
     id: string;
+    total: number;
+    subtotal: number;
+    tax_total: number;
     customer?: {
       full_name: string;
       phone?: string;

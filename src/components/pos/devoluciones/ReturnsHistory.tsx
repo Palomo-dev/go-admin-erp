@@ -95,7 +95,7 @@ export function ReturnsHistory({ refreshTrigger }: ReturnsHistoryProps) {
       const csvData = returns.map(returnItem => ({
         'Fecha': new Date(returnItem.return_date).toLocaleDateString(),
         'ID Venta': returnItem.sale_id,
-        'Total Reembolso': returnItem.total_refund,
+        'Total Reembolso': returnItem.refund_total_with_tax,
         'Motivo': returnItem.reason,
         'Estado': returnItem.status,
         'Items': returnItem.return_items.length
@@ -120,7 +120,7 @@ export function ReturnsHistory({ refreshTrigger }: ReturnsHistoryProps) {
     }
   };
 
-  const totalReembolsado = returns.reduce((sum, ret) => sum + ret.total_refund, 0);
+  const totalReembolsado = returns.reduce((sum, ret) => sum + ret.refund_total_with_tax, 0);
   const devolucionesProcesadas = returns.filter(ret => ret.status === 'processed').length;
 
   return (
@@ -302,8 +302,16 @@ export function ReturnsHistory({ refreshTrigger }: ReturnsHistoryProps) {
                         </div>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
-                        <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                          {formatCurrency(returnItem.total_refund)}
+                        <div className="space-y-1">
+                          <div className="text-lg font-bold text-red-600 dark:text-red-400">
+                            {formatCurrency(returnItem.refund_total_with_tax)}
+                          </div>
+                          {returnItem.refund_tax_amount > 0 && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Subtotal: {formatCurrency(returnItem.total_refund)} +
+                              Impuestos: {formatCurrency(returnItem.refund_tax_amount)}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
@@ -364,8 +372,16 @@ export function ReturnsHistory({ refreshTrigger }: ReturnsHistoryProps) {
                 </div>
                 <div>
                   <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Reembolso</div>
-                  <div className="text-lg font-bold text-red-600 dark:text-red-400">
-                    {formatCurrency(selectedReturn.total_refund)}
+                  <div className="space-y-1">
+                    <div className="text-lg font-bold text-red-600 dark:text-red-400">
+                      {formatCurrency(selectedReturn.refund_total_with_tax)}
+                    </div>
+                    {selectedReturn.refund_tax_amount > 0 && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Subtotal: {formatCurrency(selectedReturn.total_refund)} +
+                        Impuestos: {formatCurrency(selectedReturn.refund_tax_amount)}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div>

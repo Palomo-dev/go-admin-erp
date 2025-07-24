@@ -7,6 +7,22 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { OrdenCompra, FiltrosOrdenCompra, OrdenCompraFiltros } from './types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious, 
+  PaginationEllipsis 
+} from '@/components/ui/pagination';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // Definición del tipo para los datos que realmente retorna Supabase
 type SupabaseOrderResponse = {
@@ -56,6 +72,12 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
   const [internalLoading, setInternalLoading] = useState<boolean>(true);
   const isLoading = externalLoading ?? internalLoading; // Usando el operador de coalescencia nula
   const [error, setError] = useState<string | null>(null);
+  
+  // Estados para paginación
+  const [paginaActual, setPaginaActual] = useState<number>(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState<number>(10); // Por defecto 10 items según regla UX
+  const [totalItems, setTotalItems] = useState<number>(0);
+  
   // Utilizamos FiltrosOrdenCompra para gestionar los filtros de la consulta
   const [filtros, setFiltros] = useState<FiltrosOrdenCompra>({
     status: [],
@@ -71,7 +93,12 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
     if (organization?.id) {
       cargarOrdenes();
     }
-  }, [organization?.id, filtros]);
+  }, [organization?.id, filtros, paginaActual, itemsPorPagina]);
+  
+  // Resetear página cuando cambien los filtros
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [filtros]);
   
   // Funciones auxiliares para aplicar filtros y obtener conteo de items
   const aplicarFiltros = (query: any) => {
@@ -132,9 +159,34 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
     console.log('Cargando órdenes para organización:', organization?.id);
     
     try {
-      // Crear y aplicar filtros a la consulta - seleccionamos solo campos existentes
-      // Usamos la notación correcta para las relaciones externas en Supabase
+      // Primero obtener el conteo total para la paginación
+      let countQuery = supabase
+        .from('purchase_orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organization?.id || '');
+      
+      // Aplicar filtros al conteo
+      countQuery = aplicarFiltros(countQuery);
+      
+      if (filtros.search) {
+        if (!isNaN(parseInt(filtros.search))) {
+          countQuery = countQuery.eq('id', parseInt(filtros.search));
+        }
+      }
+      
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) {
+        console.error('Error en el conteo:', countError);
+        throw countError;
+      }
+      
+      setTotalItems(count || 0);
+      
+      // Crear y aplicar filtros a la consulta principal con paginación
       console.log('Consultando órdenes con ID de organización:', organization?.id);
+      
+      const offset = (paginaActual - 1) * itemsPorPagina;
       
       let query = supabase
         .from('purchase_orders')
@@ -154,7 +206,8 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
           branches(id, name)
         `)
         .eq('organization_id', organization?.id || '')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, offset + itemsPorPagina - 1);
         
       // Aplicar todos los filtros a través de la función auxiliar
       query = aplicarFiltros(query);
@@ -270,6 +323,56 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
     // Convertimos de OrdenCompraFiltros a FiltrosOrdenCompra
     setFiltros(convertirFiltros(nuevosFiltros));
   };
+  
+  // Funciones auxiliares para la paginación
+  const totalPaginas = Math.ceil(totalItems / itemsPorPagina);
+  
+  const irAPagina = (pagina: number) => {
+    if (pagina >= 1 && pagina <= totalPaginas) {
+      setPaginaActual(pagina);
+    }
+  };
+  
+  const cambiarItemsPorPagina = (nuevosItems: string) => {
+    setItemsPorPagina(Number(nuevosItems));
+    setPaginaActual(1); // Resetear a la primera página
+  };
+  
+  // Generar números de página para mostrar
+  const generarNumerosPagina = () => {
+    const paginas: (number | string)[] = [];
+    const maxPaginasVisibles = 5;
+    
+    if (totalPaginas <= maxPaginasVisibles) {
+      for (let i = 1; i <= totalPaginas; i++) {
+        paginas.push(i);
+      }
+    } else {
+      if (paginaActual <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          paginas.push(i);
+        }
+        paginas.push('...');
+        paginas.push(totalPaginas);
+      } else if (paginaActual >= totalPaginas - 2) {
+        paginas.push(1);
+        paginas.push('...');
+        for (let i = totalPaginas - 3; i <= totalPaginas; i++) {
+          paginas.push(i);
+        }
+      } else {
+        paginas.push(1);
+        paginas.push('...');
+        for (let i = paginaActual - 1; i <= paginaActual + 1; i++) {
+          paginas.push(i);
+        }
+        paginas.push('...');
+        paginas.push(totalPaginas);
+      }
+    }
+    
+    return paginas;
+  };
 
   return (
     <div className="space-y-6">
@@ -290,7 +393,74 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
             <span className="ml-4">Cargando órdenes...</span>
           </div>
         ) : (
-          <ListaOrdenesCompra ordenes={ordenes} onRefresh={cargarOrdenes} />
+          <div className="space-y-4">
+            {/* Encabezado con información de resultados */}
+            {totalItems > 0 && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b">
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {Math.min((paginaActual - 1) * itemsPorPagina + 1, totalItems)} a{' '}
+                  {Math.min(paginaActual * itemsPorPagina, totalItems)} de {totalItems} órdenes
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Mostrar</span>
+                  <Select value={itemsPorPagina.toString()} onValueChange={cambiarItemsPorPagina}>
+                    <SelectTrigger className="w-16 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-muted-foreground">por página</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Lista de órdenes */}
+            <ListaOrdenesCompra ordenes={ordenes} onRefresh={cargarOrdenes} />
+            
+            {/* Controles de navegación de páginas */}
+            {totalItems > 0 && totalPaginas > 1 && (
+              <div className="flex justify-center pt-6 border-t">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        disabled={paginaActual === 1}
+                        onClick={() => irAPagina(paginaActual - 1)}
+                      />
+                    </PaginationItem>
+                    
+                    {generarNumerosPagina().map((pagina, index) => (
+                      <PaginationItem key={index}>
+                        {pagina === '...' ? (
+                          <PaginationEllipsis />
+                        ) : (
+                          <PaginationLink
+                            isActive={pagina === paginaActual}
+                            onClick={() => irAPagina(pagina as number)}
+                          >
+                            {pagina}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        disabled={paginaActual === totalPaginas}
+                        onClick={() => irAPagina(paginaActual + 1)}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

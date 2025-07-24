@@ -1,23 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import OrdenesCompra from '@/components/inventario/ordenes-compra/OrdenesCompra';
 import { Button } from '@/components/ui/button';
 import { MoveRight, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { Metadata } from 'next';
 
 export default function OrdenesCompraPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  
-  useEffect(() => {
-    // Simulamos la carga de datos
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <>
@@ -45,7 +33,7 @@ export default function OrdenesCompraPage() {
           </div>
         </div>
 
-        <OrdenesCompra isLoading={isLoading} />
+        <OrdenesCompra />
       </div>
     </>
   );

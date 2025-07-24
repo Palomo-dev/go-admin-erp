@@ -129,7 +129,7 @@ export default function ProductosBajoUmbralTable({
       {filteredProductos.length === 0 && search ? (
         <div className="flex justify-center items-center h-32">
           <p className="text-gray-500 dark:text-gray-400">
-            No se encontraron productos para "{search}".
+            {`No se encontraron productos para "${search}".`}
           </p>
         </div>
       ) : (
@@ -140,7 +140,7 @@ export default function ProductosBajoUmbralTable({
                 <TableHead className="w-12">
                   <Checkbox 
                     checked={allSelected} 
-                    indeterminate={someSelected}
+                    {...(someSelected && { indeterminate: true })}
                     onCheckedChange={handleSelectAll}
                     aria-label="Seleccionar todos"
                   />
@@ -152,7 +152,6 @@ export default function ProductosBajoUmbralTable({
                 <TableHead>Stock Mínimo</TableHead>
                 <TableHead>Diferencia</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Proveedor</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -170,14 +169,14 @@ export default function ProductosBajoUmbralTable({
                   <TableCell>{producto.branch_name}</TableCell>
                   <TableCell>
                     <NumericInput 
-                      value={producto.qty_on_hand} 
+                      defaultValue={producto.qty_on_hand} 
                       className="w-24"
                       disabled
                     />
                   </TableCell>
                   <TableCell>
                     <NumericInput 
-                      value={producto.min_level} 
+                      defaultValue={producto.min_level} 
                       className="w-24"
                       disabled
                     />
@@ -187,12 +186,11 @@ export default function ProductosBajoUmbralTable({
                   </TableCell>
                   <TableCell>
                     {producto.qty_on_hand === 0 ? (
-                      <Badge variant="destructive">Sin stock</Badge>
+                      <Badge className="bg-red-500 text-white hover:bg-red-600 text-center justify-center">Sin stock</Badge>
                     ) : (
-                      <Badge variant="warning">Stock bajo</Badge>
+                      <Badge variant="warning" className="text-center justify-center">Stock bajo</Badge>
                     )}
                   </TableCell>
-                  <TableCell>{producto.supplier_name || 'No asignado'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -28,9 +28,6 @@ export interface ProductoBajoUmbral {
   qty_on_hand: number;
   min_level: number;
   diferencia: number;
-  supplier_id?: number;
-  supplier_name?: string;
-  last_cost?: number;
 }
 
 /**
@@ -54,86 +51,84 @@ export default function StockMinimoReporte() {
   const organizationData = useOrganization();
   const orgId = organizationData?.organization?.id;
 
-  // Cargar productos bajo umbral
-  useEffect(() => {
-    async function fetchProductosBajoUmbral() {
-      if (!orgId) return;
+  // Función para cargar productos bajo umbral
+  const fetchProductosBajoUmbral = async () => {
+    if (!orgId) return;
+       
+    try {
+      setLoading(true);
+      setError(null);
       
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Consulta para obtener productos con umbral definido
-        const { data, error } = await supabase
-          .from('stock_levels')
-          .select(`
+      // Consulta para obtener productos con umbral definido
+      const { data, error } = await supabase
+        .from('stock_levels')
+        .select(`
+          id,
+          product_id,
+          branch_id,
+          qty_on_hand,
+          min_level,
+          products (
             id,
-            product_id,
-            branch_id,
-            qty_on_hand,
-            min_level,
-            products (
-              id,
-              sku,
-              name,
-              organization_id
-            ),
-            branches (
-              id,
-              name
-            )
-          `)
-          .eq('products.organization_id', orgId)
-          .gt('min_level', 0);
+            sku,
+            name,
+            organization_id
+          ),
+          branches (
+            id,
+            name
+          )
+        `)
+        .eq('products.organization_id', orgId)
+        .gt('min_level', 0);
+      
+      if (error) {
+        console.error('Error al cargar productos bajo umbral:', error);
+        setError('Error al cargar productos bajo umbral. Por favor intente nuevamente.');
+      } else {
+        // Filtrar y formatear datos (solo productos bajo umbral)
+        const formattedData = (data || [])
+          .filter((item: unknown) => {
+            const stockItem = item as { qty_on_hand: number; min_level: number };
+            const qtyOnHand = Number(stockItem.qty_on_hand) || 0;
+            const minLevel = Number(stockItem.min_level) || 0;
+            return qtyOnHand < minLevel; // Filtrar productos bajo umbral
+          })
+          .map((item: unknown) => {
+            const stockItem = item as {
+              id: number;
+              product_id: number;
+              branch_id: number;
+              qty_on_hand: number;
+              min_level: number;
+              products?: { sku?: string; name?: string };
+              branches?: { name?: string };
+            };
+            return {
+              id: stockItem.id,
+              product_id: stockItem.product_id,
+              sku: stockItem.products?.sku || 'N/A',
+              name: stockItem.products?.name || 'Sin nombre',
+              branch_id: stockItem.branch_id,
+              branch_name: stockItem.branches?.name || 'Sin sucursal',
+              qty_on_hand: Number(stockItem.qty_on_hand) || 0,
+              min_level: Number(stockItem.min_level) || 0,
+              diferencia: Number(stockItem.min_level) - Number(stockItem.qty_on_hand)
+            };
+          });
         
-        if (error) {
-          console.error('Error al cargar productos bajo umbral:', error);
-          setError('Error al cargar productos bajo umbral. Por favor intente nuevamente.');
-        } else {
-          // Filtrar y formatear datos (solo productos bajo umbral)
-          const formattedData = (data || [])
-            .filter((item: unknown) => {
-              const stockItem = item as { qty_on_hand: number; min_level: number };
-              const qtyOnHand = Number(stockItem.qty_on_hand) || 0;
-              const minLevel = Number(stockItem.min_level) || 0;
-              return qtyOnHand < minLevel; // Filtrar productos bajo umbral
-            })
-            .map((item: unknown) => {
-              const stockItem = item as {
-                id: number;
-                product_id: number;
-                branch_id: number;
-                qty_on_hand: number;
-                min_level: number;
-                products?: { sku?: string; name?: string };
-                branches?: { name?: string };
-              };
-              return {
-                id: stockItem.id,
-                product_id: stockItem.product_id,
-                sku: stockItem.products?.sku || 'N/A',
-                name: stockItem.products?.name || 'Sin nombre',
-                branch_id: stockItem.branch_id,
-                branch_name: stockItem.branches?.name || 'Sin sucursal',
-                qty_on_hand: Number(stockItem.qty_on_hand) || 0,
-                min_level: Number(stockItem.min_level) || 0,
-                diferencia: Number(stockItem.min_level) - Number(stockItem.qty_on_hand),
-                supplier_id: undefined, // Campo no disponible en DB
-                supplier_name: undefined, // Campo no disponible en DB
-                last_cost: 0 // Campo no disponible en DB
-              };
-            });
-          
-          setProductos(formattedData);
-        }
-      } catch (err) {
-        console.error('Error inesperado:', err);
-        setError('Ha ocurrido un error inesperado. Por favor intente nuevamente.');
-      } finally {
-        setLoading(false);
+        setProductos(formattedData);
       }
+    } catch (err) {
+      console.error('Error inesperado:', err);
+      setError('Ha ocurrido un error inesperado. Por favor intente nuevamente.');
+    } finally {
+      setLoading(false);
     }
+  };
 
+  // Cargar productos bajo umbral al inicializar
+  useEffect(() => {
     fetchProductosBajoUmbral();
   }, [orgId]);
 
@@ -201,7 +196,8 @@ export default function StockMinimoReporte() {
       {/* Modales */}
       <ConfiguracionUmbralModal 
         open={showConfigModal} 
-        onOpenChange={setShowConfigModal} 
+        onOpenChange={setShowConfigModal}
+        onSave={fetchProductosBajoUmbral}
       />
       
       <OrdenesCompraModal 

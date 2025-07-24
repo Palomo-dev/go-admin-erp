@@ -27,6 +27,7 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 interface ConfiguracionUmbralModalProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
+  readonly onSave?: () => void;
 }
 
 interface ProductoItem {
@@ -43,7 +44,8 @@ interface ProductoItem {
  */
 export default function ConfiguracionUmbralModal({
   open,
-  onOpenChange
+  onOpenChange,
+  onSave
 }: ConfiguracionUmbralModalProps) {
   const [productos, setProductos] = useState<ProductoItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -129,20 +131,46 @@ export default function ConfiguracionUmbralModal({
     try {
       setSaving(true);
       
-      // Preparar datos para actualización
-      const updates = Object.entries(umbralValues).map(([key, value]) => {
-        const [productId, branchId] = key.split('-').map(Number);
-        return {
-          product_id: productId,
-          branch_id: branchId,
-          min_level: value
-        };
-      });
+      // Preparar datos válidos para actualización
+      const validUpdates = Object.entries(umbralValues)
+        .map(([key, value]) => {
+          const [productId, branchId] = key.split('-').map(Number);
+          return {
+            product_id: productId,
+            branch_id: branchId,
+            min_level: value
+          };
+        })
+        .filter(update => 
+          update.product_id && 
+          update.branch_id && 
+          !isNaN(update.min_level) && 
+          update.min_level >= 0
+        );
+
+      if (validUpdates.length === 0) {
+        alert('No hay datos válidos para guardar.');
+        return;
+      }
       
-      // Actualizar en Supabase
-      const { error } = await supabase.rpc('update_product_min_stock', {
-        p_items: updates
-      });
+      // Usar upsert directo en lugar de RPC para evitar problemas de permisos
+      const { error } = await supabase
+        .from('stock_levels')
+        .upsert(
+          validUpdates.map(update => ({
+            product_id: update.product_id,
+            branch_id: update.branch_id,
+            lot_id: null,            // Para umbrales generales
+            min_level: update.min_level,
+            qty_on_hand: 0,          // Valor por defecto si no existe
+            qty_reserved: 0,         // Valor por defecto si no existe  
+            avg_cost: 0              // Valor por defecto si no existe
+          })),
+          { 
+            onConflict: 'product_id,branch_id,lot_id',
+            ignoreDuplicates: false 
+          }
+        );
       
       if (error) {
         console.error('Error al guardar umbrales:', error);
@@ -151,10 +179,14 @@ export default function ConfiguracionUmbralModal({
       }
       
       alert('Configuración de stock mínimo guardada exitosamente.');
-      
       onOpenChange(false);
+      
+      // Notificar al componente padre para que actualice los datos
+      onSave?.();
+      
     } catch (err) {
       console.error('Error inesperado al guardar:', err);
+      alert('Error inesperado. Por favor intente nuevamente.');
     } finally {
       setSaving(false);
     }

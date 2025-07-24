@@ -27,9 +27,9 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import type { ProductoBajoUmbral } from './StockMinimoReporte';
 
 interface OrdenesCompraModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  selectedProducts: ProductoBajoUmbral[];
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly selectedProducts: ProductoBajoUmbral[];
 }
 
 /**
@@ -231,7 +231,7 @@ export default function OrdenesCompraModal({
             {/* Seleccionar proveedor */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label htmlFor="proveedor-select" className="block text-sm font-medium mb-1">
                   Proveedor por defecto
                 </label>
                 <Select value={proveedorId} onValueChange={setProveedorId}>
@@ -315,6 +315,7 @@ export default function OrdenesCompraModal({
             {loading ? (
               <>
                 <span className="animate-spin inline-block h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full"></span>
+                {' '}
                 Generando...
               </>
             ) : (

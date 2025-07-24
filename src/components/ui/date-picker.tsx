@@ -17,16 +17,18 @@ import {
 interface DatePickerProps {
   date: Date | undefined
   onSelect: (date: Date | undefined) => void
+  className?: string
 }
 
-export function DatePicker({ date, onSelect }: DatePickerProps) {
+export function DatePicker({ date, onSelect, className }: DatePickerProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           className={cn(
-            "w-[240px] justify-start text-left font-normal",
+            "w-full justify-start text-left font-normal",
+            className
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />

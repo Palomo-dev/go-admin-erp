@@ -9,21 +9,23 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Card, CardContent } from '@/components/ui/card';
+// Componentes Card y Checkbox eliminados porque no se usan
 
 interface FiltrosOrdenesCompraProps {
   onFiltrosChange: (filtros: OrdenCompraFiltros) => void;
 }
 
-export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraProps) {
+export function FiltrosOrdenesCompra({ onFiltrosChange }: Readonly<FiltrosOrdenesCompraProps>) {
   const [filtros, setFiltros] = useState<OrdenCompraFiltros>({
     status: [],
-    dateRange: { from: null, to: null }
+    supplier_id: null,
+    branch_id: null,
+    dateRange: { from: null, to: null },
+    searchTerm: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -82,9 +84,9 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
   };
   
   // Manejar cambios en los filtros
-  const handleFiltrosChange = (key: keyof OrdenCompraFiltros, value: any) => {
+  const handleFiltrosChange = (key: keyof OrdenCompraFiltros, value: string[] | number | null | undefined | { from: Date | null; to: Date | null } | string) => {
     setFiltros(prev => {
-      const newFiltros = { ...prev, [key]: value };
+      const newFiltros = { ...prev, [key]: value === undefined ? null : value };
       onFiltrosChange(newFiltros);
       return newFiltros;
     });
@@ -109,16 +111,12 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
   // Manejar toggle de estado en filtros
   const handleEstadoToggle = (estado: EstadoOrdenCompra) => {
     setFiltros(prev => {
-      const currentEstados = prev.status || [];
-      let newEstados: EstadoOrdenCompra[];
+      const currentStatus = prev.status as EstadoOrdenCompra[];
+      const newStatus = currentStatus.includes(estado)
+        ? currentStatus.filter(s => s !== estado)
+        : [...currentStatus, estado];
       
-      if (currentEstados.includes(estado)) {
-        newEstados = currentEstados.filter(e => e !== estado);
-      } else {
-        newEstados = [...currentEstados, estado];
-      }
-      
-      const newFiltros = { ...prev, status: newEstados };
+      const newFiltros = { ...prev, status: newStatus };
       onFiltrosChange(newFiltros);
       return newFiltros;
     });
@@ -126,12 +124,15 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
   
   // Limpiar todos los filtros
   const limpiarFiltros = () => {
-    setSearchTerm('');
-    setFiltros({
+    const filtrosLimpios: OrdenCompraFiltros = {
       status: [],
-      dateRange: { from: null, to: null }
-    });
-    onFiltrosChange({});
+      supplier_id: null,
+      branch_id: null,
+      dateRange: { from: null, to: null },
+      searchTerm: ''
+    };
+    setFiltros(filtrosLimpios);
+    onFiltrosChange(filtrosLimpios);
   };
 
   return (
@@ -202,7 +203,7 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
                   <Select
                     value={filtros.supplier_id?.toString() || undefined}
                     onValueChange={(value) => 
-                      handleFiltrosChange('supplier_id', value ? parseInt(value) : undefined)
+                      handleFiltrosChange('supplier_id', value ? parseInt(value) : null)
                     }
                   >
                     <SelectTrigger>
@@ -223,7 +224,7 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
                   <Select
                     value={filtros.branch_id?.toString() || undefined}
                     onValueChange={(value) => 
-                      handleFiltrosChange('branch_id', value ? parseInt(value) : undefined)
+                      handleFiltrosChange('branch_id', value ? parseInt(value) : null)
                     }
                   >
                     <SelectTrigger>
@@ -269,15 +270,24 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
                           initialFocus
                           mode="range"
                           locale={es}
-                          selected={{
-                            from: filtros.dateRange?.from || undefined,
-                            to: filtros.dateRange?.to || undefined,
-                          }}
+                          selected={(() => {
+                            const dateRange = filtros.dateRange;
+                            if (dateRange?.from && dateRange?.to) {
+                              return { from: dateRange.from, to: dateRange.to };
+                            } else if (dateRange?.from) {
+                              return { from: dateRange.from, to: dateRange.from };
+                            }
+                            return undefined;
+                          })()}
                           onSelect={(range) => {
-                            handleFiltrosChange('dateRange', {
-                              from: range?.from || null,
-                              to: range?.to || null
-                            });
+                            if (range) {
+                              handleFiltrosChange('dateRange', {
+                                from: range.from || null,
+                                to: range.to || null
+                              });
+                            } else {
+                              handleFiltrosChange('dateRange', { from: null, to: null });
+                            }
                           }}
                         />
                       </PopoverContent>
@@ -322,8 +332,8 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
         Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== ''
       ) && (
         <div className="flex flex-wrap gap-1">
-          {filtros.status && filtros.status.length > 0 && filtros.status.map(estado => {
-            const estadoInfo = estadosOpciones.find(e => e.value === estado);
+          {filtros.status && filtros.status.length > 0 && filtros.status.map((estado: string) => {
+            const estadoInfo = estadosOpciones.find(e => e.value === estado as EstadoOrdenCompra);
             return (
               <Badge 
                 key={estado} 
@@ -333,7 +343,7 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
                 {estadoInfo?.label}
                 <X 
                   className="h-3 w-3 ml-1 cursor-pointer" 
-                  onClick={() => handleEstadoToggle(estado)} 
+                  onClick={() => handleEstadoToggle(estado as EstadoOrdenCompra)} 
                 />
               </Badge>
             );
@@ -344,7 +354,7 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
               Proveedor: {proveedores.find(p => p.id === filtros.supplier_id)?.name}
               <X 
                 className="h-3 w-3 ml-1 cursor-pointer" 
-                onClick={() => handleFiltrosChange('supplier_id', undefined)} 
+                onClick={() => handleFiltrosChange('supplier_id', null)} 
               />
             </Badge>
           )}
@@ -354,7 +364,7 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
               Sucursal: {sucursales.find(s => s.id === filtros.branch_id)?.name}
               <X 
                 className="h-3 w-3 ml-1 cursor-pointer" 
-                onClick={() => handleFiltrosChange('branch_id', undefined)} 
+                onClick={() => handleFiltrosChange('branch_id', null)} 
               />
             </Badge>
           )}

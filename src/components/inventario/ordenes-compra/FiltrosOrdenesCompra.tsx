@@ -200,7 +200,7 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
                 <div>
                   <h4 className="text-sm font-medium mb-1">Proveedor</h4>
                   <Select
-                    value={filtros.supplier_id?.toString() || ''}
+                    value={filtros.supplier_id?.toString() || undefined}
                     onValueChange={(value) => 
                       handleFiltrosChange('supplier_id', value ? parseInt(value) : undefined)
                     }
@@ -209,7 +209,6 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
                       <SelectValue placeholder="Todos los proveedores" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos los proveedores</SelectItem>
                       {proveedores.map(proveedor => (
                         <SelectItem key={proveedor.id} value={proveedor.id.toString()}>
                           {proveedor.name}
@@ -222,7 +221,7 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
                 <div>
                   <h4 className="text-sm font-medium mb-1">Sucursal</h4>
                   <Select
-                    value={filtros.branch_id?.toString() || ''}
+                    value={filtros.branch_id?.toString() || undefined}
                     onValueChange={(value) => 
                       handleFiltrosChange('branch_id', value ? parseInt(value) : undefined)
                     }
@@ -231,7 +230,6 @@ export function FiltrosOrdenesCompra({ onFiltrosChange }: FiltrosOrdenesCompraPr
                       <SelectValue placeholder="Todas las sucursales" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas las sucursales</SelectItem>
                       {sucursales.map(sucursal => (
                         <SelectItem key={sucursal.id} value={sucursal.id.toString()}>
                           {sucursal.name}

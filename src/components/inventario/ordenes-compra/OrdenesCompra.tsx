@@ -67,14 +67,14 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
     fechaDesde: string;
     fechaHasta: string;
     branch: string;
-    search: string;
+    searchTerm: string;
   }>({
     status: [],
     proveedor: '',
     fechaDesde: '',
     fechaHasta: '',
     branch: '',
-    search: ''
+    searchTerm: ''
   });
   
   const { organization } = useOrganization();
@@ -103,10 +103,15 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
       }
     }
     
-    if (filtros.search && filtros.search.trim() !== '') {
+    if (filtros.searchTerm && filtros.searchTerm.trim() !== '') {
       // Si es un número, buscar por ID
-      if (!isNaN(Number(filtros.search))) {
-        query = query.eq('id', Number(filtros.search));
+      if (!isNaN(Number(filtros.searchTerm))) {
+        query = query.eq('id', Number(filtros.searchTerm));
+      } else {
+        // Para buscar por nombre de proveedor, necesitamos usar una estrategia diferente
+        // porque Supabase no permite buscar directamente en tablas relacionadas con esta sintaxis
+        // Por ahora, implementamos solo búsqueda por ID
+        // TODO: Implementar búsqueda por nombre de proveedor usando una consulta separada
       }
     }
     
@@ -146,13 +151,8 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
       // Aplicar filtros
       query = aplicarFiltros(query);
       
-      if (filtros.search) {
-        if (!isNaN(parseInt(filtros.search))) {
-          query = query.eq('id', parseInt(filtros.search));
-        } else {
-          query = query.or(`suppliers.name.ilike.%${filtros.search}%`);
-        }
-      }
+      // La búsqueda se maneja en aplicarFiltros() para evitar duplicación
+      // y porque la sintaxis anterior era incorrecta
       
       const { data, error, count } = await query;
       
@@ -212,7 +212,7 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
       fechaDesde: nuevosFiltros.dateRange?.from || '',
       fechaHasta: nuevosFiltros.dateRange?.to || '',
       branch: nuevosFiltros.branch_id || '',
-      search: nuevosFiltros.searchTerm || ''
+      searchTerm: nuevosFiltros.searchTerm || ''
     });
   };
   

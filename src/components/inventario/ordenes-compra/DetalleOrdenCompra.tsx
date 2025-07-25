@@ -29,9 +29,6 @@ import {
   CalendarIcon, 
   MapPin, 
   Building, 
-  User, 
-  Phone, 
-  Mail,
   FileEdit, 
   Send, 
   Package, 
@@ -122,7 +119,7 @@ export function DetalleOrdenCompra({ orden, items, onRefresh, error }: DetalleOr
         onRefresh();
       }, 1500);
       
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error('Error al enviar la orden:', err);
       setActionError(err.message || 'Error al enviar la orden');
     } finally {
@@ -160,7 +157,7 @@ export function DetalleOrdenCompra({ orden, items, onRefresh, error }: DetalleOr
         onRefresh();
       }, 1500);
       
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error('Error al cancelar la orden:', err);
       setActionError(err.message || 'Error al cancelar la orden');
     } finally {
@@ -205,7 +202,7 @@ export function DetalleOrdenCompra({ orden, items, onRefresh, error }: DetalleOr
         onRefresh();
       }, 1500);
       
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error('Error al completar la orden:', err);
       setActionError(err.message || 'Error al completar la orden');
     } finally {
@@ -265,20 +262,23 @@ export function DetalleOrdenCompra({ orden, items, onRefresh, error }: DetalleOr
             <CardTitle className="text-2xl font-bold">
               Orden de Compra #{orden.id}
             </CardTitle>
-            <CardDescription className="mt-1 flex items-center">
+            {/* Movemos el Badge fuera del CardDescription para evitar <div> dentro de <p> */}
+            <div className="flex items-center mt-1">
               <Badge className={`mr-2 ${getBadgeStyle(orden.status)}`}>
                 {getStatusLabel(orden.status)}
               </Badge>
-              <span>
-                Creada el {format(new Date(orden.created_at), "dd 'de' MMMM 'de' yyyy", { locale: es })}
-              </span>
-              {orden.expected_date && (
-                <span className="flex items-center ml-4">
-                  <CalendarIcon className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
-                  Esperada: {format(new Date(orden.expected_date), "dd/MM/yyyy", { locale: es })}
+              <CardDescription className="flex items-center m-0">
+                <span>
+                  Creada el {format(new Date(orden.created_at), "dd 'de' MMMM 'de' yyyy", { locale: es })}
                 </span>
-              )}
-            </CardDescription>
+                {orden.expected_date && (
+                  <span className="flex items-center ml-4">
+                    <CalendarIcon className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                    Esperada: {format(new Date(orden.expected_date), "dd/MM/yyyy", { locale: es })}
+                  </span>
+                )}
+              </CardDescription>
+            </div>
           </div>
           
           <div className="flex space-x-2">
@@ -529,8 +529,8 @@ export function DetalleOrdenCompra({ orden, items, onRefresh, error }: DetalleOr
         <Button 
           variant="outline" 
           size="sm"
-          disabled={orden.status === 'draft'}
-          title={orden.status === 'draft' ? 'La orden debe ser enviada primero' : 'Imprimir orden'}
+          disabled={orden?.status === 'draft'}
+          title={orden?.status === 'draft' ? 'La orden debe ser enviada primero' : 'Imprimir orden'}
         >
           <FileText className="h-4 w-4 mr-1" />
           Imprimir Orden

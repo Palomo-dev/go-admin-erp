@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 // Interfaces definidas para la estructura de datos de órdenes de compra
-import { OrdenCompra, FiltrosOrdenCompra, OrdenCompraFiltros } from './types';
+import {
+  OrdenCompra,
+} from './types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { 
@@ -24,29 +26,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-// Definición del tipo para los datos que realmente retorna Supabase
-type SupabaseOrderResponse = {
-  id: number;
-  organization_id: number;
-  branch_id: number;
-  supplier_id: number;
-  status: string;
-  expected_date: string | null;
-  total: number;
-  created_at: string;
-  updated_at: string | null;
-  created_by: number | null;
-  notes: string | null;
-  // En Supabase, con joins, estos campos llegan como objetos directos con los nombres de las tablas
-  suppliers: { id: number; name: string };
-  branches: { id: number; name: string };
-  // Este campo puede no existir inicialmente
-  po_items_count?: number;
-};
-
 // Importaciones de componentes locales - importamos desde el índice 
 // para evitar problemas con extensiones
-import { FiltrosOrdenesCompra, ListaOrdenesCompra } from './';
+import { FiltrosOrdenesCompra, ListaOrdenesCompra } from '.';
 
 // Componente temporal de Spinner hasta que esté disponible en la UI
 const Spinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
@@ -79,48 +61,45 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
   const [totalItems, setTotalItems] = useState<number>(0);
   
   // Utilizamos FiltrosOrdenCompra para gestionar los filtros de la consulta
-  const [filtros, setFiltros] = useState<FiltrosOrdenCompra>({
+  const [filtros, setFiltros] = useState<{
+    status: string[];
+    proveedor: string;
+    fechaDesde: string;
+    fechaHasta: string;
+    branch: string;
+    search: string;
+  }>({
     status: [],
-    supplier_id: null,
-    branch_id: null,
-    dateRange: { from: null, to: null },
+    proveedor: '',
+    fechaDesde: '',
+    fechaHasta: '',
+    branch: '',
     search: ''
   });
   
   const { organization } = useOrganization();
   
-  useEffect(() => {
-    if (organization?.id) {
-      cargarOrdenes();
-    }
-  }, [organization?.id, filtros, paginaActual, itemsPorPagina]);
-  
-  // Resetear página cuando cambien los filtros
-  useEffect(() => {
-    setPaginaActual(1);
-  }, [filtros]);
-  
-  // Funciones auxiliares para aplicar filtros y obtener conteo de items
-  const aplicarFiltros = (query: any) => {
+  // Funciones auxiliares para aplicar filtros
+  const aplicarFiltros = useCallback((query: any) => {
     // Aseguramos que status sea un array antes de verificar su longitud
     const statusArray = Array.isArray(filtros.status) ? filtros.status : [];
     if (statusArray.length > 0) {
       query = query.in('status', statusArray);
     }
     
-    if (filtros.supplier_id) {
-      query = query.eq('supplier_id', filtros.supplier_id);
+    if (filtros.proveedor) {
+      query = query.eq('supplier_id', filtros.proveedor);
     }
     
-    if (filtros.branch_id) {
-      query = query.eq('branch_id', filtros.branch_id);
+    if (filtros.branch) {
+      query = query.eq('branch_id', filtros.branch);
     }
     
-    if (filtros.dateRange?.from) {
-      query = query.gte('created_at', filtros.dateRange.from.toISOString());
+    if (filtros.fechaDesde) {
+      query = query.gte('created_at', filtros.fechaDesde);
       
-      if (filtros.dateRange.to) {
-        query = query.lte('created_at', filtros.dateRange.to.toISOString());
+      if (filtros.fechaHasta) {
+        query = query.lte('created_at', filtros.fechaHasta);
       }
     }
     
@@ -132,62 +111,16 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
     }
     
     return query;
-  };
+  }, [filtros]);
   
-  const obtenerConteoPorOrden = async (ordenes: any[]) => {
-    if (!Array.isArray(ordenes) || ordenes.length === 0) return;
-    
-    for (const orden of ordenes) {
-      if (orden && typeof orden === 'object' && 'id' in orden) {
-        const { count, error: countError } = await supabase
-          .from('po_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('purchase_order_id', orden.id);
-          
-        if (countError) {
-          console.error(`Error al obtener el conteo de items para orden ${orden.id}:`, countError);
-        } else {
-          orden.po_items_count = count || 0;
-        }
-      }
-    }
-  };
-  
-  const cargarOrdenes = async () => {
+  const cargarOrdenes = useCallback(async () => {
     if (externalLoading === undefined) setInternalLoading(true);
     setError(null);
-    console.log('Cargando órdenes para organización:', organization?.id);
     
     try {
-      // Primero obtener el conteo total para la paginación
-      let countQuery = supabase
-        .from('purchase_orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organization?.id || '');
-      
-      // Aplicar filtros al conteo
-      countQuery = aplicarFiltros(countQuery);
-      
-      if (filtros.search) {
-        if (!isNaN(parseInt(filtros.search))) {
-          countQuery = countQuery.eq('id', parseInt(filtros.search));
-        }
-      }
-      
-      const { count, error: countError } = await countQuery;
-      
-      if (countError) {
-        console.error('Error en el conteo:', countError);
-        throw countError;
-      }
-      
-      setTotalItems(count || 0);
-      
-      // Crear y aplicar filtros a la consulta principal con paginación
-      console.log('Consultando órdenes con ID de organización:', organization?.id);
-      
       const offset = (paginaActual - 1) * itemsPorPagina;
       
+      // OPTIMIZACIÓN: Una sola consulta con agregación para obtener lo necesario
       let query = supabase
         .from('purchase_orders')
         .select(`
@@ -203,125 +136,84 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
           created_by,
           notes,
           suppliers(id, name),
-          branches(id, name)
-        `)
+          branches(id, name),
+          po_items(id)
+        `, { count: 'exact' })
         .eq('organization_id', organization?.id || '')
         .order('created_at', { ascending: false })
         .range(offset, offset + itemsPorPagina - 1);
         
-      // Aplicar todos los filtros a través de la función auxiliar
+      // Aplicar filtros
       query = aplicarFiltros(query);
+      
       if (filtros.search) {
-        // Buscar por ID de orden 
-        const searchTerm = `%${filtros.search}%`;
         if (!isNaN(parseInt(filtros.search))) {
           query = query.eq('id', parseInt(filtros.search));
         } else {
-          query = query.or(`suppliers.name.ilike.${searchTerm}`);
+          query = query.or(`suppliers.name.ilike.%${filtros.search}%`);
         }
       }
       
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       
       if (error) {
-        console.error('Error en la consulta:', error);
+        console.error('Error en la consulta optimizada:', error);
         throw error;
       }
       
-      console.log('Datos recibidos:', data?.length || 0, 'órdenes');
+      // Establecer el total de items una sola vez
+      setTotalItems(count || 0);
       
-      // Log detallado para inspeccionar la estructura completa de la primera orden
-      if (Array.isArray(data) && data.length > 0) {
-        console.log('Estructura detallada de la primera orden:', JSON.stringify(data[0], null, 2));
-      }
+      // OPTIMIZACIÓN: Procesamiento simplificado sin bucles adicionales
+      const ordenesOptimizadas = (data || []).map((orden: any) => ({
+        id: orden.id,
+        organization_id: orden.organization_id,
+        branch_id: orden.branch_id,
+        supplier_id: orden.supplier_id,
+        status: orden.status,
+        expected_date: orden.expected_date,
+        total: orden.total,
+        created_at: orden.created_at,
+        updated_at: orden.updated_at,
+        created_by: orden.created_by,
+        notes: orden.notes,
+        // Datos relacionados simplificados
+        suppliers: orden.suppliers || { id: orden.supplier_id, name: 'N/A' },
+        branches: orden.branches || { id: orden.branch_id, name: 'N/A' },
+        // Conteo de items calculado directamente
+        po_items_count: Array.isArray(orden.po_items) ? orden.po_items.length : 0
+      }));
       
-      // Obtener el conteo de items para cada orden
-      if (Array.isArray(data) && data.length > 0) {
-        await obtenerConteoPorOrden(data);
-      }
-      
-      // Procesamiento de los datos para adaptarlos a nuestra interfaz
-      // Antes de procesar, convertimos el tipado de data explícitamente
-      const dataConTipo = Array.isArray(data) ? data as unknown as SupabaseOrderResponse[] : [];
-      
-      const ordenesConConteo = dataConTipo.map((orden) => {
-          // Log para depurar la estructura del supplier y branch antes de procesarlo
-          console.log('Orden completa:', orden);
-          console.log('Suppliers en la respuesta de Supabase:', orden.suppliers);
-          console.log('Branches en la respuesta de Supabase:', orden.branches);
-          
-          // Crear el objeto con tipado correcto
-          const ordenProcesada: OrdenCompra = {
-            id: orden.id,
-            organization_id: orden.organization_id,
-            branch_id: orden.branch_id,
-            supplier_id: orden.supplier_id,
-            status: orden.status,
-            expected_date: orden.expected_date,
-            total: orden.total,
-            created_at: orden.created_at,
-            updated_at: orden.updated_at,
-            created_by: orden.created_by,
-            notes: orden.notes,
-            
-            // Asignar los datos del proveedor
-            // Para mantener compatibilidad con la interfaz OrdenCompra, asignamos el objeto a un array
-            supplier: orden.suppliers ? [orden.suppliers] : [],
-            // Asignamos el objeto suppliers directamente al campo suppliers para mantener la estructura anterior
-            suppliers: orden.suppliers ? { id: orden.suppliers.id, name: orden.suppliers.name } : undefined,
-            
-            // Asignar los datos de la sucursal
-            // Para mantener compatibilidad con la interfaz OrdenCompra, asignamos el objeto a un array
-            branch: orden.branches ? [orden.branches] : [],
-            // Asignamos el objeto branches directamente al campo branches para mantener la estructura anterior
-            branches: orden.branches ? { id: orden.branches.id, name: orden.branches.name } : undefined,
-              
-            // Asignar el conteo de ítems o 0 si no existe
-            po_items_count: orden.po_items_count ?? 0
-          };
-          
-          // Log para ver el resultado del procesamiento
-          console.log('OrdenProcesada:', {
-            id: ordenProcesada.id,
-            supplier: ordenProcesada.supplier,
-            suppliers: ordenProcesada.suppliers,
-            branch: ordenProcesada.branch,
-            branches: ordenProcesada.branches
-          });
-          
-          return ordenProcesada;
-        });
-      
-      setOrdenes(ordenesConConteo);
+      setOrdenes(ordenesOptimizadas);
     } catch (err: any) {
       console.error('Error al cargar órdenes de compra:', err);
       setError(err.message || 'Error al cargar órdenes de compra');
     } finally {
       if (externalLoading === undefined) setInternalLoading(false);
     }
-  };
+  }, [organization?.id, filtros, paginaActual, itemsPorPagina, externalLoading, aplicarFiltros]);
   
-  // Función auxiliar para convertir de los filtros antiguos al nuevo formato
-  // Nota: Esta función se mantiene por compatibilidad mientras se completa la migración
-  const convertirFiltros = (filtrosAntiguos: OrdenCompraFiltros): FiltrosOrdenCompra => {
-    return {
-      status: filtrosAntiguos.status || [],
-      supplier_id: filtrosAntiguos.supplier_id,
-      branch_id: filtrosAntiguos.branch_id,
-      dateRange: {
-        from: filtrosAntiguos.dateRange?.from || null,
-        to: filtrosAntiguos.dateRange?.to || null
-      },
-      search: filtrosAntiguos.searchTerm || ''
-    };
-  };
-
+  useEffect(() => {
+    if (organization?.id) {
+      cargarOrdenes();
+    }
+  }, [organization?.id, cargarOrdenes]);
+  
+  // Resetear página cuando cambien los filtros
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [filtros]);
+  
   // Función para adaptar los filtros desde el componente FiltrosOrdenesCompra
-  // Utilizamos la interfaz OrdenCompraFiltros aunque está marcada como deprecated
-  // para mantener compatibilidad con componentes existentes
-  const adaptarFiltros = (nuevosFiltros: OrdenCompraFiltros): void => {
-    // Convertimos de OrdenCompraFiltros a FiltrosOrdenCompra
-    setFiltros(convertirFiltros(nuevosFiltros));
+  const adaptarFiltros = (nuevosFiltros: any) => {
+    setFiltros({
+      status: nuevosFiltros.status || [],
+      proveedor: nuevosFiltros.supplier_id || '',
+      fechaDesde: nuevosFiltros.dateRange?.from || '',
+      fechaHasta: nuevosFiltros.dateRange?.to || '',
+      branch: nuevosFiltros.branch_id || '',
+      search: nuevosFiltros.searchTerm || ''
+    });
   };
   
   // Funciones auxiliares para la paginación
@@ -436,7 +328,7 @@ export default function OrdenesCompra({ isLoading: externalLoading }: OrdenesCom
                     </PaginationItem>
                     
                     {generarNumerosPagina().map((pagina, index) => (
-                      <PaginationItem key={index}>
+                      <PaginationItem key={`pagina-${pagina}-${index}`}>
                         {pagina === '...' ? (
                           <PaginationEllipsis />
                         ) : (

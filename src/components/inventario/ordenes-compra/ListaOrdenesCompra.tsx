@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { 
   Table,
   TableBody,
@@ -16,27 +15,14 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { 
   EyeIcon, 
   FileEdit, 
-  Send, 
-  Package,
-  CheckCircle2,
-  XCircle,
-  RefreshCw,
-  MoreVertical,
-  Loader2
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrdenCompra } from './types';
 import { formatCurrency } from '@/utils/Utils';
-import { supabase } from '@/lib/supabase/config';
-import { useToast } from '@/components/ui/use-toast';
-import { useOrganization } from '@/lib/hooks/useOrganization';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
+// Importaciones de supabase, toast y organization eliminadas porque ya no se utilizan
+// Componentes de dropdown eliminados pues ya no se utilizan
 
 interface ListaOrdenesCompraProps {
   readonly ordenes: OrdenCompra[];
@@ -45,9 +31,7 @@ interface ListaOrdenesCompraProps {
 
 export function ListaOrdenesCompra({ ordenes, onRefresh }: Readonly<ListaOrdenesCompraProps>) {
   const router = useRouter();
-  const { toast } = useToast();
-  const { organization } = useOrganization();
-  const [processingOrder, setProcessingOrder] = useState<number | null>(null);
+  // Variables eliminadas: toast, organization, processingOrder y cancellingOrder
   
   const getBadgeStyle = (status: string) => {
     switch (status) {
@@ -88,66 +72,8 @@ export function ListaOrdenesCompra({ ordenes, onRefresh }: Readonly<ListaOrdenes
     router.push(`/app/inventario/ordenes-compra/${id}/editar`);
   };
 
-  const handleEnviarAlProveedor = async (orden: OrdenCompra) => {
-    // Verificamos que la orden tenga un proveedor y que el proveedor tenga email
-    const supplier = orden.suppliers || (orden.supplier && orden.supplier[0]);
-    
-    if (!supplier) {
-      toast({
-        title: 'Error',
-        description: 'La orden no tiene proveedor asignado',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    const supplierEmail = supplier.email;
-    if (!supplierEmail) {
-      toast({
-        title: 'Error',
-        description: 'El proveedor no tiene email registrado',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    try {
-      setProcessingOrder(orden.id);
-      
-      // Llamamos a la Edge Function para enviar el email
-      const { data, error } = await supabase.functions.invoke('send-purchase-order-email', {
-        body: {
-          orderId: orden.id,
-          supplierEmail: supplierEmail,
-          supplierName: supplier.name,
-          organizationName: organization?.name,
-          contactName: 'Departamento de Compras' // Podría ser personalizable en el futuro
-        }
-      });
-      
-      if (error) {
-        throw new Error(error.message);
-      }
-      
-      toast({
-        title: 'Éxito',
-        description: `Orden #${orden.id} enviada al proveedor ${supplier.name}`,
-      });
-      
-      // Actualizamos la lista de órdenes
-      onRefresh();
-      
-    } catch (error) {
-      console.error('Error al enviar orden por email:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo enviar la orden por email. Inténtelo de nuevo.',
-        variant: 'destructive'
-      });
-    } finally {
-      setProcessingOrder(null);
-    }
-  };
+  // Las funciones handleEnviarAlProveedor y handleCancelarOrden han sido eliminadas
+  // ya que ahora estas acciones solo están disponibles en el detalle de la orden
 
   return (
     <Card>
@@ -228,49 +154,7 @@ export function ListaOrdenesCompra({ ordenes, onRefresh }: Readonly<ListaOrdenes
                         </Button>
                       )}
                       
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" title="Más opciones">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {orden.status === 'draft' && (
-                            <DropdownMenuItem onSelect={(e) => {
-                              e.preventDefault();
-                              handleEnviarAlProveedor(orden);
-                            }}>
-                              {processingOrder === orden.id ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              ) : (
-                                <Send className="h-4 w-4 mr-2" />
-                              )}
-                              Enviar al proveedor
-                            </DropdownMenuItem>
-                          )}
-                          
-                          {(orden.status === 'sent' || orden.status === 'partial') && (
-                            <DropdownMenuItem>
-                              <Package className="h-4 w-4 mr-2" />
-                              Registrar recepción
-                            </DropdownMenuItem>
-                          )}
-                          
-                          {(orden.status === 'sent' || orden.status === 'partial') && (
-                            <DropdownMenuItem>
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Marcar como completa
-                            </DropdownMenuItem>
-                          )}
-                          
-                          {(orden.status === 'draft' || orden.status === 'sent') && (
-                            <DropdownMenuItem>
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Cancelar orden
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {/* El menú desplegable (tres punticos) ha sido eliminado para evitar confusión */}
                     </div>
                   </TableCell>
                 </TableRow>

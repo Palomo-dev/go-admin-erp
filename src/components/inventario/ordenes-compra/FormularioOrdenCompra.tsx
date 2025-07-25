@@ -6,8 +6,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { 
   OrdenCompraFormData, 
-  ItemOrdenCompraFormData,
-  ItemOrdenCompra
+  ItemOrdenCompraFormData
 } from './types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,20 +31,17 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Spinner } from '@/components/ui/spinner';
 import { 
   AlertCircle,
-  Calendar, 
   Plus, 
   Trash2, 
   Save,
-  ArrowLeft,
-  Send,
-  ShoppingBag
+  ArrowLeft
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency } from '@/utils/Utils';
 
 interface FormularioOrdenCompraProps {
-  ordenId?: number;
-  esEdicion?: boolean;
+  readonly ordenId?: number;
+  readonly esEdicion?: boolean;
 }
 
 export function FormularioOrdenCompra({ ordenId, esEdicion = false }: FormularioOrdenCompraProps) {
@@ -98,6 +94,7 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
         setIsLoading(false);
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization?.id, esEdicion, ordenId]);
 
   // Cargar proveedores
@@ -202,16 +199,16 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
         notes: ordenData.notes,
         items: items
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al cargar datos de la orden:', err);
-      setError(err.message || 'Error al cargar datos de la orden');
+      setError(err instanceof Error ? err.message : 'Error al cargar datos de la orden');
     } finally {
       setIsLoading(false);
     }
   };
   
   // Manejar cambios en el formulario
-  const handleInputChange = (field: keyof Omit<OrdenCompraFormData, 'items'>, value: any) => {
+  const handleInputChange = (field: keyof Omit<OrdenCompraFormData, 'items'>, value: string | number | Date | null) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -219,7 +216,7 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
   };
   
   // Manejar cambios en los items
-  const handleItemChange = (index: number, field: keyof ItemOrdenCompraFormData, value: any) => {
+  const handleItemChange = (index: number, field: keyof ItemOrdenCompraFormData, value: string | number) => {
     setFormData(prev => {
       const newItems = [...prev.items];
       newItems[index] = {
@@ -229,8 +226,8 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
       
       // Recalcular subtotal si cambia cantidad o costo
       if (field === 'quantity' || field === 'unit_cost') {
-        const quantity = field === 'quantity' ? value : newItems[index].quantity;
-        const unitCost = field === 'unit_cost' ? value : newItems[index].unit_cost;
+        const quantity = Number(field === 'quantity' ? value : newItems[index].quantity || 0);
+        const unitCost = Number(field === 'unit_cost' ? value : newItems[index].unit_cost || 0);
         newItems[index].subtotal = quantity * unitCost;
       }
       
@@ -445,65 +442,15 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
         router.push(`/app/inventario/ordenes-compra/${idOrdenActual}`);
       }, 1500);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al guardar orden de compra:', err);
-      setError(err.message || 'Error al guardar orden de compra');
+      setError(err instanceof Error ? err.message : 'Error al guardar orden de compra');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Componente para input numérico con comportamiento especial para valores 0
-  const NumericInput = ({ 
-    value, 
-    onChange, 
-    placeholder = "",
-    className = "",
-    min = 0
-  }: {
-    value: number;
-    onChange: (value: number) => void;
-    placeholder?: string;
-    className?: string;
-    min?: number;
-  }) => {
-    const [displayValue, setDisplayValue] = useState<string>(value === 0 ? '' : value.toString());
 
-    // Al recibir foco, si el valor es 0, mostrar campo vacío
-    const handleFocus = () => {
-      if (value === 0) {
-        setDisplayValue('');
-      }
-    };
-
-    // Al cambiar el valor en el input
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value;
-      setDisplayValue(newValue);
-      onChange(newValue === '' ? 0 : Number(newValue));
-    };
-
-    // Al perder foco, si quedó vacío, establecer en 0
-    const handleBlur = () => {
-      if (displayValue === '') {
-        setDisplayValue('0');
-        onChange(0);
-      }
-    };
-
-    return (
-      <Input
-        type="number"
-        value={displayValue}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        placeholder={placeholder}
-        className={className}
-        min={min}
-      />
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -537,7 +484,7 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Proveedor</label>
+                  <span className="text-sm font-medium">Proveedor</span>
                   <Select 
                     value={formData.supplier_id ? formData.supplier_id.toString() : ''} 
                     onValueChange={value => handleInputChange('supplier_id', parseInt(value))}
@@ -556,7 +503,7 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Sucursal</label>
+                  <span className="text-sm font-medium">Sucursal</span>
                   <Select 
                     value={formData.branch_id ? formData.branch_id.toString() : ''} 
                     onValueChange={value => handleInputChange('branch_id', parseInt(value))}
@@ -575,7 +522,7 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Fecha Esperada</label>
+                  <span className="text-sm font-medium">Fecha Esperada</span>
                   <DatePicker 
                     date={formData.expected_date ? new Date(formData.expected_date) : undefined} 
                     onSelect={(date) => handleInputChange('expected_date', date ? date.toISOString() : null)}
@@ -584,7 +531,7 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Notas</label>
+                <span className="text-sm font-medium">Notas</span>
                 <Textarea 
                   placeholder="Escriba notas o instrucciones adicionales..." 
                   value={formData.notes || ''} 
@@ -620,14 +567,14 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
                     {formData.items.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                          No hay productos en la orden. Haga clic en "Agregar Producto" para comenzar.
+                          No hay productos en la orden. Haga clic en &quot;Agregar Producto&quot; para comenzar.
                         </TableCell>
                       </TableRow>
                     )}
                     
                     {formData.items.map((item, index) => (
                       <TableRow key={index}>
-                        <TableCell>
+                        <TableCell className="align-middle">
                           <Select 
                             value={item.product_id ? item.product_id.toString() : ''} 
                             onValueChange={value => handleItemChange(index, 'product_id', parseInt(value))}
@@ -635,7 +582,7 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
                             <SelectTrigger>
                               <SelectValue placeholder="Seleccione un producto" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-60 overflow-y-auto">
                               {productos.map(producto => (
                                 <SelectItem key={producto.id} value={producto.id.toString()}>
                                   {producto.name} ({producto.sku})
@@ -649,16 +596,16 @@ export function FormularioOrdenCompra({ ordenId, esEdicion = false }: Formulario
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right align-middle">
                           {renderQuantityInput(item, index)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right align-middle">
                           {renderUnitCostInput(item, index)}
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-right font-medium align-middle">
                           {formatCurrency(item.subtotal || 0)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right align-middle">
                           <Button 
                             variant="ghost" 
                             size="icon"

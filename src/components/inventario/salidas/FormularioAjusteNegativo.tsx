@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { supabase } from '@/lib/supabase/config'
 import { useToast } from '@/components/ui/use-toast'
-import { formatDate, handleNumericInput } from '@/utils/Utils'
+import { formatDate } from '@/utils/Utils'
 import TablaProductosSalida from './TablaProductosSalida'
 import { Checkbox } from '@/components/ui/checkbox'
 import { 
@@ -42,7 +42,20 @@ interface ProductoSalida {
 }
 
 interface FormularioAjusteNegativoProps {
-  organizationId: number
+  readonly organizationId: number
+}
+
+interface ComprobanteData {
+  tipo_ajuste: string
+  motivo: string
+  sucursal_id: string
+  sucursal_nombre: string
+  referencia: string
+  fecha: string
+  notas: string
+  generar_pdf: boolean
+  adjustment_id?: string
+  fecha_emision?: string
 }
 
 // PDF Styles
@@ -65,7 +78,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   table: {
-    display: 'table',
+    display: "table" as const,
     width: 'auto',
     borderStyle: 'solid',
     borderWidth: 1,
@@ -103,7 +116,7 @@ const styles = StyleSheet.create({
 });
 
 // PDF Document Component
-const AjusteComprobantePDF = ({ data, productos, total }: { data: any, productos: ProductoSalida[], total: number }) => (
+const AjusteComprobantePDF = ({ data, productos, total }: { data: ComprobanteData, productos: ProductoSalida[], total: number }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <Text style={styles.title}>Comprobante de Ajuste de Inventario</Text>
@@ -172,12 +185,12 @@ const AjusteComprobantePDF = ({ data, productos, total }: { data: any, productos
 
 export default function FormularioAjusteNegativo({ organizationId }: FormularioAjusteNegativoProps) {
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
-  const [motivos, setMotivos] = useState(['Merma', 'Obsequio', 'Pérdida', 'Daño', 'Vencimiento', 'Otro'])
+  const [motivos] = useState<string[]>(['Merma', 'Obsequio', 'Pérdida', 'Daño', 'Vencimiento', 'Otro'])
   const [productos, setProductos] = useState<ProductoSalida[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showPdfPreview, setShowPdfPreview] = useState(false)
-  const [comprobantePDF, setComprobantePDF] = useState<any>(null)
+  const [comprobantePDF, setComprobantePDF] = useState<ComprobanteData | null>(null)
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
@@ -373,7 +386,7 @@ export default function FormularioAjusteNegativo({ organizationId }: FormularioA
           fecha_emision: new Date().toLocaleString()
         }
         
-        setComprobantePDF(pdfData as any)
+        setComprobantePDF(pdfData)
         setShowPdfPreview(true)
       } else {
         toast({

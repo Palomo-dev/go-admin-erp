@@ -35,13 +35,12 @@ interface ProductoSalida {
 }
 
 interface FormularioSalidaProps {
-  organizationId: number
+  readonly organizationId: number
 }
 
 export default function FormularioSalida({ organizationId }: FormularioSalidaProps) {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
-  const [tiposSalida, setTiposSalida] = useState(['venta', 'devolucion', 'ajuste'])
   const [productos, setProductos] = useState<ProductoSalida[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -136,6 +135,12 @@ export default function FormularioSalida({ organizationId }: FormularioSalidaPro
     setIsSaving(true)
 
     try {
+      // Obtener el usuario actual (requerido para user_id)
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('No se pudo obtener la información del usuario');
+      }
+
       // Determinar el estado inicial según el tipo de salida
       let estadoInicial = 'draft';
       if (formData.tipo_salida === 'ajuste') {
@@ -143,60 +148,63 @@ export default function FormularioSalida({ organizationId }: FormularioSalidaPro
         estadoInicial = 'completed';
       }
       
-      // Crear la orden de venta o salida
-      const { data: ordenData, error: ordenError } = await supabase
-        .from('sales_orders')
+      // Crear la venta/salida usando la tabla real 'sales'
+      const { data: salidaData, error: salidaError } = await supabase
+        .from('sales')
         .insert({
           organization_id: organizationId,
           branch_id: Number(formData.sucursal_id),
           customer_id: formData.tipo_salida === 'venta' ? Number(formData.cliente_id) : null,
-          reference_number: formData.referencia || `${formData.tipo_salida.toUpperCase()}-${Date.now().toString().substr(-6)}`,
-          order_date: formData.fecha,
-          notes: formData.notas,
+          user_id: user.id, // Campo requerido (NOT NULL)
+          total: calcularTotal(),
           status: estadoInicial,
-          total_amount: calcularTotal(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          sale_date: formData.fecha,
+          notes: formData.notas
+          // created_at y updated_at son automáticos en Supabase
         })
         .select('id')
         .single()
 
-      if (ordenError) throw ordenError
+      if (salidaError) throw salidaError
 
-      // Insertar los items de la orden de venta/salida
+      // Insertar los items usando la tabla real 'sale_items'
       const itemsParaInsertar = productos.map(producto => ({
-        sales_order_id: ordenData.id,
-        product_id: producto.product_id,
-        quantity: producto.cantidad,
-        unit_price: producto.precio_unitario,
-        lot_id: producto.lote_id || null,
-        status: estadoInicial,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        sale_id: salidaData.id,
+        product_id: Number(producto.product_id), // Asegurar tipo correcto
+        quantity: Number(producto.cantidad), // Asegurar tipo correcto
+        unit_price: Number(producto.precio_unitario), // Asegurar tipo correcto
+        total: Number(producto.cantidad) * Number(producto.precio_unitario) // Campo requerido (NOT NULL)
+        // created_at y updated_at son automáticos en Supabase
+        // lot_id no está en sale_items según la estructura real
       }));
 
       const { error: itemsError } = await supabase
-        .from('so_items')
+        .from('sale_items')
         .insert(itemsParaInsertar);
 
       if (itemsError) throw itemsError;
       
       // Si es un ajuste o una salida inmediata, crear los movimientos de stock
       if (formData.tipo_salida === 'ajuste') {
-        // Crear movimientos de stock (salida)
+        // Registrar movimientos de stock para cada producto
         const movimientosStock = productos.map(producto => {
+          // Validar campos requeridos antes de la inserción
+          if (!producto.product_id || !producto.cantidad) {
+            throw new Error(`Producto inválido: falta product_id o cantidad`);
+          }
+          
           return {
-            organization_id: organizationId,
-            branch_id: Number(formData.sucursal_id),
-            product_id: producto.product_id,
-            lot_id: producto.lote_id || null,
+            organization_id: Number(organizationId), // Asegurar que sea number
+            branch_id: Number(formData.sucursal_id), // Asegurar que sea number
+            product_id: Number(producto.product_id), // Asegurar que sea number
+            lot_id: producto.lote_id ? Number(producto.lote_id) : null, // Asegurar tipo correcto
             direction: 'out', // Salida de inventario
-            qty: producto.cantidad,
-            unit_cost: producto.precio_unitario,
-            source: formData.tipo_salida, // 'venta', 'devolucion' o 'ajuste'
-            source_id: ordenData.id.toString(),
-            note: formData.notas || `Salida por ${formData.tipo_salida}`,
-            created_at: new Date().toISOString()
+            qty: Number(producto.cantidad), // Asegurar que sea numeric
+            unit_cost: Number(producto.precio_unitario) || null, // Permitir null si no hay precio
+            source: 'ajuste', // Valor fijo para evitar problemas con formData
+            source_id: salidaData.id.toString(),
+            note: formData.notas || `Salida por ajuste`
+            // created_at es automático en Supabase
           };
         });
         
@@ -223,17 +231,38 @@ export default function FormularioSalida({ organizationId }: FormularioSalidaPro
         notas: ''
       });
       setProductos([]);
-    } catch (error: any) {
-      console.error('Error al guardar la salida:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo guardar la salida. " + error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
+    } catch (error: unknown) {
+    console.error('Error completo al guardar la salida:', error);
+    
+    // Mejorar el manejo de errores para debugging
+    let errorMessage = 'Error desconocido';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      console.error('Error.message:', error.message);
+      console.error('Error.stack:', error.stack);
+    } else if (typeof error === 'object' && error !== null) {
+      console.error('Error como objeto:', JSON.stringify(error, null, 2));
+      // Si es un error de Supabase
+      const errorObj = error as Record<string, unknown>;
+      if ('message' in errorObj && typeof errorObj.message === 'string') {
+        errorMessage = errorObj.message;
+      } else if ('error' in errorObj && typeof errorObj.error === 'string') {
+        errorMessage = errorObj.error;
+      } else if ('details' in errorObj && typeof errorObj.details === 'string') {
+        errorMessage = errorObj.details;
+      }
     }
+    
+    toast({
+      title: "Error",
+      description: `No se pudo guardar la salida: ${errorMessage}`,
+      variant: "destructive"
+    });
+  } finally {
+    setIsSaving(false);
   }
+}
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

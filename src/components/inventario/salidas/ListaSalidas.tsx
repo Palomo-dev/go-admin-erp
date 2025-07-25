@@ -4,31 +4,62 @@ import { useState, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
 import { supabase } from '@/lib/supabase/config'
 import { formatCurrency, formatDate } from '@/utils/Utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Eye, FileCheck } from 'lucide-react'
 
 interface ListaSalidasProps {
-  filtro: 'todas' | 'pendientes'
-  organizationId: number
-  searchTerm: string
+  readonly filtro: 'todas' | 'pendientes'
+  readonly organizationId: number
+  readonly searchTerm: string
 }
 
-interface Salida {
-  id: number
-  reference_number?: string
-  customer_name: string
-  sale_date: string
-  status: string
-  total: number
-  items_count: number
+// Interface para la estructura de datos que devuelve Supabase
+interface SalidaDB {
+  readonly id: string
+  readonly sale_date: string
+  readonly total: number
+  readonly status: string
+  readonly created_at: string
+  readonly customers: Array<{
+    readonly id: string
+    readonly full_name: string
+  }>
+  readonly sale_items: Array<{
+    readonly id: string
+  }>
 }
+
+// Interface para la UI
+interface Salida {
+  readonly id: string  // uuid en la BD
+  readonly reference_number?: string
+  readonly customer_name: string
+  readonly sale_date: string
+  readonly status: string
+  readonly total: number
+  readonly items_count: number
+}
+
+
 
 export default function ListaSalidas({ filtro, organizationId, searchTerm }: ListaSalidasProps) {
   const [salidas, setSalidas] = useState<Salida[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Estados de paginación
+  const [paginaActual, setPaginaActual] = useState(1)
+  const [itemsPorPagina, setItemsPorPagina] = useState(25)
+  const [totalItems, setTotalItems] = useState(0)
+
+  // Reset página al cambiar filtros
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [filtro, searchTerm])
 
   useEffect(() => {
     const cargarSalidas = async () => {
@@ -36,41 +67,66 @@ export default function ListaSalidas({ filtro, organizationId, searchTerm }: Lis
       setError(null)
       
       try {
-        // Usamos la tabla 'sales' que es la que realmente existe
-        let query = supabase
+        // Calcular offset para paginación
+        const offset = (paginaActual - 1) * itemsPorPagina
+        
+        // Query para conteo total
+        let countQuery = supabase
           .from('sales')
-          .select(`
-            id,
-            customers(full_name, id),
-            sale_date,
-            total,
-            status,
-            sale_items(count)
-          `)
+          .select('id', { count: 'exact', head: true })
           .eq('organization_id', organizationId)
         
         if (filtro === 'pendientes') {
-          query = query.in('status', ['draft', 'processing'])
+          countQuery = countQuery.in('status', ['draft', 'processing'])
         }
         
-        // Adaptamos la búsqueda para la estructura de la tabla sales
         if (searchTerm) {
-          query = query.or(`customers.full_name.ilike.%${searchTerm}%`)
+          countQuery = countQuery.or(`id.ilike.%${searchTerm}%`)
         }
         
-        const { data, error: queryError } = await query.order('created_at', { ascending: false })
+        // Query para datos paginados
+        let dataQuery = supabase
+          .from('sales')
+          .select(`
+            id,
+            sale_date,
+            total,
+            status,
+            created_at,
+            customers(id, full_name),
+            sale_items!sale_items_sale_id_fkey(id)
+          `)
+          .eq('organization_id', organizationId)
+          .range(offset, offset + itemsPorPagina - 1)
+          .order('created_at', { ascending: false })
+        
+        if (filtro === 'pendientes') {
+          dataQuery = dataQuery.in('status', ['draft', 'processing'])
+        }
+        
+        if (searchTerm) {
+          dataQuery = dataQuery.or(`id.ilike.%${searchTerm}%`)
+        }
+        
+        // Ejecutar ambas queries
+        const [{ count }, { data, error: queryError }] = await Promise.all([
+          countQuery,
+          dataQuery
+        ])
         
         if (queryError) throw queryError
         
+        setTotalItems(count || 0)
+        
         // Formatear los datos para la tabla usando la estructura correcta
-        const salidasFormateadas = (data || []).map(salida => ({
+        const salidasFormateadas = (data || []).map((salida: SalidaDB) => ({
           id: salida.id,
-          reference_number: `S-${salida.id}`, // Generamos un número de referencia si no existe en la tabla
-          customer_name: salida.customers?.full_name || 'Venta directa',
+          reference_number: `S-${salida.id.slice(-8)}`, // Últimos 8 caracteres del UUID
+          customer_name: salida.customers?.[0]?.full_name || 'Venta directa',
           sale_date: salida.sale_date,
-          total: salida.total,
+          total: salida.total || 0,
           status: salida.status,
-          items_count: salida.sale_items[0]?.count || 0
+          items_count: Array.isArray(salida.sale_items) ? salida.sale_items.length : 0
         }))
         
         setSalidas(salidasFormateadas)
@@ -83,7 +139,7 @@ export default function ListaSalidas({ filtro, organizationId, searchTerm }: Lis
     }
     
     cargarSalidas()
-  }, [organizationId, filtro, searchTerm])
+  }, [organizationId, filtro, searchTerm, paginaActual, itemsPorPagina])
   
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -106,7 +162,7 @@ export default function ListaSalidas({ filtro, organizationId, searchTerm }: Lis
     return (
       <div className="space-y-3">
         {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
+          <Skeleton key={`loading-skeleton-${i}`} className="h-12 w-full" />
         ))}
       </div>
     )
@@ -144,45 +200,142 @@ export default function ListaSalidas({ filtro, organizationId, searchTerm }: Lis
     )
   }
   
+  // Generar números de página con elipsis
+  const generarNumerosPagina = () => {
+    const totalPaginas = Math.ceil(totalItems / itemsPorPagina)
+    const paginas = []
+    
+    if (totalPaginas <= 7) {
+      for (let i = 1; i <= totalPaginas; i++) {
+        paginas.push(i)
+      }
+    } else if (paginaActual <= 4) {
+      paginas.push(1, 2, 3, 4, 5, '...', totalPaginas)
+    } else if (paginaActual >= totalPaginas - 3) {
+      paginas.push(1, '...', totalPaginas - 4, totalPaginas - 3, totalPaginas - 2, totalPaginas - 1, totalPaginas)
+    } else {
+      paginas.push(1, '...', paginaActual - 1, paginaActual, paginaActual + 1, '...', totalPaginas)
+    }
+    
+    return paginas
+  }
+
+  const totalPaginas = Math.ceil(totalItems / itemsPorPagina)
+  const inicio = (paginaActual - 1) * itemsPorPagina + 1
+  const fin = Math.min(paginaActual * itemsPorPagina, totalItems)
+
   return (
-    <div className="overflow-hidden rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Referencia</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Fecha</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="text-right">Monto</TableHead>
-            <TableHead>Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {salidas.map((salida) => (
-            <TableRow key={salida.id}>
-              <TableCell className="font-medium">{salida.reference_number}</TableCell>
-              <TableCell>{salida.customer_name}</TableCell>
-              <TableCell>{formatDate(salida.sale_date)}</TableCell>
-              <TableCell>{getStatusBadge(salida.status)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(salida.total)}</TableCell>
-              <TableCell>
-                <div className="flex space-x-1">
-                  <Button variant="outline" size="sm">
-                    <Eye className="h-3.5 w-3.5 mr-1" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ver</span>
-                  </Button>
-                  {salida.status === 'draft' && (
-                    <Button variant="outline" size="sm">
-                      <FileCheck className="h-3.5 w-3.5 mr-1" />
-                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Procesar</span>
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
+    <div className="space-y-4">
+      {/* Info de resultados y controles */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          Mostrando {inicio} a {fin} de {totalItems} resultados
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-muted-foreground">Items por página:</span>
+          <Select
+            value={itemsPorPagina.toString()}
+            onValueChange={(value) => {
+              setItemsPorPagina(Number(value))
+              setPaginaActual(1)
+            }}
+          >
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Tabla */}
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Referencia</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Monto</TableHead>
+              <TableHead className="text-center">Items</TableHead>
+              <TableHead>Acciones</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {salidas.map((salida) => (
+              <TableRow key={salida.id}>
+                <TableCell className="font-medium">{salida.reference_number}</TableCell>
+                <TableCell>{salida.customer_name}</TableCell>
+                <TableCell>{formatDate(salida.sale_date)}</TableCell>
+                <TableCell>{getStatusBadge(salida.status)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(salida.total)}</TableCell>
+                <TableCell className="text-center">
+                  <Badge variant="outline">{salida.items_count}</Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex space-x-1">
+                    <Button variant="outline" size="sm">
+                      <Eye className="h-3.5 w-3.5 mr-1" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ver</span>
+                    </Button>
+                    {salida.status === 'draft' && (
+                      <Button variant="outline" size="sm">
+                        <FileCheck className="h-3.5 w-3.5 mr-1" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Procesar</span>
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Paginación */}
+      {totalPaginas > 1 && (
+        <div className="flex justify-center">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setPaginaActual(Math.max(1, paginaActual - 1))}
+                  className={paginaActual === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+              
+              {generarNumerosPagina().map((pagina, index) => (
+                <PaginationItem key={`pagination-${pagina}-${index}`}>
+                  {pagina === '...' ? (
+                    <PaginationEllipsis />
+                  ) : (
+                    <PaginationLink
+                      onClick={() => setPaginaActual(pagina as number)}
+                      isActive={paginaActual === pagina}
+                      className="cursor-pointer"
+                    >
+                      {pagina}
+                    </PaginationLink>
+                  )}
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setPaginaActual(Math.min(totalPaginas, paginaActual + 1))}
+                  className={paginaActual === totalPaginas ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   )
 }

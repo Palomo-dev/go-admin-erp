@@ -10,16 +10,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 // import { ScrollArea } from '@/components/ui/scroll-area'
 import { Trash2, Plus, Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase/config'
-import { formatCurrency, handleNumericInput } from '@/utils/Utils'
+import { formatCurrency } from '@/utils/Utils'
 import { useToast } from '@/components/ui/use-toast'
 
 interface Producto {
-  id: number
-  name: string
-  sku: string
-  price: number
-  // Eliminamos has_lots ya que no existe en la tabla
-  track_stock: boolean // Usaremos track_stock como indicador para verificar si debemos buscar lotes
+  readonly id: number
+  readonly name: string
+  readonly sku: string
+  readonly barcode?: string
+  readonly description?: string
+  readonly status: string
+  readonly price?: number // Agregamos price opcional para compatibilidad
+  readonly track_stock?: boolean // Agregamos track_stock opcional
 }
 
 interface ProductoSalida {
@@ -42,11 +44,11 @@ interface Lote {
 }
 
 interface TablaProductosSalidaProps {
-  productos: ProductoSalida[]
-  onAddProducto: (producto: ProductoSalida) => void
-  onRemoveProducto: (index: number) => void
-  onUpdateProducto: (index: number, producto: ProductoSalida) => void
-  organizationId: number
+  readonly productos: ProductoSalida[]
+  readonly onAddProducto: (producto: ProductoSalida) => void
+  readonly onRemoveProducto: (index: number) => void
+  readonly onUpdateProducto: (index: number, producto: ProductoSalida) => void
+  readonly organizationId: number
 }
 
 export default function TablaProductosSalida({
@@ -64,8 +66,8 @@ export default function TablaProductosSalida({
   const [cantidad, setCantidad] = useState(1)
   const [precio, setPrecio] = useState(0)
   const [loteSeleccionado, setLoteSeleccionado] = useState<Lote | null>(null)
-  const [lotesDisponibles, setLotesDisponibles] = useState<Lote[]>([])
-  const [isLoadingLots, setIsLoadingLots] = useState(false)
+  const [lotesDisponibles] = useState<Lote[]>([])
+  const [isLoadingLots] = useState(false)
   const { toast } = useToast()
 
   const buscarProductos = async () => {
@@ -76,8 +78,9 @@ export default function TablaProductosSalida({
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, sku, price, track_stock')
+        .select('id, name, sku, barcode, description, status')
         .eq('organization_id', organizationId)
+        .eq('status', 'active')
         .or(`name.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%,barcode.eq.${searchTerm}`)
         .order('name')
         .limit(10)
@@ -98,73 +101,25 @@ export default function TablaProductosSalida({
 
   useEffect(() => {
     if (selectedProduct) {
-      setPrecio(selectedProduct.price)
+      setPrecio(0) // El precio se establece manualmente
       
-      if (selectedProduct.track_stock) {
-        cargarLotesDisponibles(selectedProduct.id)
-      }
+      // Por ahora no cargamos lotes automáticamente
+      // En el futuro se puede implementar basado en algún campo real de la BD
     }
   }, [selectedProduct])
-
-  const cargarLotesDisponibles = async (productId: number) => {
-    setIsLoadingLots(true)
-    
-    try {
-      // Consulta directa para obtener lotes con cantidad disponible
-      const { data, error } = await supabase
-        .from('lots')
-        .select(`
-          id, 
-          lot_code, 
-          expiry_date,
-          stock_levels!inner(qty_on_hand)
-        `)
-        .eq('product_id', productId)
-        .gt('stock_levels.qty_on_hand', 0)
-      
-      if (error) throw error
-      
-      // Transformar los datos al formato esperado
-      const lotesDisponibles = data?.map(lote => ({
-        id: lote.id,
-        lot_code: lote.lot_code,
-        expiry_date: lote.expiry_date,
-        available_qty: lote.stock_levels[0]?.qty_on_hand || 0
-      })) || []
-      
-      setLotesDisponibles(lotesDisponibles)
-    } catch (error) {
-      console.error('Error al cargar lotes:', error)
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los lotes disponibles.",
-        variant: "destructive"
-      })
-      setLotesDisponibles([])
-    } finally {
-      setIsLoadingLots(false)
-    }
-  }
 
   const handleSelectProduct = (producto: Producto) => {
     setSelectedProduct(producto)
     setCantidad(1)
-    setPrecio(producto.price)
+    setPrecio(0) // Precio se introduce manualmente
     setLoteSeleccionado(null)
   }
 
   const handleAddProducto = () => {
     if (!selectedProduct) return
     
-    // Si el producto requiere lote pero no se ha seleccionado ninguno
-    if (selectedProduct.track_stock && !loteSeleccionado) {
-      toast({
-        title: "Error",
-        description: "Este producto requiere seleccionar un lote.",
-        variant: "destructive"
-      })
-      return
-    }
+    // Por ahora no validamos lotes requeridos
+    // Se puede implementar en el futuro basado en algún campo real de la BD
     
     const nuevoProducto: ProductoSalida = {
       id: Date.now(),
@@ -190,7 +145,9 @@ export default function TablaProductosSalida({
 
   const handleCantidadChange = (event: React.ChangeEvent<HTMLInputElement>, index?: number) => {
     let value = event.target.value === '' ? 0 : parseFloat(event.target.value)
-    if (isNaN(value)) value = 0
+    if (isNaN(value) || value <= 0) {
+      value = 1
+    }
     
     // Regla UX: Al hacer focus, si es 0, se borra
     if (index !== undefined) {
@@ -309,16 +266,24 @@ export default function TablaProductosSalida({
                     <h4 className="mb-4 text-sm font-medium leading-none">Resultados de búsqueda</h4>
                     <div className="space-y-2">
                       {resultados.map(producto => (
-                        <div 
+                        <div
                           key={producto.id}
-                          className={`p-2 rounded cursor-pointer ${
+                          className={`p-2 cursor-pointer rounded-md transition-colors ${
                             selectedProduct?.id === producto.id ? 'bg-accent' : 'hover:bg-muted'
                           }`}
                           onClick={() => handleSelectProduct(producto)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              handleSelectProduct(producto)
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
                         >
                           <div className="font-medium">{producto.name}</div>
                           <div className="text-sm text-muted-foreground">SKU: {producto.sku}</div>
-                          <div className="text-sm">Precio: {formatCurrency(producto.price)}</div>
+                          <div className="text-sm">Precio: {formatCurrency(producto.price || 0)}</div>
                         </div>
                       ))}
                     </div>
@@ -359,7 +324,7 @@ export default function TablaProductosSalida({
                     />
                   </div>
                   
-                  {selectedProduct.track_stock && (
+                  {selectedProduct?.track_stock && (
                     <div>
                       <Label htmlFor="lote">Lote</Label>
                       <select
@@ -391,7 +356,7 @@ export default function TablaProductosSalida({
                     <Button 
                       type="button" 
                       onClick={handleAddProducto} 
-                      disabled={cantidad <= 0 || (selectedProduct.track_stock && !loteSeleccionado)}
+                      disabled={cantidad <= 0 || (selectedProduct?.track_stock && !loteSeleccionado)}
                     >
                       Agregar
                     </Button>
@@ -406,7 +371,7 @@ export default function TablaProductosSalida({
       {productos.length === 0 ? (
         <div className="text-center py-8 border rounded-lg">
           <p className="text-muted-foreground">
-            No hay productos añadidos. Haz clic en "Agregar Producto" para comenzar.
+            No hay productos añadidos. Haz clic en &quot;Agregar Producto&quot; para comenzar.
           </p>
         </div>
       ) : (

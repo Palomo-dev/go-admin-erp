@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,8 @@ import { supabase } from '@/lib/supabase/config'
 import { formatCurrency, formatDate } from '@/utils/Utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Eye, FileCheck } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useToast } from '@/components/ui/use-toast'
 
 interface ListaSalidasProps {
   readonly filtro: 'todas' | 'pendientes'
@@ -50,96 +52,143 @@ export default function ListaSalidas({ filtro, organizationId, searchTerm }: Lis
   const [salidas, setSalidas] = useState<Salida[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState<string | null>(null)
   
   // Estados de paginación
   const [paginaActual, setPaginaActual] = useState(1)
   const [itemsPorPagina, setItemsPorPagina] = useState(25)
   const [totalItems, setTotalItems] = useState(0)
+  
+  // Hooks
+  const router = useRouter()
+  const { toast } = useToast()
 
   // Reset página al cambiar filtros
   useEffect(() => {
     setPaginaActual(1)
   }, [filtro, searchTerm])
 
-  useEffect(() => {
-    const cargarSalidas = async () => {
-      setIsLoading(true)
-      setError(null)
-      
-      try {
-        // Calcular offset para paginación
-        const offset = (paginaActual - 1) * itemsPorPagina
-        
-        // Query para conteo total
-        let countQuery = supabase
-          .from('sales')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', organizationId)
-        
-        if (filtro === 'pendientes') {
-          countQuery = countQuery.in('status', ['draft', 'processing'])
-        }
-        
-        if (searchTerm) {
-          countQuery = countQuery.or(`id.ilike.%${searchTerm}%`)
-        }
-        
-        // Query para datos paginados
-        let dataQuery = supabase
-          .from('sales')
-          .select(`
-            id,
-            sale_date,
-            total,
-            status,
-            created_at,
-            customers(id, full_name),
-            sale_items!sale_items_sale_id_fkey(id)
-          `)
-          .eq('organization_id', organizationId)
-          .range(offset, offset + itemsPorPagina - 1)
-          .order('created_at', { ascending: false })
-        
-        if (filtro === 'pendientes') {
-          dataQuery = dataQuery.in('status', ['draft', 'processing'])
-        }
-        
-        if (searchTerm) {
-          dataQuery = dataQuery.or(`id.ilike.%${searchTerm}%`)
-        }
-        
-        // Ejecutar ambas queries
-        const [{ count }, { data, error: queryError }] = await Promise.all([
-          countQuery,
-          dataQuery
-        ])
-        
-        if (queryError) throw queryError
-        
-        setTotalItems(count || 0)
-        
-        // Formatear los datos para la tabla usando la estructura correcta
-        const salidasFormateadas = (data || []).map((salida: SalidaDB) => ({
-          id: salida.id,
-          reference_number: `S-${salida.id.slice(-8)}`, // Últimos 8 caracteres del UUID
-          customer_name: salida.customers?.[0]?.full_name || 'Venta directa',
-          sale_date: salida.sale_date,
-          total: salida.total || 0,
-          status: salida.status,
-          items_count: Array.isArray(salida.sale_items) ? salida.sale_items.length : 0
-        }))
-        
-        setSalidas(salidasFormateadas)
-      } catch (error) {
-        console.error('Error al cargar las salidas:', error)
-        setError('No se pudieron cargar las salidas. Por favor, intenta de nuevo.')
-      } finally {
-        setIsLoading(false)
-      }
-    }
+  // Función para ver detalle de salida
+  const handleVerDetalle = (salidaId: string) => {
+    router.push(`/app/inventario/salidas/${salidaId}`)
+  }
+
+  // Función para procesar salida
+  const handleProcesarSalida = async (salidaId: string) => {
+    setIsProcessing(salidaId)
     
-    cargarSalidas()
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({ 
+          status: 'paid',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', salidaId)
+        .eq('organization_id', organizationId)
+      
+      if (error) throw error
+      
+      toast({
+        title: "Éxito",
+        description: "La salida ha sido procesada correctamente.",
+      })
+      
+      // Recargar la lista para mostrar el cambio de estado
+      await cargarSalidas()
+      
+    } catch (error) {
+      console.error('Error al procesar la salida:', error)
+      toast({
+        title: "Error",
+        description: "No se pudo procesar la salida. Intenta de nuevo.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsProcessing(null)
+    }
+  }
+
+  // Función para cargar las salidas
+  const cargarSalidas = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      // Calcular offset para paginación
+      const offset = (paginaActual - 1) * itemsPorPagina
+      
+      // Query para conteo total
+      let countQuery = supabase
+        .from('sales')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+      
+      if (filtro === 'pendientes') {
+        countQuery = countQuery.in('status', ['draft', 'processing'])
+      }
+      
+      if (searchTerm) {
+        countQuery = countQuery.or(`id.ilike.%${searchTerm}%`)
+      }
+      
+      // Query para datos paginados
+      let dataQuery = supabase
+        .from('sales')
+        .select(`
+          id,
+          sale_date,
+          total,
+          status,
+          created_at,
+          customers(id, full_name),
+          sale_items!sale_items_sale_id_fkey(id)
+        `)
+        .eq('organization_id', organizationId)
+        .range(offset, offset + itemsPorPagina - 1)
+        .order('created_at', { ascending: false })
+      
+      if (filtro === 'pendientes') {
+        dataQuery = dataQuery.in('status', ['draft', 'processing'])
+      }
+      
+      if (searchTerm) {
+        dataQuery = dataQuery.or(`id.ilike.%${searchTerm}%`)
+      }
+      
+      // Ejecutar ambas queries
+      const [{ count }, { data, error: queryError }] = await Promise.all([
+        countQuery,
+        dataQuery
+      ])
+      
+      if (queryError) throw queryError
+      
+      setTotalItems(count || 0)
+      
+      // Formatear los datos para la tabla usando la estructura correcta
+      const salidasFormateadas = (data || []).map((salida: SalidaDB) => ({
+        id: salida.id,
+        reference_number: `S-${salida.id.slice(-8)}`, // Últimos 8 caracteres del UUID
+        customer_name: salida.customers?.[0]?.full_name || 'Venta directa',
+        sale_date: salida.sale_date,
+        total: salida.total || 0,
+        status: salida.status,
+        items_count: Array.isArray(salida.sale_items) ? salida.sale_items.length : 0
+      }))
+      
+      setSalidas(salidasFormateadas)
+    } catch (error) {
+      console.error('Error al cargar las salidas:', error)
+      setError('No se pudieron cargar las salidas. Por favor, intenta de nuevo.')
+    } finally {
+      setIsLoading(false)
+    }
   }, [organizationId, filtro, searchTerm, paginaActual, itemsPorPagina])
+
+  useEffect(() => {
+    cargarSalidas()
+  }, [cargarSalidas])
   
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -280,14 +329,25 @@ export default function ListaSalidas({ filtro, organizationId, searchTerm }: Lis
                 </TableCell>
                 <TableCell>
                   <div className="flex space-x-1">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleVerDetalle(salida.id)}
+                    >
                       <Eye className="h-3.5 w-3.5 mr-1" />
                       <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ver</span>
                     </Button>
                     {salida.status === 'draft' && (
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleProcesarSalida(salida.id)}
+                        disabled={isProcessing === salida.id}
+                      >
                         <FileCheck className="h-3.5 w-3.5 mr-1" />
-                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Procesar</span>
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                          {isProcessing === salida.id ? 'Procesando...' : 'Procesar'}
+                        </span>
                       </Button>
                     )}
                   </div>

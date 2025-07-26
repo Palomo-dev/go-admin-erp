@@ -14,6 +14,7 @@ import ForecastView from "./ForecastView";
 import TableView from "./TableView";
 import ClientsView from "./ClientsView";
 import AutomationsView from "./AutomationsView";
+import ProductSelector from "./ProductSelector";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { formatCurrency } from "@/utils/Utils";
 
@@ -27,6 +28,24 @@ interface Stage {
   id: string;
   name: string;
   position: number;
+}
+
+interface Currency {
+  code: string;
+  name: string;
+  symbol: string;
+}
+
+interface Product {
+  id: number;
+  name: string;
+  sku: string;
+}
+
+interface SelectedProduct {
+  product: Product;
+  quantity: number;
+  unit_price: number;
 }
 
 // Formulario para nueva oportunidad
@@ -43,47 +62,130 @@ const NewOpportunityForm = ({
 }) => {
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
-  const [probability, setProbability] = useState("50"); // Valor por defecto
   const [customerId, setCustomerId] = useState("");
   const [stageId, setStageId] = useState("");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState("");
 
-  // Cargar clientes y etapas al iniciar
+  // Cargar clientes, etapas, monedas y productos al iniciar
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Validar que tenemos los parámetros necesarios
+        if (!pipelineId || !organizationId) {
+          console.log("Esperando pipelineId y organizationId...", { pipelineId, organizationId });
+          setIsLoadingData(false);
+          return;
+        }
+        
+        setIsLoadingData(true);
+        console.log("Cargando datos con:", { pipelineId, organizationId });
+        
         // Cargar clientes
+        console.log("Cargando clientes...");
         const { data: customersData, error: customersError } = await supabase
           .from("customers")
-          .select("id, full_name")
+          .select("id, first_name, last_name")
           .eq("organization_id", organizationId)
-          .order("full_name");
+          .order("first_name");
           
-        if (customersError) throw customersError;
-        setCustomers(customersData || []);
+        if (customersError) {
+          console.error("Error al cargar clientes:", customersError);
+          throw customersError;
+        }
+        
+        console.log("Clientes cargados:", customersData);
+        
+        // Formatear nombres completos de clientes
+        const formattedCustomers = (customersData || []).map(customer => ({
+          id: customer.id,
+          full_name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Sin nombre'
+        }));
+        console.log("Clientes formateados:", formattedCustomers);
+        setCustomers(formattedCustomers);
         
         // Cargar etapas del pipeline
+        console.log("Cargando etapas para pipeline:", pipelineId);
         const { data: stagesData, error: stagesError } = await supabase
           .from("stages")
           .select("id, name, position")
           .eq("pipeline_id", pipelineId)
           .order("position");
           
-        if (stagesError) throw stagesError;
+        if (stagesError) {
+          console.error("Error al cargar etapas:", stagesError);
+          throw stagesError;
+        }
+        
+        console.log("Etapas cargadas:", stagesData);
         setStages(stagesData || []);
         
         // Establecer la primera etapa como predeterminada
         if (stagesData && stagesData.length > 0) {
           setStageId(stagesData[0].id);
         }
+        
+        // Cargar monedas disponibles
+        console.log("Cargando monedas...");
+        const { data: currenciesData, error: currenciesError } = await supabase
+          .from("currencies")
+          .select("code, name, symbol")
+          .eq("is_active", true)
+          .order("code");
+          
+        if (currenciesError) {
+          console.warn("Error al cargar monedas:", currenciesError);
+          // Usar monedas por defecto si no se pueden cargar
+          setCurrencies([
+            { code: "USD", name: "Dólar estadounidense", symbol: "$" },
+            { code: "COP", name: "Peso colombiano", symbol: "$" },
+            { code: "EUR", name: "Euro", symbol: "€" }
+          ]);
+        } else {
+          console.log("Monedas cargadas:", currenciesData);
+          setCurrencies(currenciesData || []);
+        }
+        
+        // Cargar productos disponibles
+        console.log("Cargando productos...");
+        const { data: productsData, error: productsError } = await supabase
+          .from("products")
+          .select("id, name, sku")
+          .eq("organization_id", organizationId)
+          .eq("status", "active")
+          .order("name");
+          
+        if (productsError) {
+          console.warn("Error al cargar productos:", productsError);
+          setProducts([]);
+        } else {
+          console.log("Productos cargados:", productsData);
+          setProducts(productsData || []);
+        }
+        
+        console.log("Carga de datos completada");
+        console.log("Estados finales:", {
+          customers: formattedCustomers.length,
+          stages: (stagesData || []).length,
+          currencies: (currenciesData || []).length,
+          products: (productsData || []).length
+        });
+        
+        setIsLoadingData(false);
+        
       } catch (error) {
         console.error("Error al cargar datos:", error);
         setError("Error al cargar datos. Por favor intente nuevamente.");
+        setIsLoadingData(false);
       }
     };
     
@@ -96,7 +198,7 @@ const NewOpportunityForm = ({
     setError("");
     
     // Validaciones
-    if (!title || !customerId || !stageId || !value) {
+    if (!title || !customerId || !stageId || !value || !currency) {
       setError("Por favor complete todos los campos requeridos.");
       setIsSubmitting(false);
       return;
@@ -112,32 +214,52 @@ const NewOpportunityForm = ({
       }
       
       // Crear nueva oportunidad
-      const { data, error } = await supabase
+      const { data: opportunityData, error: opportunityError } = await supabase
         .from("opportunities")
         .insert({
-          name: title, // Corregido: se usa 'name' en lugar de 'title'
+          name: title,
           customer_id: customerId,
           pipeline_id: pipelineId,
           stage_id: stageId,
-          amount: numericValue, // Corregido: se usa 'amount' en lugar de 'value'
-          // Removido campo 'probability' que no existe en la tabla
+          amount: numericValue,
           expected_close_date: expectedCloseDate || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           organization_id: organizationId,
-          status: "open", // Corregido: solo puede ser 'open', 'won' o 'lost'
-          currency: "COP" // Campo obligatorio 'currency'
+          status: "open",
+          currency: currency
         })
-        .select();
+        .select()
+        .single();
         
-      if (error) throw error;
+      if (opportunityError) throw opportunityError;
+      
+      // Insertar productos asociados si hay alguno seleccionado
+      if (selectedProducts.length > 0 && opportunityData) {
+        const productInserts = selectedProducts.map(sp => ({
+          opportunity_id: opportunityData.id,
+          product_id: sp.product.id,
+          quantity: sp.quantity,
+          unit_price: sp.unit_price
+        }));
+        
+        const { error: productsError } = await supabase
+          .from("opportunity_products")
+          .insert(productInserts);
+          
+        if (productsError) {
+          console.warn("Error al asociar productos:", productsError);
+          // No fallar completamente, solo mostrar advertencia
+        }
+      }
       
       // Notificar éxito y cerrar
       if (onSuccess) onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error al crear oportunidad:", error);
-      setError(error.message || "Error al guardar la oportunidad.");
+      const errorMessage = error instanceof Error ? error.message : "Error al guardar la oportunidad.";
+      setError(errorMessage);
       setIsSubmitting(false);
     }
   };
@@ -153,114 +275,188 @@ const NewOpportunityForm = ({
         </DialogDescription>
       </DialogHeader>
       
-      <div className="grid gap-4 py-4">
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="title" className="text-right">
-            Título
-          </Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="col-span-3"
-            required
-          />
+      <div className="space-y-6 py-4">
+        {isLoadingData && (
+          <div className="flex items-center justify-center py-4">
+            <LoadingSpinner size="sm" />
+            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+              Cargando datos del formulario...
+            </span>
+          </div>
+        )}
+        
+        {/* Información básica */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+            Información Básica
+          </h3>
+          
+          <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Título *
+              </Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Nombre de la oportunidad"
+                required
+                className="w-full"
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="customer" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Cliente *
+                </Label>
+                <Select value={customerId} onValueChange={setCustomerId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.length === 0 ? (
+                      <SelectItem value="no-data" disabled>
+                        No hay clientes disponibles
+                      </SelectItem>
+                    ) : (
+                      customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.full_name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="stage" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Etapa *
+                </Label>
+                <Select value={stageId} onValueChange={setStageId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar etapa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(() => {
+                      console.log("Renderizando selector de etapas. Total:", stages.length);
+                      if (stages.length === 0) {
+                        console.log("No hay etapas disponibles:", stages);
+                        return (
+                          <SelectItem value="no-data" disabled>
+                            No hay etapas disponibles
+                          </SelectItem>
+                        );
+                      }
+                      return stages.map((stage) => {
+                        console.log("Renderizando etapa:", stage);
+                        return (
+                          <SelectItem key={stage.id} value={stage.id}>
+                            {stage.name}
+                          </SelectItem>
+                        );
+                      });
+                    })()}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
         </div>
         
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="customer" className="text-right">
-            Cliente
-          </Label>
-          <Select value={customerId} onValueChange={setCustomerId}>
-            <SelectTrigger className="col-span-3">
-              <SelectValue placeholder="Seleccionar cliente" />
-            </SelectTrigger>
-            <SelectContent>
-              {customers.map((customer) => (
-                <SelectItem key={customer.id} value={customer.id}>
-                  {customer.full_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Información financiera */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+            Información Financiera
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="value" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Valor *
+              </Label>
+              <Input
+                id="value"
+                value={value}
+                onChange={(e) => {
+                  const inputValue = e.target.value.replace(/[^0-9.]/g, "");
+                  const validatedValue = inputValue.replace(/\.(?=.*\.)/g, "");
+                  setValue(validatedValue);
+                }}
+                onBlur={() => {
+                  if (value) {
+                    const numericValue = parseFloat(value);
+                    if (!isNaN(numericValue)) {
+                      setValue(formatCurrency(numericValue));
+                    }
+                  }
+                }}
+                placeholder="0.00"
+                required
+                className="w-full"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="currency" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Moneda *
+              </Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar moneda" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(() => {
+                    console.log("Renderizando selector de monedas. Total:", currencies.length);
+                    if (currencies.length === 0) {
+                      console.log("No hay monedas disponibles:", currencies);
+                      return (
+                        <SelectItem value="no-data" disabled>
+                          No hay monedas disponibles
+                        </SelectItem>
+                      );
+                    }
+                    return currencies.map((curr) => {
+                      console.log("Renderizando moneda:", curr);
+                      return (
+                        <SelectItem key={curr.code} value={curr.code}>
+                          {curr.symbol} {curr.code} - {curr.name}
+                        </SelectItem>
+                      );
+                    });
+                  })()}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="expectedCloseDate" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Fecha Estimada de Cierre
+            </Label>
+            <Input
+              id="expectedCloseDate"
+              type="date"
+              value={expectedCloseDate}
+              onChange={(e) => setExpectedCloseDate(e.target.value)}
+              className="w-full"
+            />
+          </div>
         </div>
         
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="stage" className="text-right">
-            Etapa
-          </Label>
-          <Select value={stageId} onValueChange={setStageId}>
-            <SelectTrigger className="col-span-3">
-              <SelectValue placeholder="Seleccionar etapa" />
-            </SelectTrigger>
-            <SelectContent>
-              {stages.map((stage) => (
-                <SelectItem key={stage.id} value={stage.id}>
-                  {stage.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="value" className="text-right">
-            Valor
-          </Label>
-          <Input
-            id="value"
-            value={value}
-            onChange={(e) => {
-              // Permitir sólo números y punto decimal
-              const inputValue = e.target.value.replace(/[^0-9.]/g, "");
-              // Evitar múltiples puntos decimales
-              const validatedValue = inputValue.replace(/\.(?=.*\.)/g, "");
-              // Actualizar el estado con el valor sin formatear
-              setValue(validatedValue);
-            }}
-            onBlur={(e) => {
-              // Formatear como moneda al perder el foco
-              if (value) {
-                const numericValue = parseFloat(value);
-                if (!isNaN(numericValue)) {
-                  setValue(formatCurrency(numericValue));
-                }
-              }
-            }}
-            className="col-span-3"
-            placeholder="$0"
-            required
-          />
-        </div>
-        
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="probability" className="text-right">
-            Probabilidad
-          </Label>
-          <Select value={probability} onValueChange={setProbability}>
-            <SelectTrigger className="col-span-3">
-              <SelectValue placeholder="Seleccionar probabilidad" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10%</SelectItem>
-              <SelectItem value="25">25%</SelectItem>
-              <SelectItem value="50">50%</SelectItem>
-              <SelectItem value="75">75%</SelectItem>
-              <SelectItem value="90">90%</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="expectedCloseDate" className="text-right">
-            Fecha est. cierre
-          </Label>
-          <Input
-            id="expectedCloseDate"
-            type="date"
-            value={expectedCloseDate}
-            onChange={(e) => setExpectedCloseDate(e.target.value)}
-            className="col-span-3"
+        {/* Productos */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+            Productos (Opcional)
+          </h3>
+          
+          <ProductSelector
+            products={products}
+            selectedProducts={selectedProducts}
+            onProductsChange={setSelectedProducts}
+            currency={currency}
           />
         </div>
       </div>
@@ -466,7 +662,7 @@ export default function PipelineView() {
       </Tabs>
       
       <Dialog open={isNewOpportunityDialogOpen} onOpenChange={setIsNewOpportunityDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           {/* El DialogHeader, DialogTitle y DialogDescription están dentro del componente NewOpportunityForm */}
           {currentPipelineId && organizationId && (
             <NewOpportunityForm 

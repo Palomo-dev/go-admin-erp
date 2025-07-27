@@ -1,161 +1,62 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase/config";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
-import { PlusCircle, Loader2, Plus, Edit, SlidersHorizontal } from "lucide-react";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator
-} from "@/components/ui/dropdown-menu";
+import { Loader2, Plus, Settings, Edit, Trash2, Target, Calendar } from "lucide-react";
+import { formatCurrency } from "@/utils/Utils";
 
 interface Pipeline {
   id: string;
   name: string;
   is_default: boolean;
-  goal_amount?: number;
-  goal_period?: string;
-  goal_currency?: string;
+  goal_amount: number;
+  goal_period: string;
+  goal_currency: string;
+  created_at: string;
+  updated_at: string;
 }
 
-interface PipelineHeaderProps {
+interface PipelineManagerProps {
+  organizationId: number;
   currentPipelineId: string;
   onPipelineChange: (pipelineId: string) => void;
-  onNewOpportunity: () => void;
 }
 
-export default function PipelineHeader({ 
+export default function PipelineManager({ 
+  organizationId, 
   currentPipelineId, 
-  onPipelineChange, 
-  onNewOpportunity 
-}: PipelineHeaderProps) {
+  onPipelineChange 
+}: PipelineManagerProps) {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
-  const [currentPipeline, setCurrentPipeline] = useState<Pipeline | null>(null);
-  const [organizationId, setOrganizationId] = useState<number | null>(null);
-  
-  // Estados para gestión de pipelines
+  const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
-  
+
   // Estados del formulario
   const [name, setName] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [goalAmount, setGoalAmount] = useState("");
   const [goalPeriod, setGoalPeriod] = useState("monthly");
   const [goalCurrency, setGoalCurrency] = useState("USD");
-  
-  // Obtener el ID de la organización del localStorage con múltiples opciones de clave
-  useEffect(() => {
-    // Lista de posibles claves donde podría estar almacenado el ID de la organización
-    const possibleKeys = [
-      "currentOrganizationId",
-      "organizationId", 
-      "selectedOrganizationId",
-      "orgId",
-      "organization_id"
-    ];
-    
-    // Buscar en localStorage
-    for (const key of possibleKeys) {
-      const orgId = localStorage.getItem(key);
-      if (orgId) {
-        // Organización encontrada en localStorage
-        setOrganizationId(Number(orgId));
-        return;
-      }
-    }
-    
-    // Si no está en localStorage, buscar en sessionStorage
-    for (const key of possibleKeys) {
-      const orgId = sessionStorage.getItem(key);
-      if (orgId) {
-        // Organización encontrada en sessionStorage
-        setOrganizationId(Number(orgId));
-        return;
-      }
-    }
-    
-    // Si no se encuentra, usar un valor predeterminado para desarrollo
-    if (process.env.NODE_ENV !== 'production') {
-      // Usando ID de organización predeterminado para desarrollo
-      setOrganizationId(2); // Valor predeterminado para desarrollo
-    } else {
-      // No se pudo encontrar el ID de organización en el almacenamiento local
-    }
-  }, []);
-  
-  // Cargar los pipelines de la organización cuando tengamos el ID
-  useEffect(() => {
-    const loadPipelines = async () => {
-      if (!organizationId) return;
-      
-      const { data, error } = await supabase
-        .from("pipelines")
-        .select("id, name, is_default")
-        .eq("organization_id", organizationId)
-        .order("is_default", { ascending: false });
-        
-      if (error) {
-        console.error("Error al cargar pipelines:", error);
-        return;
-      }
-      
-      if (data && data.length > 0) {
-        setPipelines(data);
-        
-        // Establecer el pipeline actual
-        if (currentPipelineId) {
-          const selected = data.find(p => p.id === currentPipelineId);
-          if (selected) {
-            setCurrentPipeline(selected);
-          } else {
-            // Si no encontramos el pipeline seleccionado, usar el primero
-            setCurrentPipeline(data[0]);
-            onPipelineChange(data[0].id);
-          }
-        } else {
-          // Si no hay pipeline seleccionado, usar el predeterminado o el primero
-          const defaultPipeline = data.find(p => p.is_default) || data[0];
-          setCurrentPipeline(defaultPipeline);
-          onPipelineChange(defaultPipeline.id);
-        }
-      }
-    };
-    
-    loadPipelines();
-  }, [organizationId, currentPipelineId, onPipelineChange]);
-  
-  const handlePipelineChange = (pipeline: Pipeline) => {
-    setCurrentPipeline(pipeline);
-    onPipelineChange(pipeline.id);
-  };
-  
-  // Limpiar formulario
-  const clearForm = () => {
-    setName("");
-    setIsDefault(false);
-    setGoalAmount("");
-    setGoalPeriod("monthly");
-    setGoalCurrency("USD");
-  };
-  
-  // Recargar pipelines
-  const reloadPipelines = async () => {
+
+  // Cargar pipelines
+  const loadPipelines = useCallback(async () => {
     if (!organizationId) return;
-    
+
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from("pipelines")
@@ -165,21 +66,46 @@ export default function PipelineHeader({
 
       if (error) {
         console.error("Error al cargar pipelines:", error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los pipelines",
+          variant: "destructive",
+        });
         return;
       }
 
       setPipelines(data || []);
     } catch (error) {
       console.error("Error inesperado:", error);
+      toast({
+        title: "Error",
+        description: "Error inesperado al cargar pipelines",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
+  }, [organizationId]);
+
+  useEffect(() => {
+    loadPipelines();
+  }, [organizationId, loadPipelines]);
+
+  // Limpiar formulario
+  const clearForm = () => {
+    setName("");
+    setIsDefault(false);
+    setGoalAmount("");
+    setGoalPeriod("monthly");
+    setGoalCurrency("USD");
   };
-  
+
   // Abrir diálogo de creación
   const handleCreate = () => {
     clearForm();
     setIsCreateOpen(true);
   };
-  
+
   // Abrir diálogo de edición
   const handleEdit = (pipeline: Pipeline) => {
     setEditingPipeline(pipeline);
@@ -190,7 +116,7 @@ export default function PipelineHeader({
     setGoalCurrency(pipeline.goal_currency || "USD");
     setIsEditOpen(true);
   };
-  
+
   // Crear nuevo pipeline
   const handleSaveNew = async () => {
     if (!name.trim()) {
@@ -233,11 +159,11 @@ export default function PipelineHeader({
       });
 
       // Recargar pipelines
-      await reloadPipelines();
+      await loadPipelines();
       
       // Si es el primer pipeline o se marcó como predeterminado, seleccionarlo
       if (pipelines.length === 0 || isDefault) {
-        handlePipelineChange(data);
+        onPipelineChange(data.id);
       }
 
       setIsCreateOpen(false);
@@ -254,8 +180,9 @@ export default function PipelineHeader({
     }
   };
 
+  // Actualizar pipeline existente
   const handleSaveEdit = async () => {
-    if (!name.trim()) {
+    if (!editingPipeline || !name.trim()) {
       toast({
         title: "Error",
         description: "El nombre del pipeline es requerido",
@@ -264,11 +191,9 @@ export default function PipelineHeader({
       return;
     }
 
-    if (!editingPipeline) return;
-
     setIsUpdating(true);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("pipelines")
         .update({
           name: name.trim(),
@@ -276,11 +201,9 @@ export default function PipelineHeader({
           goal_amount: goalAmount ? parseFloat(goalAmount) : 0,
           goal_period: goalPeriod,
           goal_currency: goalCurrency,
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", editingPipeline.id)
-        .eq("organization_id", organizationId)
-        .select()
-        .single();
+        .eq("id", editingPipeline.id);
 
       if (error) {
         console.error("Error al actualizar pipeline:", error);
@@ -298,14 +221,10 @@ export default function PipelineHeader({
       });
 
       // Recargar pipelines
-      await reloadPipelines();
+      await loadPipelines();
       
-      // Si se marcó como predeterminado, seleccionarlo
-      if (isDefault) {
-        handlePipelineChange(data);
-      }
-
       setIsEditOpen(false);
+      setEditingPipeline(null);
       clearForm();
     } catch (error) {
       console.error("Error inesperado:", error);
@@ -318,78 +237,182 @@ export default function PipelineHeader({
       setIsUpdating(false);
     }
   };
-  
-  return (
-    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">
-      <div className="flex flex-col">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Pipeline CRM
-        </h1>
-        <div className="flex items-center mt-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="text-blue-600 dark:text-blue-400 bg-transparent font-medium">
-                {currentPipeline?.name || "Seleccionar Pipeline"}
-                <SlidersHorizontal className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64">
-              <DropdownMenuLabel>Pipelines</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {pipelines.map((pipeline) => (
-                <DropdownMenuItem 
-                  key={pipeline.id} 
-                  onClick={() => handlePipelineChange(pipeline)}
-                  className={`flex items-center justify-between ${pipeline.id === currentPipeline?.id ? "bg-blue-50 dark:bg-gray-700" : ""}`}
-                >
-                  <div className="flex items-center flex-1">
-                    <span>{pipeline.name}</span>
-                    {pipeline.is_default && (
-                      <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1.5 py-0.5 rounded-full">
-                        Por defecto
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-1 ml-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(pipeline);
-                      }}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={handleCreate}
-                className="text-blue-600 dark:text-blue-400 font-medium"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Crear Nuevo Pipeline
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+
+  // Eliminar pipeline
+  const handleDelete = async (pipeline: Pipeline) => {
+    if (pipelines.length <= 1) {
+      toast({
+        title: "Error",
+        description: "No se puede eliminar el último pipeline",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`¿Estás seguro de que quieres eliminar el pipeline "${pipeline.name}"?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("pipelines")
+        .delete()
+        .eq("id", pipeline.id);
+
+      if (error) {
+        console.error("Error al eliminar pipeline:", error);
+        toast({
+          title: "Error",
+          description: "No se pudo eliminar el pipeline",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Éxito",
+        description: "Pipeline eliminado exitosamente",
+      });
+
+      // Si se eliminó el pipeline actual, seleccionar otro
+      if (currentPipelineId === pipeline.id) {
+        const remainingPipelines = pipelines.filter(p => p.id !== pipeline.id);
+        if (remainingPipelines.length > 0) {
+          onPipelineChange(remainingPipelines[0].id);
+        }
+      }
+
+      // Recargar pipelines
+      await loadPipelines();
+    } catch (error) {
+      console.error("Error inesperado:", error);
+      toast({
+        title: "Error",
+        description: "Error inesperado al eliminar pipeline",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm text-gray-600 dark:text-gray-400">Cargando pipelines...</span>
       </div>
-      
-      <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
-        <Button 
-          onClick={onNewOpportunity} 
-          size="sm" 
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          <PlusCircle className="h-4 w-4 mr-1" />
-          Nueva Oportunidad
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header con botón para crear */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Gestión de Pipelines
+        </h3>
+        <Button onClick={handleCreate} size="sm" className="gap-2">
+          <Plus className="h-4 w-4" />
+          Crear Pipeline
         </Button>
       </div>
-      
-      {/* Diálogo de creación de pipeline */}
+
+      {/* Lista de pipelines */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {pipelines.map((pipeline) => (
+          <Card 
+            key={pipeline.id} 
+            className={`transition-all duration-200 ${
+              currentPipelineId === pipeline.id 
+                ? 'ring-2 ring-blue-500 dark:ring-blue-400 bg-blue-50/50 dark:bg-blue-950/50' 
+                : 'hover:shadow-md'
+            }`}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  {pipeline.name}
+                  {pipeline.is_default && (
+                    <Badge variant="secondary" className="text-xs">
+                      Predeterminado
+                    </Badge>
+                  )}
+                </CardTitle>
+                <div className="flex items-center gap-1">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onPipelineChange(pipeline.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Seleccionar pipeline</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(pipeline)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Editar pipeline</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  {pipelines.length > 1 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(pipeline)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Eliminar pipeline</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {pipeline.goal_amount > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <Target className="h-4 w-4" />
+                  <span>Meta: {formatCurrency(pipeline.goal_amount)} {pipeline.goal_currency}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <Calendar className="h-4 w-4" />
+                <span>Período: {pipeline.goal_period === 'monthly' ? 'Mensual' : 'Anual'}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Diálogo de creación */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -484,8 +507,8 @@ export default function PipelineHeader({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {/* Diálogo de edición de pipeline */}
+
+      {/* Diálogo de edición */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -580,6 +603,6 @@ export default function PipelineHeader({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </header>
+    </div>
   );
 }

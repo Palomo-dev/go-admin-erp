@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,9 +12,9 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, getCurrentTheme, applyTheme } from "@/utils/Utils";
+import { formatCurrency } from "@/utils/Utils";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
-import { BarChart3, Calendar, DollarSign, Loader2, Settings } from "lucide-react";
+import { BarChart3, Calendar, DollarSign, Loader2, Plus } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
@@ -65,6 +66,19 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   const [stageColor, setStageColor] = useState("#3b82f6");
   const [stageDescription, setStageDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Estado para el diálogo de eliminación de etapas
+  const [deleteStageId, setDeleteStageId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Estado para el diálogo de creación de etapas
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newStageName, setNewStageName] = useState("");
+  const [newStageProbability, setNewStageProbability] = useState<number | null>(null);
+  const [newStageColor, setNewStageColor] = useState("#3b82f6");
+  const [newStageDescription, setNewStageDescription] = useState("");
 
   // Obtener ID de la organización y el usuario
   useEffect(() => {
@@ -325,59 +339,244 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     setIsConfigOpen(true);
   };
 
-  // Función para validar si un string es un UUID válido
-  const isValidUUID = (uuid: string | null): boolean => {
-    if (!uuid) return false;
-    // Patrón de UUID v4
+  // Función para manejar la eliminación de etapas
+  const handleDeleteStage = (stageId: string) => {
+    setDeleteStageId(stageId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Función para confirmar la eliminación de etapa
+  const confirmDeleteStage = async () => {
+    if (!deleteStageId) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // Verificar si hay oportunidades asociadas a esta etapa
+      const { data: opportunitiesData, error: opportunitiesError } = await supabase
+        .from("opportunities")
+        .select("id")
+        .eq("stage_id", deleteStageId);
+      
+      if (opportunitiesError) {
+        console.error("Error al verificar oportunidades:", opportunitiesError);
+        toast({
+          title: "Error",
+          description: "No se pudo verificar las oportunidades asociadas",
+          variant: "destructive",
+        });
+        setIsDeleting(false);
+        return;
+      }
+      
+      // Si hay oportunidades asociadas, no permitir eliminación
+      if (opportunitiesData && opportunitiesData.length > 0) {
+        toast({
+          title: "No se puede eliminar",
+          description: `Esta etapa tiene ${opportunitiesData.length} oportunidad(es) asociada(s). Mueva las oportunidades a otra etapa antes de eliminar.`,
+          variant: "destructive",
+        });
+        setIsDeleteDialogOpen(false);
+        setIsDeleting(false);
+        return;
+      }
+      
+      // Eliminar la etapa
+      const { error } = await supabase
+        .from("stages")
+        .delete()
+        .eq("id", deleteStageId);
+      
+      if (error) {
+        console.error("Error al eliminar etapa:", error);
+        toast({
+          title: "Error",
+          description: "No se pudo eliminar la etapa",
+          variant: "destructive",
+        });
+        setIsDeleting(false);
+        return;
+      }
+      
+      // Actualizar la lista de etapas localmente
+      setStages(prevStages => prevStages.filter(stage => stage.id !== deleteStageId));
+      
+      toast({
+        title: "Etapa eliminada",
+        description: "La etapa ha sido eliminada correctamente",
+      });
+      
+      setIsDeleteDialogOpen(false);
+      setDeleteStageId(null);
+      
+    } catch (error) {
+      console.error("Error inesperado al eliminar etapa:", error);
+      toast({
+        title: "Error",
+        description: "Error inesperado al eliminar la etapa",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Función para validar UUID
+  const isValidUUID = (uuid: string) => {
     const pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return pattern.test(uuid);
+  };
+
+  // Función para abrir el diálogo de crear etapa
+  const handleCreateStage = () => {
+    // Limpiar el formulario
+    setNewStageName("");
+    setNewStageProbability(null);
+    setNewStageColor("#3b82f6");
+    setNewStageDescription("");
+    setIsCreateOpen(true);
+  };
+
+  // Función para crear una nueva etapa
+  const handleSaveNewStage = async () => {
+    if (!newStageName.trim()) {
+      toast({
+        title: "Error",
+        description: "El nombre de la etapa es requerido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!pipelineId) {
+      toast({
+        title: "Error",
+        description: "No se pudo obtener el ID del pipeline",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      // Obtener la siguiente posición
+      const nextPosition = Math.max(...stages.map(s => s.position), 0) + 1;
+      
+      // Debug: Mostrar los datos que se van a insertar
+      // Convertir probabilidad a formato decimal si existe
+      const probabilityValue = newStageProbability ? newStageProbability / 100 : null;
+      
+      const insertData = {
+        name: newStageName.trim(),
+        color: newStageColor,
+        description: newStageDescription ? newStageDescription.trim() : null,
+        position: nextPosition,
+        pipeline_id: pipelineId,
+        probability: probabilityValue
+      };
+      
+      console.log('Datos a insertar en stages:', insertData);
+      
+      const { data, error } = await supabase
+        .from('stages')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error completo al crear etapa:', {
+          error,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        toast({
+          title: "Error",
+          description: `Error al crear la etapa: ${error.message || 'Error desconocido'}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Actualizar el estado local
+      const newStage: Stage = {
+        id: data.id,
+        name: data.name,
+        color: data.color,
+        description: data.description,
+        position: data.position,
+        pipeline_id: data.pipeline_id
+      };
+
+      setStages(prevStages => [...prevStages, newStage]);
+      
+      toast({
+        title: "Éxito",
+        description: "Etapa creada exitosamente",
+      });
+      
+      // Cerrar el diálogo
+      setIsCreateOpen(false);
+      
+    } catch (error) {
+      console.error("Error inesperado al crear etapa:", error);
+      toast({
+        title: "Error",
+        description: "Error inesperado al crear la etapa",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   // Función para guardar los cambios de la etapa
   const handleSaveStage = async () => {
     if (!configStage) return;
-    setIsSaving(true); // Mostrar carga
-    
-    try {
-      // Validar campos requeridos y contexto
-      if (!stageName.trim()) {
-        toast({
-          title: "Error",
-          description: "El nombre de la etapa es obligatorio",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
+    setIsSaving(true);
 
-      if (!organizationId) {
-        toast({
-          title: "Error",
-          description: "No se pudo determinar la organización actual",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      if (!userId) {
-        toast({
-          title: "Error",
-          description: "No se pudo determinar el usuario actual",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      // Verificar que el usuario pertenece a la organización (cumple con RLS)
+    // Validar campos requeridos
+    if (!stageName.trim()) {
+      toast({
+        title: "Error",
+        description: "El nombre de la etapa es obligatorio",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+      return;
+    }
+
+    if (!organizationId) {
+      toast({
+        title: "Error",
+        description: "No se pudo determinar la organización actual",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+      return;
+    }
+
+    if (!userId) {
+      toast({
+        title: "Error",
+        description: "No se pudo determinar el usuario actual",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      // Verificar que el usuario pertenece a la organización
       const { data: memberData, error: memberError } = await supabase
         .from('organization_members')
         .select('id')
         .eq('organization_id', organizationId)
         .eq('user_id', userId)
         .maybeSingle();
-      
+
       if (memberError || !memberData) {
         console.error('Error de verificación de permisos:', memberError);
         toast({
@@ -388,14 +587,14 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         setIsSaving(false);
         return;
       }
-      
+
       // Verificar que el pipeline pertenece a la organización correcta
       const { data: pipelineData, error: pipelineError } = await supabase
         .from('pipelines')
         .select('organization_id')
         .eq('id', configStage.pipeline_id)
         .maybeSingle();
-      
+
       if (pipelineError) {
         console.error('Error al verificar el pipeline:', pipelineError);
         toast({
@@ -406,7 +605,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         setIsSaving(false);
         return;
       }
-      
+
       if (!pipelineData) {
         toast({
           title: "Error de acceso",
@@ -416,18 +615,11 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         setIsSaving(false);
         return;
       }
-      
+
       // Convertir ambos a String para comparar
-      // El organization_id en la BD es entero mientras que el del frontend puede ser string
       const dbOrgId = String(pipelineData.organization_id);
       const currentOrgId = String(organizationId);
-      
-      console.log('Verificando organización:', { 
-        dbOrgId, 
-        currentOrgId, 
-        match: dbOrgId === currentOrgId 
-      });
-      
+
       if (dbOrgId !== currentOrgId) {
         console.error(`Error de acceso: organización no coincide (DB: ${dbOrgId}, Current: ${currentOrgId})`);
         toast({
@@ -438,15 +630,13 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         setIsSaving(false);
         return;
       }
-      
+
       // Convertir la probabilidad a formato numérico para la BD
-      // De porcentaje (0-100) a decimal (0-1)
       let probabilityValue = null;
       if (stageProbability !== null && stageProbability !== undefined) {
-        // Convertir de porcentaje a decimal como número (sin formatear como string)
         probabilityValue = stageProbability / 100;
       }
-      
+
       // Preparar los datos a actualizar
       const updateData = {
         name: stageName.trim(),
@@ -760,12 +950,108 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   // Mostrar mensaje si no hay etapas
   if (!stages || stages.length === 0) {
     return (
-      <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-lg shadow border border-blue-100 dark:border-blue-900">
-        <h3 className="text-xl font-medium text-blue-700 dark:text-blue-300 mb-2">No hay etapas configuradas</h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Este pipeline no tiene etapas configuradas. Contacte al administrador para configurar el pipeline.
-        </p>
-      </div>
+      <>
+        <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-lg shadow border border-blue-100 dark:border-blue-900">
+          <h3 className="text-xl font-medium text-blue-700 dark:text-blue-300 mb-2">No hay etapas configuradas</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Este pipeline no tiene etapas configuradas. Crea la primera etapa para comenzar a gestionar oportunidades.
+          </p>
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            className="w-full h-32 border-2 border-dashed border-blue-300 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600 bg-blue-50/50 dark:bg-blue-950/50 hover:bg-blue-100/50 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-200 flex flex-col items-center justify-center gap-2"
+            variant="outline"
+          >
+            <Plus className="h-6 w-6" />
+            <span className="font-medium">Crear nueva etapa</span>
+          </Button>
+        </div>
+        
+        {/* Diálogo de creación de nueva etapa */}
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Crear nueva etapa</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="newStageName" className="text-right">
+                  Nombre <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="newStageName"
+                  value={newStageName}
+                  onChange={(e) => setNewStageName(e.target.value)}
+                  className="col-span-3"
+                  required
+                  placeholder="Nombre de la etapa"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="newProbability" className="text-right">
+                  Probabilidad (%) <span className="text-gray-400 text-xs">(Opcional)</span>
+                </Label>
+                <Input
+                  id="newProbability"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={newStageProbability || ''}
+                  onChange={(e) => setNewStageProbability(parseInt(e.target.value) || null)}
+                  className="col-span-3"
+                  placeholder="0-100"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="newColor" className="text-right">
+                  Color <span className="text-gray-400 text-xs">(Opcional)</span>
+                </Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <input
+                    type="color"
+                    id="newColor"
+                    value={newStageColor}
+                    onChange={(e) => setNewStageColor(e.target.value)}
+                    className="h-8 w-8 rounded-md cursor-pointer"
+                  />
+                  <Input
+                    value={newStageColor}
+                    onChange={(e) => setNewStageColor(e.target.value)}
+                    className="flex-1"
+                    placeholder="#3b82f6"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="newDescription" className="text-right">
+                  Descripción <span className="text-gray-400 text-xs">(Opcional)</span>
+                </Label>
+                <Input
+                  id="newDescription"
+                  value={newStageDescription}
+                  onChange={(e) => setNewStageDescription(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Descripción de la etapa"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isCreating}>
+                Cancelar
+              </Button>
+              <Button type="submit" onClick={handleSaveNewStage} disabled={isCreating}>
+                {isCreating ? (
+                  <>
+                    <span className="mr-2">Creando</span>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </>
+                ) : (
+                  "Crear etapa"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
   
@@ -820,6 +1106,19 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-settings">
                     <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+                <button 
+                  onClick={() => handleDeleteStage(stage.id)}
+                  className="ml-1 p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400"
+                  title="Eliminar etapa"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2">
+                    <path d="m3 6 3 0"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="m8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    <line x1="10" x2="10" y1="11" y2="17"></line>
+                    <line x1="14" x2="14" y1="11" y2="17"></line>
                   </svg>
                 </button>
               </div>
@@ -916,6 +1215,21 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             </Droppable>
           </div>
         ))}
+        
+        {/* Botón para crear nueva etapa */}
+        <div className="flex-shrink-0 w-72">
+          <Button
+            onClick={handleCreateStage}
+            variant="outline"
+            className="w-full h-32 border-2 border-dashed border-blue-300 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600 bg-blue-50/50 dark:bg-blue-950/50 hover:bg-blue-100/50 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-200 flex flex-col items-center justify-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus">
+              <path d="M5 12h14"/>
+              <path d="m12 5 0 14"/>
+            </svg>
+            <span className="font-medium">Crear nueva etapa</span>
+          </Button>
+        </div>
       </div>
       
       {/* Diálogo de configuración de etapa */}
@@ -999,6 +1313,130 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Diálogo de creación de nueva etapa */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Crear nueva etapa</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newStageName" className="text-right">
+                Nombre <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="newStageName"
+                value={newStageName}
+                onChange={(e) => setNewStageName(e.target.value)}
+                className="col-span-3"
+                required
+                placeholder="Nombre de la etapa"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newProbability" className="text-right">
+                Probabilidad (%) <span className="text-gray-400 text-xs">(Opcional)</span>
+              </Label>
+              <Input
+                id="newProbability"
+                type="number"
+                min="0"
+                max="100"
+                value={newStageProbability || ''}
+                onChange={(e) => setNewStageProbability(parseInt(e.target.value) || null)}
+                className="col-span-3"
+                placeholder="0-100"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newColor" className="text-right">
+                Color <span className="text-gray-400 text-xs">(Opcional)</span>
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <input
+                  type="color"
+                  id="newColor"
+                  value={newStageColor}
+                  onChange={(e) => setNewStageColor(e.target.value)}
+                  className="h-8 w-8 rounded-md cursor-pointer"
+                />
+                <Input
+                  value={newStageColor}
+                  onChange={(e) => setNewStageColor(e.target.value)}
+                  className="flex-1"
+                  placeholder="#3b82f6"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newDescription" className="text-right">
+                Descripción <span className="text-gray-400 text-xs">(Opcional)</span>
+              </Label>
+              <Input
+                id="newDescription"
+                value={newStageDescription}
+                onChange={(e) => setNewStageDescription(e.target.value)}
+                className="col-span-3"
+                placeholder="Descripción de la etapa"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isCreating}>
+              Cancelar
+            </Button>
+            <Button type="submit" onClick={handleSaveNewStage} disabled={isCreating}>
+              {isCreating ? (
+                <>
+                  <span className="mr-2">Creando</span>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                "Crear etapa"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Diálogo de confirmación para eliminar etapa */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar etapa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La etapa será eliminada permanentemente.
+            </AlertDialogDescription>
+            {deleteStageId && (
+              <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>Nota:</strong> Solo se pueden eliminar etapas que no tengan oportunidades asociadas.
+                </p>
+              </div>
+            )}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteStage}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Eliminando...
+                </>
+              ) : (
+                "Eliminar etapa"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DragDropContext>
   );
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +15,7 @@ import TableView from "./TableView";
 import ClientsView from "./ClientsView";
 import AutomationsView from "./AutomationsView";
 import ProductSelector from "./ProductSelector";
+import PipelineManager from "./PipelineManager";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { formatCurrency } from "@/utils/Utils";
 
@@ -489,9 +490,11 @@ const NewOpportunityForm = ({
 
 export default function PipelineView() {
   const [currentPipelineId, setCurrentPipelineId] = useState<string>("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isNewOpportunityDialogOpen, setIsNewOpportunityDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState("kanban");
 
   // Obtener el ID de la organización del localStorage con múltiples opciones de clave
   useEffect(() => {
@@ -581,6 +584,7 @@ export default function PipelineView() {
   }, [organizationId]);
 
   const handlePipelineChange = (pipelineId: string) => {
+    console.log('🔄 Cambiando pipeline de', currentPipelineId, 'a', pipelineId);
     setCurrentPipelineId(pipelineId);
   };
 
@@ -605,61 +609,146 @@ export default function PipelineView() {
         onNewOpportunity={openNewOpportunityDialog}
       />
       
-      <Tabs defaultValue="kanban" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="kanban">Kanban</TabsTrigger>
-          <TabsTrigger value="table">Tabla</TabsTrigger>
-          <TabsTrigger value="forecast">Pronóstico</TabsTrigger>
-          <TabsTrigger value="clients">Clientes</TabsTrigger>
-          <TabsTrigger value="automation">Automatización</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="kanban" className="mt-0">
-          {currentPipelineId && (
-            <PipelineStages pipelineId={currentPipelineId} />
-          )}
-        </TabsContent>
-        
-        <TabsContent value="table">
-          {currentPipelineId ? (
-            <TableView pipelineId={currentPipelineId} />
-          ) : (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-              Seleccione un pipeline para ver la tabla
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="forecast">
-          {currentPipelineId ? (
-            <ForecastView pipelineId={currentPipelineId} />
-          ) : (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-              Seleccione un pipeline para ver el pronóstico
-            </div>
-          )}
-        </TabsContent>
+      <div className="w-full">
+        {/* Sistema de navegación personalizado */}
+        <div className="mb-4">
+          <div className="flex flex-wrap gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <button
+              onClick={() => setActiveTab("kanban")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === "kanban"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+            >
+              Kanban
+            </button>
+            <button
+              onClick={() => setActiveTab("table")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === "table"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+            >
+              Tabla
+            </button>
+            <button
+              onClick={() => setActiveTab("forecast")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === "forecast"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+            >
+              Pronóstico
+            </button>
+            <button
+              onClick={() => setActiveTab("clients")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === "clients"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+            >
+              Clientes
+            </button>
+            <button
+              onClick={() => setActiveTab("automation")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === "automation"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+            >
+              Automatización
+            </button>
 
-        <TabsContent value="clients">
-          {currentPipelineId ? (
-            <ClientsView pipelineId={currentPipelineId} />
-          ) : (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-              Seleccione un pipeline para ver los clientes
-            </div>
-          )}
-        </TabsContent>
+          </div>
+        </div>
+        
+        {/* Contenido de las pestañas */}
+        {activeTab === "kanban" && (
+          <div className="mt-0">
+            {currentPipelineId && (
+              <PipelineStages 
+                key={`${currentPipelineId}-${refreshTrigger}`} 
+                pipelineId={currentPipelineId} 
+              />
+            )}
+          </div>
+        )}
+        
+        {activeTab === "table" && (
+          <div>
+            {currentPipelineId ? (
+              <TableView 
+                key={currentPipelineId} 
+                pipelineId={currentPipelineId} 
+              />
+            ) : (
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                Seleccione un pipeline para ver la tabla
+              </div>
+            )}
+          </div>
+        )}
+        
+        {activeTab === "forecast" && (
+          <div>
+            {currentPipelineId ? (
+              <ForecastView 
+                key={currentPipelineId} 
+                pipelineId={currentPipelineId} 
+              />
+            ) : (
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                Seleccione un pipeline para ver el pronóstico
+              </div>
+            )}
+          </div>
+        )}
 
-        <TabsContent value="automation">
-          {currentPipelineId ? (
-            <AutomationsView pipelineId={currentPipelineId} />
-          ) : (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-              Seleccione un pipeline para configurar automatizaciones
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+        {activeTab === "clients" && (
+          <div>
+            {currentPipelineId ? (
+              <ClientsView pipelineId={currentPipelineId} />
+            ) : (
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                Seleccione un pipeline para ver los clientes
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "automation" && (
+          <div>
+            {currentPipelineId ? (
+              <AutomationsView pipelineId={currentPipelineId} />
+            ) : (
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                Seleccione un pipeline para configurar automatizaciones
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "pipelines" && (
+          <div>
+            {organizationId ? (
+              <PipelineManager 
+                organizationId={organizationId}
+                currentPipelineId={currentPipelineId}
+                onPipelineChange={handlePipelineChange}
+              />
+            ) : (
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                Cargando información de la organización...
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       
       <Dialog open={isNewOpportunityDialogOpen} onOpenChange={setIsNewOpportunityDialogOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -670,15 +759,11 @@ export default function PipelineView() {
               pipelineId={currentPipelineId}
               organizationId={organizationId}
               onSuccess={() => {
-                // Recargar datos cuando se crea una nueva oportunidad
-                // Oportunidad creada con éxito
-                // Forzar recarga de datos en las vistas actuales
-                const currentTab = document.querySelector('[data-state="active"]')?.getAttribute('data-value');
-                if (currentTab === "kanban") {
-                  // Refresh kanban view
-                  const event = new CustomEvent('refresh-pipeline-data');
-                  window.dispatchEvent(event);
-                }
+                console.log('✅ Oportunidad creada exitosamente, forzando actualización de componentes');
+                // Incrementar el refreshTrigger para forzar re-renderizado de todos los componentes
+                setRefreshTrigger(prev => prev + 1);
+                // Cerrar el diálogo
+                setIsNewOpportunityDialogOpen(false);
               }}
             />
           )}

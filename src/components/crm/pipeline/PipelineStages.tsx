@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/utils/Utils";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
-import { BarChart3, Calendar, DollarSign, Loader2, Plus } from "lucide-react";
+import { BarChart3, Calendar, DollarSign, Loader2, Plus, Eye } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
@@ -52,6 +53,7 @@ interface PipelineStagesProps {
 }
 
 export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
+  const router = useRouter();
   const [stages, setStages] = useState<Stage[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1199,11 +1201,25 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                               <DollarSign className="h-3 w-3 mr-0.5" />
                               {formatCurrency(opportunity.amount)}
                             </div>
-                            <Badge 
-                              className={`capitalize ${opportunity.status === 'won' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : opportunity.status === 'lost' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}`}
-                            >
-                              {opportunity.currency || 'COP'}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                className={`capitalize ${opportunity.status === 'won' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : opportunity.status === 'lost' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}`}
+                              >
+                                {opportunity.currency || 'COP'}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 hover:bg-blue-100 dark:hover:bg-blue-900"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/app/crm/oportunidades/${opportunity.id}`);
+                                }}
+                                title="Ver detalle de la oportunidad"
+                              >
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
                         </Card>
                       )}

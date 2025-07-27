@@ -414,29 +414,28 @@ export default function PipelineManager({
 
       {/* Diálogo de creación */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Crear Nuevo Pipeline</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="name">
                 Nombre <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="col-span-3"
                 placeholder="Nombre del pipeline"
               />
             </div>
             
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="isDefault" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="isDefault" className="text-sm font-medium">
                 Predeterminado
               </Label>
-              <div className="col-span-3">
+              <div className="flex justify-start">
                 <Switch
                   id="isDefault"
                   checked={isDefault}
@@ -445,8 +444,8 @@ export default function PipelineManager({
               </div>
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="goalAmount" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="goalAmount">
                 Meta de ventas
               </Label>
               <Input
@@ -454,40 +453,41 @@ export default function PipelineManager({
                 type="number"
                 value={goalAmount}
                 onChange={(e) => setGoalAmount(e.target.value)}
-                className="col-span-3"
                 placeholder="0"
               />
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="goalPeriod" className="text-right">
-                Período
-              </Label>
-              <Select value={goalPeriod} onValueChange={setGoalPeriod}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Mensual</SelectItem>
-                  <SelectItem value="annual">Anual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="goalPeriod">
+                  Período
+                </Label>
+                <Select value={goalPeriod} onValueChange={setGoalPeriod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Mensual</SelectItem>
+                    <SelectItem value="annual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="goalCurrency" className="text-right">
-                Moneda
-              </Label>
-              <Select value={goalCurrency} onValueChange={setGoalCurrency}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD - Dólar</SelectItem>
-                  <SelectItem value="COP">COP - Peso Colombiano</SelectItem>
-                  <SelectItem value="EUR">EUR - Euro</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="goalCurrency">
+                  Moneda
+                </Label>
+                <Select value={goalCurrency} onValueChange={setGoalCurrency}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD - Dólar</SelectItem>
+                    <SelectItem value="COP">COP - Peso Colombiano</SelectItem>
+                    <SelectItem value="EUR">EUR - Euro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -510,29 +510,28 @@ export default function PipelineManager({
 
       {/* Diálogo de edición */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Editar Pipeline</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editName" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="editName">
                 Nombre <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="editName"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="col-span-3"
                 placeholder="Nombre del pipeline"
               />
             </div>
             
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editIsDefault" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="editIsDefault" className="text-sm font-medium">
                 Predeterminado
               </Label>
-              <div className="col-span-3">
+              <div className="flex justify-start">
                 <Switch
                   id="editIsDefault"
                   checked={isDefault}
@@ -541,8 +540,8 @@ export default function PipelineManager({
               </div>
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editGoalAmount" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="editGoalAmount">
                 Meta de ventas
               </Label>
               <Input
@@ -550,40 +549,41 @@ export default function PipelineManager({
                 type="number"
                 value={goalAmount}
                 onChange={(e) => setGoalAmount(e.target.value)}
-                className="col-span-3"
                 placeholder="0"
               />
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editGoalPeriod" className="text-right">
-                Período
-              </Label>
-              <Select value={goalPeriod} onValueChange={setGoalPeriod}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Mensual</SelectItem>
-                  <SelectItem value="annual">Anual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editGoalPeriod">
+                  Período
+                </Label>
+                <Select value={goalPeriod} onValueChange={setGoalPeriod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Mensual</SelectItem>
+                    <SelectItem value="annual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editGoalCurrency" className="text-right">
-                Moneda
-              </Label>
-              <Select value={goalCurrency} onValueChange={setGoalCurrency}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD - Dólar</SelectItem>
-                  <SelectItem value="COP">COP - Peso Colombiano</SelectItem>
-                  <SelectItem value="EUR">EUR - Euro</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="editGoalCurrency">
+                  Moneda
+                </Label>
+                <Select value={goalCurrency} onValueChange={setGoalCurrency}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD - Dólar</SelectItem>
+                    <SelectItem value="COP">COP - Peso Colombiano</SelectItem>
+                    <SelectItem value="EUR">EUR - Euro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>

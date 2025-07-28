@@ -60,28 +60,10 @@ export const createSupabaseClient = () => {
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
-      autoRefreshToken: true, // Permitimos renovación automática con la configuración optimizada
+      autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      storage: {
-        getItem: (key: string) => {
-          return getCookie(key);
-        },
-        setItem: (key: string, value: string) => {
-          setCookie(key, value, 86400); // 24 horas para todos los tokens
-          // Eliminamos cualquier token del localStorage para mantener la seguridad
-          if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem(key);
-          }
-        },
-        removeItem: (key: string) => {
-          removeCookie(key);
-          // Eliminamos cualquier token del localStorage para mantener la seguridad
-          if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem(key);
-          }
-        }
-      }
+      flowType: 'pkce',
     },
     global: {
       headers: {
@@ -229,7 +211,7 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
     // Obtenemos todas las membresías activas del usuario desde organization_members
     const { data: allMemberData, error: memberError } = await supabase
       .from('organization_members')
-      .select('id, organization_id, role, role_id, is_active')
+      .select('id, organization_id, role_id, is_active')
       .eq('user_id', userId)
       .eq('is_active', true);
       

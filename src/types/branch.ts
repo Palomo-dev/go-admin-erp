@@ -24,7 +24,6 @@ export interface Branch {
   zone?: string;
   branch_code: string;
   is_active?: boolean;
-  metadata?: Record<string, any>;
 }
 
 export interface OpeningHours {

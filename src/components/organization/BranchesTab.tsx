@@ -42,11 +42,13 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
 
   const handleCreate = () => {
     setEditingBranch(null);
+    setError(null);
     setShowForm(true);
   };
 
   const handleEdit = (branch: Branch) => {
     setEditingBranch(branch);
+    setError(null);
     setShowForm(true);
   };
 
@@ -281,15 +283,81 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
       </div>
       {/* Modal for create/edit form */}
       {showForm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg relative">
-            <button className="absolute top-2 right-2 btn btn-sm btn-ghost" onClick={() => setShowForm(false)}>✕</button>
-            <BranchForm
-              initialData={editingBranch ? editingBranch : { organization_id: orgId }}
-              onSubmit={handleFormSubmit}
-              isLoading={formLoading}
-              submitLabel={editingBranch ? 'Actualizar Sucursal' : 'Crear Sucursal'}
-            />
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+          <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-8 flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300">
+              {/* Header */}
+              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {editingBranch ? 'Editar Sucursal' : 'Nueva Sucursal'}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {editingBranch ? 'Modifica la información de la sucursal' : 'Completa la información para crear una nueva sucursal'}
+                  </p>
+                </div>
+                <button 
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors" 
+                  onClick={() => setShowForm(false)}
+                  disabled={formLoading}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Error Message */}
+              {error && (
+                <div className="mx-4 sm:mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Form Content */}
+              <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+                <BranchForm
+                  initialData={editingBranch ? editingBranch : { organization_id: orgId }}
+                  onSubmit={handleFormSubmit}
+                  isLoading={formLoading}
+                  submitLabel={editingBranch ? 'Actualizar Sucursal' : 'Crear Sucursal'}
+                  noFormWrapper={true}
+                />
+              </div>
+              
+              {/* Footer with actions */}
+              <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  disabled={formLoading}
+                >
+                  Cancelar
+                </button>
+                <div className="flex items-center gap-3">
+                  {formLoading && (
+                    <div className="flex items-center text-sm text-gray-500">
+                      <span className="loading loading-spinner loading-sm mr-2"></span>
+                      Guardando...
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    form="branch-form"
+                    className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    disabled={formLoading}
+                  >
+                    {editingBranch ? 'Actualizar Sucursal' : 'Crear Sucursal'}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -58,7 +58,7 @@ export const ProfileManager = ({ onUserDataChange, onLoadingChange }: ProfileMan
         // Obtener datos del rol del usuario con manejo adecuado de errores
         const { data: userRoleData, error: roleError } = await supabase
           .from('organization_members')
-          .select('role')
+          .select('role_id (id, name)')
           .eq('user_id', user.id)
           .eq('organization_id', organizationId)
           .single();
@@ -72,7 +72,7 @@ export const ProfileManager = ({ onUserDataChange, onLoadingChange }: ProfileMan
         onUserDataChange({
           name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`.trim() || 'Usuario',
           email: user.email || '',
-          role: userRoleData?.role || localStorage.getItem('userRole') || 'Usuario',
+          role: userRoleData?.role_id.name || localStorage.getItem('userRole') || 'Usuario',
           avatar: profileData?.avatar_url || user.user_metadata?.avatar_url
         });
       } catch (error) {

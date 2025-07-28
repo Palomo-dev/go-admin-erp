@@ -6,16 +6,50 @@ import CreateOrganizationForm from '@/components/organization/CreateOrganization
 interface FormData {
   joinType: 'create' | 'join';
   organizationName: string;
+  organizationLegalName?: string;
   organizationType: number | null;
+  organizationDescription?: string;
+  organizationEmail?: string;
+  organizationPhone?: string;
+  organizationAddress?: string;
+  organizationCity?: string;
+  organizationState?: string;
+  organizationCountry?: string;
+  organizationCountryCode?: string;
+  organizationPostalCode?: string;
+  organizationTaxId?: string;
+  organizationNit?: string;
+  organizationWebsite?: string;
+  organizationSubdomain?: string;
+  organizationPrimaryColor?: string;
+  organizationSecondaryColor?: string;
   invitationCode: string;
   email?: string;
-  logoUrl?: string | null;
+  logoUrl?: string; // Opcional, puede ser undefined
 }
 
 interface OrganizationData {
   name: string;
   type_id: number;
+  legal_name?: string;
+  description?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  country_code?: string;
+  postal_code?: string;
+  tax_id?: string;
+  nit?: string;
+  website?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  subdomain?: string;
   logo_url?: string | null;
+  opening_hours?: string;
+  features?: string;
 }
 
 type OrganizationStepProps = {
@@ -129,13 +163,30 @@ export default function OrganizationStep({
                 onSuccess={(data: OrganizationData) => {
                   updateFormData({
                     organizationName: data.name,
+                    organizationLegalName: data.legal_name,
                     organizationType: data.type_id,
-                    logoUrl: data.logo_url !== null ? data.logo_url : undefined
+                    organizationDescription: data.description,
+                    organizationEmail: data.email,
+                    organizationPhone: data.phone,
+                    organizationAddress: data.address,
+                    organizationCity: data.city,
+                    organizationState: data.state,
+                    organizationCountry: data.country,
+                    organizationCountryCode: data.country_code,
+                    organizationPostalCode: data.postal_code,
+                    organizationTaxId: data.tax_id,
+                    organizationNit: data.nit,
+                    organizationWebsite: data.website,
+                    organizationSubdomain: data.subdomain,
+                    organizationPrimaryColor: data.primary_color,
+                    organizationSecondaryColor: data.secondary_color,
+                    logoUrl: data.logo_url || undefined
                   });
                   onNext();
                 }}
                 onCancel={prevInnerStep}
                 defaultEmail={formData.email}
+                isSignupMode={true}
               />
             </div>
           ) : (

@@ -45,13 +45,127 @@ export const selectOrganizationFromPopup = async ({
 
 export const proceedWithLogin = async (rememberMe: boolean = false, email: string = '') => {
   // Set remember me preference in local storage if checked
-  const { data: sessionData } = await supabase.auth.getSession();
+  let { data: sessionData } = await supabase.auth.getSession();
   
+  // Verificar que tenemos una sesión válida con múltiples intentos
+  let retryCount = 0;
+  const maxRetries = 5; // Hasta 5 intentos
+  
+  while (!sessionData?.session?.user && retryCount < maxRetries) {
+    console.log(`Intento ${retryCount + 1}/${maxRetries}: Esperando sesión de usuario...`);
+    
+    // Esperar más tiempo en cada retry
+    await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000));
+    
+    const { data: retrySessionData } = await supabase.auth.getSession();
+    if (retrySessionData?.session?.user) {
+      sessionData = retrySessionData;
+      console.log('✅ Sesión obtenida exitosamente en intento:', retryCount + 1);
+      break;
+    }
+    
+    retryCount++;
+  }
+  
+  // Si después de todos los intentos no hay sesión, intentar una última estrategia
+  if (!sessionData?.session?.user) {
+    console.error('❌ No se pudo obtener la sesión después de', maxRetries, 'intentos');
+    
+    // Estrategia final: verificar si el email fue confirmado pero no hay sesión
+    console.log('� Verificando si es un problema de sesión perdida...');
+    
+    try {
+      // Intentar hacer login con el email que acabamos de confirmar
+      if (email) {
+        console.log('�🔄 Intentando recuperar sesión para email:', email);
+        
+        // Primero verificar si existe el usuario y está confirmado
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .eq('email', email)
+          .single();
+        
+        if (!userError && userData) {
+          console.log('✅ Usuario encontrado en perfiles, redirigiendo a login con contexto...');
+          
+          // Guardar contexto para el login
+          sessionStorage.setItem('emailJustConfirmed', email);
+          sessionStorage.setItem('redirectTo', '/app/inicio');
+          
+          // Redirigir a login con mensaje
+          setTimeout(() => {
+            window.location.replace(`/auth/login?email=${encodeURIComponent(email)}&confirmed=true`);
+          }, 1000);
+          
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error en verificación final:', error);
+    }
+    
+    // Limpiar cualquier estado corrupto
+    localStorage.removeItem('currentOrganizationId');
+    localStorage.removeItem('currentOrganizationName');
+    
+    console.log('🔄 Redirigiendo a login para reintentar...');
+    // Redirigir a login después de un breve delay
+    setTimeout(() => {
+      window.location.replace('/auth/login');
+    }, 2000);
+    
+    return;
+  }
+  
+  console.log('✅ Sesión válida encontrada para:', sessionData.session.user.email);
+  
+  // Verificar que el perfil del usuario esté creado antes de continuar
+  console.log('🔍 Verificando perfil de usuario...');
+  let profileExists = false;
+  let profileRetries = 0;
+  const maxProfileRetries = 3;
+  
+  while (!profileExists && profileRetries < maxProfileRetries) {
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, last_org_id')
+        .eq('id', sessionData.session.user.id)
+        .single();
+      
+      if (!profileError && profileData) {
+        profileExists = true;
+        console.log('✅ Perfil encontrado:', profileData.email);
+        
+        // Si el perfil tiene una organización, usarla
+        if (profileData.last_org_id) {
+          localStorage.setItem('currentOrganizationId', profileData.last_org_id.toString());
+          console.log('✅ Organización del perfil cargada:', profileData.last_org_id);
+        }
+      } else {
+        console.log(`⏳ Intento ${profileRetries + 1}/${maxProfileRetries}: Esperando creación de perfil...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        profileRetries++;
+      }
+    } catch (error) {
+      console.error('Error verificando perfil:', error);
+      profileRetries++;
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  if (!profileExists) {
+    console.warn('⚠️ No se encontró perfil después de', maxProfileRetries, 'intentos. Continuando...');
+  }
+
   // Update user's last organization if we have a current organization ID
   const orgId = localStorage.getItem('currentOrganizationId');
   
   if (orgId && sessionData?.session?.user) {
     try {
+      console.log('🔄 Actualizando perfil con organización ID:', orgId);
+      
       // Update the user's profile with the selected organization
       const { data: updateData, error: profUpdate } = await supabase
         .from('profiles')
@@ -59,9 +173,10 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
         .eq('id', sessionData.session.user.id);
       
       if (profUpdate) {
-        console.error('Error updating user profile with organization:', profUpdate);
+        console.error('❌ Error updating user profile with organization:', profUpdate);
+        // No abortar por este error, continuar con el proceso
       } else {
-        console.log('Successfully updated user profile with organization ID:', orgId);
+        console.log('✅ Successfully updated user profile with organization ID:', orgId);
       }
       
       // Also fetch organization details to store in local storage
@@ -132,15 +247,28 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
   const redirectTo = sessionStorage.getItem('redirectTo');
 
   // Registrar el dispositivo en la base de datos
-  registerUserDevice(sessionData.session?.user?.id).catch(error => {
-    localStorage.setItem('registerDeviceError', JSON.stringify(error));
-    console.error('Error al registrar el dispositivo:', error);
-  });
+  if (sessionData?.session?.user?.id) {
+    registerUserDevice(sessionData.session.user.id).catch(error => {
+      localStorage.setItem('registerDeviceError', JSON.stringify(error));
+      console.error('Error al registrar el dispositivo:', error);
+    });
+  } else {
+    console.warn('No se pudo registrar el dispositivo: no hay userId disponible');
+  }
   
   // Forzar a Supabase a persistir la sesión correctamente
-  supabase.auth.refreshSession().then(() => {
+  supabase.auth.refreshSession().then(({ data: refreshData, error: refreshError }) => {
+    if (refreshError) {
+      console.error('Error al refrescar la sesión:', refreshError);
+      return;
+    }
+    
     // Verificar que la sesión se haya establecido correctamente
-    supabase.auth.getSession().then(({ data: sessionData }) => {
+    supabase.auth.getSession().then(({ data: sessionData, error: getSessionError }) => {
+      if (getSessionError) {
+        console.error('Error al obtener la sesión:', getSessionError);
+        return;
+      }
       // No almacenar tokens en localStorage por razones de seguridad
       // En su lugar, usar cookies HTTP-only para los tokens de autenticación
       if (sessionData.session) {
@@ -197,7 +325,13 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
           alert('Error al redireccionar. Por favor, intenta nuevamente.');
         }
       }, 1000);
+    }).catch(getSessionError => {
+      console.error('Error en getSession:', getSessionError);
+      alert('Error al obtener la sesión. Por favor, intenta nuevamente.');
     });
+  }).catch(refreshError => {
+    console.error('Error en refreshSession:', refreshError);
+    alert('Error al refrescar la sesión. Por favor, intenta nuevamente.');
   });
 };
 
@@ -219,7 +353,7 @@ export const registerUserDevice = async (sessionOrUserId: any) => {
         hasUser: sessionOrUserId?.user,
         hasUserId: sessionOrUserId?.user?.id
       });
-      return;
+      throw new Error('No se pudo obtener el ID de usuario para registrar el dispositivo');
     }
 
     // Obtener información del dispositivo

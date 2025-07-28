@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import FileUpload from '@/components/common/FileUpload';
 
 interface RegistrationFormProps {
   initialEmail?: string;
@@ -18,6 +19,8 @@ export interface RegistrationFormData {
   firstName: string;
   lastName: string;
   phoneNumber: string;
+  avatarUrl?: string;
+  preferredLanguage?: string;
 }
 
 export default function RegistrationForm({
@@ -35,10 +38,13 @@ export default function RegistrationForm({
     firstName: '',
     lastName: '',
     phoneNumber: '',
+    avatarUrl: '',
+    preferredLanguage: 'es'
   });
   const [validationErrors, setValidationErrors] = useState<{
     email?: string;
     phoneNumber?: string;
+    avatar?: string;
   }>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,6 +196,54 @@ export default function RegistrationForm({
           required
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Foto de perfil (opcional)
+        </label>
+        <FileUpload
+          bucket="profiles"
+          folder="avatars/temp"
+          accept="image/*"
+          maxSize={2 * 1024 * 1024} // 2MB
+          onUpload={(filePath) => {
+            setFormData(prev => ({ ...prev, avatarUrl: filePath }));
+            // Clear any avatar errors
+            if (validationErrors.avatar) {
+              setValidationErrors(prev => ({ ...prev, avatar: undefined }));
+            }
+          }}
+          onError={(error) => {
+            setValidationErrors(prev => ({ ...prev, avatar: error }));
+          }}
+          currentFile={formData.avatarUrl}
+          placeholder="Subir foto"
+          preview={true}
+        />
+        {validationErrors.avatar && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors.avatar}</p>
+        )}
+      </div>
+      
+      <div>
+        <label htmlFor="preferredLanguage" className="block text-sm font-medium text-gray-700">
+          Idioma preferido
+        </label>
+        <select
+          id="preferredLanguage"
+          name="preferredLanguage"
+          value={formData.preferredLanguage}
+          onChange={(e) => setFormData(prev => ({ ...prev, preferredLanguage: e.target.value }))}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="es">🇪🇸 es - Español</option>
+          <option value="en">🇺🇸 en - English</option>
+          <option value="pt">🇧🇷 pt - Português</option>
+          <option value="fr">🇫🇷 fr - Français</option>
+          <option value="de">🇩🇪 de - Deutsch</option>
+          <option value="it">🇮🇹 it - Italiano</option>
+        </select>
       </div>
       
       {error && (

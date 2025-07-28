@@ -42,9 +42,22 @@ export const branchService = {
    */
   async createBranch(branch: Branch): Promise<Branch> {
     try {
-      // Clean and format the branch data
+      // Clean and format the branch data - only include columns that exist in DB
       const formattedBranch = {
-        ...branch,
+        organization_id: branch.organization_id,
+        name: branch.name,
+        address: branch.address || null,
+        city: branch.city || null,
+        state: branch.state || null,
+        country: branch.country || null,
+        postal_code: branch.postal_code || null,
+        latitude: branch.latitude || null,
+        longitude: branch.longitude || null,
+        phone: branch.phone || null,
+        email: branch.email || null,
+        manager_id: branch.manager_id || null,
+        is_main: branch.is_main ?? false,
+        tax_identification: branch.tax_identification || null,
         // Handle JSON fields
         opening_hours: typeof branch.opening_hours === 'string' && branch.opening_hours
           ? JSON.parse(branch.opening_hours)
@@ -52,14 +65,11 @@ export const branchService = {
         features: typeof branch.features === 'string' && branch.features
           ? JSON.parse(branch.features)
           : branch.features || null,
-        // Handle UUID fields
-        manager_id: branch.manager_id || null,
-        // Ensure required fields
-        organization_id: branch.organization_id,
-        name: branch.name,
+        capacity: branch.capacity || null,
+        branch_type: branch.branch_type || null,
+        zone: branch.zone || null,
         branch_code: branch.branch_code,
-        is_active: branch.is_active ?? true,
-        is_main: branch.is_main ?? false
+        is_active: branch.is_active ?? true
       };
 
       const { data, error } = await supabase
@@ -87,16 +97,40 @@ export const branchService = {
    * Update an existing branch
    */
   async updateBranch(branchId: number, branch: Partial<Branch>): Promise<Branch> {
-    // Format opening_hours and features as JSONB if they're strings
-    const formattedBranch = {
-      ...branch,
-      opening_hours: typeof branch.opening_hours === 'string' 
+    // Format branch data - only include columns that exist in DB
+    const formattedBranch: any = {};
+    
+    // Only include fields that are provided and exist in the database
+    if (branch.name !== undefined) formattedBranch.name = branch.name;
+    if (branch.address !== undefined) formattedBranch.address = branch.address;
+    if (branch.city !== undefined) formattedBranch.city = branch.city;
+    if (branch.state !== undefined) formattedBranch.state = branch.state;
+    if (branch.country !== undefined) formattedBranch.country = branch.country;
+    if (branch.postal_code !== undefined) formattedBranch.postal_code = branch.postal_code;
+    if (branch.latitude !== undefined) formattedBranch.latitude = branch.latitude;
+    if (branch.longitude !== undefined) formattedBranch.longitude = branch.longitude;
+    if (branch.phone !== undefined) formattedBranch.phone = branch.phone;
+    if (branch.email !== undefined) formattedBranch.email = branch.email;
+    if (branch.manager_id !== undefined) formattedBranch.manager_id = branch.manager_id;
+    if (branch.is_main !== undefined) formattedBranch.is_main = branch.is_main;
+    if (branch.tax_identification !== undefined) formattedBranch.tax_identification = branch.tax_identification;
+    if (branch.capacity !== undefined) formattedBranch.capacity = branch.capacity;
+    if (branch.branch_type !== undefined) formattedBranch.branch_type = branch.branch_type;
+    if (branch.zone !== undefined) formattedBranch.zone = branch.zone;
+    if (branch.branch_code !== undefined) formattedBranch.branch_code = branch.branch_code;
+    if (branch.is_active !== undefined) formattedBranch.is_active = branch.is_active;
+    
+    // Handle JSON fields
+    if (branch.opening_hours !== undefined) {
+      formattedBranch.opening_hours = typeof branch.opening_hours === 'string' 
         ? JSON.parse(branch.opening_hours) 
-        : branch.opening_hours,
-      features: typeof branch.features === 'string' 
+        : branch.opening_hours;
+    }
+    if (branch.features !== undefined) {
+      formattedBranch.features = typeof branch.features === 'string' 
         ? JSON.parse(branch.features) 
-        : branch.features
-    };
+        : branch.features;
+    }
 
     const { data, error } = await supabase
       .from('branches')

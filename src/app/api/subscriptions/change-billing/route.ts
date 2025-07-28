@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     // Verificar permisos
     const { data: memberData, error: memberError } = await supabase
       .from('organization_members')
-      .select('role, is_super_admin')
+      .select('role_id, is_super_admin')
       .eq('organization_id', organizationId)
       .eq('user_id', session.user.id)
       .eq('is_active', true)
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (memberData.role !== 'org_admin' && !memberData.is_super_admin) {
+    if (memberData.role_id !== 2 && !memberData.is_super_admin) {
       return NextResponse.json(
         { error: 'Solo los administradores pueden cambiar el ciclo de facturación' },
         { status: 403 }

@@ -95,7 +95,6 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     zone: initialData.zone || '',
     branch_code: initialData.branch_code || '',
     is_active: hideStatusSection ? true : (initialData.is_active ?? true), // Force true during signup
-    metadata: initialData.metadata || {},
     organization_id: initialData.organization_id!,
   });
 
@@ -554,9 +553,9 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   );
   
   return noFormWrapper ? (
-    <div className="branch-form">{formContent}</div>
+    <form id="branch-form" onSubmit={handleSubmit} className="branch-form">{formContent}</form>
   ) : (
-    <form onSubmit={handleSubmit} className="branch-form">{formContent}</form>
+    <form id="branch-form" onSubmit={handleSubmit} className="branch-form">{formContent}</form>
   );
 });
 

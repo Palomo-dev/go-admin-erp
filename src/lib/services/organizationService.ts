@@ -40,7 +40,7 @@ export const organizationService = {
         organization_id,
         is_super_admin,
         is_active,
-        role,
+        role_id (id, name),
         organizations:organizations (id, name, description, logo_url, status, primary_color, secondary_color, subdomain, legal_name)
       `)
       .eq('user_id', userId)
@@ -74,7 +74,7 @@ export const organizationService = {
             subdomain: item.organizations.subdomain ? String(item.organizations.subdomain) : undefined,
             legal_name: item.organizations.legal_name ? String(item.organizations.legal_name) : undefined,
             // Añadir el rol y estatus de miembro
-            role: item.role ? String(item.role) : undefined,
+            role: item.role_id.name ? String(item.role_id.name) : undefined,
             is_super_admin: Boolean(item.is_super_admin)
           });
         }
@@ -129,7 +129,7 @@ export const organizationService = {
       .insert([{
         organization_id: orgData.id,
         user_id: userId,
-        role: 'admin',
+        role_id: 'admin',
         is_super_admin: true,
         is_active: true
       }]);

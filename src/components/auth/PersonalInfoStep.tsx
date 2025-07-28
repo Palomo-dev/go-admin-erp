@@ -10,6 +10,8 @@ interface FormData {
   password: string;
   confirmPassword: string;
   phone: string;
+  avatarUrl?: string; // NUEVO - Storage path del avatar
+  preferredLanguage?: string; // NUEVO - Idioma preferido
 }
 
 type PersonalInfoProps = {
@@ -44,7 +46,9 @@ export default function PersonalInfoStep({ formData, updateFormData, onNext, err
       email: data.email,
       password: data.password,
       confirmPassword: data.confirmPassword,
-      phone: data.phoneNumber
+      phone: data.phoneNumber,
+      avatarUrl: data.avatarUrl, // NUEVO
+      preferredLanguage: data.preferredLanguage // NUEVO
     });
     
     // Proceed to next step

@@ -1,6 +1,7 @@
 import React, { useState, forwardRef, useImperativeHandle, FormEvent } from 'react';
 import { Branch, BranchFormData, OpeningHours, BranchFeatures } from '@/types/branch';
-import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon } from '@heroicons/react/24/outline';
+import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon, UserIcon } from '@heroicons/react/24/outline';
+import { ManagerSelector } from './ManagerSelector';
 
 type BranchFormProps = {
   initialData?: Partial<Branch>;
@@ -341,6 +342,32 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
                 />
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Gerente */}
+        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <UserIcon className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-800">Gerente de sucursal</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Asignar Gerente
+              </label>
+              <ManagerSelector
+                organizationId={form.organization_id}
+                currentManagerId={form.manager_id || null}
+                onManagerSelect={(managerId) => {
+                  setForm(prev => ({ ...prev, manager_id: managerId || '' }));
+                }}
+                disabled={isLoading}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                El gerente tendrá permisos administrativos sobre esta sucursal.
+              </p>
             </div>
           </div>
         </div>

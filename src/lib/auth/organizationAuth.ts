@@ -44,23 +44,40 @@ export const selectOrganizationFromPopup = async ({
 
 
 export const proceedWithLogin = async (rememberMe: boolean = false, email: string = '') => {
+  console.log('🚀 [DEBUG] proceedWithLogin iniciado:', { rememberMe, email });
+  
   // Set remember me preference in local storage if checked
-  let { data: sessionData } = await supabase.auth.getSession();
+  let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  
+  console.log('🔍 [DEBUG] Sesión inicial:', {
+    hasSession: !!sessionData?.session,
+    hasUser: !!sessionData?.session?.user,
+    userId: sessionData?.session?.user?.id,
+    userEmail: sessionData?.session?.user?.email,
+    sessionError
+  });
   
   // Verificar que tenemos una sesión válida con múltiples intentos
   let retryCount = 0;
   const maxRetries = 5; // Hasta 5 intentos
   
   while (!sessionData?.session?.user && retryCount < maxRetries) {
-    console.log(`Intento ${retryCount + 1}/${maxRetries}: Esperando sesión de usuario...`);
+    console.log(`🔄 [DEBUG] Intento ${retryCount + 1}/${maxRetries}: Esperando sesión de usuario...`);
     
     // Esperar más tiempo en cada retry
     await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000));
     
-    const { data: retrySessionData } = await supabase.auth.getSession();
+    const { data: retrySessionData, error: retryError } = await supabase.auth.getSession();
+    console.log(`🔍 [DEBUG] Retry ${retryCount + 1} resultado:`, {
+      hasSession: !!retrySessionData?.session,
+      hasUser: !!retrySessionData?.session?.user,
+      userId: retrySessionData?.session?.user?.id,
+      retryError
+    });
+    
     if (retrySessionData?.session?.user) {
       sessionData = retrySessionData;
-      console.log('✅ Sesión obtenida exitosamente en intento:', retryCount + 1);
+      console.log('✅ [DEBUG] Sesión obtenida exitosamente en intento:', retryCount + 1);
       break;
     }
     

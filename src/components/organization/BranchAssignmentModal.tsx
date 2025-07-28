@@ -106,6 +106,27 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
       
       // El memberId ya es directamente el id de organization_members
       const organizationMemberId = memberId;
+      
+      // Verificar permisos del usuario actual antes de proceder
+      const { data: currentUserPerms, error: permsError } = await supabase
+        .from('organization_members')
+        .select(`
+          id,
+          organization_id,
+          role_id,
+          is_super_admin,
+          roles!inner(name)
+        `)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .single();
+        
+      if (permsError || !currentUserPerms) {
+        throw new Error('No tienes permisos para asignar sucursales en esta organización');
+      }
+      
+      console.log('Current user permissions:', currentUserPerms);
         
       // Primero eliminamos todas las asignaciones actuales
       const { error: deleteError } = await supabase
@@ -137,6 +158,15 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
       }, 1000);
     } catch (err: any) {
       console.error('Error al guardar asignaciones:', err);
+      console.error('Error details:', {
+        code: err.code,
+        message: err.message,
+        details: err.details,
+        hint: err.hint,
+        memberId,
+        assignedBranches,
+        organizationId
+      });
       setError(err.message || 'Error al actualizar las asignaciones de sucursales');
     } finally {
       setSaving(false);

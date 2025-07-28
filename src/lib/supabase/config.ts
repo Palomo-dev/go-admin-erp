@@ -324,43 +324,9 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
       console.log(`La organización ${orgData.id} no tiene sucursales activas`);
     }
     
-    // Si aún no tenemos un rol, intentamos obtenerlo de user_roles
+    // Si no se pudo obtener el rol, usar un valor por defecto
     if (!userRoleName) {
-      try {
-        const { data: userRoleData, error: userRoleError } = await supabase
-          .from('user_roles')
-          .select('roles(name)')
-          .eq('user_id', userId)
-          .maybeSingle();
-        
-        if (!userRoleError && userRoleData) {
-          // Utilizamos type assertion para manejar la estructura de datos
-          // ya que la respuesta puede variar dependiendo del query
-          const roleData = userRoleData as any;
-          if (roleData && roleData.roles) {
-            if (Array.isArray(roleData.roles)) {
-              // Verificamos que exista al menos un elemento y que tenga la propiedad name
-              if (roleData.roles.length > 0 && roleData.roles[0] && 'name' in roleData.roles[0]) {
-                userRoleName = roleData.roles[0].name;
-              }
-            } else if (roleData.roles && typeof roleData.roles === 'object') {
-              // Verificamos explícitamente que el objeto tenga la propiedad name
-              if ('name' in roleData.roles) {
-                userRoleName = roleData.roles.name;
-              }
-            }
-          }
-        } else if (userRoleError) {
-          console.error('Error obteniendo rol del usuario:', userRoleError);
-        }
-      } catch (roleErr) {
-        console.error('Error inesperado al obtener rol:', roleErr);
-      }
-    }
-    
-    // Como último recurso, usamos el rol almacenado en memberData si existe
-    if (!userRoleName && memberData.role) {
-      userRoleName = memberData.role;
+      userRoleName = 'Usuario';
     }
     
     return { 

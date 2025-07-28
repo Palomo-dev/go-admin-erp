@@ -74,19 +74,75 @@ export const handleEmailLogin = async (params: EmailLoginParams): Promise<void> 
     }
 
     // Obtener usuario actual
+    console.log('🔍 [EMAIL AUTH] Obteniendo datos del usuario...');
+    
+    // Primero verificar la sesión actual
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    console.log('🔍 [EMAIL AUTH] Sesión actual:', {
+      hasSession: !!sessionData.session,
+      hasUser: !!sessionData.session?.user,
+      userId: sessionData.session?.user?.id,
+      sessionError
+    });
+    
     const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log('🔍 [EMAIL AUTH] getUser resultado:', {
+      hasUser: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      userError
+    });
+    
     if (userError || !user) {
+      console.error('❌ [EMAIL AUTH] Error obteniendo usuario:', { userError, user });
+      
+      // Si getUser falla pero tenemos sesión, usar el usuario de la sesión
+      if (sessionData.session?.user) {
+        console.log('✅ [EMAIL AUTH] Usando usuario de sesión como fallback');
+        const sessionUser = sessionData.session.user;
+        // Continuar con el usuario de la sesión
+        
+        // Obtener organizaciones del usuario
+        console.log('📈 [EMAIL AUTH] Obteniendo organizaciones para usuario:', sessionUser.id);
+        const organizations = await getUserOrganizations(sessionUser.id);
+        
+        console.log('🏢 [EMAIL AUTH] Organizaciones encontradas:', {
+          count: organizations.length,
+          organizations: organizations.map(org => ({ id: org.id, name: org.name }))
+        });
+
+        // Mostrar selector de organización si hay múltiples
+        if (organizations.length >= 1) {
+          console.log('📱 [EMAIL AUTH] Mostrando popup de selección de organización');
+          setUserOrganizations(organizations);
+          setShowOrgPopup(true);
+        } else {
+          console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones');
+          // Login directo si no hay organizaciones
+          proceedWithLogin(rememberMe, email);
+        }
+        return;
+      }
+      
       throw new Error('No se pudo obtener la información del usuario');
     }
 
     // Obtener organizaciones del usuario
+    console.log('📈 [EMAIL AUTH] Obteniendo organizaciones para usuario:', user.id);
     const organizations = await getUserOrganizations(user.id);
+    
+    console.log('🏢 [EMAIL AUTH] Organizaciones encontradas:', {
+      count: organizations.length,
+      organizations: organizations.map(org => ({ id: org.id, name: org.name }))
+    });
 
     // Mostrar selector de organización si hay múltiples
     if (organizations.length >= 1) {
+      console.log('📱 [EMAIL AUTH] Mostrando popup de selección de organización');
       setUserOrganizations(organizations);
       setShowOrgPopup(true);
     } else {
+      console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones');
       // Login directo si no hay organizaciones
       proceedWithLogin(rememberMe, email);
     }
@@ -103,7 +159,17 @@ export const handleEmailLogin = async (params: EmailLoginParams): Promise<void> 
  */
 async function performLogin(email: string, password: string): Promise<LoginResult> {
   try {
+    console.log('🚀 [PERFORM LOGIN] Iniciando login para:', email);
     const { data, error } = await signInWithEmail(email, password);
+    
+    console.log('🔍 [PERFORM LOGIN] Resultado signInWithEmail:', {
+      hasData: !!data,
+      hasSession: !!data?.session,
+      hasUser: !!data?.user,
+      userId: data?.user?.id,
+      userEmail: data?.user?.email,
+      error: error?.message
+    });
 
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
@@ -135,6 +201,7 @@ async function performLogin(email: string, password: string): Promise<LoginResul
     }
 
     if (!data?.user || !data?.session) {
+      console.error('❌ [PERFORM LOGIN] Datos incompletos:', { hasUser: !!data?.user, hasSession: !!data?.session });
       return {
         success: false,
         error: 'La sesión no se pudo establecer correctamente.'
@@ -142,9 +209,23 @@ async function performLogin(email: string, password: string): Promise<LoginResul
     }
 
     // Establecer sesión en el cliente
-    await supabase.auth.setSession({
+    console.log('🔄 [PERFORM LOGIN] Estableciendo sesión en cliente...');
+    const { data: setSessionData, error: setSessionError } = await supabase.auth.setSession({
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token
+    });
+    
+    if (setSessionError) {
+      console.error('❌ [PERFORM LOGIN] Error estableciendo sesión:', setSessionError);
+      return {
+        success: false,
+        error: 'Error estableciendo la sesión: ' + setSessionError.message
+      };
+    }
+    
+    console.log('✅ [PERFORM LOGIN] Sesión establecida exitosamente:', {
+      hasSession: !!setSessionData.session,
+      userId: setSessionData.session?.user?.id
     });
 
     return { success: true };

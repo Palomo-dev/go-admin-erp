@@ -40,7 +40,7 @@ const removeCookie = (name: string) => {
   document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
 }
 
-// Creación del cliente de Supabase
+// Creación del cliente de Supabase para el navegador
 export const createSupabaseClient = () => {
   // Configuramos las credenciales, usando valores predeterminados si no hay variables de entorno
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -64,6 +64,67 @@ export const createSupabaseClient = () => {
       persistSession: true,
       detectSessionInUrl: true,
       flowType: 'pkce',
+      storage: {
+        getItem: (key: string) => {
+          if (typeof window !== 'undefined') {
+            // En el cliente, leer de localStorage como fallback y cookies
+            const fromLocalStorage = localStorage.getItem(key);
+            if (fromLocalStorage) {
+              console.log('💾 [STORAGE] Leído de localStorage:', key);
+              return fromLocalStorage;
+            }
+            
+            // Intentar leer de cookies
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+              const [name, value] = cookie.trim().split('=');
+              if (name === key && value) {
+                console.log('🍪 [STORAGE] Leído de cookie:', key);
+                return decodeURIComponent(value);
+              }
+            }
+          }
+          return null;
+        },
+        setItem: (key: string, value: string) => {
+          if (typeof window !== 'undefined') {
+            // Guardar en localStorage primero
+            localStorage.setItem(key, value);
+            console.log('💾 [STORAGE] Guardado en localStorage:', key);
+            
+            // También guardar en cookies para que el middleware pueda leerlo
+            // Usar secure en producción, no secure en desarrollo
+            const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+            const cookieValue = `${key}=${encodeURIComponent(value)}; path=/; max-age=604800; SameSite=Lax${secureFlag}`;
+            document.cookie = cookieValue;
+            console.log('🍪 [STORAGE] Guardado en cookie:', key, 'con flags:', secureFlag);
+            
+            // Verificar que la cookie se estableció correctamente
+            setTimeout(() => {
+              const cookies = document.cookie.split(';');
+              const cookieExists = cookies.some(c => c.trim().startsWith(`${key}=`));
+              console.log(`🔍 [STORAGE] Verificación cookie ${key}:`, cookieExists ? 'EXISTE' : 'NO EXISTE');
+              
+              if (!cookieExists) {
+                console.warn(`⚠️ [STORAGE] Cookie ${key} no se estableció correctamente, reintentando...`);
+                // Reintentar sin flags adicionales
+                document.cookie = `${key}=${encodeURIComponent(value)}; path=/`;
+              }
+            }, 100);
+          }
+        },
+        removeItem: (key: string) => {
+          if (typeof window !== 'undefined') {
+            // Eliminar de localStorage
+            localStorage.removeItem(key);
+            console.log('💾 [STORAGE] Eliminado de localStorage:', key);
+            
+            // Eliminar de cookies
+            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+            console.log('🍪 [STORAGE] Eliminado de cookie:', key);
+          }
+        },
+      },
     },
     global: {
       headers: {
@@ -106,15 +167,127 @@ export const createSupabaseClient = () => {
   })
 }
 
+// Creación del cliente de Supabase para el servidor (middleware)
+export const createSupabaseServerClient = (request?: any) => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWdwaG16dXNibHVxaHVxaWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMzQ1MjIsImV4cCI6MjA2MTYxMDUyMn0.yr5TLl2nhevIzNdPnjVkcdn049RB2t2OgqPG0HryVR4'
+  
+  const projectRef = getProjectRef();
+  
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+      flowType: 'pkce'
+    }
+  });
+  
+  return { supabase, projectRef };
+}
+
 // Cliente para uso en el lado del cliente
 export const supabase = createSupabaseClient()
 
+// Función para forzar sincronización de sesión y cookies
+export const ensureSessionSynced = async (): Promise<boolean> => {
+  try {
+    console.log('🔄 [SESSION] Forzando sincronización de sesión...');
+    
+    // Obtener sesión actual
+    const { data: sessionData, error } = await supabase.auth.getSession();
+    
+    if (error || !sessionData.session) {
+      console.error('❌ [SESSION] No hay sesión válida para sincronizar');
+      return false;
+    }
+    
+    console.log('✅ [SESSION] Sesión válida encontrada:', sessionData.session.user.email);
+    
+    // Forzar guardado de la sesión en storage
+    const projectRef = getProjectRef();
+    const storageKey = `sb-${projectRef}-auth-token`;
+    
+    const sessionToken = {
+      access_token: sessionData.session.access_token,
+      refresh_token: sessionData.session.refresh_token,
+      expires_at: sessionData.session.expires_at,
+      token_type: sessionData.session.token_type,
+      user: sessionData.session.user
+    };
+    
+    // Guardar en localStorage
+    localStorage.setItem(storageKey, JSON.stringify(sessionToken));
+    console.log('💾 [SESSION] Sesión guardada en localStorage');
+    
+    // Guardar en cookies de forma más agresiva
+    const cookieValue = encodeURIComponent(JSON.stringify(sessionToken));
+    const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+    
+    // Probar múltiples formatos de cookie
+    const cookieFormats = [
+      `${storageKey}=${cookieValue}; path=/; max-age=604800; SameSite=Lax${secureFlag}`,
+      `${storageKey}=${cookieValue}; path=/; SameSite=Lax`,
+      `${storageKey}=${cookieValue}; path=/`
+    ];
+    
+    for (let i = 0; i < cookieFormats.length; i++) {
+      document.cookie = cookieFormats[i];
+      console.log(`🍪 [SESSION] Intentando formato cookie ${i + 1}:`, cookieFormats[i].substring(0, 100) + '...');
+      
+      // Verificar si se estableció
+      setTimeout(() => {
+        const cookies = document.cookie.split(';');
+        const exists = cookies.some(c => c.trim().startsWith(`${storageKey}=`));
+        if (exists) {
+          console.log(`✅ [SESSION] Cookie establecida con formato ${i + 1}`);
+        }
+      }, 50);
+    }
+    
+    // Verificación final después de un delay
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const cookies = document.cookie.split(';');
+        const exists = cookies.some(c => c.trim().startsWith(`${storageKey}=`));
+        console.log('🔍 [SESSION] Verificación final de cookie:', exists ? 'ÉXITO' : 'FALLÓ');
+        resolve(exists);
+      }, 200);
+    });
+    
+  } catch (error) {
+    console.error('❌ [SESSION] Error en sincronización:', error);
+    return false;
+  }
+};
+
 // Funciones de autenticación
 export const signInWithEmail = async (email: string, password: string) => {
-  return await supabase.auth.signInWithPassword({
-    email,
-    password
-  })
+  const result = await supabase.auth.signInWithPassword({ email, password });
+  
+  // Si el login es exitoso, forzar sincronización
+  if (result.data.session && !result.error) {
+    console.log('✅ [AUTH] Login exitoso, sincronizando sesión...');
+  }
+
+  if (result.data.session) {
+    const { access_token, refresh_token, expires_at } = result.data.session;
+  
+    const tokenPayload = JSON.stringify({
+      access_token,
+      refresh_token,
+      expires_at
+    });
+  
+    const projectRef = getProjectRef(); // or hardcode your Supabase project ref
+    const cookieName = `sb-${projectRef}-auth-token`;
+  
+    setCookie(cookieName, tokenPayload, 60 * 60 * 24 * 7); // 7 days
+  }
+  
+
+  
+  return result;
 }
 
 export const signInWithGoogle = async () => {

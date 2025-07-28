@@ -112,12 +112,26 @@ export default function LoginPage() {
 
   // Handle organization selection from popup
   const onSelectOrganizationFromPopup = async (org: Organization) => {
-    await selectOrganizationFromPopup({
-      organization: org,
-      email,
-      setShowOrgPopup,
-      proceedWithLogin: (rememberMe, email) => proceedWithLogin(rememberMe, email)
+    console.log('📄 [LOGIN PAGE] Usuario seleccionó organización:', {
+      orgId: org.id,
+      orgName: org.name,
+      currentEmail: email
     });
+    
+    try {
+      await selectOrganizationFromPopup({
+        organization: org,
+        email,
+        setShowOrgPopup,
+        proceedWithLogin: (rememberMe, email) => {
+          console.log('🔗 [LOGIN PAGE] Wrapper proceedWithLogin llamado:', { rememberMe, email });
+          return proceedWithLogin(rememberMe, email);
+        }
+      });
+      console.log('✅ [LOGIN PAGE] selectOrganizationFromPopup completado');
+    } catch (error) {
+      console.error('❌ [LOGIN PAGE] Error en selectOrganizationFromPopup:', error);
+    }
   };
   
   // Manejar selección de geolocalización

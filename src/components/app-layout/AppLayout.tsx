@@ -1,11 +1,25 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
-import { Menu, ChevronsLeft, ChevronsRight, Building2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
 import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
+
+// Interfaces para tipos de datos
+interface RoleData {
+  id: number;
+  name: string;
+  description?: string;
+}
+
+interface OrganizationMemberData {
+  role_id: number;
+  is_super_admin?: boolean;
+  is_active: boolean;
+  roles: RoleData;
+}
 
 
 // Componente principal que organiza todo el layout de la aplicación
@@ -67,24 +81,38 @@ export const AppLayout = ({
           return;
         }
         
-        // Obtener rol del usuario
+        // Obtener rol del usuario con JOIN a la tabla roles
         const { data: userRoleData, error: roleError } = await supabase
           .from('organization_members')
-          .select('role')
+          .select(`
+            role_id,
+            is_super_admin,
+            is_active,
+            roles(
+              id,
+              name,
+              description
+            )
+          `)
           .eq('user_id', user.id)
           .eq('organization_id', currentOrgId)
+          .eq('is_active', true)
           .single();
           
         if (roleError) {
-          console.error('Error al obtener rol:', roleError);
-          // Continuar aunque no tengamos el rol
+          console.error('Error al obtener rol del usuario:', {
+            error: roleError,
+            userId: user.id,
+            organizationId: currentOrgId
+          });
+          // Continuar aunque no tengamos el rol, pero con información más detallada
         }
         
         // Actualizar el estado del userData
         setUserData({
           name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
           email: user.email,
-          role: userRoleData?.role,
+          role: (userRoleData as OrganizationMemberData)?.roles?.name || 'Usuario',
           avatar: profileData?.avatar_url
         });
       } catch (error) {

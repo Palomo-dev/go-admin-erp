@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock, Plus, User, Phone, Mail, FileText, Calendar, MessageSquare, Target } from "lucide-react";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { getOrganizationId } from "./utils/pipelineUtils";
 
 interface TimelineEvent {
   id: string;
@@ -20,8 +21,10 @@ interface TimelineEvent {
   title: string;
   description?: string;
   created_at: string;
-  created_by?: string;
-  metadata?: any;
+  occurred_at?: string;
+  author: string;
+  source: 'activity' | 'task' | 'manual';
+  metadata?: Record<string, unknown>;
 }
 
 interface OpportunityTimelineProps {
@@ -38,67 +41,199 @@ export default function OpportunityTimeline({ opportunityId }: OpportunityTimeli
     description: ''
   });
 
-  useEffect(() => {
-    loadTimeline();
-  }, [opportunityId]);
+  // Funciones auxiliares para mapear tipos de actividades
+  const mapActivityType = (activityType: string): string => {
+    switch (activityType) {
+      case 'system':
+        return 'stage_change';
+      case 'call':
+        return 'call';
+      case 'email':
+        return 'email';
+      case 'meeting':
+        return 'meeting';
+      case 'note':
+        return 'note';
+      default:
+        return 'note';
+    }
+  };
 
-  const loadTimeline = async () => {
+  const getActivityTitle = (activityType: string, notes: string): string => {
+    switch (activityType) {
+      case 'system':
+        return notes.includes('Cambio de etapa') ? 'Cambio de etapa' : 'Evento del sistema';
+      case 'call':
+        return 'Llamada telefónica';
+      case 'email':
+        return 'Email enviado';
+      case 'meeting':
+        return 'Reunión programada';
+      case 'note':
+        return 'Nota agregada';
+      default:
+        return 'Actividad registrada';
+    }
+  };
+
+  const getTaskEventType = (status: string): string => {
+    switch (status) {
+      case 'done':
+        return 'task_completed';
+      case 'canceled':
+        return 'task_canceled';
+      default:
+        return 'task_created';
+    }
+  };
+
+  const getTaskEventTitle = (status: string, title: string): string => {
+    switch (status) {
+      case 'done':
+        return `✅ Tarea completada: ${title}`;
+      case 'canceled':
+        return `❌ Tarea cancelada: ${title}`;
+      case 'in_progress':
+        return `🔄 Tarea en progreso: ${title}`;
+      default:
+        return `📋 Tarea creada: ${title}`;
+    }
+  };
+
+  const loadTimeline = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Por ahora simulamos datos de timeline
-      // En una implementación real, consultaríamos una tabla de eventos/actividades
-      const mockEvents: TimelineEvent[] = [
-        {
-          id: '1',
-          type: 'created',
-          title: 'Oportunidad creada',
-          description: 'La oportunidad fue creada en el pipeline',
-          created_at: '2025-01-15T09:00:00Z',
-          created_by: 'Juan Pérez'
-        },
-        {
-          id: '2',
-          type: 'stage_change',
-          title: 'Cambio de etapa',
-          description: 'Movida de "Contacto Inicial" a "Reunión Agendada"',
-          created_at: '2025-01-16T14:30:00Z',
-          created_by: 'María García'
-        },
-        {
-          id: '3',
-          type: 'call',
-          title: 'Llamada telefónica',
-          description: 'Llamada de seguimiento con el cliente. Mostró interés en la propuesta.',
-          created_at: '2025-01-18T10:15:00Z',
-          created_by: 'Juan Pérez'
-        },
-        {
-          id: '4',
-          type: 'email',
-          title: 'Email enviado',
-          description: 'Enviada cotización inicial por correo electrónico',
-          created_at: '2025-01-20T16:45:00Z',
-          created_by: 'María García'
-        },
-        {
-          id: '5',
-          type: 'meeting',
-          title: 'Reunión programada',
-          description: 'Reunión de presentación agendada para el 25 de enero',
-          created_at: '2025-01-22T11:20:00Z',
-          created_by: 'Juan Pérez'
+
+      const organizationId = getOrganizationId();
+      if (!organizationId) {
+        toast.error('No se encontró la organización');
+        return;
+      }
+
+      console.log('🔍 Cargando timeline para oportunidad:', opportunityId, 'organización:', organizationId);
+
+      // Cargar actividades de la tabla activities
+      const { data: activities, error: activitiesError } = await supabase
+        .from('activities')
+        .select(`
+          id,
+          activity_type,
+          notes,
+          occurred_at,
+          created_at,
+          metadata,
+          user_id
+        `)
+        .eq('organization_id', organizationId)
+        .eq('related_type', 'opportunity')
+        .eq('related_id', opportunityId)
+        .order('occurred_at', { ascending: false });
+
+      if (activitiesError) {
+        console.error('❌ Error cargando actividades:', {
+          error: activitiesError,
+          message: activitiesError?.message,
+          details: activitiesError?.details,
+          hint: activitiesError?.hint,
+          code: activitiesError?.code
+        });
+      } else {
+        console.log('✅ Actividades cargadas:', activities?.length || 0);
+      }
+
+      // Cargar tareas relacionadas con validación adicional
+      console.log('🔍 Consultando tareas con filtros:', {
+        organization_id: organizationId,
+        opportunity_id: opportunityId
+      });
+
+      const { data: tasks, error: tasksError } = await supabase
+        .from('tasks')
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          priority,
+          due_date,
+          completed_at,
+          created_at,
+          updated_at
+        `)
+        .eq('organization_id', organizationId)
+        .eq('related_to_id', opportunityId)
+        .eq('related_to_type', 'opportunity')
+        .order('created_at', { ascending: false });
+
+      if (tasksError) {
+        console.error('❌ Error cargando tareas:', {
+          error: tasksError,
+          message: tasksError?.message,
+          details: tasksError?.details,
+          hint: tasksError?.hint,
+          code: tasksError?.code,
+          filters: {
+            organization_id: organizationId,
+            opportunity_id: opportunityId
+          }
+        });
+        toast.error('Error al cargar las tareas de la oportunidad');
+      } else {
+        console.log('✅ Tareas cargadas:', tasks?.length || 0);
+        if (tasks && tasks.length > 0) {
+          console.log('📋 Primeras tareas:', tasks.slice(0, 3));
         }
-      ];
-      
-      setEvents(mockEvents.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+      }
+
+      // Convertir actividades a eventos de timeline
+      const activityEvents: TimelineEvent[] = (activities || []).map(activity => ({
+        id: activity.id,
+        type: mapActivityType(activity.activity_type),
+        title: getActivityTitle(activity.activity_type, activity.notes),
+        description: activity.notes || undefined,
+        created_at: activity.created_at,
+        occurred_at: activity.occurred_at,
+        author: 'Usuario', // TODO: Obtener nombre real del usuario
+        source: 'activity' as const,
+        metadata: activity.metadata || {}
+      }));
+
+      // Convertir tareas a eventos de timeline
+      const taskEvents: TimelineEvent[] = (tasks || []).map(task => ({
+        id: `task-${task.id}`,
+        type: getTaskEventType(task.status),
+        title: getTaskEventTitle(task.status, task.title),
+        description: task.description || undefined,
+        created_at: task.status === 'done' && task.completed_at ? task.completed_at : task.created_at,
+        author: 'Usuario', // TODO: Obtener nombre real del usuario
+        source: 'task' as const,
+        metadata: {
+          priority: task.priority,
+          due_date: task.due_date,
+          original_task_id: task.id
+        }
+      }));
+
+      // Combinar y ordenar todos los eventos
+      const allEvents = [...activityEvents, ...taskEvents];
+      allEvents.sort((a, b) => {
+        const dateA = new Date(a.occurred_at || a.created_at).getTime();
+        const dateB = new Date(b.occurred_at || b.created_at).getTime();
+        return dateB - dateA;
+      });
+
+      setEvents(allEvents);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error cargando timeline:', error);
       toast.error('Error al cargar la línea de tiempo');
     } finally {
       setLoading(false);
     }
-  };
+  }, [opportunityId]);
+
+  useEffect(() => {
+    loadTimeline();
+  }, [loadTimeline]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,7 +250,9 @@ export default function OpportunityTimeline({ opportunityId }: OpportunityTimeli
         title: newEvent.title,
         description: newEvent.description,
         created_at: new Date().toISOString(),
-        created_by: 'Usuario Actual' // En una implementación real, obtendríamos del contexto de usuario
+        author: 'Usuario Actual', // En una implementación real, obtendríamos del contexto de usuario
+        source: 'manual' as const,
+        metadata: {}
       };
 
       setEvents(prev => [newEventData, ...prev]);
@@ -144,6 +281,12 @@ export default function OpportunityTimeline({ opportunityId }: OpportunityTimeli
         return <FileText className="h-4 w-4" />;
       case 'note':
         return <MessageSquare className="h-4 w-4" />;
+      case 'task_completed':
+        return <Target className="h-4 w-4" />;
+      case 'task_canceled':
+        return <Target className="h-4 w-4" />;
+      case 'task_created':
+        return <Target className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
     }
@@ -163,9 +306,25 @@ export default function OpportunityTimeline({ opportunityId }: OpportunityTimeli
         return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100';
       case 'quote':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'task_completed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+      case 'task_canceled':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100';
+      case 'task_created':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100';
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
@@ -290,6 +449,16 @@ export default function OpportunityTimeline({ opportunityId }: OpportunityTimeli
                     <Badge variant="outline" className="text-xs">
                       {event.type.replace('_', ' ')}
                     </Badge>
+                    {event.source === 'activity' && (
+                      <Badge variant="secondary" className="text-xs">
+                        Sistema
+                      </Badge>
+                    )}
+                    {event.source === 'task' && (
+                      <Badge variant="secondary" className="text-xs">
+                        Tarea
+                      </Badge>
+                    )}
                   </div>
                   
                   {event.description && (
@@ -298,17 +467,11 @@ export default function OpportunityTimeline({ opportunityId }: OpportunityTimeli
                     </p>
                   )}
                   
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {new Date(event.created_at).toLocaleString()}
-                    </div>
-                    {event.created_by && (
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {event.created_by}
-                      </div>
-                    )}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <User className="h-3 w-3" />
+                    <span>{event.author}</span>
+                    <span>•</span>
+                    <span>{formatDate(event.occurred_at || event.created_at)}</span>
                   </div>
                 </div>
               </div>

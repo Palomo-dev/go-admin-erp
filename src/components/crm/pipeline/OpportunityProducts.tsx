@@ -50,6 +50,8 @@ export default function OpportunityProducts({ opportunityId }: OpportunityProduc
   const [quantity, setQuantity] = useState<string>("1");
   const [unitPrice, setUnitPrice] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<OpportunityProduct | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -224,12 +226,100 @@ export default function OpportunityProducts({ opportunityId }: OpportunityProduc
   };
 
   const calculateProbability = () => {
-    // Lógica para calcular probabilidad basada en productos
-    // Por ahora retornamos un valor base
-    const baseProb = 30;
-    const productCount = products.length;
-    const adjustedProb = Math.min(baseProb + (productCount * 10), 90);
-    return adjustedProb;
+    if (products.length === 0) return 15;
+    
+    // Factores que influyen en la probabilidad
+    const baseProb = 25;
+    const productCountFactor = Math.min(products.length * 8, 35); // Más productos = mayor probabilidad
+    const totalValueFactor = Math.min(calculateTotal() / 10000, 20); // Valor alto = mayor probabilidad
+    const diversityFactor = Math.min(new Set(products.map(p => p.product.id)).size * 5, 15); // Diversidad de productos
+    
+    const finalProb = Math.min(baseProb + productCountFactor + totalValueFactor + diversityFactor, 95);
+    return Math.round(finalProb);
+  };
+
+  const handleEditProduct = (product: OpportunityProduct) => {
+    setEditingProduct(product);
+    setSelectedProductId(product.product.id.toString());
+    setQuantity(product.quantity.toString());
+    setUnitPrice(product.unit_price.toString());
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!editingProduct) return;
+    
+    try {
+      setSaving(true);
+      
+      const qty = parseFloat(quantity);
+      const price = parseFloat(unitPrice);
+      
+      if (isNaN(qty) || qty <= 0) {
+        toast.error('La cantidad debe ser mayor a 0');
+        return;
+      }
+      
+      if (isNaN(price) || price < 0) {
+        toast.error('El precio debe ser un número válido');
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('opportunity_products')
+        .update({
+          quantity: qty,
+          unit_price: price,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingProduct.id);
+      
+      if (error) {
+        console.error('Error actualizando producto:', error);
+        toast.error('Error al actualizar el producto');
+        return;
+      }
+      
+      toast.success('Producto actualizado exitosamente');
+      setIsEditDialogOpen(false);
+      setEditingProduct(null);
+      setSelectedProductId('');
+      setQuantity('1');
+      setUnitPrice('');
+      loadProducts();
+      
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al actualizar el producto');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este producto de la cotización?')) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('opportunity_products')
+        .delete()
+        .eq('id', productId);
+      
+      if (error) {
+        console.error('Error eliminando producto:', error);
+        toast.error('Error al eliminar el producto');
+        return;
+      }
+      
+      toast.success('Producto eliminado exitosamente');
+      loadProducts();
+      
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al eliminar el producto');
+    }
   };
 
   if (loading) {
@@ -351,6 +441,86 @@ export default function OpportunityProducts({ opportunityId }: OpportunityProduc
                 </div>
               </DialogContent>
             </Dialog>
+            
+            {/* Modal de Edición */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Editar Producto</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Producto</Label>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <p className="font-medium">{editingProduct?.product.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        SKU: {editingProduct?.product.sku}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-quantity">Cantidad *</Label>
+                      <Input
+                        id="edit-quantity"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        placeholder="1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-unitPrice">Precio Unitario *</Label>
+                      <Input
+                        id="edit-unitPrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={unitPrice}
+                        onChange={(e) => setUnitPrice(e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {quantity && unitPrice && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Nuevo Total:</span>
+                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                          {formatCurrency(parseFloat(quantity) * parseFloat(unitPrice))}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditDialogOpen(false);
+                        setEditingProduct(null);
+                        setSelectedProductId('');
+                        setQuantity('1');
+                        setUnitPrice('');
+                      }}
+                      disabled={saving}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handleUpdateProduct}
+                      disabled={saving || !quantity || !unitPrice}
+                    >
+                      {saving ? "Actualizando..." : "Actualizar Producto"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </CardHeader>
@@ -404,10 +574,21 @@ export default function OpportunityProducts({ opportunityId }: OpportunityProduc
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <Button size="sm" variant="ghost">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => handleEditProduct(item)}
+                          title="Editar producto"
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => handleDeleteProduct(item.id)}
+                          title="Eliminar producto"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

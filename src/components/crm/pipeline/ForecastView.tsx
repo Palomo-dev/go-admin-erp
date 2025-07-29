@@ -48,6 +48,7 @@ interface ForecastViewProps {
 const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [forecastData, setForecastData] = useState<ForecastMonth[]>([]);
+  const [lastUpdate, setLastUpdate] = useState<string>('');
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [baseCurrency, setBaseCurrency] = useState<string>('USD');
   const [totalForecast, setTotalForecast] = useState({
@@ -143,9 +144,40 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
 
   // Efecto para cargar datos iniciales y configurar suscripciones en tiempo real
   useEffect(() => {
-    if (!organizationId || !pipelineId) return;
-    
-    // Inicializar el servicio de tiempo real
+    loadOpportunities();
+  }, [pipelineId]);
+
+  // Listener para recálculo automático de pronóstico
+  useEffect(() => {
+    const handleForecastRecalculation = (event: CustomEvent) => {
+      const { pipelineId: eventPipelineId, opportunityId, timestamp } = event.detail;
+      
+      console.log('🔄 [ForecastView] Evento de recálculo recibido:', {
+        eventPipelineId,
+        currentPipelineId: pipelineId,
+        opportunityId,
+        timestamp
+      });
+      
+      // Solo recalcular si es del pipeline actual
+      if (eventPipelineId === pipelineId) {
+        console.log('✅ [ForecastView] Recalculando pronóstico automáticamente...');
+        setLastUpdate(timestamp);
+        loadOpportunities();
+      }
+    };
+
+    // Agregar listener
+    window.addEventListener('forecastRecalculation', handleForecastRecalculation as EventListener);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('forecastRecalculation', handleForecastRecalculation as EventListener);
+    };
+  }, [pipelineId, loadOpportunities]);
+
+  // Inicializar el servicio de tiempo real
+  useEffect(() => {
     forecastRealTimeService.initialize();
     
     // Suscribirse a cambios en el pipeline

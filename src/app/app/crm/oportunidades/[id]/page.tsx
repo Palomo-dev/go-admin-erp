@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Edit, CheckCircle, XCircle, FileText, Calendar, DollarSign, User, Building2, Target, Clock } from "lucide-react";
+import { ArrowLeft, Calendar, DollarSign, User, Building2, Target, Clock } from "lucide-react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import OpportunityHeader from "@/components/crm/pipeline/OpportunityHeader";
 import OpportunityProducts from "@/components/crm/pipeline/OpportunityProducts";
@@ -15,6 +15,7 @@ import OpportunityTimeline from "@/components/crm/pipeline/OpportunityTimeline";
 import OpportunityTasks from "@/components/crm/pipeline/OpportunityTasks";
 import OpportunityQuotes from "@/components/crm/pipeline/OpportunityQuotes";
 import OpportunityActions from "@/components/crm/pipeline/OpportunityActions";
+import OpportunityAuditInfo from "@/components/crm/pipeline/OpportunityAuditInfo";
 import { formatCurrency } from "@/utils/Utils";
 import { toast } from "sonner";
 import { getOrganizationId } from "@/components/crm/pipeline/utils/pipelineUtils";
@@ -58,19 +59,7 @@ export default function OpportunityDetailPage() {
   const [loading, setLoading] = useState(true);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
 
-  useEffect(() => {
-    // Obtener organización usando la función utilitaria
-    const orgId = getOrganizationId();
-    setOrganizationId(parseInt(orgId));
-  }, []);
-
-  useEffect(() => {
-    if (opportunityId && organizationId) {
-      loadOpportunityDetail();
-    }
-  }, [opportunityId, organizationId]);
-
-  const loadOpportunityDetail = async () => {
+  const loadOpportunityDetail = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -105,13 +94,29 @@ export default function OpportunityDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [opportunityId, organizationId, router]);
+
+  useEffect(() => {
+    // Obtener organización usando la función utilitaria
+    const orgId = getOrganizationId();
+    setOrganizationId(parseInt(orgId));
+  }, []);
+
+  useEffect(() => {
+    if (opportunityId && organizationId) {
+      loadOpportunityDetail();
+    }
+  }, [opportunityId, organizationId, loadOpportunityDetail]);
 
   const handleStatusChange = async (newStatus: string, reason?: string) => {
     if (!opportunity) return;
 
     try {
-      const updateData: any = {
+      const updateData: {
+        status: string;
+        updated_at: string;
+        loss_reason?: string;
+      } = {
         status: newStatus,
         updated_at: new Date().toISOString(),
       };
@@ -120,21 +125,48 @@ export default function OpportunityDetailPage() {
         updateData.loss_reason = reason;
       }
 
+      // Si se marca como perdida o ganada, buscar la etapa correspondiente
+      if (newStatus === 'lost' || newStatus === 'won') {
+        const stageNameToFind = newStatus === 'lost' ? 'Perdido' : 'Ganado';
+        
+        console.log(`🔍 [handleStatusChange] Buscando etapa "${stageNameToFind}" para pipeline ${opportunity.pipeline.id}`);
+        
+        const { data: stageData, error: stageError } = await supabase
+          .from('stages')
+          .select('id, name')
+          .eq('pipeline_id', opportunity.pipeline.id)
+          .ilike('name', `%${stageNameToFind}%`)
+          .single();
+
+        if (stageError) {
+          console.error(`❌ [handleStatusChange] Error buscando etapa ${stageNameToFind}:`, stageError);
+          // Continuar sin actualizar stage_id si no se encuentra la etapa
+        } else if (stageData) {
+          console.log(`✅ [handleStatusChange] Etapa encontrada:`, stageData);
+          updateData.stage_id = stageData.id;
+        } else {
+          console.warn(`⚠️ [handleStatusChange] No se encontró etapa "${stageNameToFind}" en pipeline ${opportunity.pipeline.id}`);
+        }
+      }
+
+      console.log('📝 [handleStatusChange] Datos a actualizar:', updateData);
+
       const { error } = await supabase
         .from('opportunities')
         .update(updateData)
         .eq('id', opportunity.id);
 
       if (error) {
-        console.error('Error actualizando estado:', error);
+        console.error('❌ [handleStatusChange] Error actualizando estado:', error);
         toast.error('Error al actualizar el estado');
         return;
       }
 
+      console.log(`✅ [handleStatusChange] Oportunidad actualizada exitosamente a estado: ${newStatus}`);
       toast.success(`Oportunidad marcada como ${newStatus === 'won' ? 'ganada' : 'perdida'}`);
       loadOpportunityDetail(); // Recargar datos
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ [handleStatusChange] Error:', error);
       toast.error('Error al actualizar el estado');
     }
   };
@@ -295,6 +327,9 @@ export default function OpportunityDetailPage() {
             opportunity={opportunity}
             onStatusChange={handleStatusChange}
           />
+
+          {/* Información de Auditoría */}
+          <OpportunityAuditInfo opportunity={opportunity} />
 
           {/* Tareas y Recordatorios */}
           <OpportunityTasks opportunityId={opportunity.id} />

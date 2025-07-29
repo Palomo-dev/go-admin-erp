@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, XCircle, ShoppingCart, Calendar, Zap, ArrowRight, DollarSign } from "lucide-react";
+import { CheckCircle, XCircle, ShoppingCart, Calendar, Zap, ArrowRight, DollarSign, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { getOrganizationId } from "./utils/pipelineUtils";
 
 interface OpportunityActionsProps {
   opportunity: {
@@ -20,19 +23,35 @@ interface OpportunityActionsProps {
     status: string;
     amount: number;
     currency: string;
+    customer?: {
+      id: string;
+      first_name: string;
+      last_name: string;
+    };
   };
   onStatusChange: (newStatus: string, reason?: string) => void;
 }
 
 export default function OpportunityActions({ opportunity, onStatusChange }: OpportunityActionsProps) {
+  const router = useRouter();
   const [isWinDialogOpen, setIsWinDialogOpen] = useState(false);
   const [isLoseDialogOpen, setIsLoseDialogOpen] = useState(false);
   const [lossReason, setLossReason] = useState('');
+  const [winObservation, setWinObservation] = useState('');
+  const [lossObservation, setLossObservation] = useState('');
+  const [isConverting, setIsConverting] = useState(false);
+  const [conversionType, setConversionType] = useState<'pos' | 'pms' | null>(null);
 
 
   const handleMarkAsWon = () => {
-    onStatusChange('won');
+    if (!winObservation.trim()) {
+      toast.error('La observación del motivo de victoria es requerida');
+      return;
+    }
+    
+    onStatusChange('won', winObservation);
     setIsWinDialogOpen(false);
+    setWinObservation('');
     toast.success('¡Oportunidad marcada como ganada!');
   };
 
@@ -42,16 +61,123 @@ export default function OpportunityActions({ opportunity, onStatusChange }: Oppo
       return;
     }
     
-    onStatusChange('lost', lossReason);
+    if (!lossObservation.trim()) {
+      toast.error('La observación del motivo de pérdida es requerida');
+      return;
+    }
+    
+    const fullReason = lossReason === 'otro' ? lossObservation : `${lossReason}: ${lossObservation}`;
+    onStatusChange('lost', fullReason);
     setIsLoseDialogOpen(false);
     setLossReason('');
+    setLossObservation('');
     toast.success('Oportunidad marcada como perdida');
   };
 
-  const handleConversion = (type: string) => {
-    // Aquí implementaríamos la lógica de conversión
-    // Por ahora solo mostramos un mensaje
-    toast.success(`Redirigiendo a ${type === 'pos' ? 'POS' : 'PMS'}...`);
+  const handleConversion = async (type: 'pos' | 'pms') => {
+    if (opportunity.status !== 'won') {
+      toast.error('Solo se pueden convertir oportunidades ganadas');
+      return;
+    }
+
+    setIsConverting(true);
+    setConversionType(type);
+
+    try {
+      const organizationId = parseInt(getOrganizationId());
+      
+      if (type === 'pos') {
+        await convertToPOSSale(organizationId);
+      } else {
+        await convertToPMSReservation(organizationId);
+      }
+    } catch (error) {
+      console.error(`❌ [handleConversion] Error en conversión a ${type}:`, error);
+      toast.error(`Error al convertir a ${type === 'pos' ? 'venta POS' : 'reserva PMS'}`);
+    } finally {
+      setIsConverting(false);
+      setConversionType(null);
+    }
+  };
+
+  const convertToPOSSale = async (organizationId: number) => {
+    console.log('🛒 [convertToPOSSale] Iniciando conversión a venta POS');
+    
+    // Crear venta en tabla sales
+    const saleData = {
+      organization_id: organizationId,
+      branch_id: 1, // Usar branch por defecto
+      customer_id: opportunity.customer?.id || null,
+      user_id: null, // Se podría obtener del usuario actual
+      total: opportunity.amount,
+      subtotal: opportunity.amount,
+      balance: opportunity.amount,
+      status: 'completed',
+      payment_status: 'pending',
+      notes: `Venta generada desde oportunidad CRM: ${opportunity.name}`,
+      sale_date: new Date().toISOString(),
+      tax_total: 0,
+      discount_total: 0
+    };
+
+    const { data: sale, error: saleError } = await supabase
+      .from('sales')
+      .insert(saleData)
+      .select()
+      .single();
+
+    if (saleError) {
+      console.error('❌ [convertToPOSSale] Error creando venta:', saleError);
+      throw new Error('Error al crear la venta POS');
+    }
+
+    console.log('✅ [convertToPOSSale] Venta creada:', sale);
+    toast.success('¡Oportunidad convertida a venta POS exitosamente!');
+    
+    // Redirigir al módulo POS
+    router.push(`/app/pos?sale_id=${sale.id}`);
+  };
+
+  const convertToPMSReservation = async (organizationId: number) => {
+    console.log('🏨 [convertToPMSReservation] Iniciando conversión a reserva PMS');
+    
+    // Crear reserva en tabla reservations
+    const reservationData = {
+      organization_id: organizationId,
+      branch_id: 1, // Usar branch por defecto
+      customer_id: opportunity.customer?.id || null,
+      resource_type: 'opportunity_conversion',
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // +1 día
+      notes: `Reserva generada desde oportunidad CRM: ${opportunity.name}`,
+      total_estimated: opportunity.amount,
+      occupant_count: 1,
+      status: 'confirmed',
+      channel: 'crm',
+      metadata: {
+        source: 'crm_opportunity',
+        opportunity_id: opportunity.id,
+        opportunity_name: opportunity.name,
+        converted_at: new Date().toISOString()
+      }
+    };
+
+    const { data: reservation, error: reservationError } = await supabase
+      .from('reservations')
+      .insert(reservationData)
+      .select()
+      .single();
+
+    if (reservationError) {
+      console.error('❌ [convertToPMSReservation] Error creando reserva:', reservationError);
+      throw new Error('Error al crear la reserva PMS');
+    }
+
+    console.log('✅ [convertToPMSReservation] Reserva creada:', reservation);
+    toast.success('¡Oportunidad convertida a reserva PMS exitosamente!');
+    
+    // Redirigir al módulo PMS
+    router.push(`/app/pms?reservation_id=${reservation.id}`);
   };
 
   const isCompleted = opportunity.status === 'won' || opportunity.status === 'lost';
@@ -118,8 +244,26 @@ export default function OpportunityActions({ opportunity, onStatusChange }: Oppo
                     </div>
                   </div>
                   
+                  <div>
+                    <Label htmlFor="win_observation">Observación del motivo de victoria *</Label>
+                    <Textarea
+                      id="win_observation"
+                      placeholder="Describe el motivo por el cual se ganó esta oportunidad..."
+                      value={winObservation}
+                      onChange={(e) => setWinObservation(e.target.value)}
+                      rows={3}
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ej: Cliente aceptó la propuesta, mejor precio que la competencia, etc.
+                    </p>
+                  </div>
+                  
                   <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setIsWinDialogOpen(false)}>
+                    <Button variant="outline" onClick={() => {
+                      setIsWinDialogOpen(false);
+                      setWinObservation('');
+                    }}>
                       Cancelar
                     </Button>
                     <Button onClick={handleMarkAsWon} className="bg-green-600 hover:bg-green-700">
@@ -168,22 +312,26 @@ export default function OpportunityActions({ opportunity, onStatusChange }: Oppo
                     </Select>
                   </div>
                   
-                  {lossReason === 'otro' && (
-                    <div>
-                      <Label htmlFor="custom_reason">Especificar motivo</Label>
-                      <Textarea
-                        id="custom_reason"
-                        placeholder="Describe el motivo específico..."
-                        rows={3}
-                        onChange={(e) => setLossReason(e.target.value)}
-                      />
-                    </div>
-                  )}
+                  <div>
+                    <Label htmlFor="loss_observation">Observación detallada *</Label>
+                    <Textarea
+                      id="loss_observation"
+                      placeholder="Describe los detalles específicos del motivo de pérdida..."
+                      value={lossObservation}
+                      onChange={(e) => setLossObservation(e.target.value)}
+                      rows={3}
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ej: Cliente mencionó que encontró mejor precio, no tenía presupuesto aprobado, etc.
+                    </p>
+                  </div>
                   
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => {
                       setIsLoseDialogOpen(false);
                       setLossReason('');
+                      setLossObservation('');
                     }}>
                       Cancelar
                     </Button>
@@ -206,27 +354,79 @@ export default function OpportunityActions({ opportunity, onStatusChange }: Oppo
         <div className="space-y-2">
           <h4 className="font-medium text-sm text-muted-foreground">Convertir a:</h4>
           
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={() => handleConversion('pos')}
-            disabled={opportunity.status !== 'won'}
-          >
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            Venta POS
-            <ArrowRight className="h-4 w-4 ml-auto" />
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                disabled={opportunity.status !== 'won' || isConverting}
+              >
+                {isConverting && conversionType === 'pos' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                )}
+                {isConverting && conversionType === 'pos' ? 'Convirtiendo...' : 'Venta POS'}
+                {!isConverting && <ArrowRight className="h-4 w-4 ml-auto" />}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 shadow-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-gray-900 dark:text-gray-100 font-semibold">Convertir a Venta POS</AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-700 dark:text-gray-300">
+                  Esta acción creará una nueva venta en el módulo POS con los datos de la oportunidad.
+                  <br /><br />
+                  <strong className="text-gray-900 dark:text-gray-100">Detalles:</strong>
+                  <br />• <span className="text-gray-800 dark:text-gray-200">Cliente:</span> {opportunity.customer ? `${opportunity.customer.first_name} ${opportunity.customer.last_name}` : 'Sin cliente asignado'}
+                  <br />• <span className="text-gray-800 dark:text-gray-200">Monto:</span> ${opportunity.amount.toLocaleString()} {opportunity.currency}
+                  <br />• <span className="text-gray-800 dark:text-gray-200">Oportunidad:</span> {opportunity.name}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleConversion('pos')}>
+                  Confirmar Conversión
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={() => handleConversion('pms')}
-            disabled={opportunity.status !== 'won'}
-          >
-            <Calendar className="h-4 w-4 mr-2" />
-            Reserva PMS
-            <ArrowRight className="h-4 w-4 ml-auto" />
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                disabled={opportunity.status !== 'won' || isConverting}
+              >
+                {isConverting && conversionType === 'pms' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Calendar className="h-4 w-4 mr-2" />
+                )}
+                {isConverting && conversionType === 'pms' ? 'Convirtiendo...' : 'Reserva PMS'}
+                {!isConverting && <ArrowRight className="h-4 w-4 ml-auto" />}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 shadow-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-gray-900 dark:text-gray-100 font-semibold">Convertir a Reserva PMS</AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-700 dark:text-gray-300">
+                  Esta acción creará una nueva reserva en el módulo PMS con los datos de la oportunidad.
+                  <br /><br />
+                  <strong className="text-gray-900 dark:text-gray-100">Detalles:</strong>
+                  <br />• <span className="text-gray-800 dark:text-gray-200">Cliente:</span> {opportunity.customer ? `${opportunity.customer.first_name} ${opportunity.customer.last_name}` : 'Sin cliente asignado'}
+                  <br />• <span className="text-gray-800 dark:text-gray-200">Monto estimado:</span> ${opportunity.amount.toLocaleString()} {opportunity.currency}
+                  <br />• <span className="text-gray-800 dark:text-gray-200">Oportunidad:</span> {opportunity.name}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleConversion('pms')}>
+                  Confirmar Conversión
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           
           {opportunity.status !== 'won' && (
             <p className="text-xs text-muted-foreground text-center mt-2">

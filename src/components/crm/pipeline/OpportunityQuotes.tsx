@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Upload, Download, Eye, Plus, Calendar } from "lucide-react";
+import { FileText, Download, Eye, Plus, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
@@ -49,35 +49,53 @@ export default function OpportunityQuotes({ opportunityId }: OpportunityQuotesPr
     try {
       setLoading(true);
       
-      // Por ahora simulamos datos ya que no existe la tabla quotes
-      // En una implementación real, consultaríamos la tabla de cotizaciones
+      // TODO: Implementar consulta real a Supabase cuando exista la tabla quotes
+      // const { data, error } = await supabase
+      //   .from('quotes')
+      //   .select('*')
+      //   .eq('opportunity_id', opportunityId)
+      //   .order('created_at', { ascending: false });
+      
+      // Por ahora usamos datos simulados con URLs de PDF de prueba
       const mockQuotes: Quote[] = [
         {
           id: '1',
           quote_number: 'COT-2025-001',
           title: 'Cotización Inicial - Servicios de Consultoría',
-          description: 'Propuesta inicial para servicios de consultoría empresarial',
-          file_url: '/quotes/cot-2025-001.pdf',
-          file_name: 'cotizacion_inicial.pdf',
+          description: 'Propuesta completa de servicios de consultoría empresarial',
+          file_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+          file_name: 'cotizacion_consultoria.pdf',
           status: 'sent',
-          sent_at: '2025-01-15T10:30:00Z',
-          created_at: '2025-01-15T09:15:00Z'
+          sent_at: '2025-01-20T10:00:00Z',
+          created_at: '2025-01-20T09:00:00Z'
         },
         {
           id: '2',
           quote_number: 'COT-2025-002',
           title: 'Propuesta Revisada - Descuento Aplicado',
-          description: 'Cotización revisada con descuento del 15% aplicado',
-          file_url: '/quotes/cot-2025-002.pdf',
-          file_name: 'propuesta_revisada.pdf',
-          status: 'draft',
-          created_at: '2025-01-20T14:20:00Z'
+          description: 'Cotización con descuento del 15% por volumen',
+          file_url: 'https://www.africau.edu/images/default/sample.pdf',
+          file_name: 'cotizacion_descuento.pdf',
+          status: 'viewed',
+          sent_at: '2025-01-22T14:30:00Z',
+          created_at: '2025-01-22T13:00:00Z'
+        },
+        {
+          id: '3',
+          quote_number: 'COT-2025-003',
+          title: 'Cotización Final - Términos Acordados',
+          description: 'Propuesta final con términos y condiciones acordados',
+          file_url: 'https://www.learningcontainer.com/wp-content/uploads/2019/09/sample-pdf-file.pdf',
+          file_name: 'cotizacion_final.pdf',
+          status: 'accepted',
+          sent_at: '2025-01-25T16:00:00Z',
+          created_at: '2025-01-25T15:30:00Z'
         }
       ];
       
       setQuotes(mockQuotes);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error cargando cotizaciones:', error);
       toast.error('Error al cargar las cotizaciones');
     } finally {
       setLoading(false);
@@ -128,6 +146,83 @@ export default function OpportunityQuotes({ opportunityId }: OpportunityQuotesPr
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al registrar la cotización');
+    }
+  };
+
+  // Función para visualizar PDF en una nueva ventana
+  const handleViewPDF = async (quote: Quote) => {
+    try {
+      if (!quote.file_url) {
+        toast.error('No hay archivo PDF disponible');
+        return;
+      }
+
+      // Si es una URL de Supabase Storage, obtener URL firmada
+      if (quote.file_url.includes('supabase')) {
+        const { data, error } = await supabase.storage
+          .from('quotes')
+          .createSignedUrl(quote.file_url, 3600); // 1 hora de validez
+
+        if (error) {
+          console.error('Error obteniendo URL firmada:', error);
+          toast.error('Error al acceder al archivo PDF');
+          return;
+        }
+
+        // Abrir PDF en nueva ventana
+        window.open(data.signedUrl, '_blank', 'width=800,height=600');
+      } else {
+        // Para URLs directas o mock data
+        window.open(quote.file_url, '_blank', 'width=800,height=600');
+      }
+
+      toast.success('PDF abierto en nueva ventana');
+    } catch (error) {
+      console.error('Error al visualizar PDF:', error);
+      toast.error('Error al abrir el archivo PDF');
+    }
+  };
+
+  // Función para descargar PDF
+  const handleDownloadPDF = async (quote: Quote) => {
+    try {
+      if (!quote.file_url) {
+        toast.error('No hay archivo PDF disponible');
+        return;
+      }
+
+      let downloadUrl = quote.file_url;
+
+      // Si es una URL de Supabase Storage, obtener URL firmada
+      if (quote.file_url.includes('supabase')) {
+        const { data, error } = await supabase.storage
+          .from('quotes')
+          .createSignedUrl(quote.file_url, 3600);
+
+        if (error) {
+          console.error('Error obteniendo URL firmada:', error);
+          toast.error('Error al acceder al archivo PDF');
+          return;
+        }
+
+        downloadUrl = data.signedUrl;
+      }
+
+      // Crear elemento de descarga
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = quote.file_name || `${quote.quote_number}.pdf`;
+      link.target = '_blank';
+      
+      // Agregar al DOM temporalmente y hacer clic
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success('Descarga iniciada');
+    } catch (error) {
+      console.error('Error al descargar PDF:', error);
+      toast.error('Error al descargar el archivo PDF');
     }
   };
 
@@ -291,11 +386,23 @@ export default function OpportunityQuotes({ opportunityId }: OpportunityQuotesPr
                     <div className="flex items-center justify-center gap-1">
                       {quote.file_url && (
                         <>
-                          <Button size="sm" variant="ghost" title="Ver PDF">
-                            <Eye className="h-4 w-4" />
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            title="Ver PDF"
+                            onClick={() => handleViewPDF(quote)}
+                            className="hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                          >
+                            <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           </Button>
-                          <Button size="sm" variant="ghost" title="Descargar PDF">
-                            <Download className="h-4 w-4" />
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            title="Descargar PDF"
+                            onClick={() => handleDownloadPDF(quote)}
+                            className="hover:bg-green-50 dark:hover:bg-green-900/20"
+                          >
+                            <Download className="h-4 w-4 text-green-600 dark:text-green-400" />
                           </Button>
                         </>
                       )}

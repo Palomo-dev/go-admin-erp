@@ -3,14 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/config";
-import { formatCurrency } from "@/utils/Utils";
 
 // Importaciones de UI
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { 
   Card, 
   CardContent, 
@@ -20,7 +18,46 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, Save } from "lucide-react";
+
+// Interfaces
+interface OpportunityData {
+  id: string;
+  name: string;
+  amount: number;
+  currency: string;
+  expected_close_date?: string;
+  stage_id: string;
+  pipeline_id: string;
+  customer_id: string;
+  organization_id: number;
+  status?: string;
+  updated_at?: string;
+  pipeline?: { id: string; name: string };
+  stage?: { id: string; name: string };
+  customer?: { id: string; first_name: string; last_name: string; full_name?: string };
+}
+
+interface StageData {
+  id: string;
+  name: string;
+  position: number;
+  pipeline_id: string;
+}
+
+interface CustomerData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name?: string;
+}
+
+interface CurrencyData {
+  code: string;
+  name: string;
+  symbol: string;
+}
 
 /**
  * Página de edición de oportunidad
@@ -33,20 +70,30 @@ export default function EditOpportunityPage() {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [opportunity, setOpportunity] = useState<any>(null);
-  const [stages, setStages] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [opportunity, setOpportunity] = useState<OpportunityData | null>(null);
+  const [stages, setStages] = useState<StageData[]>([]);
+  const [customers, setCustomers] = useState<CustomerData[]>([]);
+  const [currencies, setCurrencies] = useState<CurrencyData[]>([]);
+  const [organizationId, setOrganizationId] = useState<number | null>(null);
+
+  // Obtener organización del localStorage
+  useEffect(() => {
+    const orgId = localStorage.getItem('selectedOrganization') || localStorage.getItem('organizationId') || '2';
+    setOrganizationId(parseInt(orgId));
+  }, []);
 
   // Cargar datos de la oportunidad
   useEffect(() => {
     const fetchOpportunity = async () => {
-      if (!opportunityId) {
-        toast({
-          title: "Error",
-          description: "ID de oportunidad no válido",
-          variant: "destructive",
-        });
-        router.push("/app/crm/pipeline");
+      if (!opportunityId || !organizationId) {
+        if (!opportunityId) {
+          toast({
+            title: "Error",
+            description: "ID de oportunidad no válido",
+            variant: "destructive",
+          });
+          router.push("/app/crm/pipeline");
+        }
         return;
       }
 
@@ -65,11 +112,17 @@ export default function EditOpportunityPage() {
           console.log("Estructura de oportunidad:", tableInfo.length > 0 ? Object.keys(tableInfo[0]) : "No hay datos");
         }
         
-        // Cargar oportunidad
+        // Cargar datos de la oportunidad con joins
         const { data: opportunityData, error: opportunityError } = await supabase
           .from("opportunities")
-          .select("*")
+          .select(`
+            *,
+            pipeline:pipelines(id, name),
+            stage:stages(id, name),
+            customer:customers(id, first_name, last_name, full_name)
+          `)
           .eq("id", opportunityId)
+          .eq("organization_id", organizationId)
           .single();
         
         if (opportunityError || !opportunityData) {
@@ -79,7 +132,7 @@ export default function EditOpportunityPage() {
         console.log("Oportunidad cargada:", opportunityData);
         setOpportunity(opportunityData);
         
-        // Cargar etapas
+        // Cargar etapas del pipeline
         const { data: stagesData, error: stagesError } = await supabase
           .from("stages")
           .select("*")
@@ -91,6 +144,26 @@ export default function EditOpportunityPage() {
         } else {
           console.log("Etapas cargadas:", stagesData);
           setStages(stagesData || []);
+        }
+        
+        // Cargar monedas disponibles
+        const { data: currenciesData, error: currenciesError } = await supabase
+          .from("currencies")
+          .select("code, name, symbol")
+          .eq("is_active", true)
+          .order("code");
+        
+        if (currenciesError) {
+          console.error("Error al cargar monedas:", currenciesError);
+          // Fallback con monedas básicas
+          setCurrencies([
+            { code: "USD", name: "Dólar estadounidense", symbol: "$" },
+            { code: "COP", name: "Peso colombiano", symbol: "$" },
+            { code: "EUR", name: "Euro", symbol: "€" }
+          ]);
+        } else {
+          console.log("Monedas cargadas:", currenciesData);
+          setCurrencies(currenciesData || []);
         }
         
         // Cargar cliente
@@ -122,23 +195,31 @@ export default function EditOpportunityPage() {
     };
 
     fetchOpportunity();
-  }, [opportunityId, router]);
+  }, [opportunityId, organizationId, router]);
 
   // Manejar cambios en los inputs
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setOpportunity((prev: any) => ({
+    setOpportunity((prev) => prev ? {
       ...prev,
       [name]: value,
-    }));
+    } : null);
   };
 
   // Manejar cambios en selects
   const handleSelectChange = (name: string, value: string) => {
-    setOpportunity((prev: any) => ({
+    setOpportunity((prev) => prev ? {
       ...prev,
       [name]: value,
-    }));
+    } : null);
+  };
+
+  // Manejar cambio de moneda
+  const handleCurrencyChange = (value: string) => {
+    setOpportunity((prev) => prev ? {
+      ...prev,
+      currency: value,
+    } : null);
   };
 
   // Guardar cambios
@@ -149,9 +230,12 @@ export default function EditOpportunityPage() {
     
     try {
       // Creamos un objeto solo con los campos que existen en la tabla
-      const updateData: any = {
+      const updateData: Partial<OpportunityData> = {
         name: opportunity.name,
         amount: opportunity.amount,
+        stage_id: opportunity.stage_id,
+        currency: opportunity.currency || 'USD',
+        updated_at: new Date().toISOString(),
       };
       
       // Solo agregamos expected_close_date si existe
@@ -164,11 +248,27 @@ export default function EditOpportunityPage() {
       const { data, error } = await supabase
         .from("opportunities")
         .update(updateData)
-        .eq("id", opportunityId);
+        .eq("id", opportunityId)
+        .select();
+        
+      console.log("Respuesta de actualización:", { data, error });
         
       if (error) {
-        console.error("Error detallado:", error);
+        console.error("Error detallado:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw new Error(error.message);
+      }
+      
+      // Trigger para recálculo de pronóstico
+      await triggerForecastRecalculation();
+      
+      // Broadcast para actualizar Kanban
+      if (opportunityId) {
+        await broadcastOpportunityUpdate(opportunityId, updateData);
       }
       
       toast({
@@ -178,15 +278,62 @@ export default function EditOpportunityPage() {
       
       // Regresar a la vista de pipeline
       router.push("/app/crm/pipeline");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       console.error("Error al guardar oportunidad:", error);
       toast({
         title: "Error",
-        description: `No se pudieron guardar los cambios: ${error.message || 'Error desconocido'}`,
+        description: `No se pudieron guardar los cambios: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Función para trigger de recálculo de pronóstico
+  const triggerForecastRecalculation = async () => {
+    try {
+      console.log('🔄 Activando recálculo de pronóstico...');
+      
+      // Disparar evento personalizado para recálculo
+      if (typeof window !== 'undefined' && opportunity) {
+        window.dispatchEvent(new CustomEvent('forecastRecalculation', {
+          detail: { 
+            pipelineId: opportunity.pipeline_id,
+            opportunityId: opportunityId,
+            timestamp: new Date().toISOString()
+          }
+        }));
+      }
+      
+      console.log('✅ Trigger de recálculo de pronóstico activado');
+    } catch (error) {
+      console.error('❌ Error en trigger de recálculo:', error);
+    }
+  };
+
+  // Función para broadcast de actualización de Kanban
+  const broadcastOpportunityUpdate = async (oppId: string, updateData: Partial<OpportunityData>) => {
+    try {
+      console.log('📡 Enviando broadcast de actualización de Kanban...');
+      
+      // Disparar evento personalizado para actualización de Kanban
+      if (typeof window !== 'undefined' && opportunity) {
+        window.dispatchEvent(new CustomEvent('kanbanUpdate', {
+          detail: { 
+            type: 'opportunity_updated',
+            opportunityId: oppId,
+            data: updateData,
+            pipelineId: opportunity.pipeline_id,
+            timestamp: new Date().toISOString()
+          }
+        }));
+      }
+      
+      console.log('✅ Broadcast de Kanban enviado');
+    } catch (error) {
+      console.error('❌ Error en broadcast de Kanban:', error);
     }
   };
 
@@ -264,21 +411,27 @@ export default function EditOpportunityPage() {
             />
           </div>
           
-          {/* Etapa (solo lectura) */}
+          {/* Etapa (editable) */}
           <div className="space-y-2">
-            <Label htmlFor="stage">Etapa</Label>
-            <Input 
-              id="stage" 
-              value={stages.find(s => s.id === opportunity.stage_id)?.name || "Sin etapa"} 
-              disabled
-              className="bg-gray-100 dark:bg-gray-800"
-            />
+            <Label htmlFor="stage">Etapa *</Label>
+            <Select value={opportunity.stage_id || ""} onValueChange={(value) => handleSelectChange("stage_id", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar etapa" />
+              </SelectTrigger>
+              <SelectContent>
+                {stages.map((stage) => (
+                  <SelectItem key={stage.id} value={stage.id}>
+                    {stage.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Monto */}
             <div className="space-y-2">
-              <Label htmlFor="amount">Monto</Label>
+              <Label htmlFor="amount">Monto *</Label>
               <Input 
                 id="amount" 
                 name="amount" 
@@ -287,6 +440,23 @@ export default function EditOpportunityPage() {
                 onChange={handleChange}
                 placeholder="0.00"
               />
+            </div>
+            
+            {/* Moneda */}
+            <div className="space-y-2">
+              <Label htmlFor="currency">Moneda *</Label>
+              <Select value={opportunity.currency || "USD"} onValueChange={handleCurrencyChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar moneda" />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencies.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.symbol} {currency.code} - {currency.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             {/* Fecha estimada de cierre */}
@@ -307,7 +477,7 @@ export default function EditOpportunityPage() {
             <Label htmlFor="status">Estado</Label>
             <Input 
               id="status" 
-              value={opportunity.status === "won" ? "Ganada" : opportunity.status === "lost" ? "Perdida" : opportunity.status === "open" ? "Abierta" : opportunity.status} 
+              value={opportunity.status === "won" ? "Ganada" : opportunity.status === "lost" ? "Perdida" : opportunity.status === "open" ? "Abierta" : (opportunity.status || "Sin estado")} 
               disabled
               className="bg-gray-100 dark:bg-gray-800"
             />

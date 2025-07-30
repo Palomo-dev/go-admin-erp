@@ -758,21 +758,49 @@ export const acceptInvitation = async ({
   }
 
   try {
-    // Creamos el usuario
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: inviteData.email,
-      password,
-      options: {
-        data: userData
+    let userId = null;
+    
+    // First, check if user is already signed in (from email confirmation)
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (session && session.user && session.user.email?.toLowerCase() === inviteData.email.toLowerCase()) {
+      // User is already authenticated via email confirmation
+      console.log('User already authenticated via email confirmation:', session.user.id);
+      userId = session.user.id;
+    } else {
+      // Try to create the user (this might fail if user already exists)
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: inviteData.email,
+        password,
+        options: {
+          data: userData
+        }
+      });
+      
+      if (signUpError) {
+        // Check if error is due to user already existing
+        if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
+          // User exists, try to sign them in to get their ID
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: inviteData.email,
+            password
+          });
+          
+          if (signInError || !signInData.user) {
+            return { error: { message: 'Usuario ya existe pero la contraseña no coincide. Por favor, usa la contraseña que estableciste anteriormente.' } };
+          }
+          
+          userId = signInData.user.id;
+          console.log('User already existed, signed in successfully:', userId);
+        } else {
+          return { error: signUpError };
+        }
+      } else if (authData && authData.user) {
+        userId = authData.user.id;
+        console.log('New user created successfully:', userId);
+      } else {
+        return { error: { message: 'No se pudo crear o autenticar el usuario' } };
       }
-    });
-  
-    if (signUpError) {
-      return { error: signUpError };
-    }
-
-    if (!authData || !authData.user) {
-      return { error: { message: 'No se pudo crear el usuario' } };
     }
 
     // Obtenemos información de la sucursal principal
@@ -789,7 +817,7 @@ export const acceptInvitation = async ({
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
-        id: authData.user.id,
+        id: userId,
         email: inviteData.email,
         first_name: userData.firstName || userData.first_name,
         last_name: userData.lastName || userData.last_name,
@@ -824,7 +852,7 @@ export const acceptInvitation = async ({
       return { error: updateInviteError };
     }
     
-    return { data: authData, error: null };
+    return { data: { user: { id: userId } }, error: null };
   } catch (error: any) {
     console.error('Error en acceptInvitation:', error);
     return { 
@@ -834,4 +862,90 @@ export const acceptInvitation = async ({
       } 
     };
   }
-}
+};
+
+// Función auxiliar para completar perfil de invitación
+export const createProfileFromInvitation = async ({
+  inviteCode,
+  userData,
+  authUserId,
+  password
+}: {
+  inviteCode: string;
+  userData: any;
+  authUserId: string;
+  password?: string;
+}) => {
+  // Validar la invitación
+  const { data: inviteData, error: validateError } = await validateInvitation(inviteCode);
+  
+  if (validateError) {
+    return { error: validateError };
+  }
+
+  try {
+    // Obtener información de la sucursal principal
+    const { data: branchData } = await supabase
+      .from('branches')
+      .select('id')
+      .eq('organization_id', inviteData.organization_id)
+      .eq('is_main', true)
+      .single();
+
+    const branchId = branchData?.id || null;
+
+    // Actualizar contraseña si se proporciona
+    if (password) {
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password: password
+      });
+      
+      if (passwordError) {
+        console.error('Error al actualizar contraseña:', passwordError);
+        return { error: { message: 'Error al actualizar la contraseña: ' + passwordError.message } };
+      }
+    }
+
+    // Actualizar perfil (el trigger ya creó el perfil básico)
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        first_name: userData.firstName || userData.first_name,
+        last_name: userData.lastName || userData.last_name,
+        phone: userData.phoneNumber || userData.phone,
+        branch_id: branchId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', authUserId);
+    
+    if (profileError) {
+      console.error('Error al crear perfil:', profileError);
+      return { error: profileError };
+    }
+
+    // Marcar la invitación como utilizada
+    const { error: updateInviteError } = await supabase
+      .from('invitations')
+      .update({ 
+        status: 'used', 
+        used_at: new Date().toISOString() 
+      })
+      .eq('code', inviteCode);
+    
+    if (updateInviteError) {
+      console.error('Error al actualizar invitación:', updateInviteError);
+      return { error: updateInviteError };
+    }
+    
+    console.log('Profile created successfully for existing auth user:', authUserId);
+    return { data: { user: { id: authUserId } }, error: null };
+
+  } catch (error: any) {
+    console.error('Error en createProfileFromInvitation:', error);
+    return { 
+      error: { 
+        message: error.message || 'Error al crear el perfil' 
+      } 
+    };
+  }
+};

@@ -107,6 +107,25 @@ export async function GET(request: NextRequest) {
         const user = data.user;
         console.log('Email verification successful for user:', user.id);
         
+        // Check if this user has a pending invitation
+        try {
+          const { data: invitation, error: inviteError } = await supabase
+            .from('invitations')
+            .select('code, organization_id, role_id, status')
+            .eq('email', user.email?.toLowerCase())
+            .eq('status', 'pending')
+            .single();
+          
+          if (!inviteError && invitation) {
+            console.log('User has pending invitation, redirecting to invitation acceptance:', invitation.code);
+            return NextResponse.redirect(
+              new URL(`/auth/invite?code=${invitation.code}`, request.url)
+            );
+          }
+        } catch (error: any) {
+          console.log('No pending invitation found for user:', user.email);
+        }
+        
         // El trigger de base de datos ya procesó los datos de signup automáticamente
         console.log('Email verification successful, trigger handled signup completion, redirecting to app...');
         return NextResponse.redirect(new URL('/app/inicio', request.url));
@@ -223,6 +242,25 @@ export async function GET(request: NextRequest) {
       if (sessionData.session && sessionData.user) {
         const user = sessionData.user;
         console.log('Email verification successful for user:', user.id);
+        
+        // Check if this user has a pending invitation
+        try {
+          const { data: invitation, error: inviteError } = await supabase
+            .from('invitations')
+            .select('code, organization_id, role_id, status')
+            .eq('email', user.email?.toLowerCase())
+            .eq('status', 'pending')
+            .single();
+          
+          if (!inviteError && invitation) {
+            console.log('User has pending invitation, redirecting to invitation acceptance:', invitation.code);
+            return NextResponse.redirect(
+              new URL(`/auth/invite?code=${invitation.code}`, request.url)
+            );
+          }
+        } catch (error: any) {
+          console.log('No pending invitation found for user:', user.email);
+        }
         
         // Si es completar signup, el trigger ya procesó los datos automáticamente
         if (completeSignup) {

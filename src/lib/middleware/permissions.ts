@@ -37,9 +37,9 @@ export async function getUserPermissionContext(
       .select(`
         role_id,
         is_super_admin,
-        roles!inner(
-          role_permissions!inner(
-            permissions!inner(code)
+        roles(
+          role_permissions(
+            permissions(code)
           )
         )
       `)

@@ -7,7 +7,19 @@ import { toast } from '@/components/ui/use-toast';
 import { Session } from '@supabase/supabase-js';
 
 // Constants for session management
-const INACTIVITY_THRESHOLD = 10 * 60 * 1000; // 10 minutes in milliseconds
+// TEMPORALMENTE DESHABILITADO: Conflicto con middleware
+// 
+// PROBLEMA: Había conflicto entre dos sistemas de expiración:
+// 1. Middleware: Verifica expiración real de sesión de Supabase
+// 2. SessionContext: Verifica inactividad del usuario (10 min)
+// 
+// SÍNTOMA: Usuario inactivo → SessionContext redirige a /auth/session-expired
+//          → Middleware detecta sesión válida → Permite acceso a /app/inicio
+//          → App queda en "stand by" sin redirección clara
+// 
+// SOLUCIÓN TEMPORAL: Deshabilitar inactividad hasta implementar solución unificada
+// const INACTIVITY_THRESHOLD = 10 * 60 * 1000; // 10 minutes in milliseconds
+const INACTIVITY_THRESHOLD = Infinity; // Deshabilitar inactividad temporalmente
 const COUNTDOWN_DURATION = 60; // 60 seconds countdown
 const LOCAL_STORAGE_LAST_ACTIVITY = 'last-activity-time';
 

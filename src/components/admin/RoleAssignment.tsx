@@ -64,22 +64,21 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
           role_id,
           is_super_admin,
           is_active,
-          profiles!inner(
+          profiles(
             id,
             email,
             first_name,
             last_name,
             avatar_url
           ),
-          roles!inner(
+          roles(
             id,
             name,
             is_system
           )
         `)
         .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .order('profiles(first_name)', { ascending: true });
+        .eq('is_active', true);
 
       if (error) throw error;
       setMembers((data as any) || []);

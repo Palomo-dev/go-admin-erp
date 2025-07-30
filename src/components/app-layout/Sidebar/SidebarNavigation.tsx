@@ -26,7 +26,8 @@ import {
   ShoppingCart, 
   User, 
   Users, 
-  BarChart3
+  BarChart3,
+  Shield
 } from 'lucide-react';
 import ProfileDropdownMenu from '../ProfileDropdownMenu';
 import { NavItem } from './NavItem';
@@ -146,6 +147,15 @@ export const SidebarNavigation = ({
             { name: "Mi Plan", href: "/app/organizacion/plan" },
             { name: "Sucursales", href: "/app/organizacion/sucursales" },
             { name: "Mis Organizaciones", href: "/app/organizacion/mis-organizaciones" }
+          ]
+        },
+        { 
+          name: "Administración", 
+          href: "/app/admin", 
+          icon: <Settings size={18} />,
+          submenu: [
+            { name: "Roles y Permisos", href: "/app/admin/roles" },
+            { name: "Configuración", href: "/app/admin/configuracion" }
           ]
         },
        /*{{ name: "Reportes", href: "/app/reportes", icon: <BarChart3 size={18} /> },

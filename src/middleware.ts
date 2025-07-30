@@ -71,6 +71,36 @@ export async function middleware(request: NextRequest) {
   if (shouldDebug) console.log('🔍 [MIDDLEWARE] Parseando cookie de autenticación...');
   
   try {
+    // Verificar que la cookie no esté corrupta
+    if (authCookie.value === '[object Object]' || 
+        authCookie.value.includes('[object Object]') ||
+        authCookie.value === 'undefined' ||
+        authCookie.value === 'null' ||
+        !authCookie.value.trim().startsWith('{')) {
+      
+      if (shouldDebug) {
+        console.warn('⚠️ [MIDDLEWARE] Cookie corrupta detectada:', authCookie.value.substring(0, 50) + '...');
+      }
+      
+      // Limpiar cookie corrupta y redirigir a login
+      const response = NextResponse.redirect(new URL('/auth/login?error=corrupted-session', request.url));
+      response.cookies.delete(authCookieName);
+      
+      // También limpiar otras cookies relacionadas
+      const allSupabaseCookies = [
+        `sb-${projectRef}-auth-token`,
+        `sb-${projectRef}-auth-token-code-verifier`,
+        'sb-auth-token',
+        'supabase-auth-token'
+      ];
+      
+      allSupabaseCookies.forEach(cookieName => {
+        response.cookies.delete(cookieName);
+      });
+      
+      return response;
+    }
+    
     const tokenData = JSON.parse(authCookie.value);
   
     const { access_token, refresh_token, expires_at } = tokenData;
@@ -132,7 +162,26 @@ export async function middleware(request: NextRequest) {
   } catch (cookieError) {
     if (shouldDebug) {
       console.warn('❌ [MIDDLEWARE] Cookie de autenticación corrupta o malformada:', cookieError);
+      console.warn('❌ [MIDDLEWARE] Valor de cookie problemática:', authCookie.value.substring(0, 100) + '...');
     }
+    
+    // Limpiar cookie corrupta y redirigir a login
+    const response = NextResponse.redirect(new URL('/auth/login?error=session-parse-error', request.url));
+    response.cookies.delete(authCookieName);
+    
+    // También limpiar otras cookies relacionadas
+    const allSupabaseCookies = [
+      `sb-${projectRef}-auth-token`,
+      `sb-${projectRef}-auth-token-code-verifier`,
+      'sb-auth-token',
+      'supabase-auth-token'
+    ];
+    
+    allSupabaseCookies.forEach(cookieName => {
+      response.cookies.delete(cookieName);
+    });
+    
+    return response;
   }
   
 

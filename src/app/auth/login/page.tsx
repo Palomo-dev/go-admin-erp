@@ -67,6 +67,14 @@ export default function LoginPage() {
       setError('Tu sesión anterior ha expirado. Por favor, inicia sesión nuevamente.');
     }
     
+    // Check for corrupted session errors
+    const error = searchParams.get('error');
+    if (error === 'corrupted-session') {
+      setError('Tu sesión estaba corrupta y ha sido limpiada. Por favor, inicia sesión nuevamente.');
+    } else if (error === 'session-parse-error') {
+      setError('Hubo un problema con tu sesión anterior. Por favor, inicia sesión nuevamente.');
+    }
+    
     // Verificar si necesitamos mostrar el modal de geolocalización
     if (shouldShowGeolocationModal()) {
       // No hay preferencia guardada, mostrar modal después de un breve delay

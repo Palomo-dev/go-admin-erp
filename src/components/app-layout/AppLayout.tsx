@@ -98,7 +98,9 @@ export const AppLayout = ({
         setUserData({
           name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
           email: user.email,
-          role: userRoleData?.roles?.name || 'Usuario',
+          role: Array.isArray(userRoleData?.roles) && userRoleData.roles.length > 0 
+            ? userRoleData.roles[0].name 
+            : 'Usuario',
           avatar: profileData?.avatar_url
         });
       } catch (error) {
@@ -185,7 +187,9 @@ export const AppLayout = ({
   const handleSignOut = async (): Promise<void> => {
     try {
       setLoading(true);
-      // Ejecutar la función de cierre de sesión
+      
+      // Importar dinámicamente la función signOut para evitar referencias circulares
+      const { signOut } = await import('@/lib/supabase/config');
       const { error } = await signOut();
       
       if (error) {
@@ -207,19 +211,6 @@ export const AppLayout = ({
       setLoading(false);
     }
   };
-  
-  // Importación dinámica de la función signOut
-  const [signOut, setSignOut] = useState<() => Promise<any>>(async () => {
-    console.log('Función de cierre de sesión no disponible');
-    return { error: null };
-  });
-
-  useEffect(() => {
-    // Importar dinámicamente para evitar errores de referencia circular
-    import('@/lib/supabase/config').then((module) => {
-      setSignOut(() => module.signOut);
-    });
-  }, []);
   
   return (
     <div className="flex h-screen">

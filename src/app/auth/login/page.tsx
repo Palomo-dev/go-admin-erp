@@ -67,6 +67,14 @@ export default function LoginPage() {
       setError('Tu sesión anterior ha expirado. Por favor, inicia sesión nuevamente.');
     }
     
+    // Check for corrupted session errors
+    const error = searchParams.get('error');
+    if (error === 'corrupted-session') {
+      setError('Tu sesión estaba corrupta y ha sido limpiada. Por favor, inicia sesión nuevamente.');
+    } else if (error === 'session-parse-error') {
+      setError('Hubo un problema con tu sesión anterior. Por favor, inicia sesión nuevamente.');
+    }
+    
     // Verificar si necesitamos mostrar el modal de geolocalización
     if (shouldShowGeolocationModal()) {
       // No hay preferencia guardada, mostrar modal después de un breve delay
@@ -112,12 +120,26 @@ export default function LoginPage() {
 
   // Handle organization selection from popup
   const onSelectOrganizationFromPopup = async (org: Organization) => {
-    await selectOrganizationFromPopup({
-      organization: org,
-      email,
-      setShowOrgPopup,
-      proceedWithLogin: (rememberMe, email) => proceedWithLogin(rememberMe, email)
+    console.log('📄 [LOGIN PAGE] Usuario seleccionó organización:', {
+      orgId: org.id,
+      orgName: org.name,
+      currentEmail: email
     });
+    
+    try {
+      await selectOrganizationFromPopup({
+        organization: org,
+        email,
+        setShowOrgPopup,
+        proceedWithLogin: (rememberMe, email) => {
+          console.log('🔗 [LOGIN PAGE] Wrapper proceedWithLogin llamado:', { rememberMe, email });
+          return proceedWithLogin(rememberMe, email);
+        }
+      });
+      console.log('✅ [LOGIN PAGE] selectOrganizationFromPopup completado');
+    } catch (error) {
+      console.error('❌ [LOGIN PAGE] Error en selectOrganizationFromPopup:', error);
+    }
   };
   
   // Manejar selección de geolocalización

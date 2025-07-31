@@ -281,6 +281,70 @@ export function getPublicImageUrl(storagePath: string): string {
 }
 
 /**
+ * Obtiene la URL pública de un avatar de perfil desde el bucket 'profiles'
+ * @param avatarPath - Ruta del avatar en el storage (ej: 'avatars/temp/1753735136074-m3lbd89eemb.jpg')
+ * @returns URL pública del avatar o string vacío si no hay path
+ */
+export function getAvatarUrl(avatarPath: string | null | undefined): string {
+  // Validación de entrada
+  if (!avatarPath) {
+    return '';
+  }
+  
+  // Si ya es una URL completa, devolverla tal como está
+  if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+    return avatarPath;
+  }
+  
+  // Crear cliente de Supabase
+  const supabase = createClientComponentClient();
+  
+  // Usar bucket 'profiles' para avatares
+  const { data } = supabase.storage
+    .from('profiles')
+    .getPublicUrl(avatarPath);
+  
+  if (!data?.publicUrl) {
+    console.error(`getAvatarUrl: Failed to get public URL for ${avatarPath}`);
+    return '';
+  }
+  
+  return data.publicUrl;
+}
+
+/**
+ * Obtiene la URL pública de un logo de organización desde el bucket 'logos'
+ * @param logoPath - Ruta del logo en el storage (ej: 'logos/org-123/logo.png')
+ * @returns URL pública del logo o string vacío si no hay path
+ */
+export function getOrganizationLogoUrl(logoPath: string | null | undefined): string {
+  // Validación de entrada
+  if (!logoPath) {
+    return '';
+  }
+  
+  // Si ya es una URL completa, devolverla tal como está
+  if (logoPath.startsWith('http://') || logoPath.startsWith('https://')) {
+    return logoPath;
+  }
+  
+  // Crear cliente de Supabase
+  const supabase = createClientComponentClient();
+  
+  // Usar bucket 'logos' para logos de organizaciones
+  const { data } = supabase.storage
+    .from('logos')
+    .getPublicUrl(logoPath);
+  
+  if (!data?.publicUrl) {
+    console.error(`getOrganizationLogoUrl: Failed to get public URL for ${logoPath}`);
+    return '';
+  }
+  
+  return data.publicUrl;
+}
+
+/**
  * Actualiza un array de objetos con URLs públicas basadas en sus paths de almacenamiento
  * @param images Array de imágenes que contienen un campo path
  * @returns El mismo array con URLs actualizadas

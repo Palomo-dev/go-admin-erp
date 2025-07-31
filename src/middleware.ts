@@ -1,209 +1,300 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
+import { supabase, getProjectRef } from '@/lib/supabase/config';
 
+/**
+ * Middleware para manejar autenticación y autorización
+ * Verifica sesiones, maneja redirecciones y actualiza actividad de usuario
+ */
 export async function middleware(request: NextRequest) {
-  // Obtener credenciales de Supabase desde variables de entorno
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const { pathname } = request.nextUrl;
+  
+  // Solo agregar debugging para rutas específicas
+  const shouldDebug = pathname.startsWith('/app/') || pathname === '/auth/login';
+  
+  if (shouldDebug) {
+    console.log('🔍 [MIDDLEWARE] Procesando ruta:', pathname);
+  }
+  
+  // Para el middleware en el servidor, necesitamos crear un cliente temporal
+  // que pueda leer las cookies del request
+  const projectRef = getProjectRef();
+  const authCookieName = `sb-${projectRef}-auth-token`;
+  let authCookie = request.cookies.get(authCookieName);
 
-  // Extraer referencia del proyecto dinámicamente desde la URL de Supabase
-  const projectRef = supabaseUrl.split('.')[0].replace('https://', '');
-
-  // Obtener el token de autenticación de las cookies
-  const authCookie = request.cookies.get(`sb-${projectRef}-auth-token`);
-
-  // Crear configuración personalizada para el cliente de Supabase
-  const supabaseClientOptions = {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false,
-      flowType: 'pkce' as const, // Use const assertion to fix type error
-      // Si tenemos un token de autenticación en la cookie, lo usamos como sesión inicial
-      ...(authCookie && {
-        storageKey: `sb-${projectRef}-auth-token`,
-        storage: {
-          getItem: () => authCookie.value,
-          setItem: () => {},
-          removeItem: () => {}
+  if (shouldDebug) {
+    console.log('🔍 [MIDDLEWARE] Verificando autenticación...');
+    console.log('🔍 [MIDDLEWARE] Project ref:', projectRef);
+    console.log('🔍 [MIDDLEWARE] Buscando cookie:', authCookieName);
+    console.log('🔍 [MIDDLEWARE] Auth cookie encontrada:', !!authCookie);
+    
+    // Mostrar todas las cookies disponibles para debugging
+    const allCookies = request.headers.get('cookie') || '';
+    const cookieList = allCookies.split(';').map(c => c.trim().split('=')[0]).filter(Boolean);
+    console.log('🔍 [MIDDLEWARE] Todas las cookies disponibles:', cookieList);
+    
+    // Buscar cookies relacionadas con Supabase
+    const supabaseCookies = cookieList.filter(name => name.includes('sb-') || name.includes('supabase'));
+    console.log('🔍 [MIDDLEWARE] Cookies de Supabase encontradas:', supabaseCookies);
+    
+    // Si no encontramos la cookie exacta, buscar variaciones
+    if (!authCookie) {
+      const possibleNames = [
+        `sb-${projectRef}-auth-token`,
+        `sb-${projectRef}-auth-token-code-verifier`,
+        `sb-auth-token`,
+        'supabase-auth-token'
+      ];
+      
+      for (const name of possibleNames) {
+        const cookie = request.cookies.get(name);
+        if (cookie) {
+          console.log(`🔍 [MIDDLEWARE] Encontrada cookie alternativa: ${name}`);
+          authCookie = cookie;
+          break;
         }
-      })
+      }
     }
-  };
+  }
 
-  // Crear cliente de Supabase con la configuración personalizada
-  const supabase = createClient(supabaseUrl, supabaseKey, supabaseClientOptions);
-
-  // Verificar si hay una sesión activa usando el cliente de Supabase
   let session = null;
   let isAuthenticated = false;
   let isExpired = false;
+  
+  // Intentar obtener sesión desde cookie si existe
 
+  if (!authCookie?.value) {
+    if (shouldDebug) console.log('🔍 [MIDDLEWARE] No se encontró cookie de autenticación');
+    return;
+  }
+  
+  if (shouldDebug) console.log('🔍 [MIDDLEWARE] Parseando cookie de autenticación...');
+  
   try {
-    // 1. Primero intentamos obtener la sesión actual
-    const { data } = await supabase.auth.getSession();
-    session = data.session;
-
-    // Comprobar si la sesión está expirada por tiempo
-    if (session) {
-      const expiresAt = session.expires_at;
-      const currentTime = Math.floor(Date.now() / 1000); // Convertir a segundos
+    // Verificar que la cookie no esté corrupta
+    if (authCookie.value === '[object Object]' || 
+        authCookie.value.includes('[object Object]') ||
+        authCookie.value === 'undefined' ||
+        authCookie.value === 'null' ||
+        !authCookie.value.trim().startsWith('{')) {
       
-      // Si la sesión ha expirado, marcarla como tal
-      if (expiresAt && expiresAt < currentTime) {
-        console.log('Sesión expirada por tiempo:', expiresAt ? new Date(expiresAt * 1000).toLocaleString() : 'unknown');
-        isExpired = true;
-        session = null; // Invalidar la sesión
-      } else {
-        console.log('Sesión válida hasta:', expiresAt ? new Date(expiresAt * 1000).toLocaleString() : 'unknown');
+      if (shouldDebug) {
+        console.warn('⚠️ [MIDDLEWARE] Cookie corrupta detectada:', authCookie.value.substring(0, 50) + '...');
       }
+      
+      // Limpiar cookie corrupta y redirigir a login
+      const response = NextResponse.redirect(new URL('/auth/login?error=corrupted-session', request.url));
+      response.cookies.delete(authCookieName);
+      
+      // También limpiar otras cookies relacionadas
+      const allSupabaseCookies = [
+        `sb-${projectRef}-auth-token`,
+        `sb-${projectRef}-auth-token-code-verifier`,
+        'sb-auth-token',
+        'supabase-auth-token'
+      ];
+      
+      allSupabaseCookies.forEach(cookieName => {
+        response.cookies.delete(cookieName);
+      });
+      
+      return response;
     }
     
-    // 2. Si no hay sesión pero tenemos una cookie de autenticación, intentamos refrescarla
-    if (!session && authCookie && !isExpired) {
-      try {
-        const { data: refreshData, error } = await supabase.auth.refreshSession();
-        
-        if (error) {
-          console.error('Error al refrescar sesión:', error.message);
-          if (error.message.includes('expired')) {
-            isExpired = true;
-          }
-        } else {
-          session = refreshData.session;
-        }
-      } catch (refreshError) {
-        console.error('Error en proceso de refresh:', refreshError);
-        isExpired = true;
-      }
+    const tokenData = JSON.parse(authCookie.value);
+  
+    const { access_token, refresh_token, expires_at } = tokenData;
+  
+    if (shouldDebug) {
+      console.log('🔍 [MIDDLEWARE] Token data parseado:', {
+        hasAccessToken: !!access_token,
+        hasRefreshToken: !!refresh_token,
+        expiresAt: expires_at
+      });
     }
-
-    // Determinar si el usuario está autenticado en base a la sesión
-    isAuthenticated = !!session;
+  
+    if (!access_token || !refresh_token) {
+      if (shouldDebug) console.warn('⚠️ [MIDDLEWARE] Tokens faltantes en cookie');
+      return;
+    }
+  
+    const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+  
+    if (shouldDebug) {
+      console.log('🔍 [MIDDLEWARE] Resultado setSession:', {
+        hasSession: !!data.session,
+        hasUser: !!data.session?.user,
+        userId: data.session?.user?.id,
+        error: error?.message
+      });
+    }
+  
+    if (error || !data.session) return;
+  
+    session = data.session;
+    const currentTime = Math.floor(Date.now() / 1000);
+  
+    isExpired = !!session.expires_at && session.expires_at < currentTime;
+  
+    if (shouldDebug) {
+      console.log('🔍 [MIDDLEWARE] Verificación expiración:', {
+        expiresAt: session.expires_at,
+        currentTime,
+        isExpired
+      });
+    }
+  
+    if (isExpired) {
+      session = null;
+      if (shouldDebug) console.warn('⚠️ [MIDDLEWARE] Sesión expirada');
+      return;
+    }
+  
+    isAuthenticated = true;
+  
+    if (shouldDebug) {
+      console.log('✅ [MIDDLEWARE] Usuario autenticado:', session.user.email);
+    }
+  
+    // Acción asíncrona: registrar actividad del usuario
+    updateUserActivity(supabase, session.user.id, request);
+  
+  } catch (cookieError) {
+    if (shouldDebug) {
+      console.warn('❌ [MIDDLEWARE] Cookie de autenticación corrupta o malformada:', cookieError);
+      console.warn('❌ [MIDDLEWARE] Valor de cookie problemática:', authCookie.value.substring(0, 100) + '...');
+    }
     
-    // Actualizar la actividad del dispositivo si el usuario está autenticado
-    if (isAuthenticated && session) {
-      try {
-        // Obtener el tiempo de última actualización de actividad de la cookie
-        const lastActivityUpdate = request.cookies.get('last_activity_update')?.value;
-        const currentTime = Date.now();
-        console.log('Tiempo de última actualización:', lastActivityUpdate);
-        // Solo actualizar si han pasado más de 10 minutos desde la última actualización
-        // o si no hay cookie de última actividad
-        if (!lastActivityUpdate || (currentTime - parseInt(lastActivityUpdate)) > 600000) {
-          // Crear respuesta que será modificada y configurar cookie
-          const nextResponse = NextResponse.next();
-          
-          // Registrar la última actualización en la cookie (10 minutos de vigencia)
-          nextResponse.cookies.set('last_activity_update', currentTime.toString(), { 
-            maxAge: 600, // 10 minutos en segundos
-            path: '/' 
-          });
-          
-          // Hacer una petición asíncrona para actualizar la actividad
-          // Usamos el cliente normal en lugar de admin
-          try {
-            // Ejecutamos la consulta de forma asíncrona sin esperar respuesta
-            // para no bloquear la navegación
-            void supabase.from('user_devices')
-              .update({ last_active_at: new Date().toISOString() })
-              .eq('user_id', session.user.id)
-              // La sesión en Supabase no tiene una propiedad 'id' directamente
-              .eq('is_active', true);
-              
-            console.log('Solicitud de actualización de actividad enviada');
-          } catch (activityUpdateError) {
-            console.error('Error al actualizar actividad:', activityUpdateError);
-          }
-        }
-      } catch (activityError) {
-        // Ignoramos errores en la actualización de actividad para no bloquear la navegación
-        console.error('Error al intentar actualizar actividad:', activityError);
-      }
-    }
+    // Limpiar cookie corrupta y redirigir a login
+    const response = NextResponse.redirect(new URL('/auth/login?error=session-parse-error', request.url));
+    response.cookies.delete(authCookieName);
+    
+    // También limpiar otras cookies relacionadas
+    const allSupabaseCookies = [
+      `sb-${projectRef}-auth-token`,
+      `sb-${projectRef}-auth-token-code-verifier`,
+      'sb-auth-token',
+      'supabase-auth-token'
+    ];
+    
+    allSupabaseCookies.forEach(cookieName => {
+      response.cookies.delete(cookieName);
+    });
+    
+    return response;
+  }
+  
 
-    console.log('Sesión activa:', !!session ? 'Sí' : 'No');
-    console.log('Autenticado:', isAuthenticated);
-    console.log('Sesión expirada:', isExpired ? 'Sí' : 'No');
-  } catch (error) {
-    console.error('Error al verificar/refrescar sesión:', error);
-    isAuthenticated = false;
+  return handleRouteProtection(request, isAuthenticated, isExpired);
+}
+
+/**
+ * Actualiza la actividad del usuario de forma asíncrona
+ */
+function updateUserActivity(supabase: any, userId: string, request: NextRequest) {
+  const lastActivityUpdate = request.cookies.get('last_activity_update')?.value;
+  const currentTime = Date.now();
+  const TEN_MINUTES = 600000; // 10 minutos en ms
+  
+  // Solo actualizar si han pasado más de 10 minutos
+  if (!lastActivityUpdate || (currentTime - parseInt(lastActivityUpdate)) > TEN_MINUTES) {
+    // Actualizar de forma asíncrona sin bloquear
+    void supabase
+      .from('user_devices')
+      .update({ last_active_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .then(() => {
+        // Marcar la actualización en cookie
+        // Nota: No podemos modificar cookies aquí, se haría en el response
+      })
+      .catch(() => {
+        // Ignorar errores de actividad para no afectar navegación
+      });
+  }
+}
+
+/**
+ * Maneja la protección de rutas y redirecciones
+ */
+function handleRouteProtection(request: NextRequest, isAuthenticated: boolean, isExpired: boolean) {
+  const { pathname } = request.nextUrl;
+  
+  // Solo agregar debugging para rutas específicas
+  const shouldDebug = pathname.startsWith('/app/') || pathname === '/auth/login';
+  
+  if (shouldDebug) {
+    console.log('🔍 [MIDDLEWARE] handleRouteProtection:', {
+      pathname,
+      isAuthenticated,
+      isExpired
+    });
+  }
+  
+  // Rutas que no requieren autenticación
+  const isPublicRoute = (
+    pathname.startsWith('/auth/') ||
+    pathname === '/auth' ||
+    pathname === '/' ||
+    pathname.includes('/_next/') ||
+    pathname.includes('/auth/v1/') // API de Supabase
+  );
+  
+  if (shouldDebug) {
+    console.log('🔍 [MIDDLEWARE] Ruta pública:', isPublicRoute);
   }
 
-  // Registrar información para depuración
-  console.log(`Ruta: ${request.nextUrl.pathname}`);
-  console.log(`Token en cookie: ${!!authCookie}`);
-
-  // Determinar si estamos en una ruta pública (que no requiere autenticación)
-  const isPublicRoute = (
-    request.nextUrl.pathname.startsWith('/auth/') ||
-    request.nextUrl.pathname === '/auth' ||
-    request.nextUrl.pathname === '/' ||
-    request.nextUrl.pathname.includes('/_next/')
-  );
-
-  // Comprobar si estamos accediendo a API de Supabase
-  const isSupabaseRequest = request.nextUrl.pathname.includes('/auth/v1/');
-
-  // Si es una solicitud a la API de Supabase, permitir pasar
-  if (isSupabaseRequest) {
+  // Permitir acceso a API de Supabase
+  if (pathname.includes('/auth/v1/')) {
     return NextResponse.next();
   }
 
-  // Si la sesión está expirada, redirigir a la página de sesión expirada
-  if (isExpired && !request.nextUrl.pathname.startsWith('/auth/session-expired')) {
-    console.log('Redirigiendo a página de sesión expirada');
-    const redirectUrl = new URL('/auth/session-expired', request.url);
-    return NextResponse.redirect(redirectUrl);
+  // Manejar sesión expirada
+  if (isExpired && !pathname.startsWith('/auth/session-expired')) {
+    return NextResponse.redirect(new URL('/auth/session-expired', request.url));
   }
   
-  // Si el usuario no está autenticado y la ruta actual no es /auth/*, redirigir a /auth/login
-  if (!isAuthenticated && !request.nextUrl.pathname.startsWith('/auth/')) {
-    console.log('Redirigiendo a login: Usuario no autenticado');
+  // Prevenir acceso a página de sesión expirada si no está expirada
+  if (!isExpired && pathname === '/auth/session-expired') {
+    return NextResponse.redirect(new URL('/app/inicio', request.url));
+  }
+
+  // Redirigir usuarios no autenticados a login
+  if (!isAuthenticated && !isPublicRoute) {
+    if (shouldDebug) {
+      console.log('🚀 [MIDDLEWARE] Redirigiendo usuario no autenticado a login');
+    }
     const redirectUrl = new URL('/auth/login', request.url);
+    if (pathname.startsWith('/app/')) {
+      redirectUrl.searchParams.set('redirectTo', pathname);
+    }
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Si el usuario está autenticado y la ruta actual es /auth/login, redirigir a /app/inicio
-  if (isAuthenticated && request.nextUrl.pathname === '/auth/login') {
-    console.log('Redirigiendo a inicio: Usuario ya autenticado en página de login');
-    const redirectUrl = new URL('/app/inicio', request.url);
-    return NextResponse.redirect(redirectUrl);
+  // Redirigir usuarios autenticados fuera de rutas de auth (excepto logout e invite)
+  if (isAuthenticated) {
+    if (pathname === '/auth/login') {
+      if (shouldDebug) {
+        console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde login a /app/inicio');
+      }
+      return NextResponse.redirect(new URL('/app/inicio', request.url));
+    }
+    
+    if (pathname.startsWith('/auth/') && 
+        pathname !== '/auth/logout' &&
+        pathname !== '/auth/session-expired' &&
+        !pathname.startsWith('/auth/invite')) {
+      if (shouldDebug) {
+        console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde auth a /app/inicio');
+      }
+      return NextResponse.redirect(new URL('/app/inicio', request.url));
+    }
   }
 
-  // Si el usuario está autenticado y la ruta actual es /auth/* (excepto /auth/logout, /auth/invite y /auth/session-expired), redirigir a /app/inicio
-  if (isAuthenticated && 
-      request.nextUrl.pathname.startsWith('/auth/') && 
-      request.nextUrl.pathname !== '/auth/logout' &&
-      request.nextUrl.pathname !== '/auth/session-expired' &&
-      !request.nextUrl.pathname.startsWith('/auth/invite')) {
-    console.log('Redirigiendo a inicio: Usuario autenticado en ruta de autenticación');
-    const redirectUrl = new URL('/app/inicio', request.url);
-    return NextResponse.redirect(redirectUrl);
-  }
-  
-  // No permitir acceso a la página de sesión expirada si la sesión no está expirada
-  if (!isExpired && request.nextUrl.pathname === '/auth/session-expired') {
-    console.log('Redirigiendo a inicio: Usuario intentando acceder a sesión expirada sin estar expirado');
-    const redirectUrl = new URL('/app/inicio', request.url);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // Si el usuario no está autenticado y la ruta actual es /app/*, redirigir a /auth/login
-  if (!isAuthenticated && request.nextUrl.pathname.startsWith('/app/')) {
-    console.log('Redirigiendo a login: Usuario no autenticado intentando acceder a ruta protegida');
-    const redirectUrl = new URL('/auth/login', request.url);
-    // Agregar la URL actual como parámetro de consulta para poder redirigir después del inicio de sesión
-    redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // Check for organization in subdomain
+  // Manejar subdominios para organizaciones
   const hostname = request.headers.get('host') || '';
   const subdomain = hostname.split('.')[0];
   
-  // If there's a subdomain that's not 'www' and not localhost, set it in a cookie
   if (subdomain !== 'www' && !hostname.includes('localhost')) {
     const response = NextResponse.next();
     response.cookies.set('organization', subdomain, { 
@@ -214,6 +305,10 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  if (shouldDebug) {
+    console.log('✅ [MIDDLEWARE] Permitiendo acceso a la ruta');
+  }
+  
   return NextResponse.next();
 }
 

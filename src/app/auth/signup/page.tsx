@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase/config';
 import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
 
 // Definición de tipos
-type SignupData = {
+interface SignupData {
   // Datos personales
   firstName: string;
   lastName: string;
@@ -20,11 +20,30 @@ type SignupData = {
   password: string;
   confirmPassword: string;
   phone: string;
-  // Datos de organización
+  avatarUrl?: string; // NUEVO - Storage path del avatar
+  preferredLanguage?: string; // NUEVO - Idioma preferido
+  // Tipo de unión
   joinType: 'create' | 'join';
   // Si crea organización
   organizationName: string;
   organizationType: number | null;
+  organizationLegalName?: string;
+  organizationDescription?: string;
+  organizationEmail?: string;
+  organizationPhone?: string;
+  organizationAddress?: string;
+  organizationCity?: string;
+  organizationState?: string;
+  organizationCountry?: string;
+  organizationCountryCode?: string;
+  organizationPostalCode?: string;
+  organizationTaxId?: string;
+  organizationNit?: string;
+  organizationWebsite?: string;
+  organizationPrimaryColor?: string;
+  organizationSecondaryColor?: string;
+  organizationSubdomain?: string;
+  logoUrl?: string; // NUEVO - Storage path del logo
   // Si se une con código
   invitationCode: string;
   // Datos de sucursal principal
@@ -37,11 +56,13 @@ type SignupData = {
   branchPostalCode?: string;
   branchPhone?: string;
   branchEmail?: string;
-  organizationId?: number;
+  branchTaxIdentification?: string; // NUEVO - NIT/RUT de la sucursal
+  branchOpeningHours?: string; // NUEVO - JSON string de horarios
+  branchFeatures?: string; // NUEVO - JSON string de características
   // Datos de suscripción
-  subscriptionPlan?: string;
-  billingPeriod?: 'monthly' | 'yearly';
-};
+  subscriptionPlan: string;
+  billingPeriod: 'monthly' | 'yearly';
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -58,9 +79,28 @@ export default function SignupPage() {
     password: '',
     confirmPassword: '',
     phone: '',
+    avatarUrl: '',
+    preferredLanguage: 'es',
     joinType: 'create',
     organizationName: '',
     organizationType: null,
+    organizationLegalName: '',
+    organizationDescription: '',
+    organizationEmail: '',
+    organizationPhone: '',
+    organizationAddress: '',
+    organizationCity: '',
+    organizationState: '',
+    organizationCountry: '',
+    organizationCountryCode: '',
+    organizationPostalCode: '',
+    organizationTaxId: '',
+    organizationNit: '',
+    organizationWebsite: '',
+    organizationPrimaryColor: '',
+    organizationSecondaryColor: '',
+    organizationSubdomain: '',
+    logoUrl: undefined,
     invitationCode: '',
     branchName: 'Sucursal Principal',
     branchCode: 'MAIN-001',
@@ -71,6 +111,9 @@ export default function SignupPage() {
     branchPostalCode: '',
     branchPhone: '',
     branchEmail: '',
+    branchTaxIdentification: '',
+    branchOpeningHours: '',
+    branchFeatures: '',
     subscriptionPlan: 'free',
     billingPeriod: 'monthly',
   });
@@ -177,7 +220,6 @@ export default function SignupPage() {
       if (isGoogleUser && googleUserData) {
         // Usuario de Google ya autenticado, crear datos con el flujo completo
         console.log('Usuario de Google completando signup:', googleUserData.id);
-        await createOrganizationData(googleUserData.id);
         router.push('/app/inicio');
         return;
       }
@@ -193,19 +235,50 @@ export default function SignupPage() {
             phone: signupData.phone,
             // Guardar todos los datos del signup para usar después de verificación
             signup_data: JSON.stringify({
+              // Datos personales
+              firstName: signupData.firstName,
+              lastName: signupData.lastName,
+              phone: signupData.phone,
+              avatarUrl: signupData.avatarUrl,
+              preferredLanguage: signupData.preferredLanguage || 'es',
+              // Tipo de unión
               joinType: signupData.joinType,
+              // Datos de organización
               organizationName: signupData.organizationName,
-              organizationType: signupData.organizationType,
+              organizationTypeId: signupData.organizationType?.toString(),
+              organizationLegalName: signupData.organizationLegalName,
+              organizationDescription: signupData.organizationDescription,
+              organizationEmail: signupData.organizationEmail,
+              organizationPhone: signupData.organizationPhone,
+              organizationAddress: signupData.organizationAddress,
+              organizationCity: signupData.organizationCity,
+              organizationState: signupData.organizationState,
+              organizationCountry: signupData.organizationCountry || 'Colombia',
+              organizationCountryCode: signupData.organizationCountryCode || 'COL', // Cambiar a COL
+              organizationPostalCode: signupData.organizationPostalCode,
+              organizationTaxId: signupData.organizationTaxId,
+              organizationNit: signupData.organizationNit,
+              organizationWebsite: signupData.organizationWebsite,
+              organizationPrimaryColor: signupData.organizationPrimaryColor,
+              organizationSecondaryColor: signupData.organizationSecondaryColor,
+              organizationSubdomain: signupData.organizationSubdomain,
+              logoUrl: signupData.logoUrl,
+              // Código de invitación
               invitationCode: signupData.invitationCode,
+              // Datos de sucursal
               branchName: signupData.branchName,
               branchCode: signupData.branchCode,
               branchAddress: signupData.branchAddress,
               branchCity: signupData.branchCity,
               branchState: signupData.branchState,
-              branchCountry: signupData.branchCountry,
+              branchCountry: signupData.branchCountry || 'COL', // Cambiar a COL
               branchPostalCode: signupData.branchPostalCode,
               branchPhone: signupData.branchPhone,
               branchEmail: signupData.branchEmail,
+              branchTaxIdentification: signupData.branchTaxIdentification,
+              branchOpeningHours: signupData.branchOpeningHours,
+              branchFeatures: signupData.branchFeatures,
+              // Datos de suscripción
               subscriptionPlan: signupData.subscriptionPlan,
               billingPeriod: signupData.billingPeriod
             })
@@ -237,261 +310,9 @@ export default function SignupPage() {
     }
   };
 
-  // Crear datos de organización después de verificación de email
-  const createOrganizationData = async (userId: string) => {
-    console.log('Iniciando creación de datos de organización para usuario:', userId);
-    
-    try {
-      // Obtener datos del usuario desde auth metadata o desde signupData
-      const { data: { user } } = await supabase.auth.getUser();
-      const userMetadata = user?.user_metadata || {};
-      const savedSignupData = userMetadata.signup_data ? JSON.parse(userMetadata.signup_data) : signupData;
-      
-      console.log('Datos de signup recuperados:', savedSignupData);
-      
-      if (savedSignupData.joinType === 'create') {
-        console.log('Creando nueva organización...');
-        
-        // 1. Crear nueva organización
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            name: savedSignupData.organizationName,
-            legal_name: savedSignupData.organizationName,
-            type_id: parseInt(savedSignupData.organizationType),
-            owner_user_id: userId,
-            status: 'active',
-            plan_id: 1, // Plan gratuito por defecto
-            primary_color: '#3B82F6',
-            secondary_color: '#1E40AF',
-          })
-          .select('id')
-          .single();
-
-        if (orgError) {
-          console.error('Error creando organización:', orgError);
-          throw new Error(`Error al crear organización: ${orgError.message}`);
-        }
-
-        console.log('Organización creada con ID:', orgData.id);
-
-        // 2. Crear perfil de usuario
-        const profileData = {
-          id: userId,
-          email: userMetadata.email || savedSignupData.email,
-          first_name: userMetadata.first_name || savedSignupData.firstName,
-          last_name: userMetadata.last_name || savedSignupData.lastName,
-          last_org_id: orgData.id,
-          status: 'active',
-          phone: userMetadata.phone || savedSignupData.phone,
-        };
-
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert(profileData);
-
-        if (profileError) {
-          console.error('Error creando perfil:', profileError);
-          throw new Error(`Error al crear perfil: ${profileError.message}`);
-        }
-
-        console.log('Perfil de usuario creado exitosamente');
-
-        // 3. Crear membresía del usuario como administrador
-        const { data: memberData, error: memberError } = await supabase
-          .from('organization_members')
-          .insert({
-            organization_id: orgData.id,
-            user_id: userId,
-            role: 'org_admin',
-            role_id: 2,
-            is_super_admin: true,
-            is_active: true,
-          })
-          .select('id')
-          .single();
-
-        if (memberError) {
-          console.error('Error creando membresía:', memberError);
-          throw new Error(`Error al crear membresía: ${memberError.message}`);
-        }
-
-        console.log('Membresía de administrador creada exitosamente');
-        
-        // 4. Crear sucursal principal
-        const { data: branchData, error: branchError } = await supabase
-          .from('branches')
-          .insert({
-            name: savedSignupData.branchName,
-            branch_code: savedSignupData.branchCode,
-            address: savedSignupData.branchAddress || '',
-            city: savedSignupData.branchCity || '',
-            state: savedSignupData.branchState || '',
-            country: savedSignupData.branchCountry || '',
-            postal_code: savedSignupData.branchPostalCode || '',
-            phone: savedSignupData.branchPhone || '',
-            email: savedSignupData.branchEmail || '',
-            organization_id: orgData.id,
-            is_main: true,
-            is_active: true,
-          })
-          .select('id')
-          .single();
-
-        if (branchError) {
-          console.error('Error creando sucursal:', branchError);
-          throw new Error(`Error al crear sucursal: ${branchError.message}`);
-        }
-
-        console.log('Sucursal principal creada exitosamente');
-        
-        // 4.1. Asignar usuario a la sucursal principal
-        const { error: memberBranchError } = await supabase
-          .from('member_branches')
-          .insert({
-            organization_member_id: memberData.id,
-            branch_id: branchData.id,
-          });
-        
-        if (memberBranchError) {
-          console.error('Error asignando usuario a sucursal:', memberBranchError);
-          throw new Error(`Error al asignar usuario a sucursal: ${memberBranchError.message}`);
-        }
-        
-        console.log('Usuario asignado a sucursal principal exitosamente');
-        
-        // 5. Habilitar módulos básicos para la organización
-        const basicModules = ['organizations', 'branches', 'roles'];
-        const moduleInserts = basicModules.map(moduleCode => ({
-          organization_id: orgData.id,
-          module_code: moduleCode,
-          is_active: true
-        }));
-        
-        const { error: modulesError } = await supabase
-          .from('organization_modules')
-          .insert(moduleInserts);
-        
-        if (modulesError) {
-          console.error('Error habilitando módulos:', modulesError);
-          // No lanzar error, solo advertir ya que no es crítico
-          console.warn('Continuando sin habilitar módulos básicos');
-        } else {
-          console.log('Módulos básicos habilitados exitosamente');
-        }
-        
-        // 6. Configurar moneda base (COP para Colombia)
-        const { error: currencyError } = await supabase
-          .from('organization_currencies')
-          .insert({
-            organization_id: orgData.id,
-            currency_code: 'COP',
-            is_base: true,
-            auto_update: true
-          });
-        
-        if (currencyError) {
-          console.error('Error configurando moneda:', currencyError);
-          console.warn('Continuando sin configurar moneda base');
-        } else {
-          console.log('Moneda base configurada exitosamente');
-        }
-        
-        // 7. Registrar historial del plan inicial
-        const { error: planHistoryError } = await supabase
-          .from('plan_history')
-          .insert({
-            organization_id: orgData.id,
-            old_plan_id: null,
-            new_plan_id: 1, // Plan gratuito
-            user_id: userId,
-            reason: 'Organización creada con plan gratuito inicial'
-          });
-        
-        if (planHistoryError) {
-          console.error('Error registrando historial de plan:', planHistoryError);
-          console.warn('Continuando sin registrar historial de plan');
-        } else {
-          console.log('Historial de plan registrado exitosamente');
-        }
-        
-      } else if (savedSignupData.joinType === 'join') {
-        console.log('Uniéndose a organización existente con código:', savedSignupData.invitationCode);
-        
-        // 1. Validar código de invitación
-        const { data: invitationData, error: invitationError } = await supabase
-          .from('invitations')
-          .select('organization_id, role_id')
-          .eq('code', savedSignupData.invitationCode)
-          .eq('status', 'pending')
-          .single();
-
-        if (invitationError || !invitationData) {
-          throw new Error('Código de invitación inválido o expirado');
-        }
-
-        console.log('Invitación válida para organización:', invitationData.organization_id);
-
-        // 2. Crear perfil de usuario
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            email: userMetadata.email || savedSignupData.email,
-            first_name: userMetadata.first_name || savedSignupData.firstName,
-            last_name: userMetadata.last_name || savedSignupData.lastName,
-            last_org_id: invitationData.organization_id,
-            status: 'active',
-            phone: userMetadata.phone || savedSignupData.phone,
-          });
-
-        if (profileError) {
-          console.error('Error creando perfil:', profileError);
-          throw new Error(`Error al crear perfil: ${profileError.message}`);
-        }
-
-        console.log('Perfil de usuario creado exitosamente');
-
-        // 3. Crear membresía del usuario en la organización
-        const { error: memberError } = await supabase
-          .from('organization_members')
-          .insert({
-            organization_id: invitationData.organization_id,
-            user_id: userId,
-            role_id: invitationData.role_id,
-            is_super_admin: false,
-            is_active: true,
-          });
-
-        if (memberError) {
-          console.error('Error creando membresía:', memberError);
-          throw new Error(`Error al crear membresía: ${memberError.message}`);
-        }
-
-        console.log('Membresía creada exitosamente');
-
-        // 4. Marcar invitación como usada
-        const { error: updateInvitationError } = await supabase
-          .from('invitations')
-          .update({ 
-            status: 'accepted',
-            used_at: new Date().toISOString(),
-            used_by: userId
-          })
-          .eq('code', savedSignupData.invitationCode);
-
-        if (updateInvitationError) {
-          console.warn('Error actualizando invitación:', updateInvitationError);
-        }
-      }
-      
-      console.log('Proceso de creación de datos completado exitosamente');
-      
-    } catch (error: any) {
-      console.error('Error en createOrganizationData:', error);
-      throw error;
-    }
-  };
+  // Nota: La creación de datos de organización ahora se maneja automáticamente
+  // por el trigger de base de datos 'complete_signup_after_email_verification'
+  // que se ejecuta cuando el email es confirmado por Supabase.
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-blue-50 py-12 px-4 sm:px-6 lg:px-8">

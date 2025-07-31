@@ -15,6 +15,9 @@ interface FormData {
   branchPostalCode?: string;
   branchPhone?: string;
   branchEmail?: string;
+  branchTaxIdentification?: string;
+  branchOpeningHours?: string; // JSON string de horarios
+  branchFeatures?: string; // JSON string de características
   // Organization data (for reference)
   organizationId?: number;
 }
@@ -47,7 +50,7 @@ export default function BranchStep({
     
     try {
       // Extract relevant data from the branch form
-      const { name, branch_code, address, city, state, country, postal_code, phone, email } = branchData;
+      const { name, branch_code, address, city, state, country, postal_code, phone, email, tax_identification, opening_hours, features } = branchData;
       
       // Update the form data in the parent component
       updateFormData({
@@ -60,6 +63,9 @@ export default function BranchStep({
         branchPostalCode: postal_code,
         branchPhone: phone,
         branchEmail: email,
+        branchTaxIdentification: tax_identification,
+        branchOpeningHours: opening_hours,
+        branchFeatures: features,
         organizationId: organizationId
       });
       
@@ -83,6 +89,7 @@ export default function BranchStep({
     postal_code: formData.branchPostalCode,
     phone: formData.branchPhone,
     email: formData.branchEmail,
+    tax_identification: formData.branchTaxIdentification,
     is_main: true,
     is_active: true,
     organization_id: organizationId || 0

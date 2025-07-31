@@ -20,11 +20,11 @@ const createAdminClient = () => {
 }
 
 // Función para crear un cliente de Supabase con la cookie de sesión
-const createClientWithSession = () => {
+const createClientWithSession = async () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
@@ -33,9 +33,9 @@ const createClientWithSession = () => {
       detectSessionInUrl: false,
       flowType: 'pkce',
     },
-    cookies: {
-      get(name) {
-        return cookieStore.get(name)?.value
+    global: {
+      headers: {
+        'Cache-Control': 'no-cache',
       },
     },
   })
@@ -45,7 +45,7 @@ const createClientWithSession = () => {
 export async function POST(request: Request) {
   try {
     // Cliente con la sesión actual para verificar autenticación
-    const supabase = createClientWithSession()
+    const supabase = await createClientWithSession()
     
     // Obtener la sesión actual para verificar la autenticidad
     const { data: { session } } = await supabase.auth.getSession()
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     const { sessionId, userId } = await request.json()
     
     // Verificar que los IDs coincidan con la sesión actual para seguridad
-    if (session.user.id !== userId || session.id !== sessionId) {
+    if (session.user.id !== userId) {
       return NextResponse.json({ error: 'Datos de sesión inválidos' }, { status: 400 })
     }
     

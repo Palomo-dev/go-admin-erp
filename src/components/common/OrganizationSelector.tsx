@@ -5,6 +5,7 @@ import { ChevronDown, Plus } from 'lucide-react';
 import { Organization, organizationService } from '@/lib/services/organizationService';
 import { supabase } from '@/lib/supabase/config';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { getOrganizationLogoUrl } from '@/lib/supabase/imageUtils';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import CreateOrganizationDialog from '../organization/CreateOrganizationDialog';
@@ -179,10 +180,10 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 shadow-sm hover:shadow"
       >
-        {selectedOrg?.logo_url ? (
+        {selectedOrg?.logo_url && getOrganizationLogoUrl(selectedOrg.logo_url) ? (
           <div className="w-6 h-6 relative rounded-full overflow-hidden border-2 border-blue-200 dark:border-blue-700 shadow-sm">
             <Image 
-              src={selectedOrg.logo_url}
+              src={getOrganizationLogoUrl(selectedOrg.logo_url)}
               alt={selectedOrg.name || 'Logo organización'}
               fill
               className="object-cover"
@@ -213,10 +214,10 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
                   selectedOrg?.id === org.id ? 'bg-gray-100 dark:bg-gray-700' : ''
                 }`}
               >
-                {org.logo_url ? (
+                {org.logo_url && getOrganizationLogoUrl(org.logo_url) ? (
                   <div className="w-6 h-6 relative rounded-full overflow-hidden border-2 border-blue-200 dark:border-blue-700 shadow-sm">
                     <Image 
-                      src={org.logo_url}
+                      src={getOrganizationLogoUrl(org.logo_url)}
                       alt={org.name || 'Logo organización'}
                       fill
                       className="object-cover"

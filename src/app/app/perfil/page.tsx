@@ -7,6 +7,7 @@ import { ChevronRight, Lock, Edit2, Save, Users, Bell, LogOut, UserX, Globe, Shi
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 
 // Componentes para las diferentes secciones
 import DatosPersonalesSection from '../../../components/profile/DatosPersonalesSection';
@@ -16,6 +17,7 @@ import OrganizacionDefaultSection from '../../../components/profile/Organizacion
 import NotificacionesSection from '../../../components/profile/NotificacionesSection';
 import RolesSection from '../../../components/profile/RolesSection';
 import EliminarCuentaSection from '../../../components/profile/EliminarCuentaSection';
+import { id } from 'date-fns/locale';
 
 // Interfaces para los tipos de datos
 interface Profile {
@@ -236,11 +238,21 @@ export default function PerfilUsuarioPage() {
         }
         
         // Obtener organizaciones a las que pertenece el usuario
-        const { data: orgsData, error: orgsError } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .eq('status', 'active');
-          
+        const { data: orgs, error: orgsError } = await supabase
+          .from('organization_members')
+          .select('organization_id(id, name)')
+          .eq('user_id', session.user.id);
+
+        //extract organizations to have an array of organizations ids and names
+        const orgsData = orgs?.map((org) => ({
+          id: org.organization_id.id,
+          name: org.organization_id.name
+        }));
+
+        console.log(orgsData);
+
+
+
         if (orgsError) {
           console.error('Error al obtener organizaciones:', orgsError);
         } else {
@@ -309,9 +321,9 @@ export default function PerfilUsuarioPage() {
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4">
             <div className="flex flex-col items-center mb-6 p-4">
               <div className="relative w-20 h-20 mb-4">
-                {profile?.avatar_url ? (
+                {profile?.avatar_url && getAvatarUrl(profile.avatar_url) ? (
                   <Image 
-                    src={profile.avatar_url} 
+                    src={getAvatarUrl(profile.avatar_url)} 
                     alt="Avatar" 
                     fill 
                     className="rounded-full object-cover"

@@ -7,7 +7,23 @@ import LogoUploader from './LogoUploader';
 
 interface OrganizationData {
   name: string;
+  legal_name: string;
   type_id: number;
+  description?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  country_code?: string;
+  postal_code?: string;
+  tax_id?: string;
+  nit?: string;
+  website?: string;
+  subdomain?: string;
+  primary_color?: string;
+  secondary_color?: string;
   logo_url?: string | null;
 }
 
@@ -15,26 +31,33 @@ interface CreateOrganizationFormProps {
   onSuccess: (data: OrganizationData) => void;
   onCancel: () => void;
   defaultEmail?: string;
+  isSignupMode?: boolean; // true para signup, false para creación directa
 }
 
-export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEmail = '' }: CreateOrganizationFormProps) {
+export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEmail = '', isSignupMode = false }: CreateOrganizationFormProps) {
   const [formData, setFormData] = useState({
     name: '',
+    legalName: '', 
     typeId: '',
     description: '',
     email: defaultEmail,
     phone: '',
     address: '',
     city: '',
+    state: '', 
     country: '',
+    countryCode: '',
     postalCode: '',
     taxId: '',
+    nit: '', 
     website: '',
-    primaryColor: '#3B82F6', // Default primary color
-    secondaryColor: '#F59E0B', // Default secondary color (amber)
+    subdomain: '', 
+    primaryColor: '#3B82F6', 
+    secondaryColor: '#F59E0B', 
     logoUrl: null as string | null,
   });
   const [organizationTypes, setOrganizationTypes] = useState<Array<{ id: number; name: string }>>([]);
+  const [countries, setCountries] = useState<Array<{ code: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
@@ -51,7 +74,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
   useEffect(() => {
     fetchOrganizationTypes();
+    fetchCountries();
   }, []);
+
+
 
   const fetchOrganizationTypes = async () => {
     setLoading(true);
@@ -70,11 +96,27 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     setLoading(false);
   };
 
+  const fetchCountries = async () => {
+    const { data, error } = await supabase
+      .from('countries')
+      .select('code, name')
+      .eq('is_active', true)
+      .order('name');
+
+    if (error) {
+      console.error('Error al cargar países:', error);
+      setError('Error al cargar los países');
+    } else {
+      setCountries(data || []);
+    }
+  };
+
   const validateStep = (currentStep: number) => {
     const errors: Record<string, string> = {};
     
     if (currentStep === 1) {
       if (!formData.name.trim()) errors.name = 'El nombre es requerido';
+      if (!formData.legalName.trim()) errors.legalName = 'El nombre legal es requerido';
       if (!formData.typeId) errors.typeId = 'Seleccione un tipo de organización';
       if (!formData.email.trim()) errors.email = 'El correo electrónico es requerido';
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -108,18 +150,82 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     setError('');
 
     try {
-      // In signup flow, we don't need to check for a session
-      // We just collect the data and pass it to the parent component
-      // The actual database operations will be handled during the final signup step
-      
-      // Return organization data to parent component
-      onSuccess({
+      const organizationData = {
         name: formData.name,
+        legal_name: formData.legalName,
         type_id: parseInt(formData.typeId),
+        description: formData.description,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        country: formData.country,
+        country_code: formData.countryCode,
+        postal_code: formData.postalCode,
+        tax_id: formData.taxId,
+        nit: formData.nit,
+        website: formData.website,
+        subdomain: formData.subdomain,
+        primary_color: formData.primaryColor,
+        secondary_color: formData.secondaryColor,
         logo_url: formData.logoUrl,
-      });
+      };
 
-      // Success data already passed above
+      if (isSignupMode) {
+        // In signup flow, just pass data to parent component
+        onSuccess(organizationData);
+      } else {
+        // In standalone mode, create organization directly in database
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('No se encontró sesión de usuario');
+        }
+
+        // Create organization in database
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .insert({
+            ...organizationData,
+            owner_user_id: session.user.id,
+            status: 'active',
+            plan_id: 1, // Default to free plan
+            created_by: session.user.id
+          })
+          .select()
+          .single();
+
+        if (orgError) {
+          throw new Error(orgError.message);
+        }
+
+        // Create organization membership for the owner
+        const { error: memberError } = await supabase
+          .from('organization_members')
+          .insert({
+            organization_id: orgData.id,
+            user_id: session.user.id,
+            role_id: 2, // Admin de organización
+            is_super_admin: true,
+            is_active: true
+          });
+
+        if (memberError) {
+          throw new Error(memberError.message);
+        }
+
+        // Update user's last_org_id
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ last_org_id: orgData.id })
+          .eq('id', session.user.id);
+
+        if (profileError) {
+          console.warn('Error updating profile last_org_id:', profileError);
+        }
+
+        onSuccess(orgData);
+      }
     } catch (err: any) {
       setError(err.message || 'Error al crear la organización');
     } finally {
@@ -294,6 +400,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         
         <div className="grid grid-cols-6 gap-6">
           {renderFormField('name', 'Nombre de la Organización', 'text', true, 'col-span-6')}
+          {renderFormField('legalName', 'Nombre Legal', 'text', true, 'col-span-6')}
           
           <div className="col-span-6">
             <label htmlFor="typeId" className="block text-sm font-medium text-gray-700 mb-1">
@@ -505,8 +612,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     <div className="space-y-6">
       <div className="bg-white px-6 py-8 shadow-md sm:rounded-lg">
         <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-6">Detalles Adicionales</h3>
-        <div className="grid grid-cols-6 gap-6">
-          <div className="col-span-6">
+        
+        <div className="space-y-6">
+          {/* Descripción */}
+          <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
               Descripción
             </label>
@@ -520,12 +629,46 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             />
           </div>
 
-          {renderFormField('address', 'Dirección', 'text', false, 'col-span-6')}
-          
-          <div className="col-span-6 grid grid-cols-3 gap-4">
+          {/* Dirección */}
+          <div className="grid grid-cols-2 gap-6">
+            {renderFormField('address', 'Dirección', 'text', false, 'col-span-2')}
             {renderFormField('city', 'Ciudad', 'text', false, 'col-span-1')}
-            {renderFormField('country', 'País', 'text', false, 'col-span-1')}
+            {renderFormField('state', 'Estado/Provincia', 'text', false, 'col-span-1')}
+            
+            {/* Country selector */}
+            <div className="col-span-1">
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                País
+              </label>
+              <select
+                id="country"
+                name="country"
+                value={formData.countryCode}
+                onChange={(e) => {
+                  const selectedCountry = countries.find(c => c.code === e.target.value);
+                  setFormData({ 
+                    ...formData, 
+                    countryCode: e.target.value,
+                    country: selectedCountry?.name || ''
+                  });
+                }}
+                className="block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm"
+              >
+                <option value="">Seleccionar país...</option>
+                {countries.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
             {renderFormField('postalCode', 'Código Postal', 'text', false, 'col-span-1')}
+          </div>
+          
+          {/* Información adicional */}
+          <div className="grid grid-cols-2 gap-6">
+            {renderFormField('subdomain', 'Subdominio', 'text', false, 'col-span-1')}
           </div>
           
           {renderFormField('website', 'Sitio Web', 'url')}

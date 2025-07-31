@@ -26,16 +26,19 @@ export default function ManageOrganizationsTab() {
       if (!session) throw new Error('No se encontró sesión de usuario');
 
       const { data: memberData, error: memberError } = await supabase
-        .from('profiles')
-        .select('role_id')
-        .eq('id', session.user.id)
+        .from('organization_members')
+        .select('role_id, is_super_admin')
+        .eq('user_id', session.user.id)
         .eq('organization_id', orgId)
         .single();
 
       if (memberError) throw memberError;
-      if (memberData.role_id !== 2) throw new Error('No tienes permisos para eliminar esta organización');
+      if (memberData.role_id !== 2 && !memberData.is_super_admin) {
+        throw new Error('No tienes permisos para eliminar esta organización');
+      }
 
-      // Delete organization
+      // Delete organization (this will cascade delete branches, organization_members, etc.)
+      // Note: manager_id references in branches will be automatically set to NULL due to FK constraint
       const { error: deleteError } = await supabase
         .from('organizations')
         .delete()
@@ -81,6 +84,7 @@ export default function ManageOrganizationsTab() {
           <CreateOrganizationForm
             onSuccess={handleCreateSuccess}
             onCancel={() => setShowCreateForm(false)}
+            isSignupMode={false}
           />
         </Suspense>
       ) : (

@@ -208,7 +208,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
       // Upload file to Supabase Storage
       const fileName = `org-${formData.id}-${Date.now()}-${file.name}`;
       const { data, error } = await supabase.storage
-        .from('organization-logos')
+        .from('logos')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true
@@ -218,7 +218,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
       
       // Get public URL
       const { data: publicUrl } = supabase.storage
-        .from('organization-logos')
+        .from('logos')
         .getPublicUrl(data.path);
       
       // Update form data with new logo URL

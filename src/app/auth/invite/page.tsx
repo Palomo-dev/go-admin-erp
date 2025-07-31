@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { acceptInvitation, validateInvitation } from '@/lib/supabase/config';
+import { validateInvitation, createProfileFromInvitation } from '@/lib/supabase/config';
+import { supabase } from '@/lib/supabase/config';
 import Link from 'next/link';
-import RegistrationForm, { RegistrationFormData } from '@/components/auth/RegistrationForm';
+import InvitationForm, { InvitationFormData } from '@/components/auth/InvitationForm';
 
 export default function InvitePage() {
   const router = useRouter();
@@ -51,42 +52,49 @@ export default function InvitePage() {
     checkInvitation();
   }, [inviteCode]);
 
-  const handleSubmit = async (formData: RegistrationFormData) => {
+  const handleSubmit = async (formData: InvitationFormData) => {
     setIsLoading(true);
     setError(null);
     setFormError(null);
 
-    // Validar que las contraseñas coincidan
-    if (formData.password !== formData.confirmPassword) {
-      setFormError('Las contraseñas no coinciden');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Llamar a la función para aceptar la invitación
-      const { error } = await acceptInvitation({
-        inviteCode: inviteCode!,
-        password: formData.password,
-        userData: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phoneNumber: formData.phoneNumber
-        }
-      });
+      // Verificar si el usuario ya está autenticado (email confirmado)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session && session.user && session.user.email?.toLowerCase() === inviteData.email.toLowerCase()) {
+        // Usuario ya confirmado, crear perfil directamente
+        console.log('Usuario ya confirmado, creando perfil directamente');
+        
+        const { error } = await createProfileFromInvitation({
+          inviteCode: inviteCode!,
+          userData: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phoneNumber: formData.phoneNumber
+          },
+          authUserId: session.user.id,
+          password: formData.password
+        });
 
-      if (error) {
-        console.error('Error al aceptar la invitación:', error);
-        setError(error.message || 'Error al aceptar la invitación');
-        setIsLoading(false);
+        if (error) {
+          console.error('Error al crear perfil:', error);
+          setError(error.message || 'Error al crear el perfil');
+          setIsLoading(false);
+          return;
+        }
+
+        // Redirigir al login con mensaje de éxito
+        router.push('/auth/login?message=Registro completado correctamente. Inicia sesión para continuar.');
         return;
       }
 
-      // Redirigir al usuario a la página de inicio de sesión
-      router.push('/auth/login?message=Invitación aceptada correctamente. Inicia sesión con tu nueva cuenta.');
+      // Si no hay sesión activa, significa que algo salió mal
+      setError('No se encontró una sesión activa. Por favor, haz clic en el enlace del email nuevamente.');
+      setIsLoading(false);
+
     } catch (err: any) {
-      console.error('Error inesperado al aceptar la invitación:', err);
-      setError(err.message || 'Error inesperado al aceptar la invitación');
+      console.error('Error inesperado al procesar la invitación:', err);
+      setError(err.message || 'Error inesperado al procesar la invitación');
       setIsLoading(false);
     }
   };
@@ -134,60 +142,15 @@ export default function InvitePage() {
   }
   
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
-      <div className="mb-8">
-        <img
-          src="/logo.png"
-          alt="GO Admin ERP Logo"
-          width={180}
-          height={60}
-        />
-      </div>
-      
-      <div className="bg-white shadow rounded-lg w-full max-w-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Aceptar invitación</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Has sido invitado a unirte a <strong>{inviteData?.organization_name}</strong> como <strong>{inviteData?.role_name}</strong>
-          </p>
-        </div>
-        
-        <div className="p-6">
-          <RegistrationForm
-            initialEmail={inviteData?.email || ''}
-            isEmployee={true}
-            isReadOnlyEmail={true}
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-            error={formError}
-          />
-          
-          <div className="mt-4 bg-blue-50 border-l-4 border-blue-500 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-blue-700">
-                  Al aceptar la invitación, se creará una cuenta con el correo electrónico proporcionado y serás añadido a la organización.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-          <button 
-            type="button"
-            onClick={() => router.push('/auth/login')} 
-            className="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
+    <InvitationForm
+      inviteData={{
+        email: inviteData?.email || '',
+        organization_name: inviteData?.organization_name || '',
+        role_name: inviteData?.role_name || ''
+      }}
+      onSubmit={handleSubmit}
+      isLoading={isLoading}
+      error={error}
+    />
   );
 }

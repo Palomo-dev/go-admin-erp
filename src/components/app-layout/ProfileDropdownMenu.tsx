@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronDown, User, Settings, Bell } from 'lucide-react';
 import { UserData } from './types';
+import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 
 interface ProfileDropdownMenuProps {
   userData: UserData | null;
@@ -31,9 +32,9 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               <div className={`flex ${collapsed ? 'lg:justify-center' : ''} items-center`}>
                 {/* Avatar del usuario */}
                 <div className="flex-shrink-0 relative w-10 h-10 overflow-hidden rounded-full">
-                  {userData?.avatar ? (
+                  {userData?.avatar && getAvatarUrl(userData.avatar) ? (
                     <Image 
-                      src={userData.avatar} 
+                      src={getAvatarUrl(userData.avatar)} 
                       alt="Foto de perfil" 
                       width={40} 
                       height={40} 
@@ -142,9 +143,9 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
           <DropdownMenuTrigger asChild>
             <div className="flex items-center space-x-2 p-1 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200">
               <div className="h-8 w-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                {userData?.avatar ? (
+                {userData?.avatar && getAvatarUrl(userData.avatar) ? (
                   <Image 
-                    src={userData.avatar} 
+                    src={getAvatarUrl(userData.avatar)} 
                     alt="Avatar" 
                     width={32} 
                     height={32} 

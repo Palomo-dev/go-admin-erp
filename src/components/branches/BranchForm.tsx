@@ -1,6 +1,7 @@
 import React, { useState, forwardRef, useImperativeHandle, FormEvent } from 'react';
 import { Branch, BranchFormData, OpeningHours, BranchFeatures } from '@/types/branch';
-import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon } from '@heroicons/react/24/outline';
+import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon, UserIcon } from '@heroicons/react/24/outline';
+import { ManagerSelector } from './ManagerSelector';
 
 type BranchFormProps = {
   initialData?: Partial<Branch>;
@@ -95,7 +96,6 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     zone: initialData.zone || '',
     branch_code: initialData.branch_code || '',
     is_active: hideStatusSection ? true : (initialData.is_active ?? true), // Force true during signup
-    metadata: initialData.metadata || {},
     organization_id: initialData.organization_id!,
   });
 
@@ -346,6 +346,32 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
           </div>
         </div>
 
+        {/* Gerente */}
+        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <UserIcon className="h-5 w-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-800">Gerente de sucursal</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Asignar Gerente
+              </label>
+              <ManagerSelector
+                organizationId={form.organization_id}
+                currentManagerId={form.manager_id || null}
+                onManagerSelect={(managerId) => {
+                  setForm(prev => ({ ...prev, manager_id: managerId || '' }));
+                }}
+                disabled={isLoading}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                El gerente tendrá permisos administrativos sobre esta sucursal.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Horarios */}
         <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
@@ -554,9 +580,9 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   );
   
   return noFormWrapper ? (
-    <div className="branch-form">{formContent}</div>
+    <form id="branch-form" onSubmit={handleSubmit} className="branch-form">{formContent}</form>
   ) : (
-    <form onSubmit={handleSubmit} className="branch-form">{formContent}</form>
+    <form id="branch-form" onSubmit={handleSubmit} className="branch-form">{formContent}</form>
   );
 });
 

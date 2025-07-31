@@ -123,7 +123,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         return;
       }
       
-      // Check if email is already invited
+      // Check if email is already invited or is an existing user
       const { data: existingInvites } = await supabase
         .from('invitations')
         .select('id')
@@ -135,6 +135,39 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         setError('Ya existe una invitación activa para este correo electrónico');
         return;
       }
+
+      // Check if user already exists
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .single();
+      
+      if (existingUser) {
+        setError('Este correo ya está registrado en el sistema');
+        return;
+      }
+      
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
+      
+      if (!currentUserId) {
+        setError('No se pudo obtener la información del usuario actual');
+        return;
+      }
+
+      // Get organization data for the invitation
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', orgId)
+        .single();
+
+      if (orgError || !orgData) {
+        setError('No se pudo obtener la información de la organización');
+        return;
+      }
       
       // Generate unique code
       const code = Math.random().toString(36).substring(2, 10);
@@ -143,17 +176,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
       
-      // Get current user from Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUserId = session?.user?.id;
-      
-      if (!currentUserId) {
-        setError('No se pudo obtener la información del usuario actual');
-        return;
-      }
-      
-      // Create invitation
-      const { data: invite, error } = await supabase
+      // Create invitation record in our custom table
+      const { data: invite, error: inviteError } = await supabase
         .from('invitations')
         .insert([
           {
@@ -166,18 +190,57 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             status: 'pending'
           }
         ])
+        .select()
+        .single();
         
-        .select();
-        
-      if (error) throw error;
+      if (inviteError) throw inviteError;
 
-      // Send invitation email
-      // This would typically call a server function to send an email
-      // For now, we'll just log it and update the UI
-      console.log(`Invitation sent to ${email} with code ${code}`);
+      // Send invitation email using Supabase's email functionality
+      const inviteUrl = `${window.location.origin}/auth/invite?code=${code}`;
       
-      // Update UI
-      setSuccess(`Invitación enviada a ${email}`);
+      try {
+        // Use Supabase's built-in auth.signUp to trigger invitation email
+        // This will use the configured SMTP service and email templates
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: email.toLowerCase(),
+          password: 'temp-password-' + Math.random().toString(36), // Temporary password
+          options: {
+            data: {
+              organization_id: orgId,
+              organization_name: orgData.name,
+              role_id: roleId,
+              invitation_code: code,
+              is_invitation: true,
+              invited_by: currentUserId
+            },
+            emailRedirectTo: inviteUrl
+          }
+        });
+
+        if (signUpError) {
+          // If signup fails (e.g., email already exists), provide manual URL
+          console.warn('Signup for invitation failed:', signUpError);
+          setSuccess(
+            `Invitación creada para ${email}. ` +
+            `Envía esta URL manualmente: ${inviteUrl}`
+          );
+        } else {
+          // Success - Supabase will send the confirmation email automatically
+          setSuccess(`Invitación enviada exitosamente a ${email}`);
+          
+          // Clean up the temporary user creation - mark the invitation properly
+          // The user will use our custom invite flow instead of the auth confirmation
+          if (signUpData.user) {
+            console.log('📧 Invitation email sent via Supabase Auth to:', email);
+          }
+        }
+      } catch (emailSendError: any) {
+        console.warn('Error sending invitation email:', emailSendError);
+        setSuccess(
+          `Invitación creada para ${email}. ` +
+          `Envía esta URL manualmente: ${inviteUrl}`
+        );
+      }
       
       // Reset form
       setEmail('');
@@ -241,19 +304,68 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
       if (error) throw error;
       
-      // Fetch the updated invitation to get the code
-      const { data } = await supabase
+      // Fetch the updated invitation to get the code and org info
+      const { data: inviteData } = await supabase
         .from('invitations')
-        .select('code')
+        .select(`
+          code,
+          role_id,
+          organization_id,
+          organizations!inner(name)
+        `)
         .eq('id', id)
         .single();
+
+      if (!inviteData) {
+        throw new Error('No se pudo obtener la información de la invitación');
+      }
       
       // Generate the invitation URL
-      const inviteCode = data?.code;
+      const inviteCode = inviteData.code;
       const inviteUrl = `${window.location.origin}/auth/invite?code=${inviteCode}`;
       
-      // Here you would typically resend the email
-      setSuccess(`Invitación reenviada a ${email}. URL de invitación: ${inviteUrl}`);
+      // Get organization name safely
+      const orgName = Array.isArray(inviteData.organizations) 
+        ? inviteData.organizations[0]?.name 
+        : inviteData.organizations?.name || 'la organización';
+      
+      // Resend invitation email using Supabase Auth
+      try {
+        // Try to trigger email resend using signUp (will fail if user exists, which is expected)
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: email.toLowerCase(),
+          password: 'temp-password-' + Math.random().toString(36),
+          options: {
+            data: {
+              organization_id: inviteData.organization_id,
+              organization_name: orgName,
+              role_id: inviteData.role_id,
+              invitation_code: inviteCode,
+              is_invitation: true,
+              resent: true
+            },
+            emailRedirectTo: inviteUrl
+          }
+        });
+
+        if (signUpError && signUpError.message.includes('already registered')) {
+          // Expected error - user already exists, provide manual URL
+          setSuccess(`Invitación actualizada para ${email}. Envía esta URL manualmente: ${inviteUrl}`);
+        } else if (signUpError) {
+          // Other signup error
+          console.warn('Error reenviando invitación:', signUpError);
+          setSuccess(`Invitación actualizada para ${email}. URL: ${inviteUrl}`);
+        } else {
+          // Success - email sent
+          setSuccess(`Invitación reenviada exitosamente a ${email}`);
+          if (signUpData.user) {
+            console.log('📧 Invitation email resent via Supabase Auth to:', email);
+          }
+        }
+      } catch (emailSendError: any) {
+        console.warn('Error reenviando invitación:', emailSendError);
+        setSuccess(`Invitación actualizada para ${email}. URL: ${inviteUrl}`);
+      }
       
       // Refresh the invitations list
       await fetchInvitations();

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
 import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
+import { getOrganizationLogoUrl } from '@/lib/supabase/imageUtils';
 
 
 // Componente principal que organiza todo el layout de la aplicación
@@ -27,6 +28,20 @@ export const AppLayout = ({
   
   // Estado para indicar recarga del perfil
   const [profileRefresh, setProfileRefresh] = useState(0);
+  
+  // Helper function para obtener el logo de la organización activa
+  const getActiveOrgLogo = () => {
+    try {
+      const orgData = localStorage.getItem('organizacionActiva');
+      if (orgData) {
+        const org = JSON.parse(orgData);
+        return org.logo_url ? getOrganizationLogoUrl(org.logo_url) : null;
+      }
+    } catch (error) {
+      console.error('Error parsing organization data:', error);
+    }
+    return null;
+  };
   
   // Estados para control del sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -70,7 +85,7 @@ export const AppLayout = ({
         // Obtener rol del usuario
         const { data: userRoleData, error: roleError } = await supabase
           .from('organization_members')
-          .select('role')
+          .select('role_id, roles!inner(id, name)')
           .eq('user_id', user.id)
           .eq('organization_id', currentOrgId)
           .single();
@@ -84,7 +99,9 @@ export const AppLayout = ({
         setUserData({
           name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
           email: user.email,
-          role: userRoleData?.role,
+          role: Array.isArray(userRoleData?.roles) && userRoleData.roles.length > 0 
+            ? userRoleData.roles[0].name 
+            : 'Usuario',
           avatar: profileData?.avatar_url
         });
       } catch (error) {
@@ -171,7 +188,9 @@ export const AppLayout = ({
   const handleSignOut = async (): Promise<void> => {
     try {
       setLoading(true);
-      // Ejecutar la función de cierre de sesión
+      
+      // Importar dinámicamente la función signOut para evitar referencias circulares
+      const { signOut } = await import('@/lib/supabase/config');
       const { error } = await signOut();
       
       if (error) {
@@ -193,19 +212,6 @@ export const AppLayout = ({
       setLoading(false);
     }
   };
-  
-  // Importación dinámica de la función signOut
-  const [signOut, setSignOut] = useState<() => Promise<any>>(async () => {
-    console.log('Función de cierre de sesión no disponible');
-    return { error: null };
-  });
-
-  useEffect(() => {
-    // Importar dinámicamente para evitar errores de referencia circular
-    import('@/lib/supabase/config').then((module) => {
-      setSignOut(() => module.signOut);
-    });
-  }, []);
   
   return (
     <div className="flex h-screen">
@@ -249,10 +255,10 @@ export const AppLayout = ({
                 <>
                   {/* Icono/Logo centrado cuando está colapsado */}
                   <div className="flex justify-center items-center">
-                    {localStorage.getItem('organizacionActiva') && JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url ? (
+                    {getActiveOrgLogo() ? (
                       <div className="w-7 h-7 lg:mx-auto">
                         <img 
-                          src={JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url}
+                          src={getActiveOrgLogo()!}
                           alt="Logo"
                           className="w-full h-full object-cover rounded-full border-2 border-blue-200 dark:border-blue-700 shadow-sm"
                         />
@@ -268,9 +274,9 @@ export const AppLayout = ({
                   {/* Tooltip para mostrar el nombre de la organización cuando está contraído */}
                   <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 pl-2 hidden lg:group-hover:block z-50 whitespace-nowrap">
                     <div className="bg-gray-800 text-white text-sm py-1 px-3 rounded shadow-lg flex items-center">
-                      {localStorage.getItem('organizacionActiva') && JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url ? (
+                      {getActiveOrgLogo() ? (
                         <img 
-                          src={JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url}
+                          src={getActiveOrgLogo()!}
                           alt="Logo"
                           className="w-5 h-5 rounded-full mr-2 object-cover border border-gray-300 dark:border-gray-700 shadow-sm"
                         />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import FileUpload from '@/components/common/FileUpload';
 
 interface RegistrationFormProps {
   initialEmail?: string;
@@ -18,6 +19,8 @@ export interface RegistrationFormData {
   firstName: string;
   lastName: string;
   phoneNumber: string;
+  avatarUrl?: string;
+  preferredLanguage?: string;
 }
 
 export default function RegistrationForm({
@@ -35,10 +38,15 @@ export default function RegistrationForm({
     firstName: '',
     lastName: '',
     phoneNumber: '',
+    avatarUrl: '',
+    preferredLanguage: 'es'
   });
   const [validationErrors, setValidationErrors] = useState<{
     email?: string;
     phoneNumber?: string;
+    avatar?: string;
+    password?: string;
+    confirmPassword?: string;
   }>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,6 +56,27 @@ export default function RegistrationForm({
     // Clear validation errors when field is edited
     if (validationErrors[name as keyof typeof validationErrors]) {
       setValidationErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+    
+    // Validar contraseñas en tiempo real
+    if (name === 'password' || name === 'confirmPassword') {
+      const password = name === 'password' ? value : formData.password;
+      const confirmPassword = name === 'confirmPassword' ? value : formData.confirmPassword;
+      
+      // Solo validar si ambos campos tienen contenido
+      if (password && confirmPassword) {
+        if (password !== confirmPassword) {
+          setValidationErrors(prev => ({ 
+            ...prev, 
+            confirmPassword: 'Las contraseñas no coinciden' 
+          }));
+        } else {
+          setValidationErrors(prev => ({ 
+            ...prev, 
+            confirmPassword: undefined 
+          }));
+        }
+      }
     }
   };
 
@@ -82,8 +111,19 @@ export default function RegistrationForm({
     
     // Basic validation
     if (formData.password !== formData.confirmPassword) {
-      // This will be handled by the parent component
-      await onSubmit({...formData, password: '', confirmPassword: ''});
+      setValidationErrors(prev => ({ 
+        ...prev, 
+        confirmPassword: 'Las contraseñas no coinciden' 
+      }));
+      return;
+    }
+    
+    // Validar longitud de contraseña
+    if (formData.password.length < 8) {
+      setValidationErrors(prev => ({ 
+        ...prev, 
+        password: 'La contraseña debe tener al menos 8 caracteres' 
+      }));
       return;
     }
     
@@ -173,8 +213,12 @@ export default function RegistrationForm({
           value={formData.password}
           onChange={handleChange}
           required
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
         />
+        {validationErrors.password && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+        )}
+        <p className="mt-1 text-xs text-gray-500">La contraseña debe tener al menos 8 caracteres</p>
       </div>
       
       <div>
@@ -188,8 +232,59 @@ export default function RegistrationForm({
           value={formData.confirmPassword}
           onChange={handleChange}
           required
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
         />
+        {validationErrors.confirmPassword && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
+        )}
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Foto de perfil (opcional)
+        </label>
+        <FileUpload
+          bucket="profiles"
+          folder="avatars/temp"
+          accept="image/*"
+          maxSize={2 * 1024 * 1024} // 2MB
+          onUpload={(filePath) => {
+            setFormData(prev => ({ ...prev, avatarUrl: filePath }));
+            // Clear any avatar errors
+            if (validationErrors.avatar) {
+              setValidationErrors(prev => ({ ...prev, avatar: undefined }));
+            }
+          }}
+          onError={(error) => {
+            setValidationErrors(prev => ({ ...prev, avatar: error }));
+          }}
+          currentFile={formData.avatarUrl}
+          placeholder="Subir foto"
+          preview={true}
+        />
+        {validationErrors.avatar && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors.avatar}</p>
+        )}
+      </div>
+      
+      <div>
+        <label htmlFor="preferredLanguage" className="block text-sm font-medium text-gray-700">
+          Idioma preferido
+        </label>
+        <select
+          id="preferredLanguage"
+          name="preferredLanguage"
+          value={formData.preferredLanguage}
+          onChange={(e) => setFormData(prev => ({ ...prev, preferredLanguage: e.target.value }))}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="es">🇪🇸 es - Español</option>
+          <option value="en">🇺🇸 en - English</option>
+          <option value="pt">🇧🇷 pt - Português</option>
+          <option value="fr">🇫🇷 fr - Français</option>
+          <option value="de">🇩🇪 de - Deutsch</option>
+          <option value="it">🇮🇹 it - Italiano</option>
+        </select>
       </div>
       
       {error && (

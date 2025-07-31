@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 
 interface AvatarProps {
   name: string;
@@ -56,22 +57,31 @@ export const UserAvatar = ({ name, avatarUrl, className = '', size = 'sm' }: Ava
   };
 
   // Si hay una URL de avatar, mostrar la imagen
-  if (avatarUrl) {
+  const resolvedAvatarUrl = avatarUrl ? getAvatarUrl(avatarUrl) : null;
+  if (resolvedAvatarUrl) {
     return (
-      <img 
-        src={avatarUrl} 
-        alt={`Avatar de ${name}`}
-        className={`rounded-full object-cover ${sizeClasses[size]} ${className}`}
-        onError={(e) => {
-          // Si hay error al cargar la imagen, mostrar iniciales
-          const target = e.currentTarget as HTMLImageElement;
-          target.style.display = 'none';
-          const fallbackElement = target.parentElement?.querySelector('.fallback-avatar') as HTMLElement;
-          if (fallbackElement) {
-            fallbackElement.style.display = 'flex';
-          }
-        }}
-      />
+      <div className={`relative ${className}`}>
+        <img 
+          src={resolvedAvatarUrl} 
+          alt={`Avatar de ${name}`}
+          className={`rounded-full object-cover ${sizeClasses[size]}`}
+          onError={(e) => {
+            // Si hay error al cargar la imagen, mostrar iniciales
+            const target = e.currentTarget as HTMLImageElement;
+            target.style.display = 'none';
+            const fallbackElement = target.parentElement?.querySelector('.fallback-avatar') as HTMLElement;
+            if (fallbackElement) {
+              fallbackElement.style.display = 'flex';
+            }
+          }}
+        />
+        <div 
+          className={`fallback-avatar hidden absolute inset-0 items-center justify-center rounded-full font-medium text-white ${sizeClasses[size]}`}
+          style={{ backgroundColor: getColor() }}
+        >
+          {getInitials()}
+        </div>
+      </div>
     );
   }
 

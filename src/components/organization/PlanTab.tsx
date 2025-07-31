@@ -69,6 +69,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   const [organizationName, setOrganizationName] = useState('');
   const [changingBilling, setChangingBilling] = useState(false);
   const [showPlanComparison, setShowPlanComparison] = useState(false);
+  const [branchCount, setBranchCount] = useState(0);
 
   useEffect(() => {
     if (orgId) {
@@ -139,6 +140,19 @@ export default function PlanTab({ orgId }: PlanTabProps) {
 
       if (allModulesError) throw allModulesError;
       setAllModules(allModulesData || []);
+
+      // Obtener conteo de sucursales activas
+      const { data: branchData, error: branchError } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('is_active', true);
+
+      if (branchError) {
+        console.error('Error loading branches:', branchError);
+      } else {
+        setBranchCount(branchData?.length || 0);
+      }
 
     } catch (err: any) {
       console.error('Error loading plan data:', err);
@@ -274,14 +288,28 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     {currentPlan?.name}
                   </h3>
                   <div className="flex items-center space-x-2 mt-1">
-                    <p className="text-sm text-gray-500">
-                      {formatPrice(subscription.amount)} / {subscription.amount === currentPlan?.price_usd_month ? 'mes' : 'año'}
-                    </p>
-                    {subscription.amount === currentPlan?.price_usd_year && currentPlan?.price_usd_month && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Ahorras {formatPrice((currentPlan.price_usd_month * 12) - currentPlan.price_usd_year)} al año
-                      </span>
-                    )}
+                    {(() => {
+                      // Determinar si es facturación anual o mensual basado en las fechas
+                      const periodStart = new Date(subscription.current_period_start);
+                      const periodEnd = new Date(subscription.current_period_end);
+                      const diffMonths = (periodEnd.getFullYear() - periodStart.getFullYear()) * 12 + 
+                        (periodEnd.getMonth() - periodStart.getMonth());
+                      const isYearly = diffMonths >= 11; // 11+ meses = anual
+                      const currentAmount = isYearly ? currentPlan?.price_usd_year : currentPlan?.price_usd_month;
+                      
+                      return (
+                        <>
+                          <p className="text-sm text-gray-500">
+                            {formatPrice(currentAmount || 0)} / {isYearly ? 'año' : 'mes'}
+                          </p>
+                          {isYearly && currentPlan?.price_usd_month && currentPlan?.price_usd_year && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Ahorras {formatPrice((currentPlan.price_usd_month * 12) - currentPlan.price_usd_year)} al año
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()} 
                   </div>
                   
                   {/* Estado de la suscripción */}
@@ -334,35 +362,44 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 </div>
                 
                 {/* Botones de ciclo de facturación */}
-                {currentPlan?.code !== 'free' && (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">Ciclo de facturación:</span>
-                    <div className="flex rounded-md shadow-sm">
-                      <button
-                        onClick={() => handleBillingCycleChange('monthly')}
-                        disabled={changingBilling || subscription.amount === currentPlan?.price_usd_month}
-                        className={`px-3 py-1 text-xs font-medium rounded-l-md border ${
-                          subscription.amount === currentPlan?.price_usd_month
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        } ${changingBilling ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {changingBilling ? 'Cambiando...' : 'Mensual'}
-                      </button>
-                      <button
-                        onClick={() => handleBillingCycleChange('yearly')}
-                        disabled={changingBilling || subscription.amount === currentPlan?.price_usd_year}
-                        className={`px-3 py-1 text-xs font-medium rounded-r-md border-t border-r border-b ${
-                          subscription.amount === currentPlan?.price_usd_year
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        } ${changingBilling ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {changingBilling ? 'Cambiando...' : 'Anual'}
-                      </button>
+                {currentPlan?.code !== 'free' && (() => {
+                  // Determinar ciclo actual basado en fechas
+                  const periodStart = new Date(subscription.current_period_start);
+                  const periodEnd = new Date(subscription.current_period_end);
+                  const diffMonths = (periodEnd.getFullYear() - periodStart.getFullYear()) * 12 + 
+                    (periodEnd.getMonth() - periodStart.getMonth());
+                  const isCurrentlyYearly = diffMonths >= 11;
+                  
+                  return (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-500">Ciclo de facturación:</span>
+                      <div className="flex rounded-md shadow-sm">
+                        <button
+                          onClick={() => handleBillingCycleChange('monthly')}
+                          disabled={changingBilling || !isCurrentlyYearly}
+                          className={`px-3 py-1 text-xs font-medium rounded-l-md border ${
+                            !isCurrentlyYearly
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          } ${changingBilling ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {changingBilling ? 'Cambiando...' : 'Mensual'}
+                        </button>
+                        <button
+                          onClick={() => handleBillingCycleChange('yearly')}
+                          disabled={changingBilling || isCurrentlyYearly}
+                          className={`px-3 py-1 text-xs font-medium rounded-r-md border-t border-r border-b ${
+                            isCurrentlyYearly
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          } ${changingBilling ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {changingBilling ? 'Cambiando...' : 'Anual'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
           ) : (
@@ -404,7 +441,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  1
+                  {branchCount}
                   <span className="text-sm text-gray-500">
                     /{currentPlan.max_branches || '∞'}
                   </span>

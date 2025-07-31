@@ -68,13 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calcular nuevo precio según el ciclo de facturación
-    const newAmount = billingPeriod === 'yearly' ? 
-      currentSubscription.plan.price_usd_year : 
-      currentSubscription.plan.price_usd_month;
-
     // Calcular nueva fecha de fin del período
-    const currentPeriodEnd = new Date(currentSubscription.current_period_end);
     const newPeriodEnd = new Date();
     
     if (billingPeriod === 'yearly') {
@@ -87,15 +81,8 @@ export async function POST(request: NextRequest) {
     const { data: updatedSubscription, error: updateError } = await supabase
       .from('subscriptions')
       .update({
-        amount: newAmount,
         current_period_end: newPeriodEnd.toISOString(),
-        updated_at: new Date().toISOString(),
-        metadata: {
-          ...currentSubscription.metadata,
-          billing_period_changed_at: new Date().toISOString(),
-          previous_billing_period: currentSubscription.metadata?.billing_period || 'monthly',
-          current_billing_period: billingPeriod
-        }
+        updated_at: new Date().toISOString()
       })
       .eq('id', currentSubscription.id)
       .select('*, plan:plans(*)')
@@ -103,11 +90,27 @@ export async function POST(request: NextRequest) {
 
     if (updateError) throw updateError;
 
+    // Calcular nuevo precio según el ciclo de facturación
+    const newAmount = billingPeriod === 'yearly' ? 
+      currentSubscription.plan.price_usd_year : 
+      currentSubscription.plan.price_usd_month;
+
     // Calcular ahorro/costo adicional
     const currentMonthlyEquivalent = billingPeriod === 'yearly' ? 
       newAmount / 12 : newAmount;
-    const previousMonthlyEquivalent = billingPeriod === 'monthly' ? 
-      currentSubscription.plan.price_usd_year / 12 : currentSubscription.amount;
+    
+    // Determinar el precio anterior basado en el período actual
+    const currentPeriodStart = new Date(currentSubscription.current_period_start);
+    const currentPeriodEnd = new Date(currentSubscription.current_period_end);
+    const currentDiffMonths = (currentPeriodEnd.getFullYear() - currentPeriodStart.getFullYear()) * 12 + 
+      (currentPeriodEnd.getMonth() - currentPeriodStart.getMonth());
+    const wasYearly = currentDiffMonths >= 11;
+    
+    const previousAmount = wasYearly ? 
+      currentSubscription.plan.price_usd_year : 
+      currentSubscription.plan.price_usd_month;
+    const previousMonthlyEquivalent = wasYearly ? 
+      previousAmount / 12 : previousAmount;
     
     const monthlySavings = previousMonthlyEquivalent - currentMonthlyEquivalent;
     const annualSavings = monthlySavings * 12;

@@ -86,10 +86,7 @@ export async function POST(request: NextRequest) {
           current_period_end: nextPeriodEnd.toISOString(),
           trial_start: newPlan.trial_days > 0 ? now.toISOString() : null,
           trial_end: newPlan.trial_days > 0 ? 
-            new Date(now.getTime() + newPlan.trial_days * 24 * 60 * 60 * 1000).toISOString() : null,
-          amount: billingPeriod === 'yearly' ? newPlan.price_usd_year : newPlan.price_usd_month,
-          start_date: now.toISOString().split('T')[0],
-          end_date: nextPeriodEnd.toISOString().split('T')[0]
+            new Date(now.getTime() + newPlan.trial_days * 24 * 60 * 60 * 1000).toISOString() : null
         })
         .select()
         .single();
@@ -102,7 +99,6 @@ export async function POST(request: NextRequest) {
         .from('subscriptions')
         .update({
           plan_id: newPlan.id,
-          amount: billingPeriod === 'yearly' ? newPlan.price_usd_year : newPlan.price_usd_month,
           updated_at: now.toISOString()
         })
         .eq('id', currentSubscription.id)

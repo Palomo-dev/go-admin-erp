@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { roleService, Role, RoleWithPermissions, Permission } from '@/lib/services/roleService';
 import { permissionService, ModulePermissions } from '@/lib/services/permissionService';
 import { toast } from 'react-hot-toast';
+import { usePageVisibility } from './usePageVisibility';
 
 export interface UseRolesReturn {
   // Estados
@@ -28,14 +29,30 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
   const [roles, setRoles] = useState<RoleWithPermissions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { wasHidden } = usePageVisibility();
+  const lastLoadTime = useRef<number>(0);
+  const isInitialLoad = useRef(true);
 
   // Cargar roles
-  const loadRoles = useCallback(async () => {
+  const loadRoles = useCallback(async (forceReload = false) => {
     try {
+      // Si ya tenemos roles y la página vuelve del background, no recargar
+      if (roles.length > 0 && wasHidden && !forceReload && !isInitialLoad.current) {
+        return;
+      }
+
+      // Evitar cargas muy frecuentes (menos de 3 segundos)
+      const now = Date.now();
+      if (!forceReload && !isInitialLoad.current && (now - lastLoadTime.current) < 3000) {
+        return;
+      }
+
       setLoading(true);
       setError(null);
       const data = await roleService.getRoles(organizationId);
       setRoles(data);
+      lastLoadTime.current = now;
+      isInitialLoad.current = false;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar roles';
       setError(errorMessage);
@@ -43,7 +60,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
     } finally {
       setLoading(false);
     }
-  }, [organizationId]);
+  }, [organizationId, roles.length, wasHidden]);
 
   // Cargar roles al inicializar
   useEffect(() => {
@@ -61,7 +78,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       });
       
       toast.success('Rol creado exitosamente');
-      await loadRoles(); // Recargar lista
+      await loadRoles(true); // Recargar lista
       return newRole;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al crear rol';
@@ -77,7 +94,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       const updatedRole = await roleService.updateRole(roleId, roleData);
       
       toast.success('Rol actualizado exitosamente');
-      await loadRoles(); // Recargar lista
+      await loadRoles(true); // Recargar lista
       return updatedRole;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al actualizar rol';
@@ -93,7 +110,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       await roleService.deleteRole(roleId);
       
       toast.success('Rol eliminado exitosamente');
-      await loadRoles(); // Recargar lista
+      await loadRoles(true); // Recargar lista
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al eliminar rol';
@@ -109,7 +126,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       const clonedRole = await roleService.cloneRole(roleId, newName, organizationId);
       
       toast.success('Rol clonado exitosamente');
-      await loadRoles(); // Recargar lista
+      await loadRoles(true); // Recargar lista
       return clonedRole;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al clonar rol';
@@ -125,7 +142,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       await roleService.setRolePermissions(roleId, permissionIds);
       
       toast.success('Permisos actualizados exitosamente');
-      await loadRoles(); // Recargar lista para actualizar conteos
+      await loadRoles(true); // Recargar lista para actualizar conteos
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al actualizar permisos';
@@ -147,7 +164,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
 
   // Refrescar roles
   const refreshRoles = useCallback(async () => {
-    await loadRoles();
+    await loadRoles(true);
   }, [loadRoles]);
 
   // Obtener rol por ID

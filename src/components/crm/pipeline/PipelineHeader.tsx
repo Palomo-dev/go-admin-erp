@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/use-toast";
-import { PlusCircle, Loader2, Plus, Edit, SlidersHorizontal } from "lucide-react";
+import { Loader2, Plus, Edit, SlidersHorizontal } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -31,13 +31,11 @@ interface Pipeline {
 interface PipelineHeaderProps {
   currentPipelineId: string;
   onPipelineChange: (pipelineId: string) => void;
-  onNewOpportunity: () => void;
 }
 
 export default function PipelineHeader({ 
   currentPipelineId, 
-  onPipelineChange, 
-  onNewOpportunity 
+  onPipelineChange
 }: PipelineHeaderProps) {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [currentPipeline, setCurrentPipeline] = useState<Pipeline | null>(null);
@@ -377,17 +375,7 @@ export default function PipelineHeader({
           </DropdownMenu>
         </div>
       </div>
-      
-      <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
-        <Button 
-          onClick={onNewOpportunity} 
-          size="sm" 
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          <PlusCircle className="h-4 w-4 mr-1" />
-          Nueva Oportunidad
-        </Button>
-      </div>
+
       
       {/* Diálogo de creación de pipeline */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

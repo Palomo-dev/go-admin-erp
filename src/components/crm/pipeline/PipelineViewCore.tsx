@@ -11,7 +11,9 @@ import {
   PipelineTabContent, 
   useOrganizationId 
 } from "./views";
+import PipelineManager from "./PipelineManager";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface PipelineViewCoreProps {}
 
 /**
@@ -22,6 +24,7 @@ export default function PipelineViewCore({}: PipelineViewCoreProps) {
   const [currentPipelineId, setCurrentPipelineId] = useState<string>("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isNewOpportunityDialogOpen, setIsNewOpportunityDialogOpen] = useState(false);
+  const [isCreatePipelineDialogOpen, setIsCreatePipelineDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("kanban");
 
@@ -101,7 +104,6 @@ export default function PipelineViewCore({}: PipelineViewCoreProps) {
       {/* Header del Pipeline */}
       <PipelineHeader 
         currentPipelineId={currentPipelineId}
-        organizationId={organizationId}
         onPipelineChange={handlePipelineChange}
       />
       
@@ -110,6 +112,7 @@ export default function PipelineViewCore({}: PipelineViewCoreProps) {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onNewOpportunity={() => setIsNewOpportunityDialogOpen(true)}
+        onCreatePipeline={() => setIsCreatePipelineDialogOpen(true)}
       />
       
       {/* Contenido de las Pestañas */}
@@ -130,6 +133,19 @@ export default function PipelineViewCore({}: PipelineViewCoreProps) {
               pipelineId={currentPipelineId}
               organizationId={organizationId}
               onSuccess={handleNewOpportunitySuccess}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Crear Pipeline */}
+      <Dialog open={isCreatePipelineDialogOpen} onOpenChange={setIsCreatePipelineDialogOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          {organizationId && (
+            <PipelineManager 
+              organizationId={organizationId}
+              currentPipelineId={currentPipelineId}
+              onPipelineChange={handlePipelineChange}
             />
           )}
         </DialogContent>

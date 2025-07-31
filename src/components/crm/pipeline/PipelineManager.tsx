@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, Plus, Settings, Edit, Trash2, Target, Calendar } from "lucide-react";
+import { Loader2, Settings, Edit, Trash2, Target, Calendar } from "lucide-react";
 import { formatCurrency } from "@/utils/Utils";
 
 interface Pipeline {
@@ -98,12 +98,6 @@ export default function PipelineManager({
     setGoalAmount("");
     setGoalPeriod("monthly");
     setGoalCurrency("USD");
-  };
-
-  // Abrir diálogo de creación
-  const handleCreate = () => {
-    clearForm();
-    setIsCreateOpen(true);
   };
 
   // Abrir diálogo de edición
@@ -305,15 +299,11 @@ export default function PipelineManager({
 
   return (
     <div className="space-y-4">
-      {/* Header con botón para crear */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Gestión de Pipelines
         </h3>
-        <Button onClick={handleCreate} size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Crear Pipeline
-        </Button>
       </div>
 
       {/* Lista de pipelines */}

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { Permission } from './roleService';
+import { moduleManagementService } from './moduleManagementService';
 
 export interface ModulePermissions {
   module: string;
@@ -222,18 +223,12 @@ export const permissionService = {
   },
 
   /**
-   * Verificar si un usuario puede acceder a un módulo
+   * Verificar si un usuario puede acceder a un módulo (con verificación de plan)
    */
   async canAccessModule(userId: string, organizationId: number, moduleCode: string): Promise<boolean> {
-    // Primero verificar si el módulo está activo para la organización
-    const { data: orgModule, error: orgError } = await supabase
-      .from('organization_modules')
-      .select('is_active')
-      .eq('organization_id', organizationId)
-      .eq('module_code', moduleCode)
-      .single();
-    
-    if (orgError || !orgModule?.is_active) return false;
+    // Usar el servicio de gestión de módulos para verificar acceso
+    const canAccess = await moduleManagementService.canAccessModule(organizationId, moduleCode);
+    if (!canAccess) return false;
 
     // Obtener permisos del módulo
     const modulePermissions = await this.getModulePermissions(moduleCode);
@@ -345,5 +340,84 @@ export const permissionService = {
       permissionsByModule,
       mostUsedPermissions
     };
+  },
+
+  /**
+   * Obtener módulos activos con información de permisos para un usuario
+   */
+  async getUserModulesWithPermissions(userId: string, organizationId: number): Promise<Array<{
+    module: any;
+    hasAccess: boolean;
+    permissions: Permission[];
+  }>> {
+    const activeModules = await moduleManagementService.getActiveModules(organizationId);
+    const result = [];
+
+    for (const module of activeModules) {
+      const hasAccess = await this.canAccessModule(userId, organizationId, module.code);
+      const permissions = await this.getModulePermissions(module.code);
+      
+      result.push({
+        module,
+        hasAccess,
+        permissions
+      });
+    }
+
+    return result;
+  },
+
+  /**
+   * Verificar acceso a módulo con información detallada del plan
+   */
+  async checkModuleAccessWithPlanInfo(userId: string, organizationId: number, moduleCode: string): Promise<{
+    canAccess: boolean;
+    reason?: string;
+    planInfo?: any;
+    moduleInfo?: any;
+  }> {
+    try {
+      // Obtener información del estado de módulos de la organización
+      const orgStatus = await moduleManagementService.getOrganizationModuleStatus(organizationId);
+      
+      // Verificar si el módulo está disponible
+      const module = [...orgStatus.available_modules].find(m => m.code === moduleCode) || 
+                    orgStatus.active_modules.includes(moduleCode) ? 
+                    (await moduleManagementService.getAllModules()).find(m => m.code === moduleCode) : null;
+      
+      if (!module) {
+        return {
+          canAccess: false,
+          reason: 'Módulo no encontrado'
+        };
+      }
+
+      // Verificar si el módulo está activo
+      if (!orgStatus.active_modules.includes(moduleCode)) {
+        return {
+          canAccess: false,
+          reason: 'Módulo no activado para esta organización',
+          planInfo: orgStatus.plan,
+          moduleInfo: module
+        };
+      }
+
+      // Verificar permisos del usuario
+      const hasPermissions = await this.canAccessModule(userId, organizationId, moduleCode);
+      
+      return {
+        canAccess: hasPermissions,
+        reason: hasPermissions ? undefined : 'Usuario sin permisos suficientes',
+        planInfo: orgStatus.plan,
+        moduleInfo: module
+      };
+
+    } catch (error) {
+      console.error('Error checking module access:', error);
+      return {
+        canAccess: false,
+        reason: 'Error interno al verificar acceso'
+      };
+    }
   }
 };

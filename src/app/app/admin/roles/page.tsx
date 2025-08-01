@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
 import PermissionGuard from '@/components/auth/PermissionGuard';
 import RolesManagement from '@/components/admin/RolesManagement';
@@ -15,6 +15,32 @@ type TabType = 'roles' | 'assignments' | 'analytics';
 export default function RolesAdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>('roles');
   const { context, loading } = usePermissionContext();
+  const isVisibleRef = useRef(true);
+
+  // Handle window focus changes to prevent unnecessary re-renders
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isVisibleRef.current = !document.hidden;
+    };
+
+    const handleFocus = () => {
+      isVisibleRef.current = true;
+    };
+
+    const handleBlur = () => {
+      isVisibleRef.current = false;
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
 
   if (loading || !context) {
     return (

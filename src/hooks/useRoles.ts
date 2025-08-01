@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { roleService, Role, RoleWithPermissions, Permission } from '@/lib/services/roleService';
 import { permissionService, ModulePermissions } from '@/lib/services/permissionService';
 import { toast } from 'react-hot-toast';
@@ -28,10 +28,18 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
   const [roles, setRoles] = useState<RoleWithPermissions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cargar roles
   const loadRoles = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (loadingRef.current) {
+      return;
+    }
+
     try {
+      loadingRef.current = true;
       setLoading(true);
       setError(null);
       const data = await roleService.getRoles(organizationId);
@@ -42,14 +50,30 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       console.error('Error loading roles:', err);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, [organizationId]);
 
-  // Cargar roles al inicializar
+  // Cargar roles al inicializar con debounce
   useEffect(() => {
-    if (organizationId) {
-      loadRoles();
+    if (!organizationId) return;
+
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
+
+    // Debounce the loading to prevent rapid successive calls
+    timeoutRef.current = setTimeout(() => {
+      loadRoles();
+    }, 150);
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [organizationId, loadRoles]);
 
   // Crear rol

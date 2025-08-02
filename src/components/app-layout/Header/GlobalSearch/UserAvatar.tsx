@@ -57,12 +57,13 @@ export const UserAvatar = ({ name, avatarUrl, className = '', size = 'sm' }: Ava
   };
 
   // Si hay una URL de avatar, mostrar la imagen
-  const resolvedAvatarUrl = avatarUrl ? getAvatarUrl(avatarUrl) : null;
-  if (resolvedAvatarUrl) {
+  if (avatarUrl) {
+    const publicAvatarUrl = getAvatarUrl(avatarUrl);
+    
     return (
-      <div className={`relative ${className}`}>
+      <div className={`relative ${sizeClasses[size]} ${className}`}>
         <img 
-          src={resolvedAvatarUrl} 
+          src={publicAvatarUrl} 
           alt={`Avatar de ${name}`}
           className={`rounded-full object-cover ${sizeClasses[size]}`}
           onError={(e) => {
@@ -75,9 +76,13 @@ export const UserAvatar = ({ name, avatarUrl, className = '', size = 'sm' }: Ava
             }
           }}
         />
+        {/* Fallback avatar con iniciales */}
         <div 
-          className={`fallback-avatar hidden absolute inset-0 items-center justify-center rounded-full font-medium text-white ${sizeClasses[size]}`}
-          style={{ backgroundColor: getColor() }}
+          className={`fallback-avatar absolute inset-0 rounded-full flex items-center justify-center text-white font-medium ${sizeClasses[size]}`}
+          style={{ 
+            backgroundColor: getColor(),
+            display: 'none'
+          }}
         >
           {getInitials()}
         </div>

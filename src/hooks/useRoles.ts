@@ -29,24 +29,18 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
   const [roles, setRoles] = useState<RoleWithPermissions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { wasHidden } = usePageVisibility();
-  const lastLoadTime = useRef<number>(0);
-  const isInitialLoad = useRef(true);
+  const loadingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cargar roles
-  const loadRoles = useCallback(async (forceReload = false) => {
+  const loadRoles = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (loadingRef.current) {
+      return;
+    }
+
     try {
-      // Si ya tenemos roles y la página vuelve del background, no recargar
-      if (roles.length > 0 && wasHidden && !forceReload && !isInitialLoad.current) {
-        return;
-      }
-
-      // Evitar cargas muy frecuentes (menos de 3 segundos)
-      const now = Date.now();
-      if (!forceReload && !isInitialLoad.current && (now - lastLoadTime.current) < 3000) {
-        return;
-      }
-
+      loadingRef.current = true;
       setLoading(true);
       setError(null);
       const data = await roleService.getRoles(organizationId);
@@ -59,14 +53,30 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       console.error('Error loading roles:', err);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, [organizationId, roles.length, wasHidden]);
 
-  // Cargar roles al inicializar
+  // Cargar roles al inicializar con debounce
   useEffect(() => {
-    if (organizationId) {
-      loadRoles();
+    if (!organizationId) return;
+
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
+
+    // Debounce the loading to prevent rapid successive calls
+    timeoutRef.current = setTimeout(() => {
+      loadRoles();
+    }, 150);
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [organizationId, loadRoles]);
 
   // Crear rol

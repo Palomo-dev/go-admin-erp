@@ -5,7 +5,7 @@ import { Moon, Sun, Menu } from 'lucide-react';
 import UserMenu from '../ProfileDropdownMenu';
 import BranchSelectorWrapper from './BranchSelectorWrapper';
 import GlobalSearch from './GlobalSearch';
-import NotificationsMenu from './Notifications';
+import { NotificationsMenu } from './NotificationsMenu';
 
 export const AppHeader = ({
   theme,

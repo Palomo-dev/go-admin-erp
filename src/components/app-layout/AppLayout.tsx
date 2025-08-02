@@ -5,8 +5,10 @@ import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
 import { AppHeader } from './Header/AppHeader';
-import { SidebarNavigation } from './Sidebar/SidebarNavigation';
+import DynamicSidebar from '@/components/layout/DynamicSidebar';
+import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
 import { getOrganizationLogoUrl } from '@/lib/supabase/imageUtils';
+
 
 // Componente principal que organiza todo el layout de la aplicación
 export const AppLayout = ({
@@ -70,8 +72,10 @@ export const AppLayout = ({
           .single();
           
         if (profileError) {
-          console.error('Error al obtener perfil:', profileError);
-          throw profileError;
+          const errorMessage = profileError.message || profileError.details || 'Error desconocido al obtener perfil';
+          console.error('Error al obtener perfil:', errorMessage, profileError);
+          // No lanzar error, continuar con datos limitados
+          console.warn('Continuando sin datos de perfil completos');
         }
         
         // Verificar organización activa
@@ -90,21 +94,39 @@ export const AppLayout = ({
           .single();
           
         if (roleError) {
-          console.error('Error al obtener rol:', roleError);
+          const errorMessage = roleError.message || roleError.details || 'Error desconocido al obtener rol';
+          console.error('Error al obtener rol:', errorMessage, roleError);
           // Continuar aunque no tengamos el rol
         }
         
         // Actualizar el estado del userData
+        const userName = profileData?.full_name || 
+          (profileData?.first_name || profileData?.last_name ? 
+            `${profileData?.first_name || ''} ${profileData?.last_name || ''}`.trim() : 
+            user.email?.split('@')[0] || 'Usuario');
+            
         setUserData({
-          name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
-          email: user.email,
+          name: userName,
+          email: user.email || '',
           role: Array.isArray(userRoleData?.roles) && userRoleData.roles.length > 0 
             ? userRoleData.roles[0].name 
             : 'Usuario',
-          avatar: profileData?.avatar_url
+          avatar: profileData?.avatar_url || undefined
         });
       } catch (error) {
-        console.error('Error al cargar datos del perfil:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        console.error('Error al cargar datos del perfil:', errorMessage, error);
+        
+        // Establecer datos mínimos del usuario para evitar errores en la UI
+        const { isAuthenticated: isAuth, session } = await isAuthenticated();
+        if (isAuth && session?.user) {
+          setUserData({
+            name: session.user.email?.split('@')[0] || 'Usuario',
+            email: session.user.email || '',
+            role: 'Usuario',
+            avatar: undefined
+          });
+        }
       }
     }
     
@@ -301,13 +323,11 @@ export const AppLayout = ({
           )}
           
           {/* Navegación */}
-          <div className="flex-1 overflow-y-auto p-2">
-            <SidebarNavigation 
-              handleSignOut={handleSignOut} 
-              loading={loading} 
-              userData={userData} 
-              orgName={orgName} 
+          <div className="flex-1 overflow-y-auto">
+            <DynamicSidebar 
+              organizationId={orgId ? parseInt(orgId) : undefined}
               collapsed={sidebarCollapsed}
+              onSignOut={handleSignOut}
             />
           </div>
         </div>
@@ -331,6 +351,12 @@ export const AppLayout = ({
           {children}
         </div>
       </div>
+      
+      {/* Notificación de límites de módulos */}
+      <ModuleLimitNotification 
+        organizationId={orgId ? parseInt(orgId) : undefined}
+      />
+
     </div>
   );
 };

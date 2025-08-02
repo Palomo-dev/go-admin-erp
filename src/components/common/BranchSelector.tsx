@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, memo } from 'react';
 import { Building, ChevronDown } from 'lucide-react';
 import { Branch } from '@/types/branch';
 import { branchService } from '@/lib/services/branchService';
-import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, guardarOrganizacionActiva, invalidateBranchIdCache } from '@/lib/hooks/useOrganization';
 
 interface BranchSelectorProps {
   organizationId?: number;
@@ -84,6 +84,9 @@ const BranchSelector = memo(({ organizationId, className = '' }: BranchSelectorP
     try {
       if (branch.id) {
         localStorage.setItem('currentBranchId', branch.id.toString());
+        
+        // Invalidar caché de branch_id para que getCurrentBranchId obtenga el nuevo valor
+        invalidateBranchIdCache();
         
         // Asegurar que la organización también está guardada correctamente
         guardarOrganizacionActiva({ id: orgId });

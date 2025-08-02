@@ -70,7 +70,6 @@ export const createSupabaseClient = () => {
             // En el cliente, leer de localStorage como fallback y cookies
             const fromLocalStorage = localStorage.getItem(key);
             if (fromLocalStorage) {
-              console.log('💾 [STORAGE] Leído de localStorage:', key);
               return fromLocalStorage;
             }
             

@@ -115,11 +115,14 @@ export default function LoginPage() {
   };
 
   const onGoogleLogin = async () => {
+    console.log('Redirect to:', `${window.location.origin}/auth/callback`); 
     await handleGoogleLogin({
       setLoading,
       setError
     });
   };
+  
+
 
   const onMicrosoftLogin = async () => {
     await handleMicrosoftLogin({
@@ -448,9 +451,11 @@ export default function LoginPage() {
 
           <div className="mt-6 space-y-2">
             <button
+              type="button"
               onClick={onGoogleLogin}
               disabled={loading}
               className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 23 23">
                 <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z" />
@@ -461,6 +466,7 @@ export default function LoginPage() {
               Log in with Google
             </button>
             <button
+              type="button"
               onClick={onMicrosoftLogin}
               disabled={loading}
               className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"

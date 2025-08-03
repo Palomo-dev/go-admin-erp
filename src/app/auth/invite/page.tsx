@@ -2,62 +2,67 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { validateInvitation, createProfileFromInvitation } from '@/lib/supabase/config';
 import { supabase } from '@/lib/supabase/config';
-import Link from 'next/link';
-import InvitationForm, { InvitationFormData } from '@/components/auth/InvitationForm';
+import InvitationWizard from '@/components/auth/InvitationWizard';
 
 export default function InvitePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteCode = searchParams.get('code');
   
-  const [formError, setFormError] = useState<string | null>(null);
   const [inviteData, setInviteData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function checkInvitationAndSession() {
+    async function validateInvitationCode() {
       if (!inviteCode) {
         setError('Código de invitación no proporcionado');
         setIsLoading(false);
         return;
       }
       
+      // Ignorar errores de Supabase en la URL (son del flujo automático que no usamos)
+      // Limpiar la URL de parámetros de error para mejor UX
+      if (window.location.hash.includes('error=') || searchParams.get('error')) {
+        const cleanUrl = `${window.location.pathname}?code=${inviteCode}`;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+      
       try {
-        // Primero verificar si hay una sesión activa
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Usar función de base de datos que bypassa RLS
+        const { data: inviteData, error: inviteError } = await supabase
+          .rpc('validate_invitation_by_code', {
+            invitation_code: inviteCode
+          });
         
-        if (!session || !session.user) {
-          setError('No se encontró una sesión activa. El enlace de invitación debe confirmar automáticamente tu email. Por favor, intenta hacer clic en el enlace nuevamente.');
-          setIsLoading(false);
-          return;
-        }
-
-        // Validar la invitación
-        const { data, error } = await validateInvitation(inviteCode);
+        console.log('Resultado de validación:', { inviteData, inviteError });
         
-        if (error) {
-          setError(error.message);
-          setIsLoading(false);
-          return;
-        }
-        
-        if (!data) {
-          setError('La invitación no es válida o ha expirado');
-          setIsLoading(false);
-          return;
-        }
-
-        // Verificar que el email de la sesión coincida con el de la invitación
-        if (session.user.email?.toLowerCase() !== data.email.toLowerCase()) {
-          setError('El email de la sesión no coincide con el email de la invitación. Por favor, cierra sesión e intenta nuevamente.');
+        if (inviteError) {
+          console.error('Error validando invitación - Error:', inviteError);
+          setError(`Error al validar la invitación: ${inviteError.message}`);
           setIsLoading(false);
           return;
         }
         
-        setInviteData(data);
+        if (!inviteData || inviteData.length === 0) {
+          console.error('Error validando invitación - No se encontró invitación válida para código:', inviteCode);
+          setError('La invitación no es válida, ha expirado o ya fue utilizada');
+          setIsLoading(false);
+          return;
+        }
+        
+        const invitation = inviteData[0]; // La función devuelve un array
+        
+        setInviteData({
+          id: invitation.id,
+          email: invitation.email,
+          code: invitation.code,
+          role_id: invitation.role_id,
+          organization_id: invitation.organization_id,
+          organization_name: invitation.organization_name || 'Organización',
+          role_name: invitation.role_name || 'Usuario'
+        });
         setIsLoading(false);
       } catch (err) {
         console.error('Error al validar invitación:', err);
@@ -66,78 +71,24 @@ export default function InvitePage() {
       }
     }
 
-    checkInvitationAndSession();
+    validateInvitationCode();
   }, [inviteCode]);
-
-  const handleSubmit = async (formData: InvitationFormData) => {
-    setIsLoading(true);
-    setError(null);
-    setFormError(null);
-
-    try {
-      // Verificar sesión nuevamente antes de procesar
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session || !session.user) {
-        setError('Sesión expirada. Por favor, haz clic en el enlace del email nuevamente.');
-        setIsLoading(false);
-        return;
-      }
-
-      if (session.user.email?.toLowerCase() !== inviteData.email.toLowerCase()) {
-        setError('Error de validación de email. Por favor, intenta nuevamente.');
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('Procesando invitación para usuario autenticado:', session.user.id);
-      
-      // Crear/actualizar perfil con los datos del formulario
-      const { error } = await createProfileFromInvitation({
-        inviteCode: inviteCode!,
-        userData: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phoneNumber: formData.phoneNumber
-        },
-        authUserId: session.user.id,
-        password: formData.password
-      });
-
-      if (error) {
-        console.error('Error al procesar invitación:', error);
-        setError(error.message || 'Error al procesar la invitación');
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('Invitación procesada exitosamente');
-      
-      // Cerrar sesión para forzar un nuevo login con la contraseña actualizada
-      await supabase.auth.signOut();
-      
-      // Redirigir al login con mensaje de éxito
-      router.push('/auth/login?message=Registro completado correctamente. Inicia sesión con tu nueva contraseña.');
-
-    } catch (err: any) {
-      console.error('Error inesperado al procesar la invitación:', err);
-      setError(err.message || 'Error inesperado al procesar la invitación');
-      setIsLoading(false);
-    }
-  };
   
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Validando invitación...</p>
+        </div>
       </div>
     );
   }
   
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="bg-white shadow rounded-lg w-full max-w-md overflow-hidden">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
+        <div className="bg-white shadow-lg rounded-lg w-full max-w-md overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Error en la invitación</h2>
           </div>
@@ -175,15 +126,11 @@ export default function InvitePage() {
   }
   
   return (
-    <InvitationForm
-      inviteData={{
-        email: inviteData?.email || '',
-        organization_name: inviteData?.organization_name || '',
-        role_name: inviteData?.role_name || ''
+    <InvitationWizard
+      inviteData={inviteData}
+      onComplete={() => {
+        router.push('/auth/login?message=Registro completado correctamente. Inicia sesión con tu nueva contraseña.');
       }}
-      onSubmit={handleSubmit}
-      isLoading={isLoading}
-      error={error}
     />
   );
 }

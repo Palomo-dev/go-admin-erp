@@ -290,6 +290,7 @@ export const signInWithEmail = async (email: string, password: string) => {
 }
 
 export const signInWithGoogle = async () => {
+  console.log('Redirect to:', `${window.location.origin}/auth/callback`);
   return await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {

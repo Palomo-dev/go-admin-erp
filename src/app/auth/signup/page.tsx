@@ -170,6 +170,8 @@ export default function SignupPage() {
 
   // Avanzar al siguiente paso
   const nextStep = async () => {
+    console.log(`SignupPage: Avanzando del paso ${currentStep} al paso ${currentStep + 1}`);
+    
     if (currentStep === 1 && !isGoogleUser) {
       setLoading(true);
       setError(null);
@@ -190,7 +192,11 @@ export default function SignupPage() {
       setLoading(false);
     }
     
-    setCurrentStep((prev) => prev + 1);
+    setCurrentStep((prev) => {
+      const newStep = prev + 1;
+      console.log(`SignupPage: Paso actualizado a ${newStep}`);
+      return newStep;
+    });
   };
 
   // Retroceder al paso anterior

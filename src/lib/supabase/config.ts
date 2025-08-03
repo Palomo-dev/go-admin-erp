@@ -903,6 +903,7 @@ export const createProfileFromInvitation = async ({
         console.error('Error al actualizar contraseña:', passwordError);
         return { error: { message: 'Error al actualizar la contraseña: ' + passwordError.message } };
       }
+      console.log('Contraseña actualizada exitosamente');
     }
 
     // Actualizar perfil (el trigger ya creó el perfil básico)
@@ -913,13 +914,59 @@ export const createProfileFromInvitation = async ({
         last_name: userData.lastName || userData.last_name,
         phone: userData.phoneNumber || userData.phone,
         branch_id: branchId,
+        last_org_id: inviteData.organization_id,
         updated_at: new Date().toISOString()
       })
       .eq('id', authUserId);
     
     if (profileError) {
-      console.error('Error al crear perfil:', profileError);
+      console.error('Error al actualizar perfil:', profileError);
       return { error: profileError };
+    }
+    console.log('Perfil actualizado exitosamente');
+
+    // Verificar si ya existe la membresía en la organización
+    const { data: existingMembership } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('user_id', authUserId)
+      .eq('organization_id', inviteData.organization_id)
+      .single();
+
+    if (!existingMembership) {
+      // Crear membresía en la organización
+      const { error: membershipError } = await supabase
+        .from('organization_members')
+        .insert({
+          user_id: authUserId,
+          organization_id: inviteData.organization_id,
+          role_id: inviteData.role_id,
+          is_active: true,
+          joined_at: new Date().toISOString()
+        });
+
+      if (membershipError) {
+        console.error('Error al crear membresía:', membershipError);
+        return { error: { message: 'Error al crear la membresía en la organización: ' + membershipError.message } };
+      }
+      console.log('Membresía en organización creada exitosamente');
+    } else {
+      // Actualizar membresía existente
+      const { error: updateMembershipError } = await supabase
+        .from('organization_members')
+        .update({
+          role_id: inviteData.role_id,
+          is_active: true,
+          joined_at: new Date().toISOString()
+        })
+        .eq('user_id', authUserId)
+        .eq('organization_id', inviteData.organization_id);
+
+      if (updateMembershipError) {
+        console.error('Error al actualizar membresía:', updateMembershipError);
+        return { error: { message: 'Error al actualizar la membresía: ' + updateMembershipError.message } };
+      }
+      console.log('Membresía en organización actualizada exitosamente');
     }
 
     // Marcar la invitación como utilizada
@@ -935,8 +982,9 @@ export const createProfileFromInvitation = async ({
       console.error('Error al actualizar invitación:', updateInviteError);
       return { error: updateInviteError };
     }
+    console.log('Invitación marcada como utilizada');
     
-    console.log('Profile created successfully for existing auth user:', authUserId);
+    console.log('Proceso de invitación completado exitosamente para usuario:', authUserId);
     return { data: { user: { id: authUserId } }, error: null };
 
   } catch (error: any) {

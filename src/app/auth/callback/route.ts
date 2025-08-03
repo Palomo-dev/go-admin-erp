@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleGoogleCallback, type GoogleUser } from '@/lib/auth/googleAuth';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const token = requestUrl.searchParams.get('token');
   const error = requestUrl.searchParams.get('error');
   const errorDescription = requestUrl.searchParams.get('error_description');
-  const type = requestUrl.searchParams.get('type');
-  const accessToken = requestUrl.searchParams.get('access_token');
-  const refreshToken = requestUrl.searchParams.get('refresh_token');
   const next = requestUrl.searchParams.get('next') || '/app/inicio';
-  const completeSignup = requestUrl.searchParams.get('complete_signup') === 'true';
 
   // Crear cliente Supabase para server-side con manejo de cookies
   const cookieStore = await cookies();
@@ -49,14 +43,9 @@ export async function GET(request: NextRequest) {
 
   console.log('Callback received:', {
     code: code ? code.substring(0, 20) + '...' : null,
-    token: token ? token.substring(0, 20) + '...' : null,
     error,
     errorDescription,
-    type,
-    accessToken: accessToken ? accessToken.substring(0, 20) + '...' : null,
-    refreshToken: refreshToken ? refreshToken.substring(0, 20) + '...' : null,
-    next,
-    completeSignup
+    next
   });
 
   // Manejar errores de autenticación
@@ -67,219 +56,180 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Nota: La creación de datos de signup ahora se maneja automáticamente
-  // por el trigger de base de datos 'complete_signup_after_email_verification'
-  // que se ejecuta cuando el email es confirmado.
-
-  // Verificar si hay sesión activa primero (para complete_signup)
-  if (completeSignup) {
+  // Procesar código de confirmación (tanto OAuth como confirmación de email)
+  if (code) {
     try {
-      console.log('Complete signup requested, checking current session first...');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (session && session.user) {
-        console.log('Found active session for complete signup, user:', session.user.id);
-        
-        // El trigger de base de datos ya procesó los datos de signup
-        console.log('Active session found for complete signup, redirecting to app...');
-        return NextResponse.redirect(new URL('/app/inicio', request.url));
-      }
-    } catch (error: any) {
-      console.error('Error checking active session:', error);
-      // Continuar con el flujo normal si falla la verificación de sesión
-    }
-  }
-
-  // Procesar código de verificación de email (con complete_signup)
-  if (code && completeSignup) {
-    try {
-      console.log('Handling email verification code exchange for signup completion...');
+      console.log('Processing code exchange (OAuth or email confirmation)...');
       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       
       if (exchangeError) {
-        console.error('Email verification code exchange error:', exchangeError);
+        console.error('Code exchange error:', exchangeError);
         return NextResponse.redirect(
-          new URL('/auth/login?error=email-verification-failed&details=' + encodeURIComponent(exchangeError.message), request.url)
+          new URL('/auth/login?error=auth-failed&details=' + encodeURIComponent(exchangeError.message), request.url)
         );
       }
       
       if (data.session && data.user) {
         const user = data.user;
-        console.log('Email verification successful for user:', user.id);
+        console.log('Authentication successful for user:', user.id, 'Email:', user.email);
         
-        // Check if this user has a pending invitation
-        try {
-          const { data: invitation, error: inviteError } = await supabase
-            .from('invitations')
-            .select('code, organization_id, role_id, status')
-            .eq('email', user.email?.toLowerCase())
-            .eq('status', 'pending')
-            .single();
+        // Para OAuth (Google login), crear o actualizar perfil
+        if (user.app_metadata?.provider === 'google') {
+          console.log('Processing Google OAuth login...');
+          await createOrUpdateUserProfile(supabase, user);
           
-          if (!inviteError && invitation) {
-            console.log('User has pending invitation, redirecting to invitation acceptance:', invitation.code);
-            return NextResponse.redirect(
-              new URL(`/auth/invite?code=${invitation.code}`, request.url)
-            );
+          // Verificar si el usuario tiene una organización asignada
+          const hasOrganization = await checkUserOrganization(supabase, user.id);
+          
+          if (hasOrganization) {
+            console.log('Google user has organization, redirecting to app...');
+            return NextResponse.redirect(new URL(next, request.url));
+          } else {
+            console.log('Google user has no organization, redirecting to organization creation...');
+            return NextResponse.redirect(new URL('/auth/select-organization', request.url));
           }
-        } catch (error: any) {
-          console.log('No pending invitation found for user:', user.email);
+        } else {
+          // Para confirmación de email (signup normal), siempre redirigir al login
+          console.log('Email confirmation successful, redirecting to login...');
+          
+          // Cerrar la sesión para forzar login manual
+          await supabase.auth.signOut();
+          
+          return NextResponse.redirect(
+            new URL('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'), request.url)
+          );
         }
-        
-        // El trigger de base de datos ya procesó los datos de signup automáticamente
-        console.log('Email verification successful, trigger handled signup completion, redirecting to app...');
-        return NextResponse.redirect(new URL('/app/inicio', request.url));
       }
     } catch (error: any) {
-      console.error('Email verification error:', error);
+      console.error('Error processing auth callback:', error);
       return NextResponse.redirect(
-        new URL('/auth/login?error=email-verification-error&details=' + encodeURIComponent(error.message || 'Unknown error'), request.url)
+        new URL('/auth/login?error=callback-processing-failed', request.url)
       );
     }
   }
 
-  // Procesar código OAuth (para Google, etc.)
-  if (code && !type && !completeSignup) {
-    try {
-      console.log('Handling OAuth code exchange...');
-      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      
-      if (exchangeError) {
-        console.error('OAuth exchange error:', exchangeError);
-        return NextResponse.redirect(
-          new URL('/auth/login?error=auth-callback-failed&details=' + encodeURIComponent(exchangeError.message), request.url)
-        );
-      }
-
-      if (data.session) {
-        const user = data.session.user;
-        console.log('OAuth session established for user:', user.id);
-        
-        // Verificar si es un login con Google (OAuth)
-        const isGoogleAuth = user.app_metadata?.provider === 'google';
-        
-        if (isGoogleAuth) {
-          console.log('Handling Google OAuth callback for user:', user.id);
-          
-          // Verificar si el usuario ya tiene un perfil
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('id, first_name, last_name, last_org_id')
-            .eq('id', user.id)
-            .single();
-          
-          if (profileError || !profile) {
-            // Usuario de Google sin perfil, redirigir a paso 2 del signup
-            console.log('Google user without profile, redirecting to signup step 2');
-            return NextResponse.redirect(new URL('/auth/signup?step=2&google=true', request.url));
-          }
-          
-          // Usuario tiene perfil, verificar si tiene organizaciones
-          if (!profile.last_org_id) {
-            // Verificar organizaciones disponibles
-            const { data: memberData, error: memberError } = await supabase
-              .from('organization_members')
-              .select('organization_id')
-              .eq('user_id', user.id)
-              .eq('is_active', true);
-            
-            if (!memberError && memberData && memberData.length > 0) {
-              // Tiene organizaciones, redirigir a selección
-              return NextResponse.redirect(new URL('/auth/select-organization', request.url));
-            } else {
-              // No tiene organizaciones, redirigir a signup paso 2
-              return NextResponse.redirect(new URL('/auth/signup?step=2&google=true', request.url));
-            }
-          }
-        }
-
-        // Verificar si el usuario tiene perfil completo
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, last_org_id')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError || !profile) {
-          // Si no hay perfil, redirigir a completar registro
-          return NextResponse.redirect(new URL('/auth/signup?step=2', request.url));
-        }
-
-        // Redirigir a la página solicitada
-        return NextResponse.redirect(new URL(next, request.url));
-      } else {
-        // No hay sesión, posiblemente email no confirmado
-        return NextResponse.redirect(
-          new URL('/auth/login?message=email-not-confirmed', request.url)
-        );
-      }
-    } catch (error: any) {
-      console.error('OAuth callback error:', error);
-      return NextResponse.redirect(
-        new URL('/auth/login?error=callback-error&details=' + encodeURIComponent(error.message || 'Unknown error'), request.url)
-      );
-    }
-  }
-
-  // Manejar verificación de email con tokens directos
-  if (type === 'signup' && accessToken && refreshToken) {
-    try {
-      console.log('Handling email verification with tokens...');
-      
-      // Establecer la sesión con los tokens de verificación
-      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      });
-
-      if (sessionError) {
-        console.error('Email verification session error:', sessionError);
-        return NextResponse.redirect(
-          new URL('/auth/login?error=email-verification-failed', request.url)
-        );
-      }
-
-      if (sessionData.session && sessionData.user) {
-        const user = sessionData.user;
-        console.log('Email verification successful for user:', user.id);
-        
-        // Check if this user has a pending invitation
-        try {
-          const { data: invitation, error: inviteError } = await supabase
-            .from('invitations')
-            .select('code, organization_id, role_id, status')
-            .eq('email', user.email?.toLowerCase())
-            .eq('status', 'pending')
-            .single();
-          
-          if (!inviteError && invitation) {
-            console.log('User has pending invitation, redirecting to invitation acceptance:', invitation.code);
-            return NextResponse.redirect(
-              new URL(`/auth/invite?code=${invitation.code}`, request.url)
-            );
-          }
-        } catch (error: any) {
-          console.log('No pending invitation found for user:', user.email);
-        }
-        
-        // Si es completar signup, el trigger ya procesó los datos automáticamente
-        if (completeSignup) {
-          console.log('Email verification with tokens successful, trigger handled signup, redirecting to app...');
-          return NextResponse.redirect(new URL('/app/inicio', request.url));
-        }
-        
-        // Si no hay datos de signup, redirigir normalmente
-        return NextResponse.redirect(new URL(next, request.url));
-      }
-    } catch (error: any) {
-      console.error('Email verification error:', error);
-      return NextResponse.redirect(
-        new URL('/auth/login?error=email-verification-error', request.url)
-      );
-    }
-  }
-
-  // Si no hay código ni tokens, redirigir a login
-  console.log('No code or tokens found, redirecting to login');
+  // Fallback: si no hay código, redirigir al login
   return NextResponse.redirect(new URL('/auth/login', request.url));
+}
+
+// Función para crear o actualizar el perfil del usuario con datos de Google
+async function createOrUpdateUserProfile(supabase: any, user: any) {
+  try {
+    console.log('Creating/updating user profile for:', user.id);
+    
+    // Extraer datos de Google
+    const metadata = user.user_metadata || {};
+    const email = user.email;
+    const fullName = metadata.full_name || metadata.name || '';
+    const firstName = metadata.given_name || metadata.first_name || '';
+    const lastName = metadata.family_name || metadata.last_name || '';
+    const avatarUrl = metadata.avatar_url || metadata.picture || null;
+    
+    // Si no tenemos first_name y last_name, intentar dividir full_name
+    let finalFirstName = firstName;
+    let finalLastName = lastName;
+    
+    if (!firstName && !lastName && fullName) {
+      const nameParts = fullName.trim().split(' ');
+      finalFirstName = nameParts[0] || '';
+      finalLastName = nameParts.slice(1).join(' ') || '';
+    }
+    
+    // Si aún no tenemos nombres, usar el email como base
+    if (!finalFirstName && !finalLastName) {
+      finalFirstName = email?.split('@')[0] || 'Usuario';
+    }
+    
+    console.log('Extracted user data:', {
+      email,
+      firstName: finalFirstName,
+      lastName: finalLastName,
+      avatarUrl
+    });
+    
+    // Verificar si el perfil ya existe
+    const { data: existingProfile, error: profileCheckError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+    
+    if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+      console.error('Error checking existing profile:', profileCheckError);
+      throw profileCheckError;
+    }
+    
+    if (existingProfile) {
+      // Actualizar perfil existente
+      console.log('Updating existing profile...');
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          email,
+          first_name: finalFirstName,
+          last_name: finalLastName,
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+      
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+        throw updateError;
+      }
+      
+      console.log('Profile updated successfully');
+    } else {
+      // Crear nuevo perfil
+      console.log('Creating new profile...');
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email,
+          first_name: finalFirstName,
+          last_name: finalLastName,
+          avatar_url: avatarUrl,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      
+      if (insertError) {
+        console.error('Error creating profile:', insertError);
+        throw insertError;
+      }
+      
+      console.log('Profile created successfully');
+    }
+  } catch (error: any) {
+    console.error('Error in createOrUpdateUserProfile:', error);
+    // No lanzar error para no interrumpir el flujo de login
+  }
+}
+
+// Función para verificar si el usuario tiene una organización asignada
+async function checkUserOrganization(supabase: any, userId: string): Promise<boolean> {
+  try {
+    console.log('Checking user organization for:', userId);
+    
+    const { data: membership, error } = await supabase
+      .from('organization_members')
+      .select('id, organization_id')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error checking organization membership:', error);
+      return false;
+    }
+    
+    const hasOrganization = !!membership;
+    console.log('User has organization:', hasOrganization);
+    
+    return hasOrganization;
+  } catch (error: any) {
+    console.error('Error in checkUserOrganization:', error);
+    return false;
+  }
 }

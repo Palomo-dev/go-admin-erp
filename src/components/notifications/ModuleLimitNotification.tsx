@@ -47,13 +47,14 @@ export default function ModuleLimitNotification({
     onDismiss?.();
   };
 
-  if (loading || dismissed || !organizationStatus) {
+  if (loading || dismissed || !organizationStatus || !organizationStatus.plan) {
     return null;
   }
 
-  const activeModulesCount = organizationStatus.active_modules.length;
+  // Solo contar módulos pagados para el límite (excluir core)
+  const paidModulesCount = organizationStatus.paid_modules_count;
   const maxModules = organizationStatus.plan.max_modules;
-  const usagePercentage = (activeModulesCount / maxModules) * 100;
+  const usagePercentage = (paidModulesCount / maxModules) * 100;
   
   // Solo mostrar si está cerca del límite (80%) o lo ha alcanzado
   const shouldShow = usagePercentage >= 80;
@@ -62,7 +63,7 @@ export default function ModuleLimitNotification({
     return null;
   }
 
-  const isAtLimit = activeModulesCount >= maxModules;
+  const isAtLimit = paidModulesCount >= maxModules;
   const isNearLimit = usagePercentage >= 80 && !isAtLimit;
 
   return (
@@ -88,7 +89,7 @@ export default function ModuleLimitNotification({
                   {isAtLimit ? 'Límite de módulos alcanzado' : 'Cerca del límite de módulos'}
                 </span>
                 <Badge variant="outline" className="text-xs">
-                  {activeModulesCount}/{maxModules}
+                  {paidModulesCount}/{maxModules}
                 </Badge>
               </div>
               
@@ -102,7 +103,7 @@ export default function ModuleLimitNotification({
                   </>
                 ) : (
                   <>
-                    Estás usando {activeModulesCount} de {maxModules} módulos disponibles en tu plan{' '}
+                    Estás usando {paidModulesCount} de {maxModules} módulos disponibles en tu plan{' '}
                     <strong>{organizationStatus.plan.name}</strong>.
                   </>
                 )}
@@ -110,14 +111,25 @@ export default function ModuleLimitNotification({
 
               {showDetails && (
                 <div className="mt-3 p-3 bg-white/50 rounded border text-xs space-y-1">
-                  <div className="font-medium">Módulos activos:</div>
+                  <div className="font-medium">Módulos pagados activos:</div>
                   <div className="flex flex-wrap gap-1">
-                    {organizationStatus.active_modules.map(moduleCode => (
-                      <Badge key={moduleCode} variant="secondary" className="text-xs">
-                        {moduleCode}
-                      </Badge>
-                    ))}
+                    {organizationStatus.active_modules
+                      .filter(moduleCode => {
+                        // Filtrar solo módulos pagados (excluir core)
+                        const coreModules = ['organizations', 'subscriptions', 'branches', 'branding', 'roles'];
+                        return !coreModules.includes(moduleCode);
+                      })
+                      .map(moduleCode => (
+                        <Badge key={moduleCode} variant="secondary" className="text-xs">
+                          {moduleCode}
+                        </Badge>
+                      ))}
                   </div>
+                  {organizationStatus.active_modules.length > paidModulesCount && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      + {organizationStatus.active_modules.length - paidModulesCount} módulos core (no cuentan para el límite)
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -18,7 +18,7 @@ export default function InvitePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function checkInvitation() {
+    async function checkInvitationAndSession() {
       if (!inviteCode) {
         setError('Código de invitación no proporcionado');
         setIsLoading(false);
@@ -26,6 +26,16 @@ export default function InvitePage() {
       }
       
       try {
+        // Primero verificar si hay una sesión activa
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!session || !session.user) {
+          setError('No se encontró una sesión activa. El enlace de invitación debe confirmar automáticamente tu email. Por favor, intenta hacer clic en el enlace nuevamente.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Validar la invitación
         const { data, error } = await validateInvitation(inviteCode);
         
         if (error) {
@@ -39,6 +49,13 @@ export default function InvitePage() {
           setIsLoading(false);
           return;
         }
+
+        // Verificar que el email de la sesión coincida con el de la invitación
+        if (session.user.email?.toLowerCase() !== data.email.toLowerCase()) {
+          setError('El email de la sesión no coincide con el email de la invitación. Por favor, cierra sesión e intenta nuevamente.');
+          setIsLoading(false);
+          return;
+        }
         
         setInviteData(data);
         setIsLoading(false);
@@ -48,8 +65,8 @@ export default function InvitePage() {
         setIsLoading(false);
       }
     }
-    
-    checkInvitation();
+
+    checkInvitationAndSession();
   }, [inviteCode]);
 
   const handleSubmit = async (formData: InvitationFormData) => {
@@ -58,39 +75,49 @@ export default function InvitePage() {
     setFormError(null);
 
     try {
-      // Verificar si el usuario ya está autenticado (email confirmado)
+      // Verificar sesión nuevamente antes de procesar
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (session && session.user && session.user.email?.toLowerCase() === inviteData.email.toLowerCase()) {
-        // Usuario ya confirmado, crear perfil directamente
-        console.log('Usuario ya confirmado, creando perfil directamente');
-        
-        const { error } = await createProfileFromInvitation({
-          inviteCode: inviteCode!,
-          userData: {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            phoneNumber: formData.phoneNumber
-          },
-          authUserId: session.user.id,
-          password: formData.password
-        });
-
-        if (error) {
-          console.error('Error al crear perfil:', error);
-          setError(error.message || 'Error al crear el perfil');
-          setIsLoading(false);
-          return;
-        }
-
-        // Redirigir al login con mensaje de éxito
-        router.push('/auth/login?message=Registro completado correctamente. Inicia sesión para continuar.');
+      if (!session || !session.user) {
+        setError('Sesión expirada. Por favor, haz clic en el enlace del email nuevamente.');
+        setIsLoading(false);
         return;
       }
 
-      // Si no hay sesión activa, significa que algo salió mal
-      setError('No se encontró una sesión activa. Por favor, haz clic en el enlace del email nuevamente.');
-      setIsLoading(false);
+      if (session.user.email?.toLowerCase() !== inviteData.email.toLowerCase()) {
+        setError('Error de validación de email. Por favor, intenta nuevamente.');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Procesando invitación para usuario autenticado:', session.user.id);
+      
+      // Crear/actualizar perfil con los datos del formulario
+      const { error } = await createProfileFromInvitation({
+        inviteCode: inviteCode!,
+        userData: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phoneNumber: formData.phoneNumber
+        },
+        authUserId: session.user.id,
+        password: formData.password
+      });
+
+      if (error) {
+        console.error('Error al procesar invitación:', error);
+        setError(error.message || 'Error al procesar la invitación');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Invitación procesada exitosamente');
+      
+      // Cerrar sesión para forzar un nuevo login con la contraseña actualizada
+      await supabase.auth.signOut();
+      
+      // Redirigir al login con mensaje de éxito
+      router.push('/auth/login?message=Registro completado correctamente. Inicia sesión con tu nueva contraseña.');
 
     } catch (err: any) {
       console.error('Error inesperado al procesar la invitación:', err);
@@ -128,7 +155,13 @@ export default function InvitePage() {
               </div>
             </div>
           </div>
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 space-y-2">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Reintentar
+            </button>
             <button 
               onClick={() => router.push('/auth/login')} 
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"

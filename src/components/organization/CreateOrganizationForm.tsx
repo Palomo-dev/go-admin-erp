@@ -45,8 +45,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     address: '',
     city: '',
     state: '', 
-    country: '',
-    countryCode: '',
+    country: 'Colombia',
+    countryCode: 'COL',
     postalCode: '',
     taxId: '',
     nit: '', 
@@ -122,7 +122,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
         errors.email = 'Ingrese un correo electrónico válido';
       }
-      if (!formData.taxId.trim()) errors.taxId = 'El NIT/RUT es requerido';
+      // En modo signup, el taxId es opcional ya que se puede completar después
+      if (!isSignupMode && !formData.taxId.trim()) {
+        errors.taxId = 'El NIT/RUT es requerido';
+      }
     }
     
     setFormErrors(errors);
@@ -174,6 +177,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
       if (isSignupMode) {
         // In signup flow, just pass data to parent component
+        console.log('Signup mode: Pasando datos de organización al componente padre');
         onSuccess(organizationData);
       } else {
         // In standalone mode, create organization directly in database

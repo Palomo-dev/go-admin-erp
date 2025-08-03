@@ -41,10 +41,11 @@ export const roleService = {
       .from('roles')
       .select(`
         *,
-        role_permissions!inner(permission_id),
+        role_permissions(permission_id),
         organization_members(id)
       `)
-      .or(`organization_id.eq.${organizationId},is_system.eq.true`)
+      .or(`organization_id.eq.${organizationId},id.in.(2,3,4,5,22)`)
+      .neq('id', 1) // Excluir Super Admin
       .order('is_system', { ascending: false })
       .order('name', { ascending: true });
     

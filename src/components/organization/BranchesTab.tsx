@@ -5,6 +5,7 @@ import { BranchForm } from '@/components/branches/BranchForm';
 import { AssignManagerModal } from '@/components/branches/AssignManagerModal';
 import BranchesMap from '@/components/maps/BranchesMap';
 import BranchMapModal from '@/components/maps/BranchMapModal';
+import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import dynamic from 'next/dynamic';
 
 // Cargar el mapa dinámicamente para evitar problemas de SSR
@@ -447,10 +448,10 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                       <div className="text-sm">
                         {(branch as any).manager ? (
                           <div className="flex items-center">
-                            {(branch as any).manager.avatar_url ? (
+                            {(branch as any).manager.avatar_url && getAvatarUrl((branch as any).manager.avatar_url) ? (
                               <img
                                 className="flex-shrink-0 h-8 w-8 rounded-full"
-                                src={(branch as any).manager.avatar_url}
+                                src={getAvatarUrl((branch as any).manager.avatar_url)}
                                 alt=""
                               />
                             ) : (

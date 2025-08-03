@@ -14,7 +14,7 @@ export default function AdminPage() {
   // Redirigir a la página de roles por defecto
   useEffect(() => {
     if (!loading && context) {
-      router.push('/app/admin/roles');
+      router.push('/app/roles/roles');
     }
   }, [loading, context, router]);
 
@@ -48,7 +48,7 @@ export default function AdminPage() {
             
             <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
               <div 
-                onClick={() => router.push('/app/admin/roles')}
+                onClick={() => router.push('/app/roles/roles')}
                 className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
               >
                 <div className="flex items-center">
@@ -65,7 +65,7 @@ export default function AdminPage() {
               </div>
               
               <div 
-                onClick={() => router.push('/app/admin/configuracion')}
+                onClick={() => router.push('/app/roles/configuracion')}
                 className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
               >
                 <div className="flex items-center">

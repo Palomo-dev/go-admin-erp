@@ -40,7 +40,6 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
   const [userId, setUserId] = useState<string | null>(null);
   
   // Hook para recordatorios de tareas
-  console.log('🏢 [NotificationsMenu] OrganizationId recibido:', organizationId);
   const { taskReminders, loading: taskRemindersLoading } = useTaskReminders(organizationId);
   
   useEffect(() => {

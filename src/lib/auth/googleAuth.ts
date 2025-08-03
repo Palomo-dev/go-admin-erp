@@ -118,10 +118,11 @@ export const handleGoogleLogin = async ({
     const redirectTo = currentUrl.includes('/auth/login') 
       ? `${window.location.origin}/auth/callback?next=/app/inicio`
       : `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentUrl)}`;
+
+    console.log('Redirect to:', redirectTo);
     
     // Iniciar flujo OAuth con Google
     const { error } = await signInWithGoogle();
-    
     if (error) {
       throw error;
     }

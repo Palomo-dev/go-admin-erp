@@ -30,6 +30,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useActiveModules } from '@/hooks/useActiveModules';
+import { useModuleContext } from '@/lib/context/ModuleContext';
 import { moduleManagementService, type Module } from '@/lib/services/moduleManagementService';
 
 const moduleIcons: Record<string, React.ComponentType<any>> = {
@@ -66,6 +67,8 @@ export default function ModulesMarketplacePage() {
     refreshModules,
     loading: modulesLoading
   } = useActiveModules(organizationId || undefined);
+
+  const moduleContext = useModuleContext();
 
   // Obtener organizationId del localStorage
   useEffect(() => {
@@ -125,8 +128,11 @@ export default function ModulesMarketplacePage() {
         return;
       }
 
-      // Refrescar datos
+      // Refrescar datos locales
       await refreshModules();
+      
+      // Notificar a otros componentes (como el sidebar) que los módulos han cambiado
+      moduleContext.refreshModules();
 
     } catch (err) {
       console.error('Error toggling module:', err);

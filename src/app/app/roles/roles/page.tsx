@@ -5,12 +5,13 @@ import { usePermissionContext } from '@/hooks/usePermissionContext';
 import PermissionGuard from '@/components/auth/PermissionGuard';
 import RolesManagement from '@/components/admin/RolesManagement';
 import RoleAssignment from '@/components/admin/RoleAssignment';
-import { Shield, Users, Settings, BarChart3 } from 'lucide-react';
+import PermissionsManagement from '@/components/admin/PermissionsManagement';
+import { Shield, Users, Settings, BarChart3, Key } from 'lucide-react';
 import { PERMISSIONS, MODULES } from '@/lib/middleware/permissions';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'react-hot-toast';
 
-type TabType = 'roles' | 'assignments' | 'analytics';
+type TabType = 'roles' | 'assignments' | 'permissions' | 'analytics';
 
 export default function RolesAdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>('roles');
@@ -65,6 +66,12 @@ export default function RolesAdminPage() {
       name: 'Asignación de Roles',
       icon: Users,
       description: 'Asignar roles a los miembros de la organización'
+    },
+    {
+      id: 'permissions' as TabType,
+      name: 'Gestión de Permisos',
+      icon: Key,
+      description: 'Gestionar permisos individuales y por módulo'
     },
     {
       id: 'analytics' as TabType,
@@ -139,6 +146,10 @@ export default function RolesAdminPage() {
           
           {activeTab === 'assignments' && (
             <RoleAssignment organizationId={context.organizationId} />
+          )}
+          
+          {activeTab === 'permissions' && (
+            <PermissionsManagement organizationId={context.organizationId} />
           )}
           
           {activeTab === 'analytics' && (

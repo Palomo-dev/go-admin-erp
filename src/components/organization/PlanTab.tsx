@@ -258,6 +258,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
 
   const currentPlan = subscription?.plans || availablePlans.find(p => p.code === 'free');
   const activeModules = organizationModules.filter(om => om.is_active);
+  // Módulos activos que NO son core (estos sí cuentan para los límites del plan)
+  const activePaidModules = organizationModules.filter(om => om.is_active && !om.modules.is_core);
   const availableModules = allModules.filter(m => 
     !organizationModules.some(om => om.module_code === m.code)
   );
@@ -432,12 +434,15 @@ export default function PlanTab({ orgId }: PlanTabProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {activeModules.length}
+                  {activePaidModules.length}
                   <span className="text-sm text-gray-500">
                     /{currentPlan.max_modules || '∞'}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Módulos activos</p>
+                <p className="text-sm text-gray-500 mt-1">Módulos pagados activos</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  ({activeModules.length} total incluyendo core)
+                </p>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">

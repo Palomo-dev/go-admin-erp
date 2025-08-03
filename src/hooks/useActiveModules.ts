@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { moduleManagementService, type Module, type OrganizationModuleStatus } from '@/lib/services/moduleManagementService';
 import { permissionService } from '@/lib/services/permissionService';
 import { useSession } from '@/lib/context/SessionContext';
+import { useModuleContext } from '@/lib/context/ModuleContext';
 
 interface UseActiveModulesReturn {
   activeModules: Module[];
@@ -25,6 +26,9 @@ export function useActiveModules(organizationId?: number): UseActiveModulesRetur
   
   const { session } = useSession();
   const user = session?.user;
+  
+  // Integración con contexto de módulos para refresh automático
+  const moduleContext = useModuleContext();
   
   // TODO: Implementar context de organización - por ahora usar organizationId requerido
   const currentOrgId = organizationId;
@@ -102,6 +106,16 @@ export function useActiveModules(organizationId?: number): UseActiveModulesRetur
   const refreshModules = useCallback(async () => {
     await loadModules();
   }, [loadModules]);
+
+  // Registrar callback de refresh con el contexto de módulos
+  useEffect(() => {
+    if (moduleContext) {
+      moduleContext.registerRefreshCallback(refreshModules);
+      return () => {
+        moduleContext.unregisterRefreshCallback(refreshModules);
+      };
+    }
+  }, [moduleContext, refreshModules]);
 
   return {
     activeModules,

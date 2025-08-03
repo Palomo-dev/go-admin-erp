@@ -31,6 +31,11 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
   const [error, setError] = useState<string | null>(null);
   const loadingRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLoadTime = useRef<number>(0);
+  const isInitialLoad = useRef(true);
+  
+  // Hook para detectar visibilidad de la página
+  const { isVisible, wasHidden } = usePageVisibility();
 
   // Cargar roles
   const loadRoles = useCallback(async () => {
@@ -39,6 +44,8 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       return;
     }
 
+    const now = Date.now();
+    
     try {
       loadingRef.current = true;
       setLoading(true);
@@ -55,7 +62,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       setLoading(false);
       loadingRef.current = false;
     }
-  }, [organizationId, roles.length, wasHidden]);
+  }, [organizationId, wasHidden]);
 
   // Cargar roles al inicializar con debounce
   useEffect(() => {
@@ -88,7 +95,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       });
       
       toast.success('Rol creado exitosamente');
-      await loadRoles(true); // Recargar lista
+      await loadRoles(); // Recargar lista
       return newRole;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al crear rol';
@@ -104,7 +111,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       const updatedRole = await roleService.updateRole(roleId, roleData);
       
       toast.success('Rol actualizado exitosamente');
-      await loadRoles(true); // Recargar lista
+      await loadRoles(); // Recargar lista
       return updatedRole;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al actualizar rol';
@@ -120,7 +127,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       await roleService.deleteRole(roleId);
       
       toast.success('Rol eliminado exitosamente');
-      await loadRoles(true); // Recargar lista
+      await loadRoles(); // Recargar lista
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al eliminar rol';
@@ -136,7 +143,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       const clonedRole = await roleService.cloneRole(roleId, newName, organizationId);
       
       toast.success('Rol clonado exitosamente');
-      await loadRoles(true); // Recargar lista
+      await loadRoles(); // Recargar lista
       return clonedRole;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al clonar rol';
@@ -152,7 +159,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
       await roleService.setRolePermissions(roleId, permissionIds);
       
       toast.success('Permisos actualizados exitosamente');
-      await loadRoles(true); // Recargar lista para actualizar conteos
+      await loadRoles(); // Recargar lista para actualizar conteos
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al actualizar permisos';
@@ -174,7 +181,7 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
 
   // Refrescar roles
   const refreshRoles = useCallback(async () => {
-    await loadRoles(true);
+    await loadRoles();
   }, [loadRoles]);
 
   // Obtener rol por ID

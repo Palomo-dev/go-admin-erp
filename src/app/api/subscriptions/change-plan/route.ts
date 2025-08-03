@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/config';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
+    // Crear cliente de Supabase con cookies para autenticación del servidor
+    const supabase = createRouteHandlerClient({ cookies });
+    
     // Verificar autenticación
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -121,7 +125,7 @@ export async function POST(request: NextRequest) {
     if (orgUpdateError) throw orgUpdateError;
 
     // Gestionar módulos según el nuevo plan
-    await updateOrganizationModules(organizationId, newPlan);
+    await updateOrganizationModules(organizationId, newPlan, supabase);
 
     // Determinar el tipo de cambio
     let changeType = 'change';
@@ -165,7 +169,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Función auxiliar para actualizar módulos según el plan
-async function updateOrganizationModules(organizationId: number, newPlan: any) {
+async function updateOrganizationModules(organizationId: number, newPlan: any, supabase: any) {
   try {
     // Obtener todos los módulos
     const { data: allModules, error: modulesError } = await supabase
@@ -185,8 +189,8 @@ async function updateOrganizationModules(organizationId: number, newPlan: any) {
     if (currentError) throw currentError;
 
     // Determinar qué módulos debería tener según el nuevo plan
-    const coreModules = allModules.filter(m => m.is_core);
-    const optionalModules = allModules.filter(m => !m.is_core);
+    const coreModules = allModules.filter((m: any) => m.is_core);
+    const optionalModules = allModules.filter((m: any) => !m.is_core);
     
     // Los módulos core siempre están disponibles
     let allowedModules = [...coreModules];
@@ -203,9 +207,9 @@ async function updateOrganizationModules(organizationId: number, newPlan: any) {
     }
 
     // Desactivar módulos que ya no están permitidos
-    const allowedCodes = allowedModules.map(m => m.code);
+    const allowedCodes = allowedModules.map((m: any) => m.code);
     const modulesToDisable = currentOrgModules.filter(
-      om => !allowedCodes.includes(om.module_code) && om.is_active
+      (om: any) => !allowedCodes.includes(om.module_code) && om.is_active
     );
 
     for (const moduleToDisable of modulesToDisable) {
@@ -219,8 +223,8 @@ async function updateOrganizationModules(organizationId: number, newPlan: any) {
     }
 
     // Activar módulos que ahora están permitidos
-    const currentCodes = currentOrgModules.map(om => om.module_code);
-    const modulesToAdd = allowedModules.filter(m => !currentCodes.includes(m.code));
+    const currentCodes = currentOrgModules.map((om: any) => om.module_code);
+    const modulesToAdd = allowedModules.filter((m: any) => !currentCodes.includes(m.code));
 
     for (const moduleToAdd of modulesToAdd) {
       await supabase
@@ -235,7 +239,7 @@ async function updateOrganizationModules(organizationId: number, newPlan: any) {
 
     // Reactivar módulos que estaban desactivados pero ahora están permitidos
     const modulesToReactivate = currentOrgModules.filter(
-      om => allowedCodes.includes(om.module_code) && !om.is_active
+      (om: any) => allowedCodes.includes(om.module_code) && !om.is_active
     );
 
     for (const moduleToReactivate of modulesToReactivate) {

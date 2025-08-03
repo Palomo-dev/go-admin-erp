@@ -4,10 +4,12 @@ import { Menu, ChevronsLeft, ChevronsRight, Building2 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
+import { getUserData } from '@/lib/services/userService';
 import { AppHeader } from './Header/AppHeader';
 import DynamicSidebar from '@/components/layout/DynamicSidebar';
 import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
 import { getOrganizationLogoUrl } from '@/lib/supabase/imageUtils';
+import { ModuleProvider } from '@/lib/context/ModuleContext';
 
 
 // Componente principal que organiza todo el layout de la aplicación
@@ -64,20 +66,6 @@ export const AppLayout = ({
         
         const user = session.user;
         
-        // Obtener datos del perfil
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-          
-        if (profileError) {
-          const errorMessage = profileError.message || profileError.details || 'Error desconocido al obtener perfil';
-          console.error('Error al obtener perfil:', errorMessage, profileError);
-          // No lanzar error, continuar con datos limitados
-          console.warn('Continuando sin datos de perfil completos');
-        }
-        
         // Verificar organización activa
         const currentOrgId = localStorage.getItem('currentOrganizationId');
         if (!currentOrgId) {
@@ -85,34 +73,21 @@ export const AppLayout = ({
           return;
         }
         
-        // Obtener rol del usuario
-        const { data: userRoleData, error: roleError } = await supabase
-          .from('organization_members')
-          .select('role_id, roles!inner(id, name)')
-          .eq('user_id', user.id)
-          .eq('organization_id', currentOrgId)
-          .single();
-          
-        if (roleError) {
-          const errorMessage = roleError.message || roleError.details || 'Error desconocido al obtener rol';
-          console.error('Error al obtener rol:', errorMessage, roleError);
-          // Continuar aunque no tengamos el rol
-        }
+        // Usar la nueva función getUserData que maneja todo en una sola consulta
+        const userData = await getUserData(user.id, parseInt(currentOrgId, 10));
         
-        // Actualizar el estado del userData
-        const userName = profileData?.full_name || 
-          (profileData?.first_name || profileData?.last_name ? 
-            `${profileData?.first_name || ''} ${profileData?.last_name || ''}`.trim() : 
-            user.email?.split('@')[0] || 'Usuario');
-            
-        setUserData({
-          name: userName,
-          email: user.email || '',
-          role: Array.isArray(userRoleData?.roles) && userRoleData.roles.length > 0 
-            ? userRoleData.roles[0].name 
-            : 'Usuario',
-          avatar: profileData?.avatar_url || undefined
-        });
+        if (userData) {
+          setUserData(userData);
+        } else {
+          // Si no se pudo obtener los datos completos, usar datos básicos
+          console.warn('No se pudieron obtener datos completos del usuario, usando datos básicos');
+          setUserData({
+            name: user.email?.split('@')[0] || 'Usuario',
+            email: user.email || '',
+            role: 'Usuario',
+            avatar: undefined
+          });
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
         console.error('Error al cargar datos del perfil:', errorMessage, error);
@@ -235,7 +210,8 @@ export const AppLayout = ({
   };
   
   return (
-    <div className="flex h-screen">
+    <ModuleProvider>
+      <div className="flex h-screen">
       {/* Sidebar - con versión móvil que se muestra/oculta */}
       <div className={`
         fixed lg:static inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'lg:w-20' : 'w-64'} 
@@ -357,6 +333,7 @@ export const AppLayout = ({
         organizationId={orgId ? parseInt(orgId) : undefined}
       />
 
-    </div>
+      </div>
+    </ModuleProvider>
   );
 };

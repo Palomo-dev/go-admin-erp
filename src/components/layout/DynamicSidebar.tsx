@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -29,7 +29,15 @@ import {
   Activity,
   Crown,
   Lock,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  Shield,
+  Info,
+  UserPlus,
+  CreditCard,
+  Grid3X3
 } from 'lucide-react';
 import { useActiveModules } from '@/hooks/useActiveModules';
 
@@ -37,15 +45,16 @@ const moduleIcons: Record<string, React.ComponentType<any>> = {
   'organizations': Building2,
   'branding': Palette,
   'branches': MapPin,
-  'pos_retail': ShoppingCart,
-  'pos_restaurant': ShoppingCart,
-  'pos_gym': ShoppingCart,
+  'clientes': Users,
+  'roles': Shield,
+  'subscriptions': CreditCard,
+  'pos': ShoppingCart,
   'inventory': Package,
-  'pms_hotel': Landmark,
+  'pms_hotel': Bed,
   'parking': Car,
   'crm': UserCheck,
   'hrm': Users,
-  'finance': BarChart3,
+  'finance': Landmark,
   'reports': BarChart3,
   'notifications': Bell,
   'integrations': LinkIcon,
@@ -58,9 +67,10 @@ const moduleRoutes: Record<string, string> = {
   'organizations': '/app/organizacion',
   'branding': '/app/branding',
   'branches': '/app/sucursales',
-  'pos_retail': '/app/pos',
-  'pos_restaurant': '/app/pos',
-  'pos_gym': '/app/pos',
+  'clientes': '/app/clientes',
+  'roles': '/app/roles',
+  'subscriptions': '/app/plan',
+  'pos': '/app/pos',
   'inventory': '/app/inventario',
   'pms_hotel': '/app/pms',
   'parking': '/app/pms/parking',
@@ -75,6 +85,78 @@ const moduleRoutes: Record<string, string> = {
   'operations': '/app/timeline'
 };
 
+// Subrutas para módulos (core y pagados)
+const moduleSubroutes: Record<string, Array<{name: string, path: string, icon: React.ComponentType<any>}>> = {
+  'organizations': [
+    { name: 'Información', path: '/app/organizacion/informacion', icon: Info },
+    { name: 'Miembros', path: '/app/organizacion/miembros', icon: Users },
+    { name: 'Invitaciones', path: '/app/organizacion/invitaciones', icon: UserPlus },
+    { name: 'Mis Organizaciones', path: '/app/organizacion/mis-organizaciones', icon: Building2 },
+    { name: 'Módulos', path: '/app/organizacion/modulos', icon: Grid3X3 }
+  ],
+  'subscriptions': [
+    { name: 'Plan Actual', path: '/app/plan', icon: CreditCard },
+    { name: 'Historial', path: '/app/plan/historial', icon: Calendar }
+  ],
+  'branches': [
+    { name: 'Sucursales', path: '/app/sucursales', icon: MapPin },
+    { name: 'Configuración', path: '/app/sucursales/configuracion', icon: Settings },
+    { name: 'Empleados', path: '/app/sucursales/empleados', icon: Users }
+  ],
+  'roles': [
+    { name: 'Roles', path: '/app/roles', icon: Shield },
+    { name: 'Configuración', path: '/app/roles/configuracion', icon: Settings },
+    { name: 'Roles', path: '/app/roles/roles', icon: Shield }
+  ],
+  'clientes': [
+    { name: 'Clientes', path: '/app/clientes', icon: Users },
+    { name: 'Contactos', path: '/app/clientes/contactos', icon: Users },
+    { name: 'Grupos', path: '/app/clientes/grupos', icon: Users },
+    { name: 'Historial', path: '/app/clientes/historial', icon: Calendar }
+  ],
+  'pos': [
+    { name: 'Punto de Venta', path: '/app/pos', icon: ShoppingCart },
+    { name: 'Cajas', path: '/app/pos/cajas', icon: Package },
+    { name: 'Carritos', path: '/app/pos/carritos', icon: ShoppingCart },
+    { name: 'Configuración', path: '/app/pos/configuracion', icon: Settings },
+    { name: 'Cuentas por Cobrar', path: '/app/pos/cuentas-por-cobrar', icon: BarChart3 },
+    { name: 'Devoluciones', path: '/app/pos/devoluciones', icon: BarChart3 },
+    { name: 'Mesas', path: '/app/pos/mesas', icon: Grid3X3 },
+    { name: 'Pagos Pendientes', path: '/app/pos/pagos-pendientes', icon: BarChart3 },
+    { name: 'Reportes', path: '/app/pos/reportes', icon: BarChart3 }
+  ],
+  'inventory': [
+    { name: 'Inventario', path: '/app/inventario', icon: Package },
+    { name: 'Categorías', path: '/app/inventario/categorias', icon: Grid3X3 },
+    { name: 'Productos', path: '/app/inventario/productos', icon: Package },
+    { name: 'Proveedores', path: '/app/inventario/proveedores', icon: Users }
+  ],
+  'pms_hotel': [
+    { name: 'Reservas', path: '/app/pms', icon: Landmark },
+    { name: 'Habitaciones', path: '/app/pms/habitaciones', icon: Building2 },
+    { name: 'Huéspedes', path: '/app/pms/huespedes', icon: Users },
+    { name: 'Parking', path: '/app/pms/parking', icon: Car }
+  ],
+  'crm': [
+    { name: 'CRM', path: '/app/crm', icon: UserCheck },
+    { name: 'Actividades', path: '/app/crm/actividades', icon: Activity },
+    { name: 'Clientes', path: '/app/crm/clientes', icon: Users },
+    { name: 'Pipeline', path: '/app/crm/pipeline', icon: BarChart3 },
+    { name: 'Tareas', path: '/app/crm/tareas', icon: Calendar }
+  ],
+  'hrm': [
+    { name: 'Recursos Humanos', path: '/app/hrm', icon: Users }
+  ],
+  'finance': [
+    { name: 'Finanzas', path: '/app/finanzas', icon: BarChart3 },
+    { name: 'Cuentas por Cobrar', path: '/app/finanzas/cuentas-por-cobrar', icon: BarChart3 },
+    { name: 'Facturas de Venta', path: '/app/finanzas/facturas-venta', icon: BarChart3 },
+    { name: 'Impuestos', path: '/app/finanzas/impuestos', icon: BarChart3 },
+    { name: 'Métodos de Pago', path: '/app/finanzas/metodos-pago', icon: CreditCard },
+    { name: 'Monedas', path: '/app/finanzas/monedas', icon: BarChart3 }
+  ]
+};
+
 interface DynamicSidebarProps {
   organizationId?: number;
   collapsed?: boolean;
@@ -83,6 +165,7 @@ interface DynamicSidebarProps {
 
 export default function DynamicSidebar({ organizationId, collapsed = false, onSignOut }: DynamicSidebarProps) {
   const pathname = usePathname();
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const { 
     activeModules, 
     organizationStatus, 
@@ -91,13 +174,52 @@ export default function DynamicSidebar({ organizationId, collapsed = false, onSi
     error 
   } = useActiveModules(organizationId);
 
+  // Expandir automáticamente módulos que tienen subrutas definidas y están activos
+  React.useEffect(() => {
+    const modulesToExpand = new Set<string>();
+    
+    activeModules.forEach(module => {
+      // Solo expandir si el módulo tiene subrutas definidas en moduleSubroutes
+      if (moduleSubroutes[module.code] && moduleSubroutes[module.code].length > 0) {
+        modulesToExpand.add(module.code);
+      }
+    });
+    
+    setExpandedModules(modulesToExpand);
+  }, [activeModules]);
+
+  const toggleModule = (moduleCode: string) => {
+    if (collapsed) return;
+    const newExpanded = new Set(expandedModules);
+    if (newExpanded.has(moduleCode)) {
+      newExpanded.delete(moduleCode);
+    } else {
+      newExpanded.add(moduleCode);
+    }
+    setExpandedModules(newExpanded);
+  };
+
+  // Función mejorada para verificar acceso que siempre permite módulos core
+  const canAccessModuleEnhanced = (moduleCode: string): boolean => {
+    // Los módulos core siempre son accesibles
+    const module = activeModules.find(m => m.code === moduleCode);
+    if (module?.is_core) {
+      return true;
+    }
+    
+    // Para módulos pagados, usar la función original
+    return canAccessModule(moduleCode);
+  };
+
   const renderModuleItem = (module: any) => {
     const Icon = moduleIcons[module.code] || Package;
     const route = moduleRoutes[module.code];
     const isActive = pathname.startsWith(route);
-    const hasAccess = canAccessModule(module.code);
+    const hasAccess = canAccessModuleEnhanced(module.code);
+    const hasSubroutes = moduleSubroutes[module.code] && moduleSubroutes[module.code].length > 0;
+    const isExpanded = expandedModules.has(module.code);
 
-    const content = (
+    const moduleContent = (
       <div className={cn(
         "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
         collapsed ? "justify-center" : "",
@@ -114,12 +236,30 @@ export default function DynamicSidebar({ organizationId, collapsed = false, onSi
         {!collapsed && (
           <div className="flex items-center justify-between flex-1">
             <span className="font-medium">{module.name}</span>
-            {module.is_core && (
-              <Crown className="h-3 w-3 text-yellow-500" />
-            )}
-            {!hasAccess && (
-              <Lock className="h-3 w-3 text-gray-400" />
-            )}
+            <div className="flex items-center gap-1">
+              {module.is_core && (
+                <Crown className="h-3 w-3 text-yellow-500" />
+              )}
+              {!hasAccess && (
+                <Lock className="h-3 w-3 text-gray-400" />
+              )}
+              {hasSubroutes && hasAccess && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleModule(module.code);
+                  }}
+                  className="p-1 hover:bg-gray-200 rounded"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -127,34 +267,74 @@ export default function DynamicSidebar({ organizationId, collapsed = false, onSi
 
     if (!hasAccess || !route) {
       return (
-        <TooltipProvider key={module.code}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>{content}</div>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {!hasAccess ? "Sin permisos de acceso" : "Ruta no disponible"}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div key={module.code}>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>{moduleContent}</div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {!hasAccess ? "Sin permisos de acceso" : "Ruta no disponible"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       );
     }
 
     return (
-      <TooltipProvider key={module.code}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link href={route}>
-              {content}
-            </Link>
-          </TooltipTrigger>
-          {collapsed && (
-            <TooltipContent side="right">
-              {module.name}
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
+      <div key={module.code}>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {hasSubroutes ? (
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => toggleModule(module.code)}
+                >
+                  {moduleContent}
+                </div>
+              ) : (
+                <Link href={route}>
+                  {moduleContent}
+                </Link>
+              )}
+            </TooltipTrigger>
+            {collapsed && (
+              <TooltipContent side="right">
+                {module.name}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+        
+        {/* Subrutas */}
+        {hasSubroutes && isExpanded && !collapsed && hasAccess && (
+          <div className="ml-6 mt-1 space-y-1">
+            {moduleSubroutes[module.code].map((subroute) => {
+              const SubIcon = subroute.icon;
+              const isSubActive = pathname === subroute.path;
+              
+              return (
+                <Link key={subroute.path} href={subroute.path}>
+                  <div className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm",
+                    isSubActive 
+                      ? "bg-blue-50 text-blue-700 border-l-2 border-blue-500" 
+                      : "hover:bg-gray-50 text-gray-600"
+                  )}>
+                    <SubIcon className={cn(
+                      "h-4 w-4",
+                      isSubActive ? "text-blue-600" : "text-gray-500"
+                    )} />
+                    <span>{subroute.name}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
     );
   };
 

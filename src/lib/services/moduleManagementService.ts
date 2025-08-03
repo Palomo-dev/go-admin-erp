@@ -55,8 +55,8 @@ export const moduleManagementService = {
   /**
    * Obtener todos los módulos disponibles
    */
-  async getAllModules(): Promise<Module[]> {
-    const { data, error } = await supabase
+  async getAllModules(supabaseClient = supabase): Promise<Module[]> {
+    const { data, error } = await supabaseClient
       .from('modules')
       .select('*')
       .order('rank', { ascending: true });
@@ -68,8 +68,8 @@ export const moduleManagementService = {
   /**
    * Obtener módulos core (no cuentan para límites del plan)
    */
-  async getCoreModules(): Promise<Module[]> {
-    const { data, error } = await supabase
+  async getCoreModules(supabaseClient = supabase): Promise<Module[]> {
+    const { data, error } = await supabaseClient
       .from('modules')
       .select('*')
       .eq('is_core', true)
@@ -82,8 +82,8 @@ export const moduleManagementService = {
   /**
    * Obtener módulos pagados (cuentan para límites del plan)
    */
-  async getPaidModules(): Promise<Module[]> {
-    const { data, error } = await supabase
+  async getPaidModules(supabaseClient = supabase): Promise<Module[]> {
+    const { data, error } = await supabaseClient
       .from('modules')
       .select('*')
       .eq('is_core', false)
@@ -96,44 +96,47 @@ export const moduleManagementService = {
   /**
    * Obtener el estado de módulos de una organización
    */
-  async getOrganizationModuleStatus(organizationId: number): Promise<OrganizationModuleStatus> {
-    // Obtener información de la organización y su plan
-    const { data: orgData, error: orgError } = await supabase
+  async getOrganizationModuleStatus(organizationId: number, supabaseClient = supabase): Promise<OrganizationModuleStatus> {
+    // Obtener información de la organización
+    const { data: orgData, error: orgError } = await supabaseClient
       .from('organizations')
-      .select(`
-        id,
-        name,
-        subscriptions!inner(
-          plan_id,
-          plans!inner(*)
-        )
-      `)
+      .select('id, name')
       .eq('id', organizationId)
       .single();
 
-    if (orgError && orgError.code !== 'PGRST116') {
+    if (orgError) {
       throw orgError;
     }
 
-    // Si no hay suscripción, usar plan gratuito por defecto
-    let plan: Plan | null = null;
-    if (orgData?.subscriptions?.plans) {
-      plan = orgData.subscriptions.plans;
-    } else {
-      // Obtener plan gratuito por defecto
-      const { data: freePlan, error: planError } = await supabase
-        .from('plans')
-        .select('*')
-        .eq('code', 'free')
-        .single();
-      
-      if (!planError) {
-        plan = freePlan;
-      }
+    // Usar la función get_current_plan para obtener el plan actual
+    const { data: planData, error: planError } = await supabaseClient
+      .rpc('get_current_plan', { org_id: organizationId });
+
+    if (planError) {
+      throw planError;
     }
 
+    // Extraer el plan de la respuesta de la función
+    const planInfo = planData?.[0];
+    if (!planInfo) {
+      throw new Error('No se pudo obtener el plan actual de la organización');
+    }
+
+    const plan: Plan = {
+      id: planInfo.plan_id,
+      code: planInfo.plan_code,
+      name: planInfo.plan_name,
+      price_usd_month: planInfo.price_usd_month,
+      price_usd_year: planInfo.price_usd_year,
+      trial_days: planInfo.trial_days,
+      max_modules: planInfo.max_modules,
+      max_branches: planInfo.max_branches,
+      features: planInfo.features,
+      is_active: true
+    };
+
     // Obtener módulos activos de la organización
-    const { data: activeModules, error: activeError } = await supabase
+    const { data: activeModules, error: activeError } = await supabaseClient
       .from('organization_modules')
       .select(`
         module_code,
@@ -146,7 +149,7 @@ export const moduleManagementService = {
     if (activeError) throw activeError;
 
     // Obtener todos los módulos disponibles
-    const allModules = await this.getAllModules();
+    const allModules = await this.getAllModules(supabaseClient);
     const coreModules = allModules.filter(m => m.is_core);
     const paidModules = allModules.filter(m => !m.is_core);
 
@@ -179,18 +182,59 @@ export const moduleManagementService = {
   },
 
   /**
+   * Debug function to test module queries
+   */
+  async debugModuleQuery(moduleCode: string, supabaseClient = supabase) {
+    console.log(`DEBUG: Testing module query for ${moduleCode}`);
+    
+    // Test 1: Get all modules
+    const { data: allModules, error: allError } = await supabaseClient
+      .from('modules')
+      .select('*');
+    
+    console.log('DEBUG: All modules query:', { count: allModules?.length, error: allError });
+    
+    // Test 2: Get specific module
+    const { data: specificModule, error: specificError } = await supabaseClient
+      .from('modules')
+      .select('*')
+      .eq('code', moduleCode);
+    
+    console.log('DEBUG: Specific module query:', { data: specificModule, error: specificError });
+    
+    // Test 3: Get specific module with single()
+    const { data: singleModule, error: singleError } = await supabaseClient
+      .from('modules')
+      .select('*')
+      .eq('code', moduleCode)
+      .single();
+    
+    console.log('DEBUG: Single module query:', { data: singleModule, error: singleError });
+    
+    return { allModules, specificModule, singleModule };
+  },
+
+  /**
    * Activar un módulo para una organización
    */
-  async activateModule(organizationId: number, moduleCode: string): Promise<ModuleActivationResult> {
+  async activateModule(organizationId: number, moduleCode: string, supabaseClient = supabase): Promise<ModuleActivationResult> {
     try {
+      console.log(`moduleManagementService.activateModule - Starting for org ${organizationId}, module ${moduleCode}`);
+      
+      // Debug: Test module queries
+      await this.debugModuleQuery(moduleCode, supabaseClient);
+      
       // Verificar que el módulo existe
-      const { data: module, error: moduleError } = await supabase
+      const { data: module, error: moduleError } = await supabaseClient
         .from('modules')
         .select('*')
         .eq('code', moduleCode)
         .single();
 
+      console.log(`moduleManagementService.activateModule - Module query result:`, { module, moduleError });
+
       if (moduleError || !module) {
+        console.log(`moduleManagementService.activateModule - Module not found: ${moduleCode}`);
         return {
           success: false,
           message: 'Módulo no encontrado'
@@ -198,10 +242,13 @@ export const moduleManagementService = {
       }
 
       // Obtener estado actual de la organización
-      const orgStatus = await this.getOrganizationModuleStatus(organizationId);
+      console.log(`moduleManagementService.activateModule - Getting org status for ${organizationId}`);
+      const orgStatus = await this.getOrganizationModuleStatus(organizationId, supabaseClient);
+      console.log(`moduleManagementService.activateModule - Org status:`, orgStatus);
 
       // Verificar si el módulo ya está activo
       if (orgStatus.active_modules.includes(moduleCode)) {
+        console.log(`moduleManagementService.activateModule - Module ${moduleCode} already active`);
         return {
           success: false,
           message: 'El módulo ya está activo'
@@ -210,35 +257,44 @@ export const moduleManagementService = {
 
       // Si es un módulo pagado, verificar límites del plan
       if (!module.is_core) {
+        console.log(`moduleManagementService.activateModule - Checking limits for paid module. Can activate more: ${orgStatus.can_activate_more}`);
         if (!orgStatus.can_activate_more) {
+          console.log(`moduleManagementService.activateModule - Module limit reached`);
           return {
             success: false,
             message: `Has alcanzado el límite de módulos de tu plan (${orgStatus.max_modules_allowed}). Actualiza tu plan para activar más módulos.`
           };
         }
+      } else {
+        console.log(`moduleManagementService.activateModule - Core module, no limits apply`);
       }
 
       // Activar el módulo
-      const { error: activationError } = await supabase
+      console.log(`moduleManagementService.activateModule - Activating module in database`);
+      const { error: activationError } = await supabaseClient
         .from('organization_modules')
         .upsert({
           organization_id: organizationId,
           module_code: moduleCode,
           is_active: true,
-          activated_at: new Date().toISOString()
+          enabled_at: new Date().toISOString(),
+          disabled_at: null
         }, {
           onConflict: 'organization_id,module_code'
         });
 
       if (activationError) {
+        console.log(`moduleManagementService.activateModule - Database error:`, activationError);
         throw activationError;
       }
 
       // Si es un módulo core, asegurar que los permisos básicos estén disponibles
       if (module.is_core) {
-        await this.ensureCoreModulePermissions(organizationId, moduleCode);
+        console.log(`moduleManagementService.activateModule - Ensuring core module permissions`);
+        await this.ensureCoreModulePermissions(organizationId, moduleCode, supabaseClient);
       }
 
+      console.log(`moduleManagementService.activateModule - Module ${moduleCode} activated successfully`);
       return {
         success: true,
         message: `Módulo ${module.name} activado exitosamente`,
@@ -257,10 +313,10 @@ export const moduleManagementService = {
   /**
    * Desactivar un módulo para una organización
    */
-  async deactivateModule(organizationId: number, moduleCode: string): Promise<ModuleActivationResult> {
+  async deactivateModule(organizationId: number, moduleCode: string, supabaseClient = supabase): Promise<ModuleActivationResult> {
     try {
       // Verificar que el módulo existe
-      const { data: module, error: moduleError } = await supabase
+      const { data: module, error: moduleError } = await supabaseClient
         .from('modules')
         .select('*')
         .eq('code', moduleCode)
@@ -282,7 +338,7 @@ export const moduleManagementService = {
       }
 
       // Verificar que el módulo está activo
-      const orgStatus = await this.getOrganizationModuleStatus(organizationId);
+      const orgStatus = await this.getOrganizationModuleStatus(organizationId, supabaseClient);
       if (!orgStatus.active_modules.includes(moduleCode)) {
         return {
           success: false,
@@ -291,11 +347,11 @@ export const moduleManagementService = {
       }
 
       // Desactivar el módulo
-      const { error: deactivationError } = await supabase
+      const { error: deactivationError } = await supabaseClient
         .from('organization_modules')
         .update({
           is_active: false,
-          deactivated_at: new Date().toISOString()
+          disabled_at: new Date().toISOString()
         })
         .eq('organization_id', organizationId)
         .eq('module_code', moduleCode);
@@ -322,17 +378,18 @@ export const moduleManagementService = {
   /**
    * Asegurar que los módulos core estén activados para una organización
    */
-  async ensureCoreModulesActivated(organizationId: number): Promise<void> {
-    const coreModules = await this.getCoreModules();
+  async ensureCoreModulesActivated(organizationId: number, supabaseClient = supabase): Promise<void> {
+    const coreModules = await this.getCoreModules(supabaseClient);
     
     for (const module of coreModules) {
-      await supabase
+      await supabaseClient
         .from('organization_modules')
         .upsert({
           organization_id: organizationId,
           module_code: module.code,
           is_active: true,
-          activated_at: new Date().toISOString()
+          enabled_at: new Date().toISOString(),
+          disabled_at: null
         }, {
           onConflict: 'organization_id,module_code'
         });
@@ -342,7 +399,7 @@ export const moduleManagementService = {
   /**
    * Asegurar permisos básicos para módulos core
    */
-  async ensureCoreModulePermissions(organizationId: number, moduleCode: string): Promise<void> {
+  async ensureCoreModulePermissions(organizationId: number, moduleCode: string, supabaseClient = supabase): Promise<void> {
     // Esta función se puede expandir para asegurar permisos específicos por módulo core
     // Por ahora, es un placeholder para futuras implementaciones
     console.log(`Ensuring core permissions for module ${moduleCode} in organization ${organizationId}`);
@@ -351,8 +408,8 @@ export const moduleManagementService = {
   /**
    * Verificar si una organización puede acceder a un módulo específico
    */
-  async canAccessModule(organizationId: number, moduleCode: string): Promise<boolean> {
-    const { data, error } = await supabase
+  async canAccessModule(organizationId: number, moduleCode: string, supabaseClient = supabase): Promise<boolean> {
+    const { data, error } = await supabaseClient
       .from('organization_modules')
       .select('is_active')
       .eq('organization_id', organizationId)
@@ -366,9 +423,20 @@ export const moduleManagementService = {
 
   /**
    * Obtener módulos activos de una organización
+   * Los módulos core siempre están incluidos independientemente de su estado de activación
    */
-  async getActiveModules(organizationId: number): Promise<Module[]> {
-    const { data, error } = await supabase
+  async getActiveModules(organizationId: number, supabaseClient = supabase): Promise<Module[]> {
+    // Primero obtener todos los módulos core
+    const { data: coreModules, error: coreError } = await supabaseClient
+      .from('modules')
+      .select('*')
+      .eq('is_core', true)
+      .eq('is_active', true);
+
+    if (coreError) throw coreError;
+
+    // Luego obtener módulos pagados activos
+    const { data: activeModules, error: activeError } = await supabaseClient
       .from('organization_modules')
       .select(`
         module_code,
@@ -377,15 +445,23 @@ export const moduleManagementService = {
       .eq('organization_id', organizationId)
       .eq('is_active', true);
 
-    if (error) throw error;
+    if (activeError) throw activeError;
+
+    const paidModules = activeModules?.map(item => item.modules).filter(Boolean) || [];
     
-    return data?.map(item => item.modules).filter(Boolean) || [];
+    // Combinar módulos core y pagados, evitando duplicados
+    const allModules = [...(coreModules || []), ...paidModules];
+    const uniqueModules = allModules.filter((module, index, self) => 
+      index === self.findIndex(m => m.code === module.code)
+    );
+    
+    return uniqueModules;
   },
 
   /**
    * Auditar y corregir inconsistencias en módulos de organizaciones
    */
-  async auditOrganizationModules(): Promise<{
+  async auditOrganizationModules(supabaseClient = supabase): Promise<{
     organizationsWithoutSubscriptions: number[];
     organizationsExceedingLimits: Array<{
       organizationId: number;
@@ -395,7 +471,7 @@ export const moduleManagementService = {
     organizationsWithoutCoreModules: number[];
   }> {
     // Organizaciones sin suscripciones
-    const { data: orgsWithoutSubs, error: subsError } = await supabase
+    const { data: orgsWithoutSubs, error: subsError } = await supabaseClient
       .from('organizations')
       .select(`
         id,
@@ -406,7 +482,7 @@ export const moduleManagementService = {
     if (subsError) throw subsError;
 
     // Organizaciones que exceden límites
-    const { data: orgsWithLimits, error: limitsError } = await supabase
+    const { data: orgsWithLimits, error: limitsError } = await supabaseClient
       .from('organizations')
       .select(`
         id,
@@ -428,20 +504,31 @@ export const moduleManagementService = {
       maxAllowed: number;
     }> = [];
 
-    orgsWithLimits?.forEach(org => {
-      const maxModules = org.subscriptions?.plans?.max_modules || 0;
-      const paidModules = org.organization_modules?.filter(om => 
-        !om.modules?.is_core
-      ).length || 0;
+    // Verificar límites usando la función get_current_plan para cada organización
+    if (orgsWithLimits) {
+      for (const org of orgsWithLimits) {
+        try {
+          const { data: planData } = await supabaseClient
+            .rpc('get_current_plan', { org_id: org.id });
+          
+          const planInfo = planData?.[0];
+          const maxModules = planInfo?.max_modules || 0;
+          const paidModules = org.organization_modules?.filter(om => 
+            om.modules && !om.modules.is_core
+          ).length || 0;
 
-      if (paidModules > maxModules) {
-        organizationsExceedingLimits.push({
-          organizationId: org.id,
-          currentModules: paidModules,
-          maxAllowed: maxModules
-        });
+          if (paidModules > maxModules) {
+            organizationsExceedingLimits.push({
+              organizationId: org.id,
+              currentModules: paidModules,
+              maxAllowed: maxModules
+            });
+          }
+        } catch (error) {
+          console.error(`Error checking limits for org ${org.id}:`, error);
+        }
       }
-    });
+    }
 
     return {
       organizationsWithoutSubscriptions: orgsWithoutSubs?.map(o => o.id) || [],
@@ -453,24 +540,24 @@ export const moduleManagementService = {
   /**
    * Corregir inconsistencias detectadas en la auditoría
    */
-  async fixInconsistencies(organizationId: number): Promise<ModuleActivationResult> {
+  async fixInconsistencies(organizationId: number, supabaseClient = supabase): Promise<ModuleActivationResult> {
     try {
       // 1. Asegurar que tenga una suscripción (plan gratuito por defecto)
-      const { data: existingSub } = await supabase
+      const { data: existingSub } = await supabaseClient
         .from('subscriptions')
         .select('id')
         .eq('organization_id', organizationId)
         .single();
 
       if (!existingSub) {
-        const { data: freePlan } = await supabase
+        const { data: freePlan } = await supabaseClient
           .from('plans')
           .select('id')
           .eq('code', 'free')
           .single();
 
         if (freePlan) {
-          await supabase
+          await supabaseClient
             .from('subscriptions')
             .insert({
               organization_id: organizationId,
@@ -482,13 +569,13 @@ export const moduleManagementService = {
       }
 
       // 2. Asegurar módulos core activados
-      await this.ensureCoreModulesActivated(organizationId);
+      await this.ensureCoreModulesActivated(organizationId, supabaseClient);
 
       // 3. Verificar y corregir límites de módulos pagados
-      const orgStatus = await this.getOrganizationModuleStatus(organizationId);
+      const orgStatus = await this.getOrganizationModuleStatus(organizationId, supabaseClient);
       if (orgStatus.paid_modules_count > orgStatus.max_modules_allowed) {
         // Desactivar módulos pagados excedentes (mantener los más antiguos)
-        const { data: paidActiveModules } = await supabase
+        const { data: paidActiveModules } = await supabaseClient
           .from('organization_modules')
           .select(`
             module_code,
@@ -503,7 +590,7 @@ export const moduleManagementService = {
         if (paidActiveModules) {
           const excessModules = paidActiveModules.slice(orgStatus.max_modules_allowed);
           for (const module of excessModules) {
-            await this.deactivateModule(organizationId, module.module_code);
+            await this.deactivateModule(organizationId, module.module_code, supabaseClient);
           }
         }
       }

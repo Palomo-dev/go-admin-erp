@@ -41,7 +41,9 @@ export function SupplierSelector({
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const organizationId = getOrganizationId();
+  
+  // Memoizar organizationId para evitar recalculations
+  const organizationId = useMemo(() => getOrganizationId(), []);
   const proveedoresRef = useRef(proveedores);
   const [newSupplier, setNewSupplier] = useState({
     name: '',
@@ -53,27 +55,39 @@ export function SupplierSelector({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-  // Mantener referencia actualizada de proveedores
-  proveedoresRef.current = proveedores;
+  // Mantener referencia actualizada de proveedores solo cuando cambien
+  useEffect(() => {
+    proveedoresRef.current = proveedores;
+  }, [proveedores]);
   
-  // Usar useMemo para filteredSuppliers iniciales
-  const [filteredSuppliers, setFilteredSuppliers] = useState<SupplierBase[]>(() => proveedores || []);
+  // Estado para los resultados de búsqueda externa
+  const [searchResults, setSearchResults] = useState<SupplierBase[]>([]);
+  
+  // Memoizar proveedores mostrados con dependencias específicas
+  const displayedSuppliers = useMemo(() => {
+    // Si hay término de búsqueda y resultados, mostrar resultados de búsqueda
+    if (searchTerm.trim() !== '' && searchResults.length > 0) {
+      return searchResults;
+    }
+    
+    // Si no hay búsqueda, mostrar proveedores originales
+    return proveedores || [];
+  }, [searchTerm, searchResults, proveedores]);
 
-  // Efecto para actualizar filteredSuppliers cuando cambian los proveedores SOLO si no hay búsqueda activa
+  // Efecto para limpiar resultados de búsqueda cuando no hay término
   useEffect(() => {
     if (searchTerm.trim() === '') {
-      setFilteredSuppliers(proveedoresRef.current || []);
+      setSearchResults([]);
     }
-  }, [proveedores, searchTerm]);
+  }, [searchTerm]);
 
   // Efecto para búsqueda de proveedores con debounce
   useEffect(() => {
     const searchSuppliers = async () => {
       if (!organizationId) return;
       
-      // Si no hay término de búsqueda, mostramos los proveedores originales
+      // Si no hay término de búsqueda, no hacer nada (se maneja en el otro useEffect)
       if (searchTerm.trim() === '') {
-        setFilteredSuppliers(proveedores || []);
         return;
       }
       
@@ -103,16 +117,16 @@ export function SupplierSelector({
           notes: supplier.notes
         }));
         
-        setFilteredSuppliers(suppliersFormateados);
+        setSearchResults(suppliersFormateados);
       } catch (error) {
         console.error('Error al buscar proveedores:', error);
         // En caso de error, mostramos los proveedores originales filtrados localmente
-        const filtered = (proveedores || []).filter(proveedor => 
+        const filtered = (proveedoresRef.current || []).filter(proveedor => 
           proveedor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (proveedor.nit && proveedor.nit.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (proveedor.contact && proveedor.contact.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-        setFilteredSuppliers(filtered);
+        setSearchResults(filtered);
       } finally {
         setIsSearching(false);
       }
@@ -124,7 +138,7 @@ export function SupplierSelector({
     }, 300);
     
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, organizationId]);
+  }, [searchTerm, organizationId]); // organizationId es estable
 
   const handleInputChange = (field: string, value: string) => {
     setNewSupplier(prev => ({ ...prev, [field]: value }));
@@ -167,7 +181,8 @@ export function SupplierSelector({
           nuevoProveedor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (nuevoProveedor.nit && nuevoProveedor.nit.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (nuevoProveedor.contact && nuevoProveedor.contact.toLowerCase().includes(searchTerm.toLowerCase()))) {
-        setFilteredSuppliers(prev => [...prev, nuevoProveedor]);
+        // Agregar al estado de proveedores original a través de la prop onNewSupplier
+      // No necesitamos actualizar searchResults aquí
       }
       
       // Cerrar dialog y limpiar formulario
@@ -202,18 +217,66 @@ export function SupplierSelector({
     setErrors({});
   };
 
-  // Buscar el proveedor seleccionado
-  const selectedSupplier = value ? [...proveedores, ...filteredSuppliers].find(p => p.id === value) : null;
+  // Función para buscar proveedor sin dependencias problemáticas
+  // Memoizar proveedor seleccionado
+  const selectedSupplier = useMemo(() => {
+    if (!value) return null;
+    
+    // Buscar primero en proveedores originales
+    const fromOriginal = proveedores?.find(p => p.id === value);
+    if (fromOriginal) return fromOriginal;
+    
+    // Buscar en proveedores mostrados
+    return displayedSuppliers.find(p => p.id === value) || null;
+  }, [value, proveedores, displayedSuppliers]);
+
+  // Memoizar valor del Select para estabilidad completa
+  const selectValue = useMemo(() => {
+    return value ? value.toString() : '';
+  }, [value]);
+
+  // Memoizar callback del Select
+  const handleSelectChange = useCallback((selectedValue: string) => {
+    onValueChange(selectedValue ? parseInt(selectedValue) : null);
+  }, [onValueChange]);
+
+  // Memoizar callback del Input de búsqueda
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  // Callbacks memoizados para cada campo del formulario
+  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('name', e.target.value);
+  }, []);
+
+  const handleNitChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('nit', e.target.value);
+  }, []);
+
+  const handleContactChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('contact', e.target.value);
+  }, []);
+
+  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('phone', e.target.value);
+  }, []);
+
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('email', e.target.value);
+  }, []);
+
+  const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('notes', e.target.value);
+  }, []);
 
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
         <div className="flex-1">
           <Select
-            value={value ? value.toString() : ''}
-            onValueChange={(selectedValue) => {
-              onValueChange(selectedValue ? parseInt(selectedValue) : null);
-            }}
+            value={selectValue}
+            onValueChange={handleSelectChange}
           >
             <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
               <SelectValue placeholder="Seleccionar proveedor..." />
@@ -226,7 +289,7 @@ export function SupplierSelector({
                   <Input
                     placeholder="Buscar proveedor..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={handleSearchChange}
                     className="pl-8 h-8 dark:bg-gray-700 dark:border-gray-600"
                   />
                   {isSearching && (
@@ -239,12 +302,12 @@ export function SupplierSelector({
               </div>
               
               <div className="max-h-[200px] overflow-y-auto">
-                {filteredSuppliers.length === 0 ? (
+                {displayedSuppliers.length === 0 ? (
                   <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                     {isSearching ? 'Cargando proveedores...' : 'No se encontraron proveedores'}
                   </div>
                 ) : (
-                  filteredSuppliers.map((proveedor) => (
+                  displayedSuppliers.map((proveedor: SupplierBase) => (
                     <SelectItem key={proveedor.id} value={proveedor.id.toString()}>
                       <div className="w-full">
                         <div className="font-medium text-sm truncate">{proveedor.name}</div>
@@ -290,7 +353,7 @@ export function SupplierSelector({
                 <Input
                   id="supplier_name"
                   value={newSupplier.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  onChange={handleNameChange}
                   placeholder="Nombre del proveedor"
                   className="dark:bg-gray-700 dark:border-gray-600"
                 />
@@ -306,7 +369,7 @@ export function SupplierSelector({
                 <Input
                   id="supplier_nit"
                   value={newSupplier.nit}
-                  onChange={(e) => handleInputChange('nit', e.target.value)}
+                  onChange={handleNitChange}
                   placeholder="Número de identificación tributaria"
                   className="dark:bg-gray-700 dark:border-gray-600"
                 />
@@ -319,7 +382,7 @@ export function SupplierSelector({
                 <Input
                   id="supplier_contact"
                   value={newSupplier.contact}
-                  onChange={(e) => handleInputChange('contact', e.target.value)}
+                  onChange={handleContactChange}
                   placeholder="Nombre del contacto"
                   className="dark:bg-gray-700 dark:border-gray-600"
                 />
@@ -333,7 +396,7 @@ export function SupplierSelector({
                   <Input
                     id="supplier_phone"
                     value={newSupplier.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    onChange={handlePhoneChange}
                     placeholder="Teléfono"
                     className="dark:bg-gray-700 dark:border-gray-600"
                   />
@@ -347,7 +410,7 @@ export function SupplierSelector({
                     id="supplier_email"
                     type="email"
                     value={newSupplier.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    onChange={handleEmailChange}
                     placeholder="email@ejemplo.com"
                     className="dark:bg-gray-700 dark:border-gray-600"
                   />
@@ -364,7 +427,7 @@ export function SupplierSelector({
                 <Input
                   id="supplier_notes"
                   value={newSupplier.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  onChange={handleNotesChange}
                   placeholder="Notas adicionales"
                   className="dark:bg-gray-700 dark:border-gray-600"
                 />

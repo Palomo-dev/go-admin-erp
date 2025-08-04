@@ -9,6 +9,19 @@ import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
+// Importaciones estándar para evitar ChunkLoadError
+import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
+import { ModuleProvider } from '@/lib/context/ModuleContext';
+
+// Función helper para obtener URL del logo
+const getOrganizationLogoUrl = (logoPath: string) => {
+  if (!logoPath) return null;
+  // Si ya es una URL completa, retornarla
+  if (logoPath.startsWith('http')) return logoPath;
+  // Si es una ruta relativa, construir la URL completa
+  return `/api/files/${logoPath}`;
+};
+
 // Cache interno para datos del usuario con TTL
 interface UserDataCache {
   data: {
@@ -368,18 +381,15 @@ export const AppLayout = ({
     try {
       setLoading(true);
       
-      // Importar dinámicamente la función signOut para evitar referencias circulares
-      const { signOut } = await import('@/lib/supabase/config');
-      const { error } = await signOut();
-
-      
       console.log('Cerrando sesión...');
       
       // Limpiar cache del usuario
       localStorage.removeItem(USER_CACHE_KEY);
       
-      // Llamar a la función signOut
+      // Importar dinámicamente la función signOut para evitar referencias circulares
+      const { signOut } = await import('@/lib/supabase/config');
       const { error } = await signOut();
+      
       if (error) {
         console.error('Error al cerrar sesión:', error);
         return;
@@ -507,10 +517,12 @@ export const AppLayout = ({
           
           {/* Navegación */}
           <div className="flex-1 overflow-y-auto">
-            <DynamicSidebar 
-              organizationId={orgId ? parseInt(orgId) : undefined}
+            <SidebarNavigation 
+              handleSignOut={handleSignOut}
+              loading={loading}
+              userData={userData}
+              orgName={orgName}
               collapsed={sidebarCollapsed}
-              onSignOut={handleSignOut}
             />
           </div>
         </div>

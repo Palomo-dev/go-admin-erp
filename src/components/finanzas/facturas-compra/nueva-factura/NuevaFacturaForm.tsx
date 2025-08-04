@@ -214,15 +214,10 @@ export function NuevaFacturaForm({
 
   // Callbacks para impuestos memoizados
   const handleTaxIncludedChange = useCallback((included: boolean) => {
-    console.log('=== DEBUG handleTaxIncludedChange ===');
-    console.log('tax_included cambió a:', included);
     setFormData(prev => ({ ...prev, tax_included: included }));
   }, []);
 
   const handleTaxCalculationChange = useCallback((calculation: TaxCalculationResult & { appliedTaxes: {[key: string]: boolean} }) => {
-    console.log('=== DEBUG handleTaxCalculationChange ===');
-    console.log('Nueva calculación recibida:', calculation);
-    
     setTaxCalculation({
       subtotal: calculation.subtotal,
       totalTaxAmount: calculation.totalTaxAmount,
@@ -231,36 +226,18 @@ export function NuevaFacturaForm({
     });
     
     setAppliedTaxes(calculation.appliedTaxes);
-    console.log('Estados actualizados - taxCalculation y appliedTaxes');
   }, []);
 
-  // Función para convertir items de factura a items de cálculo de impuestos
-  const convertToTaxCalculationItems = (items: InvoiceItemForm[]): import('@/lib/utils/taxCalculations').TaxCalculationItem[] => {
-    return items.map(item => ({
-      quantity: typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : item.qty || 0,
-      unit_price: typeof item.unit_price === 'string' ? parseFloat(item.unit_price) || 0 : item.unit_price || 0,
-      product_id: item.product_id || 0 // Valor por defecto si no hay product_id
-    }));
-  };
-
   const calcularTotales = () => {
-    // Debug: verificar estado de los items (temporalmente comentado para evitar loops)
-    // console.log('=== DEBUG calcularTotales ===');
-    // console.log('formData.items:', formData.items);
-    // console.log('formData.items contenido completo:', JSON.stringify(formData.items, null, 2));
-    // console.log('taxCalculation:', taxCalculation);
-    // console.log('appliedTaxes:', appliedTaxes);
-    
-    // Si tenemos cálculos avanzados de impuestos Y son válidos, usar esos
-    const hasValidAdvancedCalculation = (
-      (taxCalculation.taxBreakdown.length > 0 || Object.keys(appliedTaxes).length > 0) &&
+    // Si tenemos cálculos avanzados de impuestos, usar esos
+    const hasAdvancedCalculation = (
+      taxCalculation.taxBreakdown.length > 0 && 
       !isNaN(taxCalculation.subtotal) && 
       !isNaN(taxCalculation.totalTaxAmount) && 
       !isNaN(taxCalculation.finalTotal)
     );
     
-    if (hasValidAdvancedCalculation) {
-      // console.log('Usando cálculos avanzados de impuestos (válidos)');
+    if (hasAdvancedCalculation) {
       return {
         subtotal: taxCalculation.subtotal,
         taxTotal: taxCalculation.totalTaxAmount,
@@ -268,51 +245,31 @@ export function NuevaFacturaForm({
       };
     }
     
-    // Si los cálculos avanzados devolvieron NaN, informar y usar fallback
-    if (taxCalculation.taxBreakdown.length > 0 || Object.keys(appliedTaxes).length > 0) {
-      // console.log('⚠️  Cálculos avanzados devolvieron NaN, usando cálculo básico como fallback');
-    }
-    
-    // Fallback: cálculo básico original
-    // console.log('Usando cálculo básico, items count:', formData.items.length);
-    
-    const subtotal = formData.items.reduce((sum, item, index) => {
-      const qty = item.qty != null ? (isNaN(parseFloat(item.qty.toString())) ? 0 : parseFloat(item.qty.toString())) : 0;
-      const unitPrice = item.unit_price != null ? (isNaN(parseFloat(item.unit_price.toString())) ? 0 : parseFloat(item.unit_price.toString())) : 0;
-      const discount = item.discount_amount != null ? (isNaN(parseFloat(item.discount_amount.toString())) ? 0 : parseFloat(item.discount_amount.toString())) : 0;
+    // Cálculo básico simple para items sin impuestos avanzados
+    const subtotal = formData.items.reduce((sum, item) => {
+      const qty = parseFloat(item.qty?.toString() || '0') || 0;
+      const unitPrice = parseFloat(item.unit_price?.toString() || '0') || 0;
+      const discount = parseFloat(item.discount_amount?.toString() || '0') || 0;
       
-      const lineTotal = qty * unitPrice - discount;
-      // console.log(`Item ${index}:`, { qty, unitPrice, discount, lineTotal });
-      // console.log(`Item ${index} original:`, { 
-      //   qtyOrig: item.qty, 
-      //   unitPriceOrig: item.unit_price, 
-      //   discountOrig: item.discount_amount,
-      //   taxRateOrig: item.tax_rate
-      // });
-      
-      return sum + lineTotal;
+      return sum + (qty * unitPrice - discount);
     }, 0);
 
     const taxTotal = formData.items.reduce((sum, item) => {
-      const qty = item.qty != null ? (isNaN(parseFloat(item.qty.toString())) ? 0 : parseFloat(item.qty.toString())) : 0;
-      const unitPrice = item.unit_price != null ? (isNaN(parseFloat(item.unit_price.toString())) ? 0 : parseFloat(item.unit_price.toString())) : 0;
-      const discount = item.discount_amount != null ? (isNaN(parseFloat(item.discount_amount.toString())) ? 0 : parseFloat(item.discount_amount.toString())) : 0;
-      const taxRate = item.tax_rate != null ? (isNaN(parseFloat(item.tax_rate.toString())) ? 0 : parseFloat(item.tax_rate.toString())) : 0;
+      const qty = parseFloat(item.qty?.toString() || '0') || 0;
+      const unitPrice = parseFloat(item.unit_price?.toString() || '0') || 0;
+      const discount = parseFloat(item.discount_amount?.toString() || '0') || 0;
+      const taxRate = parseFloat(item.tax_rate?.toString() || '0') || 0;
       
       const lineSubtotal = qty * unitPrice - discount;
       return sum + (lineSubtotal * taxRate / 100);
     }, 0);
 
     const total = formData.tax_included ? subtotal : subtotal + taxTotal;
-    
-    // console.log('Resultados:', { subtotal, taxTotal, total, tax_included: formData.tax_included });
-    // console.log('=== FIN DEBUG ===');
 
     return {
       subtotal,
       taxTotal,
-      total,
-      tax_included: formData.tax_included || false
+      total
     };
   };
 
@@ -384,22 +341,18 @@ export function NuevaFacturaForm({
     }
   };
 
-  // Memoizar cálculo de totales para que se actualice cuando cambien los items
+  // Memoizar cálculo de totales incluyendo taxCalculation y appliedTaxes
   const { subtotal, taxTotal, total } = useMemo(() => {
-    console.log('=== useMemo RECALCULANDO TOTALES ===');
-    console.log('formData.items en useMemo:', formData.items.length);
     const result = calcularTotales();
-    console.log('Totales calculados:', result);
-    console.log('=== FIN useMemo RECALCULO ===');
     return result;
   }, [formData.items, formData.tax_included, taxCalculation, appliedTaxes]);
 
   // Memoizar items para impuestos para evitar re-renders infinitos
   const taxCalculationItems = useMemo(() => 
     formData.items.map(item => ({
-      quantity: item.qty,
-      unit_price: item.unit_price,
-      product_id: 0 // Los items de facturas compra no tienen product_id necesariamente
+      quantity: typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : item.qty || 0,
+      unit_price: typeof item.unit_price === 'string' ? parseFloat(item.unit_price) || 0 : item.unit_price || 0,
+      product_id: item.product_id || 0 // Valor por defecto si no hay product_id
     })), [formData.items]
   );
 
@@ -462,7 +415,7 @@ export function NuevaFacturaForm({
 
         {/* Configuración de impuestos */}
         <ImpuestosFacturaCompra
-          items={convertToTaxCalculationItems(formData.items)}
+          items={taxCalculationItems}
           currency={formData.currency}
           taxIncluded={formData.tax_included}
           onTaxIncludedChange={handleTaxIncludedChange}

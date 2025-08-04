@@ -117,52 +117,60 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
     setError(null);
 
     try {
-      // 1. Crear usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: inviteData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: undefined // No enviar email de confirmación
-        }
+      // 1. Actualizar contraseña del usuario existente (ya loggeado con credenciales temporales)
+      console.log('🔑 Actualizando contraseña del usuario...');
+      const { data: authData, error: authError } = await supabase.auth.updateUser({
+        password: formData.password
       });
 
       if (authError) {
+        console.log('Error actualizando contraseña:', authError);
         throw new Error(authError.message);
       }
 
       if (!authData.user) {
-        throw new Error('Error al crear usuario');
+        throw new Error('Error al actualizar usuario');
       }
 
-      // 2. Confirmar email manualmente
-      await supabase
-        .from('auth.users')
-        .update({ 
-          email_confirmed_at: new Date().toISOString()
+      console.log('✅ Contraseña actualizada exitosamente');
+      // Email ya está confirmado desde el login automático
+
+      // 3. Actualizar perfil del usuario con la información personal
+      console.log('📝 Actualizando perfil del usuario...');
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phoneNumber,
+          last_org_id: inviteData.organization_id
         })
         .eq('id', authData.user.id);
 
-      // 3. Completar invitación usando función de base de datos con permisos elevados
-      const { data: completionResult, error: completionError } = await supabase
-        .rpc('complete_invitation_registration', {
-          invitation_code: inviteData.code,
-          user_id: authData.user.id,
-          user_email: inviteData.email,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone_number: formData.phoneNumber,
-          user_password: formData.password
-        });
-
-      if (completionError) {
-        throw new Error(`Error al completar invitación: ${completionError.message}`);
+      if (profileError) {
+        console.log('Error actualizando perfil:', profileError);
+        throw new Error(`Error al actualizar perfil: ${profileError.message}`);
       }
 
-      if (!completionResult?.success) {
-        throw new Error(completionResult?.error || 'Error desconocido al completar invitación');
+      console.log('✅ Perfil actualizado exitosamente');
+
+    
+      // 5. Marcar invitación como utilizada
+      console.log('✅ Marcando invitación como utilizada...');
+      const { error: invitationError } = await supabase
+        .from('invitations')
+        .update({
+          status: 'used',
+          used_at: new Date().toISOString()
+        })
+        .eq('code', inviteData.code);
+
+      if (invitationError) {
+        console.log('Error marcando invitación:', invitationError);
+        throw new Error(`Error al marcar invitación: ${invitationError.message}`);
       }
 
-      console.log('Invitación completada exitosamente:', completionResult);
+      console.log('✅ Invitación marcada como utilizada exitosamente');
 
       // 4. Cerrar sesión para forzar nuevo login
       await supabase.auth.signOut();

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,6 +45,54 @@ export function InformacionBasicaForm({
   // Estado para generación automática del número de factura
   const [isGeneratingNumber, setIsGeneratingNumber] = useState<boolean>(false);
   const [invoiceNumberError, setInvoiceNumberError] = useState<string>('');
+  
+  // Callback memoizado para evitar loops infinitos en SupplierSelector
+  const handleSupplierChange = useCallback((value: number | null) => {
+    onInputChange('supplier_id', value);
+  }, [onInputChange]);
+  
+  // Callbacks memoizados para todos los campos del formulario
+  const handleInvoiceNumberInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInvoiceNumberChange(e.target.value);
+  }, []);
+
+  const handleCurrencyChange = useCallback((value: string) => {
+    onInputChange('currency', value);
+  }, [onInputChange]);
+
+  const handleIssueDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onInputChange('issue_date', e.target.value);
+  }, [onInputChange]);
+
+  const handlePaymentTermsChange = useCallback((value: string) => {
+    if (value === "custom") {
+      setIsCustomPaymentTerm(true);
+      return;
+    }
+    
+    setIsCustomPaymentTerm(false);
+    const days = parseInt(value);
+    onInputChange('payment_terms', days);
+    
+    // Actualizar la fecha de vencimiento automáticamente
+    updateDueDate(days);
+  }, [onInputChange]);
+
+  const handleCustomPaymentTermsChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const days = parseInt(e.target.value) || 1;
+    onInputChange('payment_terms', days);
+    
+    // Actualizar fecha de vencimiento
+    updateDueDate(days);
+  }, [onInputChange]);
+
+  const handleDueDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onInputChange('due_date', e.target.value);
+  }, [onInputChange]);
+
+  const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onInputChange('notes', e.target.value);
+  }, [onInputChange]);
   
   // Función para generar número de factura automáticamente
   const generateInvoiceNumber = async () => {
@@ -157,7 +205,7 @@ export function InformacionBasicaForm({
           <Label className="dark:text-gray-300">Proveedor</Label>
           <SupplierSelector
             value={formData.supplier_id}
-            onValueChange={(value) => onInputChange('supplier_id', value)}
+            onValueChange={handleSupplierChange}
             proveedores={proveedores}
             onProveedorCreado={onProveedorCreado}
           />
@@ -177,7 +225,7 @@ export function InformacionBasicaForm({
                 <Input
                   id="number_ext"
                   value={formData.number_ext}
-                  onChange={(e) => handleInvoiceNumberChange(e.target.value)}
+                  onChange={handleInvoiceNumberInputChange}
                   placeholder="Ej: COMP-2024-0001"
                   className="dark:bg-gray-700 dark:border-gray-600"
                 />
@@ -207,7 +255,7 @@ export function InformacionBasicaForm({
             </Label>
             <Select 
               value={formData.currency} 
-              onValueChange={(value) => onInputChange('currency', value)}
+              onValueChange={handleCurrencyChange}
             >
               <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
                 <SelectValue placeholder="Seleccionar moneda" />
@@ -238,7 +286,7 @@ export function InformacionBasicaForm({
               id="issue_date"
               type="date"
               value={formData.issue_date}
-              onChange={(e) => onInputChange('issue_date', e.target.value)}
+              onChange={handleIssueDateChange}
               className="dark:bg-gray-700 dark:border-gray-600"
             />
             {errors.issue_date && (
@@ -253,19 +301,7 @@ export function InformacionBasicaForm({
             <div className="flex flex-col space-y-2">
               <Select 
                 value={isCustomPaymentTerm ? "custom" : formData.payment_terms.toString()}
-                onValueChange={(value) => {
-                  if (value === "custom") {
-                    setIsCustomPaymentTerm(true);
-                    return;
-                  }
-                  
-                  setIsCustomPaymentTerm(false);
-                  const days = parseInt(value);
-                  onInputChange('payment_terms', days);
-                  
-                  // Actualizar la fecha de vencimiento automáticamente
-                  updateDueDate(days);
-                }}
+                onValueChange={handlePaymentTermsChange}
               >
                 <SelectTrigger className="w-full dark:bg-gray-700 dark:border-gray-600">
                   <SelectValue placeholder="Seleccionar términos">
@@ -291,13 +327,7 @@ export function InformacionBasicaForm({
                     type="number"
                     min="1"
                     value={formData.payment_terms}
-                    onChange={(e) => {
-                      const days = parseInt(e.target.value) || 1;
-                      onInputChange('payment_terms', days);
-                      
-                      // Actualizar fecha de vencimiento
-                      updateDueDate(days);
-                    }}
+                    onChange={handleCustomPaymentTermsChange}
                     className="w-24 dark:bg-gray-700 dark:border-gray-600"
                   />
                   <span className="text-sm dark:text-gray-300">días</span>
@@ -314,7 +344,7 @@ export function InformacionBasicaForm({
               id="due_date"
               type="date"
               value={formData.due_date}
-              onChange={(e) => onInputChange('due_date', e.target.value)}
+              onChange={handleDueDateChange}
               className="dark:bg-gray-700 dark:border-gray-600"
             />
           </div>
@@ -328,7 +358,7 @@ export function InformacionBasicaForm({
           <Textarea
             id="notes"
             value={formData.notes}
-            onChange={(e) => onInputChange('notes', e.target.value)}
+            onChange={handleNotesChange}
             placeholder="Términos especiales, condiciones, etc."
             className="dark:bg-gray-700 dark:border-gray-600"
             rows={3}

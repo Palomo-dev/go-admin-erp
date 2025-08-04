@@ -4,10 +4,16 @@ import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
+  console.log('Request URL:', requestUrl);
   const code = requestUrl.searchParams.get('code');
+  const token = requestUrl.searchParams.get('token');
   const error = requestUrl.searchParams.get('error');
   const errorDescription = requestUrl.searchParams.get('error_description');
   const next = requestUrl.searchParams.get('next') || '/app/inicio';
+  
+  // Extraer redirect_to para manejar invitaciones
+  const redirectTo = requestUrl.searchParams.get('redirect_to');
+  console.log('Redirect to:', redirectTo);
 
   // Crear cliente Supabase para server-side con manejo de cookies
   const cookieStore = await cookies();
@@ -60,8 +66,8 @@ export async function GET(request: NextRequest) {
   if (code) {
     try {
       console.log('Processing code exchange (OAuth or email confirmation)...');
-      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(token);
+      console.log('Code exchange result:', data, exchangeError);
       if (exchangeError) {
         console.error('Code exchange error:', exchangeError);
         return NextResponse.redirect(
@@ -89,15 +95,23 @@ export async function GET(request: NextRequest) {
             return NextResponse.redirect(new URL('/auth/select-organization', request.url));
           }
         } else {
-          // Para confirmación de email (signup normal), siempre redirigir al login
-          console.log('Email confirmation successful, redirecting to login...');
+          // Para confirmación de email, verificar si es una invitación
+          console.log('Email confirmation successful, checking for invitation...');
           
-          // Cerrar la sesión para forzar login manual
-          await supabase.auth.signOut();
-          
-          return NextResponse.redirect(
-            new URL('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'), request.url)
-          );
+          // Verificar si redirect_to contiene un código de invitación
+          if (redirectTo && redirectTo.includes('/auth/invite?code=')) {
+            console.log('Invitation detected in redirect_to, redirecting to invitation page...');
+            // Mantener la sesión activa para invitaciones
+            return NextResponse.redirect(new URL(redirectTo, request.url));
+          } else {
+            // Para signup normal, cerrar sesión y redirigir al login
+            console.log('Normal signup, redirecting to login...');
+            await supabase.auth.signOut();
+            
+            return NextResponse.redirect(
+              new URL('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'), request.url)
+            );
+          }
         }
       }
     } catch (error: any) {

@@ -196,14 +196,14 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       if (inviteError) throw inviteError;
 
       // Send invitation email using Supabase's email functionality
-      const inviteUrl = `${window.location.origin}/auth/invite?code=${code}`;
+      const inviteUrl = `${window.location.origin}/auth/invite?invite_code=${code}`;
       
       try {
         // Use Supabase's built-in auth.signUp to trigger invitation email
         // This will use the configured SMTP service and email templates
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: email.toLowerCase(),
-          password: 'temp-password-' + Math.random().toString(36), // Temporary password
+          password: 'temp-password', // Temporary password
           options: {
             data: {
               organization_id: orgId,
@@ -232,6 +232,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           // The user will use our custom invite flow instead of the auth confirmation
           if (signUpData.user) {
             console.log('📧 Invitation email sent via Supabase Auth to:', email);
+            console.log('Url de invitación:', inviteUrl);
           }
         }
       } catch (emailSendError: any) {

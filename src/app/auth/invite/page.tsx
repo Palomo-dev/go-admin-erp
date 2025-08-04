@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import InvitationWizard from '@/components/auth/InvitationWizard';
@@ -8,78 +8,135 @@ import InvitationWizard from '@/components/auth/InvitationWizard';
 export default function InvitePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const inviteCode = searchParams.get('code');
+  const inviteCode = searchParams.get('invite_code');
+  console.log('🔍 Invite code obtenido:', inviteCode);
   
+  // Debug: Mostrar TODOS los parámetros de la URL
+  console.log('🔍 Todos los parámetros de URL:');
+  searchParams.forEach((value, key) => {
+    console.log(`  ${key}: ${value}`);
+  });
+  console.log('🔍 URL completa:', typeof window !== 'undefined' ? window.location.href : 'SSR');
+  
+
   const [inviteData, setInviteData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Validando invitación...');
+  
+  console.log('✅ Componente renderizando');
+  
+  // useEffect para ejecutar la validación una sola vez
   useEffect(() => {
-    async function validateInvitationCode() {
-      if (!inviteCode) {
-        setError('Código de invitación no proporcionado');
+    console.log('🔥 useEffect ejecutándose con inviteCode:', inviteCode);
+    validateAndSignInDirectly();
+  }, [inviteCode]); // Solo se ejecuta cuando cambia inviteCode
+
+  // Función de validación 
+  async function validateAndSignInDirectly() {
+    console.log('🚀 validateAndSignInDirectly iniciando...');
+    
+    if (!inviteCode) {
+      console.log('❌ No se proporciono un codigo de invitacion');
+      setError('Código de invitación no proporcionado');
+      setIsLoading(false);
+      return;
+    }
+
+    console.log('Limpiando code:', inviteCode);  
+    
+    // Ignorar errores de Supabase en la URL (son del flujo automático que no usamos)
+    // Limpiar la URL de parámetros de error para mejor UX
+    if (typeof window !== 'undefined' && (window.location.hash.includes('error=') || searchParams.get('error'))) {
+      console.log('Limpiando error de la URL');
+      console.log('Limpiando error de la URL:', window.location.hash);
+      const cleanUrl = `${window.location.pathname}?code=${inviteCode}`;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+    console.log('Avanzo code:', inviteCode);  
+    
+    try {
+      // PASO 1: Validar código de invitación
+      setLoadingMessage('Validando invitación...');
+      const { data: inviteData, error: inviteError } = await supabase
+        .rpc('validate_invitation_by_code', {
+          invitation_code: inviteCode
+        });
+      
+      console.log('Resultado de validación:', { inviteData, inviteError });
+      
+      if (inviteError) {
+        console.log('Error validando invitación - Error:', inviteError);
+        setError(`Error al validar la invitación: ${inviteError.message}`);
         setIsLoading(false);
         return;
       }
       
-      // Ignorar errores de Supabase en la URL (son del flujo automático que no usamos)
-      // Limpiar la URL de parámetros de error para mejor UX
-      if (window.location.hash.includes('error=') || searchParams.get('error')) {
-        const cleanUrl = `${window.location.pathname}?code=${inviteCode}`;
-        window.history.replaceState({}, '', cleanUrl);
+      if (!inviteData || inviteData.length === 0) {
+        console.log('Invite data:', inviteData);
+        console.log('Error validando invitación - No se encontró invitación válida para código:', inviteCode);
+        setError('La invitación no es válida, ha expirado o ya fue utilizada');
+        setIsLoading(false);
+        return;
       }
       
-      try {
-        // Usar función de base de datos que bypassa RLS
-        const { data: inviteData, error: inviteError } = await supabase
-          .rpc('validate_invitation_by_code', {
-            invitation_code: inviteCode
-          });
-        
-        console.log('Resultado de validación:', { inviteData, inviteError });
-        
-        if (inviteError) {
-          console.error('Error validando invitación - Error:', inviteError);
-          setError(`Error al validar la invitación: ${inviteError.message}`);
-          setIsLoading(false);
-          return;
-        }
-        
-        if (!inviteData || inviteData.length === 0) {
-          console.error('Error validando invitación - No se encontró invitación válida para código:', inviteCode);
-          setError('La invitación no es válida, ha expirado o ya fue utilizada');
-          setIsLoading(false);
-          return;
-        }
-        
-        const invitation = inviteData[0]; // La función devuelve un array
-        
-        setInviteData({
-          id: invitation.id,
-          email: invitation.email,
-          code: invitation.code,
-          role_id: invitation.role_id,
-          organization_id: invitation.organization_id,
-          organization_name: invitation.organization_name || 'Organización',
-          role_name: invitation.role_name || 'Usuario'
-        });
+      const invitation = inviteData[0]; // La función devuelve un array
+      const invitationData = {
+        id: invitation.id,
+        email: invitation.email,
+        code: invitation.code,
+        role_id: invitation.role_id,
+        organization_id: invitation.organization_id,
+        organization_name: invitation.organization_name || 'Organización',
+        role_name: invitation.role_name || 'Usuario'
+      };
+      
+      // PASO 2: Intentar login automático con credenciales temporales
+      setLoadingMessage('Iniciando sesión automáticamente...');
+      console.log('Intentando login con:', invitation.email, 'temp-password');
+      
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: invitation.email,
+        password: 'temp-password'
+      });
+      
+      console.log('Resultado de login:', { signInData, signInError });
+      
+      
+      if (signInError) {
+        console.log('Error en login automático:', signInError);
+        setError(`Error al iniciar sesión automáticamente: ${signInError.message}. Por favor, contacta al administrador.`);
         setIsLoading(false);
-      } catch (err) {
-        console.error('Error al validar invitación:', err);
-        setError('Error al validar la invitación');
-        setIsLoading(false);
+        return;
       }
+      
+      if (!signInData.user) {
+        console.log('Login exitoso pero no hay usuario');
+        setError('Error inesperado al iniciar sesión. Por favor, contacta al administrador.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // PASO 3: Login exitoso, configurar datos y mostrar wizard
+      console.log('Login exitoso, usuario:', signInData.user.email);
+      setInviteData(invitationData);
+      setIsLoggedIn(true);
+      setIsLoading(false);
+      
+    } catch (err) {
+      console.log('Error en el proceso de validación y login:', err);
+      setError('Error al procesar la invitación');
+      setIsLoading(false);
     }
-
-    validateInvitationCode();
-  }, [inviteCode]);
+  }
   
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Validando invitación...</p>
+          <p className="text-gray-600">{loadingMessage}</p>
         </div>
       </div>
     );
@@ -125,12 +182,24 @@ export default function InvitePage() {
     );
   }
   
+  // Solo mostrar el wizard si estamos loggeados y tenemos datos de invitación
+  if (isLoggedIn && inviteData) {
+    return (
+      <InvitationWizard
+        inviteData={inviteData}
+        onComplete={() => {
+          router.push('/auth/login?message=Registro completado correctamente. Inicia sesión con tu nueva contraseña.');
+        }}
+      />
+    );
+  }
+  
+  // Este caso no debería ocurrir, pero por seguridad
   return (
-    <InvitationWizard
-      inviteData={inviteData}
-      onComplete={() => {
-        router.push('/auth/login?message=Registro completado correctamente. Inicia sesión con tu nueva contraseña.');
-      }}
-    />
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="text-center">
+        <p className="text-gray-600">Configurando tu cuenta...</p>
+      </div>
+    </div>
   );
 }

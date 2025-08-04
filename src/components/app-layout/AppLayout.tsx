@@ -1,11 +1,28 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Menu, ChevronsLeft, ChevronsRight, Building2 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
 import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+
+// Cache interno para datos del usuario con TTL
+interface UserDataCache {
+  data: {
+    name?: string;
+    email?: string;
+    role?: string;
+    avatar?: string;
+  };
+  orgName: string;
+  orgId: string;
+  timestamp: number;
+}
+
+const USER_CACHE_KEY = 'appLayout_userData_cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos en milisegundos
 
 // Componente principal que organiza todo el layout de la aplicación
 export const AppLayout = ({
@@ -34,64 +51,228 @@ export const AppLayout = ({
   // Estado para almacenar el ID de la organización
   const [orgId, setOrgId] = useState<string | null>(null);
   
-  // Cargar datos del perfil del usuario
-  useEffect(() => {
-    async function loadUserProfile() {
-      try {
-        // Verificar autenticación
-        const { isAuthenticated: isAuth, session } = await isAuthenticated();
-        if (!isAuth || !session?.user) {
-          console.log('No hay usuario autenticado');
-          return;
-        }
-        
-        const user = session.user;
-        
-        // Obtener datos del perfil
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-          
-        if (profileError) {
-          console.error('Error al obtener perfil:', profileError);
-          throw profileError;
-        }
-        
-        // Verificar organización activa
-        const currentOrgId = localStorage.getItem('currentOrganizationId');
-        if (!currentOrgId) {
-          console.log('No hay organización seleccionada');
-          return;
-        }
-        
-        // Obtener rol del usuario
-        const { data: userRoleData, error: roleError } = await supabase
-          .from('organization_members')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('organization_id', currentOrgId)
-          .single();
-          
-        if (roleError) {
-          console.error('Error al obtener rol:', roleError);
-          // Continuar aunque no tengamos el rol
-        }
-        
-        // Actualizar el estado del userData
-        setUserData({
-          name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
-          email: user.email,
-          role: userRoleData?.role,
-          avatar: profileData?.avatar_url
-        });
-      } catch (error) {
-        console.error('Error al cargar datos del perfil:', error);
-      }
-    }
+  // Función para cargar cache
+  const loadFromCache = useCallback((): UserDataCache | null => {
+    if (typeof window === 'undefined') return null;
     
-    loadUserProfile();
+    try {
+      const cached = localStorage.getItem(USER_CACHE_KEY);
+      if (!cached) return null;
+      
+      const parsedCache: UserDataCache = JSON.parse(cached);
+      const now = Date.now();
+      
+      // Verificar si el cache ha expirado
+      if (now - parsedCache.timestamp > CACHE_TTL) {
+        localStorage.removeItem(USER_CACHE_KEY);
+        return null;
+      }
+      
+      return parsedCache;
+    } catch (error) {
+      console.error('Error al leer cache:', error);
+      localStorage.removeItem(USER_CACHE_KEY);
+      return null;
+    }
+  }, []);
+
+  // Función para guardar en cache
+  const saveToCache = useCallback((data: {
+    name?: string;
+    email?: string;
+    role?: string;
+    avatar?: string;
+  }, orgName: string, orgId: string) => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const cacheData: UserDataCache = {
+        data,
+        orgName,
+        orgId,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+      console.error('Error al guardar cache:', error);
+    }
+  }, []);
+
+  // Función optimizada para cargar perfil con consulta unificada
+  const loadUserProfileOptimized = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Verificar autenticación
+      const { isAuthenticated: isAuth, session } = await isAuthenticated();
+      if (!isAuth || !session?.user) {
+        console.log('No hay usuario autenticado');
+        setLoading(false);
+        return;
+      }
+
+      const user = session.user;
+      const currentOrgId = getOrganizationId();
+      setOrgId(currentOrgId.toString());
+
+      // Intentar cargar desde cache primero
+      const cachedData = loadFromCache();
+      if (cachedData && cachedData.orgId === currentOrgId.toString()) {
+        console.log('⚡ Datos cargados desde cache');
+        setUserData(cachedData.data);
+        setOrgName(cachedData.orgName);
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔄 Cargando perfil optimizado para usuario:', user.id);
+      
+      // Consulta unificada con JOIN para obtener todos los datos de una vez
+      const { data: unifiedData, error: unifiedError } = await supabase
+        .from('profiles')
+        .select(`
+          first_name,
+          last_name,
+          email,
+          avatar_url,
+          organization_members!inner(
+            role_id,
+            is_super_admin,
+            organization_id,
+            organizations!inner(
+              name
+            ),
+            roles!inner(
+              name
+            )
+          )
+        `)
+        .eq('id', user.id)
+        .eq('organization_members.organization_id', currentOrgId)
+        .eq('organization_members.is_active', true)
+        .single();
+
+      if (unifiedError) {
+        console.error('Error en consulta unificada:', unifiedError);
+        // Fallback a consultas separadas si falla el JOIN
+        await loadUserProfileFallback(user, currentOrgId);
+        return;
+      }
+
+      if (!unifiedData || !unifiedData.organization_members) {
+        console.warn('No se encontraron datos del usuario en la organización');
+        await loadUserProfileFallback(user, currentOrgId);
+        return;
+      }
+
+      // Procesar datos unificados
+      const member = Array.isArray(unifiedData.organization_members) 
+        ? unifiedData.organization_members[0] 
+        : unifiedData.organization_members;
+      
+      const organization = Array.isArray(member.organizations)
+        ? member.organizations[0]
+        : member.organizations;
+      
+      const role = Array.isArray(member.roles)
+        ? member.roles[0]
+        : member.roles;
+
+      const finalUserData = {
+        name: `${unifiedData.first_name || ''} ${unifiedData.last_name || ''}`.trim() || unifiedData.email,
+        email: unifiedData.email,
+        role: role?.name || 'Usuario',
+        avatar: unifiedData.avatar_url || ''
+      };
+
+      const finalOrgName = organization?.name || '';
+      
+      console.log('✅ Datos cargados exitosamente:', {
+        user: finalUserData.name,
+        role: finalUserData.role,
+        org: finalOrgName
+      });
+
+      // Actualizar estados
+      setUserData(finalUserData);
+      setOrgName(finalOrgName);
+      
+      // Guardar en cache
+      saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
+      
+    } catch (error) {
+      console.error('Error general al cargar perfil:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadFromCache, saveToCache]);
+
+  // Función de fallback con consultas separadas
+  const loadUserProfileFallback = useCallback(async (user: any, currentOrgId: number) => {
+    try {
+      console.log('🔄 Usando método fallback con consultas separadas');
+      
+      // Obtener perfil
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error al obtener perfil:', profileError);
+        return;
+      }
+
+      // Obtener organización
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', currentOrgId)
+        .single();
+
+      // Obtener rol del usuario
+      const { data: userRoleData, error: roleError } = await supabase
+        .from('organization_members')
+        .select('role_id')
+        .eq('user_id', user.id)
+        .eq('organization_id', currentOrgId)
+        .single();
+
+      let roleName = 'Usuario';
+      if (!roleError && userRoleData?.role_id) {
+        const { data: roleData } = await supabase
+          .from('roles')
+          .select('name')
+          .eq('id', userRoleData.role_id)
+          .single();
+        
+        roleName = roleData?.name || 'Usuario';
+      }
+
+      const finalUserData = {
+        name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || profileData.email,
+        email: profileData.email,
+        role: roleName,
+        avatar: profileData.avatar_url || ''
+      };
+
+      const finalOrgName = orgData?.name || '';
+
+      setUserData(finalUserData);
+      setOrgName(finalOrgName);
+      
+      // Guardar en cache también
+      saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
+      
+    } catch (error) {
+      console.error('Error en fallback:', error);
+    }
+  }, [saveToCache]);
+
+  // Cargar datos del perfil del usuario y configurar suscripción
+  useEffect(() => {
+    loadUserProfileOptimized();
     
     // Configurar canal de suscripción para cambios en el perfil
     const profileSubscription = supabase
@@ -109,7 +290,7 @@ export const AppLayout = ({
       // Limpiar suscripción
       supabase.removeChannel(profileSubscription);
     };
-  }, [profileRefresh]);
+  }, [loadUserProfileOptimized, profileRefresh]);
   
   // Inicializar tema desde localStorage o preferencia del sistema
   useEffect(() => {
@@ -151,32 +332,39 @@ export const AppLayout = ({
     }
   }, []);
   
-  // Función para cambiar el tema
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
+  // Importación dinámica de la función signOut (memoizada)
+  const signOut = useMemo(() => {
+    let signOutFn: () => Promise<any> = async () => {
+      console.log('Función de cierre de sesión no disponible');
+      return { error: null };
+    };
     
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    // Importar dinámicamente para evitar errores de referencia circular
+    import('@/lib/supabase/config').then((module) => {
+      signOutFn = module.signOut;
+    });
     
-    console.log('Tema cambiado a:', newTheme);
-  };
-  
-  // Función para cerrar sesión
-  const handleSignOut = async (): Promise<void> => {
+    return signOutFn;
+  }, []);
+
+  // Función para cerrar sesión (memoizada)
+  const handleSignOut = useCallback(async () => {
     try {
       setLoading(true);
-      // Ejecutar la función de cierre de sesión
-      const { error } = await signOut();
       
+      console.log('Cerrando sesión...');
+      
+      // Limpiar cache del usuario
+      localStorage.removeItem(USER_CACHE_KEY);
+      
+      // Llamar a la función signOut
+      const { error } = await signOut();
       if (error) {
-        console.error('Error al cerrar sesión con Supabase:', error);
-        throw error;
+        console.error('Error al cerrar sesión:', error);
+        return;
       }
+      
+      console.log('Sesión cerrada exitosamente');
       
       // Limpiar localStorage
       localStorage.removeItem('currentOrganizationId');
@@ -191,19 +379,19 @@ export const AppLayout = ({
     } finally {
       setLoading(false);
     }
-  };
-  
-  // Importación dinámica de la función signOut
-  const [signOut, setSignOut] = useState<() => Promise<any>>(async () => {
-    console.log('Función de cierre de sesión no disponible');
-    return { error: null };
-  });
+  }, [signOut]);
 
-  useEffect(() => {
-    // Importar dinámicamente para evitar errores de referencia circular
-    import('@/lib/supabase/config').then((module) => {
-      setSignOut(() => module.signOut);
-    });
+  // Función para alternar el tema (memoizada)
+  const toggleTheme = useCallback(() => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  }, [theme]);
+
+  // Función para invalidar cache manualmente
+  const invalidateUserCache = useCallback(() => {
+    localStorage.removeItem(USER_CACHE_KEY);
+    setProfileRefresh(prev => prev + 1);
   }, []);
   
   return (

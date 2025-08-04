@@ -6,12 +6,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { useParams } from 'next/navigation';
 
-export default function FacturaDetallesPage() {
-  // Usar useParams() para acceder a los parámetros de forma segura
-  const params = useParams();
-  const invoiceId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+interface PageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function FacturaDetallesPage({ params }: PageProps) {
+  const { id: invoiceId } = React.use(params);
   
   const [factura, setFactura] = useState<any>(null);
   const [loading, setLoading] = useState(true);

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { ClienteSelector } from './ClienteSelector';
 import { ItemsFactura } from './ItemsFactura';
@@ -67,7 +67,7 @@ export function NuevaFacturaForm() {
   // Estados para el formulario
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [branchId, setBranchId] = useState<number>(getCurrentBranchId()); // Usar branch_id actual del selector
+  const [branchId, setBranchId] = useState<number>(getCurrentBranchIdWithFallback()); // Usar branch_id actual del selector
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [isDuplicateNumber, setIsDuplicateNumber] = useState<boolean>(false);
   const [isValidatingNumber, setIsValidatingNumber] = useState<boolean>(false);

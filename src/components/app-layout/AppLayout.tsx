@@ -4,6 +4,7 @@ import { Menu, ChevronsLeft, ChevronsRight, Building2 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
+import { getUserData } from '@/lib/services/userService';
 import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -44,6 +45,20 @@ export const AppLayout = ({
   // Estado para indicar recarga del perfil
   const [profileRefresh, setProfileRefresh] = useState(0);
   
+  // Helper function para obtener el logo de la organización activa
+  const getActiveOrgLogo = () => {
+    try {
+      const orgData = localStorage.getItem('organizacionActiva');
+      if (orgData) {
+        const org = JSON.parse(orgData);
+        return org.logo_url ? getOrganizationLogoUrl(org.logo_url) : null;
+      }
+    } catch (error) {
+      console.error('Error parsing organization data:', error);
+    }
+    return null;
+  };
+  
   // Estados para control del sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Colapsado por defecto
@@ -51,6 +66,7 @@ export const AppLayout = ({
   // Estado para almacenar el ID de la organización
   const [orgId, setOrgId] = useState<string | null>(null);
   
+
   // Función para cargar cache
   const loadFromCache = useCallback((): UserDataCache | null => {
     if (typeof window === 'undefined') return null;
@@ -352,6 +368,11 @@ export const AppLayout = ({
     try {
       setLoading(true);
       
+      // Importar dinámicamente la función signOut para evitar referencias circulares
+      const { signOut } = await import('@/lib/supabase/config');
+      const { error } = await signOut();
+
+      
       console.log('Cerrando sesión...');
       
       // Limpiar cache del usuario
@@ -393,9 +414,11 @@ export const AppLayout = ({
     localStorage.removeItem(USER_CACHE_KEY);
     setProfileRefresh(prev => prev + 1);
   }, []);
+
   
   return (
-    <div className="flex h-screen">
+    <ModuleProvider>
+      <div className="flex h-screen">
       {/* Sidebar - con versión móvil que se muestra/oculta */}
       <div className={`
         fixed lg:static inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'lg:w-20' : 'w-64'} 
@@ -436,10 +459,10 @@ export const AppLayout = ({
                 <>
                   {/* Icono/Logo centrado cuando está colapsado */}
                   <div className="flex justify-center items-center">
-                    {localStorage.getItem('organizacionActiva') && JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url ? (
+                    {getActiveOrgLogo() ? (
                       <div className="w-7 h-7 lg:mx-auto">
                         <img 
-                          src={JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url}
+                          src={getActiveOrgLogo()!}
                           alt="Logo"
                           className="w-full h-full object-cover rounded-full border-2 border-blue-200 dark:border-blue-700 shadow-sm"
                         />
@@ -455,9 +478,9 @@ export const AppLayout = ({
                   {/* Tooltip para mostrar el nombre de la organización cuando está contraído */}
                   <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 pl-2 hidden lg:group-hover:block z-50 whitespace-nowrap">
                     <div className="bg-gray-800 text-white text-sm py-1 px-3 rounded shadow-lg flex items-center">
-                      {localStorage.getItem('organizacionActiva') && JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url ? (
+                      {getActiveOrgLogo() ? (
                         <img 
-                          src={JSON.parse(localStorage.getItem('organizacionActiva') || '{}').logo_url}
+                          src={getActiveOrgLogo()!}
                           alt="Logo"
                           className="w-5 h-5 rounded-full mr-2 object-cover border border-gray-300 dark:border-gray-700 shadow-sm"
                         />
@@ -483,13 +506,11 @@ export const AppLayout = ({
           )}
           
           {/* Navegación */}
-          <div className="flex-1 overflow-y-auto p-2">
-            <SidebarNavigation 
-              handleSignOut={handleSignOut} 
-              loading={loading} 
-              userData={userData} 
-              orgName={orgName} 
+          <div className="flex-1 overflow-y-auto">
+            <DynamicSidebar 
+              organizationId={orgId ? parseInt(orgId) : undefined}
               collapsed={sidebarCollapsed}
+              onSignOut={handleSignOut}
             />
           </div>
         </div>
@@ -513,6 +534,13 @@ export const AppLayout = ({
           {children}
         </div>
       </div>
-    </div>
+      
+      {/* Notificación de límites de módulos */}
+      <ModuleLimitNotification 
+        organizationId={orgId ? parseInt(orgId) : undefined}
+      />
+
+      </div>
+    </ModuleProvider>
   );
 };

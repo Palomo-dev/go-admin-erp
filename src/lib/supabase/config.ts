@@ -40,7 +40,7 @@ const removeCookie = (name: string) => {
   document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
 }
 
-// Creación del cliente de Supabase
+// Creación del cliente de Supabase para el navegador
 export const createSupabaseClient = () => {
   // Configuramos las credenciales, usando valores predeterminados si no hay variables de entorno
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
@@ -60,28 +60,70 @@ export const createSupabaseClient = () => {
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
-      autoRefreshToken: true, // Permitimos renovación automática con la configuración optimizada
+      autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
+      flowType: 'pkce',
       storage: {
         getItem: (key: string) => {
-          return getCookie(key);
+          if (typeof window !== 'undefined') {
+            // En el cliente, leer de localStorage como fallback y cookies
+            const fromLocalStorage = localStorage.getItem(key);
+            if (fromLocalStorage) {
+              return fromLocalStorage;
+            }
+            
+            // Intentar leer de cookies
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+              const [name, value] = cookie.trim().split('=');
+              if (name === key && value) {
+                console.log('🍪 [STORAGE] Leído de cookie:', key);
+                return decodeURIComponent(value);
+              }
+            }
+          }
+          return null;
         },
         setItem: (key: string, value: string) => {
-          setCookie(key, value, 86400); // 24 horas para todos los tokens
-          // Eliminamos cualquier token del localStorage para mantener la seguridad
-          if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem(key);
+          if (typeof window !== 'undefined') {
+            // Guardar en localStorage primero
+            localStorage.setItem(key, value);
+            console.log('💾 [STORAGE] Guardado en localStorage:', key);
+            
+            // También guardar en cookies para que el middleware pueda leerlo
+            // Usar secure en producción, no secure en desarrollo
+            const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+            const cookieValue = `${key}=${encodeURIComponent(value)}; path=/; max-age=604800; SameSite=Lax${secureFlag}`;
+            document.cookie = cookieValue;
+            console.log('🍪 [STORAGE] Guardado en cookie:', key, 'con flags:', secureFlag);
+            
+            // Verificar que la cookie se estableció correctamente
+            setTimeout(() => {
+              const cookies = document.cookie.split(';');
+              const cookieExists = cookies.some(c => c.trim().startsWith(`${key}=`));
+              console.log(`🔍 [STORAGE] Verificación cookie ${key}:`, cookieExists ? 'EXISTE' : 'NO EXISTE');
+              
+              if (!cookieExists) {
+                console.warn(`⚠️ [STORAGE] Cookie ${key} no se estableció correctamente, reintentando...`);
+                // Reintentar sin flags adicionales
+                document.cookie = `${key}=${encodeURIComponent(value)}; path=/`;
+              }
+            }, 100);
           }
         },
         removeItem: (key: string) => {
-          removeCookie(key);
-          // Eliminamos cualquier token del localStorage para mantener la seguridad
-          if (typeof localStorage !== 'undefined') {
+          if (typeof window !== 'undefined') {
+            // Eliminar de localStorage
             localStorage.removeItem(key);
+            console.log('💾 [STORAGE] Eliminado de localStorage:', key);
+            
+            // Eliminar de cookies
+            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+            console.log('🍪 [STORAGE] Eliminado de cookie:', key);
           }
-        }
-      }
+        },
+      },
     },
     global: {
       headers: {
@@ -124,18 +166,131 @@ export const createSupabaseClient = () => {
   })
 }
 
+// Creación del cliente de Supabase para el servidor (middleware)
+export const createSupabaseServerClient = (request?: any) => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jgmgphmzusbluqhuqihj.supabase.co'
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWdwaG16dXNibHVxaHVxaWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMzQ1MjIsImV4cCI6MjA2MTYxMDUyMn0.yr5TLl2nhevIzNdPnjVkcdn049RB2t2OgqPG0HryVR4'
+  
+  const projectRef = getProjectRef();
+  
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+      flowType: 'pkce'
+    }
+  });
+  
+  return { supabase, projectRef };
+}
+
 // Cliente para uso en el lado del cliente
 export const supabase = createSupabaseClient()
 
+// Función para forzar sincronización de sesión y cookies
+export const ensureSessionSynced = async (): Promise<boolean> => {
+  try {
+    console.log('🔄 [SESSION] Forzando sincronización de sesión...');
+    
+    // Obtener sesión actual
+    const { data: sessionData, error } = await supabase.auth.getSession();
+    
+    if (error || !sessionData.session) {
+      console.error('❌ [SESSION] No hay sesión válida para sincronizar');
+      return false;
+    }
+    
+    console.log('✅ [SESSION] Sesión válida encontrada:', sessionData.session.user.email);
+    
+    // Forzar guardado de la sesión en storage
+    const projectRef = getProjectRef();
+    const storageKey = `sb-${projectRef}-auth-token`;
+    
+    const sessionToken = {
+      access_token: sessionData.session.access_token,
+      refresh_token: sessionData.session.refresh_token,
+      expires_at: sessionData.session.expires_at,
+      token_type: sessionData.session.token_type,
+      user: sessionData.session.user
+    };
+    
+    // Guardar en localStorage
+    localStorage.setItem(storageKey, JSON.stringify(sessionToken));
+    console.log('💾 [SESSION] Sesión guardada en localStorage');
+    
+    // Guardar en cookies de forma más agresiva
+    const cookieValue = encodeURIComponent(JSON.stringify(sessionToken));
+    const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+    
+    // Probar múltiples formatos de cookie
+    const cookieFormats = [
+      `${storageKey}=${cookieValue}; path=/; max-age=604800; SameSite=Lax${secureFlag}`,
+      `${storageKey}=${cookieValue}; path=/; SameSite=Lax`,
+      `${storageKey}=${cookieValue}; path=/`
+    ];
+    
+    for (let i = 0; i < cookieFormats.length; i++) {
+      document.cookie = cookieFormats[i];
+      console.log(`🍪 [SESSION] Intentando formato cookie ${i + 1}:`, cookieFormats[i].substring(0, 100) + '...');
+      
+      // Verificar si se estableció
+      setTimeout(() => {
+        const cookies = document.cookie.split(';');
+        const exists = cookies.some(c => c.trim().startsWith(`${storageKey}=`));
+        if (exists) {
+          console.log(`✅ [SESSION] Cookie establecida con formato ${i + 1}`);
+        }
+      }, 50);
+    }
+    
+    // Verificación final después de un delay
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const cookies = document.cookie.split(';');
+        const exists = cookies.some(c => c.trim().startsWith(`${storageKey}=`));
+        console.log('🔍 [SESSION] Verificación final de cookie:', exists ? 'ÉXITO' : 'FALLÓ');
+        resolve(exists);
+      }, 200);
+    });
+    
+  } catch (error) {
+    console.error('❌ [SESSION] Error en sincronización:', error);
+    return false;
+  }
+};
+
 // Funciones de autenticación
 export const signInWithEmail = async (email: string, password: string) => {
-  return await supabase.auth.signInWithPassword({
-    email,
-    password
-  })
+  const result = await supabase.auth.signInWithPassword({ email, password });
+  
+  // Si el login es exitoso, forzar sincronización
+  if (result.data.session && !result.error) {
+    console.log('✅ [AUTH] Login exitoso, sincronizando sesión...');
+  }
+
+  if (result.data.session) {
+    const { access_token, refresh_token, expires_at } = result.data.session;
+  
+    const tokenPayload = JSON.stringify({
+      access_token,
+      refresh_token,
+      expires_at
+    });
+  
+    const projectRef = getProjectRef(); // or hardcode your Supabase project ref
+    const cookieName = `sb-${projectRef}-auth-token`;
+  
+    setCookie(cookieName, tokenPayload, 60 * 60 * 24 * 7); // 7 days
+  }
+  
+
+  
+  return result;
 }
 
 export const signInWithGoogle = async () => {
+  console.log('Redirect to:', `${window.location.origin}/auth/callback`);
   return await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -229,7 +384,7 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
     // Obtenemos todas las membresías activas del usuario desde organization_members
     const { data: allMemberData, error: memberError } = await supabase
       .from('organization_members')
-      .select('id, organization_id, role, role_id, is_active')
+      .select('id, organization_id, role_id, is_active')
       .eq('user_id', userId)
       .eq('is_active', true);
       
@@ -342,43 +497,9 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
       console.log(`La organización ${orgData.id} no tiene sucursales activas`);
     }
     
-    // Si aún no tenemos un rol, intentamos obtenerlo de user_roles
+    // Si no se pudo obtener el rol, usar un valor por defecto
     if (!userRoleName) {
-      try {
-        const { data: userRoleData, error: userRoleError } = await supabase
-          .from('user_roles')
-          .select('roles(name)')
-          .eq('user_id', userId)
-          .maybeSingle();
-        
-        if (!userRoleError && userRoleData) {
-          // Utilizamos type assertion para manejar la estructura de datos
-          // ya que la respuesta puede variar dependiendo del query
-          const roleData = userRoleData as any;
-          if (roleData && roleData.roles) {
-            if (Array.isArray(roleData.roles)) {
-              // Verificamos que exista al menos un elemento y que tenga la propiedad name
-              if (roleData.roles.length > 0 && roleData.roles[0] && 'name' in roleData.roles[0]) {
-                userRoleName = roleData.roles[0].name;
-              }
-            } else if (roleData.roles && typeof roleData.roles === 'object') {
-              // Verificamos explícitamente que el objeto tenga la propiedad name
-              if ('name' in roleData.roles) {
-                userRoleName = roleData.roles.name;
-              }
-            }
-          }
-        } else if (userRoleError) {
-          console.error('Error obteniendo rol del usuario:', userRoleError);
-        }
-      } catch (roleErr) {
-        console.error('Error inesperado al obtener rol:', roleErr);
-      }
-    }
-    
-    // Como último recurso, usamos el rol almacenado en memberData si existe
-    if (!userRoleName && memberData.role) {
-      userRoleName = memberData.role;
+      userRoleName = 'Usuario';
     }
     
     return { 
@@ -637,21 +758,49 @@ export const acceptInvitation = async ({
   }
 
   try {
-    // Creamos el usuario
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: inviteData.email,
-      password,
-      options: {
-        data: userData
+    let userId = null;
+    
+    // First, check if user is already signed in (from email confirmation)
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (session && session.user && session.user.email?.toLowerCase() === inviteData.email.toLowerCase()) {
+      // User is already authenticated via email confirmation
+      console.log('User already authenticated via email confirmation:', session.user.id);
+      userId = session.user.id;
+    } else {
+      // Try to create the user (this might fail if user already exists)
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: inviteData.email,
+        password,
+        options: {
+          data: userData
+        }
+      });
+      
+      if (signUpError) {
+        // Check if error is due to user already existing
+        if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
+          // User exists, try to sign them in to get their ID
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: inviteData.email,
+            password
+          });
+          
+          if (signInError || !signInData.user) {
+            return { error: { message: 'Usuario ya existe pero la contraseña no coincide. Por favor, usa la contraseña que estableciste anteriormente.' } };
+          }
+          
+          userId = signInData.user.id;
+          console.log('User already existed, signed in successfully:', userId);
+        } else {
+          return { error: signUpError };
+        }
+      } else if (authData && authData.user) {
+        userId = authData.user.id;
+        console.log('New user created successfully:', userId);
+      } else {
+        return { error: { message: 'No se pudo crear o autenticar el usuario' } };
       }
-    });
-  
-    if (signUpError) {
-      return { error: signUpError };
-    }
-
-    if (!authData || !authData.user) {
-      return { error: { message: 'No se pudo crear el usuario' } };
     }
 
     // Obtenemos información de la sucursal principal
@@ -668,7 +817,7 @@ export const acceptInvitation = async ({
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
-        id: authData.user.id,
+        id: userId,
         email: inviteData.email,
         first_name: userData.firstName || userData.first_name,
         last_name: userData.lastName || userData.last_name,
@@ -703,7 +852,7 @@ export const acceptInvitation = async ({
       return { error: updateInviteError };
     }
     
-    return { data: authData, error: null };
+    return { data: { user: { id: userId } }, error: null };
   } catch (error: any) {
     console.error('Error en acceptInvitation:', error);
     return { 
@@ -713,4 +862,138 @@ export const acceptInvitation = async ({
       } 
     };
   }
-}
+};
+
+// Función auxiliar para completar perfil de invitación
+export const createProfileFromInvitation = async ({
+  inviteCode,
+  userData,
+  authUserId,
+  password
+}: {
+  inviteCode: string;
+  userData: any;
+  authUserId: string;
+  password?: string;
+}) => {
+  // Validar la invitación
+  const { data: inviteData, error: validateError } = await validateInvitation(inviteCode);
+  
+  if (validateError) {
+    return { error: validateError };
+  }
+
+  try {
+    // Obtener información de la sucursal principal
+    const { data: branchData } = await supabase
+      .from('branches')
+      .select('id')
+      .eq('organization_id', inviteData.organization_id)
+      .eq('is_main', true)
+      .single();
+
+    const branchId = branchData?.id || null;
+
+    // Actualizar contraseña si se proporciona
+    if (password) {
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password: password
+      });
+      
+      if (passwordError) {
+        console.error('Error al actualizar contraseña:', passwordError);
+        return { error: { message: 'Error al actualizar la contraseña: ' + passwordError.message } };
+      }
+      console.log('Contraseña actualizada exitosamente');
+    }
+
+    // Actualizar perfil (el trigger ya creó el perfil básico)
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        first_name: userData.firstName || userData.first_name,
+        last_name: userData.lastName || userData.last_name,
+        phone: userData.phoneNumber || userData.phone,
+        branch_id: branchId,
+        last_org_id: inviteData.organization_id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', authUserId);
+    
+    if (profileError) {
+      console.error('Error al actualizar perfil:', profileError);
+      return { error: profileError };
+    }
+    console.log('Perfil actualizado exitosamente');
+
+    // Verificar si ya existe la membresía en la organización
+    const { data: existingMembership } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('user_id', authUserId)
+      .eq('organization_id', inviteData.organization_id)
+      .single();
+
+    if (!existingMembership) {
+      // Crear membresía en la organización
+      const { error: membershipError } = await supabase
+        .from('organization_members')
+        .insert({
+          user_id: authUserId,
+          organization_id: inviteData.organization_id,
+          role_id: inviteData.role_id,
+          is_active: true,
+          joined_at: new Date().toISOString()
+        });
+
+      if (membershipError) {
+        console.error('Error al crear membresía:', membershipError);
+        return { error: { message: 'Error al crear la membresía en la organización: ' + membershipError.message } };
+      }
+      console.log('Membresía en organización creada exitosamente');
+    } else {
+      // Actualizar membresía existente
+      const { error: updateMembershipError } = await supabase
+        .from('organization_members')
+        .update({
+          role_id: inviteData.role_id,
+          is_active: true,
+          joined_at: new Date().toISOString()
+        })
+        .eq('user_id', authUserId)
+        .eq('organization_id', inviteData.organization_id);
+
+      if (updateMembershipError) {
+        console.error('Error al actualizar membresía:', updateMembershipError);
+        return { error: { message: 'Error al actualizar la membresía: ' + updateMembershipError.message } };
+      }
+      console.log('Membresía en organización actualizada exitosamente');
+    }
+
+    // Marcar la invitación como utilizada
+    const { error: updateInviteError } = await supabase
+      .from('invitations')
+      .update({ 
+        status: 'used', 
+        used_at: new Date().toISOString() 
+      })
+      .eq('code', inviteCode);
+    
+    if (updateInviteError) {
+      console.error('Error al actualizar invitación:', updateInviteError);
+      return { error: updateInviteError };
+    }
+    console.log('Invitación marcada como utilizada');
+    
+    console.log('Proceso de invitación completado exitosamente para usuario:', authUserId);
+    return { data: { user: { id: authUserId } }, error: null };
+
+  } catch (error: any) {
+    console.error('Error en createProfileFromInvitation:', error);
+    return { 
+      error: { 
+        message: error.message || 'Error al crear el perfil' 
+      } 
+    };
+  }
+};

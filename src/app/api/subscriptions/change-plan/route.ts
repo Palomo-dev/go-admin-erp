@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/config';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
+    // Crear cliente de Supabase con cookies para autenticación del servidor
+    const supabase = createRouteHandlerClient({ cookies });
+    
     // Verificar autenticación
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -25,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Verificar que el usuario tiene permisos para cambiar el plan de esta organización
     const { data: memberData, error: memberError } = await supabase
       .from('organization_members')
-      .select('role, is_super_admin')
+      .select('role_id, is_super_admin')
       .eq('organization_id', organizationId)
       .eq('user_id', session.user.id)
       .eq('is_active', true)
@@ -39,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Solo admins y super admins pueden cambiar planes
-    if (memberData.role !== 'org_admin' && !memberData.is_super_admin) {
+    if (memberData.role_id !== 2 && !memberData.is_super_admin) {
       return NextResponse.json(
         { error: 'Solo los administradores pueden cambiar el plan' },
         { status: 403 }
@@ -86,10 +90,7 @@ export async function POST(request: NextRequest) {
           current_period_end: nextPeriodEnd.toISOString(),
           trial_start: newPlan.trial_days > 0 ? now.toISOString() : null,
           trial_end: newPlan.trial_days > 0 ? 
-            new Date(now.getTime() + newPlan.trial_days * 24 * 60 * 60 * 1000).toISOString() : null,
-          amount: billingPeriod === 'yearly' ? newPlan.price_usd_year : newPlan.price_usd_month,
-          start_date: now.toISOString().split('T')[0],
-          end_date: nextPeriodEnd.toISOString().split('T')[0]
+            new Date(now.getTime() + newPlan.trial_days * 24 * 60 * 60 * 1000).toISOString() : null
         })
         .select()
         .single();
@@ -102,7 +103,6 @@ export async function POST(request: NextRequest) {
         .from('subscriptions')
         .update({
           plan_id: newPlan.id,
-          amount: billingPeriod === 'yearly' ? newPlan.price_usd_year : newPlan.price_usd_month,
           updated_at: now.toISOString()
         })
         .eq('id', currentSubscription.id)
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     if (orgUpdateError) throw orgUpdateError;
 
     // Gestionar módulos según el nuevo plan
-    await updateOrganizationModules(organizationId, newPlan);
+    await updateOrganizationModules(organizationId, newPlan, supabase);
 
     // Determinar el tipo de cambio
     let changeType = 'change';
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Función auxiliar para actualizar módulos según el plan
-async function updateOrganizationModules(organizationId: number, newPlan: any) {
+async function updateOrganizationModules(organizationId: number, newPlan: any, supabase: any) {
   try {
     // Obtener todos los módulos
     const { data: allModules, error: modulesError } = await supabase
@@ -189,8 +189,8 @@ async function updateOrganizationModules(organizationId: number, newPlan: any) {
     if (currentError) throw currentError;
 
     // Determinar qué módulos debería tener según el nuevo plan
-    const coreModules = allModules.filter(m => m.is_core);
-    const optionalModules = allModules.filter(m => !m.is_core);
+    const coreModules = allModules.filter((m: any) => m.is_core);
+    const optionalModules = allModules.filter((m: any) => !m.is_core);
     
     // Los módulos core siempre están disponibles
     let allowedModules = [...coreModules];
@@ -207,9 +207,9 @@ async function updateOrganizationModules(organizationId: number, newPlan: any) {
     }
 
     // Desactivar módulos que ya no están permitidos
-    const allowedCodes = allowedModules.map(m => m.code);
+    const allowedCodes = allowedModules.map((m: any) => m.code);
     const modulesToDisable = currentOrgModules.filter(
-      om => !allowedCodes.includes(om.module_code) && om.is_active
+      (om: any) => !allowedCodes.includes(om.module_code) && om.is_active
     );
 
     for (const moduleToDisable of modulesToDisable) {
@@ -223,8 +223,8 @@ async function updateOrganizationModules(organizationId: number, newPlan: any) {
     }
 
     // Activar módulos que ahora están permitidos
-    const currentCodes = currentOrgModules.map(om => om.module_code);
-    const modulesToAdd = allowedModules.filter(m => !currentCodes.includes(m.code));
+    const currentCodes = currentOrgModules.map((om: any) => om.module_code);
+    const modulesToAdd = allowedModules.filter((m: any) => !currentCodes.includes(m.code));
 
     for (const moduleToAdd of modulesToAdd) {
       await supabase
@@ -239,7 +239,7 @@ async function updateOrganizationModules(organizationId: number, newPlan: any) {
 
     // Reactivar módulos que estaban desactivados pero ahora están permitidos
     const modulesToReactivate = currentOrgModules.filter(
-      om => allowedCodes.includes(om.module_code) && !om.is_active
+      (om: any) => allowedCodes.includes(om.module_code) && !om.is_active
     );
 
     for (const moduleToReactivate of modulesToReactivate) {

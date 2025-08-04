@@ -206,7 +206,7 @@ export default function AppLayout({
         // Obtener datos del rol del usuario con manejo adecuado de errores
         const { data: userRoleData, error: roleError } = await supabase
           .from('organization_members')
-          .select('role')
+          .select('role_id, roles!inner(id, name)')
           .eq('user_id', user.id)
           .eq('organization_id', currentOrgId)
           .single();
@@ -218,9 +218,9 @@ export default function AppLayout({
         
         // Actualizar el estado del userData
         setUserData({
-          name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
+          name: profileData?.full_name || (profileData?.first_name || '') + ' ' + (profileData?.last_name || ''),
           email: user.email,
-          role: userRoleData?.role,
+          role: userRoleData?.roles?.name || 'Usuario',
           avatar: profileData?.avatar_url
         });
       } catch (error) {

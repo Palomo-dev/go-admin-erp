@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase/config";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/utils/Utils";
+import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
 // Importaciones de UI
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -534,11 +535,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                             : "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                       }
                     >
-                      {opportunity.status === "won" 
-                        ? "Ganada" 
-                        : opportunity.status === "lost" 
-                          ? "Perdida" 
-                          : "Activa"}
+                      {translateOpportunityStatus(opportunity.status || 'active')}
                     </Badge>
                   </TableCell>
                   <TableCell>

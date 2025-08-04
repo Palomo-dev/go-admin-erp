@@ -48,7 +48,7 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
         
         if (notasData) {
           // Recolectar IDs de usuarios únicos
-          const userIds = [...new Set(notasData.map(note => note.user_id))];
+          const userIds = Array.from(new Set(notasData.map(note => note.user_id)));
           
           // Obtener información de los usuarios
           if (userIds.length > 0) {

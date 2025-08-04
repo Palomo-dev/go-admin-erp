@@ -10,6 +10,8 @@ interface FormData {
   password: string;
   confirmPassword: string;
   phone: string;
+  avatarUrl?: string; // NUEVO - Storage path del avatar
+  preferredLanguage?: string; // NUEVO - Idioma preferido
 }
 
 type PersonalInfoProps = {
@@ -25,17 +27,8 @@ export default function PersonalInfoStep({ formData, updateFormData, onNext, err
   const currentError = error || formError;
 
   const handleSubmit = async (data: RegistrationFormData) => {
-    // Validate passwords match
-    if (data.password !== data.confirmPassword) {
-      setFormError('Las contraseñas no coinciden');
-      return;
-    }
-    
-    // Validate password length
-    if (data.password.length < 8) {
-      setFormError('La contraseña debe tener al menos 8 caracteres');
-      return;
-    }
+    // La validación de contraseñas ahora se realiza en el componente RegistrationForm
+    // Solo verificamos si hay errores generales del proceso de registro
     
     // Update form data in parent component
     updateFormData({
@@ -44,7 +37,9 @@ export default function PersonalInfoStep({ formData, updateFormData, onNext, err
       email: data.email,
       password: data.password,
       confirmPassword: data.confirmPassword,
-      phone: data.phoneNumber
+      phone: data.phoneNumber,
+      avatarUrl: data.avatarUrl, // NUEVO
+      preferredLanguage: data.preferredLanguage // NUEVO
     });
     
     // Proceed to next step

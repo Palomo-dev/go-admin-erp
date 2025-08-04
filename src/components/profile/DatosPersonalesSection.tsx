@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/config';
 import { Save, Edit2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
+import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 
 interface Profile {
   id: string;
@@ -252,7 +253,7 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
           <div className="relative w-24 h-24">
             {(tempAvatar || avatarUrl) ? (
               <Image 
-                src={tempAvatar || avatarUrl || ''}
+                src={tempAvatar || getAvatarUrl(avatarUrl) || ''}
                 alt="Avatar" 
                 fill
                 className="rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"

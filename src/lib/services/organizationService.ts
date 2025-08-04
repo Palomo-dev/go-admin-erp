@@ -52,7 +52,6 @@ export const organizationService = {
         console.error('Error al obtener organizaciones del usuario:', error);
         throw new Error(error.message);
       }
-
       // Transformar la respuesta para que tenga el formato correcto
       const organizations: Organization[] = [];
       

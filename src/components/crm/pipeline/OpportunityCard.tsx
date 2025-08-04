@@ -4,8 +4,9 @@ import { CalendarIcon, User2 } from "lucide-react";
 import { formatCurrency } from "@/utils/Utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTheme } from "next-themes";
-import { Opportunity } from "@/types/crm";
+import type { Opportunity } from "@/types/crm";
 import { Badge } from "@/components/ui/badge";
+import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -80,17 +81,7 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
           </h4>
           {status && (
             <Badge variant={getBadgeVariant(status)} className="text-[10px]">
-              {status === "in_progress"
-                ? "En progreso"
-                : status === "won"
-                ? "Ganada"
-                : status === "lost"
-                ? "Perdida"
-                : status === "active"
-                ? "Activa"
-                : status === "delayed"
-                ? "Retrasada"
-                : status}
+              {translateOpportunityStatus(status || '')}
             </Badge>
           )}
         </div>

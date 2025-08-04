@@ -88,7 +88,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             user_id: member.user_id || member.id,
             full_name: fullName,
             email: member.email || 'Sin email',
-            role: roleInfo.name,
+            role: member.role_name || roleInfo.name, // Usar role_name de la RPC, fallback a roleInfo
             role_id: member.role_id,
             role_code: roleInfo.code,
             is_admin: member.is_super_admin || false,

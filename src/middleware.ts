@@ -1,209 +1,501 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
+import { supabase, getProjectRef } from '@/lib/supabase/config';
+import { jwtVerify, importSPKI } from 'jose';
+import { moduleManagementService } from '@/lib/services/moduleManagementService';
 
-export async function middleware(request: NextRequest) {
-  // Obtener credenciales de Supabase desde variables de entorno
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Session cache para evitar llamadas repetidas a Supabase
+interface CachedSession {
+  session: any;
+  expiresAt: number;
+  cachedAt: number;
+}
 
-  // Extraer referencia del proyecto dinámicamente desde la URL de Supabase
-  const projectRef = supabaseUrl.split('.')[0].replace('https://', '');
+const sessionCache = new Map<string, CachedSession>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const ACTIVITY_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutos
 
-  // Obtener el token de autenticación de las cookies
-  const authCookie = request.cookies.get(`sb-${projectRef}-auth-token`);
+// Supabase JWT public key para validación local
+let supabasePublicKey: any = null;
 
-  // Crear configuración personalizada para el cliente de Supabase
-  const supabaseClientOptions = {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false,
-      flowType: 'pkce' as const, // Use const assertion to fix type error
-      // Si tenemos un token de autenticación en la cookie, lo usamos como sesión inicial
-      ...(authCookie && {
-        storageKey: `sb-${projectRef}-auth-token`,
-        storage: {
-          getItem: () => authCookie.value,
-          setItem: () => {},
-          removeItem: () => {}
-        }
-      })
+/**
+ * Obtiene la clave pública de Supabase para validación JWT local
+ */
+async function getSupabasePublicKey() {
+  if (supabasePublicKey) return supabasePublicKey;
+  
+  try {
+    const projectRef = getProjectRef();
+    const response = await fetch(`https://${projectRef}.supabase.co/auth/v1/jwks`);
+    const jwks = await response.json();
+    
+    if (jwks.keys && jwks.keys[0]) {
+      const key = jwks.keys[0];
+      const pemKey = `-----BEGIN PUBLIC KEY-----\n${key.x5c[0]}\n-----END PUBLIC KEY-----`;
+      supabasePublicKey = await importSPKI(pemKey, key.alg);
     }
-  };
+  } catch (error) {
+    console.warn('⚠️ [MIDDLEWARE] Error obteniendo clave pública:', error);
+  }
+  
+  return supabasePublicKey;
+}
 
-  // Crear cliente de Supabase con la configuración personalizada
-  const supabase = createClient(supabaseUrl, supabaseKey, supabaseClientOptions);
+/**
+ * Valida JWT localmente sin llamar a Supabase
+ */
+async function validateJWTLocally(token: string): Promise<{ valid: boolean; payload?: any; expired?: boolean }> {
+  try {
+    const publicKey = await getSupabasePublicKey();
+    if (!publicKey) return { valid: false };
+    
+    const { payload } = await jwtVerify(token, publicKey);
+    const currentTime = Math.floor(Date.now() / 1000);
+    const expired = payload.exp ? payload.exp < currentTime : false;
+    
+    return { valid: true, payload, expired };
+  } catch (error) {
+    return { valid: false };
+  }
+}
 
-  // Verificar si hay una sesión activa usando el cliente de Supabase
+/**
+ * Obtiene sesión desde cache o valida con Supabase
+ */
+async function getValidatedSession(authCookie: any) {
+  const cacheKey = authCookie.value.substring(0, 50); // Usar parte del token como key
+  const cached = sessionCache.get(cacheKey);
+  const currentTime = Date.now();
+  
+  // Verificar cache válido
+  if (cached && (currentTime - cached.cachedAt) < CACHE_DURATION && cached.expiresAt > currentTime) {
+    return { session: cached.session, isAuthenticated: true, isExpired: false };
+  }
+  
+  try {
+    const tokenData = JSON.parse(authCookie.value);
+    const { access_token, refresh_token, expires_at } = tokenData;
+    
+    if (!access_token || !refresh_token) {
+      return { session: null, isAuthenticated: false, isExpired: false };
+    }
+    
+    // Intentar validación JWT local primero
+    const jwtValidation = await validateJWTLocally(access_token);
+    
+    if (jwtValidation.valid && !jwtValidation.expired) {
+      // Crear sesión mock para cache (sin llamar a Supabase)
+      const mockSession = {
+        access_token,
+        refresh_token,
+        expires_at,
+        user: jwtValidation.payload
+      };
+      
+      // Guardar en cache
+      sessionCache.set(cacheKey, {
+        session: mockSession,
+        expiresAt: (expires_at || 0) * 1000,
+        cachedAt: currentTime
+      });
+      
+      // Validación JWT local exitosa
+      
+      return { session: mockSession, isAuthenticated: true, isExpired: false };
+    }
+    
+    // Si JWT local falla, usar Supabase como fallback
+    
+    const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+    
+    if (error || !data.session) {
+      return { session: null, isAuthenticated: false, isExpired: false };
+    }
+    
+    const session = data.session;
+    const sessionExpired = !!session.expires_at && session.expires_at < Math.floor(Date.now() / 1000);
+    
+    if (!sessionExpired) {
+      // Guardar en cache
+      sessionCache.set(cacheKey, {
+        session,
+        expiresAt: (session.expires_at || 0) * 1000,
+        cachedAt: currentTime
+      });
+    }
+    
+    return { 
+      session: sessionExpired ? null : session, 
+      isAuthenticated: !sessionExpired, 
+      isExpired: sessionExpired 
+    };
+    
+  } catch (error) {
+    return { session: null, isAuthenticated: false, isExpired: false };
+  }
+}
+
+/**
+ * Verifica si la ruta debe ser excluida del middleware
+ */
+function shouldSkipRoute(pathname: string): boolean {
+  const skipPatterns = [
+    '/_next/',
+    '/favicon.ico',
+    '/public/',
+    '/api/test',
+    '/auth/v1/',
+    '/.well-known/',
+    '/robots.txt',
+    '/sitemap.xml',
+    '/manifest.json'
+  ];
+  
+  return skipPatterns.some(pattern => pathname.startsWith(pattern)) ||
+         !!pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/);
+}
+
+/**
+ * Middleware para manejar autenticación y autorización
+ * Verifica sesiones, maneja redirecciones y actualiza actividad de usuario
+ */
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Verificar si debemos saltar esta ruta completamente
+  if (shouldSkipRoute(pathname)) {
+    return NextResponse.next();
+  }
+  
+  // Para el middleware en el servidor, necesitamos crear un cliente temporal
+  // que pueda leer las cookies del request
+  const projectRef = getProjectRef();
+  const authCookieName = `sb-${projectRef}-auth-token`;
+  let authCookie = request.cookies.get(authCookieName);
+
+  // Si no encontramos la cookie exacta, buscar variaciones
+  if (!authCookie) {
+    const possibleNames = [
+      `sb-${projectRef}-auth-token`,
+      `sb-${projectRef}-auth-token-code-verifier`,
+      `sb-auth-token`,
+      'supabase-auth-token'
+    ];
+    
+    for (const name of possibleNames) {
+      const cookie = request.cookies.get(name);
+      if (cookie) {
+        authCookie = cookie;
+        break;
+      }
+    }
+  }
+
+  // Usar la nueva función optimizada para validar sesión
   let session = null;
   let isAuthenticated = false;
   let isExpired = false;
-
-  try {
-    // 1. Primero intentamos obtener la sesión actual
-    const { data } = await supabase.auth.getSession();
-    session = data.session;
-
-    // Comprobar si la sesión está expirada por tiempo
-    if (session) {
-      const expiresAt = session.expires_at;
-      const currentTime = Math.floor(Date.now() / 1000); // Convertir a segundos
+  
+  if (!authCookie?.value) {
+    // No hay cookie de autenticación
+  } else {
+    // Verificar que la cookie no esté corrupta
+    if (authCookie.value === '[object Object]' || 
+        authCookie.value.includes('[object Object]') ||
+        authCookie.value === 'undefined' ||
+        authCookie.value === 'null' ||
+        !authCookie.value.trim().startsWith('{')) {
       
-      // Si la sesión ha expirado, marcarla como tal
-      if (expiresAt && expiresAt < currentTime) {
-        console.log('Sesión expirada por tiempo:', expiresAt ? new Date(expiresAt * 1000).toLocaleString() : 'unknown');
-        isExpired = true;
-        session = null; // Invalidar la sesión
-      } else {
-        console.log('Sesión válida hasta:', expiresAt ? new Date(expiresAt * 1000).toLocaleString() : 'unknown');
-      }
+      // Cookie corrupta detectada
+      
+      // Limpiar cookie corrupta y redirigir a login
+      const response = NextResponse.redirect(new URL('/auth/login?error=corrupted-session', request.url));
+      response.cookies.delete(authCookieName);
+      
+      // También limpiar otras cookies relacionadas
+      const allSupabaseCookies = [
+        `sb-${projectRef}-auth-token`,
+        `sb-${projectRef}-auth-token-code-verifier`,
+        'sb-auth-token',
+        'supabase-auth-token'
+      ];
+      
+      allSupabaseCookies.forEach(cookieName => {
+        response.cookies.delete(cookieName);
+      });
+      
+      return response;
     }
     
-    // 2. Si no hay sesión pero tenemos una cookie de autenticación, intentamos refrescarla
-    if (!session && authCookie && !isExpired) {
-      try {
-        const { data: refreshData, error } = await supabase.auth.refreshSession();
-        
-        if (error) {
-          console.error('Error al refrescar sesión:', error.message);
-          if (error.message.includes('expired')) {
-            isExpired = true;
-          }
-        } else {
-          session = refreshData.session;
-        }
-      } catch (refreshError) {
-        console.error('Error en proceso de refresh:', refreshError);
-        isExpired = true;
-      }
-    }
-
-    // Determinar si el usuario está autenticado en base a la sesión
-    isAuthenticated = !!session;
+    // Usar la función optimizada de validación
+    const sessionResult = await getValidatedSession(authCookie);
+    session = sessionResult.session;
+    isAuthenticated = sessionResult.isAuthenticated;
+    isExpired = sessionResult.isExpired;
     
-    // Actualizar la actividad del dispositivo si el usuario está autenticado
-    if (isAuthenticated && session) {
+    if (isAuthenticated && session?.user?.id) {
+      // Acción asíncrona: registrar actividad del usuario (optimizada)
+      updateUserActivityOptimized(session.user.id, request);
+    }
+  }
+  
+
+  return await handleRouteProtection(request, isAuthenticated, isExpired);
+}
+
+/**
+ * Actualiza la actividad del usuario de forma asíncrona (versión optimizada)
+ */
+function updateUserActivityOptimized(userId: string, request: NextRequest) {
+  const lastActivityUpdate = request.cookies.get('last_activity_update')?.value;
+  const currentTime = Date.now();
+  
+  // Solo actualizar si han pasado más de 10 minutos
+  if (!lastActivityUpdate || (currentTime - parseInt(lastActivityUpdate)) > ACTIVITY_UPDATE_INTERVAL) {
+    // Actualizar de forma completamente asíncrona sin bloquear
+    Promise.resolve().then(async () => {
       try {
-        // Obtener el tiempo de última actualización de actividad de la cookie
-        const lastActivityUpdate = request.cookies.get('last_activity_update')?.value;
-        const currentTime = Date.now();
-        console.log('Tiempo de última actualización:', lastActivityUpdate);
-        // Solo actualizar si han pasado más de 10 minutos desde la última actualización
-        // o si no hay cookie de última actividad
-        if (!lastActivityUpdate || (currentTime - parseInt(lastActivityUpdate)) > 600000) {
-          // Crear respuesta que será modificada y configurar cookie
-          const nextResponse = NextResponse.next();
-          
-          // Registrar la última actualización en la cookie (10 minutos de vigencia)
-          nextResponse.cookies.set('last_activity_update', currentTime.toString(), { 
-            maxAge: 600, // 10 minutos en segundos
-            path: '/' 
-          });
-          
-          // Hacer una petición asíncrona para actualizar la actividad
-          // Usamos el cliente normal en lugar de admin
-          try {
-            // Ejecutamos la consulta de forma asíncrona sin esperar respuesta
-            // para no bloquear la navegación
-            void supabase.from('user_devices')
-              .update({ last_active_at: new Date().toISOString() })
-              .eq('user_id', session.user.id)
-              // La sesión en Supabase no tiene una propiedad 'id' directamente
-              .eq('is_active', true);
-              
-            console.log('Solicitud de actualización de actividad enviada');
-          } catch (activityUpdateError) {
-            console.error('Error al actualizar actividad:', activityUpdateError);
-          }
-        }
-      } catch (activityError) {
-        // Ignoramos errores en la actualización de actividad para no bloquear la navegación
-        console.error('Error al intentar actualizar actividad:', activityError);
+        await supabase
+          .from('user_devices')
+          .update({ last_active_at: new Date().toISOString() })
+          .eq('user_id', userId)
+          .eq('is_active', true);
+      } catch (error) {
+        // Ignorar errores de actividad para no afectar navegación
+        console.warn('⚠️ [MIDDLEWARE] Error actualizando actividad:', error);
       }
+    });
+  }
+}
+
+/**
+ * Actualiza la actividad del usuario de forma asíncrona (versión legacy)
+ */
+function updateUserActivity(supabase: any, userId: string, request: NextRequest) {
+  const lastActivityUpdate = request.cookies.get('last_activity_update')?.value;
+  const currentTime = Date.now();
+  const TEN_MINUTES = 600000; // 10 minutos en ms
+  
+  // Solo actualizar si han pasado más de 10 minutos
+  if (!lastActivityUpdate || (currentTime - parseInt(lastActivityUpdate)) > TEN_MINUTES) {
+    // Actualizar de forma asíncrona sin bloquear
+    void supabase
+      .from('user_devices')
+      .update({ last_active_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .then(() => {
+        // Marcar la actualización en cookie
+        // Nota: No podemos modificar cookies aquí, se haría en el response
+      })
+      .catch(() => {
+        // Ignorar errores de actividad para no afectar navegación
+      });
+  }
+}
+
+/**
+ * Mapeo de rutas a módulos
+ */
+const routeToModuleMap: Record<string, string> = {
+  '/app/organizacion': 'organizations',
+  '/app/branding': 'branding',
+  '/app/sucursales': 'branches',
+  '/app/pos': 'pos_retail',
+  '/app/inventario': 'inventory',
+  '/app/pms': 'pms_hotel',
+  '/app/pms/parking': 'parking',
+  '/app/crm': 'crm',
+  '/app/hrm': 'hrm',
+  '/app/finanzas': 'finance',
+  '/app/reportes': 'reports',
+  '/app/notificaciones': 'notifications',
+  '/app/integraciones': 'integrations',
+  '/app/transporte': 'transport',
+  '/app/calendario': 'calendar',
+  '/app/timeline': 'operations'
+};
+
+/**
+ * Obtiene el código del módulo basado en la ruta
+ */
+function getModuleFromPath(pathname: string): string | null {
+  // Buscar coincidencia exacta primero
+  if (routeToModuleMap[pathname]) {
+    return routeToModuleMap[pathname];
+  }
+  
+  // Buscar por prefijo (para subrutas)
+  for (const [route, module] of Object.entries(routeToModuleMap)) {
+    if (pathname.startsWith(route + '/')) {
+      return module;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Verifica el acceso a módulos para una ruta específica
+ */
+async function checkModuleAccess(request: NextRequest, pathname: string): Promise<NextResponse | null> {
+  try {
+    const moduleCode = getModuleFromPath(pathname);
+    if (!moduleCode) {
+      // Si no hay módulo asociado, permitir acceso
+      return null;
     }
 
-    console.log('Sesión activa:', !!session ? 'Sí' : 'No');
-    console.log('Autenticado:', isAuthenticated);
-    console.log('Sesión expirada:', isExpired ? 'Sí' : 'No');
+    // Obtener información del usuario desde las cookies
+    const authCookie = request.cookies.get('sb-jgmgphmzusbluqhuqihj-auth-token');
+    if (!authCookie?.value) {
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
+
+    // Parsear el token para obtener user_id
+    let userId: string;
+    let organizationId: number;
+    
+    try {
+      const authData = JSON.parse(authCookie.value);
+      userId = authData.user?.id;
+      
+      // Obtener organization_id desde cookies o headers
+      const orgCookie = request.cookies.get('organization');
+      if (!orgCookie?.value) {
+        console.warn('⚠️ [MIDDLEWARE] No organization cookie found');
+        return null; // Permitir acceso si no hay organización definida
+      }
+      
+      // Buscar la organización por subdomain
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('subdomain', orgCookie.value)
+        .single();
+      
+      if (!org) {
+        console.warn('⚠️ [MIDDLEWARE] Organization not found:', orgCookie.value);
+        return null;
+      }
+      
+      organizationId = org.id;
+      
+    } catch (error) {
+      console.error('❌ [MIDDLEWARE] Error parsing auth data:', error);
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
+
+    // Verificar si la organización puede acceder al módulo
+    const canAccess = await moduleManagementService.canAccessModule(organizationId, moduleCode);
+    
+    if (!canAccess) {
+      console.log(`🚫 [MIDDLEWARE] Access denied to module ${moduleCode} for organization ${organizationId}`);
+      
+      // Redirigir a página de acceso denegado o inicio
+      const redirectUrl = new URL('/app/inicio', request.url);
+      redirectUrl.searchParams.set('error', 'module_not_activated');
+      redirectUrl.searchParams.set('module', moduleCode);
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    return null; // Permitir acceso
+    
   } catch (error) {
-    console.error('Error al verificar/refrescar sesión:', error);
-    isAuthenticated = false;
+    console.error('❌ [MIDDLEWARE] Error checking module access:', error);
+    return null; // En caso de error, permitir acceso para evitar bloqueos
+  }
+}
+
+/**
+ * Maneja la protección de rutas y redirecciones
+ */
+async function handleRouteProtection(request: NextRequest, isAuthenticated: boolean, isExpired: boolean) {
+  const { pathname } = request.nextUrl;
+  
+  // Solo agregar debugging para rutas específicas
+  const shouldDebug = pathname.startsWith('/app/') || pathname === '/auth/login';
+  
+  if (shouldDebug) {
+    console.log('🔍 [MIDDLEWARE] handleRouteProtection:', {
+      pathname,
+      isAuthenticated,
+      isExpired
+    });
+  }
+  
+  // Rutas que no requieren autenticación
+  const isPublicRoute = (
+    pathname.startsWith('/auth/') ||
+    pathname === '/auth' ||
+    pathname === '/' ||
+    pathname.includes('/_next/') ||
+    pathname.includes('/auth/v1/') // API de Supabase
+  );
+  
+  if (shouldDebug) {
+    console.log('🔍 [MIDDLEWARE] Ruta pública:', isPublicRoute);
   }
 
-  // Registrar información para depuración
-  console.log(`Ruta: ${request.nextUrl.pathname}`);
-  console.log(`Token en cookie: ${!!authCookie}`);
-
-  // Determinar si estamos en una ruta pública (que no requiere autenticación)
-  const isPublicRoute = (
-    request.nextUrl.pathname.startsWith('/auth/') ||
-    request.nextUrl.pathname === '/auth' ||
-    request.nextUrl.pathname === '/' ||
-    request.nextUrl.pathname.includes('/_next/')
-  );
-
-  // Comprobar si estamos accediendo a API de Supabase
-  const isSupabaseRequest = request.nextUrl.pathname.includes('/auth/v1/');
-
-  // Si es una solicitud a la API de Supabase, permitir pasar
-  if (isSupabaseRequest) {
+  // Permitir acceso a API de Supabase
+  if (pathname.includes('/auth/v1/')) {
     return NextResponse.next();
   }
 
-  // Si la sesión está expirada, redirigir a la página de sesión expirada
-  if (isExpired && !request.nextUrl.pathname.startsWith('/auth/session-expired')) {
-    console.log('Redirigiendo a página de sesión expirada');
-    const redirectUrl = new URL('/auth/session-expired', request.url);
-    return NextResponse.redirect(redirectUrl);
+  // Manejar sesión expirada
+  if (isExpired && !pathname.startsWith('/auth/session-expired')) {
+    return NextResponse.redirect(new URL('/auth/session-expired', request.url));
   }
   
-  // Si el usuario no está autenticado y la ruta actual no es /auth/*, redirigir a /auth/login
-  if (!isAuthenticated && !request.nextUrl.pathname.startsWith('/auth/')) {
-    console.log('Redirigiendo a login: Usuario no autenticado');
+  // Prevenir acceso a página de sesión expirada si no está expirada
+  if (!isExpired && pathname === '/auth/session-expired') {
+    return NextResponse.redirect(new URL('/app/inicio', request.url));
+  }
+
+  // Redirigir usuarios no autenticados a login
+  if (!isAuthenticated && !isPublicRoute) {
+    if (shouldDebug) {
+      console.log('🚀 [MIDDLEWARE] Redirigiendo usuario no autenticado a login');
+    }
     const redirectUrl = new URL('/auth/login', request.url);
+    if (pathname.startsWith('/app/')) {
+      redirectUrl.searchParams.set('redirectTo', pathname);
+    }
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Si el usuario está autenticado y la ruta actual es /auth/login, redirigir a /app/inicio
-  if (isAuthenticated && request.nextUrl.pathname === '/auth/login') {
-    console.log('Redirigiendo a inicio: Usuario ya autenticado en página de login');
-    const redirectUrl = new URL('/app/inicio', request.url);
-    return NextResponse.redirect(redirectUrl);
+  // Redirigir usuarios autenticados fuera de rutas de auth (excepto logout e invite)
+  if (isAuthenticated) {
+    if (pathname === '/auth/login') {
+      if (shouldDebug) {
+        console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde login a /app/inicio');
+      }
+      return NextResponse.redirect(new URL('/app/inicio', request.url));
+    }
+    
+    if (pathname.startsWith('/auth/') && 
+        pathname !== '/auth/logout' &&
+        pathname !== '/auth/session-expired' &&
+        !pathname.startsWith('/auth/invite')) {
+      if (shouldDebug) {
+        console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde auth a /app/inicio');
+      }
+      return NextResponse.redirect(new URL('/app/inicio', request.url));
+    }
+
+    // Verificar acceso a módulos para rutas protegidas
+    if (pathname.startsWith('/app/') && pathname !== '/app/inicio') {
+      const moduleAccessResult = await checkModuleAccess(request, pathname);
+      if (moduleAccessResult) {
+        return moduleAccessResult;
+      }
+    }
   }
 
-  // Si el usuario está autenticado y la ruta actual es /auth/* (excepto /auth/logout, /auth/invite y /auth/session-expired), redirigir a /app/inicio
-  if (isAuthenticated && 
-      request.nextUrl.pathname.startsWith('/auth/') && 
-      request.nextUrl.pathname !== '/auth/logout' &&
-      request.nextUrl.pathname !== '/auth/session-expired' &&
-      !request.nextUrl.pathname.startsWith('/auth/invite')) {
-    console.log('Redirigiendo a inicio: Usuario autenticado en ruta de autenticación');
-    const redirectUrl = new URL('/app/inicio', request.url);
-    return NextResponse.redirect(redirectUrl);
-  }
-  
-  // No permitir acceso a la página de sesión expirada si la sesión no está expirada
-  if (!isExpired && request.nextUrl.pathname === '/auth/session-expired') {
-    console.log('Redirigiendo a inicio: Usuario intentando acceder a sesión expirada sin estar expirado');
-    const redirectUrl = new URL('/app/inicio', request.url);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // Si el usuario no está autenticado y la ruta actual es /app/*, redirigir a /auth/login
-  if (!isAuthenticated && request.nextUrl.pathname.startsWith('/app/')) {
-    console.log('Redirigiendo a login: Usuario no autenticado intentando acceder a ruta protegida');
-    const redirectUrl = new URL('/auth/login', request.url);
-    // Agregar la URL actual como parámetro de consulta para poder redirigir después del inicio de sesión
-    redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // Check for organization in subdomain
+  // Manejar subdominios para organizaciones
   const hostname = request.headers.get('host') || '';
   const subdomain = hostname.split('.')[0];
   
-  // If there's a subdomain that's not 'www' and not localhost, set it in a cookie
   if (subdomain !== 'www' && !hostname.includes('localhost')) {
     const response = NextResponse.next();
     response.cookies.set('organization', subdomain, { 
@@ -214,6 +506,10 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  if (shouldDebug) {
+    console.log('✅ [MIDDLEWARE] Permitiendo acceso a la ruta');
+  }
+  
   return NextResponse.next();
 }
 
@@ -226,7 +522,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public (public files)
+     * - api/test (test endpoints - no auth required)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api/test).*)',
   ],
 };

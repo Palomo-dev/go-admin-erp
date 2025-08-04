@@ -231,7 +231,7 @@ export function ClientForm({ organizationId, branchId }: ClientFormProps) {
           address: formData.address || duplicateClient.address,
           city: formData.city || duplicateClient.city,
           notes: formData.notes || duplicateClient.notes,
-          roles: [...new Set([...selectedRoles, ...(duplicateClient.roles || [])])],
+          roles: Array.from(new Set([...selectedRoles, ...(duplicateClient.roles || [])])),
           updated_at: new Date().toISOString()
         };
         

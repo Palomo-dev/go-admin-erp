@@ -40,18 +40,35 @@ export function formatCurrency(value: number, currency: string = "COP"): string 
 /**
  * Formatea una fecha en formato legible
  * 
- * @param date - Fecha a formatear
+ * @param date - Fecha a formatear (Date, string o null/undefined)
  * @param locale - Configuración regional (por defecto es-ES)
  * @returns Cadena de fecha formateada
  */
-export function formatDate(date: Date, locale: string = 'es-ES'): string {
+export function formatDate(date: Date | string | null | undefined, locale: string = 'es-ES'): string {
+  // Manejar valores null/undefined
+  if (!date) {
+    return 'Sin fecha';
+  }
+  
+  let dateObject: Date;
+  
+  // Convertir string a Date si es necesario
+  if (typeof date === 'string') {
+    dateObject = new Date(date);
+  } else {
+    dateObject = date;
+  }
+  
+  // Verificar que la fecha sea válida
+  if (isNaN(dateObject.getTime())) {
+    return 'Fecha inválida';
+  }
+  
   return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
+    year: 'numeric'
+  }).format(dateObject);
 }
 
 /**

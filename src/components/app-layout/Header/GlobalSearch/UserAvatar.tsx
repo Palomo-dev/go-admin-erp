@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 
 interface AvatarProps {
   name: string;
@@ -57,21 +58,35 @@ export const UserAvatar = ({ name, avatarUrl, className = '', size = 'sm' }: Ava
 
   // Si hay una URL de avatar, mostrar la imagen
   if (avatarUrl) {
+    const publicAvatarUrl = getAvatarUrl(avatarUrl);
+    
     return (
-      <img 
-        src={avatarUrl} 
-        alt={`Avatar de ${name}`}
-        className={`rounded-full object-cover ${sizeClasses[size]} ${className}`}
-        onError={(e) => {
-          // Si hay error al cargar la imagen, mostrar iniciales
-          const target = e.currentTarget as HTMLImageElement;
-          target.style.display = 'none';
-          const fallbackElement = target.parentElement?.querySelector('.fallback-avatar') as HTMLElement;
-          if (fallbackElement) {
-            fallbackElement.style.display = 'flex';
-          }
-        }}
-      />
+      <div className={`relative ${sizeClasses[size]} ${className}`}>
+        <img 
+          src={publicAvatarUrl} 
+          alt={`Avatar de ${name}`}
+          className={`rounded-full object-cover ${sizeClasses[size]}`}
+          onError={(e) => {
+            // Si hay error al cargar la imagen, mostrar iniciales
+            const target = e.currentTarget as HTMLImageElement;
+            target.style.display = 'none';
+            const fallbackElement = target.parentElement?.querySelector('.fallback-avatar') as HTMLElement;
+            if (fallbackElement) {
+              fallbackElement.style.display = 'flex';
+            }
+          }}
+        />
+        {/* Fallback avatar con iniciales */}
+        <div 
+          className={`fallback-avatar absolute inset-0 rounded-full flex items-center justify-center text-white font-medium ${sizeClasses[size]}`}
+          style={{ 
+            backgroundColor: getColor(),
+            display: 'none'
+          }}
+        >
+          {getInitials()}
+        </div>
+      </div>
     );
   }
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRoles } from '@/hooks/useRoles';
 import { supabase } from '@/lib/supabase/config';
 import { RoleWithPermissions } from '@/lib/services/roleService';
+import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import { 
   Users, 
   UserCheck, 
@@ -319,10 +320,10 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
                     <div className="flex items-center space-x-4">
                       {/* Avatar */}
                       <div className="flex-shrink-0">
-                        {member.profiles.avatar_url ? (
+                        {member.profiles.avatar_url && getAvatarUrl(member.profiles.avatar_url) ? (
                           <img
                             className="h-10 w-10 rounded-full"
-                            src={member.profiles.avatar_url}
+                            src={getAvatarUrl(member.profiles.avatar_url)}
                             alt={`${member.profiles.first_name} ${member.profiles.last_name}`}
                           />
                         ) : (

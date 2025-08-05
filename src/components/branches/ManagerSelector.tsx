@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Member, memberService } from '@/lib/services/memberService';
 import { UserIcon } from '@heroicons/react/24/outline';
+import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 
 interface ManagerSelectorProps {
   organizationId: number;
@@ -83,10 +84,10 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
         <span className="flex items-center">
           {currentManager ? (
             <>
-              {currentManager.profiles[0]?.avatar_url ? (
+              {currentManager.profiles[0]?.avatar_url && getAvatarUrl(currentManager.profiles[0].avatar_url) ? (
                 <img
                   className="flex-shrink-0 h-6 w-6 rounded-full"
-                  src={currentManager.profiles[0].avatar_url}
+                  src={getAvatarUrl(currentManager.profiles[0].avatar_url)}
                   alt=""
                 />
               ) : (
@@ -151,10 +152,10 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
               onClick={() => handleManagerSelect(member.user_id)}
             >
               <div className="flex items-center">
-                {member.profiles[0]?.avatar_url ? (
+                {member.profiles[0]?.avatar_url && getAvatarUrl(member.profiles[0].avatar_url) ? (
                   <img
                     className="flex-shrink-0 h-6 w-6 rounded-full"
-                    src={member.profiles[0].avatar_url}
+                    src={getAvatarUrl(member.profiles[0].avatar_url)}
                     alt=""
                   />
                 ) : (

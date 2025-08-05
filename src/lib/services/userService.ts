@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { UserData } from '@/components/app-layout/types';
 
 /**
  * Obtiene el nombre de usuario a partir de su ID
@@ -78,6 +79,99 @@ export const getUserNames = async (userIds: string[]): Promise<Record<string, st
   } catch (error) {
     console.error('Error en getUserNames:', error);
     return {};
+  }
+};
+
+/**
+ * Obtiene los datos completos del usuario autenticado incluyendo su rol en la organización
+ * @param userId ID del usuario
+ * @param organizationId ID de la organización (opcional, usa la actual del localStorage si no se proporciona)
+ * @returns Datos completos del usuario con rol
+ */
+export const getUserData = async (userId: string, organizationId?: number): Promise<UserData | null> => {
+  try {
+    if (!userId) return null;
+
+    // Si no se proporciona organizationId, intentar obtenerlo del localStorage
+    let orgId = organizationId;
+    if (!orgId && typeof window !== 'undefined') {
+      const storedOrgId = localStorage.getItem('currentOrganizationId');
+      orgId = storedOrgId ? parseInt(storedOrgId, 10) : undefined;
+    }
+
+    console.log('getUserData - Buscando usuario:', userId, 'en organización:', orgId);
+
+    // Consulta que obtiene perfil del usuario con su rol en la organización
+    const query = supabase
+      .from('profiles')
+      .select(`
+        id,
+        email,
+        first_name,
+        last_name,
+        avatar_url,
+        organization_members!inner(
+          organization_id,
+          is_super_admin,
+          roles(
+            name
+          )
+        )
+      `)
+      .eq('id', userId);
+
+    // Si tenemos organizationId, filtrar por esa organización
+    if (orgId) {
+      query.eq('organization_members.organization_id', orgId);
+    }
+
+    const { data, error } = await query.single();
+
+    if (error) {
+      console.error('Error al obtener datos del usuario:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.error('No se encontraron datos para el usuario:', userId);
+      return null;
+    }
+
+    console.log('Datos de usuario obtenidos:', data);
+
+    // Construir el objeto UserData
+    const orgMember = data.organization_members?.[0]; // Tomar el primer miembro (debería ser único por organización)
+    
+    // Verificar la estructura de roles
+    console.log('orgMember:', orgMember);
+    console.log('orgMember.roles:', orgMember?.roles);
+    
+    let roleName = 'Sin rol';
+    if (orgMember?.roles) {
+      // Si roles es un objeto con name
+      if (typeof orgMember.roles === 'object' && 'name' in orgMember.roles) {
+        roleName = (orgMember.roles as any).name || 'Sin rol';
+      }
+      // Si roles es un array, tomar el primer elemento
+      else if (Array.isArray(orgMember.roles) && orgMember.roles.length > 0) {
+        roleName = (orgMember.roles[0] as any)?.name || 'Sin rol';
+      }
+    }
+    
+    const userData: UserData = {
+      name: data.first_name && data.last_name 
+        ? `${data.first_name} ${data.last_name}` 
+        : data.email || 'Usuario',
+      email: data.email,
+      role: roleName,
+      avatar: data.avatar_url || undefined
+    };
+
+    console.log('UserData generado:', userData);
+    return userData;
+  } catch (error) {
+    console.error('Error en getUserData:', error);
+    return null;
   }
 };
 

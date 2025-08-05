@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { 
   getUserPermissionContext, 
@@ -24,9 +24,17 @@ export function usePermissionContext(organizationId?: number): UsePermissionCont
   const [context, setContext] = useState<UserPermissionContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadContext = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (loadingRef.current) {
+      return;
+    }
+
     try {
+      loadingRef.current = true;
       setLoading(true);
       setError(null);
 
@@ -46,15 +54,36 @@ export function usePermissionContext(organizationId?: number): UsePermissionCont
       setContext(null);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, [organizationId]);
 
   const refreshContext = useCallback(async () => {
+    // Clear any pending debounced calls
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
     await loadContext();
   }, [loadContext]);
 
+  // Cargar contexto inicial con debounce
   useEffect(() => {
-    loadContext();
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Debounce the loading to prevent rapid successive calls
+    timeoutRef.current = setTimeout(() => {
+      loadContext();
+    }, 100);
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [loadContext]);
 
   // Escuchar cambios de autenticación

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { roleService, Role, RoleWithPermissions, Permission } from '@/lib/services/roleService';
 import { permissionService, ModulePermissions } from '@/lib/services/permissionService';
 import { toast } from 'react-hot-toast';
+import { usePageVisibility } from './usePageVisibility';
 
 export interface UseRolesReturn {
   // Estados
@@ -28,28 +29,61 @@ export const useRoles = (organizationId: number): UseRolesReturn => {
   const [roles, setRoles] = useState<RoleWithPermissions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLoadTime = useRef<number>(0);
+  const isInitialLoad = useRef(true);
+  
+  // Hook para detectar visibilidad de la página
+  const { isVisible, wasHidden } = usePageVisibility();
 
   // Cargar roles
   const loadRoles = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (loadingRef.current) {
+      return;
+    }
+
+    const now = Date.now();
+    
     try {
+      loadingRef.current = true;
       setLoading(true);
       setError(null);
       const data = await roleService.getRoles(organizationId);
       setRoles(data);
+      lastLoadTime.current = now;
+      isInitialLoad.current = false;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar roles';
       setError(errorMessage);
       console.error('Error loading roles:', err);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
-  }, [organizationId]);
+  }, [organizationId, wasHidden]);
 
-  // Cargar roles al inicializar
+  // Cargar roles al inicializar con debounce
   useEffect(() => {
-    if (organizationId) {
-      loadRoles();
+    if (!organizationId) return;
+
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
+
+    // Debounce the loading to prevent rapid successive calls
+    timeoutRef.current = setTimeout(() => {
+      loadRoles();
+    }, 150);
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [organizationId, loadRoles]);
 
   // Crear rol

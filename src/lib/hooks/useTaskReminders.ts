@@ -51,11 +51,7 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
       const todayStr = now.toISOString().split('T')[0];
       const sevenDaysStr = sevenDaysFromNow.toISOString().split('T')[0];
       
-      console.log('🔍 [TaskReminders] Buscando tareas:', {
-        organizationId,
-        today: todayStr,
-        sevenDaysFromNow: sevenDaysStr
-      });
+
 
       // Consultar tareas próximas a vencer o vencidas (incluye tareas de hoy)
       const { data: tasks, error: tasksError } = await supabase
@@ -82,10 +78,6 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
         throw tasksError;
       }
       
-      console.log('📋 [TaskReminders] Tareas encontradas:', {
-        count: tasks?.length || 0,
-        tasks: tasks?.map(t => ({ id: t.id, title: t.title, due_date: t.due_date, status: t.status }))
-      });
 
       if (!tasks || tasks.length === 0) {
         console.log('ℹ️ [TaskReminders] No hay tareas próximas a vencer');
@@ -104,13 +96,13 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
       let userNames: Record<string, string> = {};
       if (assignedUserIds.length > 0) {
         const { data: users, error: usersError } = await supabase
-          .from('user_profiles')
-          .select('user_id, full_name, first_name, last_name')
-          .in('user_id', assignedUserIds);
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', assignedUserIds);
 
         if (!usersError && users) {
           userNames = users.reduce((acc, user) => {
-            acc[user.user_id] = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim();
+            acc[user.id] = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Usuario sin nombre';
             return acc;
           }, {} as Record<string, string>);
         }
@@ -170,15 +162,7 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
         const daysUntilDue = Math.ceil(timeDiff / (1000 * 3600 * 24));
         const isOverdue = daysUntilDue < 0;
         
-        console.log(`📅 [TaskReminders] Procesando tarea "${task.title}":`, {
-          due_date: task.due_date,
-          dueDate: dueDate.toISOString().split('T')[0],
-          today: today.toISOString().split('T')[0],
-          daysUntilDue,
-          isOverdue,
-          priority: task.priority,
-          mappedPriority: mapPriority(task.priority)
-        });
+
 
         return {
           id: task.id,
@@ -194,16 +178,7 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
         };
       });
       
-      console.log('✅ [TaskReminders] Recordatorios procesados:', {
-        count: processedReminders.length,
-        reminders: processedReminders.map(r => ({
-          id: r.id,
-          title: r.title,
-          due_date: r.due_date,
-          daysUntilDue: r.daysUntilDue,
-          isOverdue: r.isOverdue
-        }))
-      });
+
 
       setTaskReminders(processedReminders);
     } catch (err) {

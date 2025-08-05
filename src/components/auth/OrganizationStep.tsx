@@ -161,28 +161,35 @@ export default function OrganizationStep({
               
               <CreateOrganizationForm 
                 onSuccess={(data: OrganizationData) => {
-                  updateFormData({
-                    organizationName: data.name,
-                    organizationLegalName: data.legal_name,
-                    organizationType: data.type_id,
-                    organizationDescription: data.description,
-                    organizationEmail: data.email,
-                    organizationPhone: data.phone,
-                    organizationAddress: data.address,
-                    organizationCity: data.city,
-                    organizationState: data.state,
-                    organizationCountry: data.country,
-                    organizationCountryCode: data.country_code,
-                    organizationPostalCode: data.postal_code,
-                    organizationTaxId: data.tax_id,
-                    organizationNit: data.nit,
-                    organizationWebsite: data.website,
-                    organizationSubdomain: data.subdomain,
-                    organizationPrimaryColor: data.primary_color,
-                    organizationSecondaryColor: data.secondary_color,
-                    logoUrl: data.logo_url || undefined
-                  });
-                  onNext();
+                  console.log('OrganizationStep: Recibidos datos de organización:', data);
+                  try {
+                    updateFormData({
+                      organizationName: data.name,
+                      organizationLegalName: data.legal_name,
+                      organizationType: data.type_id,
+                      organizationDescription: data.description,
+                      organizationEmail: data.email,
+                      organizationPhone: data.phone,
+                      organizationAddress: data.address,
+                      organizationCity: data.city,
+                      organizationState: data.state,
+                      organizationCountry: data.country,
+                      organizationCountryCode: data.country_code,
+                      organizationPostalCode: data.postal_code,
+                      organizationTaxId: data.tax_id,
+                      organizationNit: data.nit,
+                      organizationWebsite: data.website,
+                      organizationSubdomain: data.subdomain,
+                      organizationPrimaryColor: data.primary_color,
+                      organizationSecondaryColor: data.secondary_color,
+                      logoUrl: data.logo_url || undefined
+                    });
+                    console.log('OrganizationStep: Datos actualizados, avanzando al paso 3 (sucursal)');
+                    onNext();
+                  } catch (error) {
+                    console.error('OrganizationStep: Error al procesar datos:', error);
+                    setError('Error al procesar los datos de la organización');
+                  }
                 }}
                 onCancel={prevInnerStep}
                 defaultEmail={formData.email}

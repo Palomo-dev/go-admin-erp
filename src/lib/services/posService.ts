@@ -3,6 +3,7 @@ import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/h
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculationForLog, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
+import { AutomaticTriggers } from '@/lib/services/automaticTriggerIntegrations';
 import {
   Product,
   Customer,
@@ -851,6 +852,37 @@ export class POSService {
       this.saveCartsToStorage(carts);
       
       console.log(`🛒 Carrito actualizado a estado: hold_with_debt`);
+      
+      // 🚀 TRIGGER AUTOMÁTICO: invoice.created (Hold with Debt)
+      try {
+        await AutomaticTriggers.invoiceCreated({
+          invoice_id: invoice.number || invoice.id.toString(),
+          customer_name: cart.customer?.full_name || 'Cliente no especificado',
+          customer_email: cart.customer?.email || '',
+          amount: taxCalculation.finalTotal,
+          due_date: dueDate.toISOString().split('T')[0],
+          created_at: new Date().toISOString(),
+          payment_method: 'credit',
+          subtotal: taxCalculation.subtotal,
+          tax_total: taxCalculation.totalTaxAmount,
+          currency: 'COP',
+          products: cart.items.map(item => ({
+            name: item.product?.name || 'Producto',
+            sku: item.product?.sku || `PROD-${item.product_id}`,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.total
+          })),
+          invoice_type: 'hold_with_debt',
+          created_from: 'pos_service',
+          payment_terms: paymentTerms,
+          account_receivable_id: accountReceivable.id
+        }, this.organizationId);
+        
+        console.log('✅ Trigger invoice.created ejecutado exitosamente desde POS holdCartWithDebt');
+      } catch (triggerError) {
+        console.error('⚠️ Error en trigger invoice.created (no afecta la operación):', triggerError);
+      }
       
       return {
         cart,

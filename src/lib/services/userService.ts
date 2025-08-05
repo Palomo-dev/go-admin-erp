@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import Logger from '@/lib/utils/logger';
 
 /**
  * Obtiene el nombre de usuario a partir de su ID
@@ -11,7 +12,7 @@ export const getUserName = async (userId: string): Promise<string | undefined> =
   try {
     if (!userId) return undefined;
 
-    console.log('getUserName - Buscando usuario con ID:', userId);
+    Logger.debug('UI', `Buscando nombre de usuario: ${userId}`);
     const { data, error } = await supabase
       .from('profiles')
       .select('first_name, last_name, email')
@@ -28,14 +29,14 @@ export const getUserName = async (userId: string): Promise<string | undefined> =
       return undefined;
     }
 
-    console.log('Datos de perfil obtenidos:', data);
+    Logger.debug('UI', 'Datos de perfil obtenidos');
 
     // Si tenemos nombre y apellido, los combinamos; de lo contrario, usamos el email
     const nombreCompleto = data.first_name && data.last_name 
       ? `${data.first_name} ${data.last_name}` 
       : data.email || 'Usuario sin nombre';
 
-    console.log('Nombre generado:', nombreCompleto);
+    Logger.debug('UI', `Nombre generado: ${nombreCompleto}`);
     return nombreCompleto;
   } catch (error) {
     console.error('Error en getUserName:', error);

@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         results.push({ 
           message_id: twilioEvent.message_id || twilioEvent.id,
           status: 'error',
-          error: error.message 
+          error: error instanceof Error ? error.message : String(error)
         })
       }
     }

@@ -124,8 +124,11 @@ export const createSupabaseClient = () => {
   })
 }
 
+// Instancia principal de Supabase para el proyecto
+export const supabase = createSupabaseClient();
+
 // Cliente para uso en el lado del cliente
-export const supabase = createSupabaseClient()
+export const supabaseClient = supabase;
 
 // Funciones de autenticación
 export const signInWithEmail = async (email: string, password: string) => {

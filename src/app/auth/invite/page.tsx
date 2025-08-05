@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { acceptInvitation, validateInvitation } from '@/lib/supabase/config';
+import { validateInvitation, acceptInvitation } from '@/lib/supabase/config';
 import Link from 'next/link';
 import RegistrationForm, { RegistrationFormData } from '@/components/auth/RegistrationForm';
+import { AutomaticTriggers } from '@/lib/services/automaticTriggerIntegrations';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 export default function InvitePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const inviteCode = searchParams.get('code');
+  const inviteCode = searchParams?.get('code') || null;
   
   const [formError, setFormError] = useState<string | null>(null);
   const [inviteData, setInviteData] = useState<any>(null);
@@ -80,6 +82,25 @@ export default function InvitePage() {
         setError(error.message || 'Error al aceptar la invitación');
         setIsLoading(false);
         return;
+      }
+
+      // 🚀 TRIGGER AUTOMÁTICO: user.created
+      try {
+        const organizationId = inviteData?.organization_id || getOrganizationId();
+        await AutomaticTriggers.userCreated({
+          user_id: inviteData?.id || 'new-user', // El ID del usuario recién creado
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: inviteData?.email || formData.email,
+          role: inviteData?.role_name || 'employee',
+          organization_id: organizationId,
+          department: inviteData?.department || 'General',
+          phone: formData.phoneNumber || '',
+          invitation_accepted: true,
+          invitation_code: inviteCode
+        }, organizationId);
+        console.log('✅ Trigger user.created ejecutado exitosamente');
+      } catch (triggerError) {
+        console.error('⚠️ Error en trigger user.created (no afecta el registro):', triggerError);
       }
 
       // Redirigir al usuario a la página de inicio de sesión

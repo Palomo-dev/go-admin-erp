@@ -1,6 +1,8 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { markAsRead as markNotificationAsRead } from '@/lib/services/realtimeNotificationService';
+import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { Notification } from './types';
 
 /**
@@ -27,8 +29,8 @@ export class NotificationService {
         .from('notifications')
         .select('*')
         .eq('organization_id', organizationId)
-        .eq('recipient_user_id', userId)
-        .in('channel', ['app', 'all']) // Solo notificaciones para la app
+        .or(`recipient_user_id.eq.${userId},recipient_user_id.is.null`) // Incluir notificaciones del usuario y generales
+        .in('channel', ['app', 'all', 'push', 'email', 'sms']) // Notificaciones relevantes para mostrar en header
         .order('created_at', { ascending: false })
         .limit(limit);
       
@@ -50,15 +52,8 @@ export class NotificationService {
    */
   static async markAsRead(id: string): Promise<boolean> {
     try {
-      const now = new Date().toISOString();
-      
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read_at: now })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
+      const organizationId = obtenerOrganizacionActiva().id;
+      await markNotificationAsRead(id, organizationId);
       return true;
     } catch (error) {
       console.error('Error al marcar como leída:', error);
@@ -80,7 +75,7 @@ export class NotificationService {
         .from('notifications')
         .update({ read_at: now })
         .eq('organization_id', organizationId)
-        .eq('recipient_user_id', userId)
+        .or(`recipient_user_id.eq.${userId},recipient_user_id.is.null`) // Incluir notificaciones del usuario y generales
         .is('read_at', null);
       
       if (error) throw error;

@@ -1,6 +1,9 @@
 import { createActivity } from './activityService'
-import { ActivityType } from '@/types/activity'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { ActivityType } from '@/types/activity';
+import { createClient } from '@supabase/supabase-js';
+import Logger from '@/lib/utils/logger';
 
 // Tipos de datos para Email con Twilio
 export interface TwilioEmailEventData {
@@ -60,14 +63,14 @@ export class TwilioEmailService {
    */
   static async processEmailEvent(eventData: TwilioEmailEventData): Promise<any> {
     try {
-      console.log('📧 Procesando evento de Twilio Email:', eventData)
+      Logger.info('NOTIFICATIONS', `Procesando evento de email: ${eventData.event}`)
       
       // 1. Normalizar evento de email
       const normalizedData = this.normalizeEmailEvent(eventData)
       
       // 2. Filtrar eventos irrelevantes
       if (!this.shouldCreateActivity(normalizedData)) {
-        console.log('⏭️ Evento de email ignorado:', normalizedData.event)
+        Logger.debug('NOTIFICATIONS', `Evento ignorado: ${normalizedData.event}`)
         return null
       }
 
@@ -97,7 +100,7 @@ export class TwilioEmailService {
         }
       }, enrichedData.organizationId)
 
-      console.log('✅ Actividad de email creada:', activity.id)
+      Logger.info('NOTIFICATIONS', `Actividad de email creada: ${activity.id}`)
       return activity
 
     } catch (error) {

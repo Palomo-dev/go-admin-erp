@@ -86,11 +86,49 @@ const TareasContent = React.memo(({
   
   // Función para cambiar ordenamiento
   const cambiarOrdenamiento = useCallback((campo: keyof Task) => {
-    setOrdenarPor(prev => ({
-      campo,
-      direccion: prev.campo === campo && prev.direccion === 'asc' ? 'desc' : 'asc'
-    }));
+    setOrdenarPor(prev => {
+      const nuevaDireccion = prev.campo === campo && prev.direccion === 'asc' ? 'desc' : 'asc';
+      console.log('🔄 Cambiando ordenamiento:', { campo, direccion: nuevaDireccion });
+      
+      return {
+        campo,
+        direccion: nuevaDireccion
+      };
+    });
   }, []);
+  
+  // Función para aplicar ordenamiento a las tareas
+  const aplicarOrdenamiento = useCallback((tareas: Task[]): Task[] => {
+    if (!tareas.length) return tareas;
+    
+    return [...tareas].sort((a, b) => {
+      const valorA = a[ordenarPor.campo];
+      const valorB = b[ordenarPor.campo];
+      
+      // Manejar valores nulos o undefined
+      if (valorA == null && valorB == null) return 0;
+      if (valorA == null) return ordenarPor.direccion === 'asc' ? 1 : -1;
+      if (valorB == null) return ordenarPor.direccion === 'asc' ? -1 : 1;
+      
+      // Comparación para fechas
+      if (ordenarPor.campo === 'due_date' || ordenarPor.campo === 'created_at') {
+        const fechaA = new Date(valorA as string).getTime();
+        const fechaB = new Date(valorB as string).getTime();
+        return ordenarPor.direccion === 'asc' ? fechaA - fechaB : fechaB - fechaA;
+      }
+      
+      // Comparación para strings
+      if (typeof valorA === 'string' && typeof valorB === 'string') {
+        const comparacion = valorA.localeCompare(valorB, 'es', { sensitivity: 'base' });
+        return ordenarPor.direccion === 'asc' ? comparacion : -comparacion;
+      }
+      
+      // Comparación para números y otros tipos
+      if (valorA < valorB) return ordenarPor.direccion === 'asc' ? -1 : 1;
+      if (valorA > valorB) return ordenarPor.direccion === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [ordenarPor]);
   
   // Función para obtener filtros combinados
   const obtenerFiltrosCombinados = useCallback(() => {
@@ -179,13 +217,19 @@ const TareasContent = React.memo(({
     }
   }, [cargarTodasLasTareas]);
   
-  // Obtener tareas paginadas
+  // Obtener tareas paginadas y ordenadas
   const obtenerTareasPaginadas = useCallback(() => {
     const todasLasTareas = Object.values(tareasTablero).flat();
+    
+    // Aplicar ordenamiento
+    const tareasOrdenadas = aplicarOrdenamiento(todasLasTareas);
+    
+    // Aplicar paginación
     const inicio = (paginaActual - 1) * elementosPorPagina;
     const fin = inicio + elementosPorPagina;
-    return todasLasTareas.slice(inicio, fin);
-  }, [tareasTablero, paginaActual, elementosPorPagina]);
+    
+    return tareasOrdenadas.slice(inicio, fin);
+  }, [tareasTablero, paginaActual, elementosPorPagina, aplicarOrdenamiento]);
   
   // Funciones para modales
   const abrirModalDetalles = useCallback((tarea: Task) => {
@@ -351,6 +395,12 @@ const TareasContent = React.memo(({
       });
     }
   }, [tareaSeleccionada, actualizarTarea, toast, cerrarDialogoCancelacion]);
+  
+
+  
+
+  
+
   
   // Efecto para cargar datos iniciales
   useEffect(() => {

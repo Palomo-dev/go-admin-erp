@@ -2,7 +2,7 @@
  * Servicio para gestión de actividades CRM
  */
 
-import { supabase } from '../supabase/config';
+import { supabase } from '@/lib/supabase/config';
 import { createClient } from '@supabase/supabase-js'
 import { obtenerOrganizacionActiva, getCurrentUserId } from '../hooks/useOrganization';
 
@@ -346,7 +346,7 @@ export async function createActivity(activityData: NewActivity, organizationId?:
 /**
  * Emite eventos en tiempo real para actualizaciones de UI
  */
-async function emitActivityEvent(activity: Activity, eventType: string) {
+export async function emitActivityEvent(activity: Activity, eventType: string) {
   try {
     await supabase.channel('activities')
       .send({

@@ -19,6 +19,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { AutomaticTriggers } from '@/lib/services/automaticTriggerIntegrations';
 
 interface AplicarAbonoModalProps {
   open: boolean;
@@ -145,6 +146,25 @@ export function AplicarAbonoModal({ open, onOpenChange, cuenta, onSuccess }: Apl
         notes: formData.notes,
         payment_date: formData.payment_date,
       });
+
+      // 🚀 TRIGGER AUTOMÁTICO: invoice.paid
+      try {
+        await AutomaticTriggers.invoicePaid({
+          invoice_id: cuenta.invoice_id || cuenta.id.toString(),
+          customer_name: cuenta.customer_name,
+          customer_email: cuenta.customer_email || '',
+          amount: amount,
+          payment_method: formData.payment_method,
+          payment_date: formData.payment_date,
+          reference_number: formData.reference || '',
+          notes: formData.notes || '',
+          balance_before: cuenta.balance,
+          balance_after: cuenta.balance - amount
+        }, organizationId);
+        console.log('✅ Trigger invoice.paid ejecutado exitosamente');
+      } catch (triggerError) {
+        console.error('⚠️ Error en trigger invoice.paid (no afecta el pago):', triggerError);
+      }
 
       toast.success('Abono aplicado exitosamente');
       onSuccess();

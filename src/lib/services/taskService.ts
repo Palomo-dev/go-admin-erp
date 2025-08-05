@@ -2,7 +2,96 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { Task, NewTask, TaskStatus, TaskType, TaskFilter, TaskStatusUI, TaskHierarchy, SubtaskStats } from '@/types/task';
-import { getOrganizationId } from "@/lib/hooks/useOrganization";
+import { getOrganizationId, getCurrentUserId } from "@/lib/hooks/useOrganization";
+import Logger from '@/lib/utils/logger';
+import { generateTaskNotifications } from './notificationService';
+
+/**
+ * Obtiene el rol del usuario actual
+ * @returns Rol del usuario o null si no se puede obtener
+ */
+const getCurrentUserRole = async (): Promise<string | null> => {
+  try {
+    // Verificar sesión de autenticación primero
+    const { data: sessionData } = await supabase.auth.getSession();
+    Logger.debug('TASKS', 'Estado de sesión:', {
+      session: !!sessionData?.session,
+      user: !!sessionData?.session?.user,
+      userId: sessionData?.session?.user?.id
+    });
+    
+    const currentUserId = await getCurrentUserId();
+    if (!currentUserId) {
+      Logger.warn('TASKS', 'No se pudo obtener el ID del usuario actual');
+      // Intentar obtener directamente de la sesión
+      const fallbackUserId = sessionData?.session?.user?.id;
+      if (fallbackUserId) {
+        Logger.debug('TASKS', `Usando fallback user ID: ${fallbackUserId}`);
+        // Continuar con el fallback
+      } else {
+        Logger.error('TASKS', 'No hay usuario autenticado');
+        return null;
+      }
+    }
+
+    const userId = currentUserId || sessionData?.session?.user?.id;
+    Logger.debug('TASKS', `Obteniendo rol para usuario: ${userId}`);
+    
+    // Verificar si el usuario existe en organization_members
+    Logger.debug('TASKS', 'Consultando organization_members...');
+    const { data: memberData, error: memberError } = await supabase
+      .from('organization_members')
+      .select('role_id, organization_id, is_active')
+      .eq('user_id', userId)
+      .eq('is_active', true);
+    
+    Logger.debug('TASKS', `Resultado consulta membresía:`, { memberData, memberError });
+    
+    if (memberError) {
+      Logger.error('TASKS', 'Error en consulta de membresía:', memberError);
+      return null;
+    }
+    
+    if (!memberData || memberData.length === 0) {
+      Logger.warn('TASKS', `Usuario ${userId} no encontrado en organization_members o no está activo`);
+      
+      // Intentar sin filtro de is_active para debugging
+      const { data: allMemberData } = await supabase
+        .from('organization_members')
+        .select('role_id, organization_id, is_active')
+        .eq('user_id', userId);
+      
+      Logger.debug('TASKS', `Membresías encontradas (todas):`, allMemberData);
+      
+      // Como fallback temporal, devolver 'Empleado' para permitir funcionalidad básica
+      Logger.warn('TASKS', 'Usuario no encontrado en organization_members, usando rol por defecto: Empleado');
+      return 'Empleado';
+    }
+    
+    // Tomar la primera membresía activa
+    const member = memberData[0];
+    Logger.debug('TASKS', `Miembro encontrado - Role ID: ${member.role_id}, Org ID: ${member.organization_id}`);
+    
+    // Paso 2: Obtener nombre del rol
+    const { data: roleData, error: roleError } = await supabase
+      .from('roles')
+      .select('name')
+      .eq('id', member.role_id)
+      .single();
+    
+    if (roleError || !roleData) {
+      Logger.error('TASKS', 'Error al obtener nombre del rol:', roleError);
+      return 'Empleado'; // Fallback
+    }
+    
+    const roleName = roleData.name;
+    Logger.info('TASKS', `Rol del usuario actual: ${roleName}`);
+    return roleName;
+  } catch (error) {
+    Logger.error('TASKS', 'Error en getCurrentUserRole:', error);
+    return 'Empleado'; // Fallback para permitir funcionalidad básica
+  }
+};
 
 /**
  * Obtiene todas las tareas según los filtros especificados
@@ -22,19 +111,76 @@ export const getTasks = async (filter: TaskFilter = {}) => {
     }
     
     // Verificar autenticación simple
-    console.log('🔐 Verificando estado de autenticación...');
+    Logger.debug('TASKS', 'Verificando autenticación para obtener tareas');
     const { data: session } = await supabase.auth.getSession();
     
     if (!session?.session?.user) {
-      console.warn('⚠️ No hay usuario autenticado. Esto puede causar problemas con las políticas RLS.');
-      console.log('💡 Sugerencia: Inicia sesión para acceder a las tareas.');
-      // Continuar de todos modos para ver qué pasa
+      Logger.warn('TASKS', 'Usuario no autenticado');
+      // Continuar de todos modos para permitir acceso con políticas RLS
     } else {
-      console.log('✅ Usuario autenticado:', session.session.user.email);
+      Logger.debug('TASKS', `Usuario autenticado: ${session.session.user.email}`);
     }
+
+    Logger.debug('TASKS', `Filtros aplicados: ${JSON.stringify(filter)}`);
+    Logger.info('TASKS', `Obteniendo tareas para organización: ${organizationId}`);
     
-    console.log('🔍 Filtros recibidos en getTasks:', JSON.stringify(filter, null, 2));
-    console.log(`🏢 ID de organización: ${organizationId} (${organizationName})`);
+    // **FILTRADO AUTOMÁTICO POR ROL DE USUARIO**
+    const userRole = await getCurrentUserRole();
+    const currentUserId = await getCurrentUserId();
+    
+    if (userRole && currentUserId) {
+      Logger.info('TASKS', `Aplicando filtros de rol: ${userRole} para usuario: ${currentUserId}`);
+      
+      // Aplicar filtrado automático según el rol
+      switch (userRole) {
+        case 'Empleado':
+          // Empleados solo ven tareas asignadas a ellos
+          Logger.info('TASKS', 'Rol Empleado: Filtrando solo tareas asignadas al usuario');
+          filter.assigned_to = currentUserId;
+          break;
+          
+        case 'Cliente':
+          // Clientes solo ven tareas relacionadas con ellos
+          Logger.info('TASKS', 'Rol Cliente: Filtrando solo tareas relacionadas al cliente');
+          // Buscar el ID del cliente en la tabla customers
+          const { data: customerData } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('user_id', currentUserId)
+            .single();
+          
+          if (customerData) {
+            filter.related_to_id = customerData.id;
+            filter.related_to_type = 'customer';
+          } else {
+            // Si no se encuentra como cliente, no mostrar ninguna tarea
+            Logger.warn('TASKS', 'Usuario con rol Cliente no encontrado en tabla customers');
+            return [];
+          }
+          break;
+          
+        case 'Super Admin':
+        case 'Admin de organización':
+        case 'Manager':
+        case 'Jefe de Finanzas':
+          // Estos roles ven todas las tareas de su organización
+          Logger.info('TASKS', `Rol ${userRole}: Acceso a todas las tareas de la organización`);
+          // No se aplica filtrado adicional
+          break;
+          
+        default:
+          Logger.warn('TASKS', `Rol no reconocido: ${userRole}. Aplicando acceso limitado.`);
+          // Por seguridad, usuarios con roles no reconocidos solo ven sus tareas asignadas
+          filter.assigned_to = currentUserId;
+          break;
+      }
+    } else {
+      Logger.warn('TASKS', 'No se pudo obtener rol o ID de usuario. Aplicando filtrado restrictivo.');
+      // Por seguridad, si no se puede determinar el rol, solo mostrar tareas asignadas
+      if (currentUserId) {
+        filter.assigned_to = currentUserId;
+      }
+    }
     
     // Construir la consulta básica con JOIN a customers
     let query = supabase
@@ -58,20 +204,20 @@ export const getTasks = async (filter: TaskFilter = {}) => {
     
     // 1. Filtro de estado
     if (filter.status && filter.status !== 'todas') {
-      console.log(`🔹 Aplicando filtro de estado: ${filter.status}`);
+      Logger.debug('TASKS', `Filtrando por estado: ${filter.status}`);
       query = query.eq('status', filter.status);
     }
     
     // 2. Filtro de tipo
     if (filter.type && filter.type !== 'todas') {
-      console.log(`🔹 Aplicando filtro de tipo: ${filter.type}`);
+      Logger.debug('TASKS', `Filtrando por tipo: ${filter.type}`);
       query = query.eq('type', filter.type);
     }
     
     // 3. Filtro de prioridad
     if (filter.prioridad && filter.prioridad !== 'todas') {
-      console.log(`🔹 Aplicando filtro de prioridad: ${filter.prioridad}`);
-      query = query.eq('priority', filter.prioridad);
+      Logger.debug('TASKS', `Filtrando por prioridad: ${filter.prioridad}`);
+      query = query.eq('prioridad', filter.prioridad);
     }
     
     // 4. Filtro de asignación
@@ -79,62 +225,70 @@ export const getTasks = async (filter: TaskFilter = {}) => {
       const valorAsignado = filter.asignado || filter.assigned_to;
       
       if (valorAsignado === 'si') {
-        console.log('🔹 Filtrando tareas asignadas (con usuario)');
+        Logger.debug('TASKS', 'Filtrando tareas asignadas');
         query = query.not('assigned_to', 'is', null);
-      } else if (valorAsignado === 'no' || valorAsignado === 'sin_asignar') {
-        console.log('🔹 Filtrando tareas sin asignar');
+      } else if (valorAsignado === 'sin-asignar') {
+        Logger.debug('TASKS', 'Filtrando tareas sin asignar');
         query = query.is('assigned_to', null);
-      } else if (valorAsignado && valorAsignado !== 'todas' && valorAsignado !== 'todos') {
-        console.log(`🔹 Filtrando por usuario asignado: ${valorAsignado}`);
+      } else {
+        Logger.debug('TASKS', `Filtrando por usuario: ${valorAsignado}`);
         query = query.eq('assigned_to', valorAsignado);
       }
     }
     
     // 5. Filtro por período de tiempo (hoy, semana, mes)
     if (filter.timeframe && filter.timeframe !== 'todos') {
-      console.log(`⏱️ Aplicando filtro por timeframe: ${filter.timeframe}`);
+      Logger.debug('TASKS', `Aplicando filtro temporal: ${filter.timeframe}`);
       
+      let fechaInicio: string;
+      let fechaFin: string;
       const hoy = new Date();
-      // Inicializamos las variables para evitar errores
-      let fechaInicio: string = '';
-      let fechaFin: string = '';
       
-      // Función auxiliar para formatear fecha ISO sin hora
-      const formatearFechaISO = (fecha: Date): string => {
-        return fecha.toISOString().split('T')[0];
-      };
-      
-      if (filter.timeframe === 'hoy') {
-        // Tareas de hoy
-        fechaInicio = formatearFechaISO(hoy);
-        fechaFin = fechaInicio;
-      } else if (filter.timeframe === 'semana') {
-        // Tareas de esta semana (lunes a domingo)
-        const primerDiaSemana = new Date(hoy);
-        primerDiaSemana.setDate(hoy.getDate() - hoy.getDay() + 1); // Lunes = 1
+      switch (filter.timeframe) {
+        case 'hoy':
+          fechaInicio = hoy.toISOString().split('T')[0];
+          fechaFin = fechaInicio;
+          break;
         
-        const ultimoDiaSemana = new Date(primerDiaSemana);
-        ultimoDiaSemana.setDate(primerDiaSemana.getDate() + 6); // Domingo
+        case 'esta-semana':
+          const inicioSemana = new Date(hoy);
+          inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+          fechaInicio = inicioSemana.toISOString().split('T')[0];
+          
+          const finSemana = new Date(inicioSemana);
+          finSemana.setDate(inicioSemana.getDate() + 6);
+          fechaFin = finSemana.toISOString().split('T')[0];
+          break;
         
-        fechaInicio = formatearFechaISO(primerDiaSemana);
-        fechaFin = formatearFechaISO(ultimoDiaSemana);
-      } else if (filter.timeframe === 'mes') {
-        // Tareas de este mes
-        const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-        const ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+        case 'este-mes':
+          fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+          fechaFin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().split('T')[0];
+          break;
         
-        fechaInicio = formatearFechaISO(primerDiaMes);
-        fechaFin = formatearFechaISO(ultimoDiaMes);
-      } else {
-        // Timeframe no reconocido, no aplicamos filtro
-        console.log(`⚠️ Timeframe no reconocido: ${filter.timeframe}`);
+        case 'proxima-semana':
+          const proximaSemana = new Date(hoy);
+          proximaSemana.setDate(hoy.getDate() + (7 - hoy.getDay()));
+          fechaInicio = proximaSemana.toISOString().split('T')[0];
+          
+          const finProximaSemana = new Date(proximaSemana);
+          finProximaSemana.setDate(proximaSemana.getDate() + 6);
+          fechaFin = finProximaSemana.toISOString().split('T')[0];
+          break;
+        
+        case 'proximo-mes':
+          const proximoMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
+          fechaInicio = proximoMes.toISOString().split('T')[0];
+          fechaFin = new Date(hoy.getFullYear(), hoy.getMonth() + 2, 0).toISOString().split('T')[0];
+          break;
+        
+        default:
+          Logger.warn('TASKS', `Timeframe no reconocido: ${filter.timeframe}`);
+          return [];
       }
       
-      if (fechaInicio && fechaFin) {
-        console.log(`📅 Filtrando por fechas: ${fechaInicio} a ${fechaFin}`);
-        // Filtramos por el rango de fechas (inclusive)
-        query = query.gte('due_date', fechaInicio).lte('due_date', fechaFin);
-      }
+      Logger.debug('TASKS', `Rango de fechas: ${fechaInicio} - ${fechaFin}`);
+      // Filtramos por el rango de fechas (inclusive)
+      query = query.gte('due_date', fechaInicio).lte('due_date', fechaFin);
     }
     
     // 6. Filtro por fecha específica (prioridad sobre timeframe)
@@ -145,7 +299,7 @@ export const getTasks = async (filter: TaskFilter = {}) => {
       const fechaFiltro = new Date(filter.fecha);
       const fechaFormateada = fechaFiltro.toISOString().split('T')[0];
       
-            // Optimizamos el filtro para mejorar rendimiento
+      // Optimizamos el filtro para mejorar rendimiento
       // Usamos un enfoque más directo para filtrar por fecha completa
       const fechaInicio = `${fechaFormateada}T00:00:00Z`;
       const fechaFin = `${fechaFormateada}T23:59:59Z`;
@@ -155,7 +309,6 @@ export const getTasks = async (filter: TaskFilter = {}) => {
                    .lt('due_date', fechaFin);
       
       console.log(`🔍 Filtrando tareas entre ${fechaInicio} y ${fechaFin}`);
-      
       console.log(`📅 Buscando tareas para la fecha: ${fechaFormateada}`);
     }
     
@@ -166,6 +319,17 @@ export const getTasks = async (filter: TaskFilter = {}) => {
       
       // Crear consulta OR para buscar en título O descripción
       query = query.or(`title.ilike.%${textoLimpio}%,description.ilike.%${textoLimpio}%`);
+    }
+    
+    // 8. Filtros por entidad relacionada (agregados para sistema de roles)
+    if (filter.related_to_id) {
+      Logger.debug('TASKS', `Filtrando por related_to_id: ${filter.related_to_id}`);
+      query = query.eq('related_to_id', filter.related_to_id);
+    }
+    
+    if (filter.related_to_type) {
+      Logger.debug('TASKS', `Filtrando por related_to_type: ${filter.related_to_type}`);
+      query = query.eq('related_to_type', filter.related_to_type);
     }
     
     // Ordenar por fecha de vencimiento (ascendente)
@@ -639,6 +803,52 @@ export const createTask = async (task: NewTask) => {
         throw new Error(`Error de Supabase (${error.code}): ${error.message}. Detalles: ${error.details || 'No hay detalles adicionales'}`);
       }
       
+      console.log('✅ Tarea creada exitosamente, generando notificaciones automáticas...');
+      
+      // Generar notificaciones automáticas para asignación y clientes
+      try {
+        const notificationResults = await generateTaskNotifications(data, true);
+        const successfulNotifications = notificationResults.filter(r => r.success).length;
+        const totalNotifications = notificationResults.length;
+        
+        console.log(`📧 Notificaciones procesadas: ${successfulNotifications}/${totalNotifications} exitosas`);
+        
+        // Generar delivery logs para las notificaciones exitosas
+        if (successfulNotifications > 0) {
+          console.log(`🔄 Generando delivery logs para ${successfulNotifications} notificaciones...`);
+          
+          // Obtener las últimas notificaciones creadas para esta organización
+          try {
+            const { data: recentNotifications, error: notifError } = await supabase
+              .from('notifications')
+              .select('id')
+              .eq('organization_id', data.organization_id)
+              .order('created_at', { ascending: false })
+              .limit(successfulNotifications);
+            
+            if (!notifError && recentNotifications && recentNotifications.length > 0) {
+              const notificationIds = recentNotifications.map(n => n.id);
+              await createAutomaticDeliveryLogs(
+                notificationIds, 
+                data.organization_id, 
+                data.type || 'general'
+              );
+            }
+          } catch (deliveryLogError) {
+            console.error('❌ Error al crear delivery logs (no crítico):', deliveryLogError);
+          }
+        }
+        
+        // Log de notificaciones fallidas para diagnóstico
+        const failedNotifications = notificationResults.filter(r => !r.success);
+        if (failedNotifications.length > 0) {
+          console.warn('⚠️ Notificaciones fallidas:', failedNotifications.map(r => r.message));
+        }
+      } catch (notificationError: any) {
+        // Las notificaciones no deben fallar la creación de la tarea
+        console.error('❌ Error al generar notificaciones (no crítico):', notificationError);
+      }
+      
       return data as Task;
     } catch (insertError: any) { // Tipamos como any para acceder a propiedades
       console.error('Error capturado durante la inserción:', insertError);
@@ -720,6 +930,23 @@ export const updateTask = async (id: string, taskData: Partial<Task>) => {
     console.log('Actualizando tarea con ID:', id);
     console.log('Datos recibidos para actualización:', JSON.stringify(taskData, null, 2));
     
+    // Obtener el estado anterior de la tarea para comparar cambios en asignación
+    const { data: previousTask, error: fetchError } = await supabase
+      .from('tasks')
+      .select('assigned_to, related_to_type, related_to_id, organization_id')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error al obtener tarea anterior:', fetchError);
+      throw new Error(`Error al obtener tarea: ${fetchError.message}`);
+    }
+    
+    console.log('📋 Estado anterior de la tarea:', {
+      previousAssignedTo: previousTask?.assigned_to,
+      newAssignedTo: taskData.assigned_to
+    });
+    
     // Crear una copia de los datos para poder modificarlos
     const updatedTask = { ...taskData, updated_at: new Date().toISOString() };
     
@@ -799,18 +1026,87 @@ export const updateTask = async (id: string, taskData: Partial<Task>) => {
     
     console.log('Datos validados para actualizar:', JSON.stringify(updatedTask, null, 2));
     
+    // Limpiar datos antes de la actualización - solo campos válidos
+    const cleanedUpdateData: any = {};
+    const validFields = [
+      'title', 'description', 'type', 'priority', 'status', 'due_date',
+      'assigned_to', 'related_to_type', 'related_to_id', 'start_time',
+      'remind_before_minutes', 'remind_email', 'remind_push', 'customer_id',
+      'cancellation_reason', 'parent_task_id', 'updated_at'
+    ];
+    
+    // Solo incluir campos que existen en la tabla y no son undefined
+    for (const field of validFields) {
+      if (updatedTask.hasOwnProperty(field) && (updatedTask as any)[field] !== undefined) {
+        cleanedUpdateData[field] = (updatedTask as any)[field];
+      }
+    }
+    
+    console.log('Datos limpios para UPDATE:', JSON.stringify(cleanedUpdateData, null, 2));
+    
+    // Validación final antes de la actualización
+    if (Object.keys(cleanedUpdateData).length === 0) {
+      console.warn('⚠️ No hay datos para actualizar, solo updated_at');
+      cleanedUpdateData.updated_at = new Date().toISOString();
+    }
+    
+    console.log(`🔄 Ejecutando UPDATE en tasks con ID: ${id}`);
+    console.log(`📋 Campos a actualizar: ${Object.keys(cleanedUpdateData).join(', ')}`);
+    
     // Realizar la actualización
     const { data, error } = await supabase
       .from('tasks')
-      .update(updatedTask)
+      .update(cleanedUpdateData)
       .eq('id', id)
       .select('*')
       .single();
     
     if (error) {
-      console.error('Error al actualizar tarea:', error);
-      console.error('Código:', error.code, 'Mensaje:', error.message, 'Detalles:', error.details);
-      throw new Error(`Error de Supabase: ${error.message || JSON.stringify(error)}`);
+      console.error('❌ Error al actualizar tarea - Diagnóstico completo:', {
+        error: error,
+        errorType: typeof error,
+        errorKeys: Object.keys(error || {}),
+        code: error?.code,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        data: JSON.stringify(updatedTask, null, 2)
+      });
+      
+      const errorMessage = error?.message || error?.details || 'Error desconocido al actualizar tarea';
+      throw new Error(`Error de Supabase al actualizar tarea: ${errorMessage}`);
+    }
+    
+    console.log('✅ Tarea actualizada exitosamente, verificando si generar notificaciones...');
+    
+    // Generar notificaciones automáticas solo si el usuario asignado cambió
+    const assignmentChanged = previousTask && data.assigned_to !== previousTask.assigned_to;
+    
+    if (assignmentChanged) {
+      console.log('🔄 Asignación cambió, generando notificaciones automáticas...');
+      
+      try {
+        const notificationResults = await generateTaskNotifications(
+          data, 
+          false, // No es tarea nueva
+          previousTask.assigned_to // Usuario anteriormente asignado
+        );
+        const successfulNotifications = notificationResults.filter(r => r.success).length;
+        const totalNotifications = notificationResults.length;
+        
+        console.log(`📧 Notificaciones procesadas: ${successfulNotifications}/${totalNotifications} exitosas`);
+        
+        // Log de notificaciones fallidas para diagnóstico
+        const failedNotifications = notificationResults.filter(r => !r.success);
+        if (failedNotifications.length > 0) {
+          console.warn('⚠️ Notificaciones fallidas:', failedNotifications.map(r => r.message));
+        }
+      } catch (notificationError: any) {
+        // Las notificaciones no deben fallar la actualización de la tarea
+        console.error('❌ Error al generar notificaciones (no crítico):', notificationError);
+      }
+    } else {
+      console.log('📝 No se requieren notificaciones - la asignación no cambió');
     }
     
     return data as Task;
@@ -968,12 +1264,23 @@ export const getTasksByStatus = async (filter: TaskFilter = {}) => {
   try {
     const tasks = await getTasks(filter);
     
+    // Verificar que tasks es un array
+    if (!Array.isArray(tasks)) {
+      console.error('Error: getTasks no devolvió un array:', tasks);
+      return {
+        pendiente: [],
+        en_progreso: [],
+        completada: [],
+        cancelada: []
+      };
+    }
+    
     // Agrupar por estado mapeando los valores de BD a UI
     const tasksByStatus = {
-      pendiente: tasks.filter(task => mapDbValueToUIStatus(task.status) === 'pendiente'),
-      en_progreso: tasks.filter(task => mapDbValueToUIStatus(task.status) === 'en_progreso'),
-      completada: tasks.filter(task => mapDbValueToUIStatus(task.status) === 'completada'),
-      cancelada: tasks.filter(task => mapDbValueToUIStatus(task.status) === 'cancelada')
+      pendiente: tasks.filter((task: Task) => mapDbValueToUIStatus(task.status) === 'pendiente'),
+      en_progreso: tasks.filter((task: Task) => mapDbValueToUIStatus(task.status) === 'en_progreso'),
+      completada: tasks.filter((task: Task) => mapDbValueToUIStatus(task.status) === 'completada'),
+      cancelada: tasks.filter((task: Task) => mapDbValueToUIStatus(task.status) === 'cancelada')
     };
     
     return tasksByStatus;
@@ -1360,5 +1667,115 @@ export const checkParentCompletion = async (parentId: string): Promise<{ shouldC
   } catch (error) {
     console.error('Error al verificar completado de padre:', error);
     return { shouldComplete: false };
+  }
+};
+
+// ====================================
+// FUNCIÓN PARA DELIVERY LOGS AUTOMÁTICOS
+// ====================================
+
+/**
+ * Crea delivery_logs automáticamente para notificaciones de tareas
+ * Simula el envío real a diferentes proveedores (email, SMS, push)
+ * @param notificationIds IDs de las notificaciones creadas
+ * @param organizationId ID de la organización
+ * @param taskType Tipo de tarea para determinar canales
+ */
+const createAutomaticDeliveryLogs = async (
+  notificationIds: string[],
+  organizationId: number,
+  taskType: string = 'general'
+): Promise<void> => {
+  try {
+    console.log(`🚀 Creando delivery logs automáticos para ${notificationIds.length} notificaciones`);
+    
+    for (const notificationId of notificationIds) {
+      // Configuración de canales según el tipo de tarea
+      const channelConfig = {
+        email: { enabled: true, priority: 1 },
+        push: { enabled: true, priority: 2 },
+        sms: { enabled: taskType === 'urgent' || taskType === 'high_priority', priority: 3 }
+      };
+      
+      // Lista de proveedores simulados
+      const providers = {
+        email: ['sendgrid', 'mailgun', 'postmark'],
+        push: ['firebase', 'pusher', 'onesignal'],
+        sms: ['twilio', 'nexmo', 'messagebird']
+      };
+      
+      // Generar logs para cada canal habilitado
+      for (const [channel, config] of Object.entries(channelConfig)) {
+        if (!config.enabled) continue;
+        
+        const channelProviders = providers[channel as keyof typeof providers];
+        const selectedProvider = channelProviders[Math.floor(Math.random() * channelProviders.length)];
+        
+        // Simular resultado del envío (90% éxito, 10% fallo)
+        const isSuccess = Math.random() > 0.1;
+        const deliveryStatus = isSuccess ? 'success' : 'fail';
+        
+        // Simular respuesta del proveedor
+        const providerResponse = isSuccess 
+          ? {
+              status: 'delivered',
+              message_id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              delivery_time: new Date().toISOString(),
+              cost: (Math.random() * 0.02 + 0.001).toFixed(4),
+              recipient_confirmed: true
+            }
+          : {
+              status: 'failed',
+              error_code: ['INVALID_RECIPIENT', 'RATE_LIMIT_EXCEEDED', 'PROVIDER_ERROR'][Math.floor(Math.random() * 3)],
+              error_message: 'Simulated delivery failure for testing',
+              retry_count: Math.floor(Math.random() * 3),
+              next_retry: new Date(Date.now() + 300000).toISOString()
+            };
+        
+        // Crear el delivery log con la estructura correcta de la tabla
+        const deliveryLogData = {
+          notification_id: notificationId,
+          attempt_no: isSuccess ? 1 : Math.floor(Math.random() * 3) + 1,
+          status: deliveryStatus,
+          delivered_at: isSuccess ? new Date().toISOString() : new Date().toISOString(), // Siempre requerido
+          provider_response: {
+            channel: channel,
+            provider: selectedProvider,
+            ...providerResponse,
+            // Información adicional en el JSON
+            organization_id: organizationId,
+            task_type: taskType,
+            simulated: true
+          }
+        };
+        
+        // Insertar en la base de datos
+        const { data: insertedLog, error: deliveryError } = await supabase
+          .from('delivery_logs')
+          .insert(deliveryLogData)
+          .select('id')
+          .single();
+        
+        if (deliveryError) {
+          console.error(`❌ Error creando delivery log para ${channel}:`, {
+            error: deliveryError,
+            message: deliveryError.message,
+            details: deliveryError.details,
+            code: deliveryError.code,
+            data: deliveryLogData
+          });
+        } else {
+          console.log(`✅ Delivery log creado para ${channel} via ${selectedProvider}: ${deliveryStatus} (ID: ${insertedLog?.id})`);
+        }
+        
+        // Simular delay entre envíos
+        await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
+      }
+    }
+    
+    console.log(`📊 Proceso de delivery logs completado para ${notificationIds.length} notificaciones`);
+    
+  } catch (error: any) {
+    console.error('❌ Error general creando delivery logs:', error);
   }
 };

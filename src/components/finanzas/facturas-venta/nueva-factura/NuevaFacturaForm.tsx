@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentBranchId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { ClienteSelector } from './ClienteSelector';
 import { ItemsFactura } from './ItemsFactura';
@@ -17,6 +17,7 @@ import { FormaPagoSelector } from './FormaPagoSelector';
 import { format } from 'date-fns';
 import { Save, FileCheck, ArrowLeft, RefreshCw } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
+import { AutomaticTriggers } from '@/lib/services/automaticTriggerIntegrations';
 
 // Tipo para un ítem de factura
 export type InvoiceItem = {
@@ -67,7 +68,7 @@ export function NuevaFacturaForm() {
   // Estados para el formulario
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [branchId, setBranchId] = useState<number>(getCurrentBranchId()); // Usar branch_id actual del selector
+  const [branchId, setBranchId] = useState<number>(getCurrentBranchIdWithFallback()); // Usar branch_id actual del selector
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [isDuplicateNumber, setIsDuplicateNumber] = useState<boolean>(false);
   const [isValidatingNumber, setIsValidatingNumber] = useState<boolean>(false);
@@ -333,6 +334,42 @@ export function NuevaFacturaForm() {
       // Verificar si alguna promesa tuvo error
       const itemsError = itemsResults.find(result => result.error);
       if (itemsError) throw itemsError.error;
+      
+      // 🚀 TRIGGER AUTOMÁTICO: invoice.created
+      try {
+        // Obtener datos del cliente para el trigger
+        const { data: customerData } = await supabase
+          .from('customers')
+          .select('name, email')
+          .eq('id', selectedCustomerId)
+          .single();
+
+        await AutomaticTriggers.invoiceCreated({
+          invoice_id: invoiceData.number || invoiceData.id.toString(),
+          customer_name: customerData?.name || 'Cliente no especificado',
+          customer_email: customerData?.email || '',
+          amount: total,
+          due_date: dueDate?.toISOString().split('T')[0] || '',
+          created_at: new Date().toISOString(),
+          payment_method: paymentMethodCode || 'No especificado',
+          subtotal: subtotal,
+          tax_total: taxTotal,
+          currency: 'COP',
+          products: items.map(item => ({
+            name: item.product_name || item.description,
+            sku: `ITEM-${item.product_id}`,
+            quantity: item.qty,
+            unit_price: item.unit_price,
+            total: item.total_line
+          })),
+          invoice_type: 'manual_creation',
+          created_from: 'finanzas_module'
+        }, organizationId);
+        
+        console.log('✅ Trigger invoice.created ejecutado exitosamente desde Finanzas');
+      } catch (triggerError) {
+        console.error('⚠️ Error en trigger invoice.created (no afecta la factura):', triggerError);
+      }
       
       toast({
         title: "Éxito",

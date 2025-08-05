@@ -20,6 +20,9 @@ import {
   type TaxCalculationItem 
 } from '@/lib/utils/taxCalculations';
 
+// 🚀 SISTEMA AUTOMÁTICO DE TRIGGERS
+import systemEventManager from '@/lib/utils/eventTriggerUtils';
+
 interface CheckoutDialogProps {
   cart: Cart;
   open: boolean;
@@ -259,6 +262,48 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
       const sale = await POSService.checkout(checkoutData);
       setCompletedSale(sale);
       setShowReceipt(true);
+      
+      // 🚀 DISPARAR TRIGGER AUTOMÁTICO DE FACTURA CREADA
+      try {
+        console.log('🎯 Disparando trigger automático para factura creada:', sale.id);
+        
+        // Preparar datos del evento para triggers
+        const eventData = {
+          invoice_id: sale.id?.toString() || 'N/A',
+          customer_name: updatedCart.customer?.full_name || 'Cliente',
+          customer_email: updatedCart.customer?.email || 'no-email@example.com',
+          amount: sale.total || updatedCart.total,
+          currency: 'COP', // TODO: obtener de configuración
+          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 días
+          order_date: new Date().toISOString().split('T')[0],
+          subtotal: sale.subtotal || updatedCart.subtotal,
+          tax_total: sale.tax_total || (updatedCart.total - updatedCart.subtotal),
+          // Datos adicionales para las plantillas
+          company_name: 'GO Admin ERP',
+          payment_method: payments[0]?.method || 'efectivo',
+          // Agregar productos para imágenes automáticas
+          products: updatedCart.items.map(item => ({
+            name: item.product?.name || 'Producto',
+            sku: item.product?.sku || `SKU-${item.product_id}`,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.total
+          }))
+        };
+        
+        // Disparar evento automáticamente
+        await systemEventManager.onInvoiceCreated(
+          eventData, 
+          updatedCart.organization_id || 2 // Fallback a organización 2
+        );
+        
+        console.log('✅ Trigger automático ejecutado exitosamente');
+        
+      } catch (triggerError) {
+        // Error en triggers no debe afectar el checkout
+        console.error('⚠️ Error ejecutando triggers automáticos:', triggerError);
+        console.warn('💡 El checkout fue exitoso, pero los triggers automáticos fallaron');
+      }
       
       // Resetear el dialog después de un momento
       setTimeout(() => {

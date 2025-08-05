@@ -70,7 +70,10 @@ export const AppLayout = ({
         // Obtener rol del usuario
         const { data: userRoleData, error: roleError } = await supabase
           .from('organization_members')
-          .select('role')
+          .select(`
+            role_id,
+            roles!inner(name)
+          `)
           .eq('user_id', user.id)
           .eq('organization_id', currentOrgId)
           .single();
@@ -84,7 +87,7 @@ export const AppLayout = ({
         setUserData({
           name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`,
           email: user.email,
-          role: userRoleData?.role,
+          role: userRoleData?.roles?.[0]?.name,
           avatar: profileData?.avatar_url
         });
       } catch (error) {

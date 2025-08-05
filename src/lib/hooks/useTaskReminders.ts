@@ -194,6 +194,29 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
         };
       });
       
+      // Ordenar recordatorios: más próximas a vencer primero, vencidas al final
+      const sortedReminders = processedReminders.sort((a, b) => {
+        // Si una está vencida y otra no, la no vencida va primero
+        if (a.isOverdue && !b.isOverdue) {
+          return 1; // La no vencida (b) va primero
+        }
+        if (!a.isOverdue && b.isOverdue) {
+          return -1; // La no vencida (a) va primero
+        }
+        
+        // Si ambas están pendientes (no vencidas), ordenar por la más próxima primero
+        if (!a.isOverdue && !b.isOverdue) {
+          return a.daysUntilDue - b.daysUntilDue; // 0 (hoy) < 1 (mañana) < 3 (en 3 días)
+        }
+        
+        // Si ambas están vencidas, ordenar por la menos vencida primero (más reciente)
+        if (a.isOverdue && b.isOverdue) {
+          return b.daysUntilDue - a.daysUntilDue; // -1 vs -10 = -1 primero (menos vencida)
+        }
+        
+        return 0;
+      });
+      
       console.log('✅ [TaskReminders] Recordatorios procesados:', {
         count: processedReminders.length,
         reminders: processedReminders.map(r => ({
@@ -205,7 +228,17 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
         }))
       });
 
-      setTaskReminders(processedReminders);
+      console.log('🔄 [TaskReminders] Recordatorios ordenados:', {
+        count: sortedReminders.length,
+        order: sortedReminders.map(r => ({
+          title: r.title,
+          daysUntilDue: r.daysUntilDue,
+          isOverdue: r.isOverdue,
+          due_date: r.due_date
+        }))
+      });
+      
+      setTaskReminders(sortedReminders);
     } catch (err) {
       console.error('Error al cargar recordatorios de tareas:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido');

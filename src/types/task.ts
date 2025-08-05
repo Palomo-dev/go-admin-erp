@@ -73,7 +73,7 @@ export interface TaskFilter {
   // Campos originales
   status?: TaskStatus | 'todas';
   type?: TaskType | 'todas';
-  timeframe?: 'todos' | 'hoy' | 'semana' | 'mes' | 'todas';
+  timeframe?: 'todos' | 'hoy' | 'semana' | 'mes' | 'todas' | 'esta-semana' | 'este-mes' | 'proxima-semana' | 'proximo-mes';
   assigned_to?: string | 'todos';
   priority?: string | 'todas';
   
@@ -91,6 +91,10 @@ export interface TaskFilter {
   include_subtasks?: boolean;                  // Incluir subtareas en los resultados
   only_parent_tasks?: boolean;                 // Solo mostrar tareas padre (sin subtareas)
   only_subtasks?: boolean;                     // Solo mostrar subtareas
+  
+  // Campos para filtrado por rol (agregados para sistema de roles)
+  related_to_id?: string;                      // ID de la entidad relacionada
+  related_to_type?: string;                    // Tipo de entidad relacionada
 }
 
 // Interfaz para nueva tarea

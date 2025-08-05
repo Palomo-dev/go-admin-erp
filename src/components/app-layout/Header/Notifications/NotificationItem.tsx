@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { MoreHorizontal } from 'lucide-react';
@@ -12,6 +12,7 @@ import {
   PopoverContent 
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { translateNotification } from '@/utils/notificationTranslations';
 
 interface NotificationItemProps {
   notification: Notification;
@@ -23,6 +24,18 @@ interface NotificationItemProps {
  */
 export const NotificationItem = ({ notification, onUpdate }: NotificationItemProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  // Procesar notificación usando el sistema de traducciones
+  const processedNotification = useMemo(() => {
+    const translated = translateNotification(notification.payload);
+    
+    return {
+      title: translated.title,
+      message: translated.message,
+      category: translated.category,
+      icon: translated.icon
+    };
+  }, [notification.payload]);
 
   const markAsRead = async (e?: React.MouseEvent) => {
     if (e) {
@@ -52,7 +65,7 @@ export const NotificationItem = ({ notification, onUpdate }: NotificationItemPro
     >
       <div className="flex justify-between items-start">
         <div className="flex-1 mr-2">
-          <p className="text-sm font-medium">{notification.payload.title}</p>
+          <p className="text-sm font-medium">{processedNotification.title}</p>
         </div>
         <div className="flex items-center gap-1">
           <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -72,10 +85,10 @@ export const NotificationItem = ({ notification, onUpdate }: NotificationItemPro
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0">
               <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-t-md">
-                <h4 className="font-medium">{notification.payload.title}</h4>
+                <h4 className="font-medium">{processedNotification.title}</h4>
                 <div className="flex justify-between items-center mt-1">
                   <Badge variant="outline" className="text-xs">
-                    {notification.payload.type}
+                    {processedNotification.category}
                   </Badge>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     {formatDate(notification.created_at)}
@@ -84,7 +97,7 @@ export const NotificationItem = ({ notification, onUpdate }: NotificationItemPro
               </div>
               <div className="p-4">
                 <div className="text-sm whitespace-pre-wrap">
-                  {notification.payload.content}
+                  {processedNotification.message}
                 </div>
                 
                 {/* Mostrar datos adicionales si existen en el payload */}
@@ -116,7 +129,7 @@ export const NotificationItem = ({ notification, onUpdate }: NotificationItemPro
         </div>
       </div>
       <p className="text-xs mt-1 text-gray-600 dark:text-gray-300 line-clamp-2">
-        {notification.payload.content}
+        {processedNotification.message}
       </p>
       {!notification.read_at && (
         <div className="mt-1 flex justify-end">

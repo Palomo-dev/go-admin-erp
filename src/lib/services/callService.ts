@@ -1,16 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
-import { Activity, ActivityMetadata, ActivityType, NewActivity } from '@/types/activity'
-import { createActivity } from './activityService'
-
-// Configuración de Supabase (usar Service Role Key para bypass de RLS en pruebas)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
+import { supabase } from '@/lib/supabase/config';
+import { Activity, ActivityMetadata, ActivityType, NewActivity } from '@/types/activity';
+import { createActivity } from './activityService';
 
 // Tipos de eventos de llamada
 export enum CallEvent {

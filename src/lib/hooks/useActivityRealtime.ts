@@ -1,19 +1,19 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/config'
-import { useOrganization } from '@/lib/hooks/useOrganization'
-import type { Activity } from '@/types/activity'
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase/config';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import type { Activity } from '@/types/activity';
 
 /**
  * Hook para manejar eventos de actividades en tiempo real
  */
 export function useActivityRealtime() {
-  const [newActivity, setNewActivity] = useState<Activity | null>(null)
-  const [isConnected, setIsConnected] = useState(false)
-  const { organization } = useOrganization()
+  const [newActivity, setNewActivity] = useState<Activity | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const { organization } = useOrganization();
 
   useEffect(() => {
-    const organizationId = organization?.id
-    if (!organizationId) return
+    const organizationId = organization?.id;
+    if (!organizationId) return;
 
     console.log('🔄 Conectando a canal de actividades en tiempo real...')
 

@@ -59,19 +59,21 @@ interface UserSession {
 }
 
 interface UserRole {
-  role_id: number;
-  organization_id?: number | null;
-  branch_id?: number | null;
-  roles: {
+  id: string;
+  role_name: string;
+  description: string;
+  organization_id: string;
+  organization?: {
+    id: string;
     name: string;
-  }
-  organizations: {
-    name: string;
-  }
-  branches?: {
+    slug: string;
+    logo_url?: string;
+  };
+  branch_id?: string | null;
+  branch?: {
+    id: string;
     name: string;
   } | null;
-  name: string;
 }
 
 interface MfaMethod {
@@ -200,37 +202,40 @@ export default function PerfilUsuarioPage() {
         
         // Obtener roles del usuario
         const { data: rolesData, error: rolesError } = await supabase
-          .from('user_roles')
+          .from('organization_members')
           .select(`
             role_id,
-            branch_id,
+            organization_id,
             roles!inner(
               name,
-              organization_id
+              description
             ),
-            branches:branch_id(name)
+            organizations(
+              name
+            )
           `)
-          .eq('user_id', session.user.id);
+          .eq('user_id', session.user.id)
+          .eq('is_active', true);
           
         if (rolesError) {
           console.error('Error al obtener roles:', rolesError);
         } else {
           // Adaptamos los datos al formato esperado por la interfaz UserRole
-          const formattedRoles: UserRole[] = (rolesData || []).map(role => {
+          const formattedRoles: UserRole[] = (rolesData || []).map((role, index) => {
             // Aseguramos que todas las propiedades tengan valores válidos
             const roleObj = role as any; // Usamos any para evitar errores de typescript
             return {
-              role_id: roleObj.role_id,
-              organization_id: roleObj.roles?.organization_id || null,
-              branch_id: roleObj.branch_id || null,
-              roles: { 
-                name: roleObj.roles?.name || 'Sin nombre'
+              id: `${roleObj.role_id}_${roleObj.organization_id}_${index}`, // ID único combinando role_id, org_id e índice
+              role_name: roleObj.roles?.name || 'Sin nombre',
+              description: roleObj.roles?.description || '',
+              organization_id: roleObj.organization_id?.toString() || '',
+              organization: {
+                id: roleObj.organization_id?.toString() || '',
+                name: roleObj.organizations?.name || 'Sin nombre de organización',
+                slug: roleObj.organizations?.slug || roleObj.organization_id?.toString() || ''
               },
-              organizations: { 
-                name: roleObj.roles?.organization_id ? `Organización ${roleObj.roles.organization_id}` : 'Global'
-              },
-              branches: roleObj.branches ? { name: roleObj.branches.name } : null,
-              name: roleObj.roles?.name || 'Sin nombre'
+              branch_id: null,
+              branch: null
             };
           });
           
@@ -240,14 +245,19 @@ export default function PerfilUsuarioPage() {
         // Obtener organizaciones a las que pertenece el usuario
         const { data: orgs, error: orgsError } = await supabase
           .from('organization_members')
-          .select('organization_id(id, name)')
+          .select(`
+            organizations(
+              id,
+              name
+            )
+          `)
           .eq('user_id', session.user.id);
 
         //extract organizations to have an array of organizations ids and names
-        const orgsData = orgs?.map((org) => ({
-          id: org.organization_id.id,
-          name: org.organization_id.name
-        }));
+        const orgsData = orgs?.map((org: any) => ({
+          id: org.organizations?.id,
+          name: org.organizations?.name
+        })).filter(org => org.id && org.name);
 
         console.log(orgsData);
 

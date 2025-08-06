@@ -164,21 +164,35 @@ export class FacturasCompraService {
   /**
    * Crea una nueva factura de compra
    */
-  static async crearFactura(formData: NuevaFacturaCompraForm): Promise<InvoicePurchase> {
+  static async crearFactura(formData: NuevaFacturaCompraForm & { _calculatedTotals?: { subtotal: number; taxTotal: number; total: number } }): Promise<InvoicePurchase> {
     try {
       const currentUserId = await getCurrentUserId();
       
-      // Calcular totales
-      const subtotal = formData.items.reduce((sum, item) => 
-        sum + (item.qty * item.unit_price - (item.discount_amount || 0)), 0
-      );
+      // Usar totales calculados del formulario si están disponibles, sino calcular básico
+      let subtotal, taxTotal, total;
       
-      const taxTotal = formData.items.reduce((sum, item) => {
-        const lineSubtotal = item.qty * item.unit_price - (item.discount_amount || 0);
-        return sum + (lineSubtotal * (item.tax_rate || 0) / 100);
-      }, 0);
+      if (formData._calculatedTotals) {
+        console.log('=== USANDO TOTALES CALCULADOS DESDE FORMULARIO ===');
+        console.log('Totales recibidos:', formData._calculatedTotals);
+        
+        subtotal = formData._calculatedTotals.subtotal;
+        taxTotal = formData._calculatedTotals.taxTotal;
+        total = formData._calculatedTotals.total;
+      } else {
+        console.log('=== USANDO CÁLCULO BÁSICO INTERNO ===');
+        
+        // Cálculo básico de respaldo
+        subtotal = formData.items.reduce((sum, item) => 
+          sum + (item.qty * item.unit_price - (item.discount_amount || 0)), 0
+        );
+        
+        taxTotal = formData.items.reduce((sum, item) => {
+          const lineSubtotal = item.qty * item.unit_price - (item.discount_amount || 0);
+          return sum + (lineSubtotal * (item.tax_rate || 0) / 100);
+        }, 0);
 
-      const total = formData.tax_included ? subtotal : subtotal + taxTotal;
+        total = formData.tax_included ? subtotal : subtotal + taxTotal;
+      }
 
       // Crear la factura principal
       const { data: factura, error: facturaError } = await supabase
@@ -455,24 +469,79 @@ export class FacturasCompraService {
     try {
       console.log('=== Obteniendo pagos de factura ===');
       console.log('Factura ID:', facturaId);
+      console.log('Organization ID:', this.organizationId);
       
-      const { data: pagos, error } = await supabase
+      // Buscar pagos directos a la factura (source = 'invoice_purchase')
+      console.log('Buscando pagos directos...');
+      const { data: pagosDirectos, error: errorDirectos } = await supabase
         .from('payments')
-        .select(`
-          *
-        `)
+        .select(`*`)
         .eq('organization_id', this.organizationId)
         .eq('source', 'invoice_purchase')
         .eq('source_id', facturaId)
         .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error obteniendo pagos:', error);
-        throw error;
+      
+      console.log('Pagos directos result:', { pagosDirectos: pagosDirectos?.length || 0, errorDirectos });
+      
+      // Buscar pagos a través de accounts_payable usando una consulta más simple
+      console.log('Buscando pagos indirectos...');
+      
+      // Primero obtener las accounts_payable para esta factura
+      const { data: cuentasPorPagar, error: errorCuentas } = await supabase
+        .from('accounts_payable')
+        .select('id')
+        .eq('invoice_id', facturaId);
+      
+      console.log('Cuentas por pagar result:', { cuentas: cuentasPorPagar?.length || 0, errorCuentas });
+      
+      let pagosIndirectos = [];
+      let errorIndirectos = null;
+      
+      if (cuentasPorPagar && cuentasPorPagar.length > 0) {
+        const cuentaIds = cuentasPorPagar.map(c => c.id);
+        
+        const { data, error } = await supabase
+          .from('payments')
+          .select(`*`)
+          .eq('organization_id', this.organizationId)
+          .eq('source', 'account_payable')
+          .in('source_id', cuentaIds)
+          .order('created_at', { ascending: false });
+          
+        pagosIndirectos = data || [];
+        errorIndirectos = error;
+        
+        console.log('Pagos indirectos result:', { pagosIndirectos: pagosIndirectos?.length || 0, errorIndirectos });
       }
 
-      console.log('Pagos obtenidos:', pagos?.length || 0);
-      return pagos || [];
+      // Manejar errores
+      if (errorDirectos) {
+        console.error('Error obteniendo pagos directos:', errorDirectos);
+      }
+      if (errorIndirectos) {
+        console.error('Error obteniendo pagos indirectos:', errorIndirectos);
+      }
+      
+      // Si hay errores críticos, lanzar excepción
+      if (errorDirectos && errorIndirectos) {
+        throw new Error(`Error obteniendo pagos: ${JSON.stringify({ errorDirectos, errorIndirectos })}`);
+      }
+
+      // Combinar ambos tipos de pagos
+      const todosPagos = [
+        ...(pagosDirectos || []),
+        ...(pagosIndirectos || [])
+      ];
+
+      // Ordenar por fecha de creación descendente
+      todosPagos.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      console.log('Pagos totales obtenidos:', todosPagos.length, {
+        directos: pagosDirectos?.length || 0,
+        indirectos: pagosIndirectos?.length || 0
+      });
+      
+      return todosPagos;
     } catch (error) {
       console.error('Error en obtenerPagosFactura:', error);
       throw error;
@@ -880,6 +949,30 @@ export class FacturasCompraService {
     } catch (error) {
       console.error('Error en obtenerFacturasProximasVencer:', error);
       return [];
+    }
+  }
+
+  /**
+   * Confirma una factura de compra (cambiar de draft a received)
+   */
+  static async confirmarFactura(facturaId: string): Promise<void> {
+    try {
+      console.log('=== CONFIRMANDO FACTURA DE COMPRA ===');
+      console.log('Factura ID:', facturaId);
+      
+      const { data, error } = await supabase
+        .rpc('confirm_purchase_invoice', { invoice_id_param: facturaId });
+      
+      if (error) {
+        console.error('Error confirmando factura:', error);
+        throw error;
+      }
+      
+      console.log('✅ Factura confirmada exitosamente');
+      return data;
+    } catch (error) {
+      console.error('Error en confirmarFactura:', error);
+      throw error;
     }
   }
 

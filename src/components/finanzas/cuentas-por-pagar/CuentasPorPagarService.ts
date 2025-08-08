@@ -518,20 +518,24 @@ export class CuentasPorPagarService {
         console.error('Error actualizando balance de cuenta por pagar:', updateError);
       }
 
-      // Actualizar balance de la factura de compra correspondiente
+      // Actualizar balance y estado de la factura de compra correspondiente
       if (cuenta.invoice_id) {
+        // Determinar el nuevo estado de la factura basado en el balance
+        const nuevoEstadoFactura = nuevoBalance <= 0 ? 'paid' : 'partial';
+        
         const { error: invoiceUpdateError } = await supabase
           .from('invoice_purchase')
           .update({ 
             balance: nuevoBalance,
+            status: nuevoEstadoFactura,
             updated_at: new Date().toISOString()
           })
           .eq('id', cuenta.invoice_id);
 
         if (invoiceUpdateError) {
-          console.error('Error actualizando balance de factura de compra:', invoiceUpdateError);
+          console.error('Error actualizando balance y estado de factura de compra:', invoiceUpdateError);
         } else {
-          console.log(`Balances sincronizados para cuenta ${accountPayableId} y factura ${cuenta.invoice_id}`);
+          console.log(`Balances y estado sincronizados para cuenta ${accountPayableId} y factura ${cuenta.invoice_id}. Nuevo estado: ${nuevoEstadoFactura}`);
         }
       }
     } catch (error) {

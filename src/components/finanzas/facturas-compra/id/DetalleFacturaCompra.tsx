@@ -24,7 +24,8 @@ import {
   DollarSign,
   Clock,
   Printer,
-  Download
+  Download,
+  Send
 } from 'lucide-react';
 import { FacturasCompraService } from '../FacturasCompraService';
 import { InvoicePurchase } from '../types';
@@ -124,6 +125,24 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
     console.log('Descargando PDF de factura:', facturaId);
     // Por ahora, usar la función de imprimir como alternativa
     window.print();
+  };
+
+  const handleConfirmarFactura = async () => {
+    try {
+      if (!factura) return;
+      
+      await FacturasCompraService.confirmarFactura(factura.id);
+      
+      // Recargar datos para mostrar el estado actualizado
+      await cargarFactura();
+      
+      // Mostrar notificación de éxito
+      console.log('Factura confirmada exitosamente');
+      
+    } catch (error: any) {
+      console.error('Error al confirmar factura:', error);
+      alert('Error al confirmar la factura: ' + (error.message || 'Error desconocido'));
+    }
   };
 
   const getEstadoBadge = (status: InvoicePurchase['status']) => {
@@ -267,13 +286,22 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
           )}
           
           {factura.status === 'draft' && (
-            <Button
-              onClick={handleEditar}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Editar
-            </Button>
+            <>
+              <Button 
+                onClick={handleConfirmarFactura}
+                className="justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-primary-foreground shadow rounded-md flex items-center gap-1 py-0.5 h-7 px-2 text-xs bg-blue-600 hover:bg-blue-700"
+              >
+                <Send className="h-3.5 w-3.5" />
+                Confirmar Factura
+              </Button>
+              <Button
+                onClick={handleEditar}
+                className="bg-gray-600 hover:bg-gray-700 text-white"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Editar
+              </Button>
+            </>
           )}
         </div>
       </div>

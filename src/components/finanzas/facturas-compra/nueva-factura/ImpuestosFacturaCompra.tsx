@@ -118,6 +118,11 @@ export function ImpuestosFacturaCompra({
       
       setTaxCalculation(calculation);
       
+      console.log('=== NOTIFICANDO CAMBIOS DE IMPUESTOS AL PADRE ===');
+      console.log('Cálculo de impuestos:', calculation);
+      console.log('Impuestos aplicados:', appliedTaxes);
+      console.log('Tax included:', taxIncluded);
+      
       // Notificar cambios al componente padre
       onTaxCalculationChange({
         ...calculation,

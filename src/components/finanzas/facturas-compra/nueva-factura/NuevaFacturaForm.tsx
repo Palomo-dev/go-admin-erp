@@ -218,6 +218,9 @@ export function NuevaFacturaForm({
   }, []);
 
   const handleTaxCalculationChange = useCallback((calculation: TaxCalculationResult & { appliedTaxes: {[key: string]: boolean} }) => {
+    console.log('=== RECIBIENDO CÁLCULOS DE IMPUESTOS EN FORMULARIO ===');
+    console.log('Cálculo recibido:', calculation);
+    
     setTaxCalculation({
       subtotal: calculation.subtotal,
       totalTaxAmount: calculation.totalTaxAmount,
@@ -226,6 +229,13 @@ export function NuevaFacturaForm({
     });
     
     setAppliedTaxes(calculation.appliedTaxes);
+    
+    console.log('Estado de taxCalculation actualizado:', {
+      subtotal: calculation.subtotal,
+      totalTaxAmount: calculation.totalTaxAmount,
+      finalTotal: calculation.finalTotal,
+      taxBreakdown: calculation.taxBreakdown
+    });
   }, []);
 
   const calcularTotales = () => {
@@ -323,8 +333,27 @@ export function NuevaFacturaForm({
         // Modo edición: usar la función onSubmit proporcionada
         await onSubmit(formData);
       } else {
-        // Modo creación: crear nueva factura
-        const factura = await FacturasCompraService.crearFactura(formData);
+        // Modo creación: crear nueva factura usando totales calculados
+        const { subtotal: calculatedSubtotal, taxTotal: calculatedTaxTotal, total: calculatedTotal } = calcularTotales();
+        
+        console.log('=== CREANDO FACTURA CON TOTALES CALCULADOS ===');
+        console.log('Subtotal calculado:', calculatedSubtotal);
+        console.log('Total impuestos calculado:', calculatedTaxTotal);
+        console.log('Total final calculado:', calculatedTotal);
+        console.log('Tax calculation usado:', taxCalculation);
+        
+        // Crear objeto con totales calculados
+        const facturaConTotales = {
+          ...formData,
+          // Pasar totales calculados explícitamente
+          _calculatedTotals: {
+            subtotal: calculatedSubtotal,
+            taxTotal: calculatedTaxTotal,
+            total: calculatedTotal
+          }
+        };
+        
+        const factura = await FacturasCompraService.crearFactura(facturaConTotales);
         router.push(`/app/finanzas/facturas-compra/${factura.id}`);
       }
     } catch (error) {

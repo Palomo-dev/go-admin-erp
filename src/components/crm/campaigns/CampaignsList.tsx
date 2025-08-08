@@ -6,20 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
 import { 
   Search, 
+  ChevronLeft, 
+  ChevronRight, 
   Mail, 
   MessageSquare, 
-  TrendingUp,
-  Calendar,
-  Users,
+  Users, 
   MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  TrendingUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
@@ -32,6 +30,7 @@ import {
 } from './utils';
 import CampaignStatusBadge from './CampaignStatusBadge';
 import CampaignForm from './CampaignForm';
+import CampaignDetail from './CampaignDetail';
 
 const CampaignsList: React.FC = () => {
   const { t, formatDate: formatDateI18n, formatNumber, formatPercentage } = useTranslation();
@@ -51,6 +50,10 @@ const CampaignsList: React.FC = () => {
   // Estados de ordenamiento
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Estados para modal de detalle
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -223,6 +226,17 @@ const CampaignsList: React.FC = () => {
     loadCampaigns();
   };
 
+  // Funciones para manejo del modal de detalle
+  const handleCampaignClick = (campaign: Campaign) => {
+    setSelectedCampaign(campaign);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedCampaign(null);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -378,124 +392,132 @@ const CampaignsList: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {paginatedCampaigns.map((campaign) => {
             const metrics = calculateCampaignMetrics(campaign.statistics || {});
             
             return (
-              <Card key={campaign.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-14 gap-4 items-center">
-                    {/* Información Principal */}
-                    <div className="lg:col-span-3">
-                      <div className="flex items-start space-x-3">
-                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                          {campaign.channel === 'email' ? (
-                            <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          ) : (
-                            <MessageSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                            {campaign.name}
-                          </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {getChannelText(campaign.channel)}
-                          </p>
-                        </div>
+              <Card 
+                key={campaign.id} 
+                className="hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleCampaignClick(campaign)}
+              >
+                <CardContent className="p-4">
+                  {/* Fila principal compacta */}
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Información Principal (25%) */}
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex-shrink-0">
+                        {campaign.channel === 'email' ? (
+                          <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        ) : (
+                          <MessageSquare className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        )}
                       </div>
-                    </div>
-
-                    {/* Segmento */}
-                    <div className="lg:col-span-2">
-                      <div className="text-sm">
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
-                          {campaign.segment?.name || 'Sin segmento'}
-                        </p>
-                        <p className="text-gray-500 dark:text-gray-400 flex items-center">
-                          <Users className="h-3 w-3 mr-1" />
-                          {campaign.segment?.customer_count || 0} contactos
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                          {campaign.name}
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {getChannelText(campaign.channel)}
                         </p>
                       </div>
                     </div>
 
                     {/* Estado */}
-                    <div className="lg:col-span-1">
+                    <div className="flex-shrink-0">
                       <CampaignStatusBadge status={campaign.status} />
                     </div>
 
-                    {/* Fecha */}
-                    <div className="lg:col-span-2">
-                      <div className="text-sm">
-                        <p className="text-gray-500 dark:text-gray-400 flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {campaign.scheduled_at 
-                            ? formatDateI18n(campaign.scheduled_at)
-                            : formatDateI18n(campaign.created_at)
-                          }
-                        </p>
-                      </div>
+                    {/* Segmento (solo desktop) */}
+                    <div className="hidden md:flex flex-col items-start min-w-0 flex-shrink-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-32">
+                        {campaign.segment?.name || 'Sin segmento'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                        <Users className="h-3 w-3 mr-1" />
+                        {formatNumber(campaign.segment?.customer_count || 0)}
+                      </p>
                     </div>
 
-                    {/* KPIs */}
-                    <div className="lg:col-span-4">
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-center">
-                        {/* Fila 1: Métricas absolutas */}
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {formatNumber(metrics.totalSent)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.sent')}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                            {formatNumber(metrics.delivered)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.delivered')}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
-                            {formatNumber(metrics.opened)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.opened')}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">
-                            {formatNumber(metrics.clicked)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.clicked')}</p>
-                        </div>
+                    {/* Fecha (solo desktop) */}
+                    <div className="hidden lg:block text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                      {campaign.scheduled_at 
+                        ? formatDateI18n(campaign.scheduled_at)
+                        : formatDateI18n(campaign.created_at)
+                      }
+                    </div>
+
+                    {/* KPIs Esenciales (solo desktop) */}
+                    <div className="hidden lg:flex items-center space-x-4 text-xs flex-shrink-0">
+                      {/* Enviados/Entregados */}
+                      <div className="text-center">
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">
+                          {formatNumber(metrics.totalSent)}/{formatNumber(metrics.delivered)}
+                        </p>
+                        <p className="text-gray-500 dark:text-gray-400">Env/Ent</p>
                       </div>
-                      <div className="grid grid-cols-3 gap-3 text-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                        {/* Fila 2: Porcentajes */}
-                        <div>
-                          <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
-                            {formatPercentage(metrics.openRate)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.openRate')}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">
-                            {formatPercentage(metrics.clickRate)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.clickRate')}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-green-600 dark:text-green-400">
-                            {formatPercentage(metrics.conversionRate)}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.conversion')}</p>
-                        </div>
+                      
+                      {/* Tasa de apertura */}
+                      <div className="text-center">
+                        <p className="font-semibold text-purple-600 dark:text-purple-400">
+                          {formatPercentage(metrics.openRate)}
+                        </p>
+                        <p className="text-gray-500 dark:text-gray-400">Apertura</p>
+                      </div>
+                      
+                      {/* Tasa de clics */}
+                      <div className="text-center">
+                        <p className="font-semibold text-orange-600 dark:text-orange-400">
+                          {formatPercentage(metrics.clickRate)}
+                        </p>
+                        <p className="text-gray-500 dark:text-gray-400">Clics</p>
                       </div>
                     </div>
 
                     {/* Acciones */}
-                    <div className="lg:col-span-2">
-                      <div className="flex justify-end">
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                    <div className="flex-shrink-0">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // TODO: Implementar menú de acciones
+                        }}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Fila secundaria para móvil */}
+                  <div className="md:hidden mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center space-x-4">
+                        {/* Segmento móvil */}
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Segmento: </span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {campaign.segment?.name || 'Sin segmento'}
+                          </span>
+                        </div>
+                        
+                        {/* Fecha móvil */}
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">
+                            {formatDateI18n(campaign.scheduled_at || campaign.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* KPIs móvil */}
+                      <div className="flex items-center space-x-3">
+                        <span className="font-semibold text-purple-600 dark:text-purple-400">
+                          {formatPercentage(metrics.openRate)}
+                        </span>
+                        <span className="font-semibold text-orange-600 dark:text-orange-400">
+                          {formatPercentage(metrics.clickRate)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -609,6 +631,14 @@ const CampaignsList: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de detalle de campaña */}
+      <CampaignDetail
+        campaign={selectedCampaign}
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+        onRefresh={handleRefresh}
+      />
     </div>
   );
 };

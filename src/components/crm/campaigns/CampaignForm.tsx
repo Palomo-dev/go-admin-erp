@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Loader2, Calendar, Mail, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
-import { CampaignFormData, Segment } from './types';
+import { CampaignFormData, Segment, Campaign } from './types';
 import { getOrganizationId, validateCampaignForm } from './utils';
 
 interface CampaignFormProps {
@@ -20,6 +20,8 @@ interface CampaignFormProps {
   onSuccess?: () => void;
   preselectedSegmentId?: string | null;
   className?: string;
+  editCampaign?: Campaign | null; // Para edición de campañas existentes
+  mode?: 'create' | 'edit'; // Modo del formulario
 }
 
 const CampaignForm: React.FC<CampaignFormProps> = ({ 
@@ -27,7 +29,9 @@ const CampaignForm: React.FC<CampaignFormProps> = ({
   onClose, 
   onSuccess, 
   preselectedSegmentId,
-  className = '' 
+  className = '',
+  editCampaign = null,
+  mode = 'create'
 }) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
@@ -60,6 +64,20 @@ const CampaignForm: React.FC<CampaignFormProps> = ({
       }));
     }
   }, [preselectedSegmentId, isOpen]);
+
+  // Efecto para precargar datos de campaña en modo edición
+  useEffect(() => {
+    if (editCampaign && mode === 'edit' && isOpen) {
+      console.log('✏️ Precargando datos de campaña para edición:', editCampaign);
+      setFormData({
+        name: editCampaign.name,
+        channel: editCampaign.channel || 'email',
+        segment_id: editCampaign.segment_id || '',
+        content: editCampaign.content || '',
+        scheduled_at: editCampaign.scheduled_at || ''
+      });
+    }
+  }, [editCampaign, mode, isOpen]);
 
   const loadSegments = async () => {
     setLoadingSegments(true);
@@ -101,36 +119,66 @@ const CampaignForm: React.FC<CampaignFormProps> = ({
     try {
       const organizationId = getOrganizationId();
       
-      const campaignData = {
-        organization_id: organizationId,
-        name: formData.name.trim(),
-        channel: formData.channel,
-        segment_id: formData.segment_id,
-        content: formData.content?.trim() || null,
-        scheduled_at: formData.scheduled_at || null,
-        status: formData.scheduled_at ? 'scheduled' : 'draft',
-        statistics: {
-          total_sent: 0,
-          delivered: 0,
-          opened: 0,
-          clicked: 0,
-          open_rate: 0,
-          click_rate: 0,
-          conversion_rate: 0
+      if (mode === 'edit' && editCampaign) {
+        // Modo edición - actualizar campaña existente
+        const updateData = {
+          name: formData.name.trim(),
+          channel: formData.channel,
+          segment_id: formData.segment_id || null,
+          content: formData.content?.trim() || null,
+          scheduled_at: formData.scheduled_at || null,
+          status: formData.scheduled_at ? 'scheduled' : editCampaign.status, // Mantener estado actual si no se programa
+          updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabase
+          .from('campaigns')
+          .update(updateData)
+          .eq('id', editCampaign.id)
+          .eq('organization_id', organizationId);
+
+        if (error) {
+          console.error('Error actualizando campaña:', error);
+          toast.error('Error al actualizar la campaña');
+          return;
         }
-      };
 
-      const { error } = await supabase
-        .from('campaigns')
-        .insert([campaignData]);
+        console.log('✅ Campaña actualizada exitosamente');
+        toast.success('Campaña actualizada exitosamente');
+      } else {
+        // Modo creación - crear nueva campaña
+        const campaignData = {
+          organization_id: organizationId,
+          name: formData.name.trim(),
+          channel: formData.channel,
+          segment_id: formData.segment_id || null,
+          content: formData.content?.trim() || null,
+          scheduled_at: formData.scheduled_at || null,
+          status: formData.scheduled_at ? 'scheduled' : 'draft',
+          statistics: {
+            total_sent: 0,
+            delivered: 0,
+            opened: 0,
+            clicked: 0,
+            open_rate: 0,
+            click_rate: 0,
+            conversion_rate: 0
+          }
+        };
 
-      if (error) {
-        console.error('Error creando campaña:', error);
-        toast.error('Error al crear la campaña');
-        return;
+        const { error } = await supabase
+          .from('campaigns')
+          .insert([campaignData]);
+
+        if (error) {
+          console.error('Error creando campaña:', error);
+          toast.error('Error al crear la campaña');
+          return;
+        }
+
+        console.log('✅ Campaña creada exitosamente');
+        toast.success('Campaña creada exitosamente');
       }
-
-      toast.success('Campaña creada exitosamente');
       
       // Resetear formulario
       setFormData({
@@ -186,7 +234,7 @@ const CampaignForm: React.FC<CampaignFormProps> = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Crear Nueva Campaña
+            {mode === 'edit' ? 'Editar Campaña' : 'Crear Nueva Campaña'}
           </DialogTitle>
         </DialogHeader>
 

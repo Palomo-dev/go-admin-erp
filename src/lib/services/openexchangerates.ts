@@ -12,6 +12,12 @@
 
 import { supabase } from '@/lib/supabase/config';
 
+// Fechas faltantes identificadas en la base de datos
+const FECHAS_FALTANTES = [
+  '2025-07-12', '2025-07-13', '2025-07-19', '2025-07-20',
+  '2025-07-26', '2025-07-27', '2025-08-02', '2025-08-03'
+];
+
 /**
  * Valida que la API key funcione correctamente
  * @param apiKey - La API key a validar
@@ -78,6 +84,119 @@ async function intentarSolicitudAPI(url: string, intento: number = 1): Promise<R
       return intentarSolicitudAPI(url, intento + 1);
     }
     throw error;
+  }
+}
+
+/**
+ * Obtiene las tasas de cambio históricas REALES desde OpenExchangeRates para una fecha específica
+ * @param targetDate - Fecha en formato YYYY-MM-DD para obtener datos históricos
+ * @param baseCurrency - Código de la moneda base (default: USD)
+ * @returns Un objeto con las tasas de cambio históricas reales
+ */
+export async function obtenerTasasHistoricas(targetDate: string, baseCurrency: string = 'USD') {
+  // Obtenemos la API key de las variables de entorno
+  const API_KEY = process.env.NEXT_PUBLIC_OPENEXCHANGERATES_API_KEY;
+  
+  console.log(`Iniciando consulta histórica REAL para fecha: ${targetDate} con base:`, baseCurrency);
+  console.log('API Key disponible:', API_KEY ? 'Sí (***masked***)' : 'No');
+  
+  if (!API_KEY) {
+    console.error('API key no encontrada en variables de entorno');
+    throw new Error('API key de OpenExchangeRates no configurada');
+  }
+
+  // Validar API key antes de proceder
+  console.log('Validando API key...');
+  const esAPIKeyValida = await validarAPIKey(API_KEY);
+  if (!esAPIKeyValida) {
+    throw new Error('API key de OpenExchangeRates es inválida o ha expirado. Verifique su configuración.');
+  }
+  console.log('API key validada exitosamente');
+
+  try {
+    // Endpoint histórico real de OpenExchangeRates
+    const timestamp = Date.now();
+    const url = `https://openexchangerates.org/api/historical/${targetDate}.json?app_id=${API_KEY}&nocache=${timestamp}`;
+    console.log('URL histórica:', url.replace(API_KEY, '[API_KEY_MASKED]'));
+
+    // Usar la función de reintentos
+    const response = await intentarSolicitudAPI(url);
+    
+    console.log('Status de respuesta histórica:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorText = await response.text();
+        console.log('Contenido de error histórico:', errorText);
+        errorDetails = errorText;
+      } catch (e) {
+        console.log('No se pudo leer el contenido del error histórico');
+      }
+      
+      throw new Error(`Error al consultar API histórica: ${response.status} ${response.statusText}. Detalles: ${errorDetails}`);
+    }
+
+    const data = await response.json();
+    console.log('Datos históricos REALES recibidos:', { 
+      base: data.base, 
+      timestamp: data.timestamp, 
+      fecha_objetivo: targetDate,
+      fecha_api: new Date(data.timestamp * 1000).toISOString().split('T')[0],
+      monedas: Object.keys(data.rates).length 
+    });
+
+    // Si la moneda base solicitada es USD, devolver los datos tal cual
+    if (baseCurrency === 'USD') {
+      return {
+        ...data,
+        requested_date: targetDate,
+        actual_date: new Date(data.timestamp * 1000).toISOString().split('T')[0]
+      };
+    }
+
+    // Si se solicitó otra moneda base, convertir las tasas
+    console.log('Convirtiendo tasas históricas a base:', baseCurrency);
+    
+    // Verificar que exista la tasa para la moneda base solicitada
+    if (!data.rates[baseCurrency]) {
+      throw new Error(`No se encontró tasa histórica para la moneda base ${baseCurrency} en fecha ${targetDate}`);
+    }
+
+    const baseRate = data.rates[baseCurrency];
+    const convertedRates: Record<string, number> = {};
+
+    // Convertir todas las tasas a la nueva base
+    for (const [currency, rate] of Object.entries(data.rates)) {
+      convertedRates[currency] = Number(rate) / baseRate;
+    }
+
+    // Agregar tasa 1.0 para la moneda base
+    convertedRates[baseCurrency] = 1.0;
+    
+    console.log(`Conversión histórica completada. ${Object.keys(convertedRates).length} tasas disponibles`);
+    
+    return {
+      disclaimer: data.disclaimer,
+      license: data.license,
+      base: baseCurrency,
+      rates: convertedRates,
+      timestamp: data.timestamp,
+      requested_date: targetDate,
+      actual_date: new Date(data.timestamp * 1000).toISOString().split('T')[0]
+    };
+  } catch (error: any) {
+    console.warn(`Error al obtener datos históricos para ${targetDate}:`, error.message);
+    
+    let errorMessage = 'Error desconocido';
+    
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      errorMessage = `Error de conectividad - No se puede obtener datos históricos para ${targetDate}`;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    throw new Error(`Error en consulta histórica para ${targetDate}: ${errorMessage}`);
   }
 }
 
@@ -363,19 +482,29 @@ export async function actualizarTasasViaRPC(): Promise<{
       };
     }
 
-    // Usar función RPC para guardar las tasas obtenidas
+    console.log(' Iniciando actualización via RPC optimizada...');
+    
+    // Usar datos ya obtenidos de la API
+    if (!exchangeRatesData || !exchangeRatesData.rates) {
+      console.error('No hay datos de tasas de cambio disponibles para RPC');
+      return {
+        success: false,
+        message: 'No hay datos de tasas de cambio disponibles'
+      };
+    }
+
     const currentDate = new Date().toISOString().split('T')[0];
     
     console.log('Llamando RPC update_global_exchange_rates con:', {
       rates: Object.keys(exchangeRatesData.rates).length + ' monedas',
-      source: 'openexchangerates-fallback',
+      source: 'openexchangerates',
       api_timestamp: exchangeRatesData.timestamp,
       rate_date: currentDate
     });
     
     const { data, error } = await supabase.rpc('update_global_exchange_rates', {
       rates: exchangeRatesData.rates,
-      source: 'openexchangerates-fallback',
+      source: 'openexchangerates',
       api_timestamp: exchangeRatesData.timestamp || null,
       rate_date: currentDate
     });
@@ -394,11 +523,11 @@ export async function actualizarTasasViaRPC(): Promise<{
       };
     }
 
-    console.log('RPC exitoso con update_global_exchange_rates:', data);
+    console.log('✅ RPC exitoso con update_global_exchange_rates:', data);
     return {
       success: true,
-      message: 'Tasas actualizadas usando RPC fallback',
-      updated_count: data?.updated_count || 0,
+      message: `✅ Tasas actualizadas exitosamente: ${data?.inserted_count || 0} insertadas, ${data?.updated_count || 0} actualizadas`,
+      updated_count: (data?.updated_count || 0) + (data?.inserted_count || 0),
       timestamp: exchangeRatesData.timestamp
     };
 
@@ -923,4 +1052,132 @@ export async function obtenerMonedaBase(orgId: number) {
   
   console.log(`Moneda base final: ${baseMoneda.code} (${tipoMonedaBase})`);
   return { moneda: baseMoneda, tipo: tipoMonedaBase };
+}
+
+/**
+ * Llena fechas faltantes con datos REALES del API histórico de OpenExchangeRates
+ * Esta función obtiene datos reales del API para fechas específicas faltantes
+ */
+export async function llenarFechasFaltantesConDatosReales() {
+  console.log('🔍 Iniciando llenado de fechas faltantes con datos REALES del API');
+  
+  try {
+    // Obtener fechas faltantes desde la base de datos
+    const fechasFaltantes = await obtenerFechasFaltantes();
+    
+    if (fechasFaltantes.length === 0) {
+      console.log('✅ No hay fechas faltantes para llenar');
+      return { success: true, message: 'No hay fechas faltantes', fechas_llenadas: 0 };
+    }
+    
+    console.log(`📅 Encontradas ${fechasFaltantes.length} fechas faltantes:`, fechasFaltantes);
+    
+    let fechasLlenadas = 0;
+    const errores = [];
+    
+    // Procesar cada fecha faltante
+    for (const fecha of fechasFaltantes) {
+      try {
+        console.log(`🔄 Obteniendo datos REALES para ${fecha}...`);
+        
+        // Obtener datos históricos REALES del API
+        const datosHistoricos = await obtenerTasasHistoricas(fecha, 'USD');
+        
+        console.log(`📊 Datos recibidos para ${fecha}:`, {
+          base: datosHistoricos.base,
+          monedas: Object.keys(datosHistoricos.rates).length,
+          timestamp: datosHistoricos.timestamp
+        });
+        
+        // Guardar en la base de datos usando RPC
+        const resultadoRPC = await supabase.rpc('update_global_exchange_rates', {
+          rates: datosHistoricos.rates,
+          source: 'openexchangerates_historical',
+          api_timestamp: datosHistoricos.timestamp,
+          rate_date: fecha,
+          base_currency_code: 'USD'
+        });
+        
+        if (resultadoRPC.error) {
+          console.error(`❌ Error RPC para ${fecha}:`, resultadoRPC.error);
+          errores.push(`${fecha}: ${resultadoRPC.error.message}`);
+        } else {
+          console.log(`✅ Datos REALES guardados para ${fecha}`);
+          fechasLlenadas++;
+        }
+        
+        // Pausa entre llamadas para evitar rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error: any) {
+        console.error(`❌ Error procesando ${fecha}:`, error.message);
+        errores.push(`${fecha}: ${error.message}`);
+      }
+    }
+    
+    const resultado = {
+      success: true,
+      fechas_encontradas: fechasFaltantes.length,
+      fechas_llenadas: fechasLlenadas,
+      errores: errores,
+      message: `Se llenaron ${fechasLlenadas} de ${fechasFaltantes.length} fechas con datos REALES del API`
+    };
+    
+    console.log('🎯 Resultado final:', resultado);
+    return resultado;
+    
+  } catch (error: any) {
+    console.error('❌ Error general en llenado de fechas:', error);
+    return {
+      success: false,
+      message: `Error: ${error.message}`,
+      fechas_llenadas: 0
+    };
+  }
+}
+
+/**
+ * Obtiene las fechas faltantes desde la base de datos
+ */
+async function obtenerFechasFaltantes(): Promise<string[]> {
+  try {
+    // Generar fechas desde hace 15 días hasta hoy
+    const fechas = [];
+    const fechaInicio = new Date();
+    fechaInicio.setDate(fechaInicio.getDate() - 15);
+    
+    for (let i = 0; i <= 15; i++) {
+      const fecha = new Date(fechaInicio);
+      fecha.setDate(fecha.getDate() + i);
+      
+      // Excluir domingos (día 0) y fechas futuras
+      if (fecha.getDay() !== 0 && fecha <= new Date()) {
+        fechas.push(fecha.toISOString().split('T')[0]);
+      }
+    }
+    
+    // Verificar qué fechas ya tienen datos reales
+    const { data: fechasExistentes, error } = await supabase
+      .from('currency_rates')
+      .select('rate_date')
+      .in('rate_date', fechas)
+      .like('source', '%openexchangerates%')
+      .neq('source', 'auto_generated_daily'); // Excluir datos falsos
+    
+    if (error) {
+      console.error('Error consultando fechas existentes:', error);
+      throw error;
+    }
+    
+    const fechasConDatos = fechasExistentes?.map(f => f.rate_date) || [];
+    const fechasFaltantes = fechas.filter(fecha => !fechasConDatos.includes(fecha));
+    
+    console.log(`📊 Análisis de fechas: ${fechas.length} totales, ${fechasConDatos.length} con datos, ${fechasFaltantes.length} faltantes`);
+    
+    return fechasFaltantes;
+    
+  } catch (error) {
+    console.error('Error obteniendo fechas faltantes:', error);
+    throw error;
+  }
 }

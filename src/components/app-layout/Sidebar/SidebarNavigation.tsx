@@ -63,6 +63,7 @@ export const SidebarNavigation = ({
             { name: "Clientes", href: "/app/crm/clientes" },
             { name: "Pipelines", href: "/app/crm/pipeline" },
             { name: "Segmentos", href: "/app/crm/segmentos" },
+            { name: "Campañas", href: "/app/crm/campanas" },
             { name: "Tareas", href: "/app/crm/tareas" }
           ]
         },

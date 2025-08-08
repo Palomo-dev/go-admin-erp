@@ -5,7 +5,7 @@ import { CustomersList } from '@/components/crm/customers/CustomersList';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Users, PieChart, BarChart2, Settings2 } from 'lucide-react';
+import { Users, PieChart, BarChart2, Settings2, Mail } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 export default function CrmPage() {
@@ -23,6 +23,12 @@ export default function CrmPage() {
             <Button variant="outline">
               <BarChart2 className="h-4 w-4 mr-2" />
               Pipeline
+            </Button>
+          </Link>
+          <Link href="/app/crm/campanas">
+            <Button variant="outline">
+              <Mail className="h-4 w-4 mr-2" />
+              Campañas
             </Button>
           </Link>
           <ThemeToggle />

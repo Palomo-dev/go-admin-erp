@@ -62,22 +62,40 @@ export default function SegmentDetail({ segmentId }: SegmentDetailProps) {
   const [recalculating, setRecalculating] = useState(false);
   const [converting, setConverting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [organizationId, setOrganizationId] = useState<number>(2); // Valor por defecto
 
-  // Obtener organización del storage
+  // Función segura para obtener organización del storage (solo en cliente)
   const getOrganizationId = (): number => {
-    const orgData = localStorage.getItem('selectedOrganization');
-    if (orgData) {
-      const parsed = JSON.parse(orgData);
-      return parsed.id || 2;
+    // Verificar que estamos en el cliente
+    if (typeof window === 'undefined') {
+      return 2; // Valor por defecto para SSR
+    }
+    
+    try {
+      const orgData = localStorage.getItem('selectedOrganization');
+      if (orgData) {
+        const parsed = JSON.parse(orgData);
+        return parsed.id || 2;
+      }
+    } catch (error) {
+      console.warn('Error obteniendo organización del localStorage:', error);
     }
     return 2;
   };
 
-  const organizationId = getOrganizationId();
+  // Inicializar organizationId solo en el cliente
+  useEffect(() => {
+    const orgId = getOrganizationId();
+    setOrganizationId(orgId);
+    console.log('🏢 Organization ID establecido:', orgId);
+  }, []);
 
   useEffect(() => {
-    loadSegmentData();
-  }, [segmentId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Solo cargar datos cuando tengamos organizationId y segmentId
+    if (organizationId && segmentId) {
+      loadSegmentData();
+    }
+  }, [segmentId, organizationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadSegmentData = async () => {
     try {

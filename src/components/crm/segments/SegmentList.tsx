@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Edit, Trash2, Search, Filter, Calendar, RefreshCw, Download, Play, Pause } from "lucide-react";
+import { Users, Edit, Trash2, Search, Filter, Calendar, RefreshCw, Download, Play, Pause, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 interface Segment {
@@ -37,6 +38,7 @@ interface SegmentListProps {
  * Incluye filtros, búsqueda y acciones CRUD
  */
 export default function SegmentList({ segments, loading, onEdit, onDelete, onRefresh }: SegmentListProps) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<"all" | "dynamic" | "static">("all");
   const [sortBy, setSortBy] = useState<"name" | "created_at" | "customer_count">("created_at");
@@ -123,6 +125,10 @@ export default function SegmentList({ segments, loading, onEdit, onDelete, onRef
       return count;
     };
     return countRules(filterJson);
+  };
+
+  const handleViewSegment = (segmentId: string) => {
+    router.push(`/app/crm/segmentos/${segmentId}`);
   };
 
   if (loading) {
@@ -302,8 +308,18 @@ export default function SegmentList({ segments, loading, onEdit, onDelete, onRef
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => onEdit(segment)}
+                      onClick={() => handleViewSegment(segment.id)}
                       className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Ver detalle
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEdit(segment)}
+                      className="text-gray-600 border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900/20"
                     >
                       <Edit className="h-4 w-4 mr-1" />
                       Editar

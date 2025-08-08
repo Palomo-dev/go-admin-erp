@@ -1,4 +1,5 @@
 import { Campaign, CampaignStatistics } from './types';
+import { getCurrentLocale, LOCALES, type TranslationKeys } from '@/lib/i18n';
 
 /**
  * Obtiene el ID de la organización desde el localStorage
@@ -45,21 +46,18 @@ export const calculateCampaignMetrics = (statistics: CampaignStatistics) => {
 };
 
 /**
- * Formatea una fecha para mostrar
+ * Formatea una fecha para mostrar usando configuración regional
  */
 export const formatDate = (dateString: string | null): string => {
   if (!dateString) return '-';
   
   try {
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  } catch (error) {
+    const locale = getCurrentLocale();
+    const config = LOCALES[locale];
+    
+    return new Intl.DateTimeFormat(locale, config.dateFormat).format(date);
+  } catch {
     return '-';
   }
 };
@@ -83,9 +81,14 @@ export const getStatusColor = (status: Campaign['status']) => {
 };
 
 /**
- * Obtiene el texto del estado en español
+ * Obtiene el texto del estado internacionalizado
  */
-export const getStatusText = (status: Campaign['status']) => {
+export const getStatusText = (status: Campaign['status'], translations?: TranslationKeys) => {
+  if (translations?.campaigns?.status) {
+    return translations.campaigns.status[status] || translations.campaigns.status.unknown;
+  }
+  
+  // Fallback en español si no hay traducciones
   switch (status) {
     case 'draft':
       return 'Borrador';
@@ -101,9 +104,14 @@ export const getStatusText = (status: Campaign['status']) => {
 };
 
 /**
- * Obtiene el texto del canal en español
+ * Obtiene el texto del canal internacionalizado
  */
-export const getChannelText = (channel: string | null) => {
+export const getChannelText = (channel: string | null, translations?: TranslationKeys) => {
+  if (translations?.campaigns?.channels) {
+    return translations.campaigns.channels[channel || 'unknown'] || translations.campaigns.channels.unknown;
+  }
+  
+  // Fallback en español si no hay traducciones
   switch (channel) {
     case 'email':
       return 'Email';

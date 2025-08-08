@@ -14,14 +14,19 @@ import {
   TrendingUp,
   Calendar,
   Users,
-  MoreHorizontal
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslation } from '@/lib/i18n';
 import { Campaign } from './types';
 import { 
   getOrganizationId, 
-  formatDate, 
   getChannelText, 
   calculateCampaignMetrics 
 } from './utils';
@@ -29,14 +34,23 @@ import CampaignStatusBadge from './CampaignStatusBadge';
 import CampaignForm from './CampaignForm';
 
 const CampaignsList: React.FC = () => {
+  const { t, formatDate: formatDateI18n, formatNumber, formatPercentage } = useTranslation();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [filteredCampaigns, setFilteredCampaigns] = useState<Campaign[]>([]);
+  const [paginatedCampaigns, setPaginatedCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [preselectedSegmentId, setPreselectedSegmentId] = useState<string | null>(null);
+  
+  // Estados de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  
+  // Estados de ordenamiento
+  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -50,8 +64,6 @@ const CampaignsList: React.FC = () => {
     
     if (shouldCreate === 'true' && segmentId) {
       console.log('🎯 Abriendo modal de crear campaña con segmento preseleccionado:', segmentId);
-      setPreselectedSegmentId(segmentId);
-      setShowCreateModal(true);
       
       // Limpiar los parámetros de URL después de procesar
       const newUrl = window.location.pathname;
@@ -65,7 +77,7 @@ const CampaignsList: React.FC = () => {
       const organizationId = getOrganizationId();
       console.log('🏢 Cargando campañas para organización:', organizationId);
       
-      // Primero intentamos cargar campañas sin JOIN para verificar conectividad
+      // Cargar campañas
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
@@ -73,21 +85,15 @@ const CampaignsList: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error de Supabase:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
+        console.error('❌ Error de Supabase:', error);
         toast.error(`Error al cargar las campañas: ${error.message}`);
         return;
       }
 
       console.log('✅ Campañas cargadas:', data?.length || 0);
       
-      // Si hay campañas, intentamos cargar los segmentos relacionados
+      // Si hay campañas, cargar los segmentos relacionados
       if (data && data.length > 0) {
-        // Cargar segmentos relacionados por separado para evitar problemas de JOIN
         const segmentIds = data
           .filter(campaign => campaign.segment_id)
           .map(campaign => campaign.segment_id);
@@ -116,17 +122,11 @@ const CampaignsList: React.FC = () => {
         
         setCampaigns(campaignsWithSegments);
       } else {
-        // No hay campañas
-        console.log('📭 No se encontraron campañas para esta organización');
         setCampaigns([]);
       }
       
     } catch (error) {
-      console.error('❌ Error general cargando campañas:', {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
+      console.error('❌ Error general cargando campañas:', error);
       toast.error('Error de conexión al cargar las campañas');
     } finally {
       setIsLoading(false);
@@ -155,11 +155,69 @@ const CampaignsList: React.FC = () => {
     }
 
     setFilteredCampaigns(filtered);
+    setTotalItems(filtered.length);
+    setCurrentPage(1); // Reset página al filtrar
   }, [campaigns, searchTerm, statusFilter, channelFilter]);
+
+  // Función de ordenamiento
+  const sortCampaigns = useCallback(() => {
+    const sorted = [...filteredCampaigns].sort((a, b) => {
+      let aValue: string | number | Date = a[sortField as keyof Campaign] as string | number | Date;
+      let bValue: string | number | Date = b[sortField as keyof Campaign] as string | number | Date;
+
+      // Manejo especial para campos anidados
+      if (sortField === 'segment_name') {
+        aValue = a.segment?.name || '';
+        bValue = b.segment?.name || '';
+      } else if (sortField === 'total_sent') {
+        aValue = a.statistics?.total_sent || 0;
+        bValue = b.statistics?.total_sent || 0;
+      } else if (sortField === 'open_rate') {
+        const aStats = a.statistics || {};
+        const bStats = b.statistics || {};
+        aValue = aStats.total_sent ? (aStats.opened || 0) / aStats.total_sent : 0;
+        bValue = bStats.total_sent ? (bStats.opened || 0) / bStats.total_sent : 0;
+      }
+
+      // Convertir a string para comparación
+      const aStr = typeof aValue === 'string' ? aValue.toLowerCase() : String(aValue).toLowerCase();
+      const bStr = typeof bValue === 'string' ? bValue.toLowerCase() : String(bValue).toLowerCase();
+
+      if (sortDirection === 'asc') {
+        return aStr > bStr ? 1 : aStr < bStr ? -1 : 0;
+      } else {
+        return aStr < bStr ? 1 : aStr > bStr ? -1 : 0;
+      }
+    });
+
+    // Aplicar paginación
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedCampaigns(sorted.slice(startIndex, endIndex));
+  }, [filteredCampaigns, sortField, sortDirection, currentPage, itemsPerPage]);
+
+  // Función para cambiar ordenamiento
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Función para cambiar página
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   useEffect(() => {
     filterCampaigns();
   }, [filterCampaigns]);
+
+  useEffect(() => {
+    sortCampaigns();
+  }, [sortCampaigns]);
 
   const handleRefresh = () => {
     loadCampaigns();
@@ -188,43 +246,114 @@ const CampaignsList: React.FC = () => {
         <CampaignForm onSuccess={handleRefresh} />
       </div>
 
-      {/* Filtros */}
+      {/* Filtros en fila superior */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Rectángulo 1: Búsqueda de Campaña */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Campaña</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort('name')}
+                  className="h-auto p-1 hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                  {sortField === 'name' && (
+                    sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                  )}
+                  {sortField !== 'name' && <ArrowUpDown className="h-3 w-3 opacity-50" />}
+                </Button>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Buscar campañas..."
+                  placeholder="Buscar campaña..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-9 border-2 border-gray-200 dark:border-gray-700"
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+
+            {/* Rectángulo 2: Filtro de Segmento */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Segmento</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort('segment_name')}
+                  className="h-auto p-1 hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                  {sortField === 'segment_name' && (
+                    sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                  )}
+                  {sortField !== 'segment_name' && <ArrowUpDown className="h-3 w-3 opacity-50" />}
+                </Button>
+              </div>
+              <Input
+                placeholder="Filtrar por segmento..."
+                className="h-9 border-2 border-gray-200 dark:border-gray-700"
+                disabled
+              />
+            </div>
+
+            {/* Rectángulo 3: Filtro de Estado */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Estado</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort('status')}
+                  className="h-auto p-1 hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                  {sortField === 'status' && (
+                    sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                  )}
+                  {sortField !== 'status' && <ArrowUpDown className="h-3 w-3 opacity-50" />}
+                </Button>
+              </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Estado" />
+                <SelectTrigger className="h-9 border-2 border-gray-200 dark:border-gray-700">
+                  <SelectValue placeholder="Todos los estados" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="draft">Borrador</SelectItem>
-                  <SelectItem value="scheduled">Programada</SelectItem>
-                  <SelectItem value="sending">Enviando</SelectItem>
-                  <SelectItem value="sent">Enviada</SelectItem>
+                  <SelectItem value="all">{t('campaigns.filters.allStatuses')}</SelectItem>
+                  <SelectItem value="draft">{t('campaigns.status.draft')}</SelectItem>
+                  <SelectItem value="scheduled">{t('campaigns.status.scheduled')}</SelectItem>
+                  <SelectItem value="sending">{t('campaigns.status.sending')}</SelectItem>
+                  <SelectItem value="sent">{t('campaigns.status.sent')}</SelectItem>
                 </SelectContent>
               </Select>
-              
+            </div>
+
+            {/* Rectángulo 4: Filtro de Canal */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Canal</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort('total_sent')}
+                  className="h-auto p-1 hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                  {sortField === 'total_sent' && (
+                    sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                  )}
+                  {sortField !== 'total_sent' && <ArrowUpDown className="h-3 w-3 opacity-50" />}
+                </Button>
+              </div>
               <Select value={channelFilter} onValueChange={setChannelFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Canal" />
+                <SelectTrigger className="h-9 border-2 border-gray-200 dark:border-gray-700">
+                  <SelectValue placeholder="Todos los canales" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los canales</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="all">{t('campaigns.filters.allChannels')}</SelectItem>
+                  <SelectItem value="email">{t('campaigns.channels.email')}</SelectItem>
+                  <SelectItem value="whatsapp">{t('campaigns.channels.whatsapp')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -250,13 +379,13 @@ const CampaignsList: React.FC = () => {
         </Card>
       ) : (
         <div className="space-y-4">
-          {filteredCampaigns.map((campaign) => {
+          {paginatedCampaigns.map((campaign) => {
             const metrics = calculateCampaignMetrics(campaign.statistics || {});
             
             return (
               <Card key={campaign.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                  <div className="grid grid-cols-1 lg:grid-cols-14 gap-4 items-center">
                     {/* Información Principal */}
                     <div className="lg:col-span-3">
                       <div className="flex items-start space-x-3">
@@ -302,39 +431,67 @@ const CampaignsList: React.FC = () => {
                         <p className="text-gray-500 dark:text-gray-400 flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
                           {campaign.scheduled_at 
-                            ? formatDate(campaign.scheduled_at)
-                            : formatDate(campaign.created_at)
+                            ? formatDateI18n(campaign.scheduled_at)
+                            : formatDateI18n(campaign.created_at)
                           }
                         </p>
                       </div>
                     </div>
 
                     {/* KPIs */}
-                    <div className="lg:col-span-3">
-                      <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="lg:col-span-4">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-center">
+                        {/* Fila 1: Métricas absolutas */}
                         <div>
-                          <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                            {metrics.totalSent.toLocaleString()}
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {formatNumber(metrics.totalSent)}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Envíos</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.sent')}</p>
                         </div>
                         <div>
-                          <p className="text-lg font-semibold text-purple-600 dark:text-purple-400">
-                            {metrics.openRate}%
+                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                            {formatNumber(metrics.delivered)}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Apertura</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.delivered')}</p>
                         </div>
                         <div>
-                          <p className="text-lg font-semibold text-orange-600 dark:text-orange-400">
-                            {metrics.clickRate}%
+                          <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                            {formatNumber(metrics.opened)}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Clics</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.opened')}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                            {formatNumber(metrics.clicked)}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.clicked')}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        {/* Fila 2: Porcentajes */}
+                        <div>
+                          <p className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                            {formatPercentage(metrics.openRate)}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.openRate')}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                            {formatPercentage(metrics.clickRate)}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.clickRate')}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-green-600 dark:text-green-400">
+                            {formatPercentage(metrics.conversionRate)}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{t('campaigns.kpis.conversion')}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Acciones */}
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-2">
                       <div className="flex justify-end">
                         <Button variant="ghost" size="sm">
                           <MoreHorizontal className="h-4 w-4" />
@@ -347,6 +504,70 @@ const CampaignsList: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {/* Controles de paginación */}
+      {filteredCampaigns.length > itemsPerPage && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} campañas
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="flex items-center"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                
+                {/* Números de página */}
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.ceil(totalItems / itemsPerPage) }, (_, i) => i + 1)
+                    .filter(page => {
+                      const totalPages = Math.ceil(totalItems / itemsPerPage);
+                      if (totalPages <= 7) return true;
+                      if (page === 1 || page === totalPages) return true;
+                      if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                      return false;
+                    })
+                    .map((page, index, array) => (
+                      <React.Fragment key={page}>
+                        {index > 0 && array[index - 1] !== page - 1 && (
+                          <span className="px-2 text-gray-400">...</span>
+                        )}
+                        <Button
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(page)}
+                          className={currentPage === page ? "bg-blue-600 hover:bg-blue-700" : ""}
+                        >
+                          {page}
+                        </Button>
+                      </React.Fragment>
+                    ))
+                  }
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= Math.ceil(totalItems / itemsPerPage)}
+                  className="flex items-center"
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Resumen de estadísticas */}
@@ -364,7 +585,7 @@ const CampaignsList: React.FC = () => {
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   {filteredCampaigns.length}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total Campañas</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Campañas</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
@@ -388,21 +609,6 @@ const CampaignsList: React.FC = () => {
           </CardContent>
         </Card>
       )}
-
-      {/* Modal de creación de campaña */}
-      <CampaignForm
-        isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          setPreselectedSegmentId(null);
-        }}
-        onSuccess={() => {
-          setShowCreateModal(false);
-          setPreselectedSegmentId(null);
-          loadCampaigns(); // Recargar la lista después de crear
-        }}
-        preselectedSegmentId={preselectedSegmentId}
-      />
     </div>
   );
 };

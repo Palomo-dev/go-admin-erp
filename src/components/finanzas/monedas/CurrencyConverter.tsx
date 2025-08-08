@@ -261,93 +261,76 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
       // Calcular tasa de conversión actual
       const currentRate = currentToRate / currentFromRate;
       
-      // Buscar tasas ANTERIORES a la fecha actual
-      console.log('BUSCANDO TASAS PARA FECHA ANTERIOR A:', todayFormatted);
+      // Buscar tasas del día anterior exacto (ayer)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayFormatted = yesterday.toISOString().split('T')[0];
       
-      // Consultar todas las tasas anteriores a la fecha actual
+      console.log('BUSCANDO TASAS PARA AYER:', yesterdayFormatted);
+      
+      // Consultar tasas específicamente del día anterior
       const { data, error } = await supabase
         .from('currency_rates')
         .select('code, rate, base_currency_code, rate_date')
-        .lt('rate_date', todayFormatted) // IMPORTANTE: Menor que la fecha actual
-        .order('rate_date', { ascending: false }) // Ordenadas por fecha descendente
+        .eq('rate_date', yesterdayFormatted) // EXACTAMENTE el día anterior
         .in('code', [fromCurrency, toCurrency]) // Solo las monedas que nos interesan
-        .limit(20); // Suficientes para encontrar fechas coincidentes
       
       if (error) {
         console.error('Error al consultar tasas anteriores:', error);
         return;
       }
       
-      console.log('Tasas ANTERIORES encontradas:', data?.length || 0, 'registros', data);
+      console.log('Tasas de ayer encontradas:', data?.length || 0, 'registros', data);
       
-      // Si no hay datos, terminamos
+      // Si no hay datos para ayer, terminamos
       if (!data || data.length === 0) {
-        console.log('No hay tasas anteriores para comparar');
+        console.log('No hay tasas de ayer para comparar');
         return;
       }
       
-      // Agrupar por fecha para asegurarnos de comparar tasas del mismo día
-      const ratesByDate: { [key: string]: CurrencyRate[] } = {};
+      // Buscar las tasas específicas de ambas monedas para ayer
+      const prevFromRateObj = data.find(r => r.code === fromCurrency);
+      const prevToRateObj = data.find(r => r.code === toCurrency);
       
-      data.forEach(rate => {
-        // Usar solo la fecha sin la hora
-        const dateKey = rate.rate_date.split('T')[0];
-        if (!ratesByDate[dateKey]) {
-          ratesByDate[dateKey] = [];
-        }
-        ratesByDate[dateKey].push(rate);
-      });
-      
-      console.log('Tasas agrupadas por fecha:', Object.keys(ratesByDate));
-      
-      // Buscar la fecha anterior más reciente que tenga ambas monedas
-      for (const dateKey of Object.keys(ratesByDate).sort().reverse()) {
-        const ratesForDate = ratesByDate[dateKey];
-        const prevFromRateObj = ratesForDate.find(r => r.code === fromCurrency);
-        const prevToRateObj = ratesForDate.find(r => r.code === toCurrency);
-        
-        // Verificar que tengamos ambas monedas para esta fecha
-        if (prevFromRateObj && prevToRateObj) {
-          console.log(`*** COMPARANDO - Actual (${todayFormatted}) con Anterior (${dateKey}) ***`);
-          
-          const prevFromRate = Number(prevFromRateObj.rate);
-          const prevToRate = Number(prevToRateObj.rate);
-          
-          if (isNaN(prevFromRate) || isNaN(prevToRate) || prevFromRate <= 0 || prevToRate <= 0) {
-            console.log('Tasas anteriores inválidas:', prevFromRate, prevToRate);
-            continue; // Intentar con la siguiente fecha
-          }
-          
-          // Calcular tasa anterior y guardarla
-          const prevRate = prevToRate / prevFromRate;
-          setPreviousRate(prevRate);
-          
-          // Calcular porcentaje de cambio
-          const diff = ((currentRate - prevRate) / prevRate) * 100;
-          const roundedDiff = parseFloat(diff.toFixed(4));
-          
-          console.log('Cambio porcentual calculado:', roundedDiff.toFixed(4) + '%');
-          console.log('Actual:', currentRate.toFixed(6), `(${currentToRate}/${currentFromRate})`);
-          console.log('Anterior:', prevRate.toFixed(6), `(${prevToRate}/${prevFromRate})`);
-          
-          // Actualizar estado con el valor calculado
-          setRateDiff(roundedDiff);
-          setUpdateKey(Date.now());
-          
-          console.log('Estado actualizado: rateDiff =', roundedDiff.toFixed(4) + '%');
-          console.log('Cambio detectado entre', dateKey, 'y', todayFormatted + ':', 
-            fromCurrency, '/', toCurrency, 
-            prevRate.toFixed(6), '->', currentRate.toFixed(6));
-          
-          // Establecer dirección para el estilo visual
-          window.lastRateDiffDirection = roundedDiff > 0 ? 'up' : (roundedDiff < 0 ? 'down' : 'neutral');
-          
-          // Salir del ciclo una vez encontrada una fecha válida
-          return;
-        }
+      // Verificar que tengamos ambas monedas para ayer
+      if (!prevFromRateObj || !prevToRateObj) {
+        console.log('No se encontraron ambas monedas para ayer');
+        return;
       }
       
-      console.log('No se encontró ninguna fecha anterior con ambas monedas');
+      console.log(`*** COMPARANDO - Hoy vs Ayer (${yesterdayFormatted}) ***`);
+      
+      const prevFromRate = Number(prevFromRateObj.rate);
+      const prevToRate = Number(prevToRateObj.rate);
+      
+      if (isNaN(prevFromRate) || isNaN(prevToRate) || prevFromRate <= 0 || prevToRate <= 0) {
+        console.log('Tasas de ayer inválidas:', prevFromRate, prevToRate);
+        return;
+      }
+      
+      // Calcular tasa de ayer y guardarla
+      const prevRate = prevToRate / prevFromRate;
+      setPreviousRate(prevRate);
+      
+      // Calcular porcentaje de cambio (igual que en la tabla)
+      const diff = ((currentRate - prevRate) / prevRate) * 100;
+      const roundedDiff = parseFloat(diff.toFixed(4));
+      
+      console.log('Cambio porcentual calculado:', roundedDiff.toFixed(4) + '%');
+      console.log('Actual:', currentRate.toFixed(6), `(${currentToRate}/${currentFromRate})`);
+      console.log('Ayer:', prevRate.toFixed(6), `(${prevToRate}/${prevFromRate})`);
+      
+      // Actualizar estado con el valor calculado
+      setRateDiff(roundedDiff);
+      setUpdateKey(Date.now());
+      
+      console.log('Estado actualizado: rateDiff =', roundedDiff.toFixed(4) + '%');
+      console.log('Cambio detectado entre ayer y hoy:', 
+        fromCurrency, '/', toCurrency, 
+        prevRate.toFixed(6), '->', currentRate.toFixed(6));
+      
+      // Establecer dirección para el estilo visual
+      window.lastRateDiffDirection = roundedDiff > 0 ? 'up' : (roundedDiff < 0 ? 'down' : 'neutral');
     } catch (error) {
       console.error('Error al cargar tasa anterior:', error);
     }

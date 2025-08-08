@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,10 +35,29 @@ const CampaignsList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [preselectedSegmentId, setPreselectedSegmentId] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   useEffect(() => {
     loadCampaigns();
-  }, []);
+    
+    // Verificar si se debe abrir el modal de crear campaña automáticamente
+    const shouldCreate = searchParams.get('create');
+    const segmentId = searchParams.get('segment_id');
+    
+    if (shouldCreate === 'true' && segmentId) {
+      console.log('🎯 Abriendo modal de crear campaña con segmento preseleccionado:', segmentId);
+      setPreselectedSegmentId(segmentId);
+      setShowCreateModal(true);
+      
+      // Limpiar los parámetros de URL después de procesar
+      const newUrl = window.location.pathname;
+      router.replace(newUrl);
+    }
+  }, [searchParams, router]);
 
   const loadCampaigns = async () => {
     setIsLoading(true);
@@ -368,6 +388,21 @@ const CampaignsList: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de creación de campaña */}
+      <CampaignForm
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setPreselectedSegmentId(null);
+        }}
+        onSuccess={() => {
+          setShowCreateModal(false);
+          setPreselectedSegmentId(null);
+          loadCampaigns(); // Recargar la lista después de crear
+        }}
+        preselectedSegmentId={preselectedSegmentId}
+      />
     </div>
   );
 };

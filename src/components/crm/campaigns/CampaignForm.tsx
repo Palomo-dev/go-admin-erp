@@ -15,12 +15,22 @@ import { CampaignFormData, Segment } from './types';
 import { getOrganizationId, validateCampaignForm } from './utils';
 
 interface CampaignFormProps {
+  isOpen?: boolean;
+  onClose?: () => void;
   onSuccess?: () => void;
+  preselectedSegmentId?: string | null;
   className?: string;
 }
 
-const CampaignForm: React.FC<CampaignFormProps> = ({ onSuccess, className = '' }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const CampaignForm: React.FC<CampaignFormProps> = ({ 
+  isOpen: externalIsOpen, 
+  onClose, 
+  onSuccess, 
+  preselectedSegmentId,
+  className = '' 
+}) => {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
   const [isLoading, setIsLoading] = useState(false);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [loadingSegments, setLoadingSegments] = useState(false);
@@ -39,6 +49,17 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onSuccess, className = '' }
       loadSegments();
     }
   }, [isOpen]);
+
+  // Efecto para preseleccionar el segmento cuando se proporciona
+  useEffect(() => {
+    if (preselectedSegmentId && isOpen) {
+      console.log('🎯 Preseleccionando segmento:', preselectedSegmentId);
+      setFormData(prev => ({
+        ...prev,
+        segment_id: preselectedSegmentId
+      }));
+    }
+  }, [preselectedSegmentId, isOpen]);
 
   const loadSegments = async () => {
     setLoadingSegments(true);
@@ -120,7 +141,12 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onSuccess, className = '' }
         scheduled_at: ''
       });
       
-      setIsOpen(false);
+      // Cerrar modal
+      if (onClose) {
+        onClose();
+      } else {
+        setInternalIsOpen(false);
+      }
       onSuccess?.();
       
     } catch (error) {
@@ -138,8 +164,16 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onSuccess, className = '' }
     }));
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (onClose && !open) {
+      onClose();
+    } else {
+      setInternalIsOpen(open);
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button 
           className={`bg-blue-600 hover:bg-blue-700 text-white ${className}`}
@@ -277,7 +311,13 @@ const CampaignForm: React.FC<CampaignFormProps> = ({ onSuccess, className = '' }
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                if (onClose) {
+                  onClose();
+                } else {
+                  setInternalIsOpen(false);
+                }
+              }}
               disabled={isLoading}
             >
               Cancelar

@@ -549,8 +549,8 @@ export default function SegmentDetail({ segmentId }: SegmentDetailProps) {
   };
 
   const handleCreateCampaign = () => {
-    // Redirigir a la página de creación de campaña con el segmento preseleccionado
-    router.push(`/app/crm/campanas/nueva?segment_id=${segmentId}`);
+    // Redirigir a la página de campañas con el segmento preseleccionado como parámetro
+    router.push(`/app/crm/campanas?create=true&segment_id=${segmentId}`);
   };
 
   const formatCurrency = (amount: number) => {

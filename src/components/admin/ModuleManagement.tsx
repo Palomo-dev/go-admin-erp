@@ -23,7 +23,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { moduleManagementService, type OrganizationModuleStatus, type Module } from '@/lib/services/moduleManagementService';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ModuleManagementProps {
   organizationId: number;

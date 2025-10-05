@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import ModuleManagement from '@/components/admin/ModuleManagement';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface OrganizationSummary {
   id: number;

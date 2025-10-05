@@ -86,17 +86,41 @@ export const ModalNuevoTipo = ({
 
     try {
       setIsLoading(true)
-      console.log('Creando tipo de variante para organización:', organizationId, 'con nombre:', nombreTipo)
+      console.log('=== INICIANDO CREACIÓN DE TIPO DE VARIANTE ===')
+      console.log('Organization ID:', organizationId, 'tipo:', typeof organizationId)
+      console.log('Nombre del tipo:', nombreTipo, 'tipo:', typeof nombreTipo)
+      console.log('Valores válidos:', valoresValidos)
+      
+      // Verificar que organizationId no sea null/undefined
+      if (!organizationId) {
+        throw new Error('Organization ID es requerido pero está vacío')
+      }
       
       // 1. Insertar el tipo de variante
+      console.log('Ejecutando inserción en variant_types...')
+      
+      // Crear el objeto de datos que se va a insertar
+      const dataToInsert = {
+        name: nombreTipo.trim(),
+        organization_id: organizationId
+      };
+      console.log('Datos a insertar:', dataToInsert);
+      
+      // Probar primero la conexión de Supabase
+      console.log('Verificando cliente Supabase...');
+      const testQuery = await supabase.from('variant_types').select('count').limit(1);
+      console.log('Resultado de prueba de conexión:', testQuery);
+      
       const { data: tipoData, error: tipoError } = await supabase
         .from('variant_types')
-        .insert({
-          name: nombreTipo.trim(),
-          organization_id: organizationId
-        })
+        .insert(dataToInsert)
         .select('id')
         .single()
+      
+      console.log('Resultado de inserción:')
+      console.log('- tipoData:', tipoData)
+      console.log('- tipoError:', tipoError)
+      console.log('- tipoError JSON:', JSON.stringify(tipoError, null, 2))
       
       if (tipoError) {
         console.error('Error al crear tipo de variante:', tipoError)
@@ -138,8 +162,27 @@ export const ModalNuevoTipo = ({
       onClose()
       await onSuccess()
     } catch (error: any) {
-      toast.error(error.message || 'No se pudo crear el tipo de variante')
-      console.error('Error completo al crear tipo de variante:', error)
+      // Mejorar el manejo de errores para obtener información más detallada
+      let errorMessage = 'No se pudo crear el tipo de variante';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.details) {
+        errorMessage = error.details;
+      } else if (error?.hint) {
+        errorMessage = error.hint;
+      }
+      
+      toast.error(errorMessage);
+      console.error('Error al crear tipo de variante:', {
+        error,
+        message: errorMessage,
+        organizationId,
+        nombreTipo,
+        valoresValidos
+      });
     } finally {
       setIsLoading(false)
     }

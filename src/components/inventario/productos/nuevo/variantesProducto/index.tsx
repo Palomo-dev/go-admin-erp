@@ -53,34 +53,68 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props
       try {
         setIsLoadingVariants(true);
         
-        // 1. Obtener las variantes del producto
-        const { data: variants, error } = await supabase
-          .from('product_variants')
+        // 1. Obtener los productos hijos (variantes) del producto padre
+        const { data: childProducts, error: productsError } = await supabase
+          .from('products')
           .select(`
             id, 
             sku,
-            price,
-            cost,
-            product_id,
-            product_variant_attributes (variant_id, variant_type_id, variant_value_id)
+            name,
+            variant_data,
+            parent_product_id
           `)
-          .eq('product_id', productoId);
+          .eq('parent_product_id', productoId);
         
-        if (error) throw error;
+        if (productsError) throw productsError;
         
-        if (variants && variants.length > 0) {
-          // Necesitamos obtener toda la información de los tipos de variantes y valores
-          const tiposYValores = await obtenerTiposYValoresVariantes(variants);
+        if (childProducts && childProducts.length > 0) {
+          // 2. Obtener precios y costos de los productos hijos
+          const productIds = childProducts.map(p => p.id);
           
-          // 2. Establecer los tipos de variante seleccionados
-          if (tiposYValores.tiposSeleccionados.length > 0) {
-            setSelectedVariantTypes(tiposYValores.tiposSeleccionados);
+          const { data: prices, error: pricesError } = await supabase
+            .from('product_prices')
+            .select('product_id, price')
+            .in('product_id', productIds)
+            .eq('is_active', true);
+            
+          const { data: costs, error: costsError } = await supabase
+            .from('product_costs')
+            .select('product_id, cost')
+            .in('product_id', productIds)
+            .eq('is_active', true);
+          
+          if (pricesError || costsError) throw pricesError || costsError;
+          
+          // 3. Obtener relaciones de variantes
+          const { data: relations, error: relationsError } = await supabase
+            .from('product_variant_relations')
+            .select(`
+              product_id,
+              variant_type_id,
+              variant_value_id,
+              variant_types(id, name),
+              variant_values(id, value)
+            `)
+            .in('product_id', productIds);
+          
+          if (relationsError) throw relationsError;
+          
+          // Crear mapas para precios y costos
+          const pricesMap = new Map(prices?.map(p => [p.product_id, p.price]) || []);
+          const costsMap = new Map(costs?.map(c => [c.product_id, c.cost]) || []);
+          
+          // Formatear y establecer las combinaciones de variantes
+          const combinacionesFormateadas = await formatearVariantesDesdeProductosHijos(
+            childProducts, relations, pricesMap, costsMap
+          );
+          
+          if (combinacionesFormateadas.length > 0) {
+            // Obtener tipos de variante únicos
+            const tiposUnicos = await obtenerTiposVariantesDesdeRelaciones(relations);
+            setSelectedVariantTypes(tiposUnicos);
             setShowVariantes(true);
+            setVariantCombinations(combinacionesFormateadas);
           }
-          
-          // 3. Formatear y establecer las combinaciones de variantes
-          const combinacionesFormateadas = await formatearVariantes(variants, tiposYValores.mapaTipos, tiposYValores.mapaValores);
-          setVariantCombinations(combinacionesFormateadas);
         }
       } catch (error: any) {
         console.error('Error al cargar variantes existentes:', error);
@@ -95,7 +129,110 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props
 
   // Exponer métodos al componente padre usando useImperativeHandle
   useImperativeHandle(ref, () => ({
-    getVariantes: () => variantCombinations
+    getVariantes: () => variantCombinations,
+    guardarVariantesEnBD: async (parentProductId: number) => {
+      if (!organizationId || !parentProductId || variantCombinations.length === 0) {
+        return { success: true, message: 'No hay variantes para guardar' };
+      }
+
+      try {
+        // 1. Marcar el producto padre como parent
+        const { error: parentError } = await supabase
+          .from('products')
+          .update({ is_parent: true })
+          .eq('id', parentProductId);
+
+        if (parentError) throw parentError;
+
+        // 2. Crear productos hijos para cada combinación de variante
+        for (const combination of variantCombinations) {
+          // Crear el producto hijo
+          const { data: childProduct, error: productError } = await supabase
+            .from('products')
+            .insert({
+              organization_id: organizationId,
+              parent_product_id: parentProductId,
+              sku: combination.sku,
+              name: `Variante ${combination.attributes.map(a => a.value).join(' - ')}`,
+              is_parent: false,
+              status: 'active',
+              track_stock: true,
+              variant_data: combination.attributes.reduce((acc, attr) => {
+                acc[attr.typeName.toLowerCase()] = attr.value;
+                return acc;
+              }, {} as Record<string, string>)
+            })
+            .select('id')
+            .single();
+
+          if (productError) throw productError;
+          if (!childProduct) throw new Error('No se pudo crear el producto hijo');
+
+          // 3. Crear precio del producto hijo
+          if (combination.price > 0) {
+            const { error: priceError } = await supabase
+              .from('product_prices')
+              .insert({
+                product_id: childProduct.id,
+                price: combination.price,
+                is_active: true,
+                currency: 'MXN'
+              });
+
+            if (priceError) throw priceError;
+          }
+
+          // 4. Crear costo del producto hijo
+          if (combination.cost > 0) {
+            const { error: costError } = await supabase
+              .from('product_costs')
+              .insert({
+                product_id: childProduct.id,
+                cost: combination.cost,
+                is_active: true,
+                currency: 'MXN'
+              });
+
+            if (costError) throw costError;
+          }
+
+          // 5. Crear relaciones de variantes
+          for (const attribute of combination.attributes) {
+            const { error: relationError } = await supabase
+              .from('product_variant_relations')
+              .insert({
+                product_id: childProduct.id,
+                variant_type_id: attribute.typeId,
+                variant_value_id: attribute.valueId
+              });
+
+            if (relationError) throw relationError;
+          }
+
+          // 6. Crear niveles de stock inicial si existen
+          if (combination.stock && combination.stock.length > 0) {
+            const stockData = combination.stock.map((stockItem: any) => ({
+              product_id: childProduct.id,
+              branch_id: stockItem.branch_id,
+              qty_on_hand: stockItem.qty_on_hand || 0,
+              qty_available: stockItem.qty_on_hand || 0,
+              avg_cost: stockItem.avg_cost || combination.cost || 0
+            }));
+
+            const { error: stockError } = await supabase
+              .from('stock_levels')
+              .insert(stockData);
+
+            if (stockError) throw stockError;
+          }
+        }
+
+        return { success: true, message: 'Variantes guardadas exitosamente' };
+      } catch (error: any) {
+        console.error('Error al guardar variantes:', error);
+        return { success: false, error: error.message };
+      }
+    }
   }))
   
   // Función para obtener información completa de tipos y valores de variantes
@@ -132,11 +269,29 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props
     
     if (tiposData && tiposData.length > 0) {
       tiposData.forEach(tipo => {
-        mapaTipos[tipo.id] = tipo;
+        mapaTipos[tipo.id] = {
+          id: tipo.id,
+          name: tipo.name,
+          organization_id: tipo.organization_id,
+          variant_values: tipo.variant_values,
+          values: tipo.variant_values.map((v: any) => ({
+            id: v.id,
+            value: v.value,
+            selected: false
+          }))
+        };
+        
         tiposSeleccionados.push({
-          ...tipo,
-          values: tipo.variant_values,
-          selectedValues: tipo.variant_values.map(v => v.id)
+          id: tipo.id,
+          name: tipo.name,
+          organization_id: tipo.organization_id,
+          variant_values: tipo.variant_values,
+          values: tipo.variant_values.map((v: any) => ({
+            id: v.id,
+            value: v.value,
+            selected: false
+          })),
+          selectedValues: []
         });
         
         tipo.variant_values.forEach(valor => {
@@ -156,7 +311,88 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props
     };
   };
   
-  // Función para formatear variantes desde la base de datos al formato interno
+  // Función para obtener tipos de variantes únicos desde las relaciones
+  const obtenerTiposVariantesDesdeRelaciones = async (relations: any[]): Promise<VariantType[]> => {
+    const tiposMap = new Map<number, VariantType>();
+    
+    relations.forEach(relation => {
+      if (relation.variant_types && !tiposMap.has(relation.variant_type_id)) {
+        tiposMap.set(relation.variant_type_id, {
+          id: relation.variant_types.id,
+          name: relation.variant_types.name,
+          values: []
+        });
+      }
+    });
+    
+    // Obtener valores para cada tipo
+    for (const [typeId, tipo] of Array.from(tiposMap.entries())) {
+      const { data: valores } = await supabase
+        .from('variant_values')
+        .select('id, value')
+        .eq('variant_type_id', typeId)
+        .order('display_order');
+      
+      if (valores) {
+        tipo.values = valores.map((v: any) => ({
+          id: v.id,
+          value: v.value,
+          selected: false
+        }));
+        
+        // Marcar como seleccionados los valores que están en las relaciones
+        relations.forEach(rel => {
+          if (rel.variant_type_id === typeId) {
+            const valor = tipo.values.find(v => v.id === rel.variant_value_id);
+            if (valor) valor.selected = true;
+          }
+        });
+      }
+    }
+    
+    return Array.from(tiposMap.values());
+  };
+
+  // Función para formatear variantes desde productos hijos al formato interno
+  const formatearVariantesDesdeProductosHijos = async (
+    childProducts: any[], 
+    relations: any[], 
+    pricesMap: Map<number, number>, 
+    costsMap: Map<number, number>
+  ) => {
+    const combinaciones: VariantCombination[] = [];
+    
+    childProducts.forEach(product => {
+      const productRelations = relations.filter(r => r.product_id === product.id);
+      const attributes: VariantAttribute[] = [];
+      
+      productRelations.forEach(relation => {
+        if (relation.variant_types && relation.variant_values) {
+          attributes.push({
+            typeId: relation.variant_type_id,
+            typeName: relation.variant_types.name,
+            valueId: relation.variant_value_id,
+            value: relation.variant_values.value
+          });
+        }
+      });
+      
+      if (attributes.length > 0) {
+        combinaciones.push({
+          id: product.id.toString(),
+          sku: product.sku || '',
+          price: pricesMap.get(product.id) || 0,
+          cost: costsMap.get(product.id) || 0,
+          attributes: attributes,
+          stock: []
+        });
+      }
+    });
+    
+    return combinaciones;
+  };
+
+  // Función para formatear variantes desde la base de datos al formato interno (legacy)
   const formatearVariantes = async (variants: any[], mapaTipos: Record<number, VariantType>, mapaValores: Record<number, any>) => {
     // Obtener los niveles de stock para las variantes
     const variantIds = variants.map(v => v.id);
@@ -197,14 +433,17 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props
       const stockTotal = stockVariante.reduce((sum, item) => sum + (item.qty_on_hand || 0), 0);
       
       return {
-        id: variant.id,
+        id: variant.id.toString(),
         sku: variant.sku,
         price: variant.price || 0,
         cost: variant.cost || 0,
-        stock_quantity: stockTotal,
         attributes,
-        stock_por_sucursal: stockVariante
-      } as VariantCombination;
+        stock: stockVariante.map(item => ({
+          branch_id: item.branch_id,
+          qty_on_hand: item.qty_on_hand || 0,
+          avg_cost: item.avg_cost || 0
+        }))
+      };
     });
   };
 
@@ -274,10 +513,15 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props
               : [];
             
             return {
-              ...tipo,
+              id: tipo.id,
+              name: tipo.name,
+              organization_id: tipo.organization_id,
               variant_values: valoresOrdenados,
-              // Asignar también a values para que la UI pueda usarlo
-              values: valoresOrdenados
+              values: valoresOrdenados.map((v: any) => ({
+                id: v.id,
+                value: v.value,
+                selected: false
+              }))
             };
           })
         
@@ -406,12 +650,13 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props
       
       // Para cada valor seleccionado, crear una nueva rama de combinaciones
       valoresSeleccionados.forEach((valorId: number) => {
-        const valor = tipoActual.variant_values.find(v => v.id === valorId)
+        const valor = tipoActual.values?.find(v => v.id === valorId) || 
+                     tipoActual.variant_values?.find(v => v.id === valorId)
         if (valor) {
           const atributo: VariantAttribute = {
-            type_id: tipoActual.id,
-            type_name: tipoActual.name,
-            value_id: valor.id,
+            typeId: tipoActual.id,
+            typeName: tipoActual.name,
+            valueId: valor.id,
             value: valor.value
           }
           generarCombinacion(tipoIndex + 1, [...combinacionActual, atributo])
@@ -426,7 +671,7 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props
     const nuevasCombinaciones: VariantCombination[] = combinacionesAtributos.map((attrs, index) => {
       // Generar un identificador único basado en los IDs de los valores seleccionados
       const uniqueId = attrs
-        .map(attr => attr.value_id.toString())
+        .map(attr => attr.valueId.toString())
         .join('');
       
       // Generar un SKU para la variante basado en el SKU principal + valores de atributos + índice para garantizar unicidad
@@ -452,11 +697,11 @@ const Variantes: ForwardRefRenderFunction<VariantesRef, VariantesProps> = (props
         : [];
         
       return {
+        id: uniqueId,
         sku: skuVariante,
         price: defaultPrice, // Usar el precio del formulario principal
         cost: defaultCost,   // Usar el costo del formulario principal
-        stock_quantity: 0,
-        stock_por_sucursal: stockPorSucursal,
+        stock: stockPorSucursal,
         attributes: attrs
       };
     });

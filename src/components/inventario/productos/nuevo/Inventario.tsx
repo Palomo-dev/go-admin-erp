@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { UseFormReturn } from 'react-hook-form'
 import { supabase } from '@/lib/supabase/config'
+import { getCurrentBranchId } from '@/lib/hooks/useOrganization'
 import { PlusCircle, Trash2, AlertCircle, Loader2 } from 'lucide-react'
 
 import {
@@ -120,8 +121,14 @@ export default function Inventario({ form }: InventarioProps) {
 
   // Gestión del stock inicial
   const agregarStockItem = () => {
+    // Obtener la sucursal actual del usuario
+    const currentBranchId = getCurrentBranchId();
+    
+    // Si no hay sucursal actual, usar la primera sucursal disponible como fallback
+    const defaultBranchId = currentBranchId || (sucursales.length > 0 ? sucursales[0].id : null);
+    
     const nuevoItem: StockItem = {
-      branch_id: null,
+      branch_id: defaultBranchId,
       qty_on_hand: 0,
       avg_cost: form.getValues('cost') || 0,
       qty_reserved: 0,

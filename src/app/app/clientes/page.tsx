@@ -472,7 +472,7 @@ export default function ClientesPage() {
           </div>
 
           {/* Filtros y ordenamiento - siempre visibles */}
-          <div className="p-4 border border-gray-100 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-850">
+          <div className="p-4 border border-gray-100 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">🔍 Filtros y opciones de visualización</p>
             <ClientesFilter 
               searchQuery={searchQuery}
@@ -506,7 +506,7 @@ export default function ClientesPage() {
               onPageChange={handlePageChange}
             />
           ) : (
-            <div className="mt-4 p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-850 text-center">
+            <div className="mt-4 p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-center">
               <p className="text-gray-600 dark:text-gray-300 mb-4">No se encontraron clientes en esta organización.</p>
               <div className="flex justify-center space-x-4">
                 <button

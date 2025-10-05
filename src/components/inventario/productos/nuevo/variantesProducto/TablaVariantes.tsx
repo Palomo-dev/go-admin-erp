@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Edit } from 'lucide-react'
-import { VariantCombination, VariantType, StockPorSucursal } from './types'
+import { VariantCombination, VariantType } from './types'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -57,14 +57,11 @@ export const TablaVariantes = ({
         break
       case 'stock':
         // Si tiene branchId, estamos editando stock por sucursal
-        if (editing.branchId !== undefined && combination.stock_por_sucursal) {
-          const stockIndex = combination.stock_por_sucursal.findIndex((s: StockPorSucursal) => s.branch_id === editing.branchId)
+        if (editing.branchId !== undefined && combination.stock) {
+          const stockIndex = combination.stock.findIndex(s => s.branch_id === editing.branchId)
           if (stockIndex >= 0) {
-            combination.stock_por_sucursal[stockIndex].qty_on_hand = parseInt(editing.value) || 0
+            combination.stock[stockIndex].qty_on_hand = parseInt(editing.value) || 0
           }
-        } else {
-          // Stock general (obsoleto pero mantenido por compatibilidad)
-          combination.stock_quantity = parseInt(editing.value) || 0
         }
         break
     }
@@ -206,8 +203,8 @@ export const TablaVariantes = ({
               
               <TableCell>
                 <div className="space-y-2">
-                  {combination.stock_por_sucursal && combination.stock_por_sucursal.length > 0 ? (
-                    combination.stock_por_sucursal.map((stockItem: StockPorSucursal, stockIndex: number) => (
+                  {combination.stock && combination.stock.length > 0 ? (
+                    combination.stock.map((stockItem, stockIndex: number) => (
                       <div key={stockIndex} className="flex items-center justify-between text-sm border-b dark:border-gray-700 pb-1">
                         <span className="dark:text-gray-400 light:text-gray-600 mr-2">
                           Sucursal {stockItem.branch_id}:

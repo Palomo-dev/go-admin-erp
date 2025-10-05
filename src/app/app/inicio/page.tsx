@@ -26,8 +26,8 @@ function InicioContent() {
         <div className="flex justify-center">
           <Home className="h-16 w-16 text-primary" />
         </div>
-        <h1 className="text-4xl font-bold">Bienvenido a GO Admin ERP</h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Bienvenido a GO Admin ERP</h1>
+        <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
           Sistema integral de gestión empresarial con módulos especializados para diferentes tipos de negocio.
         </p>
       </div>
@@ -51,14 +51,14 @@ function InicioContent() {
             <div className="flex justify-center mb-2">
               <Settings className="h-8 w-8 text-blue-600" />
             </div>
-            <CardTitle>Configuración</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Configuración</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-300">
               Gestiona tu organización, sucursales y configuraciones generales
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Link href="/app/organizacion">
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
                 Ir a Configuración
               </Button>
             </Link>
@@ -70,14 +70,14 @@ function InicioContent() {
             <div className="flex justify-center mb-2">
               <Package className="h-8 w-8 text-green-600" />
             </div>
-            <CardTitle>Módulos</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Módulos</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-300">
               Explora y activa los módulos disponibles para tu plan
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Link href="/app/organizacion/modulos">
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
                 Ver Módulos
               </Button>
             </Link>
@@ -89,14 +89,14 @@ function InicioContent() {
             <div className="flex justify-center mb-2">
               <Users className="h-8 w-8 text-purple-600" />
             </div>
-            <CardTitle>Equipo</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Equipo</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-300">
               Gestiona usuarios, roles y permisos de tu organización
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Link href="/app/organizacion/miembros">
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
                 Gestionar Equipo
               </Button>
             </Link>
@@ -105,7 +105,7 @@ function InicioContent() {
       </div>
 
       {/* Información adicional */}
-      <div className="max-w-2xl mx-auto text-center text-sm text-gray-500">
+      <div className="max-w-2xl mx-auto text-center text-sm text-gray-500 dark:text-gray-400">
         <p>
           ¿Necesitas ayuda? Consulta nuestra{' '}
           <Link href="/docs" className="text-primary hover:underline">

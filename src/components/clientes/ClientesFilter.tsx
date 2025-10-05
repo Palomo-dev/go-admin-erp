@@ -106,7 +106,7 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
         <div className="flex items-center gap-2">
           <h2 className="font-medium text-gray-800 dark:text-gray-200">Filtros y opciones</h2>
           {hasActiveFilters && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
               {Object.values({searchQuery, roleFilter, tagFilter, cityFilter, balanceFilter, sortOrder}).filter(Boolean).length} activos
             </Badge>
           )}
@@ -116,7 +116,7 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
             variant="ghost" 
             size="sm" 
             onClick={handleClearFilters} 
-            className="text-xs h-8 px-2"
+            className="text-xs h-8 px-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             Limpiar todo
           </Button>
@@ -143,14 +143,14 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
             value={roleFilter || "all_roles"} 
             onValueChange={(value) => onRoleFilterChange(value === "all_roles" ? null : value)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
               <SelectValue placeholder="Rol" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600">
               <SelectGroup>
-                <SelectItem value="all_roles">Todos los roles</SelectItem>
+                <SelectItem value="all_roles" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Todos los roles</SelectItem>
                 {uniqueRoles.map(role => (
-                  <SelectItem key={role} value={role}>
+                  <SelectItem key={role} value={role} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                     {role}
                   </SelectItem>
                 ))}
@@ -165,14 +165,14 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
             value={tagFilter || "all_tags"} 
             onValueChange={(value) => onTagFilterChange(value === "all_tags" ? null : value)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
               <SelectValue placeholder="Etiqueta" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600">
               <SelectGroup>
-                <SelectItem value="all_tags">Todas las etiquetas</SelectItem>
+                <SelectItem value="all_tags" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Todas las etiquetas</SelectItem>
                 {uniqueTags.map(tag => (
-                  <SelectItem key={tag} value={tag}>
+                  <SelectItem key={tag} value={tag} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                     {tag}
                   </SelectItem>
                 ))}
@@ -187,14 +187,14 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
             value={cityFilter || "all_cities"} 
             onValueChange={(value) => onCityFilterChange(value === "all_cities" ? null : value)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
               <SelectValue placeholder="Ciudad" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600">
               <SelectGroup>
-                <SelectItem value="all_cities">Todas las ciudades</SelectItem>
+                <SelectItem value="all_cities" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Todas las ciudades</SelectItem>
                 {uniqueCities.map(city => (
-                  <SelectItem key={city} value={city}>
+                  <SelectItem key={city} value={city} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                     {city}
                   </SelectItem>
                 ))}
@@ -209,14 +209,14 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
             value={balanceFilter || "all_balances"} 
             onValueChange={(value) => onBalanceFilterChange(value === "all_balances" ? null : value)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
               <SelectValue placeholder="Saldo" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600">
               <SelectGroup>
-                <SelectItem value="all_balances">Todos los saldos</SelectItem>
-                <SelectItem value="pending">Con saldo pendiente</SelectItem>
-                <SelectItem value="paid">Sin saldo pendiente</SelectItem>
+                <SelectItem value="all_balances" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Todos los saldos</SelectItem>
+                <SelectItem value="pending" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Con saldo pendiente</SelectItem>
+                <SelectItem value="paid" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Sin saldo pendiente</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -228,16 +228,16 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
             value={sortOrder || "no_sort"} 
             onValueChange={(value) => onSortOrderChange(value === "no_sort" ? null : value)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600">
               <SelectGroup>
-                <SelectItem value="no_sort">Sin orden específico</SelectItem>
-                <SelectItem value="latest_purchase">Última compra (más reciente)</SelectItem>
-                <SelectItem value="oldest_purchase">Última compra (más antigua)</SelectItem>
-                <SelectItem value="balance_desc">Mayor saldo</SelectItem>
-                <SelectItem value="balance_asc">Menor saldo</SelectItem>
+                <SelectItem value="no_sort" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Sin orden específico</SelectItem>
+                <SelectItem value="latest_purchase" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Última compra (más reciente)</SelectItem>
+                <SelectItem value="oldest_purchase" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Última compra (más antigua)</SelectItem>
+                <SelectItem value="balance_desc" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Mayor saldo</SelectItem>
+                <SelectItem value="balance_asc" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Menor saldo</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -250,7 +250,7 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
-                  className={`w-full flex items-center ${hasActiveFilters ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : ''}`}
+                  className={`w-full flex items-center text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 ${hasActiveFilters ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : ''}`}
                   onClick={handleClearFilters}
                   disabled={!hasActiveFilters}
                 >

@@ -220,115 +220,26 @@ export default function FormularioProducto() {
       }
       
       // 5. Guardar variantes del producto
-      if (variantes.length > 0 && producto) {
-        for (const variante of variantes) {
-          // Asegurar que el SKU sea único antes de insertar
-          const skuUnico = await verificarSkuUnico(variante.sku);
-          
-          // Insertar la variante con el SKU único
-          const { data: varData, error: varError } = await supabase
-            .from('product_variants')
-            .insert({
-              product_id: producto.id,
-              sku: skuUnico,
-              price: variante.price || productoData.price,
-              cost: variante.cost || productoData.cost,
-              stock_quantity: variante.stock_quantity || 0
-            })
-            .select()
-            .single();
-            
-          if (varError) {
-            console.error('Error al guardar variante:', varError);
-            continue;
-          }
-          
-          // Insertar los atributos de la variante
-          if (variante.combination && variante.combination.length > 0) {
-            const atributos = variante.combination.map((attr: any) => ({
-              variant_id: varData.id,
-              variant_type_id: attr.type_id,
-              variant_value_id: attr.value_id
-            }));
-            
-            const { error: attrError } = await supabase
-              .from('product_variant_attributes')
-              .insert(atributos);
-              
-            if (attrError) {
-              console.error('Error al guardar atributos de variante:', attrError);
-            }
-          }
-          
-          // Registrar stock inicial por sucursal de la variante
-          if (variante.stock_por_sucursal && variante.stock_por_sucursal.length > 0) {
-            // Crear registros de stock en cada sucursal para esta variante
-            const stockData = variante.stock_por_sucursal.map((stockItem: StockItem) => ({
-              product_id: producto.id,
-              branch_id: stockItem.branch_id,
-              qty_on_hand: stockItem.qty_on_hand,
-              avg_cost: stockItem.avg_cost || variante.cost || productoData.cost || 0,
-              variant_id: varData.id  // Asociar con la variante
-            }));
-            
-            // Insertar registros de stock para esta variante
-            const { error: stockVarError } = await supabase
-              .from('stock_levels')
-              .insert(stockData);
-              
-            if (stockVarError) {
-              console.error('Error al guardar stock de variante:', stockVarError);
+      if (variantesRef.current && producto) {
+        const variantes = variantesRef.current.getVariantes()
+        if (variantes && variantes.length > 0) {
+          console.log('Guardando', variantes.length, 'variantes del producto...')
+          try {
+            const { success, error } = await variantesRef.current.guardarVariantesEnBD(producto.id);
+            if (!success) {
+              console.error('Error al guardar variantes del producto:', error);
+              // No lanzamos error para no interrumpir el flujo principal
+              toast({
+                title: "Advertencia",
+                description: `Error al guardar variantes: ${error}`,
+                variant: "destructive",
+              });
             } else {
-              // Registrar los movimientos de stock para cada sucursal
-              const movimientosData = variante.stock_por_sucursal.map((stockItem: StockItem) => ({
-                product_id: producto.id,
-                organization_id,
-                branch_id: stockItem.branch_id,
-                direction: 'in',
-                qty: stockItem.qty_on_hand,
-                unit_cost: stockItem.avg_cost || variante.cost || productoData.cost || 0,
-                source: 'adjustment',
-                source_id: varData.id.toString(), // Convertir a string para cumplir con el tipo
-                note: `Stock inicial variante ${variante.sku} (Sucursal ${stockItem.branch_id})`
-              }));
-              
-              if (movimientosData.length > 0) {
-                const { error: movError } = await supabase
-                  .from('stock_movements')
-                  .insert(movimientosData);
-                  
-                if (movError) {
-                  console.error('Error al registrar movimientos de stock para variante:', movError);
-                }
-              }
+              console.log('Variantes guardadas exitosamente para el producto:', producto.id);
             }
-          } 
-          // Mantener el código anterior como fallback para compatibilidad
-          else if (variante.stock_quantity && variante.stock_quantity > 0) {
-            // Usamos la primera sucursal disponible para el stock inicial de la variante
-            const defaultBranchId = stockInicial.length > 0 ? stockInicial[0].branch_id : null;
-            
-            if (defaultBranchId) {
-              await supabase.from('stock_levels').insert({
-                product_id: producto.id,
-                branch_id: defaultBranchId,
-                qty_on_hand: variante.stock_quantity,
-                avg_cost: variante.cost || productoData.cost || 0,
-                variant_id: varData.id
-              });
-              
-              await supabase.from('stock_movements').insert({
-                product_id: producto.id,
-                organization_id,
-                branch_id: defaultBranchId,
-                direction: 'in',
-                qty: variante.stock_quantity,
-                unit_cost: variante.cost || productoData.cost || 0,
-                source: 'adjustment',
-                source_id: varData.id.toString(), // Convertir a string para cumplir con el tipo
-                note: `Stock inicial variante ${variante.sku}`
-              });
-            }
+          } catch (variantesError: any) {
+            console.error('Error al guardar variantes del producto:', variantesError);
+            // No lanzamos error para no interrumpir el flujo principal
           }
         }
       }

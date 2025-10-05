@@ -542,7 +542,7 @@ export const AppLayout = ({
         />
         
         {/* Contenido principal */}
-        <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+        <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 h-full">
           {children}
         </div>
       </div>

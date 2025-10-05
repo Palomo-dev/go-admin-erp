@@ -494,17 +494,34 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
 
   // Manejar subdominios para organizaciones
   const hostname = request.headers.get('host') || '';
-  const subdomain = hostname.split('.')[0];
+  const parts = hostname.split('.');
   
-  if (subdomain !== 'www' && !hostname.includes('localhost')) {
-    const response = NextResponse.next();
-    response.cookies.set('organization', subdomain, { 
-      path: '/',
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production'
-    });
-    return response;
+  // Para app.goadmin.io → parts = ['app', 'goadmin', 'io'] → NO es subdominio de organización
+  // Para empresa1.app.goadmin.io → parts = ['empresa1', 'app', 'goadmin', 'io'] → SÍ es subdominio de organización
+  
+  // Si es localhost (desarrollo)
+  if (hostname.includes('localhost')) {
+    return NextResponse.next();
   }
+  
+  // Si tiene 4 partes o más, es un subdominio de tercer nivel (organización)
+  // Ejemplo: empresa1.app.goadmin.io
+  if (parts.length >= 4) {
+    const orgSubdomain = parts[0]; // El primer segmento es la organización
+    
+    if (orgSubdomain !== 'www') {
+      const response = NextResponse.next();
+      response.cookies.set('organization', orgSubdomain, { 
+        path: '/',
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production'
+      });
+      return response;
+    }
+  }
+  
+  // Si tiene 3 partes (app.goadmin.io o goadmin.io), no es subdominio de organización
+  // No establecer cookie de organización
 
   if (shouldDebug) {
     console.log('✅ [MIDDLEWARE] Permitiendo acceso a la ruta');

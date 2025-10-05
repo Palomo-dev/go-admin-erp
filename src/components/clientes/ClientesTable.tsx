@@ -179,7 +179,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                             <Badge 
                               key={tag} 
                               variant="outline"
-                              className="text-xs"
+                              className="text-xs text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600"
                             >
                               {tag}
                             </Badge>
@@ -192,7 +192,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         {customer.tags && customer.tags.length > 2 && (
                           <Badge 
                             variant="outline"
-                            className="text-xs"
+                            className="text-xs text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600"
                           >
                             +{customer.tags.length - 2}
                           </Badge>
@@ -208,7 +208,13 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                           <div className="flex items-center mt-1">
                             <Badge 
                               variant={customer.days_overdue && customer.days_overdue > 30 ? "destructive" : customer.days_overdue && customer.days_overdue > 0 ? "outline" : "secondary"}
-                              className="text-xs"
+                              className={`text-xs ${
+                                customer.days_overdue && customer.days_overdue > 30 
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                  : customer.days_overdue && customer.days_overdue > 0 
+                                  ? 'text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+                                  : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                              }`}
                             >
                               {getARStatusLabel(customer.ar_status, customer.days_overdue)}
                               {customer.days_overdue ? ` ${customer.days_overdue}d` : ''}
@@ -241,22 +247,22 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                           >
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Abrir menú</span>
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => window.location.href = `/app/clientes/${customer.id}`}>
+                        <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600">
+                          <DropdownMenuLabel className="text-gray-700 dark:text-gray-300">Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => window.location.href = `/app/clientes/${customer.id}`} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                             Ver detalles
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => window.location.href = `/app/clientes/${customer.id}/editar`}>
+                          <DropdownMenuItem onClick={() => window.location.href = `/app/clientes/${customer.id}/editar`} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            className={`${customer.is_active === false ? 'text-green-600' : 'text-red-600'}`}
+                            className={`hover:bg-gray-100 dark:hover:bg-gray-700 ${customer.is_active === false ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                             onClick={() => { /* Implementar cambio de estado */ }}
                           >
                             {customer.is_active === false ? 'Activar' : 'Desactivar'}
@@ -284,6 +290,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                 size="sm"
                 onClick={() => onPageChange(page - 1)}
                 disabled={page === 0}
+                className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <ChevronLeft className="h-4 w-4" />
                 <span className="sr-only">Anterior</span>
@@ -293,6 +300,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                 size="sm"
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages - 1}
+                className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <ChevronRight className="h-4 w-4" />
                 <span className="sr-only">Siguiente</span>

@@ -119,6 +119,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               size="sm"
               disabled={!selectedCustomers.length}
               onClick={() => setIsTagDialogOpen(true)}
+              className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Tag className="w-4 h-4 mr-1" />
               Etiquetar
@@ -134,6 +135,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               size="sm"
               disabled={!selectedCustomers.length}
               onClick={() => setIsMergeDialogOpen(true)}
+              className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Users className="w-4 h-4 mr-1" />
               Unificar
@@ -148,6 +150,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               variant="outline"
               size="sm"
               onClick={onExportCSV}
+              className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Download className="w-4 h-4 mr-1" />
             Exportar

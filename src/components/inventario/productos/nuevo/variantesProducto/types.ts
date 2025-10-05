@@ -9,9 +9,13 @@ export interface VariantValue {
 export interface VariantType {
   id: number;
   name: string;
-  organization_id: number;
-  variant_values: VariantValue[];
-  values?: VariantValue[]; // Versión procesada para la UI
+  organization_id?: number;
+  variant_values?: VariantValue[];
+  values: Array<{
+    id: number;
+    value: string;
+    selected: boolean;
+  }>; // Versión procesada para la UI
   selectedValues?: number[]; // IDs de valores seleccionados
 }
 
@@ -22,9 +26,9 @@ export interface EditingValueState {
 }
 
 export interface VariantAttribute {
-  type_id: number;
-  type_name: string;
-  value_id: number;
+  typeId: number;
+  typeName: string;
+  valueId: number;
   value: string;
 }
 
@@ -36,19 +40,27 @@ export interface StockPorSucursal {
 }
 
 export interface VariantCombination {
-  id?: number;
+  id?: string;
   sku: string;
   price: number;
   cost: number;
-  stock_quantity: number;
   image?: string;
   attributes: VariantAttribute[];
-  stock_por_sucursal?: StockPorSucursal[];
+  stock: Array<{
+    branch_id: number;
+    qty_on_hand: number;
+    avg_cost: number;
+  }>;
 }
 
 // Interfaz para exponer métodos al componente padre
 export interface VariantesRef {
-  getVariantes: () => Array<VariantCombination>
+  getVariantes: () => Array<VariantCombination>;
+  guardarVariantesEnBD: (parentProductId: number) => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
 }
 
 // Props para el componente Variantes

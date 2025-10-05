@@ -1,5 +1,8 @@
 'use client';
 
+// Forzar renderizado dinámico para evitar errores de useSearchParams
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -195,7 +198,7 @@ export default function EmpleadosPorSucursalPage() {
     return matchesSearch && matchesBranch && matchesDepartment;
   });
 
-  const departments = [...new Set(employees.map(emp => emp.department))];
+  const departments = Array.from(new Set(employees.map(emp => emp.department)));
 
   const getStatusBadge = (status: string) => {
     switch (status) {

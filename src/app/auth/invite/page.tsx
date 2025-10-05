@@ -3,12 +3,12 @@
 // Forzar renderizado dinámico para evitar errores de useSearchParams
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import InvitationWizard from '@/components/auth/InvitationWizard';
 
-export default function InvitePage() {
+function InviteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteCode = searchParams.get('invite_code');
@@ -204,5 +204,22 @@ export default function InvitePage() {
         <p className="text-gray-600">Configurando tu cuenta...</p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Página de invitación con Suspense
+ */
+export default function InvitePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600">Validando invitación...</p>
+        </div>
+      </div>
+    }>
+      <InviteContent />
+    </Suspense>
   );
 }

@@ -3,7 +3,7 @@
 // Forzar renderizado dinámico para evitar errores de useSearchParams
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,7 +72,7 @@ interface Branch {
   employee_count: number;
 }
 
-export default function EmpleadosPorSucursalPage() {
+function EmpleadosPorSucursalContent() {
   const searchParams = useSearchParams();
   const selectedBranchParam = searchParams?.get('sucursal');
   
@@ -515,5 +515,24 @@ export default function EmpleadosPorSucursalPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * Página de empleados por sucursal con Suspense
+ */
+export default function EmpleadosPorSucursalPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-6">
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-20 bg-gray-200 rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+    }>
+      <EmpleadosPorSucursalContent />
+    </Suspense>
   );
 }

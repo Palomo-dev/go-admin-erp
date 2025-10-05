@@ -3,7 +3,7 @@
 // Forzar renderizado dinámico para evitar errores de useSearchParams
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/config";
 import { formatCurrency } from "@/utils/Utils";
@@ -26,10 +26,9 @@ import { toast } from "@/components/ui/use-toast";
 import { ChevronLeft, Save } from "lucide-react";
 
 /**
- * Página de edición de oportunidad
- * Permite editar los detalles de una oportunidad existente
+ * Componente interno con useSearchParams
  */
-export default function EditOpportunityPage() {
+function EditOpportunityContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const opportunityId = searchParams.get("id");
@@ -345,5 +344,21 @@ export default function EditOpportunityPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+/**
+ * Página de edición de oportunidad con Suspense
+ */
+export default function EditOpportunityPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-screen">
+        <LoadingSpinner size="lg" className="text-blue-500" />
+        <span className="ml-2">Cargando...</span>
+      </div>
+    }>
+      <EditOpportunityContent />
+    </Suspense>
   );
 }

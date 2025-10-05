@@ -1,5 +1,8 @@
 'use client';
 
+// Forzar renderizado dinámico para evitar errores de useSearchParams
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';

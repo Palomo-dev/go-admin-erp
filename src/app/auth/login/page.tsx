@@ -3,7 +3,7 @@
 // Forzar renderizado dinámico para evitar errores de useSearchParams
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { 
@@ -18,7 +18,7 @@ import GeolocationModal from '@/components/auth/GeolocationModal';
 import EmailNotConfirmedAlert from '@/components/auth/EmailNotConfirmedAlert';
 import { type GeolocationPreference, shouldShowGeolocationModal, saveGeolocationPreference } from '@/lib/utils/geolocation';
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -494,5 +494,19 @@ export default function LoginPage() {
         onSelection={handleGeolocationSelection}
       />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

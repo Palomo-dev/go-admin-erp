@@ -214,24 +214,24 @@ function LoginContent() {
   }, []);
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-2xl relative border border-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100">
         <div className="flex flex-col items-center">
           {/* Logo GO Admin con diseño moderno */}
-          <div className="mb-4">
+          <div className="mb-3 sm:mb-4">
             <div className="relative">
               {/* Círculo decorativo con gradiente de fondo */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-xl blur-lg opacity-30 animate-pulse"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-lg sm:rounded-xl blur-md sm:blur-lg opacity-30 animate-pulse"></div>
               
               {/* Contenedor del logo */}
-              <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 shadow-lg">
+              <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-lg">
                 <div className="flex flex-col items-center justify-center space-y-0.5">
                   {/* Texto GO con estilo bold */}
-                  <div className="text-3xl font-black text-white tracking-tight leading-none">
+                  <div className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
                     GO
                   </div>
                   {/* Texto Admin con estilo más ligero */}
-                  <div className="text-sm font-medium text-blue-100 tracking-wide uppercase">
+                  <div className="text-xs sm:text-sm font-medium text-blue-100 tracking-wide uppercase">
                     Admin
                   </div>
                 </div>
@@ -240,10 +240,10 @@ function LoginContent() {
           </div>
           
           {/* Título mejorado */}
-          <h2 className="text-center text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
+          <h2 className="text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-1 sm:mb-2">
             Bienvenido de nuevo
           </h2>
-          <p className="text-center text-sm text-gray-500 mb-4">
+          <p className="text-center text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
             Inicia sesión para acceder a tu cuenta
           </p>
           
@@ -251,7 +251,7 @@ function LoginContent() {
         </div>
         
         {error && !emailNotConfirmed && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative" role="alert">
             <span className="block sm:inline">{error}</span>
             {error.includes('El usuario no existe') && (
               <div className="mt-2">
@@ -276,10 +276,10 @@ function LoginContent() {
         
         {/* Organization selection popup */}
         {showOrgPopup && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Selecciona una organización</h3>
-              <p className="text-sm text-gray-500 mb-4">Tu cuenta está asociada a múltiples organizaciones. Por favor selecciona una para continuar.</p>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 px-4">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Selecciona una organización</h3>
+              <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">Tu cuenta está asociada a múltiples organizaciones. Por favor selecciona una para continuar.</p>
               
               <div className="max-h-60 overflow-y-auto">
                 {userOrganizations.map((org) => (
@@ -287,27 +287,27 @@ function LoginContent() {
                     key={org.id}
                     type="button"
                     onClick={() => onSelectOrganizationFromPopup(org)}
-                    className="flex items-center w-full text-left px-4 py-3 mb-2 hover:bg-gray-100 border border-gray-200 rounded-md"
+                    className="flex items-center w-full text-left px-3 py-2 sm:px-4 sm:py-3 mb-2 hover:bg-gray-100 border border-gray-200 rounded-md"
                   >
                     {/* Organization logo or placeholder */}
-                    <div className="flex-shrink-0 mr-3">
+                    <div className="flex-shrink-0 mr-2 sm:mr-3">
                       {org.logo_url ? (
                         <img 
                           src={org.logo_url} 
                           alt={`${org.name} logo`} 
-                          className="w-10 h-10 rounded-full object-cover"
+                          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm sm:text-base font-medium">
                           {org.name.charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
                     
                     {/* Organization details */}
-                    <div className="flex-grow">
-                      <div className="font-medium text-gray-800">{org.name}</div>
-                      <div className="text-xs text-gray-500">{org.type_id?.name || 'Organización'}</div>
+                    <div className="flex-grow min-w-0">
+                      <div className="font-medium text-sm sm:text-base text-gray-800 truncate">{org.name}</div>
+                      <div className="text-xs text-gray-500 truncate">{org.type_id?.name || 'Organización'}</div>
                     </div>
                     
                     <div className="flex flex-col items-end ml-2 space-y-1">
@@ -332,10 +332,10 @@ function LoginContent() {
           </div>
         )}
         
-        <form className="mt-8 space-y-6" onSubmit={onEmailLogin}>
+        <form className="mt-4 sm:mt-6 md:mt-8 space-y-4 sm:space-y-6" onSubmit={onEmailLogin}>
           {/* Success Message */}
           {successMessage && (
-            <div className="rounded-md bg-green-50 p-4 mb-4">
+            <div className="rounded-md bg-green-50 p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
@@ -365,11 +365,11 @@ function LoginContent() {
             </div>
           )}
           
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="relative">
               <div className="flex items-center border border-blue-300 rounded-md">
-                <span className="pl-3 pr-2 text-blue-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                     <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
                   </svg>
                 </span>
@@ -379,7 +379,7 @@ function LoginContent() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="w-full px-2 py-3 focus:outline-none"
+                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none"
                   placeholder="Correo electrónico"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -388,8 +388,8 @@ function LoginContent() {
             </div>
             <div className="relative">
               <div className="flex items-center border border-blue-300 rounded-md">
-                <span className="pl-3 pr-2 text-blue-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                     <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
                   </svg>
                 </span>
@@ -399,7 +399,7 @@ function LoginContent() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  className="w-full px-2 py-3 focus:outline-none"
+                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none"
                   placeholder="Contraseña"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -407,17 +407,17 @@ function LoginContent() {
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
-                  className="pr-3 text-blue-500 hover:text-blue-700 transition-colors"
+                  className="pr-2 sm:pr-3 text-blue-500 hover:text-blue-700 transition-colors"
                   title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
                   {showPassword ? (
                     // Icono de ojo tachado (ocultar)
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                     </svg>
                   ) : (
                     // Icono de ojo abierto (mostrar)
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
@@ -427,22 +427,22 @@ function LoginContent() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
             <div className="flex items-center">
               <input
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+              <label htmlFor="remember-me" className="ml-2 block text-xs sm:text-sm text-gray-700">
                 Recuérdame
               </label>
             </div>
 
-            <div className="text-sm">
+            <div className="text-xs sm:text-sm">
               <Link href="/auth/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
                 ¿Olvidaste tu contraseña?
               </Link>
@@ -453,20 +453,20 @@ function LoginContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="w-full flex justify-center py-2.5 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Cargando...' : 'INICIAR SESIÓN'}
             </button>
           </div>
           
-          <div className="text-center mt-4">
-            <Link href="/auth/forgot-password" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+          <div className="text-center mt-3 sm:mt-4">
+            <Link href="/auth/forgot-password" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
               ¿Olvidaste tu contraseña?
             </Link>
           </div>
           
-          <div className="text-center mt-4">
-            <p className="text-sm text-gray-600">
+          <div className="text-center mt-3 sm:mt-4">
+            <p className="text-xs sm:text-sm text-gray-600">
               ¿No tienes una cuenta?{' '}
               <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
                 Regístrate aquí
@@ -475,25 +475,25 @@ function LoginContent() {
           </div>
         </form>
 
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
+            <div className="relative flex justify-center text-xs sm:text-sm">
               <span className="px-2 bg-white text-gray-500">O</span>
             </div>
           </div>
 
-          <div className="mt-6 space-y-2">
+          <div className="mt-4 sm:mt-6 space-y-2">
             <button
               type="button"
               onClick={onGoogleLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 rounded-md shadow-sm bg-white text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 
             >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 23 23">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" viewBox="0 0 23 23">
                 <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z" />
                 <path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z" />
                 <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z" />
@@ -505,9 +505,9 @@ function LoginContent() {
               type="button"
               onClick={onMicrosoftLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 rounded-md shadow-sm bg-white text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 23 23">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" viewBox="0 0 23 23">
                 <path fill="#f3f3f3" d="M0 0h23v23H0z" />
                 <path fill="#f35325" d="M1 1h10v10H1z" />
                 <path fill="#81bc06" d="M12 1h10v10H12z" />

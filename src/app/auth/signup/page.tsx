@@ -324,45 +324,61 @@ function SignupContent() {
   // que se ejecuta cuando el email es confirmado por Supabase.
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
+      <div className="max-w-3xl w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100">
         <div className="flex flex-col items-center">
-          <div className="w-20 h-20 rounded-full border-2 border-blue-500 flex items-center justify-center mb-4">
-            <div className="text-blue-500">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-14 h-14">
-                <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
-              </svg>
+          {/* Logo GO Admin con diseño moderno */}
+          <div className="mb-3 sm:mb-4">
+            <div className="relative">
+              {/* Círculo decorativo con gradiente de fondo */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-lg sm:rounded-xl blur-md sm:blur-lg opacity-30 animate-pulse"></div>
+              
+              {/* Contenedor del logo */}
+              <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-lg">
+                <div className="flex flex-col items-center justify-center space-y-0.5">
+                  {/* Texto GO con estilo bold */}
+                  <div className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none">
+                    GO
+                  </div>
+                  {/* Texto Admin con estilo más ligero */}
+                  <div className="text-xs sm:text-sm font-medium text-blue-100 tracking-wide uppercase">
+                    Admin
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <h2 className="text-center text-2xl font-bold text-gray-800">
+          
+          {/* Título mejorado */}
+          <h2 className="text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-1 sm:mb-2">
             {isGoogleUser ? 'Configuración de cuenta' : 'Registro en GO Admin ERP'}
           </h2>
           {isGoogleUser && (
-            <p className="text-center text-sm text-gray-600 mt-2">
+            <p className="text-center text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
               Cuenta de Google: {signupData.email}
             </p>
           )}
           
           {/* Indicador de pasos */}
-          <div className="flex justify-center w-full mt-4 mb-6">
-            <div className="flex items-center sm:space-x-4 space-x-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+          <div className="flex justify-center w-full mt-3 sm:mt-4 mb-4 sm:mb-6">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 1
               </div>
-              <div className={`w-1/2 sm:w-16 h-1 ${currentStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-8 sm:w-16 h-1 ${currentStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 2
               </div>
-              <div className={`w-1/2 sm:w-16 h-1 ${currentStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-8 sm:w-16 h-1 ${currentStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 3
               </div>
-              <div className={`w-1/2 sm:w-16 h-1 ${currentStep >= 4 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-8 sm:w-16 h-1 ${currentStep >= 4 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 4
               </div>
-              <div className={`w-1/2 sm:w-16 h-1 ${currentStep >= 5 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-8 sm:w-16 h-1 ${currentStep >= 5 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 5
               </div>
             </div>
@@ -370,7 +386,7 @@ function SignupContent() {
         </div>
         
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative" role="alert">
             <span className="block sm:inline">{error}</span>
           </div>
         )}
@@ -388,23 +404,23 @@ function SignupContent() {
         
         {/* Para usuarios de Google, mostrar información de bienvenida en el paso 1 */}
         {currentStep === 1 && isGoogleUser && (
-          <div className="text-center py-8">
-            <div className="mb-6">
-              <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="text-center py-6 sm:py-8">
+            <div className="mb-4 sm:mb-6">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-7 h-7 sm:w-8 sm:h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
                 ¡Bienvenido, {signupData.firstName}!
               </h3>
-              <p className="text-gray-600 mb-6">
+              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 px-4">
                 Tu cuenta de Google ha sido vinculada exitosamente. Ahora necesitas configurar tu organización.
               </p>
             </div>
             <button
               onClick={nextStep}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-blue-600 text-white px-6 py-2 sm:px-8 sm:py-3 text-sm sm:text-base rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             >
               Continuar con la configuración
             </button>
@@ -448,8 +464,8 @@ function SignupContent() {
         )}
         
         {/* Enlace a login */}
-        <div className="text-center mt-4">
-          <p className="text-sm text-gray-600">
+        <div className="text-center mt-3 sm:mt-4">
+          <p className="text-xs sm:text-sm text-gray-600">
             ¿Ya tienes una cuenta?{' '}
             <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
               Iniciar sesión

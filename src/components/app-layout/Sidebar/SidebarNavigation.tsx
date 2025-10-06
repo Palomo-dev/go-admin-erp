@@ -154,8 +154,8 @@ export const SidebarNavigation = ({
           href: "/app/admin", 
           icon: <Settings size={18} />,
           submenu: [
-            { name: "Roles y Permisos", href: "/app/admin/roles" },
-            { name: "Configuración", href: "/app/admin/configuracion" }
+            { name: "Roles y Permisos", href: "/app/roles/roles" },
+            { name: "Configuración", href: "/app/roles/configuracion" }
           ]
         },
        /*{{ name: "Reportes", href: "/app/reportes", icon: <BarChart3 size={18} /> },

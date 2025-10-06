@@ -7,13 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { getOrganizationId } from '@/lib/hooks/useOrganization'
 import { v4 as uuidv4 } from 'uuid'
-import { ArrowLeft } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase/config'
 import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
 import InformacionBasica from './nuevo/InformacionBasica'
 import PrecioysCostos from './nuevo/PrecioysCostos'
@@ -459,54 +458,71 @@ export default function FormularioProducto() {
   
   // Renderizar el formulario
   return (
-    <div className="space-y-6">
-      {/* Encabezado con botón de regreso */}
-      <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => router.back()}
-          className="h-8 w-8"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h2 className="text-xl font-semibold">Crear nuevo producto</h2>
-      </div>
-      
+    <div className="w-full">
       {/* Formulario con estructura de tarjetas para cada sección */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Información básica</h3>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+          {/* Información Básica */}
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
+              <CardTitle className="text-gray-900 dark:text-gray-100">Información Básica</CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-400">
+                Datos generales del producto (SKU, nombre, categoría)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
               <InformacionBasica form={form} />
             </CardContent>
           </Card>
           
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Precios y costos</h3>
+          {/* Precios y Costos */}
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
+              <CardTitle className="text-gray-900 dark:text-gray-100">Precios y Costos</CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-400">
+                Define el precio de venta y costo de adquisición
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
               <PrecioysCostos form={form} />
             </CardContent>
           </Card>
           
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Inventario</h3>
+          {/* Inventario */}
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
+              <CardTitle className="text-gray-900 dark:text-gray-100">Inventario</CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-400">
+                Configuración de stock inicial por sucursal
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
               <Inventario form={form} />
             </CardContent>
           </Card>
           
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Imágenes</h3>
+          {/* Imágenes */}
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
+              <CardTitle className="text-gray-900 dark:text-gray-100">Imágenes</CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-400">
+                Agrega fotos del producto (máx. 5 imágenes)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
               <Imagenes ref={imagenesRef} />
             </CardContent>
           </Card>
           
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Variantes</h3>
+          {/* Variantes */}
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
+              <CardTitle className="text-gray-900 dark:text-gray-100">Variantes</CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-400">
+                Crea variantes del producto (tallas, colores, etc.)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
               <Variantes 
                 ref={variantesRef} 
                 defaultCost={Number(form.watch('cost') || 0)} 
@@ -521,35 +537,63 @@ export default function FormularioProducto() {
             </CardContent>
           </Card>
           
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Notas</h3>
+          {/* Notas */}
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
+              <CardTitle className="text-gray-900 dark:text-gray-100">Notas</CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-400">
+                Información adicional o instrucciones especiales
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
               <Notas ref={notasRef} />
             </CardContent>
           </Card>
           
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Etiquetas</h3>
+          {/* Etiquetas */}
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
+              <CardTitle className="text-gray-900 dark:text-gray-100">Etiquetas</CardTitle>
+              <CardDescription className="text-gray-600 dark:text-gray-400">
+                Organiza y clasifica el producto con etiquetas
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
               <Etiquetas ref={etiquetasRef} />
             </CardContent>
           </Card>
           
-          <div className="flex justify-end space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Guardando...' : 'Guardar Producto'}
-            </Button>
-          </div>
+          {/* Botones de acción */}
+          <Card className="overflow-hidden mt-6">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                  disabled={isLoading}
+                  className="w-full sm:w-auto order-2 sm:order-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full sm:w-auto order-1 sm:order-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+                >
+                  {isLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Guardando...
+                    </>
+                  ) : 'Guardar Producto'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </form>
       </Form>
     </div>

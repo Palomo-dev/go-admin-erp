@@ -8,6 +8,12 @@
   --background-end-rgb: 255, 255, 255;
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: white;

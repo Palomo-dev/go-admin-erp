@@ -68,11 +68,18 @@ export const ProfileManager = ({ onUserDataChange, onLoadingChange }: ProfileMan
           // Continuar aunque no tengamos el rol
         }
         
+        // Extraer el nombre del rol - manejar tanto objeto como array
+        const roleName = userRoleData?.roles 
+          ? (Array.isArray(userRoleData.roles) 
+              ? userRoleData.roles[0]?.name 
+              : (userRoleData.roles as any)?.name)
+          : localStorage.getItem('userRole') || 'Usuario';
+        
         // Actualizar el estado del userData usando el formato definido en types.ts
         onUserDataChange({
           name: profileData?.full_name || `${profileData?.first_name || ''} ${profileData?.last_name || ''}`.trim() || 'Usuario',
           email: user.email || '',
-          role: userRoleData?.roles?.name || localStorage.getItem('userRole') || 'Usuario',
+          role: roleName,
           avatar: profileData?.avatar_url || user.user_metadata?.avatar_url
         });
       } catch (error) {

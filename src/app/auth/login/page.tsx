@@ -30,6 +30,7 @@ function LoginContent() {
   const [showGeolocationModal, setShowGeolocationModal] = useState(false);
   const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const searchParams = useSearchParams();
   
  
@@ -213,19 +214,38 @@ function LoginContent() {
   }, []);
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md relative">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-2xl relative border border-gray-100">
         <div className="flex flex-col items-center">
-          <div className="w-20 h-20 rounded-full border-2 border-blue-500 flex items-center justify-center mb-4">
-            <div className="text-blue-500">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-14 h-14">
-                <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
-              </svg>
+          {/* Logo GO Admin con diseño moderno */}
+          <div className="mb-4">
+            <div className="relative">
+              {/* Círculo decorativo con gradiente de fondo */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-xl blur-lg opacity-30 animate-pulse"></div>
+              
+              {/* Contenedor del logo */}
+              <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 shadow-lg">
+                <div className="flex flex-col items-center justify-center space-y-0.5">
+                  {/* Texto GO con estilo bold */}
+                  <div className="text-3xl font-black text-white tracking-tight leading-none">
+                    GO
+                  </div>
+                  {/* Texto Admin con estilo más ligero */}
+                  <div className="text-sm font-medium text-blue-100 tracking-wide uppercase">
+                    Admin
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <h2 className="text-center text-2xl font-bold text-gray-800">
-            Iniciar sesión en GO Admin ERP
+          
+          {/* Título mejorado */}
+          <h2 className="text-center text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
+            Bienvenido de nuevo
           </h2>
+          <p className="text-center text-sm text-gray-500 mb-4">
+            Inicia sesión para acceder a tu cuenta
+          </p>
           
           {/* Organization selector - hidden now, will show popup when needed */}
         </div>
@@ -334,7 +354,7 @@ function LoginContent() {
                       onClick={() => setSuccessMessage(null)}
                       className="inline-flex rounded-md bg-green-50 p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 focus:ring-offset-green-50"
                     >
-                      <span className="sr-only">Dismiss</span>
+                      <span className="sr-only">Cerrar</span>
                       <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                       </svg>
@@ -360,7 +380,7 @@ function LoginContent() {
                   autoComplete="email"
                   required
                   className="w-full px-2 py-3 focus:outline-none"
-                  placeholder="Username"
+                  placeholder="Correo electrónico"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -376,19 +396,32 @@ function LoginContent() {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
                   className="w-full px-2 py-3 focus:outline-none"
-                  placeholder="Password"
+                  placeholder="Contraseña"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-                <button type="button" className="pr-3 text-blue-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="pr-3 text-blue-500 hover:text-blue-700 transition-colors"
+                  title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? (
+                    // Icono de ojo tachado (ocultar)
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    </svg>
+                  ) : (
+                    // Icono de ojo abierto (mostrar)
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
@@ -405,13 +438,13 @@ function LoginContent() {
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                Remember me
+                Recuérdame
               </label>
             </div>
 
             <div className="text-sm">
               <Link href="/auth/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                Forgot password?
+                ¿Olvidaste tu contraseña?
               </Link>
             </div>
           </div>
@@ -422,7 +455,7 @@ function LoginContent() {
               disabled={loading}
               className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              {loading ? 'Loading...' : 'LOGIN'}
+              {loading ? 'Cargando...' : 'INICIAR SESIÓN'}
             </button>
           </div>
           
@@ -448,7 +481,7 @@ function LoginContent() {
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">OR</span>
+              <span className="px-2 bg-white text-gray-500">O</span>
             </div>
           </div>
 
@@ -466,7 +499,7 @@ function LoginContent() {
                 <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z" />
                 <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z" />
               </svg>
-              Log in with Google
+              Iniciar sesión con Google
             </button>
             <button
               type="button"
@@ -481,7 +514,7 @@ function LoginContent() {
                 <path fill="#05a6f0" d="M1 12h10v10H1z" />
                 <path fill="#ffba08" d="M12 12h10v10H12z" />
               </svg>
-              Log in with Microsoft
+              Iniciar sesión con Microsoft
             </button>
           </div>
         </div>

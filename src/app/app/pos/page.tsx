@@ -13,7 +13,7 @@ import { CartTabs } from '@/components/pos/CartTabs';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { POSService } from '@/lib/services/posService';
 import { PrintService } from '@/lib/services/printService';
-import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useOrganization, getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
 import { Product, Customer, Cart, Sale } from '@/components/pos/types';
 import { formatCurrency } from '@/utils/Utils';
 
@@ -59,7 +59,7 @@ export default function POSPage() {
   const createNewCart = async () => {
     try {
       // Usar branch_id actual seleccionado por el usuario
-      const branchId = getCurrentBranchId(); // Obtener branch_id actual del selector
+      const branchId = getCurrentBranchIdWithFallback(); // Obtener branch_id actual con fallback
       const newCart = await POSService.createCart(branchId);
       
       setCarts(prevCarts => [...prevCarts, newCart]);
@@ -221,67 +221,79 @@ export default function POSPage() {
   }
 
   return (
-    <div className="h-screen dark:bg-gray-900 light:bg-gray-50 p-2">
-      <div className="w-full h-full space-y-1">
-        {/* Header */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-full dark:bg-blue-500/20 light:bg-blue-100">
-                  <ShoppingCart className="h-6 w-6 dark:text-blue-400 light:text-blue-600" />
+    <div className="min-h-screen h-screen dark:bg-gray-950 light:bg-gray-50 p-2 sm:p-4">
+      <div className="w-full h-full flex flex-col space-y-2 sm:space-y-3">
+        {/* Header - Responsive */}
+        <Card className="dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200 shadow-sm">
+          <CardHeader className="p-3 sm:p-4 md:pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              {/* Título y Logo */}
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="p-1.5 sm:p-2 rounded-full dark:bg-blue-500/20 light:bg-blue-100 shrink-0">
+                  <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 dark:text-blue-400 light:text-blue-600" />
                 </div>
-                <div>
-                  <CardTitle className="dark:text-white light:text-gray-900">
-                    Sistema POS - {organization?.name || 'Organización'}
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-base sm:text-lg md:text-xl dark:text-white light:text-gray-900 truncate">
+                    Sistema POS
                   </CardTitle>
-                  <p className="text-sm dark:text-gray-400 light:text-gray-600">
-                    Caja rápida / Venta clásica
+                  <p className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600 truncate">
+                    {organization?.name || 'Caja rápida / Venta'}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 dark:text-gray-400 light:text-gray-500" />
-                    <span className="text-sm dark:text-gray-400 light:text-gray-600">
-                      {lastUpdate.toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <Badge variant="outline" className="dark:border-green-500 dark:text-green-400 light:border-green-500 light:text-green-600">
-                      {carts.filter(c => c.status === 'active').length} Activos
-                    </Badge>
-                    <Badge variant="outline" className="dark:border-yellow-500 dark:text-yellow-400 light:border-yellow-500 light:text-yellow-600">
-                      {carts.filter(c => c.status === 'hold').length} En Espera
-                    </Badge>
-                  </div>
+              
+              {/* Info y Badges - Responsive */}
+              <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4">
+                {/* Hora - Oculta en móvil pequeño */}
+                <div className="hidden xs:flex items-center space-x-1.5 sm:space-x-2">
+                  <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 dark:text-gray-400 light:text-gray-500 shrink-0" />
+                  <span className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600 whitespace-nowrap">
+                    {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                
+                {/* Badges - Compactos en móvil */}
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Badge 
+                    variant="outline" 
+                    className="dark:border-green-600 dark:text-green-400 dark:bg-green-500/10 light:border-green-500 light:text-green-700 light:bg-green-50 text-xs px-1.5 sm:px-2 py-0.5"
+                  >
+                    <span className="hidden xs:inline">{carts.filter(c => c.status === 'active').length} Activos</span>
+                    <span className="inline xs:hidden">{carts.filter(c => c.status === 'active').length}A</span>
+                  </Badge>
+                  <Badge 
+                    variant="outline" 
+                    className="dark:border-yellow-600 dark:text-yellow-400 dark:bg-yellow-500/10 light:border-yellow-500 light:text-yellow-700 light:bg-yellow-50 text-xs px-1.5 sm:px-2 py-0.5"
+                  >
+                    <span className="hidden xs:inline">{carts.filter(c => c.status === 'hold').length} En Espera</span>
+                    <span className="inline xs:hidden">{carts.filter(c => c.status === 'hold').length}E</span>
+                  </Badge>
                 </div>
               </div>
             </div>
           </CardHeader>
         </Card>
 
-        {/* Contenido principal - Layout 3:1 columnas FULLSCREEN */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-[calc(100vh-120px)]">
-          {/* Columna izquierda: Catálogo de productos (3/4) */}
-          <div className="lg:col-span-3 h-full">
+        {/* Contenido principal - Layout Responsive */}
+        <div className="flex-1 flex flex-col lg:grid lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 overflow-hidden">
+          {/* Columna izquierda: Catálogo de productos - BALANCE EN MÓVIL */}
+          <div className="lg:col-span-3 h-[45vh] sm:h-[50vh] md:h-[55vh] lg:h-full overflow-hidden">
             <ProductSearch 
               onProductSelect={handleProductSelect}
             />
           </div>
 
-          {/* Columna derecha: Cliente y Carritos (1/4) */}
-          <div className="lg:col-span-1 space-y-2 overflow-y-auto h-full">
+          {/* Columna derecha: Cliente y Carritos - VISIBLE EN MÓVIL */}
+          <div className="lg:col-span-1 flex flex-col space-y-2 overflow-y-auto lg:overflow-hidden flex-1 lg:h-full pb-4 lg:pb-0 min-h-0">
             {/* Selector de cliente - Compacto */}
-            <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center space-x-2 text-sm dark:text-white light:text-gray-900">
-                  <Users className="h-4 w-4" />
+            <Card className="dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200 shadow-sm shrink-0">
+              <CardHeader className="p-2 sm:p-3 pb-1.5 sm:pb-2">
+                <CardTitle className="flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm dark:text-white light:text-gray-900">
+                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   <span>Cliente</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-0 pb-2">
+              <CardContent className="p-2 sm:p-3 pt-0">
                 <CustomerSelector 
                   selectedCustomer={activeCart?.customer}
                   onCustomerSelect={handleCustomerSelect}
@@ -289,19 +301,21 @@ export default function POSPage() {
               </CardContent>
             </Card>
 
-            {/* Pestañas de carritos - Compactas */}
-            <div className="space-y-2 flex-1">
-              <CartTabs
-                carts={carts}
-                activeCartId={activeCartId}
-                onCartSelect={setActiveCartId}
-                onNewCart={createNewCart}
-                onRemoveCart={removeCart}
-              />
+            {/* Pestañas de carritos y vista - VISIBLE COMPLETO EN MÓVIL */}
+            <div className="flex flex-col space-y-2 shrink-0">
+              <div className="shrink-0">
+                <CartTabs
+                  carts={carts}
+                  activeCartId={activeCartId}
+                  onCartSelect={setActiveCartId}
+                  onNewCart={createNewCart}
+                  onRemoveCart={removeCart}
+                />
+              </div>
 
-              {/* Vista del carrito activo - Compacta */}
+              {/* Vista del carrito activo - TODO VISIBLE EN MÓVIL */}
               {activeCart && (
-                <div className="flex-1">
+                <div className="shrink-0">
                   <CartView
                     cart={activeCart}
                     onCartUpdate={handleCartUpdate}

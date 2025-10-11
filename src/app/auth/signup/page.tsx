@@ -324,8 +324,8 @@ function SignupContent() {
   // que se ejecuta cuando el email es confirmado por Supabase.
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
-      <div className="max-w-3xl w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100">
+    <div className="min-h-screen h-screen overflow-y-auto flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
+      <div className="max-w-3xl w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 my-4">
         <div className="flex flex-col items-center">
           {/* Logo GO Admin con diseño moderno */}
           <div className="mb-3 sm:mb-4">

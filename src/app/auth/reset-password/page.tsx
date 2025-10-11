@@ -145,32 +145,32 @@ function ResetPasswordContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100">
         <div>
-          <h2 className="mt-6 text-center text-2xl font-bold text-gray-800">
+          <h2 className="mt-2 sm:mt-4 md:mt-6 text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
             Restablecer contraseña
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-1 sm:mt-2 text-center text-xs sm:text-sm text-gray-600">
             Ingresa tu nueva contraseña
           </p>
         </div>
         
         {message && (
-          <div className={`${message.type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'} px-4 py-3 rounded relative border`} role="alert">
+          <div className={`${message.type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'} px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative border`} role="alert">
             <span className="block sm:inline">{message.text}</span>
           </div>
         )}
         
         {hasSession ? (
-          <form className="mt-8 space-y-6" onSubmit={handleResetPassword}>
-            <div className="space-y-4">
+          <form className="mt-4 sm:mt-6 md:mt-8 space-y-4 sm:space-y-6" onSubmit={handleResetPassword}>
+            <div className="space-y-3 sm:space-y-4">
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Nueva contraseña</label>
+                <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Nueva contraseña</label>
                 <div className="relative">
                   <div className="flex items-center border border-blue-300 rounded-md">
-                    <span className="pl-3 pr-2 text-blue-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                         <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
                       </svg>
                     </span>
@@ -179,18 +179,18 @@ function ResetPasswordContent() {
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       required
-                      className="w-full px-2 py-3 pr-10 focus:outline-none"
+                      className="w-full px-2 py-2 sm:py-3 pr-8 sm:pr-10 text-sm sm:text-base focus:outline-none"
                       placeholder="Nueva contraseña"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
                     <button
                       type="button"
-                      className="absolute right-3 text-gray-400 hover:text-gray-600"
+                      className="absolute right-2 sm:right-3 text-gray-400 hover:text-gray-600"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                           <path d="M3.53 2.47a.75.75 0 00-1.06 1.06l18 18a.75.75 0 101.06-1.06l-18-18zM22.676 12.553a11.249 11.249 0 01-2.631 4.31l-3.099-3.099a5.25 5.25 0 00-6.71-6.71L7.759 4.577a11.217 11.217 0 014.242-.827c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113z" />
                           <path d="M15.75 12c0 .18-.013.357-.037.53l-4.244-4.243A3.75 3.75 0 0115.75 12zM12.53 15.713l-4.243-4.244a3.75 3.75 0 004.243 4.243z" />
                           <path d="M6.75 12c0-.619.107-1.213.304-1.764l-3.1-3.1a11.25 11.25 0 00-2.63 4.31c-.12.362-.12.752 0 1.114 1.489 4.467 5.704 7.69 10.675 7.69 1.5 0 2.933-.294 4.242-.827l-2.477-2.477A5.25 5.25 0 016.75 12z" />
@@ -209,7 +209,7 @@ function ResetPasswordContent() {
                 {password && (
                   <div className="mt-2">
                     <div className="text-xs text-gray-600 mb-1">Fortaleza de la contraseña:</div>
-                    <div className="flex space-x-1">
+                    <div className="flex flex-wrap gap-1">
                       {[
                         { test: password.length >= 8, label: '8+ caracteres' },
                         { test: /[A-Z]/.test(password), label: 'Mayúscula' },
@@ -233,11 +233,11 @@ function ResetPasswordContent() {
                 )}
               </div>
               <div>
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
+                <label htmlFor="confirm-password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
                 <div className="relative">
                   <div className="flex items-center border border-blue-300 rounded-md">
-                    <span className="pl-3 pr-2 text-blue-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                         <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
                       </svg>
                     </span>
@@ -246,18 +246,18 @@ function ResetPasswordContent() {
                       name="confirm-password"
                       type={showConfirmPassword ? 'text' : 'password'}
                       required
-                      className="w-full px-2 py-3 pr-10 focus:outline-none"
+                      className="w-full px-2 py-2 sm:py-3 pr-8 sm:pr-10 text-sm sm:text-base focus:outline-none"
                       placeholder="Confirmar contraseña"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                     <button
                       type="button"
-                      className="absolute right-3 text-gray-400 hover:text-gray-600"
+                      className="absolute right-2 sm:right-3 text-gray-400 hover:text-gray-600"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
                       {showConfirmPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                           <path d="M3.53 2.47a.75.75 0 00-1.06 1.06l18 18a.75.75 0 101.06-1.06l-18-18zM22.676 12.553a11.249 11.249 0 01-2.631 4.31l-3.099-3.099a5.25 5.25 0 00-6.71-6.71L7.759 4.577a11.217 11.217 0 014.242-.827c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113z" />
                           <path d="M15.75 12c0 .18-.013.357-.037.53l-4.244-4.243A3.75 3.75 0 0115.75 12zM12.53 15.713l-4.243-4.244a3.75 3.75 0 004.243 4.243z" />
                           <path d="M6.75 12c0-.619.107-1.213.304-1.764l-3.1-3.1a11.25 11.25 0 00-2.63 4.31c-.12.362-.12.752 0 1.114 1.489 4.467 5.704 7.69 10.675 7.69 1.5 0 2.933-.294 4.242-.827l-2.477-2.477A5.25 5.25 0 016.75 12z" />
@@ -305,22 +305,22 @@ function ResetPasswordContent() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
                 {loading ? 'Actualizando...' : 'Actualizar contraseña'}
               </button>
             </div>
           </form>
         ) : (
-          <div className="mt-6 text-center">
-            <Link href="/auth/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
+          <div className="mt-4 sm:mt-6 text-center">
+            <Link href="/auth/forgot-password" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
               Solicitar un nuevo enlace de restablecimiento
             </Link>
           </div>
         )}
         
-        <div className="text-center mt-4">
-          <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
+        <div className="text-center mt-3 sm:mt-4">
+          <Link href="/auth/login" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
             Volver al inicio de sesión
           </Link>
         </div>

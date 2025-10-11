@@ -247,6 +247,7 @@ const Notas = forwardRef<NotasRef, NotasProps>(({ productoId }, ref) => {
                   </div>
                 </div>
                 <Button 
+                  type="button"
                   variant="ghost" 
                   size="sm" 
                   className="text-red-500 hover:text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20"
@@ -283,6 +284,7 @@ const Notas = forwardRef<NotasRef, NotasProps>(({ productoId }, ref) => {
         />
         <div className="flex justify-end">
           <Button
+            type="button"
             onClick={agregarNota}
             disabled={isLoading || !nuevaNota.trim()}
             className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"

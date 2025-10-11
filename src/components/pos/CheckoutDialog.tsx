@@ -294,36 +294,36 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200 p-4 sm:p-6">
         {showReceipt && completedSale ? (
-          /* Vista de recibo */
-          <div className="space-y-4 text-center">
-            <div className="p-6">
-              <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-600 dark:text-green-400" />
-              <h2 className="text-2xl font-bold mb-2 dark:text-white light:text-gray-900">
+          /* Vista de recibo - RESPONSIVE */
+          <div className="space-y-3 sm:space-y-4 text-center">
+            <div className="p-4 sm:p-6">
+              <CheckCircle className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4 text-green-600 dark:text-green-400" />
+              <h2 className="text-xl sm:text-2xl font-bold mb-2 dark:text-white light:text-gray-900">
                 ¡Venta Completada!
               </h2>
-              <p className="dark:text-gray-400 light:text-gray-600">
+              <p className="text-sm sm:text-base dark:text-gray-400 light:text-gray-600">
                 Venta #{completedSale.id.slice(-8)} procesada exitosamente
               </p>
               
-              <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mt-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="dark:text-gray-400 light:text-gray-600">Total:</span>
-                  <span className="font-bold text-lg dark:text-white light:text-gray-900">
+              <div className="bg-gray-100 dark:bg-gray-800 p-3 sm:p-4 rounded-lg mt-3 sm:mt-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm sm:text-base dark:text-gray-400 light:text-gray-600">Total:</span>
+                  <span className="font-bold text-base sm:text-lg dark:text-white light:text-gray-900">
                     {formatCurrency(completedSale.total)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="dark:text-gray-400 light:text-gray-600">Pagado:</span>
-                  <span className="dark:text-green-400 light:text-green-600">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm sm:text-base dark:text-gray-400 light:text-gray-600">Pagado:</span>
+                  <span className="text-sm sm:text-base dark:text-green-400 light:text-green-600 font-semibold">
                     {formatCurrency(totalPaid)}
                   </span>
                 </div>
                 {change > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className="dark:text-gray-400 light:text-gray-600">Cambio:</span>
-                    <span className="dark:text-blue-400 light:text-blue-600">
+                    <span className="text-sm sm:text-base dark:text-gray-400 light:text-gray-600">Cambio:</span>
+                    <span className="text-sm sm:text-base dark:text-blue-400 light:text-blue-600 font-semibold">
                       {formatCurrency(change)}
                     </span>
                   </div>
@@ -332,7 +332,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
 
               <Button
                 onClick={handlePrint}
-                className="mt-4 dark:bg-blue-600 dark:hover:bg-blue-700 light:bg-blue-600 light:hover:bg-blue-700"
+                className="mt-3 sm:mt-4 h-10 sm:h-11 dark:bg-blue-600 dark:hover:bg-blue-700 light:bg-blue-600 light:hover:bg-blue-700 text-sm sm:text-base"
               >
                 <Printer className="h-4 w-4 mr-2" />
                 Imprimir Recibo
@@ -340,33 +340,33 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
             </div>
           </div>
         ) : (
-          /* Vista de checkout */
+          /* Vista de checkout - RESPONSIVE */
           <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center space-x-2 dark:text-white light:text-gray-900">
-                <CreditCard className="h-5 w-5" />
+            <DialogHeader className="pb-3 sm:pb-4">
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg dark:text-white light:text-gray-900">
+                <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span>Procesar Pago</span>
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-6">
-              {/* Resumen del carrito */}
+            <div className="space-y-3 sm:space-y-4 md:space-y-6">
+              {/* Resumen del carrito - RESPONSIVE */}
               <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-gray-50 light:border-gray-200">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm dark:text-white light:text-gray-900">
+                <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+                  <CardTitle className="text-xs sm:text-sm dark:text-white light:text-gray-900">
                     Resumen de Venta
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="p-3 sm:p-4 space-y-1.5 sm:space-y-2 max-h-[30vh] overflow-y-auto">
                   {cart.items.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <div className="flex-1">
-                        <span className="dark:text-white light:text-gray-900">{item.product.name}</span>
-                        <span className="dark:text-gray-400 light:text-gray-600 ml-2">
+                    <div key={item.id} className="flex justify-between items-start gap-2 text-xs sm:text-sm">
+                      <div className="flex-1 min-w-0">
+                        <span className="dark:text-gray-100 light:text-gray-900 line-clamp-1">{item.product.name}</span>
+                        <span className="dark:text-gray-400 light:text-gray-600 ml-1">
                           x{item.quantity}
                         </span>
                       </div>
-                      <span className="dark:text-white light:text-gray-900">
+                      <span className="dark:text-gray-100 light:text-gray-900 font-medium shrink-0">
                         {formatCurrency(item.total)}
                       </span>
                     </div>
@@ -410,28 +410,29 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
                 </CardContent>
               </Card>
 
-              {/* Métodos de pago */}
+              {/* Métodos de pago - RESPONSIVE */}
               <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm dark:text-white light:text-gray-900">
+                <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-xs sm:text-sm dark:text-white light:text-gray-900">
                       Métodos de Pago
                     </CardTitle>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={addPayment}
-                      className="dark:border-gray-700 dark:hover:bg-gray-800 light:border-gray-300 light:hover:bg-gray-50"
+                      className="h-7 sm:h-8 px-2 sm:px-3 text-xs dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-50 light:text-gray-700"
                     >
-                      Agregar Pago
+                      <span className="hidden xs:inline">Agregar</span>
+                      <span className="inline xs:hidden">+</span>
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                   {payments.map((payment, index) => (
-                    <div key={payment.id} className="space-y-3 p-3 border rounded-lg dark:border-gray-700 light:border-gray-200">
+                    <div key={payment.id} className="space-y-2 sm:space-y-3 p-2 sm:p-3 border rounded-lg dark:border-gray-700 dark:bg-gray-900/30 light:border-gray-200 light:bg-gray-50/50">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm dark:text-white light:text-gray-900">
+                        <Label className="text-xs sm:text-sm dark:text-gray-200 light:text-gray-900 font-medium">
                           Pago {index + 1}
                         </Label>
                         {payments.length > 1 && (
@@ -439,14 +440,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
                             size="sm"
                             variant="ghost"
                             onClick={() => removePayment(payment.id)}
-                            className="dark:text-red-400 dark:hover:bg-red-500/10 light:text-red-600 light:hover:bg-red-50"
+                            className="h-7 px-2 text-xs dark:text-red-400 dark:hover:bg-red-500/20 light:text-red-600 light:hover:bg-red-50"
                           >
                             Eliminar
                           </Button>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                         <div className="space-y-2">
                           <Label htmlFor={`method-${payment.id}`} className="text-xs dark:text-gray-400 light:text-gray-600">
                             Método
@@ -488,16 +489,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
                         </div>
                       </div>
 
-                      {/* Botones de montos rápidos solo para efectivo */}
+                      {/* Botones de montos rápidos solo para efectivo - RESPONSIVE */}
                       {payment.method === 'cash' && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-1 sm:gap-2">
                           {quickAmountButtons.map((button) => (
                             <Button
                               key={button.label}
                               size="sm"
                               variant="outline"
                               onClick={() => updatePayment(payment.id, 'amount', button.value)}
-                              className="text-xs dark:border-gray-700 dark:hover:bg-gray-800 light:border-gray-300 light:hover:bg-gray-50"
+                              className="h-8 sm:h-9 text-[0.7rem] sm:text-xs px-2 sm:px-3 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-100 light:text-gray-700"
                             >
                               {button.label}
                             </Button>
@@ -587,12 +588,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
               </Card>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-3 pt-4">
               <Button
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isProcessing}
-                className="dark:border-gray-700 dark:hover:bg-gray-800 light:border-gray-300 light:hover:bg-gray-50"
+                className="w-full sm:w-auto h-10 sm:h-11 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-50 light:text-gray-700 text-sm sm:text-base"
               >
                 Cancelar
               </Button>
@@ -600,14 +601,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
                 onClick={handleCheckout}
                 disabled={!canComplete || isProcessing}
                 className={`
+                  w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base font-semibold shadow-lg
                   ${canComplete
                     ? 'dark:bg-green-600 dark:hover:bg-green-700 light:bg-green-600 light:hover:bg-green-700'
-                    : 'dark:bg-gray-600 light:bg-gray-400'
+                    : 'dark:bg-gray-700 dark:text-gray-400 light:bg-gray-400 light:text-gray-200'
                   }
                 `}
               >
                 <Calculator className="h-4 w-4 mr-2" />
-                {isProcessing ? 'Procesando...' : canComplete ? 'Completar Venta' : 'Falta dinero'}
+                <span className="hidden xs:inline">{isProcessing ? 'Procesando...' : canComplete ? 'Completar Venta' : 'Falta dinero'}</span>
+                <span className="inline xs:hidden">{isProcessing ? 'Procesando...' : canComplete ? 'Completar' : 'Falta $'}</span>
               </Button>
             </DialogFooter>
           </>

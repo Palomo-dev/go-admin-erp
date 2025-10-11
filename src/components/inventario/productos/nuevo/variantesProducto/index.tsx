@@ -753,6 +753,7 @@ const actualizarCampoVariante = (index: number, campo: keyof VariantCombination,
               </div>
             )}
             <Button 
+              type="button"
               onClick={() => setShowNewTypeModal(true)}
               variant="outline"
               size="sm"

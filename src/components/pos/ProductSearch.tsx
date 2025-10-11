@@ -167,30 +167,30 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const hasFilters = searchTerm || selectedCategory;
 
   return (
-    <div className="space-y-6">
-      {/* Header con filtros mejorado */}
-      <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Package className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+    <div className="h-full flex flex-col space-y-2 sm:space-y-3">
+      {/* Header con filtros mejorado - RESPONSIVE */}
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-950 dark:to-gray-900 shrink-0">
+        <CardHeader className="p-3 sm:p-4 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg shrink-0">
+                <Package className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  Catálogo de Productos
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-base sm:text-lg md:text-xl font-bold text-blue-600 dark:text-blue-400 truncate">
+                  Catálogo
                 </CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {productsData.total} productos disponibles
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                  {productsData.total} productos
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Control de límites para grid actual - Mejorado */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Control de límites - Oculto en móvil pequeño */}
+              <div className="hidden sm:flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
                 <div className="flex items-center gap-1">
-                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Mostrar:</span>
-                  <span className="px-2 py-1 bg-white dark:bg-gray-800 text-sm font-bold text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-600 min-w-[32px] text-center">
+                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400 hidden md:inline">Mostrar:</span>
+                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white dark:bg-gray-800 text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-600 min-w-[28px] sm:min-w-[32px] text-center">
                     {getCurrentLimit()}
                   </span>
                 </div>
@@ -198,7 +198,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                    className="h-3.5 sm:h-4 w-4 sm:w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
                     title="Aumentar productos por página"
                     onClick={() => {
                       if (gridSize === 'small') {
@@ -212,12 +212,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       }
                     }}
                   >
-                    <ChevronUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    <ChevronUp className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-blue-600 dark:text-blue-400" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                    className="h-3.5 sm:h-4 w-4 sm:w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
                     title="Disminuir productos por página"
                     onClick={() => {
                       if (gridSize === 'small') {
@@ -231,75 +231,80 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       }
                     }}
                   >
-                    <ChevronDown className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    <ChevronDown className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-blue-600 dark:text-blue-400" />
                   </Button>
                 </div>
               </div>
               
+              {/* Botones de vista - Responsive */}
               <Button
                 variant={gridSize === 'small' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setGridSize('small')}
+                className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white light:border-gray-300 light:text-gray-600 light:hover:text-gray-900"
+                title="Vista compacta"
               >
-                <Grid3X3 className="h-4 w-4" />
+                <Grid3X3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
               <Button
                 variant={gridSize === 'large' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setGridSize('large')}
+                className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white light:border-gray-300 light:text-gray-600 light:hover:text-gray-900"
+                title="Vista amplia"
               >
-                <Package className="h-4 w-4" />
+                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </div>
           </div>
           
-          {/* Filtros */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-4">
+          {/* Filtros - Responsive */}
+          <div className="flex flex-col gap-2 sm:gap-3 mt-3 sm:mt-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Search className="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <Input
                 type="text"
-                placeholder="Buscar productos por nombre, SKU, descripción..."
+                placeholder="Buscar productos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-20 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                className="pl-9 sm:pl-10 pr-16 sm:pr-20 h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-500 text-sm"
               />
-              <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-1">
+              <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-0.5 sm:gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowScanner(true)}
-                  className="h-8 w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900"
+                  className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50"
                   title="Escanear código de barras"
                 >
-                  <Scan className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Scan className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
                 </Button>
                 {searchTerm && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setSearchTerm('')}
-                    className="h-8 w-8 p-0"
+                    className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900/50"
                     title="Limpiar búsqueda"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-600 dark:text-red-400" />
                   </Button>
                 )}
               </div>
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <Select 
                 value={selectedCategory?.toString() || 'all'} 
                 onValueChange={(value) => setSelectedCategory(value === 'all' ? null : parseInt(value))}
               >
-                <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800">
-                  <SelectValue placeholder="Todas las categorías" />
+                <SelectTrigger className="flex-1 sm:flex-none sm:w-[180px] h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 text-sm">
+                  <SelectValue placeholder="Categorías" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200">
                   <SelectItem value="all">Todas las categorías</SelectItem>
                   {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id.toString()}>
+                    <SelectItem key={category.id} value={category.id.toString()} className="dark:text-gray-200 light:text-gray-800">
                       {category.name}
                     </SelectItem>
                   ))}
@@ -307,9 +312,14 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
               </Select>
               
               {hasFilters && (
-                <Button variant="outline" onClick={clearFilters} size="sm">
-                  <X className="h-4 w-4 mr-1" />
-                  Limpiar
+                <Button 
+                  variant="outline" 
+                  onClick={clearFilters} 
+                  size="sm" 
+                  className="shrink-0 h-9 sm:h-10 px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
+                >
+                  <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Limpiar</span>
                 </Button>
               )}
             </div>
@@ -317,9 +327,9 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         </CardHeader>
       </Card>
 
-      {/* Grid de productos mejorado */}
-      <Card className="shadow-lg">
-        <CardContent className="p-6">
+      {/* Grid de productos mejorado - RESPONSIVE */}
+      <Card className="flex-1 shadow-lg dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200 overflow-hidden flex flex-col">
+        <CardContent className="p-2 sm:p-3 md:p-4 flex-1 overflow-auto">
           {loading ? (
             <div className={cn(
               "grid gap-4",
@@ -379,13 +389,13 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
           ) : (
             <>
               <div className={cn(
-                "grid gap-4 mb-6",
-                gridSize === 'large' ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+                "grid gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6",
+                gridSize === 'large' ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
               )}>
                 {productsData.data.map((product) => (
                   <Card 
                     key={product.id}
-                    className="group overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700"
+                    className="group overflow-hidden hover:shadow-xl transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 light:bg-white hover:scale-[1.02] active:scale-[0.98]"
                     onClick={() => onProductSelect(product)}
                   >
                     {/* Imagen del producto */}
@@ -426,39 +436,39 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       )}
                     </div>
                     
-                    {/* Información del producto */}
-                    <div className="p-3 space-y-2">
+                    {/* Información del producto - RESPONSIVE */}
+                    <div className="p-2 sm:p-2.5 md:p-3 space-y-1.5 sm:space-y-2">
                       <h3 className={cn(
-                        "font-semibold text-gray-900 dark:text-gray-100 line-clamp-2",
-                        gridSize === 'large' ? "text-sm" : "text-xs"
+                        "font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight",
+                        gridSize === 'large' ? "text-xs sm:text-sm" : "text-[0.7rem] sm:text-xs"
                       )}>
                         {product.name}
                       </h3>
                       
                       {gridSize === 'large' && product.description && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                        <p className="text-[0.65rem] sm:text-xs text-gray-600 dark:text-gray-400 line-clamp-2 leading-tight hidden sm:block">
                           {product.description}
                         </p>
                       )}
                       
-                      {/* Precio de venta */}
+                      {/* Precio de venta - RESPONSIVE */}
                       {product.price && (
-                        <div className="flex items-center justify-center my-2">
+                        <div className="flex items-center justify-center my-1 sm:my-1.5">
                           <span className={cn(
-                            "font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-md",
-                            gridSize === 'large' ? "text-sm" : "text-xs"
+                            "font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded",
+                            gridSize === 'large' ? "text-xs sm:text-sm" : "text-[0.7rem] sm:text-xs"
                           )}>
                             {formatCurrency(Number(product.price))}
                           </span>
                         </div>
                       )}
                       
-                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                      <div className="flex items-center justify-between text-[0.65rem] sm:text-xs text-gray-500 dark:text-gray-400 gap-1">
+                        <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 sm:px-1.5 py-0.5 rounded truncate">
                           {product.sku}
                         </span>
                         {product.barcode && gridSize === 'large' && (
-                          <span className="truncate ml-2">
+                          <span className="truncate ml-1 hidden md:inline">
                             {product.barcode}
                           </span>
                         )}
@@ -466,45 +476,53 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       
                       <Button 
                         size="sm" 
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white h-7 sm:h-8 text-xs sm:text-sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           onProductSelect(product);
                         }}
                       >
                         <ShoppingCart className={cn(
-                          "mr-1",
-                          gridSize === 'large' ? "h-4 w-4" : "h-3 w-3"
+                          "sm:mr-1",
+                          gridSize === 'large' ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3 w-3"
                         )} />
-                        Agregar
+                        <span className="hidden xs:inline">Agregar</span>
+                        <span className="inline xs:hidden">+</span>
                       </Button>
                     </div>
                   </Card>
                 ))}
               </div>
 
-              {/* Paginación */}
+              {/* Paginación - RESPONSIVE */}
               {productsData.totalPages > 1 && (
-                <div className="flex items-center justify-between border-t pt-4">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Mostrando {((productsData.page - 1) * getCurrentLimit()) + 1} a{' '}
-                    {Math.min(productsData.page * getCurrentLimit(), productsData.total)} de{' '}
-                    {productsData.total} productos
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-t dark:border-gray-800 light:border-gray-200 pt-3 sm:pt-4 mt-4">
+                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
+                    <span className="hidden sm:inline">
+                      Mostrando {((productsData.page - 1) * getCurrentLimit()) + 1} a{' '}
+                      {Math.min(productsData.page * getCurrentLimit(), productsData.total)} de{' '}
+                      {productsData.total} productos
+                    </span>
+                    <span className="inline sm:hidden">
+                      {((productsData.page - 1) * getCurrentLimit()) + 1}-
+                      {Math.min(productsData.page * getCurrentLimit(), productsData.total)} de {productsData.total}
+                    </span>
                   </div>
                   
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-1 sm:gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handlePageChange(productsData.page - 1)}
                       disabled={productsData.page === 1}
+                      className="h-8 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
                     >
-                      <ChevronLeft className="h-4 w-4" />
-                      Anterior
+                      <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline ml-1">Anterior</span>
                     </Button>
                     
-                    {/* Páginas numeradas */}
-                    <div className="flex space-x-1">
+                    {/* Páginas numeradas - Responsivo */}
+                    <div className="flex gap-0.5 sm:gap-1">
                       {Array.from({ length: Math.min(5, productsData.totalPages) }, (_, i) => {
                         const page = i + 1;
                         return (
@@ -512,7 +530,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                             key={page}
                             variant={page === productsData.page ? 'default' : 'outline'}
                             size="sm"
-                            className="w-8 h-8 p-0"
+                            className={cn(
+                              "w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm",
+                              page === productsData.page 
+                                ? "dark:bg-blue-600 dark:text-white light:bg-blue-600 light:text-white" 
+                                : "dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
+                            )}
                             onClick={() => handlePageChange(page)}
                           >
                             {page}
@@ -522,11 +545,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       
                       {productsData.totalPages > 5 && (
                         <>
-                          <span className="px-2 text-gray-500">...</span>
+                          <span className="px-1 sm:px-2 text-xs sm:text-sm text-gray-500 dark:text-gray-500 flex items-center">...</span>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-8 h-8 p-0"
+                            className="w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
                             onClick={() => handlePageChange(productsData.totalPages)}
                           >
                             {productsData.totalPages}
@@ -540,9 +563,10 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       size="sm"
                       onClick={() => handlePageChange(productsData.page + 1)}
                       disabled={productsData.page === productsData.totalPages}
+                      className="h-8 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
                     >
-                      Siguiente
-                      <ChevronRight className="h-4 w-4" />
+                      <span className="hidden sm:inline mr-1">Siguiente</span>
+                      <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                 </div>

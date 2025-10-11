@@ -631,6 +631,23 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
 
   return (
     <div className="space-y-4">
+      {/* Input file oculto */}
+      <input
+        id="dropzone-area"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length > 0) {
+            onDrop(files);
+          }
+          // Limpiar el input para permitir seleccionar el mismo archivo de nuevo
+          e.target.value = '';
+        }}
+      />
+      
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Imágenes del Producto</h3>
         {isLoadingImages && (
@@ -640,6 +657,7 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
           </div>
         )}
         <Button 
+          type="button"
           variant="outline" 
           size="sm"
           disabled={isUploading || !organization_id}
@@ -687,6 +705,7 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
                   <div className="flex items-center justify-between mt-2 gap-1">
                     {!image.isPrimary && (
                       <Button 
+                        type="button"
                         variant="outline" 
                         size="sm"
                         className="flex-1 text-xs"
@@ -697,6 +716,7 @@ const Imagenes = forwardRef<ImagenesRef, ImagenesProps>(({ productoId }, ref) =>
                       </Button>
                     )}
                     <Button
+                      type="button"
                       variant="outline"
                       size="sm"
                       className="text-destructive hover:text-destructive"

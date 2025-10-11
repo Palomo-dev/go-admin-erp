@@ -203,14 +203,14 @@ export function TaxSummary({
   if (loading) {
     return (
       <Card className={`dark:bg-gray-800 light:bg-white dark:border-gray-700 light:border-gray-200 ${className}`}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center space-x-2 text-sm dark:text-white light:text-gray-900">
-            <Calculator className="h-4 w-4" />
-            <span>Resumen de Impuestos</span>
+        <CardHeader className="p-2 sm:p-3 pb-2">
+          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm dark:text-white light:text-gray-900">
+            <Calculator className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span>Resumen</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="text-sm dark:text-gray-400 light:text-gray-600">Cargando...</div>
+        <CardContent className="p-2 sm:p-3">
+          <div className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600">Cargando...</div>
         </CardContent>
       </Card>
     );
@@ -219,14 +219,14 @@ export function TaxSummary({
   if (cart.items.length === 0) {
     return (
       <Card className={`dark:bg-gray-800 light:bg-white dark:border-gray-700 light:border-gray-200 ${className}`}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center space-x-2 text-sm dark:text-white light:text-gray-900">
-            <Calculator className="h-4 w-4" />
-            <span>Resumen de Impuestos</span>
+        <CardHeader className="p-2 sm:p-3 pb-2">
+          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm dark:text-white light:text-gray-900">
+            <Calculator className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span>Resumen</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="text-sm dark:text-gray-400 light:text-gray-600">Agregue productos para ver los impuestos</div>
+        <CardContent className="p-2 sm:p-3">
+          <div className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600">Agregue productos</div>
         </CardContent>
       </Card>
     );
@@ -234,39 +234,39 @@ export function TaxSummary({
 
   return (
     <Card className={`dark:bg-gray-800 light:bg-white dark:border-gray-700 light:border-gray-200 ${className}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center space-x-2 text-sm sm:text-base dark:text-white light:text-gray-900">
-            <Calculator className="h-4 w-4 shrink-0" />
-            <span className="truncate">Resumen de Impuestos</span>
+      <CardHeader className="p-2 sm:p-3 pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-1.5 text-xs sm:text-sm dark:text-white light:text-gray-900">
+            <Calculator className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+            <span className="truncate">Resumen</span>
           </CardTitle>
           <Button
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0 dark:hover:bg-gray-700 light:hover:bg-gray-100 shrink-0"
           >
-            <Settings className="h-3 w-3" />
+            <Settings className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
           </Button>
         </div>
         
-        {/* Toggle para impuestos incluidos */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mt-2">
-          <span className="text-xs dark:text-gray-400 light:text-gray-600 leading-tight">
-            Impuestos incluidos en precios
+        {/* Toggle para impuestos incluidos - RESPONSIVE */}
+        <div className="flex items-center justify-between gap-2 mt-1.5 sm:mt-2">
+          <span className="text-[0.65rem] sm:text-xs dark:text-gray-400 light:text-gray-600 leading-tight">
+            Impuestos incluidos
           </span>
-          <label className="relative inline-flex items-center cursor-pointer self-start sm:self-auto">
+          <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
               checked={taxIncluded}
               onChange={(e) => onTaxIncludedChange(e.target.checked)}
               className="sr-only peer"
             />
-            <div className="w-8 h-4 sm:w-9 sm:h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] sm:after:top-[2px] after:left-[1px] sm:after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 sm:after:h-4 sm:after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            <div className="w-7 h-3.5 sm:w-8 sm:h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-1 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-2.5 after:w-2.5 sm:after:h-3 sm:after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
           </label>
         </div>
       </CardHeader>
       
-      <CardContent className="pt-0">
+      <CardContent className="p-2 sm:p-3 pt-0">
         <div className="space-y-2">
           {/* Subtotal */}
           <div className="flex justify-between items-start gap-3 text-xs sm:text-sm">

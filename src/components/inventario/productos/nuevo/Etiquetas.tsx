@@ -372,6 +372,7 @@ const Etiquetas = forwardRef<EtiquetasRef, EtiquetasProps>(({ productoId }, ref)
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>
             <Button
+              type="button"
               variant="outline"
               className="w-full justify-start dark:border-gray-700 dark:bg-gray-800"
             >
@@ -403,6 +404,7 @@ const Etiquetas = forwardRef<EtiquetasRef, EtiquetasProps>(({ productoId }, ref)
                           disabled={isCreatingTag}
                         />
                         <Button
+                          type="button"
                           size="sm"
                           onClick={createNewTag}
                           disabled={!newTagName.trim() || isCreatingTag}
@@ -452,6 +454,7 @@ const Etiquetas = forwardRef<EtiquetasRef, EtiquetasProps>(({ productoId }, ref)
                   disabled={isCreatingTag}
                 />
                 <Button
+                  type="button"
                   size="sm"
                   onClick={createNewTag}
                   disabled={!newTagName.trim() || isCreatingTag}

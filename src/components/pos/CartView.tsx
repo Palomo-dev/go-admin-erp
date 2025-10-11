@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { POSService } from '@/lib/services/posService';
 import { PrintService } from '@/lib/services/printService';
 import { Cart, CartItem, Sale, SaleItem, Customer } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, cn } from '@/utils/Utils';
 import { TaxSummary } from './TaxSummary';
 import { toast } from 'sonner';
 import DetalleFactura from '@/components/finanzas/facturas-venta/id/DetalleFactura';
@@ -246,121 +246,126 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
   const hasCustomer = !!cart.customer_id;
 
   return (
-    <div className={`space-y-4 ${className}`}>
-      <Card className={`${
+    <div className={`space-y-2 sm:space-y-3 ${className}`}>
+      <Card className={cn(
+        "shadow-lg",
         isOnHoldWithDebt 
-          ? 'dark:border-orange-500/50 light:border-orange-400/50' 
+          ? 'dark:border-orange-500/50 light:border-orange-400/50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-orange-900/10' 
           : isOnHold 
-          ? 'dark:border-yellow-500/50 light:border-yellow-400/50' 
-          : 'dark:border-gray-700 light:border-gray-200'
-      } dark:bg-gray-800 light:bg-white`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center space-x-2 dark:text-white light:text-gray-900">
-              <ShoppingCart className="h-5 w-5" />
-              <span>Carrito</span>
+          ? 'dark:border-yellow-500/50 light:border-yellow-400/50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-yellow-900/10' 
+          : 'dark:border-gray-800 light:border-gray-200 dark:bg-gray-900 light:bg-white'
+      )}>
+        <CardHeader className="p-2 sm:p-3 pb-2 shrink-0">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base dark:text-white light:text-gray-900">
+                <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                <span>Carrito</span>
+                {isOnHold && (
+                  <Badge variant="outline" className="dark:border-yellow-600 dark:text-yellow-400 dark:bg-yellow-500/10 light:border-yellow-500 light:text-yellow-700 light:bg-yellow-50 text-xs px-1.5 py-0">
+                    Espera
+                  </Badge>
+                )}
+                {isOnHoldWithDebt && (
+                  <Badge variant="outline" className="dark:border-orange-600 dark:text-orange-400 dark:bg-orange-500/10 light:border-orange-500 light:text-orange-700 light:bg-orange-50 text-xs px-1.5 py-0 flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    <span className="hidden xs:inline">Deuda</span>
+                  </Badge>
+                )}
+              </CardTitle>
               {isOnHold && (
-                <Badge variant="outline" className="dark:border-yellow-500 dark:text-yellow-400 light:border-yellow-500 light:text-yellow-600">
-                  En Espera
-                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleActivate}
+                  className="h-7 sm:h-8 px-2 sm:px-3 dark:border-green-600 dark:text-green-400 dark:hover:bg-green-500/10 light:border-green-500 light:text-green-700 light:hover:bg-green-50 text-xs"
+                >
+                  <Play className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden xs:inline">Reactivar</span>
+                </Button>
               )}
-              {isOnHoldWithDebt && (
-                <Badge variant="outline" className="dark:border-orange-500 dark:text-orange-400 light:border-orange-500 light:text-orange-600">
-                  <FileText className="h-3 w-3 mr-1" />
-                  Con Deuda
-                </Badge>
-              )}
-            </CardTitle>
-            {isOnHold && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleActivate}
-                className="dark:border-green-500 dark:text-green-400 dark:hover:bg-green-500/10 light:border-green-500 light:text-green-600 light:hover:bg-green-50"
-              >
-                <Play className="h-4 w-4 mr-1" />
-                Reactivar
-              </Button>
-            )}
+            </div>
             {isOnHoldWithDebt && (
-              <div className="text-xs dark:text-orange-400 light:text-orange-600 mt-1">
-                💳 Deuda registrada - Ver en Cuentas por Cobrar
+              <div className="text-[0.7rem] sm:text-xs dark:text-orange-400 light:text-orange-600 flex items-center gap-1">
+                <span>💳</span>
+                <span className="hidden xs:inline">Deuda registrada - Ver en Cuentas por Cobrar</span>
+                <span className="inline xs:hidden">Deuda registrada</span>
+              </div>
+            )}
+            {cart.customer && (
+              <div className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600 truncate">
+                Cliente: <span className="font-medium dark:text-gray-200 light:text-gray-900">{cart.customer.full_name}</span>
               </div>
             )}
           </div>
-          {cart.customer && (
-            <div className="text-sm dark:text-gray-400 light:text-gray-600">
-              Cliente: <span className="font-medium dark:text-white light:text-gray-900">{cart.customer.full_name}</span>
-            </div>
-          )}
         </CardHeader>
         
-        <CardContent className="space-y-3">
-          {/* Items del carrito */}
-          <div className="space-y-2 max-h-56 overflow-y-auto">
+        <CardContent className="p-2 sm:p-3 space-y-2 sm:space-y-3">
+          {/* Items del carrito - COMPACTO CON MAX HEIGHT EN MÓVIL */}
+          <div className="space-y-1.5 sm:space-y-2 max-h-[20vh] sm:max-h-[25vh] md:max-h-[30vh] lg:max-h-[40vh] overflow-y-auto">
             {isEmpty ? (
-              <div className="text-center py-8 dark:text-gray-400 light:text-gray-600">
-                <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>El carrito está vacío</p>
-                <p className="text-sm">Busca productos para agregar</p>
+              <div className="flex flex-col items-center justify-center text-center py-4 sm:py-6 dark:text-gray-500 light:text-gray-500">
+                <Package className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-2 opacity-50" />
+                <p className="text-xs sm:text-sm font-medium">El carrito está vacío</p>
+                <p className="text-[0.65rem] sm:text-xs mt-1">Busca productos para agregar</p>
               </div>
             ) : (
               cart.items.map((item) => (
-                <Card key={item.id} className="dark:bg-gray-700/50 light:bg-gray-50">
-                  <CardContent className="p-3">
+                <Card key={item.id} className="dark:bg-gray-800/50 dark:border-gray-700/50 light:bg-gray-50/50 light:border-gray-200 shadow-sm">
+                  <CardContent className="p-2 sm:p-2.5">
                     {/* Layout responsive: móvil vertical, desktop horizontal */}
                     <div className="space-y-3 lg:space-y-0">
-                      {/* Información del producto */}
-                      <div className="flex items-start justify-between lg:items-center">
-                        <div className="flex-1 min-w-0 pr-3">
+                      {/* Información del producto - RESPONSIVE */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0 pr-2">
                           {/* Nombre del producto con ellipsis */}
-                          <h4 className="font-medium text-sm sm:text-base dark:text-white light:text-gray-900 truncate" title={item.product.name}>
+                          <h4 className="font-medium text-xs sm:text-sm dark:text-gray-100 light:text-gray-900 line-clamp-2 leading-tight" title={item.product.name}>
                             {item.product.name}
                           </h4>
                           
                           {/* Info secundaria responsive */}
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs w-fit dark:border-gray-600 light:border-gray-300 shrink-0">
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 mt-1">
+                            <Badge variant="outline" className="text-[0.65rem] sm:text-xs px-1 py-0 dark:border-gray-600 dark:text-gray-400 light:border-gray-400 light:text-gray-600 shrink-0">
                               {item.product.sku}
                             </Badge>
-                            <span className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600 truncate">
+                            <span className="text-[0.65rem] sm:text-xs dark:text-gray-400 light:text-gray-600">
                               {formatCurrency(item.unit_price)} / {item.product.unit_code}
                             </span>
                           </div>
                           
                           {/* Mostrar impuestos si existen */}
                           {item.tax_amount && item.tax_amount > 0 && (
-                            <div className="text-xs dark:text-green-400 light:text-green-600 mt-1">
+                            <div className="text-[0.65rem] sm:text-xs dark:text-green-400 light:text-green-600 mt-0.5 sm:mt-1">
                               +{formatCurrency(item.tax_amount)} impuestos
                             </div>
                           )}
                         </div>
                         
                         {/* Total del item - visible en desktop */}
-                        <div className="hidden lg:block text-right min-w-[80px] ml-2">
-                          <div className="font-semibold text-sm dark:text-white light:text-gray-900">
+                        <div className="hidden md:block text-right min-w-[70px] sm:min-w-[80px]">
+                          <div className="font-semibold text-xs sm:text-sm dark:text-gray-100 light:text-gray-900">
                             {formatCurrency(item.total)}
                           </div>
                           {item.quantity > 1 && (
-                            <div className="text-xs dark:text-gray-400 light:text-gray-600">
+                            <div className="text-[0.65rem] sm:text-xs dark:text-gray-400 light:text-gray-600">
                               {item.quantity} × {formatCurrency(item.unit_price)}
                             </div>
                           )}
                         </div>
                       </div>
 
-                      {/* Controles: cantidad, total (móvil) y eliminar */}
-                      <div className="flex items-center justify-between gap-3">
-                        {/* Control de cantidad */}
-                        <div className="flex items-center">
+                      {/* Controles: cantidad, total (móvil) y eliminar - RESPONSIVE */}
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Control de cantidad - COMPACTO */}
+                        <div className="flex items-center gap-1">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:border-gray-600 dark:hover:bg-gray-600 light:border-gray-300 light:hover:bg-gray-100"
+                            className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-100 light:text-gray-700"
                             onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
                             disabled={isOnHold}
                           >
-                            <Minus className="h-3 w-3" />
+                            <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                           </Button>
                           
                           <Input
@@ -373,28 +378,28 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                                 handleQuantityChange(item.id, newQuantity);
                               }
                             }}
-                            className="w-12 sm:w-16 h-7 sm:h-8 text-center text-sm dark:bg-gray-800 dark:border-gray-600 light:bg-white light:border-gray-300 mx-1"
+                            className="w-10 sm:w-12 h-6 sm:h-7 text-center text-xs sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 light:bg-white light:border-gray-300 light:text-gray-900 px-1"
                             disabled={isOnHold}
                           />
                           
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:border-gray-600 dark:hover:bg-gray-600 light:border-gray-300 light:hover:bg-gray-100"
+                            className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-100 light:text-gray-700"
                             onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
                             disabled={isOnHold}
                           >
-                            <Plus className="h-3 w-3" />
+                            <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                           </Button>
                         </div>
 
                         {/* Total del item - visible en móvil */}
-                        <div className="lg:hidden text-right flex-1 min-w-0">
-                          <div className="font-semibold text-sm dark:text-white light:text-gray-900">
+                        <div className="md:hidden text-right flex-1 min-w-0">
+                          <div className="font-semibold text-xs sm:text-sm dark:text-gray-100 light:text-gray-900">
                             {formatCurrency(item.total)}
                           </div>
                           {item.quantity > 1 && (
-                            <div className="text-xs dark:text-gray-400 light:text-gray-600 truncate">
+                            <div className="text-[0.65rem] sm:text-xs dark:text-gray-400 light:text-gray-600 truncate">
                               {item.quantity} × {formatCurrency(item.unit_price)}
                             </div>
                           )}
@@ -404,11 +409,12 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:text-red-400 dark:hover:bg-red-500/10 light:text-red-600 light:hover:bg-red-50 shrink-0"
+                          className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-red-400 dark:hover:bg-red-500/20 light:text-red-600 light:hover:bg-red-100 shrink-0"
                           onClick={() => handleRemoveItem(item.id)}
                           disabled={isOnHold}
+                          title="Eliminar item"
                         >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -428,69 +434,70 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                 className="-mx-1"
               />
 
-              {/* Botones de acción */}
-              <div className="space-y-2">
+              {/* Botones de acción - RESPONSIVE */}
+              <div className="space-y-1.5 sm:space-y-2 shrink-0">
                 {isOnHoldWithDebt ? (
                   // Botones específicos para carritos con deuda
                   <>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleViewInvoice()}
                         disabled={isLoadingInvoice}
-                        className="dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-500/10 light:border-blue-500 light:text-blue-600 light:hover:bg-blue-50"
+                        className="h-8 sm:h-9 dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-500/20 dark:bg-blue-500/10 light:border-blue-500 light:text-blue-700 light:hover:bg-blue-50 light:bg-blue-50/50 text-xs"
                       >
                         {isLoadingInvoice ? (
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1" />
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current sm:mr-1" />
                         ) : (
-                          <FileText className="h-3 w-3 mr-1" />
+                          <FileText className="h-3 w-3 sm:mr-1" />
                         )}
-                        <span className="text-xs">{isLoadingInvoice ? 'Cargando...' : 'Ver Factura'}</span>
+                        <span className="hidden xs:inline">{isLoadingInvoice ? 'Cargando...' : 'Ver Factura'}</span>
                       </Button>
                       
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handlePrintInvoice()}
-                        className="dark:border-gray-500 dark:text-gray-400 dark:hover:bg-gray-500/10 light:border-gray-500 light:text-gray-600 light:hover:bg-gray-50"
+                        className="h-8 sm:h-9 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 light:border-gray-400 light:text-gray-700 light:hover:bg-gray-100 text-xs"
                       >
-                        <Printer className="h-3 w-3 mr-1" />
-                        <span className="text-xs">Imprimir</span>
+                        <Printer className="h-3 w-3 sm:mr-1" />
+                        <span className="hidden xs:inline">Imprimir</span>
                       </Button>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                       <Button
                         onClick={() => handlePayDebt()}
-                        className="dark:bg-green-600 dark:hover:bg-green-700 light:bg-green-600 light:hover:bg-green-700"
+                        className="h-8 sm:h-9 dark:bg-green-600 dark:hover:bg-green-700 dark:text-white light:bg-green-600 light:hover:bg-green-700 light:text-white text-xs"
                         size="sm"
                       >
-                        <CreditCard className="h-3 w-3 mr-1" />
-                        <span className="text-xs">Cobrar Deuda</span>
+                        <CreditCard className="h-3 w-3 sm:mr-1" />
+                        <span className="hidden xs:inline">Cobrar</span>
+                        <span className="inline xs:hidden">$</span>
                       </Button>
                       
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleCancelDebt()}
-                        className="dark:border-red-500 dark:text-red-400 dark:hover:bg-red-500/10 light:border-red-500 light:text-red-600 light:hover:bg-red-50"
+                        className="h-8 sm:h-9 dark:border-red-600 dark:text-red-400 dark:hover:bg-red-500/20 light:border-red-500 light:text-red-700 light:hover:bg-red-50 text-xs"
                       >
-                        <X className="h-3 w-3 mr-1" />
-                        <span className="text-xs">Anular Deuda</span>
+                        <X className="h-3 w-3 sm:mr-1" />
+                        <span className="hidden xs:inline">Anular</span>
                       </Button>
                     </div>
                   </>
                 ) : (
                   // Botones normales para carritos activos/hold
                   <>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setShowHoldDialog(true)}
                         disabled={isOnHold || isOnHoldWithDebt}
-                        className="dark:border-yellow-500 dark:text-yellow-400 dark:hover:bg-yellow-500/10 light:border-yellow-500 light:text-yellow-600 light:hover:bg-yellow-50"
+                        className="h-8 sm:h-9 dark:border-yellow-600 dark:text-yellow-400 dark:hover:bg-yellow-500/20 dark:bg-yellow-500/10 light:border-yellow-500 light:text-yellow-700 light:hover:bg-yellow-50 light:bg-yellow-50/50 text-xs"
                       >
                         <Pause className="h-3 w-3 mr-1" />
                         <span className="text-xs">Espera</span>
@@ -501,21 +508,22 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                         size="sm"
                         onClick={() => setShowHoldWithDebtDialog(true)}
                         disabled={isOnHold || isOnHoldWithDebt || !hasCustomer}
-                        className="dark:border-orange-500 dark:text-orange-400 dark:hover:bg-orange-500/10 light:border-orange-500 light:text-orange-600 light:hover:bg-orange-50"
+                        className="h-8 sm:h-9 dark:border-orange-600 dark:text-orange-400 dark:hover:bg-orange-500/20 dark:bg-orange-500/10 light:border-orange-500 light:text-orange-700 light:hover:bg-orange-50 light:bg-orange-50/50 text-xs"
                         title={!hasCustomer ? 'Necesita cliente asignado' : 'Poner en espera con deuda registrada'}
                       >
-                        <FileText className="h-3 w-3 mr-1" />
-                        <span className="text-xs">Deuda</span>
+                        <FileText className="h-3 w-3 sm:mr-1" />
+                        <span className="hidden xs:inline">Deuda</span>
                       </Button>
                     </div>
                     
                     <Button
                       onClick={() => onCheckout(cart)}
                       disabled={isOnHold || isOnHoldWithDebt}
-                      className="w-full dark:bg-blue-600 dark:hover:bg-blue-700 light:bg-blue-600 light:hover:bg-blue-700"
+                      className="w-full h-10 sm:h-11 lg:h-10 dark:bg-blue-600 dark:hover:bg-blue-700 light:bg-blue-600 light:hover:bg-blue-700 text-sm sm:text-base font-semibold shadow-lg"
                     >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Cobrar
+                      <CreditCard className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden xs:inline">Cobrar</span>
+                      <span className="inline xs:hidden">$</span>
                     </Button>
                   </>
                 )}
@@ -525,18 +533,18 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
         </CardContent>
       </Card>
 
-      {/* Dialog para poner en espera */}
+      {/* Dialog para poner en espera - RESPONSIVE */}
       <Dialog open={showHoldDialog} onOpenChange={setShowHoldDialog}>
-        <DialogContent className="sm:max-w-md dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200">
+        <DialogContent className="sm:max-w-md max-w-[95vw] dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200">
           <DialogHeader>
-            <DialogTitle className="dark:text-white light:text-gray-900">
+            <DialogTitle className="text-base sm:text-lg dark:text-white light:text-gray-900">
               Poner Carrito en Espera
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="hold_reason" className="dark:text-white light:text-gray-900">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="hold_reason" className="text-sm dark:text-gray-200 light:text-gray-900">
                 Motivo (opcional)
               </Label>
               <Textarea

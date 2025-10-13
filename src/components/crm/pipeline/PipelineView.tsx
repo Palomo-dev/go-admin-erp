@@ -145,39 +145,39 @@ const NewOpportunityForm = ({
   return (
     <form onSubmit={handleSubmit}>
       <DialogHeader>
-        <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
+        <DialogTitle className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
           Nueva Oportunidad
         </DialogTitle>
-        <DialogDescription className="text-gray-600 dark:text-gray-400">
+        <DialogDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Complete la información para crear una nueva oportunidad
         </DialogDescription>
       </DialogHeader>
       
       <div className="grid gap-4 py-4">
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="title" className="text-right">
-            Título
+        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+          <Label htmlFor="title" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
+            Título *
           </Label>
           <Input
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="col-span-3"
+            className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
             required
           />
         </div>
         
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="customer" className="text-right">
-            Cliente
+        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+          <Label htmlFor="customer" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
+            Cliente *
           </Label>
           <Select value={customerId} onValueChange={setCustomerId}>
-            <SelectTrigger className="col-span-3">
+            <SelectTrigger className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="Seleccionar cliente" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               {customers.map((customer) => (
-                <SelectItem key={customer.id} value={customer.id}>
+                <SelectItem key={customer.id} value={customer.id} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                   {customer.full_name}
                 </SelectItem>
               ))}
@@ -185,17 +185,17 @@ const NewOpportunityForm = ({
           </Select>
         </div>
         
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="stage" className="text-right">
-            Etapa
+        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+          <Label htmlFor="stage" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
+            Etapa *
           </Label>
           <Select value={stageId} onValueChange={setStageId}>
-            <SelectTrigger className="col-span-3">
+            <SelectTrigger className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="Seleccionar etapa" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               {stages.map((stage) => (
-                <SelectItem key={stage.id} value={stage.id}>
+                <SelectItem key={stage.id} value={stage.id} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                   {stage.name}
                 </SelectItem>
               ))}
@@ -203,9 +203,9 @@ const NewOpportunityForm = ({
           </Select>
         </div>
         
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="value" className="text-right">
-            Valor
+        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+          <Label htmlFor="value" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
+            Valor *
           </Label>
           <Input
             id="value"
@@ -227,32 +227,32 @@ const NewOpportunityForm = ({
                 }
               }
             }}
-            className="col-span-3"
+            className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
             placeholder="$0"
             required
           />
         </div>
         
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="probability" className="text-right">
+        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+          <Label htmlFor="probability" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
             Probabilidad
           </Label>
           <Select value={probability} onValueChange={setProbability}>
-            <SelectTrigger className="col-span-3">
+            <SelectTrigger className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="Seleccionar probabilidad" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10%</SelectItem>
-              <SelectItem value="25">25%</SelectItem>
-              <SelectItem value="50">50%</SelectItem>
-              <SelectItem value="75">75%</SelectItem>
-              <SelectItem value="90">90%</SelectItem>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectItem value="10" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">10%</SelectItem>
+              <SelectItem value="25" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">25%</SelectItem>
+              <SelectItem value="50" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">50%</SelectItem>
+              <SelectItem value="75" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">75%</SelectItem>
+              <SelectItem value="90" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">90%</SelectItem>
             </SelectContent>
           </Select>
         </div>
         
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="expectedCloseDate" className="text-right">
+        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+          <Label htmlFor="expectedCloseDate" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
             Fecha est. cierre
           </Label>
           <Input
@@ -260,28 +260,28 @@ const NewOpportunityForm = ({
             type="date"
             value={expectedCloseDate}
             onChange={(e) => setExpectedCloseDate(e.target.value)}
-            className="col-span-3"
+            className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
           />
         </div>
       </div>
       
       {error && (
-        <div className="text-red-500 text-sm mb-4">{error}</div>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>
       )}
       
-      <DialogFooter>
+      <DialogFooter className="flex-col sm:flex-row gap-2">
         <Button
           type="button"
           onClick={onClose}
           variant="outline"
-          className="mr-2"
+          className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
           disabled={isSubmitting}
         >
           Cancelar
         </Button>
         <Button 
           type="submit" 
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
           disabled={isSubmitting}
         >
           {isSubmitting ? "Guardando..." : "Guardar"}
@@ -394,9 +394,9 @@ export default function PipelineView() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex flex-col justify-center items-center h-screen bg-gray-50 dark:bg-gray-900 gap-3">
         <LoadingSpinner size="lg" />
-        <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando pipeline...</span>
+        <span className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando pipeline...</span>
       </div>
     );
   }
@@ -409,13 +409,13 @@ export default function PipelineView() {
         onNewOpportunity={openNewOpportunityDialog}
       />
       
-      <Tabs defaultValue="kanban" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="kanban">Kanban</TabsTrigger>
-          <TabsTrigger value="table">Tabla</TabsTrigger>
-          <TabsTrigger value="forecast">Pronóstico</TabsTrigger>
-          <TabsTrigger value="clients">Clientes</TabsTrigger>
-          <TabsTrigger value="automation">Automatización</TabsTrigger>
+      <Tabs defaultValue="kanban" className="w-full px-3 sm:px-4">
+        <TabsList className="mb-4 flex-wrap gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 h-auto p-2">
+          <TabsTrigger value="kanban" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">Kanban</TabsTrigger>
+          <TabsTrigger value="table" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">Tabla</TabsTrigger>
+          <TabsTrigger value="forecast" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">Pronóstico</TabsTrigger>
+          <TabsTrigger value="clients" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">Clientes</TabsTrigger>
+          <TabsTrigger value="automation" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300 hidden sm:inline-flex">Automatización</TabsTrigger>
         </TabsList>
         
         <TabsContent value="kanban" className="mt-0">
@@ -428,7 +428,7 @@ export default function PipelineView() {
           {currentPipelineId ? (
             <TableView pipelineId={currentPipelineId} />
           ) : (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-4 sm:p-6 text-center text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Seleccione un pipeline para ver la tabla
             </div>
           )}
@@ -438,7 +438,7 @@ export default function PipelineView() {
           {currentPipelineId ? (
             <ForecastView pipelineId={currentPipelineId} />
           ) : (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-4 sm:p-6 text-center text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Seleccione un pipeline para ver el pronóstico
             </div>
           )}
@@ -448,7 +448,7 @@ export default function PipelineView() {
           {currentPipelineId ? (
             <ClientsView pipelineId={currentPipelineId} />
           ) : (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-4 sm:p-6 text-center text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Seleccione un pipeline para ver los clientes
             </div>
           )}
@@ -458,7 +458,7 @@ export default function PipelineView() {
           {currentPipelineId ? (
             <AutomationsView pipelineId={currentPipelineId} />
           ) : (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-4 sm:p-6 text-center text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Seleccione un pipeline para configurar automatizaciones
             </div>
           )}
@@ -466,7 +466,7 @@ export default function PipelineView() {
       </Tabs>
       
       <Dialog open={isNewOpportunityDialogOpen} onOpenChange={setIsNewOpportunityDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md mx-4 max-h-[90vh] overflow-y-auto">
           {/* El DialogHeader, DialogTitle y DialogDescription están dentro del componente NewOpportunityForm */}
           {currentPipelineId && organizationId && (
             <NewOpportunityForm 

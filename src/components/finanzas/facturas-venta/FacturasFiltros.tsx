@@ -104,61 +104,85 @@ export function FacturasFiltros({ onFiltrosChange }: FacturasFiltrosProps = {}) 
   };
 
   return (
-    <div className="mb-6 space-y-4 rounded-lg border border-gray-200 dark:border-gray-800 p-4 bg-white dark:bg-gray-900 shadow-sm transition-all">
-      <div className="flex flex-col sm:flex-row gap-3">
+    <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4 bg-white dark:bg-gray-800 shadow-sm transition-all">
+      <div className="flex flex-col gap-2 sm:gap-3">
+        {/* Búsqueda */}
         <div className="relative flex-grow">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
           <Input
             placeholder="Buscar por número, cliente o referencia..."
-            className="pl-9 w-full dark:bg-gray-900/70 dark:border-gray-700 focus-visible:ring-primary/60"
+            className="
+              pl-9 w-full text-sm
+              bg-white dark:bg-gray-900/70 
+              border-gray-300 dark:border-gray-600
+              text-gray-900 dark:text-gray-100
+              placeholder:text-gray-500 dark:placeholder:text-gray-400
+              focus-visible:ring-blue-500/60 dark:focus-visible:ring-blue-400/60
+            "
             value={filtros.busqueda}
             onChange={(e) => actualizarFiltro('busqueda', e.target.value)}
           />
         </div>
         
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant={filtrosAbiertos ? "secondary" : "outline"}
-                onClick={toggleFiltros}
-                className="flex items-center gap-2 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 relative transition-all"
-              >
-                <Filter size={16} />
-                <span className="hidden sm:inline">Filtros</span>
-                {filtrosActivos > 0 && (
-                  <Badge 
-                    variant="default" 
-                    className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs font-bold"
-                  >
-                    {filtrosActivos}
-                  </Badge>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{filtrosActivos > 0 ? `${filtrosActivos} filtros aplicados` : 'Sin filtros aplicados'}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
-        <Select 
-          value={filtros.estado} 
-          onValueChange={(value) => actualizarFiltro('estado', value)}
-        >
-          <SelectTrigger className="max-w-[180px] dark:bg-gray-800 dark:border-gray-700">
-            <SelectValue placeholder="Estado" />
-          </SelectTrigger>
-          <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-            <SelectItem value="todos">Todos los estados</SelectItem>
-            <SelectItem value="draft">Borrador</SelectItem>
-            <SelectItem value="issued">Emitida</SelectItem>
-            <SelectItem value="paid">Pagada</SelectItem>
-            <SelectItem value="partial">Pago parcial</SelectItem>
-            <SelectItem value="void">Anulada</SelectItem>
-            <SelectItem value="overdue">Vencida</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Botones de acción */}
+        <div className="flex flex-row gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant={filtrosAbiertos ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={toggleFiltros}
+                  className="
+                    flex items-center justify-center gap-2 flex-1 sm:flex-initial relative
+                    bg-white dark:bg-gray-800 
+                    border-gray-300 dark:border-gray-600
+                    hover:bg-gray-50 dark:hover:bg-gray-700
+                    text-gray-700 dark:text-gray-200
+                    transition-all
+                  "
+                >
+                  <Filter className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-sm">Filtros</span>
+                  {filtrosActivos > 0 && (
+                    <Badge 
+                      variant="default" 
+                      className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs font-bold bg-blue-600 dark:bg-blue-500"
+                    >
+                      {filtrosActivos}
+                    </Badge>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-gray-900 dark:bg-gray-700 text-white">
+                <p className="text-xs">{filtrosActivos > 0 ? `${filtrosActivos} filtros aplicados` : 'Sin filtros aplicados'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <Select 
+            value={filtros.estado} 
+            onValueChange={(value) => actualizarFiltro('estado', value)}
+          >
+            <SelectTrigger className="
+              flex-1 sm:min-w-[160px] sm:max-w-[200px] text-sm
+              bg-white dark:bg-gray-800 
+              border-gray-300 dark:border-gray-600
+              text-gray-900 dark:text-gray-100
+            ">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectItem value="todos" className="text-gray-900 dark:text-gray-100">Todos los estados</SelectItem>
+              <SelectItem value="draft" className="text-gray-900 dark:text-gray-100">Borrador</SelectItem>
+              <SelectItem value="issued" className="text-gray-900 dark:text-gray-100">Emitida</SelectItem>
+              <SelectItem value="paid" className="text-gray-900 dark:text-gray-100">Pagada</SelectItem>
+              <SelectItem value="partial" className="text-gray-900 dark:text-gray-100">Pago parcial</SelectItem>
+              <SelectItem value="void" className="text-gray-900 dark:text-gray-100">Anulada</SelectItem>
+              <SelectItem value="overdue" className="text-gray-900 dark:text-gray-100">Vencida</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       
       {filtrosAbiertos && (
@@ -166,115 +190,115 @@ export function FacturasFiltros({ onFiltrosChange }: FacturasFiltrosProps = {}) 
           <Separator className="my-4 opacity-50" />
           
           {/* Primera fila de filtros - Estado y Método de pago */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-3 mb-4 sm:mb-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Tag size={14} className="text-primary" />
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado de factura</p>
+                <Tag size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Estado de factura</p>
               </div>
               <Select 
                 value={filtros.estado} 
                 onValueChange={(valor) => actualizarFiltro('estado', valor)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full text-sm bg-white dark:bg-gray-900/70 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
                   <SelectValue placeholder="Todos los estados" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos los estados</SelectItem>
-                  <SelectItem value="draft">Borrador</SelectItem>
-                  <SelectItem value="issued">Emitida</SelectItem>
-                  <SelectItem value="paid">Pagada</SelectItem>
-                  <SelectItem value="partial">Pago parcial</SelectItem>
-                  <SelectItem value="void">Anulada</SelectItem>
-                  <SelectItem value="overdue">Vencida</SelectItem>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="todos" className="text-gray-900 dark:text-gray-100">Todos los estados</SelectItem>
+                  <SelectItem value="draft" className="text-gray-900 dark:text-gray-100">Borrador</SelectItem>
+                  <SelectItem value="issued" className="text-gray-900 dark:text-gray-100">Emitida</SelectItem>
+                  <SelectItem value="paid" className="text-gray-900 dark:text-gray-100">Pagada</SelectItem>
+                  <SelectItem value="partial" className="text-gray-900 dark:text-gray-100">Pago parcial</SelectItem>
+                  <SelectItem value="void" className="text-gray-900 dark:text-gray-100">Anulada</SelectItem>
+                  <SelectItem value="overdue" className="text-gray-900 dark:text-gray-100">Vencida</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <FileText size={14} className="text-primary" />
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Método de pago</p>
+                <CreditCard size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Método de pago</p>
               </div>
               <Select
                 value={filtros.payment_method}
                 onValueChange={(valor) => actualizarFiltro('payment_method', valor)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full text-sm bg-white dark:bg-gray-900/70 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
                   <SelectValue placeholder="Todos los métodos de pago" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos los métodos de pago</SelectItem>
-                  <SelectItem value="cash">Efectivo</SelectItem>
-                  <SelectItem value="transfer">Transferencia bancaria</SelectItem>
-                  <SelectItem value="card">Tarjeta crédito/débito</SelectItem>
-                  <SelectItem value="check">Cheque</SelectItem>
-                  <SelectItem value="credit">Crédito</SelectItem>
-                  <SelectItem value="stripe">Stripe</SelectItem>
-                  <SelectItem value="paypal">PayPal</SelectItem>
-                  <SelectItem value="mp">MercadoPago</SelectItem>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="todos" className="text-gray-900 dark:text-gray-100">Todos los métodos de pago</SelectItem>
+                  <SelectItem value="cash" className="text-gray-900 dark:text-gray-100">Efectivo</SelectItem>
+                  <SelectItem value="transfer" className="text-gray-900 dark:text-gray-100">Transferencia bancaria</SelectItem>
+                  <SelectItem value="card" className="text-gray-900 dark:text-gray-100">Tarjeta crédito/débito</SelectItem>
+                  <SelectItem value="check" className="text-gray-900 dark:text-gray-100">Cheque</SelectItem>
+                  <SelectItem value="credit" className="text-gray-900 dark:text-gray-100">Crédito</SelectItem>
+                  <SelectItem value="stripe" className="text-gray-900 dark:text-gray-100">Stripe</SelectItem>
+                  <SelectItem value="paypal" className="text-gray-900 dark:text-gray-100">PayPal</SelectItem>
+                  <SelectItem value="mp" className="text-gray-900 dark:text-gray-100">MercadoPago</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           
           {/* Segunda fila de filtros - Periodo de emisión y Cliente */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Calendar size={14} className="text-primary" />
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de emisión</p>
+                <Calendar size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de emisión</p>
               </div>
-              <div className="grid grid-cols-1 gap-2 items-start">
+              <div className="grid grid-cols-2 gap-2 items-start">
                 <div>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Desde</p>
-                  <div className="w-[120px]">
-                    <DatePicker
-                      date={fechaInicio}
-                      onSelect={(date) => {
-                        setFechaInicio(date);
-                        // Notificar cambio inmediatamente
-                        if (onFiltrosChange) {
-                          onFiltrosChange({
-                            ...filtros,
-                            fechaInicio: date,
-                            fechaFin
-                          });
-                        }
-                      }}
-                    />
-                  </div>
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1">Desde</p>
+                  <DatePicker
+                    date={fechaInicio}
+                    onSelect={(date) => {
+                      setFechaInicio(date);
+                      if (onFiltrosChange) {
+                        onFiltrosChange({
+                          ...filtros,
+                          fechaInicio: date,
+                          fechaFin
+                        });
+                      }
+                    }}
+                  />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Hasta</p>
-                  <div className="w-[120px]">
-                    <DatePicker
-                      date={fechaFin}
-                      onSelect={(date) => {
-                        setFechaFin(date);
-                        // Notificar cambio inmediatamente
-                        if (onFiltrosChange) {
-                          onFiltrosChange({
-                            ...filtros,
-                            fechaInicio,
-                            fechaFin: date
-                          });
-                        }
-                      }}
-                    />
-                  </div>
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1">Hasta</p>
+                  <DatePicker
+                    date={fechaFin}
+                    onSelect={(date) => {
+                      setFechaFin(date);
+                      if (onFiltrosChange) {
+                        onFiltrosChange({
+                          ...filtros,
+                          fechaInicio,
+                          fechaFin: date
+                        });
+                      }
+                    }}
+                  />
                 </div>
               </div>
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <User size={14} className="text-primary" />
+              <label className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <User size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
                 <span className="text-gray-700 dark:text-gray-300">Cliente</span>
               </label>
               <Input 
                 placeholder="ID o nombre del cliente" 
-                className="dark:bg-gray-900/70 dark:border-gray-700 w-full" 
+                className="
+                  text-sm w-full
+                  bg-white dark:bg-gray-900/70 
+                  border-gray-300 dark:border-gray-600
+                  text-gray-900 dark:text-gray-100
+                  placeholder:text-gray-500 dark:placeholder:text-gray-400
+                " 
                 value={filtros.customer_id}
                 onChange={(e) => actualizarFiltro('customer_id', e.target.value)}
               />
@@ -282,25 +306,37 @@ export function FacturasFiltros({ onFiltrosChange }: FacturasFiltrosProps = {}) 
           </div>
           
           {/* Tercera fila - Rango de monto */}
-          <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <CreditCard size={14} className="text-primary" />
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Rango de monto</p>
+                <FileText size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Rango de monto</p>
               </div>
               <div className="flex flex-row gap-2 items-center">
                 <Input 
                   type="number" 
                   placeholder="Mínimo" 
-                  className="dark:bg-gray-900/70 dark:border-gray-700 w-[150px]"
+                  className="
+                    text-sm flex-1 sm:w-[150px]
+                    bg-white dark:bg-gray-900/70 
+                    border-gray-300 dark:border-gray-600
+                    text-gray-900 dark:text-gray-100
+                    placeholder:text-gray-500 dark:placeholder:text-gray-400
+                  "
                   value={filtros.montoMin || ''}
                   onChange={(e) => actualizarFiltro('montoMin', e.target.value ? Number(e.target.value) : undefined)}
                 />
-                <span className="text-gray-500 dark:text-gray-400 mx-1">-</span>
+                <span className="text-gray-500 dark:text-gray-400 text-sm">-</span>
                 <Input 
                   type="number" 
                   placeholder="Máximo" 
-                  className="dark:bg-gray-900/70 dark:border-gray-700 w-[150px]"
+                  className="
+                    text-sm flex-1 sm:w-[150px]
+                    bg-white dark:bg-gray-900/70 
+                    border-gray-300 dark:border-gray-600
+                    text-gray-900 dark:text-gray-100
+                    placeholder:text-gray-500 dark:placeholder:text-gray-400
+                  "
                   value={filtros.montoMax || ''}
                   onChange={(e) => actualizarFiltro('montoMax', e.target.value ? Number(e.target.value) : undefined)}
                 />
@@ -308,22 +344,32 @@ export function FacturasFiltros({ onFiltrosChange }: FacturasFiltrosProps = {}) 
             </div>
           </div>
           
-          <div className="flex justify-between mt-6">
+          <div className="flex flex-col sm:flex-row justify-between gap-2 mt-4 sm:mt-6">
             <Button 
               variant="outline" 
               size="sm"
               onClick={limpiarFiltros} 
-              className="flex items-center gap-2 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+              className="
+                flex items-center justify-center gap-2 w-full sm:w-auto
+                bg-white dark:bg-gray-800
+                border-gray-300 dark:border-gray-600
+                hover:bg-gray-50 dark:hover:bg-gray-700
+                text-gray-700 dark:text-gray-200
+              "
             >
-              <X size={14} />
-              <span>Limpiar filtros</span>
+              <X className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm">Limpiar filtros</span>
             </Button>
             
             <Button 
               size="sm"
-              className="flex items-center gap-2"
+              className="
+                flex items-center justify-center gap-2 w-full sm:w-auto
+                bg-blue-600 hover:bg-blue-700
+                dark:bg-blue-600 dark:hover:bg-blue-500
+                text-white
+              "
               onClick={() => {
-                // Forzar la aplicación de filtros (útil si no se han notificado todos los cambios)
                 if (onFiltrosChange) {
                   onFiltrosChange({
                     ...filtros,
@@ -333,8 +379,8 @@ export function FacturasFiltros({ onFiltrosChange }: FacturasFiltrosProps = {}) 
                 }
               }}
             >
-              <ArrowDownUp size={14} />
-              <span>Aplicar ordenamiento</span>
+              <ArrowDownUp className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm">Aplicar ordenamiento</span>
             </Button>
           </div>
         </div>

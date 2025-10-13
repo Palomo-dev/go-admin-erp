@@ -15,17 +15,27 @@ export function PageBackHeader() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
         <Button 
           variant="ghost" 
+          size="sm"
           onClick={handleBack}
-          className="p-0 h-auto hover:bg-transparent"
+          className="
+            p-2 h-auto min-w-[36px] sm:min-w-[40px]
+            hover:bg-gray-100 dark:hover:bg-gray-700
+            rounded-lg
+            transition-colors
+          "
         >
-          <ArrowLeft className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
         </Button>
-        <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Nueva Factura de Venta</h1>
+        <div className="flex-shrink-0 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+          <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
+        </div>
+        <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+          Nueva Factura de Venta
+        </h1>
       </div>
     </div>
   );

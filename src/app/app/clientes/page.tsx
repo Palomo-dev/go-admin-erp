@@ -403,27 +403,27 @@ export default function ClientesPage() {
   };
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
       {/* Título principal */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Gestión de Clientes</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Clientes</h1>
       </div>
       
       {/* Estado de carga inicial */}
       {isLoading && !error && !organizationId && (
-        <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center justify-center h-64 space-y-3">
           <LoadingSpinner />
-          <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando datos...</span>
+          <span className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando datos...</span>
         </div>
       )}
 
       {/* Error */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
-          <strong className="font-bold">Error:</strong>
-          <span className="block sm:inline"> {error}</span>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg relative mb-4 sm:mb-6">
+          <strong className="font-bold text-sm sm:text-base">Error:</strong>
+          <span className="block sm:inline text-sm sm:text-base"> {error}</span>
           <button
-            className="bg-red-500 text-white px-4 py-2 rounded mt-2"
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-4 py-2 rounded-md mt-3 text-sm font-medium transition-colors min-h-[40px]"
             onClick={() => {
               // Simplificamos la lógica del botón de reintentar
               setError("");
@@ -450,16 +450,16 @@ export default function ClientesPage() {
       
       {/* Contenido principal - siempre visible si no hay error o carga inicial */}
       {!isLoading || (isLoading && organizationId) ? (
-        <div className="p-4 md:p-6 space-y-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
           {/* Eliminamos el indicador de actualización pequeño, ya lo manejamos en otro lugar */}
           
           {/* Header con título y acciones principales */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Listado de Clientes
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Gestión centralizada de clientes
               </p>
             </div>
@@ -472,8 +472,8 @@ export default function ClientesPage() {
           </div>
 
           {/* Filtros y ordenamiento - siempre visibles */}
-          <div className="p-4 border border-gray-100 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">🔍 Filtros y opciones de visualización</p>
+          <div className="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/30">
+            <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">🔍 Filtros y opciones de visualización</p>
             <ClientesFilter 
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -493,9 +493,9 @@ export default function ClientesPage() {
 
           {/* Tabla, mensaje de carga o mensaje de no datos */}
           {isLoading && organizationId ? (
-            <div className="flex items-center justify-center h-64">
+            <div className="flex flex-col items-center justify-center h-64 space-y-3">
               <LoadingSpinner />
-              <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando datos...</span>
+              <span className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando datos...</span>
             </div>
           ) : customers.length > 0 ? (
             <ClientesTable 
@@ -506,24 +506,24 @@ export default function ClientesPage() {
               onPageChange={handlePageChange}
             />
           ) : (
-            <div className="mt-4 p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-center">
-              <p className="text-gray-600 dark:text-gray-300 mb-4">No se encontraron clientes en esta organización.</p>
-              <div className="flex justify-center space-x-4">
+            <div className="mt-4 p-4 sm:p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/30 text-center">
+              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-4">No se encontraron clientes en esta organización.</p>
+              <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
                 <button
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center"
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-md flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium min-h-[44px]"
                   onClick={() => organizationId && loadCustomers(organizationId)}
                   disabled={isLoading}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   Recargar datos
                 </button>
                 <a 
                   href="/app/clientes/new" 
-                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded flex items-center"
+                  className="px-4 py-2.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-md flex items-center justify-center transition-colors text-sm font-medium min-h-[44px]"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Crear nuevo cliente

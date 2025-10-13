@@ -289,38 +289,44 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Registrar Pago</DialogTitle>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">Registrar Pago</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-3 sm:gap-4 py-2 sm:py-4">
           <div className="grid items-center gap-1.5">
-            <Label htmlFor="factura">Factura</Label>
+            <Label htmlFor="factura" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Factura</Label>
             <Input
               id="factura"
               value={`${factura.number} - ${formatCurrency(factura.total)}`}
               disabled
+              className="text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
             />
           </div>
           
           <div className="grid items-center gap-1.5">
-            <Label htmlFor="saldo">Saldo Pendiente</Label>
+            <Label htmlFor="saldo" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Saldo Pendiente</Label>
             <Input
               id="saldo"
               value={formatCurrency(factura.balance)}
               disabled
+              className="text-sm font-semibold bg-gray-50 dark:bg-gray-800 text-red-600 dark:text-red-400 border-gray-300 dark:border-gray-600"
             />
           </div>
           
           <div className="grid items-center gap-1.5">
-            <Label htmlFor="metodoPago">Método de Pago</Label>
+            <Label htmlFor="metodoPago" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Método de Pago</Label>
             <Select value={metodoPago} onValueChange={setMetodoPago}>
-              <SelectTrigger id="metodoPago">
+              <SelectTrigger id="metodoPago" className="text-sm dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600">
                 <SelectValue placeholder="Selecciona un método de pago" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 {metodosPago.map((metodo) => (
-                  <SelectItem key={metodo.code} value={metodo.code}>
+                  <SelectItem 
+                    key={metodo.code} 
+                    value={metodo.code}
+                    className="text-sm dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+                  >
                     {metodo.name}
                   </SelectItem>
                 ))}
@@ -329,22 +335,24 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
           </div>
           
           <div className="grid items-center gap-1.5">
-            <Label htmlFor="monto">Monto a Pagar</Label>
+            <Label htmlFor="monto" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Monto a Pagar</Label>
             <Input
               id="monto"
+              type="number"
+              step="0.01"
               value={monto}
               onChange={handleMontoChange}
               placeholder="0.00"
-              className={montoExcedido ? "border-red-500" : ""}
+              className={`text-sm dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 ${montoExcedido ? "border-red-500 dark:border-red-500" : ""}`}
             />
             {montoExcedido && (
               <Alert 
                 variant="destructive" 
-                className="py-2 bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 text-red-800 dark:text-red-300 transition-all animate-fadeIn"
+                className="py-2 px-3 bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 text-red-800 dark:text-red-300 transition-all animate-fadeIn"
               >
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
-                  <AlertDescription className="text-sm font-medium">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500 dark:text-red-400 mt-0.5" />
+                  <AlertDescription className="text-xs sm:text-sm font-medium">
                     El monto ingresado ({formatCurrency(parseFloat(monto) || 0)}) excede el saldo pendiente ({formatCurrency(factura.balance || 0)})
                   </AlertDescription>
                 </div>
@@ -354,25 +362,31 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
           
           {requiereReferencia() && (
             <div className="grid items-center gap-1.5">
-              <Label htmlFor="referencia">Referencia / Transacción</Label>
+              <Label htmlFor="referencia" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Referencia / Transacción</Label>
               <Input
                 id="referencia"
                 value={referencia}
                 onChange={(e) => setReferencia(e.target.value)}
                 placeholder="Número de transacción, últimos 4 dígitos, etc."
+                className="text-sm dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
               />
             </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0 pt-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
+            className="w-full sm:w-auto text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isLoading || montoExcedido}
+            className="w-full sm:w-auto text-sm bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Registrar Pago
           </Button>

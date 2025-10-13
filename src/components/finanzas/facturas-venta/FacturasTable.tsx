@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle, ChevronDown, ChevronRight, CreditCard } from 'lucide-react';
+import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle, ChevronDown, ChevronRight, CreditCard, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -213,11 +213,9 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
       // Agregar elipsis después de la primera página si es necesario
       if (startPage > 2) {
         pageNumbers.push('ellipsis-start');
-      } else if (startPage === 2) {
-        pageNumbers.push(2);
       }
       
-      // Agregar páginas centrales
+      // Agregar páginas centrales (empezando desde startPage, no desde 2)
       for (let i = startPage; i <= endPage; i++) {
         if (i !== 1 && i !== totalPages) {
           pageNumbers.push(i);
@@ -396,17 +394,29 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
   // Renderizado condicional para el estado de error
   if (error) {
     return (
-      <div className="text-center py-10">
-        <AlertTriangle className="mx-auto h-10 w-10 text-yellow-500 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Error al cargar datos</h3>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{error}</p>
-        <Button 
-          variant="outline" 
-          className="mt-4 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
-          onClick={() => window.location.reload()}
-        >
-          Reintentar
-        </Button>
+      <div className="text-center py-12 px-4">
+        <div className="max-w-md mx-auto">
+          <div className="rounded-full bg-red-50 dark:bg-red-900/20 p-4 w-fit mx-auto mb-4">
+            <AlertTriangle className="h-10 w-10 sm:h-12 sm:w-12 text-red-500 dark:text-red-400" />
+          </div>
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Error al cargar datos
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-6">{error}</p>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="
+              bg-white dark:bg-gray-800
+              border-gray-300 dark:border-gray-600
+              hover:bg-gray-50 dark:hover:bg-gray-700
+              text-gray-700 dark:text-gray-200
+            "
+            onClick={() => window.location.reload()}
+          >
+            Reintentar
+          </Button>
+        </div>
       </div>
     );
   }
@@ -414,56 +424,65 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
   // Renderizado cuando no hay facturas
   if (facturas.length === 0) {
     return (
-      <div className="text-center py-10">
-        <FileText className="mx-auto h-10 w-10 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No hay facturas</h3>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          No se encontraron facturas de venta para mostrar.
-        </p>
+      <div className="text-center py-12 px-4">
+        <div className="max-w-md mx-auto">
+          <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 w-fit mx-auto mb-4">
+            <FileText className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 dark:text-gray-500" />
+          </div>
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            No hay facturas
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+            No se encontraron facturas de venta para mostrar.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <div className="flex justify-between items-center mb-4">
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Mostrando {facturasPaginadas.length} de {facturasFiltradas.length} facturas
+    <div className="w-full">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+          Mostrando <span className="font-medium text-gray-900 dark:text-gray-100">{facturasPaginadas.length}</span> de <span className="font-medium text-gray-900 dark:text-gray-100">{facturasFiltradas.length}</span> facturas
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Mostrar</div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Mostrar</span>
           <Select
             value={pageSize.toString()}
             onValueChange={handlePageSizeChange}
           >
-            <SelectTrigger className="h-8 w-20">
+            <SelectTrigger className="h-8 w-16 text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="10" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               {pageSizeOptions.map((size) => (
-                <SelectItem key={size} value={size.toString()}>
+                <SelectItem key={size} value={size.toString()} className="text-gray-900 dark:text-gray-100">
                   {size}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <div className="text-sm text-gray-500 dark:text-gray-400">filas</div>
+          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">filas</span>
         </div>
       </div>
+      
+      {/* Tabla responsive */}
+      <div className="overflow-x-auto -mx-3 sm:mx-0 rounded-lg border border-gray-200 dark:border-gray-700">
       <Table>
         <TableHeader>
-          <TableRow className="dark:border-gray-700">
-            <TableHead className="w-12 dark:text-gray-300"></TableHead>
-            <TableHead className="w-12 dark:text-gray-300">#</TableHead>
-            <TableHead className="dark:text-gray-300">Número</TableHead>
-            <TableHead className="dark:text-gray-300">Cliente</TableHead>
-            <TableHead className="dark:text-gray-300">Emitida</TableHead>
-            <TableHead className="dark:text-gray-300">Vencimiento</TableHead>
-            <TableHead className="dark:text-gray-300">Total</TableHead>
-            <TableHead className="dark:text-gray-300">Saldo</TableHead>
-            <TableHead className="dark:text-gray-300">Método de pago</TableHead>
-            <TableHead className="dark:text-gray-300">Estado</TableHead>
-            <TableHead className="dark:text-gray-300">Acciones</TableHead>
+          <TableRow className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+            <TableHead className="w-8 sm:w-12 text-gray-700 dark:text-gray-300"></TableHead>
+            <TableHead className="w-8 sm:w-12 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">#</TableHead>
+            <TableHead className="min-w-[120px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Número</TableHead>
+            <TableHead className="min-w-[150px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Cliente</TableHead>
+            <TableHead className="min-w-[100px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Emitida</TableHead>
+            <TableHead className="min-w-[100px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Vencimiento</TableHead>
+            <TableHead className="min-w-[100px] text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Total</TableHead>
+            <TableHead className="min-w-[100px] text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Saldo</TableHead>
+            <TableHead className="min-w-[120px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Método</TableHead>
+            <TableHead className="min-w-[100px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Estado</TableHead>
+            <TableHead className="w-16 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -472,42 +491,50 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
             return (
               <React.Fragment key={factura.id}>
                 <TableRow 
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50 dark:border-gray-700"
+                  className="
+                    hover:bg-gray-50 dark:hover:bg-gray-800/50 
+                    border-b border-gray-200 dark:border-gray-700
+                    transition-colors
+                  "
                 >
-                  <TableCell className="w-12">
+                  <TableCell className="w-8 sm:w-12">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0"
+                      className="
+                        h-6 w-6 p-0
+                        hover:bg-gray-200 dark:hover:bg-gray-700
+                        text-gray-600 dark:text-gray-400
+                      "
                       onClick={() => toggleFilaExpandida(factura.id)}
                     >
                       {estaExpandida ? (
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                       ) : (
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
                       )}
                     </Button>
                   </TableCell>
-                  <TableCell className="text-center font-medium text-gray-500 dark:text-gray-400 w-12">
+                  <TableCell className="text-center font-medium text-gray-500 dark:text-gray-400 w-8 sm:w-12 text-xs sm:text-sm">
                     {(currentPage - 1) * pageSize + index + 1}
                   </TableCell>
-              <TableCell className="font-medium dark:text-gray-200">
+              <TableCell className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
                 {factura.number}
               </TableCell>
-              <TableCell className="dark:text-gray-300">{factura.customer_name}</TableCell>
-              <TableCell className="dark:text-gray-300">{formatearFecha(factura.issue_date)}</TableCell>
-              <TableCell className="dark:text-gray-300">{formatearFecha(factura.due_date)}</TableCell>
-              <TableCell className="dark:text-gray-300">
+              <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm truncate max-w-[200px]">{factura.customer_name}</TableCell>
+              <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm whitespace-nowrap">{formatearFecha(factura.issue_date)}</TableCell>
+              <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm whitespace-nowrap">{formatearFecha(factura.due_date)}</TableCell>
+              <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100 text-xs sm:text-sm whitespace-nowrap">
                 {formatCurrency(factura.total, factura.currency)}
               </TableCell>
-              <TableCell className="dark:text-gray-300">
+              <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100 text-xs sm:text-sm whitespace-nowrap">
                 {formatCurrency(factura.balance, factura.currency)}
               </TableCell>
-              <TableCell className="dark:text-gray-300">
-                {factura.payment_method_name}
+              <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
+                <span className="truncate max-w-[120px] inline-block">{factura.payment_method_name}</span>
               </TableCell>
               <TableCell>
-                <Badge className={getStatusColor(factura.status)}>
+                <Badge className={`text-[10px] sm:text-xs px-2 py-0.5 ${getStatusColor(factura.status)}`}>
                   {getStatusText(factura.status)}
                 </Badge>
               </TableCell>
@@ -517,24 +544,45 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      className="h-8 w-8 p-0 dark:hover:bg-gray-800"
+                      className="
+                        h-7 w-7 sm:h-8 sm:w-8 p-0 
+                        hover:bg-gray-200 dark:hover:bg-gray-700
+                        text-gray-600 dark:text-gray-400
+                      "
                     >
                       <span className="sr-only">Abrir menú</span>
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="dark:bg-gray-900 dark:border-gray-800">
+                  <DropdownMenuContent 
+                    align="end" 
+                    className="
+                      bg-white dark:bg-gray-800 
+                      border-gray-200 dark:border-gray-700
+                      shadow-lg
+                    "
+                  >
                     <DropdownMenuItem
-                      className="cursor-pointer dark:text-gray-300 dark:hover:bg-gray-800"
+                      className="
+                        cursor-pointer text-sm
+                        text-gray-700 dark:text-gray-200 
+                        hover:bg-gray-100 dark:hover:bg-gray-700
+                        focus:bg-gray-100 dark:focus:bg-gray-700
+                      "
                       onClick={() => {
                         router.push(`/app/finanzas/facturas-venta/${factura.id}`);
                       }}
                     >
-                      <Eye className="mr-2 h-4 w-4" />
+                      <Eye className="mr-2 h-4 w-4 flex-shrink-0" />
                       <span>Ver</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      className="cursor-pointer dark:text-gray-300 dark:hover:bg-gray-800"
+                      className="
+                        cursor-pointer text-sm
+                        text-gray-700 dark:text-gray-200 
+                        hover:bg-gray-100 dark:hover:bg-gray-700
+                        focus:bg-gray-100 dark:focus:bg-gray-700
+                      "
                       onClick={() => {
                         toast({
                           title: "Enviar factura",
@@ -542,11 +590,16 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                         });
                       }}
                     >
-                      <Mail className="mr-2 h-4 w-4" />
+                      <Mail className="mr-2 h-4 w-4 flex-shrink-0" />
                       <span>Enviar por email</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      className="cursor-pointer dark:text-gray-300 dark:hover:bg-gray-800"
+                      className="
+                        cursor-pointer text-sm
+                        text-gray-700 dark:text-gray-200 
+                        hover:bg-gray-100 dark:hover:bg-gray-700
+                        focus:bg-gray-100 dark:focus:bg-gray-700
+                      "
                       onClick={() => {
                         toast({
                           title: "Enviar factura",
@@ -554,7 +607,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                         });
                       }}
                     >
-                      <Send className="mr-2 h-4 w-4" />
+                      <Send className="mr-2 h-4 w-4 flex-shrink-0" />
                       <span>Enviar por WhatsApp</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -564,13 +617,15 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
             
             {/* Fila expandida para mostrar los pagos */}
             {estaExpandida && (
-              <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-                <TableCell colSpan={10} className="p-4">
+              <TableRow className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                <TableCell colSpan={11} className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Historial de Pagos</span>
+                    <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400">Historial de Pagos</span>
                   </div>
-                  <PagosFactura facturaId={factura.id} factura={factura} />
+                  <div className="bg-white dark:bg-gray-800 rounded-lg p-2 sm:p-3">
+                    <PagosFactura facturaId={factura.id} factura={factura} />
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -579,31 +634,62 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
           })}
         </TableBody>
       </Table>
+      </div>
       
       {/* Paginación */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Mostrando {((currentPage - 1) * pageSize) + 1} a {Math.min(currentPage * pageSize, facturasFiltradas.length)} de {facturasFiltradas.length} facturas
+        <div className="
+          flex flex-col gap-3 py-4 px-2
+          sm:flex-row sm:items-center sm:justify-between
+          border-t border-gray-200 dark:border-gray-700
+          bg-gray-50/50 dark:bg-gray-900/30
+        ">
+          {/* Información de paginación - oculta en móvil muy pequeño */}
+          <div className="hidden sm:block text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+            Mostrando <span className="font-semibold text-gray-900 dark:text-gray-100">{((currentPage - 1) * pageSize) + 1}</span> a <span className="font-semibold text-gray-900 dark:text-gray-100">{Math.min(currentPage * pageSize, facturasFiltradas.length)}</span> de <span className="font-semibold text-gray-900 dark:text-gray-100">{facturasFiltradas.length}</span> facturas
           </div>
           
+          {/* Info simplificada para móvil */}
+          <div className="sm:hidden text-xs text-center text-gray-600 dark:text-gray-400">
+            Página <span className="font-semibold text-gray-900 dark:text-gray-100">{currentPage}</span> de <span className="font-semibold text-gray-900 dark:text-gray-100">{totalPages}</span>
+          </div>
+          
+          {/* Controles de paginación */}
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className="flex-wrap justify-center gap-1">
+              {/* Botón Anterior */}
               <PaginationItem>
                 <PaginationPrevious
                   onClick={() => changePage(currentPage - 1)}
                   disabled={currentPage <= 1}
+                  className={`
+                    h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm
+                    transition-all duration-200
+                    ${currentPage <= 1 
+                      ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600' 
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600'
+                    }
+                  `}
                 />
               </PaginationItem>
               
+              {/* Números de página */}
               {getPageNumbers().map((pageNumber, index) => (
-                <PaginationItem key={index}>
+                <PaginationItem key={index} className="hidden sm:inline-flex">
                   {typeof pageNumber === 'string' ? (
-                    <PaginationEllipsis />
+                    <PaginationEllipsis className="text-gray-500 dark:text-gray-400" />
                   ) : (
                     <PaginationLink
                       onClick={() => changePage(pageNumber as number)}
                       isActive={pageNumber === currentPage}
+                      className={`
+                        h-8 sm:h-9 min-w-[32px] sm:min-w-[36px] px-2 sm:px-3 text-xs sm:text-sm
+                        transition-all duration-200
+                        ${pageNumber === currentPage
+                          ? 'bg-blue-600 dark:bg-blue-600 text-white font-semibold shadow-md hover:bg-blue-700 dark:hover:bg-blue-500 border-blue-600 dark:border-blue-500'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600'
+                        }
+                      `}
                     >
                       {pageNumber}
                     </PaginationLink>
@@ -611,10 +697,32 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                 </PaginationItem>
               ))}
               
+              {/* Indicador de página actual para móvil */}
+              <PaginationItem className="sm:hidden">
+                <div className="
+                  h-8 min-w-[32px] px-3 
+                  flex items-center justify-center
+                  text-xs font-semibold
+                  bg-blue-600 dark:bg-blue-600 text-white
+                  rounded-md
+                ">
+                  {currentPage}
+                </div>
+              </PaginationItem>
+              
+              {/* Botón Siguiente */}
               <PaginationItem>
                 <PaginationNext
                   onClick={() => changePage(currentPage + 1)}
                   disabled={currentPage >= totalPages}
+                  className={`
+                    h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm
+                    transition-all duration-200
+                    ${currentPage >= totalPages 
+                      ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600' 
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600'
+                    }
+                  `}
                 />
               </PaginationItem>
             </PaginationContent>
@@ -664,26 +772,3 @@ function TableSkeleton() {
   );
 }
 
-// Icono FileText para el estado vacío
-function FileText(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-      <line x1="10" y1="9" x2="8" y2="9" />
-    </svg>
-  );
-}

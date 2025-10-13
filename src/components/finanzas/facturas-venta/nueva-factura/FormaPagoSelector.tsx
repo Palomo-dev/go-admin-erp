@@ -102,26 +102,46 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
   };
 
   return (
-    <div className="space-y-2">
-      <Label>Forma de Pago</Label>
+    <div className="space-y-1.5">
+      <Label htmlFor="payment-method" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        Forma de Pago
+      </Label>
       <Select 
         value={formaPago} 
         onValueChange={onChange}
         disabled={isLoading || metodosPago.length === 0}
       >
-        <SelectTrigger className="w-full">
+        <SelectTrigger 
+          id="payment-method"
+          className="
+            w-full text-sm
+            bg-white dark:bg-gray-900
+            border-gray-300 dark:border-gray-600
+            text-gray-900 dark:text-gray-100
+            disabled:opacity-50 disabled:cursor-not-allowed
+          "
+        >
           <SelectValue placeholder="Seleccionar forma de pago" />
         </SelectTrigger>
-        <SelectContent>
-          {metodosPago.map(metodo => (
-            <SelectItem key={metodo.payment_method_code} value={metodo.payment_method_code}>
-              {metodo.payment_method?.name || metodo.payment_method_code}
+        <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          {isLoading ? (
+            <SelectItem value="" disabled className="text-gray-500 dark:text-gray-400">
+              Cargando métodos...
             </SelectItem>
-          ))}
-          {metodosPago.length === 0 && !isLoading && (
-            <SelectItem value="" disabled>
+          ) : metodosPago.length === 0 ? (
+            <SelectItem value="" disabled className="text-gray-500 dark:text-gray-400">
               No hay métodos de pago disponibles
             </SelectItem>
+          ) : (
+            metodosPago.map(metodo => (
+              <SelectItem 
+                key={metodo.payment_method_code} 
+                value={metodo.payment_method_code}
+                className="text-gray-900 dark:text-gray-100"
+              >
+                {metodo.payment_method?.name || metodo.payment_method_code}
+              </SelectItem>
+            ))
           )}
         </SelectContent>
       </Select>

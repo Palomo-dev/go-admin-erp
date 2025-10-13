@@ -429,24 +429,35 @@ export const AppLayout = ({
   return (
     <ModuleProvider>
       <div className="flex h-screen overflow-hidden">
+      {/* Overlay oscuro para móvil cuando el sidebar está abierto */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      
       {/* Sidebar - con versión móvil que se muestra/oculta */}
       <div className={`
-        fixed lg:sticky inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'lg:w-20' : 'w-64'} 
+        fixed lg:sticky inset-y-0 left-0 z-50 
+        ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'} 
+        w-72 max-w-[85vw]
         transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-        lg:translate-x-0 transition-all duration-300 ease-in-out
-        bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg
+        lg:translate-x-0 transition-transform duration-300 ease-in-out
+        bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-2xl lg:shadow-lg
         h-screen
       `}>
         <div className="flex flex-col h-full">
           {/* Logo y nombre */}
-          <div className="flex justify-between items-center p-4 bg-blue-600">
-            <h1 className={`text-xl font-bold text-white ${sidebarCollapsed ? 'lg:hidden' : ''}`}>GO Admin ERP</h1>
+          <div className="flex justify-between items-center p-4 min-h-[60px] bg-blue-600">
+            <h1 className={`text-lg sm:text-xl font-bold text-white ${sidebarCollapsed ? 'lg:hidden' : ''}`}>GO Admin ERP</h1>
             {sidebarCollapsed && <h1 className="hidden lg:block text-xl font-bold text-white text-center">GO</h1>}
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
               {/* Botón para contraer/expandir en escritorio */}
               <button 
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="hidden lg:flex items-center justify-center h-7 w-7 rounded-full bg-blue-700 text-white hover:bg-blue-800 transition-colors"
+                className="hidden lg:flex items-center justify-center h-8 w-8 rounded-full bg-blue-700 text-white hover:bg-blue-800 transition-colors"
                 aria-label={sidebarCollapsed ? 'Expandir menú' : 'Contraer menú'}
               >
                 {sidebarCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
@@ -455,23 +466,24 @@ export const AppLayout = ({
               {/* Botón para cerrar en móvil */}
               <button 
                 onClick={() => setSidebarOpen(false)}
-                className="lg:hidden ml-2 text-white"
+                className="lg:hidden flex items-center justify-center h-9 w-9 rounded-md bg-blue-700 text-white hover:bg-blue-800 transition-colors active:scale-95"
+                aria-label="Cerrar menú"
               >
-                &times;
+                <span className="text-2xl leading-none">&times;</span>
               </button>
             </div>
           </div>
           
           {/* Selector de Organización */}
           {orgId && (
-            <div className={`m-3 ${sidebarCollapsed ? 'p-2 lg:relative lg:group' : 'p-3'} bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-md border border-blue-100 dark:border-blue-800 transition-all duration-200 hover:shadow-lg`}>
+            <div className={`mx-3 mt-3 mb-2 ${sidebarCollapsed ? 'p-2 lg:relative lg:group' : 'p-3'} bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-md border border-blue-100 dark:border-blue-800 transition-all duration-200 hover:shadow-lg`}>
               {/* Organización para sidebar colapsado */}
               {sidebarCollapsed && (
                 <>
                   {/* Icono/Logo centrado cuando está colapsado */}
                   <div className="flex justify-center items-center">
                     {getActiveOrgLogo() ? (
-                      <div className="w-7 h-7 lg:mx-auto">
+                      <div className="w-8 h-8 lg:w-7 lg:h-7 lg:mx-auto">
                         <img 
                           src={getActiveOrgLogo()!}
                           alt="Logo"
@@ -479,11 +491,11 @@ export const AppLayout = ({
                         />
                       </div>
                     ) : (
-                      <div className="w-7 h-7 lg:mx-auto flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 text-white font-medium shadow-sm border-2 border-blue-200 dark:border-blue-700">
+                      <div className="w-8 h-8 lg:w-7 lg:h-7 lg:mx-auto flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 text-white font-medium shadow-sm border-2 border-blue-200 dark:border-blue-700">
                         {orgName && orgName.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="ml-2 lg:hidden text-sm font-medium text-blue-900 dark:text-blue-100">{orgName}</span>
+                    <span className="ml-3 lg:hidden text-sm font-medium text-blue-900 dark:text-blue-100 truncate flex-1">{orgName}</span>
                   </div>
                   
                   {/* Tooltip para mostrar el nombre de la organización cuando está contraído */}
@@ -517,13 +529,14 @@ export const AppLayout = ({
           )}
           
           {/* Navegación */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overscroll-contain">
             <SidebarNavigation 
               handleSignOut={handleSignOut}
               loading={loading}
               userData={userData}
               orgName={orgName}
               collapsed={sidebarCollapsed}
+              onNavigate={() => setSidebarOpen(false)}
             />
           </div>
         </div>
@@ -543,8 +556,10 @@ export const AppLayout = ({
         />
         
         {/* Contenido principal con scroll */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
-          {children}
+        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 overscroll-contain">
+          <div className="min-h-full">
+            {children}
+          </div>
         </div>
       </div>
       

@@ -69,13 +69,14 @@ const GestorTareas: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 p-6 ml-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold tracking-tight">Gestor de Tareas</h2>
-        <div className="flex space-x-2">
-          <Button onClick={abrirNuevaTarea}>
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Gestor de Tareas</h2>
+        <div className="flex space-x-2 w-full sm:w-auto">
+          <Button onClick={abrirNuevaTarea} className="flex-1 sm:flex-none min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white">
             <PlusCircle className="h-4 w-4 mr-2" />
-            Nueva Tarea
+            <span className="hidden sm:inline">Nueva Tarea</span>
+            <span className="sm:hidden">Nueva</span>
           </Button>
         </div>
       </div>

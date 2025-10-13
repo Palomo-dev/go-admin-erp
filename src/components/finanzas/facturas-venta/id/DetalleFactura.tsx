@@ -360,36 +360,36 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Cabecera con botón de regreso */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button 
             variant="ghost" 
             onClick={handleBack}
-            className="p-0 h-auto hover:bg-transparent"
+            className="p-0 h-auto hover:bg-transparent dark:hover:bg-transparent"
           >
-            <ArrowLeft className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 text-blue-600 dark:text-blue-400" />
           </Button>
-          <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Factura #{factura.number}
           </h1>
-          <Badge variant={getBadgeVariant(facturaActual.status)} className="text-md py-1.5 px-3">
+          <Badge variant={getBadgeVariant(facturaActual.status)} className="text-xs sm:text-sm py-1 px-2 sm:py-1.5 sm:px-3">
             {getStatusText(facturaActual.status)}
           </Badge>
         </div>
         
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1.5 sm:gap-2 flex-wrap w-full sm:w-auto">
           {isDraft && (
             <Button 
               variant="default" 
               size="sm"
               onClick={emitirFactura}
-              className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs bg-blue-600 hover:bg-blue-700"
+              className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
             >
               <Send className="h-3.5 w-3.5" />
-              Emitir Factura
+              <span className="hidden xs:inline">Emitir</span>
             </Button>
           )}
           {!isDraft && (
@@ -397,17 +397,17 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               variant="outline" 
               size="sm"
               onClick={generarPDF}
-              className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs bg-gray-100 hover:bg-gray-200"
+              className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100"
             >
               <Printer className="h-3.5 w-3.5" />
-              Imprimir
+              <span className="hidden xs:inline">Imprimir</span>
             </Button>
           )}
           <Button 
             variant="outline" 
             size="sm"
             onClick={generarPDF}
-            className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs"
+            className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
             title="Descargar PDF"
           >
             <Download size={14} />
@@ -417,7 +417,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             variant="outline" 
             size="sm"
             onClick={enviarPorEmail}
-            className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs"
+            className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
             title="Enviar por Email"
           >
             <Mail size={14} />
@@ -427,7 +427,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             variant="outline" 
             size="sm"
             onClick={enviarPorWhatsApp}
-            className="flex items-center gap-1 py-0.5 h-7 px-2 text-xs"
+            className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
             title="Enviar por WhatsApp"
           >
             <Send size={14} />
@@ -438,29 +438,32 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             <>
               <Button
                 variant="outline"
-                className="border-blue-500 text-blue-500 hover:text-blue-600 hover:border-blue-600"
+                size="sm"
+                className="border-blue-500 text-blue-500 hover:text-blue-600 hover:border-blue-600 dark:border-blue-400 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:border-blue-300 h-8 px-2 sm:px-3 text-xs"
                 onClick={() => setDialogNotaCreditoOpen(true)}
               >
-                Generar Nota de Crédito
+                <FileOutput className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden md:inline">Nota Crédito</span>
               </Button>
-              {/* Siempre mostrar el botón Registrar Abono si no está pagada o anulada */}
               <Button 
                 onClick={() => {
                   console.log("Abriendo diálogo de pago", facturaActual);
                   setDialogPagoOpen(true);
                 }}
-                className="bg-green-600 hover:bg-green-700"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 h-8 px-2 sm:px-3 text-xs"
               >
-                Registrar Abono
+                <CreditCard className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden md:inline">Registrar Abono</span>
               </Button>
-              {/* Mantener la opción de marcar como pagada directamente */}
               <Button 
                 onClick={marcarComoPagada}
                 variant="outline"
-                className="flex items-center gap-1"
+                size="sm"
+                className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
               >
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                Marcar como Pagada
+                <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                <span className="hidden lg:inline">Marcar Pagada</span>
               </Button>
             </>
           )}
@@ -469,52 +472,52 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       
       {/* Información de la factura */}
       <Card className="col-span-2">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Info className="h-5 w-5" />
-            Información de la Factura
+        <CardHeader className="pb-3 sm:pb-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Info className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+            <span className="text-gray-900 dark:text-gray-100">Información de la Factura</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Número:</span>
-                <span className="text-gray-900 dark:text-gray-100">{factura.number}</span>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-36">Número:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-medium">{factura.number}</span>
               </div>
-              <div className="flex items-start gap-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Cliente:</span>
-                <span className="text-gray-900 dark:text-gray-100">{factura.customers?.full_name || 'N/A'}</span>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-36">Cliente:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">{factura.customers?.full_name || 'N/A'}</span>
               </div>
-              <div className="flex items-start gap-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Email:</span>
-                <span className="text-gray-900 dark:text-gray-100">{factura.customers?.email || 'N/A'}</span>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-36">Email:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100 break-all">{factura.customers?.email || 'N/A'}</span>
               </div>
-              <div className="flex items-start gap-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Teléfono:</span>
-                <span className="text-gray-900 dark:text-gray-100">{factura.customers?.phone || 'N/A'}</span>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-36">Teléfono:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">{factura.customers?.phone || 'N/A'}</span>
               </div>
             </div>
-            <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Fecha de Emisión:</span>
-                <span className="text-gray-900 dark:text-gray-100">
+            <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-0 border-t sm:border-t-0 md:border-l md:pl-4">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-40">Fecha de Emisión:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">
                   {factura.issue_date ? formatDate(factura.issue_date) : 'N/A'}
                 </span>
               </div>
-              <div className="flex items-start gap-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Fecha de Vencimiento:</span>
-                <span className="text-gray-900 dark:text-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-40">Fecha de Vencimiento:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">
                   {factura.due_date ? formatDate(factura.due_date) : 'N/A'}
                 </span>
               </div>
-              <div className="flex items-start gap-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Método de Pago:</span>
-                <span className="text-gray-900 dark:text-gray-100">{traducirMetodoPago(factura.payment_method)}</span>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-40">Método de Pago:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">{traducirMetodoPago(factura.payment_method)}</span>
               </div>
-              <div className="flex items-start gap-2">
-                <span className="text-gray-500 dark:text-gray-400 font-medium w-32">Términos de Pago:</span>
-                <span className="text-gray-900 dark:text-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-40">Términos de Pago:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">
                   {factura.payment_terms !== null && factura.payment_terms !== undefined ? 
                     factura.payment_terms === 0 ? 'Contado' : 
                     (() => {
@@ -539,9 +542,9 @@ export default function DetalleFactura({ factura }: { factura: any }) {
           </div>
           
           {factura.notes && (
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Notas:</h4>
-              <p className="text-gray-900 dark:text-gray-100 text-sm p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+            <div className="mt-3 sm:mt-4">
+              <h4 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-1 sm:mb-2">Notas:</h4>
+              <p className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 p-2 sm:p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
                 {factura.notes}
               </p>
             </div>
@@ -551,51 +554,51 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       
       {/* Resumen financiero */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            Resumen Financiero
+        <CardHeader className="pb-3 sm:pb-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Receipt className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+            <span className="text-gray-900 dark:text-gray-100">Resumen Financiero</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">Subtotal:</span>
-              <span className="font-medium">{formatCurrency(factura.subtotal || 0)}</span>
+        <CardContent className="pt-0">
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Subtotal:</span>
+              <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">{formatCurrency(factura.subtotal || 0)}</span>
             </div>
             
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">Impuestos:</span>
-              <span className="font-medium">{formatCurrency(factura.tax_total || 0)}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Impuestos:</span>
+              <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">{formatCurrency(factura.tax_total || 0)}</span>
             </div>
             
-            <Separator />
+            <Separator className="dark:bg-gray-700" />
             
-            <div className="flex justify-between">
-              <span className="font-medium">Total:</span>
-              <span className="font-bold text-lg">{formatCurrency(factura.total || 0)}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">Total:</span>
+              <span className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100">{formatCurrency(factura.total || 0)}</span>
             </div>
             
-            <Separator />
+            <Separator className="dark:bg-gray-700" />
             
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">Pagado:</span>
-              <span className="font-medium text-green-600 dark:text-green-400">
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pagado:</span>
+              <span className="text-sm sm:text-base font-semibold text-green-600 dark:text-green-400">
                 {formatCurrency((factura.total || 0) - (factura.balance || 0))}
               </span>
             </div>
             
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">Pendiente:</span>
-              <span className={`font-medium ${saldoPendiente > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+            <div className="flex justify-between items-center">
+              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pendiente:</span>
+              <span className={`text-sm sm:text-base font-semibold ${saldoPendiente > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                 {formatCurrency(saldoPendiente)}
               </span>
             </div>
             
             {isPagada && (
-              <div className="mt-4 bg-green-50 dark:bg-green-900/20 p-3 rounded-md flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                <span className="text-green-600 dark:text-green-400 text-sm font-medium">Factura completamente pagada</span>
+              <div className="mt-3 sm:mt-4 bg-green-50 dark:bg-green-900/20 p-2 sm:p-3 rounded-md flex items-center gap-2 border border-green-200 dark:border-green-800">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                <span className="text-green-700 dark:text-green-300 text-xs sm:text-sm font-medium">Factura completamente pagada</span>
               </div>
             )}
           </div>
@@ -604,20 +607,26 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       
       {/* Sección de items */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Detalle de Items</CardTitle>
+        <CardHeader className="pb-3 sm:pb-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+            <span className="text-gray-900 dark:text-gray-100">Detalle de Items</span>
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <ItemsDetalle items={factura.items} />
         </CardContent>
       </Card>
       
       {/* Sección de pagos */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Pagos Aplicados</CardTitle>
+        <CardHeader className="pb-3 sm:pb-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+            <span className="text-gray-900 dark:text-gray-100">Pagos Aplicados</span>
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <PagosDetalle pagos={pagosActuales} />
         </CardContent>
       </Card>

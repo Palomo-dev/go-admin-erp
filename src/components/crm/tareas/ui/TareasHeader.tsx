@@ -7,6 +7,7 @@ import { TaskFilter, TaskViewMode } from '@/types/task';
 import FiltrosTiempo from './FiltrosTiempo';
 import { TipoVista } from '../core/types';
 import { Filter, Search, List, Columns, TreePine } from 'lucide-react';
+import { cn } from '@/utils/Utils';
 
 interface TareasHeaderProps {
   vista: TipoVista;
@@ -58,9 +59,9 @@ const TareasHeader: React.FC<TareasHeaderProps> = ({
   return (
     <>
       {/* Cabecera con filtros y selector de vistas */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
         {/* Filtros de tiempo */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 sm:gap-2 w-full md:w-auto overflow-x-auto">
           <FiltrosTiempo 
             onChange={onFiltroTiempo}
             filtroActivo={filtroTemporalActivo}
@@ -71,44 +72,59 @@ const TareasHeader: React.FC<TareasHeaderProps> = ({
             variant="outline" 
             size="sm"
             onClick={onToggleFiltros}
-            className="rounded-md flex items-center gap-1 text-muted-foreground"
+            className="rounded-md flex items-center gap-1 min-h-[36px] text-xs sm:text-sm text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             <Filter className="h-3.5 w-3.5" />
-            Filtros
+            <span className="hidden sm:inline">Filtros</span>
           </Button>
         </div>
         
         {/* Selector de vistas */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center space-x-1 rounded-md bg-muted p-1">
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="flex items-center space-x-1 rounded-md bg-gray-100 dark:bg-gray-800 p-1 flex-1 md:flex-none">
             <Button
               variant={vista === 'lista' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => onCambiarVista('lista')}
-              className="h-8 px-3"
+              className={cn(
+                "h-9 px-3 text-xs sm:text-sm flex-1 md:flex-none",
+                vista === 'lista' 
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100' 
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700'
+              )}
             >
               <List className="h-4 w-4 mr-1" />
-              Lista
+              <span>Lista</span>
             </Button>
             <Button
               variant={vista === 'tablero' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => onCambiarVista('tablero')}
-              className="h-8 px-3"
+              className={cn(
+                "h-9 px-3 text-xs sm:text-sm flex-1 md:flex-none",
+                vista === 'tablero' 
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100' 
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700'
+              )}
             >
               <Columns className="h-4 w-4 mr-1" />
-              Tablero
+              <span>Tablero</span>
             </Button>
           </div>
           
           {/* Selector de modo jerárquico (solo en vista lista) */}
           {vista === 'lista' && modoVista && onCambiarModoVista && (
-            <div className="flex items-center space-x-1 rounded-md bg-muted p-1">
+            <div className="flex items-center space-x-1 rounded-md bg-gray-100 dark:bg-gray-800 p-1">
               <Button
                 variant={modoVista === 'list' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => onCambiarModoVista('list')}
-                className="h-8 px-3"
+                className={cn(
+                  "h-9 px-3",
+                  modoVista === 'list' 
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100' 
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700'
+                )}
                 title="Vista plana"
               >
                 <List className="h-4 w-4" />
@@ -117,7 +133,12 @@ const TareasHeader: React.FC<TareasHeaderProps> = ({
                 variant={modoVista === 'hierarchy' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => onCambiarModoVista('hierarchy')}
-                className="h-8 px-3"
+                className={cn(
+                  "h-9 px-3",
+                  modoVista === 'hierarchy' 
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100' 
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700'
+                )}
                 title="Vista jerárquica"
               >
                 <TreePine className="h-4 w-4" />
@@ -130,12 +151,12 @@ const TareasHeader: React.FC<TareasHeaderProps> = ({
       {/* Barra de búsqueda */}
       <div className="flex items-center gap-2 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
           <Input
             placeholder="Buscar tareas..."
             value={busquedaLocal}
             onChange={handleBusquedaChange}
-            className="pl-10"
+            className="pl-9 sm:pl-10 h-11 sm:h-12 text-sm sm:text-base bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
           />
         </div>
       </div>

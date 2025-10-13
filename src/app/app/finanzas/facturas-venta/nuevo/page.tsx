@@ -7,13 +7,18 @@ import { Card } from '@/components/ui/card';
 
 export default function NuevaFacturaPage() {
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       <PageBackHeader />
-      <div className="grid gap-6">
-        <Card className="p-6 dark:bg-gray-800/50 dark:border-gray-700 light:bg-white">
-          <NuevaFacturaForm />
-        </Card>
-      </div>
+      <Card className="
+        p-3 sm:p-4 lg:p-6
+        bg-white dark:bg-gray-800
+        border-gray-200 dark:border-gray-700
+        shadow-sm
+        w-full
+        overflow-hidden
+      ">
+        <NuevaFacturaForm />
+      </Card>
     </div>
   );
 }

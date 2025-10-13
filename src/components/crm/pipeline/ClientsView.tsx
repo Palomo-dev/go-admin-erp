@@ -70,8 +70,9 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
   // Si estamos cargando, mostrar spinner
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex flex-col justify-center items-center h-[60vh] gap-3">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
+        <span className="text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
       </div>
     );
   }
@@ -79,21 +80,21 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
   // Si hay un error, mostrarlo
   if (error) {
     return (
-      <div className="flex flex-col justify-center items-center h-[60vh]">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-lg">
-          <h3 className="font-bold mb-2">Error al cargar datos</h3>
-          <p>{error}</p>
-          <p className="mt-4 text-sm">Sugerencia: Verifica la conexión a Supabase y el ID de organización.</p>
+      <div className="flex flex-col justify-center items-center h-[60vh] p-4">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 px-4 sm:px-6 py-4 rounded-lg max-w-lg">
+          <h3 className="font-bold mb-2 text-base sm:text-lg">Error al cargar datos</h3>
+          <p className="text-sm sm:text-base">{error}</p>
+          <p className="mt-4 text-xs sm:text-sm text-red-600 dark:text-red-400">Sugerencia: Verifica la conexión a Supabase y el ID de organización.</p>
         </div>
       </div>
     );
   }
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4">
       {/* Título y descripción */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Clientes</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Clientes</h2>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
           Gestiona y haz seguimiento a todos tus clientes en el pipeline.
         </p>
       </div>
@@ -104,20 +105,21 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
       />
 
       {/* Barra de búsqueda */}
-      <div className="flex items-center space-x-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-400" />
           <Input
-            placeholder="Buscar clientes por nombre, correo o teléfono..."
+            placeholder="Buscar clientes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
+            className="pl-9 sm:pl-10 h-11 sm:h-12 text-sm sm:text-base bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
           />
         </div>
         <Button
           variant="outline"
           onClick={() => setSearchQuery("")}
           disabled={!searchQuery}
+          className="min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
         >
           Limpiar
         </Button>

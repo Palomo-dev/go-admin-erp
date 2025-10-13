@@ -235,17 +235,31 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between">
+      <div className="flex flex-col sm:flex-row gap-2 mb-3">
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              size="sm"
+              className="
+                w-full sm:w-auto
+                bg-white dark:bg-gray-800
+                border-gray-300 dark:border-gray-600
+                hover:bg-gray-50 dark:hover:bg-gray-700
+                text-gray-700 dark:text-gray-200
+              "
+            >
               <Search className="h-4 w-4 mr-2" />
-              Buscar Producto
+              <span className="text-sm">Buscar Producto</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="
+            sm:max-w-2xl max-h-[80vh] overflow-y-auto
+            bg-white dark:bg-gray-800
+            border-gray-200 dark:border-gray-700
+          ">
             <DialogHeader>
-              <DialogTitle>Buscar Producto</DialogTitle>
+              <DialogTitle className="text-gray-900 dark:text-gray-100">Buscar Producto</DialogTitle>
             </DialogHeader>
             
             <div className="py-4 space-y-4">
@@ -254,30 +268,44 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                   placeholder="Buscar por nombre o SKU"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  className="
+                    text-sm
+                    bg-white dark:bg-gray-900
+                    border-gray-300 dark:border-gray-600
+                    text-gray-900 dark:text-gray-100
+                    placeholder:text-gray-500 dark:placeholder:text-gray-400
+                  "
                 />
               </div>
               
-              <div className="max-h-72 overflow-y-auto">
+              <div className="max-h-72 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead className="text-right">Precio</TableHead>
+                    <TableRow className="bg-gray-50 dark:bg-gray-900/50">
+                      <TableHead className="text-gray-700 dark:text-gray-300">Nombre</TableHead>
+                      <TableHead className="text-gray-700 dark:text-gray-300">SKU</TableHead>
+                      <TableHead className="text-right text-gray-700 dark:text-gray-300">Precio</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredProducts.map(product => (
-                      <TableRow key={product.id}>
-                        <TableCell>{product.name}</TableCell>
-                        <TableCell>{product.sku}</TableCell>
-                        <TableCell className="text-right">${product.price.toLocaleString()}</TableCell>
+                      <TableRow key={product.id} className="border-b border-gray-200 dark:border-gray-700">
+                        <TableCell className="text-gray-900 dark:text-gray-100">{product.name}</TableCell>
+                        <TableCell className="text-gray-700 dark:text-gray-300">{product.sku}</TableCell>
+                        <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100">
+                          ${product.price.toLocaleString()}
+                        </TableCell>
                         <TableCell>
                           <Button 
                             size="sm" 
                             onClick={() => agregarItem(product)}
-                            className="h-8 px-2"
+                            className="
+                              h-8 px-3
+                              bg-blue-600 hover:bg-blue-700
+                              dark:bg-blue-600 dark:hover:bg-blue-500
+                              text-white text-xs
+                            "
                           >
                             Agregar
                             {product.tax_name && (
@@ -291,7 +319,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                     ))}
                     {filteredProducts.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-4">
+                        <TableCell colSpan={4} className="text-center py-8 text-gray-500 dark:text-gray-400">
                           No se encontraron productos
                         </TableCell>
                       </TableRow>
@@ -303,46 +331,69 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
           </DialogContent>
         </Dialog>
         
-        <Button variant="outline" onClick={agregarItemManual}>
+        <Button 
+          variant="outline"
+          size="sm"
+          onClick={agregarItemManual}
+          className="
+            w-full sm:w-auto
+            bg-white dark:bg-gray-800
+            border-gray-300 dark:border-gray-600
+            hover:bg-gray-50 dark:hover:bg-gray-700
+            text-gray-700 dark:text-gray-200
+          "
+        >
           <Plus className="h-4 w-4 mr-2" />
-          Agregar Ítem Manual
+          <span className="text-sm">Agregar Ítem Manual</span>
         </Button>
       </div>
       
       {/* Tabla de ítems */}
-      <div className="border rounded-md overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Descripción</TableHead>
-              <TableHead className="text-center">Cantidad</TableHead>
-              <TableHead className="text-right">Precio Unit.</TableHead>
-              <TableHead className="text-center">Impuesto</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto -mx-3 sm:mx-0">
+        <div className="min-w-[800px]">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50 dark:bg-gray-900/50">
+                <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Descripción</TableHead>
+                <TableHead className="text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Cantidad</TableHead>
+                <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Precio Unit.</TableHead>
+                <TableHead className="text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Impuesto</TableHead>
+                <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Total</TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4">
+                <TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
                   No hay ítems en la factura
                 </TableCell>
               </TableRow>
             ) : (
               items.map((item, index) => (
-                <TableRow key={index}>
+                <TableRow key={index} className="border-b border-gray-200 dark:border-gray-700">
                   <TableCell>
                     <Input
                       value={item.description}
                       onChange={(e) => updateItem(index, 'description', e.target.value)}
+                      className="
+                        text-sm
+                        bg-white dark:bg-gray-900
+                        border-gray-300 dark:border-gray-600
+                        text-gray-900 dark:text-gray-100
+                      "
                     />
                   </TableCell>
                   <TableCell>
                     <Input
                       type="number"
                       min="1"
-                      className="text-center"
+                      className="
+                        text-center text-sm
+                        bg-white dark:bg-gray-900
+                        border-gray-300 dark:border-gray-600
+                        text-gray-900 dark:text-gray-100
+                      "
                       value={item.qty}
                       onChange={(e) => updateItem(index, 'qty', parseFloat(e.target.value))}
                     />
@@ -352,7 +403,12 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                       type="number"
                       min="0"
                       step="0.01"
-                      className="text-right"
+                      className="
+                        text-right text-sm
+                        bg-white dark:bg-gray-900
+                        border-gray-300 dark:border-gray-600
+                        text-gray-900 dark:text-gray-100
+                      "
                       value={item.unit_price}
                       onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
                     />
@@ -360,9 +416,9 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                   <TableCell className="text-center">
                     <div className="flex flex-col items-center">
                       {item.tax_code ? (
-                        <span className="text-sm font-medium">{item.tax_rate}%</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.tax_rate}%</span>
                       ) : (
-                        <span className="text-sm text-muted-foreground">N/A</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">N/A</span>
                       )}
                       {item.tax_code && (
                         <div className="flex items-center gap-1 mt-1">
@@ -371,14 +427,21 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                             id={`tax-included-${index}`}
                             checked={item.tax_included || false}
                             onChange={(e) => updateItem(index, 'tax_included', e.target.checked)}
-                            className="h-3 w-3"
+                            className="
+                              h-3 w-3
+                              rounded border-gray-300 dark:border-gray-600
+                              text-blue-600 dark:text-blue-500
+                              bg-white dark:bg-gray-900
+                            "
                           />
-                          <label htmlFor={`tax-included-${index}`} className="text-xs">Incluido</label>
+                          <label htmlFor={`tax-included-${index}`} className="text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
+                            Incluido
+                          </label>
                         </div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right text-sm font-medium text-gray-900 dark:text-gray-100">
                     ${item.total_line.toLocaleString()}
                   </TableCell>
                   <TableCell>
@@ -386,6 +449,12 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                       variant="ghost" 
                       size="icon"
                       onClick={() => eliminarItem(index)}
+                      className="
+                        h-8 w-8
+                        hover:bg-red-50 dark:hover:bg-red-900/20
+                        text-gray-600 dark:text-gray-400
+                        hover:text-red-600 dark:hover:text-red-400
+                      "
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -395,6 +464,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
   );

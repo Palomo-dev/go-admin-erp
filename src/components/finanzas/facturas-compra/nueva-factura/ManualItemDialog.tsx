@@ -96,28 +96,29 @@ export function ManualItemDialog({ currency, onItemAdd }: ManualItemDialogProps)
         <Button 
           variant="outline" 
           size="sm"
-          className="border-dashed border-2 border-blue-300 hover:border-blue-500 text-blue-600 hover:text-blue-700 dark:border-blue-600 dark:text-blue-400 dark:hover:border-blue-400"
+          className="h-8 sm:h-9 text-xs sm:text-sm border-dashed border-2 border-blue-300 hover:border-blue-500 text-blue-600 hover:text-blue-700 dark:border-blue-600 dark:text-blue-400 dark:hover:border-blue-400 dark:hover:bg-blue-900/20"
         >
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Agregar Item Manual
+          <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Agregar Item Manual</span>
+          <span className="sm:hidden">Item Manual</span>
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="sm:max-w-[500px] dark:bg-gray-800">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 dark:text-white">
-            <FileText className="w-5 h-5" />
-            Agregar Item Manual
+      <DialogContent className="max-w-md sm:max-w-[500px] max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900 dark:text-white">
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span>Agregar Item Manual</span>
           </DialogTitle>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             Agregue un item personalizado que no está en el catálogo de productos
           </p>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
           {/* Descripción */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="dark:text-gray-300">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="description" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Descripción del Item *
             </Label>
             <Textarea
@@ -125,17 +126,17 @@ export function ManualItemDialog({ currency, onItemAdd }: ManualItemDialogProps)
               placeholder="Ej: Servicio de consultoría, Material especial, etc."
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              className="min-h-[80px] dark:bg-gray-700 dark:border-gray-600"
+              className="min-h-[70px] sm:min-h-[80px] text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
             />
             {errors.description && (
-              <p className="text-sm text-red-600">{errors.description}</p>
+              <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.description}</p>
             )}
           </div>
 
           {/* Fila de costo y tasa de impuesto */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="cost" className="dark:text-gray-300">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="cost" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 Costo Unitario *
               </Label>
               <Input
@@ -146,15 +147,15 @@ export function ManualItemDialog({ currency, onItemAdd }: ManualItemDialogProps)
                 placeholder="0.00"
                 value={formData.cost || ''}
                 onChange={(e) => handleInputChange('cost', parseFloat(e.target.value) || 0)}
-                className="dark:bg-gray-700 dark:border-gray-600"
+                className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               />
               {errors.cost && (
-                <p className="text-sm text-red-600">{errors.cost}</p>
+                <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.cost}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tax_rate" className="dark:text-gray-300">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="tax_rate" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 Tasa de Impuesto (%)
               </Label>
               <Input
@@ -166,17 +167,17 @@ export function ManualItemDialog({ currency, onItemAdd }: ManualItemDialogProps)
                 placeholder="0.0"
                 value={formData.tax_rate || ''}
                 onChange={(e) => handleInputChange('tax_rate', parseFloat(e.target.value) || 0)}
-                className="dark:bg-gray-700 dark:border-gray-600"
+                className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               />
               {errors.tax_rate && (
-                <p className="text-sm text-red-600">{errors.tax_rate}</p>
+                <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.tax_rate}</p>
               )}
             </div>
           </div>
 
           {/* Notas adicionales */}
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="dark:text-gray-300">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="notes" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Notas Adicionales
             </Label>
             <Textarea
@@ -184,42 +185,42 @@ export function ManualItemDialog({ currency, onItemAdd }: ManualItemDialogProps)
               placeholder="Información adicional sobre el item (opcional)"
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
-              className="min-h-[60px] dark:bg-gray-700 dark:border-gray-600"
+              className="min-h-[50px] sm:min-h-[60px] text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
             />
           </div>
 
           {/* Vista previa */}
           {formData.description && formData.cost > 0 && (
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+            <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
               <div className="flex items-center gap-2 mb-2">
-                <Badge variant="outline" className="text-xs">Vista Previa</Badge>
+                <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:border-blue-600 dark:text-blue-400">Vista Previa</Badge>
               </div>
-              <h4 className="font-medium text-sm dark:text-white mb-1">
+              <h4 className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white mb-1">
                 {formData.description}
               </h4>
-              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-                <span className="font-bold text-green-600">
+              <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+                <span className="font-bold text-green-600 dark:text-green-500">
                   {formatCurrency(formData.cost, currency)}
                 </span>
                 {formData.tax_rate > 0 && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300">
                     {formData.tax_rate}%
                   </Badge>
                 )}
               </div>
               {formData.notes && (
-                <p className="text-xs text-gray-500 mt-2">{formData.notes}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-2">{formData.notes}</p>
               )}
             </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
           <Button
             type="button"
             variant="outline"
             onClick={() => setIsOpen(false)}
-            className="dark:border-gray-600 dark:text-gray-300"
+            className="w-full sm:w-auto h-9 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Cancelar
           </Button>
@@ -227,10 +228,10 @@ export function ManualItemDialog({ currency, onItemAdd }: ManualItemDialogProps)
             type="button"
             onClick={handleSubmit}
             disabled={!formData.description.trim() || formData.cost <= 0}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full sm:w-auto h-9 text-sm bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
           >
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Agregar Item
+            <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+            <span>Agregar Item</span>
           </Button>
         </DialogFooter>
       </DialogContent>

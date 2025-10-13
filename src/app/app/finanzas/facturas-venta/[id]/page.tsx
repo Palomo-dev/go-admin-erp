@@ -81,12 +81,12 @@ export default function FacturaDetallesPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-12 w-3/4" />
-        <Skeleton className="h-64 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+        <Skeleton className="h-10 sm:h-12 w-full sm:w-3/4" />
+        <Skeleton className="h-48 sm:h-64 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <Skeleton className="h-28 sm:h-32 w-full" />
+          <Skeleton className="h-28 sm:h-32 w-full" />
         </div>
       </div>
     );
@@ -94,14 +94,16 @@ export default function FacturaDetallesPage({ params }: PageProps) {
 
   if (!factura) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-xl text-red-500">No se encontró la factura solicitada</p>
+      <div className="p-4 sm:p-6 text-center">
+        <p className="text-lg sm:text-xl text-red-500 dark:text-red-400">
+          No se encontró la factura solicitada
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 max-w-7xl">
       <DetalleFactura factura={factura} />
     </div>
   );

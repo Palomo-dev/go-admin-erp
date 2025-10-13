@@ -146,19 +146,20 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   };
 
   const getEstadoBadge = (status: InvoicePurchase['status']) => {
+    const baseClasses = "text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5";
     switch (status) {
       case 'draft':
-        return <Badge variant="secondary" className="dark:bg-gray-700">Borrador</Badge>;
+        return <Badge variant="secondary" className={`${baseClasses} dark:bg-gray-700 dark:text-gray-300`}>Borrador</Badge>;
       case 'received':
-        return <Badge variant="default" className="bg-blue-500">Recibida</Badge>;
+        return <Badge variant="default" className={`${baseClasses} bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700`}>Recibida</Badge>;
       case 'partial':
-        return <Badge variant="outline" className="border-yellow-500 text-yellow-600">Parcial</Badge>;
+        return <Badge variant="outline" className={`${baseClasses} border-yellow-500 text-yellow-600 dark:border-yellow-400 dark:text-yellow-400`}>Parcial</Badge>;
       case 'paid':
-        return <Badge variant="default" className="bg-green-500">Pagada</Badge>;
+        return <Badge variant="default" className={`${baseClasses} bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700`}>Pagada</Badge>;
       case 'void':
-        return <Badge variant="destructive">Anulada</Badge>;
+        return <Badge variant="destructive" className={`${baseClasses} dark:bg-red-900/30 dark:text-red-400`}>Anulada</Badge>;
       default:
-        return <Badge variant="secondary">Desconocido</Badge>;
+        return <Badge variant="secondary" className={`${baseClasses} dark:bg-gray-700 dark:text-gray-300`}>Desconocido</Badge>;
     }
   };
 
@@ -171,9 +172,9 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-4">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4">
+        <div className="flex justify-center items-center h-48 sm:h-64">
+          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
         </div>
       </div>
     );
@@ -181,19 +182,19 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
 
   if (!factura) {
     return (
-      <div className="container mx-auto p-4">
-        <Card className="dark:bg-gray-800/50 dark:border-gray-700">
-          <CardContent className="p-8 text-center">
-            <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h2 className="text-xl font-semibold mb-2 dark:text-white">
+      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4">
+        <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
+          <CardContent className="p-6 sm:p-8 text-center">
+            <FileText className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 text-gray-400 dark:text-gray-600" />
+            <h2 className="text-lg sm:text-xl font-semibold mb-2 text-gray-900 dark:text-white">
               Factura no encontrada
             </h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
               La factura solicitada no existe o ha sido eliminada.
             </p>
-            <Button onClick={handleVolver} variant="outline">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver a Facturas
+            <Button onClick={handleVolver} variant="outline" className="h-9 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+              <span>Volver a Facturas</span>
             </Button>
           </CardContent>
         </Card>
@@ -204,71 +205,75 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   const diasVencimiento = calcularDiasVencimiento();
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 space-y-4 sm:space-y-6 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <Button
             variant="ghost"
             onClick={handleVolver}
-            className="dark:hover:bg-gray-700"
+            className="p-2 h-auto dark:hover:bg-gray-700 dark:text-gray-300"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" />
+            <span className="hidden sm:inline">Volver</span>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
               Factura {factura.number_ext}
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               Detalles de la factura de compra
             </p>
           </div>
         </div>
         
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 w-full sm:w-auto">
           {/* Botones de documentos */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleImprimir}
-            className="dark:border-gray-600 dark:text-gray-300"
+            className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             title="Imprimir factura"
           >
-            <Printer className="w-4 h-4 mr-1" />
-            Imprimir
+            <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1" />
+            <span className="hidden sm:inline">Imprimir</span>
           </Button>
           
           <Button
             variant="outline"
             size="sm"
             onClick={handleDescargarPDF}
-            className="dark:border-gray-600 dark:text-gray-300"
+            className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             title="Descargar PDF"
           >
-            <Download className="w-4 h-4 mr-1" />
-            PDF
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1" />
+            <span className="hidden sm:inline">PDF</span>
           </Button>
           
           {factura.status === 'received' && (
             <Button
               variant="outline"
+              size="sm"
               onClick={handleRecepcionar}
-              className="dark:border-gray-600 dark:text-gray-300"
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             >
-              <Package className="w-4 h-4 mr-2" />
-              Recepcionar
+              <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Recepcionar</span>
+              <span className="sm:hidden">Recep.</span>
             </Button>
           )}
           
           {factura.balance > 0 && ['confirmed', 'received', 'partial'].includes(factura.status) && (
             <Button
               variant="outline"
+              size="sm"
               onClick={handleRegistrarPago}
-              className="dark:border-gray-600 dark:text-gray-300"
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Registrar Pago
+              <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Registrar Pago</span>
+              <span className="sm:hidden">Pago</span>
             </Button>
           )}
           
@@ -276,12 +281,14 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
           {factura.balance > 0 && factura.status === 'draft' && (
             <Button
               variant="outline"
+              size="sm"
               onClick={handleRegistrarPago}
-              className="dark:border-gray-600 dark:text-gray-300 border-dashed"
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 border-dashed"
               title="Registrar Pago (Factura en Borrador)"
             >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Registrar Pago
+              <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Registrar Pago</span>
+              <span className="sm:hidden">Pago</span>
             </Button>
           )}
           
@@ -289,73 +296,77 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
             <>
               <Button 
                 onClick={handleConfirmarFactura}
-                className="justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-primary-foreground shadow rounded-md flex items-center gap-1 py-0.5 h-7 px-2 text-xs bg-blue-600 hover:bg-blue-700"
+                className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white whitespace-nowrap"
               >
-                <Send className="h-3.5 w-3.5" />
-                Confirmar Factura
+                <Send className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
+                <span className="hidden sm:inline">Confirmar Factura</span>
+                <span className="sm:hidden">Confirmar</span>
               </Button>
               <Button
                 onClick={handleEditar}
-                className="bg-gray-600 hover:bg-gray-700 text-white"
+                size="sm"
+                className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm bg-gray-600 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700 text-white"
               >
-                <Edit className="w-4 h-4 mr-2" />
-                Editar
+                <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Editar</span>
               </Button>
             </>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Información principal */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Información básica */}
-          <Card className="dark:bg-gray-800/50 dark:border-gray-700">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="dark:text-white">Información de la Factura</CardTitle>
+          <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
+            <CardHeader className="pb-3 sm:pb-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Información de la Factura</CardTitle>
                 {getEstadoBadge(factura.status)}
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-3">
-                  <FileText className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Número</p>
-                    <p className="font-medium dark:text-white">{factura.number_ext}</p>
+            <CardContent className="space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Número</p>
+                    <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white truncate">{factura.number_ext}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <Calendar className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Fecha Emisión</p>
-                    <p className="font-medium dark:text-white">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Fecha Emisión</p>
+                    <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
                       {factura.issue_date ? formatDate(new Date(factura.issue_date)) : '-'}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <Clock className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Vencimiento</p>
-                    <div className="flex items-center space-x-2">
-                      <p className="font-medium dark:text-white">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Vencimiento</p>
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
                         {factura.due_date ? formatDate(new Date(factura.due_date)) : '-'}
                       </p>
                       {diasVencimiento !== null && factura.balance > 0 && (
                         <Badge 
                           variant={diasVencimiento < 0 ? "destructive" : diasVencimiento <= 7 ? "outline" : "secondary"}
                           className={cn(
-                            diasVencimiento < 0 ? "border-red-500 text-red-600" :
-                            diasVencimiento <= 7 ? "border-yellow-500 text-yellow-600" : ""
+                            "text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 whitespace-nowrap",
+                            diasVencimiento < 0 ? "border-red-500 text-red-600 dark:border-red-400 dark:text-red-400" :
+                            diasVencimiento <= 7 ? "border-yellow-500 text-yellow-600 dark:border-yellow-400 dark:text-yellow-400" : 
+                            "dark:bg-gray-700 dark:text-gray-300"
                           )}
                         >
                           {diasVencimiento < 0 ? 
-                            `${Math.abs(diasVencimiento)} días vencida` : 
-                            `${diasVencimiento} días`
+                            `${Math.abs(diasVencimiento)}d vencida` : 
+                            `${diasVencimiento}d`
                           }
                         </Badge>
                       )}
@@ -363,21 +374,21 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <DollarSign className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Moneda</p>
-                    <p className="font-medium dark:text-white">{factura.currency}</p>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Moneda</p>
+                    <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">{factura.currency}</p>
                   </div>
                 </div>
               </div>
 
               {factura.notes && (
                 <>
-                  <Separator className="dark:border-gray-600" />
+                  <Separator className="dark:bg-gray-600" />
                   <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Notas</p>
-                    <p className="text-sm dark:text-gray-300">{factura.notes}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1.5 sm:mb-2">Notas</p>
+                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{factura.notes}</p>
                   </div>
                 </>
               )}
@@ -385,41 +396,41 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
           </Card>
 
           {/* Items de la factura */}
-          <Card className="dark:bg-gray-800/50 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="dark:text-white">Items de la Factura</CardTitle>
+          <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Items de la Factura</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto -mx-2 sm:mx-0">
               <Table>
                 <TableHeader>
-                  <TableRow className="dark:border-gray-700">
-                    <TableHead className="dark:text-gray-300">Descripción</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">Cant.</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">P. Unit.</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">Desc.</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">Imp.</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">Total</TableHead>
+                  <TableRow className="dark:border-gray-800 border-b border-gray-200">
+                    <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">Descripción</TableHead>
+                    <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-right whitespace-nowrap">Cant.</TableHead>
+                    <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-right whitespace-nowrap hidden sm:table-cell">P. Unit.</TableHead>
+                    <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-right whitespace-nowrap hidden md:table-cell">Desc.</TableHead>
+                    <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-right whitespace-nowrap hidden lg:table-cell">Imp.</TableHead>
+                    <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-right whitespace-nowrap">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {factura.items?.map((item, index) => (
-                    <TableRow key={item.id || index} className="dark:border-gray-700">
-                      <TableCell className="dark:text-gray-300">
-                        {item.description}
+                    <TableRow key={item.id || index} className="dark:border-gray-800 border-b border-gray-100">
+                      <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3">
+                        <span className="line-clamp-2">{item.description}</span>
                       </TableCell>
-                      <TableCell className="text-right dark:text-gray-300">
+                      <TableCell className="text-xs sm:text-sm text-right text-gray-900 dark:text-gray-300 py-2 sm:py-3 whitespace-nowrap">
                         {item.qty}
                       </TableCell>
-                      <TableCell className="text-right dark:text-gray-300">
+                      <TableCell className="text-xs sm:text-sm text-right text-gray-900 dark:text-gray-300 py-2 sm:py-3 whitespace-nowrap hidden sm:table-cell">
                         {formatCurrency(item.unit_price, factura.currency)}
                       </TableCell>
-                      <TableCell className="text-right dark:text-gray-300">
+                      <TableCell className="text-xs sm:text-sm text-right text-gray-900 dark:text-gray-300 py-2 sm:py-3 whitespace-nowrap hidden md:table-cell">
                         {item.discount_amount ? formatCurrency(item.discount_amount, factura.currency) : '-'}
                       </TableCell>
-                      <TableCell className="text-right dark:text-gray-300">
+                      <TableCell className="text-xs sm:text-sm text-right text-gray-900 dark:text-gray-300 py-2 sm:py-3 whitespace-nowrap hidden lg:table-cell">
                         {item.tax_amount ? formatCurrency(item.tax_amount, factura.currency) : '-'}
                       </TableCell>
-                      <TableCell className="text-right font-medium dark:text-white">
+                      <TableCell className="text-xs sm:text-sm text-right font-medium text-gray-900 dark:text-white py-2 sm:py-3 whitespace-nowrap">
                         {formatCurrency(item.total_line, factura.currency)}
                       </TableCell>
                     </TableRow>
@@ -444,7 +455,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Información del proveedor */}
           <InfoProveedorFactura factura={factura} />
 

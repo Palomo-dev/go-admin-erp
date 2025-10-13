@@ -122,67 +122,85 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
     obtenerFacturasProximasVencer();
   }, [diasLimite]);
   
-  // Función para obtener color según días restantes
+  // Función para obtener color según días restantes (dark mode compatible)
   const obtenerColorPorDias = (dias: number): string => {
-    if (dias <= 3) return 'bg-red-100 text-red-800 border-red-300';
-    if (dias <= 7) return 'bg-amber-100 text-amber-800 border-amber-300';
-    return 'bg-blue-100 text-blue-800 border-blue-300';
+    if (dias <= 3) return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
+    if (dias <= 7) return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800';
+    return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
   };
   
   // Función para obtener ícono según días restantes
   const obtenerIconoPorDias = (dias: number) => {
-    if (dias <= 3) return <AlertTriangle className="h-4 w-4 mr-1" />;
-    if (dias <= 7) return <Clock className="h-4 w-4 mr-1" />;
-    return <CheckCircle className="h-4 w-4 mr-1" />;
+    if (dias <= 3) return <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />;
+    if (dias <= 7) return <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />;
+    return <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />;
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-xl">Facturas Próximas a Vencer</CardTitle>
-            <CardDescription>
+    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
+      <CardHeader className="pb-3 px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+          <div className="flex-1">
+            <CardTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">
+              Facturas Próximas a Vencer
+            </CardTitle>
+            <CardDescription className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Facturas que vencerán en los próximos {diasLimite} días
             </CardDescription>
           </div>
           {facturas.length > 0 && (
-            <Badge variant="secondary" className="ml-2">
+            <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 self-start sm:self-auto">
               {facturas.length} factura{facturas.length !== 1 ? 's' : ''}
             </Badge>
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6">
         {isLoading ? (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
           </div>
         ) : error ? (
-          <div className="bg-red-50 p-4 rounded-md text-red-800 text-sm">
+          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-red-800 dark:text-red-400 text-sm border border-red-200 dark:border-red-800">
             {error}
           </div>
         ) : facturas.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            No hay facturas próximas a vencer en los siguientes {diasLimite} días.
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <Clock className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p className="text-sm">No hay facturas próximas a vencer en los siguientes {diasLimite} días.</p>
           </div>
         ) : (
-          <div className="max-h-96 overflow-y-auto pr-2">
+          <div className="max-h-[500px] overflow-y-auto pr-1">
             <div className="space-y-3">
               {facturas.map((factura) => (
                 <div 
                   key={factura.id} 
-                  className="p-3 border rounded-md flex justify-between items-center hover:bg-muted/30 transition-colors"
+                  className="
+                    p-3 sm:p-4 
+                    border border-gray-200 dark:border-gray-700
+                    rounded-lg 
+                    flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3
+                    hover:bg-gray-50 dark:hover:bg-gray-700/50
+                    transition-colors
+                    bg-white dark:bg-gray-800/50
+                  "
                 >
-                  <div>
-                    <div className="font-medium">{factura.number}</div>
-                    <div className="text-sm text-muted-foreground">{factura.customer_name}</div>
-                    <div className="text-sm mt-1">
-                      Vence: {format(new Date(factura.due_date), "d 'de' MMMM, yyyy", { locale: es })}
+                  {/* Información de la factura */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate">
+                      {factura.number}
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">
+                      {factura.customer_name}
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-500 mt-1">
+                      Vence: {format(new Date(factura.due_date), "d 'de' MMM, yyyy", { locale: es })}
                     </div>
                   </div>
-                  <div className="flex flex-col items-end space-y-2">
-                    <div className="text-right font-medium">
+                  
+                  {/* Monto y acciones */}
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:space-y-2">
+                    <div className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
                       {new Intl.NumberFormat('es-CO', { 
                         style: 'currency', 
                         currency: 'COP',
@@ -190,23 +208,29 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
                         maximumFractionDigits: 0
                       }).format(factura.balance)}
                     </div>
-                    <Badge 
-                      variant="outline" 
-                      className={`flex items-center ${obtenerColorPorDias(factura.dias_restantes)}`}
-                    >
-                      {obtenerIconoPorDias(factura.dias_restantes)}
-                      {factura.dias_restantes === 0 
-                        ? 'Vence hoy' 
-                        : `${factura.dias_restantes} día${factura.dias_restantes !== 1 ? 's' : ''}`}
-                    </Badge>
-                    <Link 
-                      href={`/org/finanzas/facturas-venta/${factura.id}`} 
-                      passHref
-                    >
-                      <Button variant="ghost" size="sm" className="text-xs">
-                        Ver factura
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant="outline" 
+                        className={`flex items-center text-xs whitespace-nowrap ${obtenerColorPorDias(factura.dias_restantes)}`}
+                      >
+                        {obtenerIconoPorDias(factura.dias_restantes)}
+                        {factura.dias_restantes === 0 
+                          ? 'Vence hoy' 
+                          : `${factura.dias_restantes} día${factura.dias_restantes !== 1 ? 's' : ''}`}
+                      </Badge>
+                      <Link 
+                        href={`/app/finanzas/facturas-venta/${factura.id}`} 
+                        passHref
+                      >
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs h-7 px-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                        >
+                          Ver
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}

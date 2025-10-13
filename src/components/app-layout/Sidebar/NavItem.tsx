@@ -41,7 +41,7 @@ const getSubmenuIcon = (name: string) => {
 };
 
 // Componente para elemento de navegación con posible submenú
-export const NavItem = ({ item, collapsed }: NavItemComponentProps) => {
+export const NavItem = ({ item, collapsed, onNavigate }: NavItemComponentProps) => {
   // Estados separados para móvil y desktop
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopOpen, setIsDesktopOpen] = useState(false);
@@ -88,10 +88,10 @@ export const NavItem = ({ item, collapsed }: NavItemComponentProps) => {
             <div 
               onClick={handleMobileClick}
               className={`
-                flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium w-full
+                flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium w-full min-h-[44px]
                 ${isActive 
                   ? 'bg-blue-50 text-blue-600 dark:bg-gray-700 dark:text-blue-300 font-semibold' 
-                  : 'text-gray-700 hover:bg-blue-50/50 hover:text-blue-600 dark:text-gray-300 dark:hover:bg-gray-700/50'
+                  : 'text-gray-700 hover:bg-blue-50/50 hover:text-blue-600 active:bg-blue-100 dark:text-gray-300 dark:hover:bg-gray-700/50 dark:active:bg-gray-700'
                 }
                 transition-all duration-200 cursor-pointer
               `}
@@ -120,11 +120,12 @@ export const NavItem = ({ item, collapsed }: NavItemComponentProps) => {
                   <Link
                     key={subIdx}
                     href={subItem.href}
+                    onClick={onNavigate}
                     className={`
-                      flex items-center px-3 py-1.5 text-sm rounded-md
+                      flex items-center px-3 py-1.5 text-sm rounded-md min-h-[40px]
                       ${pathname === subItem.href
                         ? 'bg-blue-50 text-blue-700 font-medium dark:bg-blue-900/20 dark:text-blue-200'
-                        : 'text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-gray-200'}
+                        : 'text-gray-600 hover:text-blue-600 active:bg-blue-50 dark:text-gray-400 dark:hover:text-gray-200 dark:active:bg-gray-700'}
                     `}
                   >
                     <span className="mr-2.5 text-gray-500 dark:text-gray-400">
@@ -196,6 +197,7 @@ export const NavItem = ({ item, collapsed }: NavItemComponentProps) => {
                   <DropdownMenuItem key={subIdx} asChild>
                     <Link 
                       href={subItem.href}
+                      onClick={onNavigate}
                       className={`
                         flex items-center px-3 py-2 text-sm w-full cursor-default
                         ${pathname === subItem.href 
@@ -218,11 +220,12 @@ export const NavItem = ({ item, collapsed }: NavItemComponentProps) => {
         // Si no tiene submenú, simplemente renderiza un enlace
         <Link
           href={item.href}
+          onClick={onNavigate}
           className={`
-            flex items-center ${collapsed ? 'lg:justify-center' : ''} px-3 py-2 rounded-md text-sm font-medium
+            flex items-center ${collapsed ? 'lg:justify-center' : ''} px-3 py-2 rounded-md text-sm font-medium min-h-[44px]
             ${isActive 
               ? 'bg-blue-50 text-blue-600 dark:bg-gray-700 dark:text-blue-300 font-semibold' 
-              : 'text-gray-700 hover:bg-blue-50/50 hover:text-blue-600 dark:text-gray-300 dark:hover:bg-gray-700/50'}
+              : 'text-gray-700 hover:bg-blue-50/50 hover:text-blue-600 active:bg-blue-100 dark:text-gray-300 dark:hover:bg-gray-700/50 dark:active:bg-gray-700'}
             transition-all duration-200 cursor-pointer
             ${collapsed ? 'lg:relative lg:group' : ''}
           `}

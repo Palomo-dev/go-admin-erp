@@ -444,10 +444,11 @@ const TareasContent = React.memo(({
   }
   
   return (
-    <div className="space-y-4">
-      {cargando ? (
-        <div className="flex justify-center items-center p-8">
-          <Loader2 className="animate-spin h-8 w-8" />
+    <div className="w-full space-y-3 sm:space-y-4">
+      {!hasMounted || cargando ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-3">
+          <Loader2 className="animate-spin h-8 w-8 text-blue-600 dark:text-blue-400" />
+          <span className="text-sm text-gray-600 dark:text-gray-400">Cargando tareas...</span>
         </div>
       ) : (
         <Tabs 
@@ -496,7 +497,7 @@ const TareasContent = React.memo(({
           />
           
           {/* Vista de Lista */}
-          <TabsContent value="lista" className="mt-0">
+          <TabsContent value="lista" className="mt-0 space-y-4">
             {modoVista === 'hierarchy' ? (
               /* Vista Jerárquica */
               <TaskHierarchyList
@@ -553,7 +554,7 @@ const TareasContent = React.memo(({
 
           {/* Vista de Tablero Kanban */}
           <TabsContent value="tablero" className="mt-0">
-            <div className="w-full overflow-auto">
+            <div className="w-full overflow-auto -mx-3 sm:mx-0">
               <TableroKanban
                 tareas={tareasTablero}
                 onStatusChange={(tareaId: string, nuevoEstado: TaskStatusUI, estadoAnterior: TaskStatusUI) => {

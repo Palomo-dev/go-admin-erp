@@ -105,7 +105,7 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
   };
 
   return (
-    <div className="mb-4">
+    <div className="mb-3 sm:mb-4">
       {/* Header de filtros con botón para limpiar */}
       <div className="flex justify-between items-center mb-2" id="filtros">
         {/* Mostrar cantidad de filtros activos */}
@@ -113,7 +113,7 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-muted-foreground flex items-center gap-1"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 flex items-center gap-1 min-h-[36px]"
             onClick={limpiarFiltros}
           >
             Limpiar filtros
@@ -124,57 +124,57 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
       
       {/* Filtros aplicados - siempre visibles si hay filtros activos */}
       {Object.keys(filtros).length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-2">
+        <div className="flex flex-wrap gap-1 sm:gap-2 mb-2">
           {filtros.texto && (
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-xs">
               Texto: {filtros.texto}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400" 
                 onClick={() => eliminarFiltro('texto')} 
               />
             </Badge>
           )}
           {filtros.status && (
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-xs">
               Estado: {traducirEstado(filtros.status)}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400" 
                 onClick={() => eliminarFiltro('status')} 
               />
             </Badge>
           )}
           {filtros.type && (
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-xs">
               Tipo: {filtros.type}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400" 
                 onClick={() => eliminarFiltro('type')} 
               />
             </Badge>
           )}
           {filtros.prioridad && (
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-xs">
               Prioridad: {traducirPrioridad(filtros.prioridad)}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400" 
                 onClick={() => eliminarFiltro('prioridad')} 
               />
             </Badge>
           )}
           {filtros.fecha && (
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-xs">
               Fecha: {format(new Date(filtros.fecha), 'dd/MM/yyyy', { locale: es })}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400" 
                 onClick={() => eliminarFiltro('fecha')} 
               />
             </Badge>
           )}
           {filtros.asignado && (
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-xs">
               Asignado: {filtros.asignado === 'si' ? 'Asignadas' : 'Sin asignar'}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer hover:text-red-600 dark:hover:text-red-400" 
                 onClick={() => eliminarFiltro('asignado')} 
               />
             </Badge>
@@ -184,15 +184,15 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
       
       {/* Panel de filtros - mostrar solo cuando mostrarFiltros es true */}
       {mostrarFiltros && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 border rounded-md bg-card">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800">
           {/* Filtro por texto */}
           <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
+            <Search className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             <Input 
-              placeholder="Buscar en título y descripción" 
+              placeholder="Buscar..." 
               value={filtros.texto || ''}
               onChange={(e) => actualizarFiltro('texto', e.target.value)}
-              className="h-8"
+              className="h-10 sm:h-8 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
               // Aseguramos que el buscador tenga la misma experiencia de usuario que el principal
               autoFocus={false}
               spellCheck={false}
@@ -204,15 +204,15 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
             value={filtros.status || 'todas'}
             onValueChange={(value) => value === 'todas' ? eliminarFiltro('status') : actualizarFiltro('status', value)}
           >
-            <SelectTrigger className="h-8">
+            <SelectTrigger className="h-10 sm:h-8 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todos los estados</SelectItem>
-              <SelectItem value="open">Pendiente</SelectItem>
-              <SelectItem value="in_progress">En progreso</SelectItem>
-              <SelectItem value="done">Completada</SelectItem>
-              <SelectItem value="canceled">Cancelada</SelectItem>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectItem value="todas" className="text-gray-900 dark:text-gray-100">Todos los estados</SelectItem>
+              <SelectItem value="open" className="text-gray-900 dark:text-gray-100">Pendiente</SelectItem>
+              <SelectItem value="in_progress" className="text-gray-900 dark:text-gray-100">En progreso</SelectItem>
+              <SelectItem value="done" className="text-gray-900 dark:text-gray-100">Completada</SelectItem>
+              <SelectItem value="canceled" className="text-gray-900 dark:text-gray-100">Cancelada</SelectItem>
             </SelectContent>
           </Select>
           
@@ -228,15 +228,15 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
               }
             }}
           >
-            <SelectTrigger className="h-8">
+            <SelectTrigger className="h-10 sm:h-8 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todos los tipos</SelectItem>
-              <SelectItem value="llamada">Llamada</SelectItem>
-              <SelectItem value="reunion">Reunión</SelectItem>
-              <SelectItem value="email">Email</SelectItem>
-              <SelectItem value="visita">Visita</SelectItem>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectItem value="todas" className="text-gray-900 dark:text-gray-100">Todos los tipos</SelectItem>
+              <SelectItem value="llamada" className="text-gray-900 dark:text-gray-100">Llamada</SelectItem>
+              <SelectItem value="reunion" className="text-gray-900 dark:text-gray-100">Reunión</SelectItem>
+              <SelectItem value="email" className="text-gray-900 dark:text-gray-100">Email</SelectItem>
+              <SelectItem value="visita" className="text-gray-900 dark:text-gray-100">Visita</SelectItem>
             </SelectContent>
           </Select>
           
@@ -245,14 +245,14 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
             value={filtros.prioridad || 'todas'}
             onValueChange={(value) => value === 'todas' ? eliminarFiltro('prioridad') : actualizarFiltro('prioridad', value)}
           >
-            <SelectTrigger className="h-8">
+            <SelectTrigger className="h-10 sm:h-8 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="Prioridad" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas las prioridades</SelectItem>
-              <SelectItem value="low">Baja</SelectItem>
-              <SelectItem value="med">Media</SelectItem>
-              <SelectItem value="high">Alta</SelectItem>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectItem value="todas" className="text-gray-900 dark:text-gray-100">Todas las prioridades</SelectItem>
+              <SelectItem value="low" className="text-gray-900 dark:text-gray-100">Baja</SelectItem>
+              <SelectItem value="med" className="text-gray-900 dark:text-gray-100">Media</SelectItem>
+              <SelectItem value="high" className="text-gray-900 dark:text-gray-100">Alta</SelectItem>
             </SelectContent>
           </Select>
           
@@ -261,22 +261,23 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
             <PopoverTrigger asChild>
               <Button 
                 variant="outline" 
-                className="h-8 justify-start text-left font-normal"
+                className="h-10 sm:h-8 justify-start text-left font-normal bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {filtros.fecha ? (
-                  format(new Date(filtros.fecha), 'PPP', { locale: es })
+                  <span className="truncate">{format(new Date(filtros.fecha), 'dd/MM/yyyy', { locale: es })}</span>
                 ) : (
                   <span>Fecha límite</span>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <Calendar
                 mode="single"
                 selected={filtros.fecha ? new Date(filtros.fecha) : undefined}
                 onSelect={(date) => date ? actualizarFiltro('fecha', date.toISOString()) : eliminarFiltro('fecha')}
                 initialFocus
+                className="bg-white dark:bg-gray-800"
               />
             </PopoverContent>
           </Popover>
@@ -286,13 +287,13 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
             value={filtros.asignado || 'todas'}
             onValueChange={(value) => value === 'todas' ? eliminarFiltro('asignado') : actualizarFiltro('asignado', value)}
           >
-            <SelectTrigger className="h-8">
+            <SelectTrigger className="h-10 sm:h-8 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="Asignación" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas</SelectItem>
-              <SelectItem value="si">Asignadas</SelectItem>
-              <SelectItem value="no">Sin asignar</SelectItem>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectItem value="todas" className="text-gray-900 dark:text-gray-100">Todas</SelectItem>
+              <SelectItem value="si" className="text-gray-900 dark:text-gray-100">Asignadas</SelectItem>
+              <SelectItem value="no" className="text-gray-900 dark:text-gray-100">Sin asignar</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -771,12 +771,20 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-6 p-6 min-h-[calc(100vh-10rem)] bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-        {stages.map((stage) => (
-          <div 
-            key={stage.id} 
-            className="flex-shrink-0 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-all duration-200 border border-blue-100 dark:border-blue-900"
-          >
+      {/* Contenedor con scroll horizontal en móvil */}
+      <div 
+        className="overflow-x-auto overflow-y-hidden -mx-3 sm:mx-0 scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-gray-200 dark:scrollbar-track-gray-800"
+        style={{ 
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'thin'
+        }}
+      >
+        <div className="flex gap-3 sm:gap-6 p-3 sm:p-6 min-h-[calc(100vh-10rem)] bg-gray-50 dark:bg-gray-900 transition-colors duration-200 min-w-min">
+          {stages.map((stage) => (
+            <div 
+              key={stage.id} 
+              className="flex-shrink-0 w-[280px] sm:w-72 bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-all duration-200 border border-blue-100 dark:border-blue-900"
+            >
             <div 
               className="p-3 border-b border-blue-100 dark:border-blue-900 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white dark:from-blue-950 dark:to-gray-900"
               style={{
@@ -916,30 +924,31 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             </Droppable>
           </div>
         ))}
+        </div>
       </div>
       
       {/* Diálogo de configuración de etapa */}
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md mx-4 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Configurar etapa</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">Configurar etapa</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="stageName" className="text-right">
-                Nombre <span className="text-red-500">*</span>
+            <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+              <Label htmlFor="stageName" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
+                Nombre <span className="text-red-600 dark:text-red-400">*</span>
               </Label>
               <Input
                 id="stageName"
                 value={stageName}
                 onChange={(e) => setStageName(e.target.value)}
-                className="col-span-3"
+                className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
                 required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="probability" className="text-right">
-                Probabilidad (%) <span className="text-gray-400 text-xs">(Opcional)</span>
+            <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+              <Label htmlFor="probability" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
+                Probabilidad (%) <span className="text-gray-500 dark:text-gray-400 text-xs">(Opcional)</span>
               </Label>
               <Input
                 id="probability"
@@ -948,12 +957,12 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                 max="100"
                 value={stageProbability || ''}
                 onChange={(e) => setStageProbability(parseInt(e.target.value) || null)}
-                className="col-span-3"
+                className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="color" className="text-right">
-                Color <span className="text-gray-400 text-xs">(Opcional)</span>
+            <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+              <Label htmlFor="color" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
+                Color <span className="text-gray-500 dark:text-gray-400 text-xs">(Opcional)</span>
               </Label>
               <div className="col-span-3 flex items-center gap-2">
                 <input
@@ -961,32 +970,32 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                   id="color"
                   value={stageColor}
                   onChange={(e) => setStageColor(e.target.value)}
-                  className="h-8 w-8 rounded-md cursor-pointer"
+                  className="h-10 w-10 rounded-md cursor-pointer border-2 border-gray-300 dark:border-gray-600"
                 />
                 <Input
                   value={stageColor}
                   onChange={(e) => setStageColor(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Descripción <span className="text-gray-400 text-xs">(Opcional)</span>
+            <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
+              <Label htmlFor="description" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
+                Descripción <span className="text-gray-500 dark:text-gray-400 text-xs">(Opcional)</span>
               </Label>
               <Input
                 id="description"
                 value={stageDescription}
                 onChange={(e) => setStageDescription(e.target.value)}
-                className="col-span-3"
+                className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsConfigOpen(false)} disabled={isSaving}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsConfigOpen(false)} disabled={isSaving} className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700">
               Cancelar
             </Button>
-            <Button type="submit" onClick={handleSaveStage} disabled={isSaving}>
+            <Button type="submit" onClick={handleSaveStage} disabled={isSaving} className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white">
               {isSaving ? (
                 <>
                   <span className="mr-2">Guardando</span>

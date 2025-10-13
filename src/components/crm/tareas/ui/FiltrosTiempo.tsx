@@ -82,61 +82,71 @@ export function FiltrosTiempo({ onChange, filtroActivo = null }: FiltrosTiempoPr
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
       <Button
         variant={filtroActivo === 'todos' || filtroActivo === null ? "default" : "outline"}
         size="sm"
         className={cn(
-          "rounded-md flex items-center gap-1",
-          filtroActivo === 'todos' || filtroActivo === null ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+          "rounded-md flex items-center gap-1 min-h-[36px] text-xs sm:text-sm",
+          filtroActivo === 'todos' || filtroActivo === null 
+            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+            : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
         )}
         onClick={() => aplicarFiltroTiempo('todos')}
       >
         <Clock className="h-3.5 w-3.5" />
-        Todos
+        <span className="hidden sm:inline">Todos</span>
       </Button>
       
       <Button
         variant={filtroActivo === 'hoy' ? "default" : "outline"}
         size="sm"
         className={cn(
-          "rounded-md flex items-center gap-1",
-          filtroActivo === 'hoy' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+          "rounded-md flex items-center gap-1 min-h-[36px] text-xs sm:text-sm",
+          filtroActivo === 'hoy' 
+            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+            : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
         )}
         onClick={() => aplicarFiltroTiempo('hoy')}
       >
         <Clock className="h-3.5 w-3.5" />
-        Hoy
+        <span>Hoy</span>
       </Button>
 
       <Button
         variant={filtroActivo === 'semana' ? "default" : "outline"}
         size="sm"
         className={cn(
-          "rounded-md flex items-center gap-1",
-          filtroActivo === 'semana' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+          "rounded-md flex items-center gap-1 min-h-[36px] text-xs sm:text-sm",
+          filtroActivo === 'semana' 
+            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+            : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
         )}
         onClick={() => aplicarFiltroTiempo('semana')}
       >
         <CalendarDays className="h-3.5 w-3.5" />
-        Esta semana
+        <span className="hidden sm:inline">Esta semana</span>
+        <span className="sm:hidden">Semana</span>
       </Button>
 
       <Button
         variant={filtroActivo === 'mes' ? "default" : "outline"}
         size="sm"
         className={cn(
-          "rounded-md flex items-center gap-1",
-          filtroActivo === 'mes' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+          "rounded-md flex items-center gap-1 min-h-[36px] text-xs sm:text-sm",
+          filtroActivo === 'mes' 
+            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+            : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
         )}
         onClick={() => aplicarFiltroTiempo('mes')}
       >
         <Calendar className="h-3.5 w-3.5" />
-        Este mes
+        <span className="hidden sm:inline">Este mes</span>
+        <span className="sm:hidden">Mes</span>
       </Button>
       
       {filtroActivo && (
-        <span className="text-xs text-muted-foreground ml-2">
+        <span className="text-xs text-gray-600 dark:text-gray-400 ml-2 hidden md:inline">
           {formatoFecha()}
         </span>
       )}

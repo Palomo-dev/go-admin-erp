@@ -359,57 +359,103 @@ export function ImpuestosFactura({
   };
 
   return (
-    <>
-      <div className="flex flex-col gap-2 items-end">
-        <div className="grid grid-cols-2 gap-2 min-w-[200px]">
-          <span className="text-right">Subtotal:</span>
-          <span className="text-right font-medium">
+    <div className="
+      border border-gray-200 dark:border-gray-700
+      bg-gray-50/50 dark:bg-gray-900/30
+      p-3 sm:p-4
+      rounded-lg
+      space-y-3
+    ">
+      <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
+        Resumen e Impuestos
+      </h3>
+      
+      <div className="flex flex-col gap-3 items-end">
+        {/* Subtotal */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:min-w-[280px] text-sm sm:text-base">
+          <span className="text-right text-gray-700 dark:text-gray-300">Subtotal:</span>
+          <span className="text-right font-semibold text-gray-900 dark:text-gray-100">
             ${subtotal.toFixed(2)}
             {taxIncluded && (
-              <span className="text-xs text-gray-500 ml-1">(impuestos incluidos)</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(imp. incluidos)</span>
             )}
           </span>
         </div>
         
         {/* Selector de impuestos de la organización */}
-        <div className="flex flex-col gap-2 min-w-[320px]">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Impuestos aplicables:</span>
-            <div className="flex items-center gap-1">
+        <div className="flex flex-col gap-2 sm:gap-3 w-full sm:min-w-[320px]">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+              Impuestos aplicables:
+            </span>
+            <div className="flex items-center gap-2">
               <input 
                 type="checkbox" 
                 id="taxIncluded" 
                 checked={taxIncluded} 
                 onChange={(e) => onTaxIncludedChange(e.target.checked)}
-                className="h-4 w-4"
+                className="
+                  h-4 w-4 
+                  rounded border-gray-300 dark:border-gray-600
+                  text-blue-600 dark:text-blue-500
+                  focus:ring-blue-500 dark:focus:ring-blue-400
+                  bg-white dark:bg-gray-900
+                "
               />
-              <label htmlFor="taxIncluded" className="text-sm">Impuestos incluidos en precios</label>
+              <label 
+                htmlFor="taxIncluded" 
+                className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+              >
+                Impuestos incluidos en precios
+              </label>
             </div>
           </div>
           
           {/* Lista de todos los impuestos disponibles */}
-          <div className="flex flex-col gap-1 border rounded-md p-2 bg-gray-50">
+          <div className="
+            flex flex-col gap-1.5 
+            border border-gray-200 dark:border-gray-700
+            rounded-lg p-2 sm:p-3 
+            bg-white dark:bg-gray-800
+          ">
             {organizationTaxes.length > 0 ? (
               organizationTaxes.map(tax => {
                 const isDefault = tax.is_default;
                 const isChecked = isDefault ? applyDefaultTax : !!appliedTaxes[tax.code];
                 
                 return (
-                  <div key={tax.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
+                  <div key={tax.id} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-1">
                       <input 
                         type="checkbox" 
                         id={`tax-${tax.code}`} 
                         checked={isChecked} 
                         onChange={(e) => handleAppliedTaxesChange(tax.code, e.target.checked, isDefault)}
-                        className="h-4 w-4"
+                        className="
+                          h-4 w-4 flex-shrink-0
+                          rounded border-gray-300 dark:border-gray-600
+                          text-blue-600 dark:text-blue-500
+                          focus:ring-blue-500 dark:focus:ring-blue-400
+                          bg-white dark:bg-gray-900
+                        "
                       />
-                      <label htmlFor={`tax-${tax.code}`} className="text-sm">
+                      <label 
+                        htmlFor={`tax-${tax.code}`} 
+                        className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+                      >
                         {tax.name} ({tax.rate}%)
                       </label>
                     </div>
                     {isDefault && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                      <span className="
+                        text-[10px] sm:text-xs 
+                        bg-blue-100 dark:bg-blue-900/30 
+                        text-blue-800 dark:text-blue-400 
+                        px-2 py-0.5 
+                        rounded-full
+                        whitespace-nowrap
+                        flex-shrink-0
+                      ">
                         Predeterminado
                       </span>
                     )}
@@ -417,7 +463,7 @@ export function ImpuestosFactura({
                 );
               })
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center py-2">
                 No hay impuestos configurados
               </p>
             )}
@@ -426,37 +472,55 @@ export function ImpuestosFactura({
         
         {/* Mostrar todos los impuestos aplicados con sus montos */}
         {Object.keys(appliedTaxTotals).length > 0 && (
-          <div className="grid grid-cols-2 gap-1 min-w-[250px] border-t border-b py-1 my-1">
+          <div className="
+            grid grid-cols-2 gap-1 sm:gap-2 
+            w-full sm:min-w-[280px] 
+            border-t border-b border-gray-200 dark:border-gray-700
+            py-2 my-1
+          ">
             {Object.entries(appliedTaxTotals).map(([code, taxInfo]) => (
               <React.Fragment key={code}>
-                <span className="text-right text-sm">
+                <span className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                   {taxInfo.name} ({taxInfo.rate}%):
                   {taxInfo.included && (
-                    <span className="text-xs text-blue-500 ml-1">(incluido)</span>
+                    <span className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 ml-1">(incluido)</span>
                   )}
                 </span>
-                <span className="text-right text-sm font-medium">${taxInfo.amount.toFixed(2)}</span>
+                <span className="text-right text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
+                  ${taxInfo.amount.toFixed(2)}
+                </span>
               </React.Fragment>
             ))}
           </div>
         )}
         
-        <div className="grid grid-cols-2 gap-2 min-w-[200px]">
-          <span className="text-right">Total Impuestos:</span>
-          <span className="text-right font-medium">${taxTotal.toFixed(2)}</span>
+        {/* Total de impuestos */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:min-w-[280px] text-sm sm:text-base">
+          <span className="text-right text-gray-700 dark:text-gray-300">Total Impuestos:</span>
+          <span className="text-right font-semibold text-gray-900 dark:text-gray-100">
+            ${taxTotal.toFixed(2)}
+          </span>
         </div>
-        <div className="grid grid-cols-2 gap-2 min-w-[200px] pt-1 border-t">
-          <span className="text-right font-medium">Total:</span>
-          <span className="text-right font-medium">
+        
+        {/* Total general */}
+        <div className="
+          grid grid-cols-2 gap-2 sm:gap-3 
+          w-full sm:min-w-[280px] 
+          pt-2 sm:pt-3
+          border-t-2 border-gray-300 dark:border-gray-600
+          text-base sm:text-lg
+        ">
+          <span className="text-right font-bold text-gray-900 dark:text-gray-100">Total:</span>
+          <span className="text-right font-bold text-blue-600 dark:text-blue-400">
             ${total.toFixed(2)}
             {noIncluidos > 0 && taxIncluded && (
-              <span className="text-xs text-amber-600 ml-1">
+              <span className="block text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-normal mt-0.5">
                 (incluye ${subtotal.toFixed(2)} + impuestos)
               </span>
             )}
           </span>
         </div>
       </div>
-    </>
+    </div>
   );
 }

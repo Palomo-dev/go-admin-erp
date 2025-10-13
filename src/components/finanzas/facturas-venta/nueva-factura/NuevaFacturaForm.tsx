@@ -359,59 +359,70 @@ export function NuevaFacturaForm() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Información general de factura */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div>
-          <Label htmlFor="invoice-number">Número de Factura</Label>
-          <div className="relative flex space-x-2 items-start">
-            <div className="relative flex-1">
-              <Input 
-                id="invoice-number" 
-                value={invoiceNumber} 
-                onChange={(e) => {
-                  setInvoiceNumber(e.target.value);
-                  // Resetear el estado de duplicado cuando el usuario cambia el valor
-                  if (isDuplicateNumber) {
-                    setIsDuplicateNumber(false);
-                  }
-                }}
-                onBlur={() => checkDuplicateInvoiceNumber(invoiceNumber)}
-                placeholder="Ej. FACT-0001" 
-                className={isDuplicateNumber ? "border-red-500 focus:ring-red-500" : ""}
-              />
-              {isValidatingNumber && (
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
-                </div>
-              )}
-            </div>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              onClick={() => {
-                generateInvoiceNumber();
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="invoice-number" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Número de Factura
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="invoice-number"
+              value={invoiceNumber}
+              onChange={(e) => {
+                const value = e.target.value;
+                setInvoiceNumber(value);
                 setIsDuplicateNumber(false);
               }}
-              title="Generar número automáticamente"
+              onBlur={() => {
+                if (invoiceNumber) {
+                  checkDuplicateInvoiceNumber(invoiceNumber);
+                }
+              }}
+              placeholder="Ej: FACT-00001"
+              required
+              className={`
+                flex-1 text-sm
+                bg-white dark:bg-gray-900
+                border-gray-300 dark:border-gray-600
+                text-gray-900 dark:text-gray-100
+                placeholder:text-gray-500 dark:placeholder:text-gray-400
+                ${isDuplicateNumber ? 'border-red-500 dark:border-red-400' : ''}
+              `}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={generateInvoiceNumber}
+              disabled={isLoading}
+              title="Generar número automático"
+              className="
+                flex-shrink-0 h-9 w-9 p-0
+                bg-white dark:bg-gray-800
+                border-gray-300 dark:border-gray-600
+                hover:bg-gray-50 dark:hover:bg-gray-700
+                text-gray-700 dark:text-gray-200
+              "
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
-            {isDuplicateNumber && (
-              <p className="text-xs text-red-500 mt-1 absolute -bottom-5 left-0">Este número de factura ya existe.</p>
-            )}
           </div>
+          {isDuplicateNumber && (
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Este número de factura ya existe.</p>
+          )}
         </div>
-        
+
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="issue-date">Fecha de Emisión</Label>
+          <Label htmlFor="issue-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Fecha de Emisión
+          </Label>
           <DatePicker
             date={issueDate}
             onSelect={(date) => {
               setIssueDate(date);
-              
-              // Actualizar fecha de vencimiento cuando cambia la fecha de emisión
+
               if (date) {
                 const newDueDate = new Date(date);
                 newDueDate.setDate(newDueDate.getDate() + paymentTerms);
@@ -420,19 +431,29 @@ export function NuevaFacturaForm() {
             }}
           />
         </div>
-        
+
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="due-date">Fecha de Vencimiento</Label>
+          <Label htmlFor="due-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Fecha de Vencimiento
+          </Label>
           <DatePicker
             date={dueDate}
             onSelect={setDueDate}
           />
         </div>
       </div>
+
       
       {/* Selector de Cliente */}
-      <div className="border p-4 rounded-md">
-        <h3 className="font-medium mb-2">Datos del Cliente</h3>
+      <div className="
+        border border-gray-200 dark:border-gray-700
+        bg-gray-50/50 dark:bg-gray-900/30
+        p-3 sm:p-4
+        rounded-lg
+      ">
+        <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
+          Datos del Cliente
+        </h3>
         <ClienteSelector 
           selectedCustomerId={selectedCustomerId} 
           onCustomerChange={setSelectedCustomerId}
@@ -440,8 +461,15 @@ export function NuevaFacturaForm() {
       </div>
       
       {/* Items de Factura */}
-      <div className="border p-4 rounded-md">
-        <h3 className="font-medium mb-2">Items de la Factura</h3>
+      <div className="
+        border border-gray-200 dark:border-gray-700
+        bg-gray-50/50 dark:bg-gray-900/30
+        p-3 sm:p-4
+        rounded-lg
+      ">
+        <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
+          Items de la Factura
+        </h3>
         <ItemsFactura 
           items={items} 
           onItemsChange={handleItemsChange}
@@ -452,11 +480,20 @@ export function NuevaFacturaForm() {
       {/* El componente ImpuestosFactura se ha movido después de las condiciones de pago para evitar duplicación */}
       
       {/* Información de Pago */}
-      <div className="border p-4 rounded-md">
-        <h3 className="font-medium mb-2">Condiciones de Pago</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="
+        border border-gray-200 dark:border-gray-700
+        bg-gray-50/50 dark:bg-gray-900/30
+        p-3 sm:p-4
+        rounded-lg
+      ">
+        <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
+          Condiciones de Pago
+        </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <Label htmlFor="payment-terms">Términos de Pago</Label>
+            <Label htmlFor="payment-terms" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+              Términos de Pago
+            </Label>
             <div className="flex flex-col space-y-2">
               <Select 
                 value={isCustomPaymentTerm ? "custom" : paymentTerms.toString()}
@@ -470,7 +507,6 @@ export function NuevaFacturaForm() {
                   const days = parseInt(value);
                   setPaymentTerms(days);
                   
-                  // Actualizar la fecha de vencimiento basada en la fecha de emisión + días
                   if (issueDate) {
                     const newDueDate = new Date(issueDate);
                     newDueDate.setDate(newDueDate.getDate() + days);
@@ -478,26 +514,31 @@ export function NuevaFacturaForm() {
                   }
                 }}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="
+                  w-full text-sm
+                  bg-white dark:bg-gray-900
+                  border-gray-300 dark:border-gray-600
+                  text-gray-900 dark:text-gray-100
+                ">
                   <SelectValue placeholder="Seleccionar términos">
                     {isCustomPaymentTerm 
                       ? `Personalizado: ${paymentTerms} días` 
                       : (paymentTerms === 0 ? 'Contado' : `${paymentTerms} días`)}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Contado</SelectItem>
-                  <SelectItem value="15">15 días</SelectItem>
-                  <SelectItem value="30">30 días</SelectItem>
-                  <SelectItem value="45">45 días</SelectItem>
-                  <SelectItem value="60">60 días</SelectItem>
-                  <SelectItem value="90">90 días</SelectItem>
-                  <SelectItem value="custom">Personalizado</SelectItem>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="0" className="text-gray-900 dark:text-gray-100">Contado</SelectItem>
+                  <SelectItem value="15" className="text-gray-900 dark:text-gray-100">15 días</SelectItem>
+                  <SelectItem value="30" className="text-gray-900 dark:text-gray-100">30 días</SelectItem>
+                  <SelectItem value="45" className="text-gray-900 dark:text-gray-100">45 días</SelectItem>
+                  <SelectItem value="60" className="text-gray-900 dark:text-gray-100">60 días</SelectItem>
+                  <SelectItem value="90" className="text-gray-900 dark:text-gray-100">90 días</SelectItem>
+                  <SelectItem value="custom" className="text-gray-900 dark:text-gray-100">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
               
               {isCustomPaymentTerm && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <Input
                     type="number"
                     min="1"
@@ -506,16 +547,20 @@ export function NuevaFacturaForm() {
                       const days = parseInt(e.target.value) || 1;
                       setPaymentTerms(days);
                       
-                      // Actualizar fecha de vencimiento
                       if (issueDate) {
                         const newDueDate = new Date(issueDate);
                         newDueDate.setDate(newDueDate.getDate() + days);
                         setDueDate(newDueDate);
                       }
                     }}
-                    className="w-24"
+                    className="
+                      w-20 sm:w-24 text-sm
+                      bg-white dark:bg-gray-900
+                      border-gray-300 dark:border-gray-600
+                      text-gray-900 dark:text-gray-100
+                    "
                   />
-                  <span className="text-sm">días</span>
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">días</span>
                 </div>
               )}
             </div>
@@ -526,13 +571,22 @@ export function NuevaFacturaForm() {
               onChange={setPaymentMethodCode} 
             />
           </div>
-          <div className="md:col-span-2">
-            <Label htmlFor="notes">Notas</Label>
+          <div className="lg:col-span-2">
+            <Label htmlFor="notes" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+              Notas
+            </Label>
             <Input 
               id="notes" 
               value={notes} 
               onChange={e => setNotes(e.target.value)}
               placeholder="Notas adicionales" 
+              className="
+                text-sm
+                bg-white dark:bg-gray-900
+                border-gray-300 dark:border-gray-600
+                text-gray-900 dark:text-gray-100
+                placeholder:text-gray-500 dark:placeholder:text-gray-400
+              "
             />
           </div>
         </div>
@@ -562,21 +616,41 @@ export function NuevaFacturaForm() {
       />
       
       {/* Botones de Acción */}
-      <div className="flex justify-end gap-3 pt-4">
+      <div className="
+        flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 
+        pt-4 sm:pt-6
+        border-t border-gray-200 dark:border-gray-700
+      ">
         <Button
           variant="outline"
+          size="sm"
           onClick={() => router.back()}
           disabled={isLoading}
+          className="
+            w-full sm:w-auto
+            bg-white dark:bg-gray-800
+            border-gray-300 dark:border-gray-600
+            hover:bg-gray-50 dark:hover:bg-gray-700
+            text-gray-700 dark:text-gray-200
+          "
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Cancelar
+          <ArrowLeft className="w-4 h-4 mr-2 flex-shrink-0" />
+          <span className="text-sm">Cancelar</span>
         </Button>
         <Button
+          size="sm"
           onClick={handleSaveInvoice}
           disabled={isLoading}
+          className="
+            w-full sm:w-auto
+            bg-blue-600 hover:bg-blue-700
+            dark:bg-blue-600 dark:hover:bg-blue-500
+            text-white
+            shadow-sm
+          "
         >
-          <Save className="w-4 h-4 mr-2" />
-          {isLoading ? 'Guardando...' : 'Guardar Factura'}
+          <Save className="w-4 h-4 mr-2 flex-shrink-0" />
+          <span className="text-sm">{isLoading ? 'Guardando...' : 'Guardar Factura'}</span>
         </Button>
       </div>
     </div>

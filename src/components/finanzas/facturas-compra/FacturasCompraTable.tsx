@@ -102,17 +102,17 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
   const getEstadoBadge = (status: InvoicePurchase['status']) => {
     switch (status) {
       case 'draft':
-        return <Badge variant="secondary" className="dark:bg-gray-700">Borrador</Badge>;
+        return <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300">Borrador</Badge>;
       case 'received':
-        return <Badge variant="default" className="bg-blue-500">Recibida</Badge>;
+        return <Badge variant="default" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700">Recibida</Badge>;
       case 'partial':
-        return <Badge variant="outline" className="border-yellow-500 text-yellow-600">Parcial</Badge>;
+        return <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 border-yellow-500 text-yellow-600 dark:border-yellow-400 dark:text-yellow-400">Parcial</Badge>;
       case 'paid':
-        return <Badge variant="default" className="bg-green-500">Pagada</Badge>;
+        return <Badge variant="default" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700">Pagada</Badge>;
       case 'void':
-        return <Badge variant="destructive">Anulada</Badge>;
+        return <Badge variant="destructive" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-red-900/30 dark:text-red-400">Anulada</Badge>;
       default:
-        return <Badge variant="secondary">Desconocido</Badge>;
+        return <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300">Desconocido</Badge>;
     }
   };
 
@@ -174,33 +174,33 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex justify-center items-center h-48 sm:h-64">
+        <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border dark:border-gray-700">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="rounded-md border dark:border-gray-700 overflow-x-auto -mx-2 sm:mx-0">
         <Table>
           <TableHeader>
-            <TableRow className="dark:border-gray-700">
-              <TableHead className="dark:text-gray-300">Núm. Factura</TableHead>
-              <TableHead className="dark:text-gray-300">Proveedor</TableHead>
-              <TableHead className="dark:text-gray-300">Fecha Emisión</TableHead>
-              <TableHead className="dark:text-gray-300">Vencimiento</TableHead>
-              <TableHead className="dark:text-gray-300">Total</TableHead>
-              <TableHead className="dark:text-gray-300">Balance</TableHead>
-              <TableHead className="dark:text-gray-300">Estado</TableHead>
-              <TableHead className="dark:text-gray-300">Moneda</TableHead>
-              <TableHead className="dark:text-gray-300 text-right">Acciones</TableHead>
+            <TableRow className="dark:border-gray-700 border-b border-gray-200">
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">Núm. Factura</TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">Proveedor</TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden md:table-cell">Fecha Emisión</TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden lg:table-cell">Vencimiento</TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap text-right">Total</TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap text-right hidden sm:table-cell">Balance</TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">Estado</TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden xl:table-cell">Moneda</TableHead>
+              <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {facturas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={9} className="text-center py-6 sm:py-8 text-sm text-gray-500 dark:text-gray-400">
                   No se encontraron facturas de compra
                 </TableCell>
               </TableRow>
@@ -209,57 +209,58 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                 <TableRow 
                   key={factura.id} 
                   className={cn(
-                    "dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50",
+                    "dark:border-gray-800 border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/50",
                     getRowClassName(factura)
                   )}
                 >
-                  <TableCell className="font-medium dark:text-gray-200">
-                    <div className="flex items-center space-x-2">
-                      <span>{factura.number_ext}</span>
+                  <TableCell className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-200 py-2 sm:py-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate max-w-[120px] sm:max-w-none">{factura.number_ext}</span>
                       {factura.due_date && factura.balance > 0 && new Date(factura.due_date) < new Date() && (
-                        <AlertTriangle className="w-4 h-4 text-red-500" />
+                        <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="dark:text-gray-300">
+                  <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3">
                     <div>
-                      <div className="font-medium">{factura.supplier?.name}</div>
+                      <div className="font-medium truncate max-w-[150px] sm:max-w-[200px]">{factura.supplier?.name}</div>
                       {factura.supplier?.nit && (
-                        <div className="text-sm text-gray-500">{factura.supplier.nit}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-500">{factura.supplier.nit}</div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="dark:text-gray-300">
+                  <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3 hidden md:table-cell whitespace-nowrap">
                     {factura.issue_date ? formatDate(new Date(factura.issue_date)) : '-'}
                   </TableCell>
-                  <TableCell className="dark:text-gray-300">
+                  <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3 hidden lg:table-cell whitespace-nowrap">
                     {factura.due_date ? formatDate(new Date(factura.due_date)) : '-'}
                   </TableCell>
-                  <TableCell className="dark:text-gray-300">
+                  <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3 text-right font-medium whitespace-nowrap">
                     {formatCurrency(factura.total, factura.currency)}
                   </TableCell>
-                  <TableCell className="dark:text-gray-300">
+                  <TableCell className="text-xs sm:text-sm py-2 sm:py-3 text-right font-semibold whitespace-nowrap hidden sm:table-cell">
                     <span className={cn(
                       factura.balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                     )}>
                       {formatCurrency(factura.balance, factura.currency)}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2 sm:py-3">
                     {getEstadoBadge(factura.status)}
                   </TableCell>
-                  <TableCell className="dark:text-gray-300">
+                  <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3 hidden xl:table-cell">
                     {factura.currency}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-1">
+                  <TableCell className="text-right py-2 sm:py-3">
+                    <div className="flex justify-end gap-0.5 sm:gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleVerDetalles(factura.id)}
-                        className="h-8 w-8 p-0 dark:hover:bg-gray-700"
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:hover:bg-gray-700 dark:text-gray-300"
+                        title="Ver detalles"
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
                       
                       {factura.status === 'draft' && (
@@ -267,9 +268,10 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEditarFactura(factura.id)}
-                          className="h-8 w-8 p-0 dark:hover:bg-gray-700"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:hover:bg-gray-700 dark:text-gray-300"
+                          title="Editar"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       )}
                       
@@ -278,10 +280,10 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRecepcionar(factura.id)}
-                          className="h-8 w-8 p-0 dark:hover:bg-gray-700"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:hover:bg-gray-700 dark:text-gray-300"
                           title="Recepcionar a Inventario"
                         >
-                          <Package className="h-4 w-4" />
+                          <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       )}
                       
@@ -290,10 +292,10 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRegistrarPago(factura)}
-                          className="h-8 w-8 p-0 dark:hover:bg-gray-700"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:hover:bg-gray-700 dark:text-gray-300"
                           title="Registrar Pago"
                         >
-                          <CreditCard className="h-4 w-4" />
+                          <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       )}
                       
@@ -302,9 +304,10 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEliminarFactura(factura.id)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-gray-700"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-gray-700"
+                          title="Eliminar"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       )}
                     </div>
@@ -318,57 +321,59 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
 
       {/* Paginación */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
             Mostrando {((currentPage - 1) * pageSize) + 1} a {Math.min(currentPage * pageSize, total)} de {total} facturas
           </div>
           
           <Pagination>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => changePage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="dark:border-gray-600 dark:text-gray-300"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Anterior
-            </Button>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => changePage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Anterior</span>
+              </Button>
 
-            <div className="flex items-center space-x-1">
-              {getPageNumbers().map((pageNum, index) => (
-                <React.Fragment key={index}>
-                  {pageNum === '...' ? (
-                    <span className="px-2 py-1 text-gray-500">...</span>
-                  ) : (
-                    <Button
-                      variant={currentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => changePage(pageNum as number)}
-                      className={cn(
-                        "h-8 w-8 p-0",
-                        currentPage === pageNum 
-                          ? "bg-blue-600 text-white" 
-                          : "dark:border-gray-600 dark:text-gray-300"
-                      )}
-                    >
-                      {pageNum}
-                    </Button>
-                  )}
-                </React.Fragment>
-              ))}
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((pageNum, index) => (
+                  <React.Fragment key={index}>
+                    {pageNum === '...' ? (
+                      <span className="px-1 sm:px-2 py-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">...</span>
+                    ) : (
+                      <Button
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => changePage(pageNum as number)}
+                        className={cn(
+                          "h-7 w-7 sm:h-8 sm:w-8 p-0 text-xs sm:text-sm",
+                          currentPage === pageNum 
+                            ? "bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700" 
+                            : "dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                        )}
+                      >
+                        {pageNum}
+                      </Button>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => changePage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <span className="hidden sm:inline">Siguiente</span>
+                <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:ml-1" />
+              </Button>
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => changePage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="dark:border-gray-600 dark:text-gray-300"
-            >
-              Siguiente
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </Pagination>
         </div>
       )}

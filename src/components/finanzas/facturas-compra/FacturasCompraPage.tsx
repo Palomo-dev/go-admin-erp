@@ -25,16 +25,16 @@ export function FacturasCompraPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 space-y-4 sm:space-y-6 max-w-7xl">
       <PageHeader />
       
       {/* Widget de facturas próximas a vencer */}
-      <div className="grid gap-6">
+      <div className="grid gap-4 sm:gap-6">
         <FacturasProximasVencer diasLimite={15} />
       </div>
 
       {/* Lista de facturas de compra */}
-      <Card className="p-6 dark:bg-gray-800/50 dark:border-gray-700 light:bg-white">
+      <Card className="p-3 sm:p-4 md:p-6 dark:bg-gray-800/50 dark:border-gray-700 bg-white border-gray-200">
         <FacturasCompraFiltros onFiltrosChange={manejarCambioFiltros} />
         <FacturasCompraTable filtros={filtrosActuales} />
       </Card>

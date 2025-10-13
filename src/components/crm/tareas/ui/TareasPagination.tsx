@@ -53,37 +53,40 @@ const TareasPagination: React.FC<TareasPaginationProps> = ({
   }
 
   return (
-    <div className="flex items-center justify-between mt-4">
-      <div className="flex items-center space-x-2">
-        <span className="text-sm text-muted-foreground">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mt-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-2 w-full sm:w-auto">
+        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
           Mostrando {inicioRango} a {finRango} de {totalTareas} tareas
         </span>
-        <Select 
-          value={elementosPorPagina.toString()} 
-          onValueChange={(value) => onElementosPorPaginaChange(parseInt(value))}
-        >
-          <SelectTrigger className="w-20">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="10">10</SelectItem>
-            <SelectItem value="25">25</SelectItem>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="text-sm text-muted-foreground">por página</span>
+        <div className="flex items-center gap-2">
+          <Select 
+            value={elementosPorPagina.toString()} 
+            onValueChange={(value) => onElementosPorPaginaChange(parseInt(value))}
+          >
+            <SelectTrigger className="w-20 h-9 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectItem value="10" className="text-gray-900 dark:text-gray-100">10</SelectItem>
+              <SelectItem value="25" className="text-gray-900 dark:text-gray-100">25</SelectItem>
+              <SelectItem value="50" className="text-gray-900 dark:text-gray-100">50</SelectItem>
+              <SelectItem value="100" className="text-gray-900 dark:text-gray-100">100</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">por página</span>
+        </div>
       </div>
       
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
         <Button
           variant="outline"
           size="sm"
           onClick={() => onPaginaChange(paginaActual - 1)}
           disabled={paginaActual === 1}
+          className="min-h-[36px] px-2 sm:px-3 text-xs sm:text-sm border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
         >
           <ChevronLeft className="h-4 w-4" />
-          Anterior
+          <span className="hidden sm:inline ml-1">Anterior</span>
         </Button>
         
         {paginasVisibles().map((pagina) => (
@@ -92,7 +95,11 @@ const TareasPagination: React.FC<TareasPaginationProps> = ({
             variant={pagina === paginaActual ? "default" : "outline"}
             size="sm"
             onClick={() => onPaginaChange(pagina)}
-            className="min-w-[2.5rem]"
+            className={`min-w-[2.5rem] min-h-[36px] text-xs sm:text-sm ${
+              pagina === paginaActual 
+                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                : 'border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
           >
             {pagina}
           </Button>
@@ -103,8 +110,9 @@ const TareasPagination: React.FC<TareasPaginationProps> = ({
           size="sm"
           onClick={() => onPaginaChange(paginaActual + 1)}
           disabled={paginaActual === totalPaginas}
+          className="min-h-[36px] px-2 sm:px-3 text-xs sm:text-sm border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
         >
-          Siguiente
+          <span className="hidden sm:inline mr-1">Siguiente</span>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

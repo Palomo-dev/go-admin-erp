@@ -40,7 +40,8 @@ export const SidebarNavigation = ({
   loading, 
   userData, 
   orgName,
-  collapsed
+  collapsed,
+  onNavigate
 }: SidebarNavigationProps) => {
   const pathname = usePathname();
   
@@ -175,7 +176,7 @@ export const SidebarNavigation = ({
   return (
     <div className="flex flex-col h-full justify-between transition-all duration-300">
       {/* Contenedor superior para las secciones de navegación */}
-      <div className="space-y-1 flex-grow overflow-y-auto">
+      <div className="space-y-1 flex-grow overflow-y-auto pb-4">
         {/* Secciones de navegación utilizando el componente NavSection */}
         {navSections.map((section, idx) => (
           <NavSection
@@ -184,88 +185,93 @@ export const SidebarNavigation = ({
             items={section.items}
             collapsed={collapsed}
             sectionIdx={idx}
+            onNavigate={onNavigate}
           />
         ))}
       </div>
       
       {/* Sección de perfil con el componente UserMenu compartido - siempre abajo */}
-      <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 pb-2">
-        <ProfileDropdownMenu 
-          userData={userData} 
-          handleSignOut={handleSignOut} 
-          loading={loading} 
-          isSidebar={true} 
-          collapsed={collapsed} 
-          orgName={orgName || undefined} 
-        />
-        {/* Espacio adicional */}
-        <div className="mb-3"></div>
+      <div className="pt-3 mt-2 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 pb-safe">
+        <div className="px-3">
+          <ProfileDropdownMenu 
+            userData={userData} 
+            handleSignOut={handleSignOut} 
+            loading={loading} 
+            isSidebar={true} 
+            collapsed={collapsed} 
+            orgName={orgName || undefined} 
+          />
+        </div>
         
         {/* Botón de suscripción destacado */}
-        <TooltipProvider>
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link 
-                  href="/app/suscripcion" 
-                  className="w-full flex items-center justify-center px-3 py-2 mb-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm hover:shadow transition-all duration-200 border border-blue-500"
+        <div className="px-3 mt-3 space-y-2">
+          <TooltipProvider>
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link 
+                    href="/app/suscripcion"
+                    onClick={onNavigate}
+                    className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow transition-all duration-200 border border-blue-500 min-h-[44px]"
+                  >
+                    <CreditCard size={18} />
+                    <span className="lg:hidden ml-2">Mi Suscripción</span>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent 
+                  side="right" 
+                  sideOffset={10} 
+                  className="bg-white text-gray-900 dark:bg-gray-100 dark:text-gray-800 border border-gray-200 rounded-lg py-1 px-2 shadow-md"
                 >
-                  <CreditCard size={16} />
-                  <span className="lg:hidden">Mi Suscripción</span>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent 
-                side="right" 
-                sideOffset={10} 
-                className="bg-white text-gray-900 dark:bg-gray-100 dark:text-gray-800 border border-gray-200 rounded-lg py-1 px-2 shadow-md"
+                  Mi Suscripción
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Link 
+                href="/app/suscripcion"
+                onClick={onNavigate}
+                className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow transition-all duration-200 border border-blue-500 min-h-[44px]"
               >
-                Mi Suscripción
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Link 
-              href="/app/suscripcion" 
-              className="w-full flex items-center justify-center px-3 py-2 mb-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm hover:shadow transition-all duration-200 border border-blue-500"
-            >
-              <CreditCard size={16} className="mr-2" />
-              <span>Mi Suscripción</span>
-            </Link>
-          )}
-        </TooltipProvider>
+                <CreditCard size={18} className="mr-2" />
+                <span>Mi Suscripción</span>
+              </Link>
+            )}
+          </TooltipProvider>
         
-        {/* Botón de cerrar sesión */}
-        <TooltipProvider>
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleSignOut}
-                  disabled={loading}
-                  className="w-full flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+          {/* Botón de cerrar sesión */}
+          <TooltipProvider>
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleSignOut}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 active:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                  >
+                    <LogOut size={18} />
+                    <span className="lg:hidden ml-2">{loading ? 'Cerrando...' : 'Cerrar Sesión'}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent 
+                  side="right" 
+                  sideOffset={10} 
+                  className="bg-white text-gray-900 dark:bg-gray-100 dark:text-gray-800 border border-gray-200 rounded-lg py-1 px-2 shadow-md"
                 >
-                  <LogOut size={16} />
-                  <span className="lg:hidden">{loading ? 'Cerrando...' : 'Cerrar Sesión'}</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent 
-                side="right" 
-                sideOffset={10} 
-                className="bg-white text-gray-900 dark:bg-gray-100 dark:text-gray-800 border border-gray-200 rounded-lg py-1 px-2 shadow-md"
+                  {loading ? 'Cerrando...' : 'Cerrar Sesión'}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                onClick={handleSignOut}
+                disabled={loading}
+                className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 active:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
               >
-                {loading ? 'Cerrando...' : 'Cerrar Sesión'}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <button
-              onClick={handleSignOut}
-              disabled={loading}
-              className="w-full flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
-            >
-              <LogOut size={16} className="mr-2" />
-              <span>{loading ? 'Cerrando...' : 'Cerrar Sesión'}</span>
-            </button>
-          )}
-        </TooltipProvider>
+                <LogOut size={18} className="mr-2" />
+                <span>{loading ? 'Cerrando...' : 'Cerrar Sesión'}</span>
+              </button>
+            )}
+          </TooltipProvider>
+        </div>
       </div>
     </div>
   );

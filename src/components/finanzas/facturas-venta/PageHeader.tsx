@@ -40,26 +40,48 @@ export function PageHeader() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-      <div className="flex items-center gap-2">
-        <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Facturas de Venta</h1>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+      {/* Título con icono */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex-shrink-0 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+          <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
+        </div>
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+          Facturas de Venta
+        </h1>
       </div>
       
-      <div className="flex flex-col sm:flex-row gap-2">
+      {/* Botones de acción */}
+      <div className="flex flex-row gap-2 w-full sm:w-auto">
         <Button 
           variant="outline" 
-          className="flex items-center gap-2 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+          size="sm"
+          className="
+            flex items-center justify-center gap-2 flex-1 sm:flex-initial
+            bg-white dark:bg-gray-800 
+            border-gray-300 dark:border-gray-600
+            hover:bg-gray-50 dark:hover:bg-gray-700
+            text-gray-700 dark:text-gray-200
+            transition-colors
+          "
         >
-          <Download size={18} />
-          <span className="hidden sm:inline">Exportar</span>
+          <Download className="h-4 w-4 flex-shrink-0" />
+          <span className="text-sm font-medium">Exportar</span>
         </Button>
         <Button 
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 dark:bg-blue-700 dark:hover:bg-blue-600"
+          size="sm"
+          className="
+            flex items-center justify-center gap-2 flex-1 sm:flex-initial
+            bg-blue-600 hover:bg-blue-700 
+            dark:bg-blue-600 dark:hover:bg-blue-500
+            text-white
+            shadow-sm hover:shadow-md
+            transition-all
+          "
           onClick={handleNuevaFactura}
         >
-          <Plus size={18} />
-          <span>Nueva Factura</span>
+          <Plus className="h-4 w-4 flex-shrink-0" />
+          <span className="text-sm font-medium">Nueva Factura</span>
         </Button>
       </div>
     </div>

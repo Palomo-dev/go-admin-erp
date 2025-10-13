@@ -271,47 +271,47 @@ export function SupplierSelector({
   }, []);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 sm:space-y-3">
       <div className="flex gap-2">
         <div className="flex-1">
           <Select
             value={selectValue}
             onValueChange={handleSelectChange}
           >
-            <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+            <SelectTrigger className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
               <SelectValue placeholder="Seleccionar proveedor..." />
             </SelectTrigger>
-            <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+            <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
               {/* Campo de búsqueda */}
-              <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b p-2">
+              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-2">
                 <div className="relative">
-                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                   <Input
                     placeholder="Buscar proveedor..."
                     value={searchTerm}
                     onChange={handleSearchChange}
-                    className="pl-8 h-8 dark:bg-gray-700 dark:border-gray-600"
+                    className="pl-8 h-7 sm:h-8 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
                   />
                   {isSearching && (
                     <div className="flex items-center justify-center py-1">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                      <span className="ml-2 text-xs text-muted-foreground">Buscando...</span>
+                      <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin rounded-full border-2 border-blue-600 dark:border-blue-400 border-t-transparent"></div>
+                      <span className="ml-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Buscando...</span>
                     </div>
                   )}
                 </div>
               </div>
               
-              <div className="max-h-[200px] overflow-y-auto">
+              <div className="max-h-[180px] sm:max-h-[200px] overflow-y-auto">
                 {displayedSuppliers.length === 0 ? (
-                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  <div className="px-2 py-3 sm:py-4 text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                     {isSearching ? 'Cargando proveedores...' : 'No se encontraron proveedores'}
                   </div>
                 ) : (
                   displayedSuppliers.map((proveedor: SupplierBase) => (
-                    <SelectItem key={proveedor.id} value={proveedor.id.toString()}>
-                      <div className="w-full">
-                        <div className="font-medium text-sm truncate">{proveedor.name}</div>
-                        <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
+                    <SelectItem key={proveedor.id} value={proveedor.id.toString()} className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">
+                      <div className="w-full py-0.5">
+                        <div className="font-medium text-xs sm:text-sm truncate text-gray-900 dark:text-gray-100">{proveedor.name}</div>
+                        <div className="flex gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                           {proveedor.nit && (
                             <span className="shrink-0">NIT: {proveedor.nit}</span>
                           )}
@@ -333,21 +333,21 @@ export function SupplierSelector({
             <Button
               variant="outline"
               size="icon"
-              className="dark:border-gray-600 dark:hover:bg-gray-700"
+              className="h-8 w-8 sm:h-9 sm:w-9 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
-            <DialogHeader>
-              <DialogTitle className="dark:text-gray-100">
+          <DialogContent className="dark:bg-gray-800 dark:border-gray-700 max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-3">
+              <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">
                 Crear Nuevo Proveedor
               </DialogTitle>
             </DialogHeader>
             
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="supplier_name" className="dark:text-gray-300">
+            <div className="space-y-3 sm:space-y-4 py-2">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="supplier_name" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                   Nombre del Proveedor *
                 </Label>
                 <Input
@@ -355,15 +355,15 @@ export function SupplierSelector({
                   value={newSupplier.name}
                   onChange={handleNameChange}
                   placeholder="Nombre del proveedor"
-                  className="dark:bg-gray-700 dark:border-gray-600"
+                  className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
                 {errors.name && (
-                  <p className="text-sm text-red-600">{errors.name}</p>
+                  <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.name}</p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="supplier_nit" className="dark:text-gray-300">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="supplier_nit" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                   NIT
                 </Label>
                 <Input
@@ -371,12 +371,12 @@ export function SupplierSelector({
                   value={newSupplier.nit}
                   onChange={handleNitChange}
                   placeholder="Número de identificación tributaria"
-                  className="dark:bg-gray-700 dark:border-gray-600"
+                  className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="supplier_contact" className="dark:text-gray-300">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="supplier_contact" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                   Contacto
                 </Label>
                 <Input
@@ -384,13 +384,13 @@ export function SupplierSelector({
                   value={newSupplier.contact}
                   onChange={handleContactChange}
                   placeholder="Nombre del contacto"
-                  className="dark:bg-gray-700 dark:border-gray-600"
+                  className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="supplier_phone" className="dark:text-gray-300">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="supplier_phone" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                     Teléfono
                   </Label>
                   <Input
@@ -398,12 +398,12 @@ export function SupplierSelector({
                     value={newSupplier.phone}
                     onChange={handlePhoneChange}
                     placeholder="Teléfono"
-                    className="dark:bg-gray-700 dark:border-gray-600"
+                    className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="supplier_email" className="dark:text-gray-300">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="supplier_email" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                     Email
                   </Label>
                   <Input
@@ -412,16 +412,16 @@ export function SupplierSelector({
                     value={newSupplier.email}
                     onChange={handleEmailChange}
                     placeholder="email@ejemplo.com"
-                    className="dark:bg-gray-700 dark:border-gray-600"
+                    className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
                   />
                   {errors.email && (
-                    <p className="text-sm text-red-600">{errors.email}</p>
+                    <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.email}</p>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="supplier_notes" className="dark:text-gray-300">
+              <div className="space-y-1.5 sm:space-y-2">
+                <Label htmlFor="supplier_notes" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                   Notas
                 </Label>
                 <Input
@@ -429,17 +429,17 @@ export function SupplierSelector({
                   value={newSupplier.notes}
                   onChange={handleNotesChange}
                   placeholder="Notas adicionales"
-                  className="dark:bg-gray-700 dark:border-gray-600"
+                  className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
               </div>
 
-              <div className="flex justify-end space-x-2 pt-4">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 sm:pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleCancel}
                   disabled={loading}
-                  className="dark:border-gray-600 dark:text-gray-300"
+                  className="w-full sm:w-auto h-9 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   Cancelar
                 </Button>
@@ -447,12 +447,12 @@ export function SupplierSelector({
                   type="button"
                   onClick={handleCreateSupplier}
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full sm:w-auto h-9 text-sm bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
                 >
                   {loading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Creando...
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
+                      <span>Creando...</span>
                     </>
                   ) : (
                     'Crear Proveedor'

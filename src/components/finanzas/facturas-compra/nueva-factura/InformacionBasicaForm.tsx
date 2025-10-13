@@ -195,14 +195,14 @@ export function InformacionBasicaForm({
   };
   
   return (
-    <Card className="dark:bg-gray-800/50 dark:border-gray-700">
-      <CardHeader>
-        <CardTitle className="dark:text-white">Información Básica</CardTitle>
+    <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
+      <CardHeader className="pb-3 sm:pb-6">
+        <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Información Básica</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 sm:space-y-6 pt-0">
         {/* Selector de Proveedor */}
-        <div className="space-y-2">
-          <Label className="dark:text-gray-300">Proveedor</Label>
+        <div className="space-y-1.5 sm:space-y-2">
+          <Label className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Proveedor *</Label>
           <SupplierSelector
             value={formData.supplier_id}
             onValueChange={handleSupplierChange}
@@ -210,24 +210,24 @@ export function InformacionBasicaForm({
             onProveedorCreado={onProveedorCreado}
           />
           {errors.supplier_id && (
-            <p className="text-sm text-red-600">{errors.supplier_id}</p>
+            <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.supplier_id}</p>
           )}
         </div>
 
         {/* Información de la Factura */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="number_ext" className="dark:text-gray-300">
-              Número de Factura
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="number_ext" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+              Número de Factura *
             </Label>
-            <div className="relative flex space-x-2 items-start">
+            <div className="relative flex gap-2 items-start">
               <div className="relative flex-1">
                 <Input
                   id="number_ext"
                   value={formData.number_ext}
                   onChange={handleInvoiceNumberInputChange}
                   placeholder="Ej: COMP-2024-0001"
-                  className="dark:bg-gray-700 dark:border-gray-600"
+                  className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
               </div>
               <Button
@@ -236,35 +236,36 @@ export function InformacionBasicaForm({
                 size="sm"
                 onClick={generateInvoiceNumber}
                 disabled={isGeneratingNumber}
-                className="h-9 w-9"
+                className="h-8 sm:h-9 w-8 sm:w-9 p-0 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 title="Generar número automáticamente"
               >
-                <RefreshCw className={`h-4 w-4 ${isGeneratingNumber ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isGeneratingNumber ? 'animate-spin' : ''}`} />
               </Button>
             </div>
             {(errors.number_ext || invoiceNumberError) && (
-              <p className="text-sm text-red-600">
+              <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">
                 {errors.number_ext || invoiceNumberError}
               </p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="currency" className="dark:text-gray-300">
-              Moneda
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="currency" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+              Moneda *
             </Label>
             <Select 
               value={formData.currency} 
               onValueChange={handleCurrencyChange}
             >
-              <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
+              <SelectTrigger className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
                 <SelectValue placeholder="Seleccionar moneda" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 {monedas.map((moneda) => (
                   <SelectItem 
                     key={moneda.currency_code} 
                     value={moneda.currency_code}
+                    className="text-sm dark:text-gray-100 dark:focus:bg-gray-700"
                   >
                     {moneda.currency_code} - {moneda.currencies?.name || moneda.currency_code}
                     {moneda.is_base && ' (Base)'}
@@ -277,67 +278,67 @@ export function InformacionBasicaForm({
         </div>
 
         {/* Fechas y términos de pago */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="issue_date" className="dark:text-gray-300">
-              Fecha de Emisión
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="issue_date" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+              Fecha de Emisión *
             </Label>
             <Input
               id="issue_date"
               type="date"
               value={formData.issue_date}
               onChange={handleIssueDateChange}
-              className="dark:bg-gray-700 dark:border-gray-600"
+              className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             />
             {errors.issue_date && (
-              <p className="text-sm text-red-600">{errors.issue_date}</p>
+              <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.issue_date}</p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="payment_terms" className="dark:text-gray-300">
+          <div className="space-y-1.5 sm:space-y-2 sm:col-span-2 lg:col-span-1">
+            <Label htmlFor="payment_terms" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Términos de Pago
             </Label>
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col gap-2">
               <Select 
                 value={isCustomPaymentTerm ? "custom" : formData.payment_terms.toString()}
                 onValueChange={handlePaymentTermsChange}
               >
-                <SelectTrigger className="w-full dark:bg-gray-700 dark:border-gray-600">
+                <SelectTrigger className="h-8 sm:h-9 w-full text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
                   <SelectValue placeholder="Seleccionar términos">
                     {isCustomPaymentTerm 
                       ? `Personalizado: ${formData.payment_terms} días` 
                       : (formData.payment_terms === 0 ? 'Contado' : `${formData.payment_terms} días`)}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Contado</SelectItem>
-                  <SelectItem value="15">15 días</SelectItem>
-                  <SelectItem value="30">30 días</SelectItem>
-                  <SelectItem value="45">45 días</SelectItem>
-                  <SelectItem value="60">60 días</SelectItem>
-                  <SelectItem value="90">90 días</SelectItem>
-                  <SelectItem value="custom">Personalizado</SelectItem>
+                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                  <SelectItem value="0" className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">Contado</SelectItem>
+                  <SelectItem value="15" className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">15 días</SelectItem>
+                  <SelectItem value="30" className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">30 días</SelectItem>
+                  <SelectItem value="45" className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">45 días</SelectItem>
+                  <SelectItem value="60" className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">60 días</SelectItem>
+                  <SelectItem value="90" className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">90 días</SelectItem>
+                  <SelectItem value="custom" className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
               
               {isCustomPaymentTerm && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <Input
                     type="number"
                     min="1"
                     value={formData.payment_terms}
                     onChange={handleCustomPaymentTermsChange}
-                    className="w-24 dark:bg-gray-700 dark:border-gray-600"
+                    className="h-8 w-20 sm:w-24 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
-                  <span className="text-sm dark:text-gray-300">días</span>
+                  <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-300">días</span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="due_date" className="dark:text-gray-300">
+          <div className="space-y-1.5 sm:space-y-2 sm:col-span-2 lg:col-span-1">
+            <Label htmlFor="due_date" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Fecha de Vencimiento
             </Label>
             <Input
@@ -345,14 +346,14 @@ export function InformacionBasicaForm({
               type="date"
               value={formData.due_date}
               onChange={handleDueDateChange}
-              className="dark:bg-gray-700 dark:border-gray-600"
+              className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             />
           </div>
         </div>
 
         {/* Notas */}
-        <div className="space-y-2">
-          <Label htmlFor="notes" className="dark:text-gray-300">
+        <div className="space-y-1.5 sm:space-y-2">
+          <Label htmlFor="notes" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
             Notas adicionales
           </Label>
           <Textarea
@@ -360,7 +361,7 @@ export function InformacionBasicaForm({
             value={formData.notes}
             onChange={handleNotesChange}
             placeholder="Términos especiales, condiciones, etc."
-            className="dark:bg-gray-700 dark:border-gray-600"
+            className="text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 min-h-[60px] sm:min-h-[72px]"
             rows={3}
           />
         </div>

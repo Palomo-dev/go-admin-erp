@@ -23,6 +23,7 @@ module.exports = {
         'slide-in-right': 'slideInRight 0.3s ease-out',
         'fade-in': 'fadeIn 0.2s ease-in',
         'bounce-gentle': 'bounceGentle 0.6s ease-out',
+        'slide-up': 'slideUp 0.3s ease-out',
       },
       keyframes: {
         slideInRight: {
@@ -37,6 +38,10 @@ module.exports = {
           '0%, 20%, 53%, 80%, 100%': { transform: 'translateY(0)' },
           '40%, 43%': { transform: 'translateY(-4px)' },
           '70%': { transform: 'translateY(-2px)' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(100%)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
         },
       },
     },

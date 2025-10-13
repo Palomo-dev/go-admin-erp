@@ -53,12 +53,12 @@ export default function SubscriptionStep({
   };
 
   return (
-    <div className="space-y-8 w-full max-w-6xl mx-auto px-4">
+    <div className="space-y-4 sm:space-y-6 w-full">
       <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-900">Selecciona un plan</h2>
-        <p className="mt-2 text-base text-gray-500">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Selecciona un plan</h2>
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-500">
           Elige el plan que mejor se adapte a las necesidades de tu organización.
-          <span className="block mt-1 text-sm">Todos los planes incluyen un periodo de prueba de 30 días.</span>
+          <span className="block mt-1 text-[11px] sm:text-xs">Todos los planes incluyen un periodo de prueba de 30 días.</span>
         </p>
       </div>
 
@@ -70,18 +70,18 @@ export default function SubscriptionStep({
           onChangeBillingPeriod={handleChangeBillingPeriod}
         />
 
-        <div className="mt-10 flex justify-between">
+        <div className="mt-6 sm:mt-8 flex justify-between gap-2">
           <button
             type="button"
             onClick={onBack}
-            className="rounded-md border border-gray-300 bg-white py-2 px-6 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="rounded-md border border-gray-300 bg-white py-1.5 px-4 sm:py-2 sm:px-6 text-xs sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Atrás
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-6 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-1.5 px-4 sm:py-2 sm:px-6 text-xs sm:text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
           >
             {loading ? 'Procesando...' : 'Continuar'}
           </button>

@@ -309,9 +309,10 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
   // Renderizar el esqueleto de carga
   if (loading) {
     return (
-      <div className="p-4">
-        <div className="flex justify-center items-center h-40">
+      <div className="p-3 sm:p-4">
+        <div className="flex flex-col justify-center items-center h-40 gap-3">
           <LoadingSpinner size="lg" className="text-blue-500" />
+          <span className="text-sm text-gray-600 dark:text-gray-400">Cargando pronóstico...</span>
         </div>
       </div>
     );
@@ -320,12 +321,12 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
   // Si no hay datos de pronóstico
   if (forecastData.length === 0) {
     return (
-      <div className="p-4">
-        <Card className="p-8 text-center">
-          <h3 className="text-lg font-medium mb-2">
+      <div className="p-3 sm:p-4">
+        <Card className="p-6 sm:p-8 text-center bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <h3 className="text-base sm:text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
             No hay datos de pronóstico disponibles
           </h3>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             No se encontraron oportunidades en este pipeline. Añade
             oportunidades para ver un pronóstico mensual.
           </p>
@@ -336,34 +337,37 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
 
   // Renderizar el pronóstico
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-3 sm:p-4 space-y-4 sm:space-y-6">
       {/* Sidebar de pronóstico - siempre visible */}
       <ForecastSidebar pipelineId={pipelineId} />
       
       <div className="flex-1 space-y-4">
         <Tabs defaultValue="chart" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="chart">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Gráfico de pronóstico
+          <TabsList className="flex-wrap h-auto gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2">
+            <TabsTrigger value="chart" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">
+              <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Gráfico de pronóstico</span>
+              <span className="sm:hidden">Gráfico</span>
             </TabsTrigger>
-            <TabsTrigger value="monthly">
-              <LineChart className="h-4 w-4 mr-2" />
-              Pronóstico Mensual
+            <TabsTrigger value="monthly" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">
+              <LineChart className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Pronóstico Mensual</span>
+              <span className="sm:hidden">Mensual</span>
             </TabsTrigger>
-            <TabsTrigger value="table">
-              <Calendar className="h-4 w-4 mr-2" />
-              Tabla de oportunidades
+            <TabsTrigger value="table" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">
+              <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Tabla de oportunidades</span>
+              <span className="sm:hidden">Tabla</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="chart" className="space-y-4">
+          <TabsContent value="chart" className="space-y-3 sm:space-y-4">
             <ForecastChart pipelineId={pipelineId} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               <ForecastByStageChart pipelineId={pipelineId} />
               <GoalCompletionWidget pipelineId={pipelineId} />
             </div>
-            <div className="mt-4">
+            <div className="mt-3 sm:mt-4">
               <WeightedFunnelChart pipelineId={pipelineId} />
             </div>
           </TabsContent>
@@ -373,30 +377,30 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
           </TabsContent>
 
           <TabsContent value="table" className="space-y-4">
-            <Card>
-              <div className="p-4 border-b">
-                <h3 className="font-medium">Oportunidades por mes</h3>
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">Oportunidades por mes</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-800/50">
+                  <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                     <tr>
-                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="p-2 sm:p-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                         Nombre
                       </th>
-                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="p-2 sm:p-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider hidden sm:table-cell">
                         Cliente
                       </th>
-                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="p-2 sm:p-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider hidden md:table-cell">
                         Fecha esperada
                       </th>
-                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="p-2 sm:p-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider hidden lg:table-cell">
                         Etapa
                       </th>
-                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="p-2 sm:p-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                         Monto
                       </th>
-                      <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="p-2 sm:p-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                         Prob.
                       </th>
                     </tr>
@@ -406,60 +410,65 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
                       month.opportunities.map((opp) => (
                         <tr
                           key={opp.id}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-800/80"
+                          className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                         >
-                          <td className="p-3 text-sm">{opp.name}</td>
-                          <td className="p-3 text-sm">{opp.customer_name}</td>
-                          <td className="p-3 text-sm">
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-900 dark:text-gray-100">
+                            <div className="flex flex-col">
+                              <span className="font-medium">{opp.name}</span>
+                              <span className="sm:hidden text-gray-600 dark:text-gray-400 text-xs mt-1">{opp.customer_name}</span>
+                            </div>
+                          </td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">{opp.customer_name}</td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">
                             {opp.expected_close_date
                               ? new Date(
                                   opp.expected_close_date
                                 ).toLocaleDateString()
                               : "Sin fecha"}
                           </td>
-                          <td className="p-3 text-sm">{opp.stage_name}</td>
-                          <td className="p-3 text-sm font-medium">
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden lg:table-cell">{opp.stage_name}</td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
                             {opp.currency === baseCurrency ? 
                               formatCurrency(opp.convertedAmount || opp.amount, baseCurrency) :
                               <>
                                 <div>{formatCurrency(opp.amount, opp.currency)}</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                <div className="text-xs text-gray-600 dark:text-gray-400">
                                   ({formatCurrency(opp.convertedAmount || opp.amount, baseCurrency)})
                                 </div>
                               </>
                             }
                           </td>
-                          <td className="p-3 text-sm">
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                             {Math.round(opp.probabilityPercent)}%
                           </td>
                         </tr>
                       ))
                     )}
                   </tbody>
-                  <tfoot className="bg-gray-50 dark:bg-gray-800/50">
+                  <tfoot className="bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
                     <tr>
                       <td
                         colSpan={4}
-                        className="p-3 text-sm font-medium text-right"
+                        className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-right text-gray-900 dark:text-gray-100"
                       >
                         Total:
                       </td>
-                      <td className="p-3 text-sm font-bold">
+                      <td className="p-2 sm:p-3 text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">
                         {formatCurrency(totalForecast.totalAmount, baseCurrency)}
                       </td>
-                      <td className="p-3 text-sm"></td>
+                      <td className="p-2 sm:p-3 text-xs sm:text-sm"></td>
                     </tr>
                     <tr>
                       <td
                         colSpan={4}
-                        className="p-3 text-sm font-medium text-right"
+                        className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-right text-gray-900 dark:text-gray-100"
                       >
                         Total ponderado:
                       </td>
-                      <td className="p-3 text-sm font-bold text-blue-600 dark:text-blue-400">
+                      <td className="p-2 sm:p-3 text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">
                         {formatCurrency(totalForecast.weightedAmount, baseCurrency)}
                       </td>
-                      <td className="p-3 text-sm"></td>
+                      <td className="p-2 sm:p-3 text-xs sm:text-sm"></td>
                     </tr>
                   </tfoot>
                 </table>

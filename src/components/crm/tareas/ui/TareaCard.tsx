@@ -153,18 +153,19 @@ const TareaCard: React.FC<TareaCardProps> = ({ tarea, onStatusChange, onEdit, on
     try {
       const supabase = createClientComponentClient();
       const { data, error } = await supabase
-        .from('user_profiles')
-        .select('name')
+        .from('profiles')
+        .select('first_name, last_name')
         .eq('id', tarea.assigned_to)
         .single();
       
-      if (error || !data?.name) {
+      if (error) {
         console.error('Error al obtener el nombre del usuario:', error);
         return;
       }
       
-      // Si tenemos un nombre, guardamos el nombre completo y extraemos las iniciales
-      const nombreCompleto = data.name;
+      // Construir el nombre completo del usuario
+      const nombreCompleto = `${data?.first_name || ''} ${data?.last_name || ''}`.trim() || 'Usuario';
+      
       setNombreCompletoUsuario(nombreCompleto);
       
       const iniciales = nombreCompleto
@@ -189,7 +190,7 @@ const TareaCard: React.FC<TareaCardProps> = ({ tarea, onStatusChange, onEdit, on
   return (
     <TooltipProvider>
       <Card 
-        className="w-full mb-2 hover:shadow-md transition-all duration-200 border-l-4 rounded-lg overflow-hidden bg-white dark:bg-slate-800 hover:scale-[1.02] border-0" 
+        className="w-full mb-2 sm:mb-3 hover:shadow-md transition-all duration-200 border-l-4 rounded-lg overflow-hidden bg-white dark:bg-gray-800 hover:scale-[1.02] border-0" 
         style={{
           borderLeftColor: mapDbValueToUIPriority(tarea.priority) === 'urgente' ? 'var(--red-500)' : 
                            mapDbValueToUIPriority(tarea.priority) === 'alta' ? 'var(--orange-400)' : 
@@ -200,17 +201,17 @@ const TareaCard: React.FC<TareaCardProps> = ({ tarea, onStatusChange, onEdit, on
         id={`tarea-${tarea.id}`}
         data-task-id={tarea.id}
       >
-        <CardHeader className="py-3 px-4 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-750">
+        <CardHeader className="py-2 sm:py-3 px-3 sm:px-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-750">
           <div className="flex justify-between items-start">
             <div className="flex-1 mr-2">
-              <CardTitle className="text-base font-medium text-slate-800 dark:text-slate-100 break-words">
+              <CardTitle className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 break-words">
                 {tarea.title.length > 60 ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="line-clamp-2">{tarea.title}</span>
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs whitespace-normal">
-                      <p>{tarea.title}</p>
+                    <TooltipContent className="max-w-xs whitespace-normal bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <p className="text-gray-900 dark:text-gray-100">{tarea.title}</p>
                     </TooltipContent>
                   </Tooltip>
                 ) : tarea.title}
@@ -220,37 +221,37 @@ const TareaCard: React.FC<TareaCardProps> = ({ tarea, onStatusChange, onEdit, on
             <div className="flex items-center space-x-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge className={`${colorPorPrioridad[mapDbValueToUIPriority(tarea.priority)]} rounded-full px-2 py-0.5 text-xs font-medium`}>
+                  <Badge className={`${colorPorPrioridad[mapDbValueToUIPriority(tarea.priority)]} rounded-full px-2 py-0.5 text-xs font-semibold`}>
                     {capitalizarPrimeraLetra(mapDbValueToUIPriority(tarea.priority)).substring(0, 1)}
                   </Badge>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Prioridad: {capitalizarPrimeraLetra(mapDbValueToUIPriority(tarea.priority))}</p>
+                <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <p className="text-gray-900 dark:text-gray-100">Prioridad: {capitalizarPrimeraLetra(mapDbValueToUIPriority(tarea.priority))}</p>
                 </TooltipContent>
               </Tooltip>
               
               {(onEdit || onStatusChange) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreVertical className="h-4 w-4" />
+                    <Button variant="ghost" size="sm" className="h-9 w-9 sm:h-8 sm:w-8 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <MoreVertical className="h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[160px]">
+                  <DropdownMenuContent align="end" className="w-[160px] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     {onViewDetails && (
-                      <DropdownMenuItem onClick={() => onViewDetails(tarea)}>
+                      <DropdownMenuItem onClick={() => onViewDetails(tarea)} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                         <Eye className="h-4 w-4 mr-2" />
                         Ver detalles
                       </DropdownMenuItem>
                     )}
                     {onEdit && (
-                      <DropdownMenuItem onClick={() => onEdit(tarea)}>
+                      <DropdownMenuItem onClick={() => onEdit(tarea)} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                         <Edit className="h-4 w-4 mr-2" />
                         Editar
                       </DropdownMenuItem>
                     )}
                     {onStatusChange && mapDbValueToUIStatus(tarea.status) !== 'completada' && mapDbValueToUIStatus(tarea.status) !== 'cancelada' && (
-                      <DropdownMenuItem onClick={() => handleStatusChange('completada' as TaskStatusUI)}>
+                      <DropdownMenuItem onClick={() => handleStatusChange('completada' as TaskStatusUI)} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                         <Check className="h-4 w-4 mr-2" />
                         Completar
                       </DropdownMenuItem>
@@ -262,16 +263,16 @@ const TareaCard: React.FC<TareaCardProps> = ({ tarea, onStatusChange, onEdit, on
           </div>
         </CardHeader>
         
-        <CardContent className="py-3 px-4">
+        <CardContent className="py-2 sm:py-3 px-3 sm:px-4">
           {tarea.description && (
-            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-md p-2 mb-3">
+            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-md p-2 mb-3">
               {tarea.description.length > 100 ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 break-words">{tarea.description}</p>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs whitespace-normal">
-                    <p className="text-sm">{tarea.description}</p>
+                  <TooltipContent className="max-w-xs whitespace-normal bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <p className="text-sm text-gray-900 dark:text-gray-100">{tarea.description}</p>
                   </TooltipContent>
                 </Tooltip>
               ) : (
@@ -293,20 +294,20 @@ const TareaCard: React.FC<TareaCardProps> = ({ tarea, onStatusChange, onEdit, on
             
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="flex items-center px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 whitespace-nowrap self-start">
+                <Badge variant="outline" className="flex items-center px-3 py-1 rounded-full bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 whitespace-nowrap self-start text-gray-900 dark:text-gray-100">
                   {tarea.type ? iconosPorTipo[tarea.type] : <FileIcon className="h-4 w-4 mr-1" />}
-                  <span className="ml-1">{tarea.type ? nombresPorTipo[tarea.type] : 'Tarea'}</span>
+                  <span className="ml-1 text-xs sm:text-sm">{tarea.type ? nombresPorTipo[tarea.type] : 'Tarea'}</span>
                 </Badge>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>Tipo: {tarea.type ? nombresPorTipo[tarea.type] : 'Tarea'}</p>
+              <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <p className="text-gray-900 dark:text-gray-100">Tipo: {tarea.type ? nombresPorTipo[tarea.type] : 'Tarea'}</p>
               </TooltipContent>
             </Tooltip>
           </div>
         </CardContent>
         
-        <CardFooter className="pt-2 pb-3 px-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
-          <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-800/80 px-2 py-1 rounded-md shadow-sm max-w-[65%] truncate">
+        <CardFooter className="pt-2 pb-2 sm:pb-3 px-3 sm:px-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+          <div className="flex items-center text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 px-2 py-1 rounded-md shadow-sm max-w-[65%] truncate">
             <CalendarIcon className="h-3 w-3 mr-1 text-blue-500 dark:text-blue-400" />
             {formatDate(new Date(tarea.due_date))}
             {tarea.start_time && (
@@ -320,17 +321,17 @@ const TareaCard: React.FC<TareaCardProps> = ({ tarea, onStatusChange, onEdit, on
           {tarea.assigned_to && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center bg-white dark:bg-slate-800/80 px-2 py-1 rounded-md shadow-sm hover:bg-slate-50 transition-colors">
+                <div className="flex items-center bg-white dark:bg-gray-800/80 px-2 py-1 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   <User className="h-3 w-3 mr-1 text-blue-500 dark:text-blue-400" />
-                  <Avatar className="h-6 w-6 bg-primary/10 border-2 border-white dark:border-slate-700 hover:scale-110 transition-transform">
-                    <AvatarFallback className="text-xs font-medium">
+                  <Avatar className="h-6 w-6 bg-blue-100 dark:bg-blue-900/30 border-2 border-white dark:border-gray-700 hover:scale-110 transition-transform">
+                    <AvatarFallback className="text-xs font-semibold text-blue-700 dark:text-blue-300">
                       {inicialesUsuario}
                     </AvatarFallback>
                   </Avatar>
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>Asignado a: {nombreCompletoUsuario || `Usuario ${inicialesUsuario}`}</p>
+              <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <p className="text-gray-900 dark:text-gray-100">Asignado a: {nombreCompletoUsuario || `Usuario ${inicialesUsuario}`}</p>
               </TooltipContent>
             </Tooltip>
           )}

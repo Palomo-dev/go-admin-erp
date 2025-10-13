@@ -386,37 +386,39 @@ export function NuevaFacturaForm({
   );
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 space-y-4 sm:space-y-6 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <Button
             variant="ghost"
             onClick={handleCancel}
-            className="dark:hover:bg-gray-700"
+            className="p-2 h-auto dark:hover:bg-gray-700 dark:text-gray-300"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" />
+            <span className="hidden sm:inline">Volver</span>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
               {esEdicion ? 'Editar Factura de Compra' : 'Nueva Factura de Compra'}
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               {esEdicion ? 'Modificar los datos de la factura' : 'Registre una nueva factura de proveedor'}
             </p>
           </div>
         </div>
         
-        <FormActions
-          saving={saving}
-          esEdicion={esEdicion}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-        />
+        <div className="hidden sm:block">
+          <FormActions
+            saving={saving}
+            esEdicion={esEdicion}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+          />
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Información básica */}
         <InformacionBasicaForm
           formData={formData}
@@ -462,7 +464,7 @@ export function NuevaFacturaForm({
         />
 
         {/* Botones de acción del formulario - Footer */}
-        <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
           <FormActions
             saving={saving}
             esEdicion={esEdicion}

@@ -106,11 +106,7 @@ export function useTareasTablero() {
       });
       
       // Llamar al API para actualizar el estado en la BD
-      const { error } = await changeTaskStatus(tareaId, estadoDB);
-      
-      if (error) {
-        throw error;
-      }
+      await changeTaskStatus(tareaId, estadoDB);
       
       toast({
         title: 'Estado actualizado',

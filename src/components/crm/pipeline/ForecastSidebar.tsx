@@ -228,9 +228,10 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
   // Renderizar cargando
   if (loading) {
     return (
-      <Card className="w-full">
-        <CardContent className="p-6 flex justify-center items-center min-h-[200px]">
+      <Card className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="p-6 flex flex-col justify-center items-center min-h-[200px] gap-3">
           <LoadingSpinner />
+          <span className="text-sm text-gray-600 dark:text-gray-400">Cargando pronóstico...</span>
         </CardContent>
       </Card>
     );
@@ -239,24 +240,24 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
   // Si no hay datos
   if (!forecastData) {
     return (
-      <Card className="w-full">
+      <Card className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="p-6 text-center">
-          <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No hay datos de pronóstico disponibles</p>
+          <TrendingUp className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">No hay datos de pronóstico disponibles</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="w-full overflow-hidden border border-border">
-      <CardHeader className="bg-muted/50 pb-2">
+    <Card className="w-full overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <CardHeader className="bg-gray-50 dark:bg-gray-900/50 pb-2">
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg font-semibold flex items-center">
-            <LineChart className="h-5 w-5 mr-2 text-blue-500" />
+          <CardTitle className="text-lg font-semibold flex items-center text-gray-900 dark:text-gray-100">
+            <LineChart className="h-5 w-5 mr-2 text-blue-500 dark:text-blue-400" />
             Pronóstico
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={loading} className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={loading} className="h-8 w-8 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             <span className="sr-only">Actualizar</span>
           </Button>
@@ -267,9 +268,9 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
         {/* Totales principales */}
         <div className="space-y-4">
           <div>
-            <p className="text-sm text-muted-foreground">Total ponderado</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total ponderado</p>
             <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-bold">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {formatCurrency(forecastData.weightedAmount, forecastData.baseCurrency)}
               </h3>
               
@@ -287,21 +288,21 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
               Total bruto: {formatCurrency(forecastData.totalAmount, forecastData.baseCurrency)}
             </p>
           </div>
           
           {showDetailed && (
             <>
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
                 <div>
-                  <p className="text-xs text-muted-foreground">Oportunidades</p>
-                  <p className="text-lg font-medium">{forecastData.openOpportunities}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Oportunidades</p>
+                  <p className="text-lg font-medium text-gray-900 dark:text-gray-100">{forecastData.openOpportunities}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Promedio</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Promedio</p>
+                  <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
                     {formatCurrency(forecastData.averageAmount, forecastData.baseCurrency)}
                   </p>
                 </div>
@@ -309,12 +310,12 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
               
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
-                  <p className="text-xs text-muted-foreground">Tasa conversión</p>
-                  <p className="text-lg font-medium">{forecastData.conversionRate.toFixed(1)}%</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Tasa conversión</p>
+                  <p className="text-lg font-medium text-gray-900 dark:text-gray-100">{forecastData.conversionRate.toFixed(1)}%</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Ganadas</p>
-                  <p className="text-lg font-medium">{forecastData.wonOpportunities}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Ganadas</p>
+                  <p className="text-lg font-medium text-gray-900 dark:text-gray-100">{forecastData.wonOpportunities}</p>
                 </div>
               </div>
             </>
@@ -322,8 +323,8 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
         </div>
       </CardContent>
       
-      <CardFooter className="bg-muted/30 py-2 px-4 border-t border-border">
-        <Button variant="ghost" size="sm" className="w-full h-8 justify-between">
+      <CardFooter className="bg-gray-50 dark:bg-gray-900/30 py-2 px-4 border-t border-gray-200 dark:border-gray-700">
+        <Button variant="ghost" size="sm" className="w-full h-8 justify-between text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
           <span className="text-xs">Ver detalles</span>
           <ChevronRight className="h-4 w-4" />
         </Button>

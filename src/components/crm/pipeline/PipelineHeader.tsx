@@ -121,31 +121,33 @@ export default function PipelineHeader({
   };
   
   return (
-    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">
-      <div className="flex flex-col">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">
+      <div className="flex flex-col w-full sm:w-auto">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
           Pipeline CRM
         </h1>
-        <div className="flex items-center mt-1">
+        <div className="flex items-center mt-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="text-blue-600 dark:text-blue-400 bg-transparent font-medium">
+              <Button variant="outline" className="min-h-[40px] text-sm sm:text-base text-blue-600 dark:text-blue-400 bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/20 border-blue-200 dark:border-blue-800 font-medium">
                 {currentPipeline?.name || "Seleccionar Pipeline"}
                 <SlidersHorizontal className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuLabel>Pipelines</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+            <DropdownMenuContent className="w-64 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <DropdownMenuLabel className="text-gray-900 dark:text-gray-100 font-semibold">Pipelines</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
               {pipelines.map((pipeline) => (
                 <DropdownMenuItem 
                   key={pipeline.id} 
                   onClick={() => handlePipelineChange(pipeline)}
-                  className={pipeline.id === currentPipeline?.id ? "bg-blue-50 dark:bg-gray-700" : ""}
+                  className={`text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+                    pipeline.id === currentPipeline?.id ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                  }`}
                 >
                   {pipeline.name}
                   {pipeline.is_default && (
-                    <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1.5 py-0.5 rounded-full">
+                    <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
                       Por defecto
                     </span>
                   )}
@@ -156,14 +158,15 @@ export default function PipelineHeader({
         </div>
       </div>
       
-      <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
+      <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
         <Button 
           onClick={onNewOpportunity} 
           size="sm" 
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-sm"
         >
-          <PlusCircle className="h-4 w-4 mr-1" />
-          Nueva Oportunidad
+          <PlusCircle className="h-5 w-5 mr-2" />
+          <span className="hidden sm:inline">Nueva Oportunidad</span>
+          <span className="sm:hidden">Nueva</span>
         </Button>
       </div>
     </header>

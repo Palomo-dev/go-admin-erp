@@ -169,79 +169,118 @@ const TableroKanban: React.FC<TableroKanbanProps> = ({
 
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-4 min-h-[70vh] w-full overflow-x-auto px-2">
-      {Object.entries(columnas).map(([estado, titulo]) => {
-        const estadoUI = estado as TaskStatusUI;
-        const esDestinoDrop = draggedOver === estado;
-        
-        return (
-          <Card 
-            key={estadoUI} 
-            className={cn(
-              'rounded-xl h-full transition-all duration-300 min-w-[250px] w-full',
-              esDestinoDrop ? 'ring-2 ring-blue-500 dark:ring-blue-400' : ''
-            )}
-            onDragOver={(e) => handleDragOver(e, estado)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, estadoUI)}
-          >
-            <CardHeader className="flex flex-col space-y-1.5 p-4 py-3 bg-slate-50/70 dark:bg-slate-900/70 sticky top-0 z-10">
-              <CardTitle className="tracking-tight flex items-center text-lg font-medium">
-                {estadoUI === 'pendiente' && <Clock className="h-5 w-5 mr-2 text-yellow-500" />}
-                {estadoUI === 'en_progreso' && <MoveHorizontal className="h-5 w-5 mr-2 text-blue-500" />}
-                {estadoUI === 'completada' && <CheckCircle className="h-5 w-5 mr-2 text-green-500" />}
-                {estadoUI === 'cancelada' && <XCircle className="h-5 w-5 mr-2 text-red-500" />}
-                <div className="whitespace-nowrap">
-                  {titulo}
+    <div className="mt-4 w-full">
+      {/* Contenedor con scroll horizontal en móvil y grid en desktop */}
+      <div className="
+        flex lg:grid lg:grid-cols-4 
+        gap-3 sm:gap-4 
+        min-h-[70vh] 
+        overflow-x-auto lg:overflow-x-visible 
+        pb-4 px-1
+      ">
+        {Object.entries(columnas).map(([estado, titulo]) => {
+          const estadoUI = estado as TaskStatusUI;
+          const esDestinoDrop = draggedOver === estado;
+          
+          return (
+            <Card 
+              key={estadoUI} 
+              className={cn(
+                'rounded-xl transition-all duration-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700',
+                // Mobile: ancho fijo con scroll horizontal
+                'min-w-[280px] w-[280px] sm:min-w-[320px] sm:w-[320px] flex-shrink-0',
+                // Desktop: grid columnas iguales
+                'lg:min-w-0 lg:w-auto',
+                // Estado de drag
+                esDestinoDrop ? 'ring-2 ring-blue-500 dark:ring-blue-400 shadow-lg' : 'shadow-sm'
+              )}
+              onDragOver={(e) => handleDragOver(e, estado)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, estadoUI)}
+            >
+              {/* Header sticky con mejor spacing */}
+              <CardHeader className="
+                flex flex-col space-y-1.5 
+                p-3 sm:p-4 
+                bg-gradient-to-r from-gray-50/90 to-gray-100/90 
+                dark:from-gray-900/90 dark:to-gray-800/90 
+                sticky top-0 z-10 
+                border-b border-gray-200 dark:border-gray-700
+                backdrop-blur-sm
+              ">
+                <CardTitle className="flex items-center justify-between text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
+                  <div className="flex items-center gap-2">
+                    {estadoUI === 'pendiente' && <Clock className="h-4 w-4 text-yellow-500 dark:text-yellow-400 flex-shrink-0" />}
+                    {estadoUI === 'en_progreso' && <MoveHorizontal className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />}
+                    {estadoUI === 'completada' && <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0" />}
+                    {estadoUI === 'cancelada' && <XCircle className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0" />}
+                    <span className="whitespace-nowrap">{titulo}</span>
+                  </div>
                   {(tareas[estadoUI]?.length ?? 0) > 0 && (
-                    <Badge variant="secondary" className="ml-2 text-xs">
+                    <Badge variant="secondary" className="text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-0.5">
                       {tareas[estadoUI]?.length ?? 0}
                     </Badge>
                   )}
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className={cn(
-              'p-4 overflow-y-auto max-h-[68vh] transition-all',
-              esDestinoDrop ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''
-            )}>
-              {esDestinoDrop && (!tareas[estadoUI] || tareas[estadoUI].length === 0) && (
-                <div className="border-2 border-dashed border-blue-300 dark:border-blue-800 rounded-md p-6 flex flex-col items-center justify-center mb-2">
-                  <Plus className="h-12 w-12 text-blue-400 dark:text-blue-600 mb-2" />
-                  <p className="text-blue-500 dark:text-blue-400 text-sm font-medium">Suelta aquí</p>
-                </div>
-              )}
-              
-              {tareas[estadoUI] && tareas[estadoUI].length > 0 ? (
-                tareas[estadoUI].map((tarea: Task) => (
-                  <div
-                    key={tarea.id}
-                    id={`tarea-${tarea.id}`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, tarea.id)}
-                    onDragEnd={(e) => handleDragEnd(e, tarea.id)}
-                    className={cn(
-                      "mb-2 transition-all duration-200",
-                      draggedItem === tarea.id ? "opacity-50" : "opacity-100"
-                    )}
-                  >
-                    <TareaCard
-                      tarea={tarea}
-                      onEdit={onTaskEdit}
-                      onViewDetails={onViewDetails}
-                      draggable={false}
-                    />
+                </CardTitle>
+              </CardHeader>
+
+              {/* Content área con altura consistente */}
+              <CardContent className={cn(
+                'p-3 sm:p-4 overflow-y-auto transition-all',
+                'min-h-[400px] max-h-[calc(70vh-60px)]',
+                esDestinoDrop ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''
+              )}>
+                {/* Zona de drop cuando está vacía */}
+                {esDestinoDrop && (!tareas[estadoUI] || tareas[estadoUI].length === 0) && (
+                  <div className="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg p-6 flex flex-col items-center justify-center min-h-[200px]">
+                    <Plus className="h-12 w-12 text-blue-400 dark:text-blue-500 mb-2" />
+                    <p className="text-blue-600 dark:text-blue-400 text-sm font-medium">Suelta aquí</p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  <p className="text-sm">No hay tareas</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
+                )}
+                
+                {/* Lista de tareas */}
+                {tareas[estadoUI] && tareas[estadoUI].length > 0 ? (
+                  <div className="space-y-2">
+                    {tareas[estadoUI].map((tarea: Task) => (
+                      <div
+                        key={tarea.id}
+                        id={`tarea-${tarea.id}`}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, tarea.id)}
+                        onDragEnd={(e) => handleDragEnd(e, tarea.id)}
+                        className={cn(
+                          "transition-all duration-200 cursor-move",
+                          draggedItem === tarea.id ? "opacity-50 scale-95" : "opacity-100"
+                        )}
+                      >
+                        <TareaCard
+                          tarea={tarea}
+                          onEdit={onTaskEdit}
+                          onViewDetails={onViewDetails}
+                          draggable={false}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  !esDestinoDrop && (
+                    <div className="flex flex-col items-center justify-center text-center text-gray-400 dark:text-gray-500 py-12 min-h-[200px]">
+                      <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-3 mb-3">
+                        {estadoUI === 'pendiente' && <Clock className="h-8 w-8" />}
+                        {estadoUI === 'en_progreso' && <MoveHorizontal className="h-8 w-8" />}
+                        {estadoUI === 'completada' && <CheckCircle className="h-8 w-8" />}
+                        {estadoUI === 'cancelada' && <XCircle className="h-8 w-8" />}
+                      </div>
+                      <p className="text-sm font-medium">No hay tareas</p>
+                      <p className="text-xs mt-1">Arrastra tareas aquí</p>
+                    </div>
+                  )
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 };

@@ -180,7 +180,7 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
       
       // Actualizar el campo específico que cambió
       // Solo mapeamos las configuraciones de automatizaciones que se modifican en la UI
-      const settingMappings: Partial<Record<keyof AutomationSettings, string>> = {
+      const settingMappings: Partial<Record<keyof AutomationSettings, keyof typeof actionsJSON>> = {
         taskCreation: 'create_tasks',
         notifications: 'send_notifications',
         statusUpdate: 'update_status',
@@ -188,8 +188,9 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
         reminders: 'send_reminders'
       };
       
-      if (settingMappings[setting]) {
-        actionsJSON[settingMappings[setting]] = newValue;
+      const mappedKey = settingMappings[setting];
+      if (mappedKey) {
+        actionsJSON[mappedKey] = newValue;
       }
       
       // Si tenemos un ID de automatización, actualizamos ese registro
@@ -254,39 +255,40 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
   // Mostrar esqueleto mientras carga
   if (loading) {
     return (
-      <div className="p-4">
-        <div className="flex justify-center items-center h-40">
+      <div className="p-3 sm:p-4">
+        <div className="flex flex-col justify-center items-center h-40 gap-3">
           <LoadingSpinner size="lg" className="text-blue-500" />
+          <span className="text-sm text-gray-600 dark:text-gray-400">Cargando automatizaciones...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-3 sm:p-4 space-y-4 sm:space-y-6">
       <div className="max-w-4xl mx-auto">
         {/* Sección de configuraciones de automatización */}
-        <Card className="mb-6">
-          <CardHeader>
+        <Card className="mb-4 sm:mb-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader className="p-4 sm:p-6">
             <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-blue-500" />
-              <CardTitle>Configuraciones de automatización</CardTitle>
+              <Settings className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+              <CardTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">Configuraciones de automatización</CardTitle>
             </div>
-            <CardDescription>
+            <CardDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
               Configura las acciones automáticas que ocurrirán cuando las oportunidades cambien de etapa
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
             {/* Creación de tareas */}
-            <div className="flex items-start justify-between space-x-4">
-              <div className="space-y-1">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+              <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2">
-                  <CheckSquare className="h-4 w-4 text-blue-500" />
-                  <Label htmlFor="task-creation" className="font-medium">
+                  <CheckSquare className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                  <Label htmlFor="task-creation" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
                     Creación automática de tareas
                   </Label>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   Crea tareas de seguimiento automáticamente cuando una oportunidad cambia de etapa
                 </p>
               </div>
@@ -294,21 +296,22 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
                 id="task-creation"
                 checked={automationSettings.taskCreation}
                 onCheckedChange={() => handleSettingChange('taskCreation')}
+                className="mt-2 sm:mt-0"
               />
             </div>
             
-            <Separator />
+            <Separator className="bg-gray-200 dark:bg-gray-700" />
             
             {/* Notificaciones */}
-            <div className="flex items-start justify-between space-x-4">
-              <div className="space-y-1">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+              <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2">
-                  <Bell className="h-4 w-4 text-blue-500" />
-                  <Label htmlFor="notifications" className="font-medium">
+                  <Bell className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                  <Label htmlFor="notifications" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
                     Notificaciones automáticas
                   </Label>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   Envía notificaciones a los usuarios responsables cuando hay cambios en las oportunidades
                 </p>
               </div>
@@ -316,21 +319,22 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
                 id="notifications"
                 checked={automationSettings.notifications}
                 onCheckedChange={() => handleSettingChange('notifications')}
+                className="mt-2 sm:mt-0"
               />
             </div>
             
-            <Separator />
+            <Separator className="bg-gray-200 dark:bg-gray-700" />
             
             {/* Actualización de estados */}
-            <div className="flex items-start justify-between space-x-4">
-              <div className="space-y-1">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+              <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-blue-500" />
-                  <Label htmlFor="status-update" className="font-medium">
+                  <AlertCircle className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                  <Label htmlFor="status-update" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
                     Actualización de estados
                   </Label>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   Actualiza automáticamente el estado de las oportunidades según la etapa
                 </p>
               </div>
@@ -338,21 +342,22 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
                 id="status-update"
                 checked={automationSettings.statusUpdate}
                 onCheckedChange={() => handleSettingChange('statusUpdate')}
+                className="mt-2 sm:mt-0"
               />
             </div>
             
-            <Separator />
+            <Separator className="bg-gray-200 dark:bg-gray-700" />
             
             {/* Registro de actividad */}
-            <div className="flex items-start justify-between space-x-4">
-              <div className="space-y-1">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+              <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-blue-500" />
-                  <Label htmlFor="activity-log" className="font-medium">
+                  <MessageSquare className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                  <Label htmlFor="activity-log" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
                     Registro de actividad
                   </Label>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   Registra todas las actividades y cambios relacionados con las oportunidades
                 </p>
               </div>
@@ -360,21 +365,22 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
                 id="activity-log"
                 checked={automationSettings.activityLog}
                 onCheckedChange={() => handleSettingChange('activityLog')}
+                className="mt-2 sm:mt-0"
               />
             </div>
             
-            <Separator />
+            <Separator className="bg-gray-200 dark:bg-gray-700" />
             
             {/* Recordatorios */}
-            <div className="flex items-start justify-between space-x-4">
-              <div className="space-y-1">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+              <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4 text-blue-500" />
-                  <Label htmlFor="reminders" className="font-medium">
+                  <CalendarClock className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                  <Label htmlFor="reminders" className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base">
                     Recordatorios automáticos
                   </Label>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   Envía recordatorios para seguimiento de oportunidades inactivas
                 </p>
               </div>
@@ -382,32 +388,33 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
                 id="reminders"
                 checked={automationSettings.reminders}
                 onCheckedChange={() => handleSettingChange('reminders')}
+                className="mt-2 sm:mt-0"
               />
             </div>
           </CardContent>
-          <CardFooter className="flex justify-end border-t pt-4">
-            <Button variant="outline" className="mr-2">
+          <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 border-t border-gray-200 dark:border-gray-700 pt-4 p-4 sm:p-6">
+            <Button variant="outline" className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700">
               Cancelar
             </Button>
-            <Button>
+            <Button className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white">
               Guardar cambios
             </Button>
           </CardFooter>
         </Card>
         
         {/* Sección de automatizaciones específicas por etapa */}
-        <Card>
-          <CardHeader>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader className="p-4 sm:p-6">
             <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-blue-500" />
-              <CardTitle>Automatizaciones por etapa</CardTitle>
+              <Settings className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+              <CardTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">Automatizaciones por etapa</CardTitle>
             </div>
-            <CardDescription>
+            <CardDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
               Configura acciones específicas para cada etapa del pipeline
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <CardContent className="p-4 sm:p-6">
+            <p className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-600 dark:text-gray-400">
               La configuración avanzada por etapa estará disponible próximamente
             </p>
           </CardContent>

@@ -24,6 +24,7 @@ export interface NavSectionProps {
   items: NavItemProps[];
   collapsed?: boolean;
   sectionIdx?: number;
+  onNavigate?: () => void;
 }
 
 // Interfaces para datos de usuario
@@ -47,6 +48,7 @@ export interface SidebarProps {
 export interface NavItemComponentProps {
   item: NavItemProps;
   collapsed?: boolean;
+  onNavigate?: () => void;
 }
 
 export interface SidebarNavigationProps {
@@ -55,6 +57,7 @@ export interface SidebarNavigationProps {
   userData: UserData | null;
   orgName?: string | null;
   collapsed?: boolean;
+  onNavigate?: () => void;
 }
 
 export interface AppHeaderProps {

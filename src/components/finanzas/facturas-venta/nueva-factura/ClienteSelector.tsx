@@ -257,9 +257,9 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
   };
   
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="flex-grow mr-2">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex gap-2">
+        <div className="flex-grow">
           <Select
             value={selectedCustomerId?.toString() || ''}
             onValueChange={(value) => onCustomerChange(value || null)}
@@ -267,44 +267,54 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
             open={isSelectOpen}
             onOpenChange={setIsSelectOpen}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="
+              w-full text-sm
+              bg-white dark:bg-gray-900
+              border-gray-300 dark:border-gray-600
+              text-gray-900 dark:text-gray-100
+            ">
               <SelectValue placeholder="Buscar cliente">
                 {selectedCustomerId ? (
-                  // Buscar el cliente en la lista y mostrar su nombre
                   clientes.find(c => c.id === selectedCustomerId)?.full_name || 
-                  <span className="italic text-muted-foreground">Cargando cliente...</span>
+                  <span className="italic text-gray-500 dark:text-gray-400">Cargando cliente...</span>
                 ) : null}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent>
-              <div className="p-2 sticky top-0 bg-background z-10">
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <div className="p-2 sticky top-0 bg-white dark:bg-gray-800 z-10">
                 <Input
                   placeholder="Buscar cliente por nombre, email o teléfono"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="mb-2"
+                  className="
+                    mb-2 text-sm
+                    bg-white dark:bg-gray-900
+                    border-gray-300 dark:border-gray-600
+                    text-gray-900 dark:text-gray-100
+                    placeholder:text-gray-500 dark:placeholder:text-gray-400
+                  "
                   autoFocus
                   onClick={(e) => e.stopPropagation()}
                 />
                 {isLoading && (
                   <div className="flex items-center justify-center py-1">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                    <span className="ml-2 text-xs text-muted-foreground">Buscando...</span>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 dark:border-blue-400 border-t-transparent"></div>
+                    <span className="ml-2 text-xs text-gray-600 dark:text-gray-400">Buscando...</span>
                   </div>
                 )}
               </div>
               
               <div className="max-h-[200px] overflow-y-auto">
                 {clientesFiltrados.length === 0 ? (
-                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  <div className="px-2 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                     {isLoading ? 'Cargando clientes...' : 'No se encontraron clientes'}
                   </div>
                 ) : (
                   clientesFiltrados.map((cliente) => (
-                    <SelectItem key={cliente.id} value={cliente.id.toString()}>
+                    <SelectItem key={cliente.id} value={cliente.id.toString()} className="text-gray-900 dark:text-gray-100">
                       <div>
-                        <div className="font-medium">{cliente.full_name}</div>
-                        {cliente.email && <div className="text-xs text-muted-foreground">{cliente.email}</div>}
+                        <div className="font-medium text-sm">{cliente.full_name}</div>
+                        {cliente.email && <div className="text-xs text-gray-600 dark:text-gray-400">{cliente.email}</div>}
                       </div>
                     </SelectItem>
                   ))
@@ -316,55 +326,99 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
         
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="icon">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="
+                flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10 p-0
+                bg-white dark:bg-gray-800
+                border-gray-300 dark:border-gray-600
+                hover:bg-gray-50 dark:hover:bg-gray-700
+                text-gray-700 dark:text-gray-200
+              "
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Nuevo Cliente</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-gray-900 dark:text-gray-100">Nuevo Cliente</DialogTitle>
+              <DialogDescription className="text-gray-600 dark:text-gray-400">
                 Agregue un nuevo cliente para la factura.
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Nombre completo</Label>
+            <div className="space-y-3 sm:space-y-4 py-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="full_name" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Nombre completo
+                </Label>
                 <Input
                   id="full_name"
                   value={nuevoCliente.full_name}
                   onChange={(e) => setNuevoCliente({...nuevoCliente, full_name: e.target.value})}
                   placeholder="Nombre y apellido"
+                  className="
+                    text-sm
+                    bg-white dark:bg-gray-900
+                    border-gray-300 dark:border-gray-600
+                    text-gray-900 dark:text-gray-100
+                    placeholder:text-gray-500 dark:placeholder:text-gray-400
+                  "
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
                   value={nuevoCliente.email}
                   onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value})}
                   placeholder="correo@ejemplo.com"
+                  className="
+                    text-sm
+                    bg-white dark:bg-gray-900
+                    border-gray-300 dark:border-gray-600
+                    text-gray-900 dark:text-gray-100
+                    placeholder:text-gray-500 dark:placeholder:text-gray-400
+                  "
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="phone">Teléfono</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Teléfono
+                </Label>
                 <Input
                   id="phone"
                   value={nuevoCliente.phone}
                   onChange={(e) => setNuevoCliente({...nuevoCliente, phone: e.target.value})}
                   placeholder="123456789"
+                  className="
+                    text-sm
+                    bg-white dark:bg-gray-900
+                    border-gray-300 dark:border-gray-600
+                    text-gray-900 dark:text-gray-100
+                    placeholder:text-gray-500 dark:placeholder:text-gray-400
+                  "
                 />
               </div>
             </div>
             
             <DialogFooter>
               <Button
+                size="sm"
                 onClick={handleGuardarCliente}
                 disabled={isLoading}
+                className="
+                  w-full sm:w-auto
+                  bg-blue-600 hover:bg-blue-700
+                  dark:bg-blue-600 dark:hover:bg-blue-500
+                  text-white
+                "
               >
                 {isLoading ? 'Guardando...' : 'Guardar Cliente'}
               </Button>

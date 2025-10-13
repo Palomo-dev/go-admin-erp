@@ -29,12 +29,12 @@ const TareasTable: React.FC<TareasTableProps> = ({
       variant="ghost"
       size="sm"
       onClick={() => onSort(campo)}
-      className="h-8 px-2 text-xs font-medium"
+      className="h-8 px-2 text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
     >
       {children}
-      <ArrowUpDown className="ml-1 h-3 w-3" />
+      <ArrowUpDown className="ml-1 h-3 w-3 text-gray-600 dark:text-gray-400" />
       {ordenarPor.campo === campo && (
-        <span className="ml-1 text-xs">
+        <span className="ml-1 text-xs text-blue-600 dark:text-blue-400">
           {ordenarPor.direccion === 'asc' ? '↑' : '↓'}
         </span>
       )}
@@ -43,11 +43,11 @@ const TareasTable: React.FC<TareasTableProps> = ({
 
   if (tareas.length === 0) {
     return (
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="p-0">
-          <div className="p-8 text-center">
-            <Info size={32} className="mx-auto mb-2 text-muted-foreground" />
-            <p className="text-muted-foreground">No hay tareas que coincidan con los filtros aplicados</p>
+          <div className="p-6 sm:p-8 text-center">
+            <Info size={32} className="mx-auto mb-2 text-gray-400 dark:text-gray-500" />
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">No hay tareas que coincidan con los filtros aplicados</p>
           </div>
         </CardContent>
       </Card>
@@ -55,9 +55,9 @@ const TareasTable: React.FC<TareasTableProps> = ({
   }
 
   return (
-    <Card>
+    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardContent className="p-0">
-        <div className="overflow-hidden">
+        <div className="overflow-hidden rounded-lg">
           <div className="overflow-x-auto w-full">
             <table className="w-full table-fixed">
               <colgroup>
@@ -70,27 +70,27 @@ const TareasTable: React.FC<TareasTableProps> = ({
                 <col style={{ width: '10%' }} className="min-w-[80px]" />
               </colgroup>
               
-              <thead className="bg-muted/50">
+              <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                 <tr>
-                  <th className="p-4 text-left font-medium">
+                  <th className="p-2 sm:p-3 md:p-4 text-left font-semibold text-gray-900 dark:text-gray-100">
                     <SortButton campo="title">Título</SortButton>
                   </th>
-                  <th className="p-4 text-center font-medium">
+                  <th className="p-2 sm:p-3 md:p-4 text-center font-semibold text-gray-900 dark:text-gray-100">
                     <SortButton campo="type">Tipo</SortButton>
                   </th>
-                  <th className="p-4 text-center font-medium">
+                  <th className="p-2 sm:p-3 md:p-4 text-center font-semibold text-gray-900 dark:text-gray-100">
                     <SortButton campo="priority">Prioridad</SortButton>
                   </th>
-                  <th className="p-4 text-center font-medium">
+                  <th className="p-2 sm:p-3 md:p-4 text-center font-semibold text-gray-900 dark:text-gray-100">
                     <SortButton campo="status">Estado</SortButton>
                   </th>
-                  <th className="p-4 text-center font-medium">
+                  <th className="p-2 sm:p-3 md:p-4 text-center font-semibold text-gray-900 dark:text-gray-100">
                     <SortButton campo="due_date">Fecha límite</SortButton>
                   </th>
-                  <th className="p-4 text-center font-medium">
+                  <th className="p-2 sm:p-3 md:p-4 text-center font-semibold text-gray-900 dark:text-gray-100">
                     <SortButton campo="assigned_to">Asignado</SortButton>
                   </th>
-                  <th className="p-4 text-center font-medium">Acciones</th>
+                  <th className="p-2 sm:p-3 md:p-4 text-center font-semibold text-gray-900 dark:text-gray-100">Acciones</th>
                 </tr>
               </thead>
               

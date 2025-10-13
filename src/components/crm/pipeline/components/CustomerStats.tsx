@@ -23,50 +23,50 @@ export default function CustomerStats({ customers }: CustomerStatsProps) {
   const totalValue = customers.reduce((sum, c) => sum + c.total_value, 0);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <Card>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-2">
-          <CardDescription>Total de clientes</CardDescription>
-          <CardTitle>{totalCustomers}</CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Total de clientes</CardDescription>
+          <CardTitle className="text-gray-900 dark:text-gray-100 text-xl sm:text-2xl">{totalCustomers}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Users className="h-5 w-5 text-blue-500" />
+          <Users className="h-5 w-5 text-blue-500 dark:text-blue-400" />
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-2">
-          <CardDescription>Oportunidades activas</CardDescription>
-          <CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Oportunidades activas</CardDescription>
+          <CardTitle className="text-gray-900 dark:text-gray-100 text-xl sm:text-2xl">
             {activeOpportunities}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Briefcase className="h-5 w-5 text-amber-500" />
+          <Briefcase className="h-5 w-5 text-amber-500 dark:text-amber-400" />
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-2">
-          <CardDescription>Oportunidades ganadas</CardDescription>
-          <CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Oportunidades ganadas</CardDescription>
+          <CardTitle className="text-gray-900 dark:text-gray-100 text-xl sm:text-2xl">
             {wonOpportunities}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Briefcase className="h-5 w-5 text-green-500" />
+          <Briefcase className="h-5 w-5 text-green-500 dark:text-green-400" />
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-2">
-          <CardDescription>Valor total</CardDescription>
-          <CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Valor total</CardDescription>
+          <CardTitle className="text-gray-900 dark:text-gray-100 text-xl sm:text-2xl">
             {formatCurrency(totalValue)}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Briefcase className="h-5 w-5 text-blue-500" />
+          <Briefcase className="h-5 w-5 text-blue-500 dark:text-blue-400" />
         </CardContent>
       </Card>
     </div>

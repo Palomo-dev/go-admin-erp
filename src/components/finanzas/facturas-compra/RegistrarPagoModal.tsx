@@ -185,21 +185,21 @@ export function RegistrarPagoModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dark:bg-gray-800 dark:border-gray-700 max-w-md">
-        <DialogHeader>
-          <DialogTitle className="dark:text-white flex items-center">
-            <CreditCard className="w-5 h-5 mr-2 text-blue-600" />
-            Registrar Pago
+      <DialogContent className="dark:bg-gray-800 dark:border-gray-700 max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-white flex items-center">
+            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600 dark:text-blue-400" />
+            <span>Registrar Pago</span>
           </DialogTitle>
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Factura: {factura.number_ext} - {factura.supplier?.name}
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
+            Factura: <span className="font-medium">{factura.number_ext}</span> - {factura.supplier?.name}
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 py-2">
           {/* Información de la factura */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-            <div className="flex justify-between text-sm">
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex justify-between text-xs sm:text-sm">
               <span className="text-blue-600 dark:text-blue-400">Balance pendiente:</span>
               <span className="font-semibold text-blue-800 dark:text-blue-300">
                 {formatCurrency(factura.balance, factura.currency)}
@@ -208,46 +208,49 @@ export function RegistrarPagoModal({
           </div>
 
           {/* Monto del pago */}
-          <div className="space-y-2">
-            <Label htmlFor="amount" className="dark:text-gray-300">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="amount" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Monto del Pago *
             </Label>
             <Input
               id="amount"
-              type="text"
+              type="number"
+              step="0.01"
               value={formData.amount}
               onChange={(e) => handleMontoChange(e.target.value)}
               placeholder="0.00"
-              className={`dark:bg-gray-700 dark:border-gray-600 ${
-                montoExcedido ? 'border-red-500' : ''
+              className={`h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${
+                montoExcedido ? 'border-red-500 dark:border-red-500' : ''
               }`}
             />
             {montoExcedido && (
-              <Alert className="border-red-500 bg-red-50 dark:bg-red-900/20">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800 dark:text-red-300">
-                  El monto ({formatCurrency(parseFloat(formData.amount), factura.currency)}) 
-                  excede el balance pendiente ({formatCurrency(factura.balance, factura.currency)})
-                </AlertDescription>
+              <Alert className="border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-800 py-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <AlertDescription className="text-xs sm:text-sm text-red-800 dark:text-red-300">
+                    El monto ({formatCurrency(parseFloat(formData.amount), factura.currency)}) 
+                    excede el balance pendiente ({formatCurrency(factura.balance, factura.currency)})
+                  </AlertDescription>
+                </div>
               </Alert>
             )}
           </div>
 
           {/* Método de pago */}
-          <div className="space-y-2">
-            <Label htmlFor="payment_method" className="dark:text-gray-300">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="payment_method" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Método de Pago *
             </Label>
             <Select
               value={formData.payment_method}
               onValueChange={(value) => handleInputChange('payment_method', value)}
             >
-              <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
+              <SelectTrigger className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
                 <SelectValue placeholder="Seleccionar método..." />
               </SelectTrigger>
-              <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
+              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 {metodosPago.map((metodo) => (
-                  <SelectItem key={metodo.id} value={metodo.payment_method_code}>
+                  <SelectItem key={metodo.id} value={metodo.payment_method_code} className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">
                     {metodo.payment_methods?.name || metodo.payment_method_code}
                   </SelectItem>
                 ))}
@@ -257,8 +260,8 @@ export function RegistrarPagoModal({
 
           {/* Referencia (condicional) */}
           {requiereReferencia() && (
-            <div className="space-y-2">
-              <Label htmlFor="reference" className="dark:text-gray-300">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="reference" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 Referencia *
               </Label>
               <Input
@@ -266,14 +269,14 @@ export function RegistrarPagoModal({
                 value={formData.reference}
                 onChange={(e) => handleInputChange('reference', e.target.value)}
                 placeholder="Número de transacción, cheque, etc."
-                className="dark:bg-gray-700 dark:border-gray-600"
+                className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
               />
             </div>
           )}
 
           {/* Notas */}
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="dark:text-gray-300">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="notes" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Notas
             </Label>
             <Textarea
@@ -281,19 +284,19 @@ export function RegistrarPagoModal({
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
               placeholder="Notas adicionales sobre el pago..."
-              className="dark:bg-gray-700 dark:border-gray-600"
+              className="text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 min-h-[60px] sm:min-h-[72px]"
               rows={3}
             />
           </div>
 
           {/* Botones */}
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 sm:pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={handleCancel}
               disabled={loading}
-              className="dark:border-gray-600 dark:text-gray-300"
+              className="w-full sm:w-auto h-9 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Cancelar
             </Button>
@@ -301,12 +304,12 @@ export function RegistrarPagoModal({
               type="submit"
               disabled={loading || montoExcedido || !formData.amount || 
                        (requiereReferencia() && !formData.reference.trim())}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full sm:w-auto h-9 text-sm bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
             >
               {loading ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Registrando...
+                  <div className="animate-spin rounded-full h-3.5 w-3.5 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
+                  <span>Registrando...</span>
                 </>
               ) : (
                 'Registrar Pago'

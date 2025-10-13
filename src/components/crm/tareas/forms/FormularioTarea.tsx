@@ -296,42 +296,42 @@ const FormularioTarea: React.FC<FormularioTareaProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
             {tarea ? 'Editar Tarea' : 'Nueva Tarea'}
           </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
             {/* Información Básica */}
             <div>
-              <h3 className="text-lg font-medium mb-4">Información Básica</h3>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Información Básica</h3>
               <TareaBasicInfo form={form} />
             </div>
 
-            <Separator />
+            <Separator className="bg-gray-200 dark:bg-gray-700" />
 
             {/* Detalles de la Tarea */}
             <div>
-              <h3 className="text-lg font-medium mb-4">Detalles</h3>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Detalles</h3>
               <TareaDetails form={form} />
             </div>
 
-            <Separator />
+            <Separator className="bg-gray-200 dark:bg-gray-700" />
 
             {/* Asignación */}
             <div>
-              <h3 className="text-lg font-medium mb-4">Asignación</h3>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Asignación</h3>
               <TareaAssignment form={form} usuarios={usuarios} />
             </div>
 
-            <Separator />
+            <Separator className="bg-gray-200 dark:bg-gray-700" />
 
             {/* Relaciones */}
             <div>
-              <h3 className="text-lg font-medium mb-4">Relaciones</h3>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Relaciones</h3>
               <TareaRelations 
                 form={form} 
                 clientes={clientes} 
@@ -339,11 +339,11 @@ const FormularioTarea: React.FC<FormularioTareaProps> = ({
               />
             </div>
 
-            <Separator />
+            <Separator className="bg-gray-200 dark:bg-gray-700" />
 
             {/* Recordatorios */}
             <div>
-              <h3 className="text-lg font-medium mb-4">Recordatorios</h3>
+              <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Recordatorios</h3>
               <TareaReminders form={form} />
             </div>
 
@@ -353,15 +353,20 @@ const FormularioTarea: React.FC<FormularioTareaProps> = ({
               isVisible={tarea?.status === 'canceled'}
             />
 
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
+                className="min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={enviando}>
+              <Button 
+                type="submit" 
+                disabled={enviando}
+                className="min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+              >
                 {enviando ? 'Guardando...' : (tarea ? 'Actualizar' : 'Crear')}
               </Button>
             </DialogFooter>

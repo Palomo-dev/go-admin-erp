@@ -20,7 +20,8 @@ export const NavSection = ({
   title,
   items,
   collapsed,
-  sectionIdx = 0
+  sectionIdx = 0,
+  onNavigate
 }: NavSectionProps) => {
   return (
     <div className="mb-4">
@@ -36,6 +37,7 @@ export const NavSection = ({
           key={itemIdx} 
           item={item} 
           collapsed={collapsed}
+          onNavigate={onNavigate}
         />
       ))}
     </div>

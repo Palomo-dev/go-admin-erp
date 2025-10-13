@@ -94,7 +94,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex flex-wrap items-center gap-2">
       <TooltipProvider>
         {/* Nuevo cliente */}
         <Tooltip>
@@ -102,11 +102,11 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
             <Button
               variant="default"
               size="sm"
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white min-h-[40px] text-sm"
               onClick={() => window.location.href = '/app/clientes/new'}
             >
-              <Plus className="w-4 h-4 mr-1" />
-              Nuevo cliente
+              <Plus className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Nuevo cliente</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>Crear un nuevo cliente</TooltipContent>
@@ -119,10 +119,10 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               size="sm"
               disabled={!selectedCustomers.length}
               onClick={() => setIsTagDialogOpen(true)}
-              className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
             >
-              <Tag className="w-4 h-4 mr-1" />
-              Etiquetar
+              <Tag className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Etiquetar</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>Aplicar etiquetas a clientes seleccionados</TooltipContent>
@@ -135,10 +135,10 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               size="sm"
               disabled={!selectedCustomers.length}
               onClick={() => setIsMergeDialogOpen(true)}
-              className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm hidden md:flex"
             >
-              <Users className="w-4 h-4 mr-1" />
-              Unificar
+              <Users className="w-4 h-4 sm:mr-1" />
+              <span className="hidden lg:inline">Unificar</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>Unificar clientes duplicados</TooltipContent>
@@ -150,34 +150,35 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               variant="outline"
               size="sm"
               onClick={onExportCSV}
-              className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
             >
-              <Download className="w-4 h-4 mr-1" />
-            Exportar
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Exportar a CSV</TooltipContent>
-      </Tooltip>
+              <Download className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Exportar</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Exportar a CSV</TooltipContent>
+        </Tooltip>
       </TooltipProvider>
 
       <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] mx-4">
           <DialogHeader>
-            <DialogTitle>Etiquetar clientes</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-gray-900 dark:text-gray-100">Etiquetar clientes</DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400">
               Aplica una etiqueta a los {selectedCustomers.length} clientes seleccionados.
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="tag">Etiqueta</Label>
+              <Label htmlFor="tag" className="text-gray-900 dark:text-gray-100">Etiqueta</Label>
               <Input 
                 id="tag" 
                 value={tagName} 
                 onChange={(e) => setTagName(e.target.value)} 
                 placeholder="Nombre de etiqueta" 
                 disabled={isProcessing}
+                className="min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
               />
             </div>
           </div>
@@ -200,18 +201,19 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
             </div>
           )}
           
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button 
               variant="outline" 
               onClick={() => setIsTagDialogOpen(false)}
               disabled={isProcessing}
+              className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancelar
             </Button>
             <Button 
               onClick={handleApplyTag}
               disabled={!tagName.trim() || isProcessing}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
             >
               {isProcessing ? (
                 <>
@@ -244,36 +246,37 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] mx-4">
           <DialogHeader>
-            <DialogTitle>Fusionar clientes duplicados</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-gray-900 dark:text-gray-100">Fusionar clientes duplicados</DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400">
               Fusiona {selectedCustomers.length} clientes seleccionados. Selecciona el cliente principal que conservará toda la información.
             </DialogDescription>
           </DialogHeader>
           
           <div className="py-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mb-4">
               Funcionalidad de fusión de clientes en desarrollo. Esta función permitirá combinar
               datos de clientes duplicados preservando el historial de transacciones.
             </p>
 
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-md text-sm text-yellow-700 dark:text-yellow-300 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-2" />
-              La fusión de clientes es una operación que no se puede deshacer
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-md text-xs sm:text-sm text-yellow-700 dark:text-yellow-300 flex items-start">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+              <span>La fusión de clientes es una operación que no se puede deshacer</span>
             </div>
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button 
               variant="outline" 
               onClick={() => setIsMergeDialogOpen(false)}
+              className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancelar
             </Button>
             <Button 
               disabled
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white opacity-50 cursor-not-allowed"
             >
               Fusionar clientes
             </Button>

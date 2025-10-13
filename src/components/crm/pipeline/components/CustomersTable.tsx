@@ -47,12 +47,12 @@ export default function CustomersTable({
   sortDirection,
 }: CustomersTableProps) {
   return (
-    <div className="rounded-md border border-gray-200 dark:border-gray-800">
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+          <TableRow className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
             <TableHead
-              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm"
               onClick={() => onSort("full_name")}
             >
               <div className="flex items-center gap-1">
@@ -61,7 +61,7 @@ export default function CustomersTable({
               </div>
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm hidden sm:table-cell"
               onClick={() => onSort("email")}
             >
               <div className="flex items-center gap-1">
@@ -70,7 +70,7 @@ export default function CustomersTable({
               </div>
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm hidden md:table-cell"
               onClick={() => onSort("total_opportunities")}
             >
               <div className="flex items-center gap-1">
@@ -79,7 +79,7 @@ export default function CustomersTable({
               </div>
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm"
               onClick={() => onSort("total_value")}
             >
               <div className="flex items-center gap-1">
@@ -87,7 +87,7 @@ export default function CustomersTable({
                 <ArrowUpDown className="h-3 w-3" />
               </div>
             </TableHead>
-            <TableHead className="w-[100px]"></TableHead>
+            <TableHead className="w-[100px] text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -96,21 +96,30 @@ export default function CustomersTable({
               <TableRow
                 key={customer.id}
                 onClick={() => onViewDetails(customer)}
-                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900"
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
-                <TableCell>
-                  <div className="font-medium">{customer.full_name}</div>
+                <TableCell className="p-2 sm:p-3">
+                  <div className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">{customer.full_name}</div>
+                  {/* Mostrar contacto en móvil */}
+                  <div className="sm:hidden mt-1 space-y-0.5">
+                    {customer.email && (
+                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">{customer.email}</div>
+                    )}
+                    {customer.phone && (
+                      <div className="text-xs text-gray-600 dark:text-gray-400">{customer.phone}</div>
+                    )}
+                  </div>
                   {customer.latest_opportunity && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                       Última: {customer.latest_opportunity.name.substring(0, 15)}
                       {customer.latest_opportunity.name.length > 15 ? "..." : ""}
                       <span
-                        className={`ml-2 px-1.5 py-0.5 text-[10px] rounded-sm ${
+                        className={`ml-2 px-1.5 py-0.5 text-[10px] rounded-sm font-medium ${
                           customer.latest_opportunity.status === "won"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-500"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
                             : customer.latest_opportunity.status === "lost"
-                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-500"
-                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-500"
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                         }`}
                       >
                         {customer.latest_opportunity.status === "won"
@@ -122,81 +131,85 @@ export default function CustomersTable({
                     </div>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell p-2 sm:p-3">
                   <div className="flex flex-col gap-1">
                     {customer.email && (
                       <a
                         href={`mailto:${customer.email}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        className="flex items-center gap-1 text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[200px]"
                       >
-                        <Mail className="h-3 w-3" />
-                        {customer.email}
+                        <Mail className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{customer.email}</span>
                       </a>
                     )}
                     {customer.phone && (
                       <a
                         href={`tel:${customer.phone}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        className="flex items-center gap-1 text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline"
                       >
-                        <Phone className="h-3 w-3" />
+                        <Phone className="h-3 w-3 flex-shrink-0" />
                         {customer.phone}
                       </a>
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="text-sm">
+                <TableCell className="hidden md:table-cell p-2 sm:p-3">
+                  <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
                     Total: {customer.total_opportunities}
                   </div>
                   {customer.has_opportunities && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
                       Activas: {customer.active_opportunities} | Ganadas:{" "}
                       {customer.won_opportunities}
                     </div>
                   )}
                 </TableCell>
-                <TableCell>
-                  <div className="font-medium">
+                <TableCell className="p-2 sm:p-3">
+                  <div className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
                     {formatCurrency(customer.total_value)}
                   </div>
+                  {/* Mostrar oportunidades en móvil */}
+                  <div className="md:hidden text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    {customer.total_opportunities} oportunidades
+                  </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="p-2 sm:p-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 p-0"
+                        className="h-9 w-9 sm:h-8 sm:w-8 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
-                        <MoreHorizontal className="h-4 w-4" />
+                        <MoreHorizontal className="h-5 w-5 sm:h-4 sm:w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-56">
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
                         onViewDetails(customer);
-                      }}>
+                      }} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                         Ver detalles
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
                         onEdit(customer);
-                      }}>
+                      }} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                         Editar
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
                         onCreateOpportunity(customer);
-                      }}>
+                      }} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                         Nueva oportunidad
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
                         onViewHistory(customer);
-                      }}>
+                      }} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                         Ver historial
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
@@ -208,7 +221,7 @@ export default function CustomersTable({
                         } else {
                           alert("Este cliente no tiene correo electrónico registrado.");
                         }
-                      }}>
+                      }} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                         Enviar correo
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -218,7 +231,7 @@ export default function CustomersTable({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center text-sm sm:text-base text-gray-600 dark:text-gray-400">
                 No hay clientes que coincidan con la búsqueda.
               </TableCell>
             </TableRow>

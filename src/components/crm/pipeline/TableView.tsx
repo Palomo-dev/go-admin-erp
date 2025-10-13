@@ -319,9 +319,10 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
   // Mostrar esqueleto mientras carga
   if (loading) {
     return (
-      <div className="p-4">
-        <div className="flex justify-center items-center h-40">
+      <div className="p-3 sm:p-4">
+        <div className="flex flex-col justify-center items-center h-40 gap-3">
           <LoadingSpinner size="lg" className="text-blue-500" />
+          <span className="text-sm text-gray-600 dark:text-gray-400">Cargando oportunidades...</span>
         </div>
       </div>
     );
@@ -329,14 +330,14 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
   
   // Renderizar la tabla de oportunidades
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4 p-3 sm:p-4">
       {/* Filtros y búsqueda */}
-      <div className="flex flex-col md:flex-row gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
         <div className="relative flex-grow">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-400" />
           <Input
             placeholder="Buscar oportunidades..."
-            className="pl-8"
+            className="pl-9 sm:pl-10 h-11 sm:h-12 text-sm sm:text-base bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -344,16 +345,17 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button variant="outline" className="min-h-[44px] flex items-center gap-2 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
               <Filter className="h-4 w-4" />
-              <span>Filtrar por etapa</span>
+              <span className="hidden sm:inline">Filtrar por etapa</span>
+              <span className="sm:hidden">Etapa</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Etapas</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+          <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <DropdownMenuLabel className="text-gray-900 dark:text-gray-100 font-semibold">Etapas</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
             <DropdownMenuItem 
-              className={!stageFilter ? "bg-blue-50 dark:bg-blue-900/20" : ""}
+              className={`text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${!stageFilter ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
               onClick={() => setStageFilter(null)}
             >
               Todas las etapas
@@ -361,7 +363,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
             {stages.map((stage) => (
               <DropdownMenuItem
                 key={stage.id}
-                className={stageFilter === stage.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}
+                className={`text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${stageFilter === stage.id ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
                 onClick={() => setStageFilter(stage.id)}
               >
                 {stage.name}
@@ -372,34 +374,35 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button variant="outline" className="min-h-[44px] flex items-center gap-2 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
               <Filter className="h-4 w-4" />
-              <span>Filtrar por estado</span>
+              <span className="hidden sm:inline">Filtrar por estado</span>
+              <span className="sm:hidden">Estado</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Estado</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+          <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <DropdownMenuLabel className="text-gray-900 dark:text-gray-100 font-semibold">Estado</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
             <DropdownMenuItem 
-              className={!statusFilter ? "bg-blue-50 dark:bg-blue-900/20" : ""}
+              className={`text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${!statusFilter ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
               onClick={() => setStatusFilter(null)}
             >
               Todos los estados
             </DropdownMenuItem>
             <DropdownMenuItem
-              className={statusFilter === "active" ? "bg-blue-50 dark:bg-blue-900/20" : ""}
+              className={`text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${statusFilter === "active" ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
               onClick={() => setStatusFilter("active")}
             >
               Activa
             </DropdownMenuItem>
             <DropdownMenuItem
-              className={statusFilter === "won" ? "bg-blue-50 dark:bg-blue-900/20" : ""}
+              className={`text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${statusFilter === "won" ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
               onClick={() => setStatusFilter("won")}
             >
               Ganada
             </DropdownMenuItem>
             <DropdownMenuItem
-              className={statusFilter === "lost" ? "bg-blue-50 dark:bg-blue-900/20" : ""}
+              className={`text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${statusFilter === "lost" ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
               onClick={() => setStatusFilter("lost")}
             >
               Perdida
@@ -410,19 +413,20 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
       
       {/* Diálogo de confirmación de eliminación */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="mx-4">
           <DialogHeader>
-            <DialogTitle>¿Estás seguro?</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">¿Estás seguro?</DialogTitle>
+            <DialogDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Esta acción no se puede deshacer. Esta eliminará permanentemente la oportunidad
               y todos los datos asociados a ella.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button 
               variant="outline" 
               onClick={() => setIsDeleteDialogOpen(false)}
               disabled={isDeleting}
+              className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancelar
             </Button>
@@ -430,6 +434,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
               variant="destructive" 
               onClick={deleteOpportunity}
               disabled={isDeleting}
+              className="w-full sm:w-auto min-h-[44px]"
             >
               {isDeleting ? (
                 <>
@@ -445,12 +450,12 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
       </Dialog>
       
       {/* Tabla de oportunidades */}
-      <div className="rounded-md border border-gray-200 dark:border-gray-800">
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+            <TableRow className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
               <TableHead 
-                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm"
                 onClick={() => handleSort("name")}
               >
                 <div className="flex items-center gap-1">
@@ -459,7 +464,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm hidden sm:table-cell"
                 onClick={() => handleSort("customer_name")}
               >
                 <div className="flex items-center gap-1">
@@ -468,7 +473,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm hidden md:table-cell"
                 onClick={() => handleSort("stage_name")}
               >
                 <div className="flex items-center gap-1">
@@ -477,7 +482,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-right"
+                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm text-right"
                 onClick={() => handleSort("amount")}
               >
                 <div className="flex items-center gap-1 justify-end">
@@ -486,41 +491,44 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-right"
+                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm text-right hidden lg:table-cell"
                 onClick={() => handleSort("expected_close_date")}
               >
                 <div className="flex items-center gap-1 justify-end">
-                  Fecha de cierre
+                  Fecha cierre
                   <ArrowUpDown className="h-3 w-3" />
                 </div>
               </TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead></TableHead>
+              <TableHead className="text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm">Estado</TableHead>
+              <TableHead className="text-gray-900 dark:text-gray-100 font-semibold text-xs sm:text-sm"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredOpportunities.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={7} className="text-center py-8 text-sm sm:text-base text-gray-600 dark:text-gray-400">
                   No se encontraron oportunidades
                 </TableCell>
               </TableRow>
             ) : (
               filteredOpportunities.map((opportunity) => (
-                <TableRow key={opportunity.id}>
-                  <TableCell className="font-medium">
-                    {opportunity.name}
+                <TableRow key={opportunity.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <TableCell className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
+                    <div className="flex flex-col">
+                      <span>{opportunity.name}</span>
+                      <span className="sm:hidden text-gray-600 dark:text-gray-400 font-normal mt-1">{opportunity.customer_name || "Sin cliente"}</span>
+                    </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
                     {opportunity.customer_name || "Sin cliente"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
                     {opportunity.stage_name || "Sin etapa"}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
                     {formatCurrency(opportunity.amount)}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right hidden lg:table-cell text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
                     {opportunity.expected_close_date 
                       ? new Date(opportunity.expected_close_date).toLocaleDateString()
                       : "Sin fecha"}
@@ -529,10 +537,10 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                     <Badge
                       className={
                         opportunity.status === "won" 
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30" 
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 text-xs font-medium" 
                           : opportunity.status === "lost" 
-                            ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30"
-                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 text-xs font-medium"
+                            : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-xs font-medium"
                       }
                     >
                       {translateOpportunityStatus(opportunity.status || 'active')}
@@ -541,16 +549,16 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
+                        <Button variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
                           <span className="sr-only">Abrir menú</span>
-                          <MoreHorizontal className="h-4 w-4" />
+                          <MoreHorizontal className="h-5 w-5 sm:h-4 sm:w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => editOpportunity(opportunity.id)}>Editar</DropdownMenuItem>
+                      <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                        <DropdownMenuItem onClick={() => editOpportunity(opportunity.id)} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">Editar</DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => confirmDeleteOpportunity(opportunity.id)}
-                          className="text-red-600 dark:text-red-400"
+                          className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
                         >
                           Eliminar
                         </DropdownMenuItem>

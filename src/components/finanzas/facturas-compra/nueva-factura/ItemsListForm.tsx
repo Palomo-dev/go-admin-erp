@@ -206,17 +206,17 @@ export function ItemsListForm({
   const selectedProductIds = selectedProducts.map(p => p.id);
 
   return (
-    <div className="space-y-6">
-      <Card className="dark:bg-gray-800/50 dark:border-gray-700">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 dark:text-white">
-              <ListChecks className="w-5 h-5" />
-              Productos para Factura de Compra
+    <div className="space-y-4 sm:space-y-6">
+      <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
+        <CardHeader className="pb-3 sm:pb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-white">
+              <ListChecks className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="truncate">Productos para Factura de Compra</span>
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               {selectedProducts.length > 0 && (
-                <Badge variant="secondary" className="text-sm">
+                <Badge variant="secondary" className="text-xs sm:text-sm px-2 sm:px-3 py-1 dark:bg-gray-700 dark:text-gray-300">
                   {selectedProducts.length} producto{selectedProducts.length !== 1 ? 's' : ''}
                 </Badge>
               )}

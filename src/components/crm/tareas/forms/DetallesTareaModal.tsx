@@ -362,65 +362,65 @@ const DetallesTareaModal = ({ tarea, abierto, onClose }: DetallesTareaModalProps
       modal={true}
     >
       <DialogContent 
-        className="max-w-md sm:max-w-lg"
+        className="max-w-md sm:max-w-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
         onPointerDownOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="pb-3">
           <div className="flex items-center gap-2">
-            {tarea.type && iconosPorTipo[tarea.type] ? iconosPorTipo[tarea.type] : <ClockIcon className="h-4 w-4 mr-1" />}
-            <DialogTitle>{tarea.title}</DialogTitle>
+            {tarea.type && iconosPorTipo[tarea.type] ? iconosPorTipo[tarea.type] : <ClockIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />}
+            <DialogTitle className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">{tarea.title}</DialogTitle>
           </div>
           
           <div className="flex flex-wrap gap-2 mt-2">
-            <Badge variant="outline" className={`flex items-center gap-1 ${colorPorPrioridad[tarea.priority]}`}>
+            <Badge variant="outline" className={`flex items-center gap-1 text-xs ${colorPorPrioridad[tarea.priority]}`}>
               {traducirPrioridad(tarea.priority)}
             </Badge>
             
             <Badge variant={tarea.status === 'done' ? 'success' : tarea.status === 'canceled' ? 'destructive' : 'secondary'} 
-              className="flex items-center gap-1">
+              className="flex items-center gap-1 text-xs">
               {iconosPorEstado[tarea.status]}
               {traducirEstado(tarea.status)}
             </Badge>
             
             {tarea.type && (
-              <Badge variant="outline" className="flex items-center gap-1">
+              <Badge variant="outline" className="flex items-center gap-1 text-xs border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
                 {capitalizarPrimeraLetra(tarea.type)}
               </Badge>
             )}
           </div>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {tarea.description && (
             <div className="mt-2">
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Descripción:</h4>
-              <p className="text-sm">{tarea.description}</p>
+              <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Descripción:</h4>
+              <p className="text-sm text-gray-900 dark:text-gray-100">{tarea.description}</p>
             </div>
           )}
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {tarea.due_date && (
               <div className="flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Fecha límite: {formatearFecha(tarea.due_date ? new Date(tarea.due_date) : null)}</span>
+                <CalendarIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-900 dark:text-gray-100">Fecha límite: {formatearFecha(tarea.due_date ? new Date(tarea.due_date) : null)}</span>
               </div>
             )}
             
             {/* Siempre mostrar la información del usuario asignado */}
             <div className="flex items-center gap-2">
-              <UserIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">Asignada a: {usuarioNombre || (tarea.assigned_to ? 'Cargando...' : 'No asignado')}</span>
+              <UserIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm text-gray-900 dark:text-gray-100">Asignada a: {usuarioNombre || (tarea.assigned_to ? 'Cargando...' : 'No asignado')}</span>
             </div>
             
             {/* Mostrar información de relación si existe */}
             {tarea.related_to_type && (
               <div className="flex items-center gap-2">
                 {tarea.related_to_type === 'client' || tarea.related_to_type === 'customer' ? 
-                  <Building2Icon className="h-4 w-4 text-muted-foreground" /> : 
-                  <TargetIcon className="h-4 w-4 text-muted-foreground" />
+                  <Building2Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : 
+                  <TargetIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 }
-                <span className="text-sm">
-                  <span className="font-medium">
+                <span className="text-sm text-gray-900 dark:text-gray-100">
+                  <span className="font-semibold">
                     {tarea.related_to_type === 'client' || tarea.related_to_type === 'customer' || tarea.related_to_type === 'cliente' ? 'Cliente: ' : 
                      tarea.related_to_type === 'opportunity' ? 'Oportunidad: ' : 
                      tarea.related_to_type ? `${capitalizarPrimeraLetra(tarea.related_to_type)}: ` :
@@ -434,9 +434,9 @@ const DetallesTareaModal = ({ tarea, abierto, onClose }: DetallesTareaModalProps
           {/* Detalles adicionales de la relación */}
           {relacionDetalle && (
             <div className="mt-4 space-y-3">
-              <Separator />
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <InfoIcon className="h-4 w-4 text-muted-foreground" />
+              <Separator className="bg-gray-200 dark:bg-gray-700" />
+              <h4 className="text-sm font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                <InfoIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 {(tarea.related_to_type === 'client' || tarea.related_to_type === 'customer' || tarea.related_to_type === 'cliente') ? 'Detalles del Cliente' : 'Detalles de la Oportunidad'}
               </h4>
               
@@ -495,15 +495,15 @@ const DetallesTareaModal = ({ tarea, abierto, onClose }: DetallesTareaModalProps
           </div>
           
           {tarea.status === 'canceled' && tarea.cancellation_reason && (
-            <div className="mt-2">
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Motivo de cancelación:</h4>
-              <p className="text-sm">{tarea.cancellation_reason}</p>
+            <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+              <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Motivo de cancelación:</h4>
+              <p className="text-sm text-red-900 dark:text-red-200">{tarea.cancellation_reason}</p>
             </div>
           )}
         </div>
         
-        <DialogFooter className="mt-4">
-          <Button onClick={onClose}>Cerrar</Button>
+        <DialogFooter className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <Button onClick={onClose} className="min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white">Cerrar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -158,16 +158,17 @@ export function ImpuestosFacturaCompra({
   // Mostrar loading durante carga inicial
   if (isLoading) {
     return (
-      <Card className={`dark:bg-gray-800/50 dark:border-gray-700 ${className}`}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 dark:text-white">
-            <Calculator className="w-4 h-4" />
-            Impuestos
+      <Card className={`dark:bg-gray-800/50 dark:border-gray-700 border-gray-200 ${className}`}>
+        <CardHeader className="pb-3 sm:pb-4">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-white">
+            <Calculator className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>Impuestos</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-4 dark:text-gray-300">
-            Cargando impuestos...
+          <div className="text-center py-3 sm:py-4">
+            <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-2"></div>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Cargando impuestos...</p>
           </div>
         </CardContent>
       </Card>
@@ -175,60 +176,62 @@ export function ImpuestosFacturaCompra({
   }
 
   return (
-    <Card className={`dark:bg-gray-800/50 dark:border-gray-700 ${className}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 dark:text-white">
-            <Calculator className="w-4 h-4" />
-            Impuestos
+    <Card className={`dark:bg-gray-800/50 dark:border-gray-700 border-gray-200 ${className}`}>
+      <CardHeader className="pb-2 sm:pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-white">
+            <Calculator className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>Impuestos</span>
           </CardTitle>
           
           {organizationTaxes.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8">
+                <Button variant="outline" size="sm" className="h-7 sm:h-8 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                   <Settings className="w-3 h-3 mr-1" />
-                  Configurar
+                  <span className="hidden sm:inline">Configurar</span>
                   <ChevronDown className="w-3 h-3 ml-1" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-72 dark:bg-gray-800 dark:border-gray-600">
+              <PopoverContent className="w-64 sm:w-72 dark:bg-gray-800 dark:border-gray-700">
                 <div className="space-y-3">
-                  <h4 className="font-medium dark:text-white">Configuración de Impuestos</h4>
+                  <h4 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white">Configuración de Impuestos</h4>
                   
                   {/* Toggle para impuestos incluidos */}
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2">
                     <Checkbox
                       id="tax-included"
                       checked={taxIncluded}
                       onCheckedChange={handleTaxIncludedToggle}
+                      className="dark:border-gray-600"
                     />
-                    <label htmlFor="tax-included" className="text-sm dark:text-gray-300">
+                    <label htmlFor="tax-included" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                       Impuestos incluidos en el precio
                     </label>
                   </div>
                   
-                  <Separator />
+                  <Separator className="dark:bg-gray-700" />
                   
                   {/* Lista de impuestos disponibles */}
                   <div className="space-y-2">
-                    <h5 className="text-sm font-medium dark:text-gray-300">Impuestos Aplicables:</h5>
+                    <h5 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Impuestos Aplicables:</h5>
                     {organizationTaxes.map(tax => (
-                      <div key={tax.id} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
+                      <div key={tax.id} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
                           <Checkbox
                             id={`tax-${tax.id}`}
                             checked={appliedTaxes[tax.id] || false}
                             onCheckedChange={() => handleTaxToggle(tax.id)}
+                            className="dark:border-gray-600"
                           />
                           <label 
                             htmlFor={`tax-${tax.id}`} 
-                            className="text-sm dark:text-gray-300"
+                            className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer truncate"
                           >
                             {tax.name}
                           </label>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300 whitespace-nowrap">
                           {tax.rate}%
                         </Badge>
                       </div>
@@ -241,12 +244,12 @@ export function ImpuestosFacturaCompra({
         </div>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="pt-2 sm:pt-3">
         {/* Estado de impuestos incluidos */}
-        <div className="mb-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="dark:text-gray-300">Estado:</span>
-            <Badge variant={taxIncluded ? "secondary" : "outline"}>
+        <div className="mb-2 sm:mb-3">
+          <div className="flex items-center justify-between text-xs sm:text-sm">
+            <span className="text-gray-700 dark:text-gray-300">Estado:</span>
+            <Badge variant={taxIncluded ? "secondary" : "outline"} className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
               {taxIncluded ? 'Incluidos' : 'No incluidos'}
             </Badge>
           </div>
@@ -255,20 +258,20 @@ export function ImpuestosFacturaCompra({
         {/* Información de impuestos aplicados */}
         <div className="space-y-2">
           {taxCalculation.taxBreakdown.length > 0 ? (
-            <div className="text-sm dark:text-gray-300">
+            <div className="text-xs sm:text-sm text-gray-900 dark:text-gray-300">
               <span className="font-medium">
                 {taxCalculation.taxBreakdown.length} impuesto(s) aplicado(s):
               </span>
               <div className="mt-1 space-y-1">
                 {taxCalculation.taxBreakdown.map((tax) => (
-                  <div key={tax.taxId} className="text-xs dark:text-gray-400 pl-2">
+                  <div key={tax.taxId} className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 pl-2">
                     • {tax.name} ({tax.rate}%)
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               {organizationTaxes.length === 0 
                 ? 'No hay impuestos configurados para esta organización'
                 : 'No hay impuestos seleccionados'

@@ -322,24 +322,26 @@ export function ExportarBancaModal({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'matched':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />;
       case 'unmatched':
-        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
       case 'duplicate':
-        return <AlertCircle className="w-4 h-4 text-red-600" />;
+        return <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
       default:
-        return <AlertCircle className="w-4 h-4 text-gray-400" />;
+        return <AlertCircle className="w-4 h-4 text-gray-400 dark:text-gray-500" />;
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5" />
-            Exportar / Conciliar Banca Online
-            <Badge variant="secondary">
+      <DialogContent className="max-w-full sm:max-w-3xl lg:max-w-5xl max-h-[90vh] overflow-hidden dark:bg-gray-800 dark:border-gray-700">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-white">
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Exportar / Conciliar Banca</span>
+            </div>
+            <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300">
               {cuentasSeleccionadas.length} cuenta{cuentasSeleccionadas.length !== 1 ? 's' : ''}
             </Badge>
           </DialogTitle>

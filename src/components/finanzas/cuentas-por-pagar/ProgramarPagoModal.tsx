@@ -225,57 +225,57 @@ export function ProgramarPagoModal({
   const getColorVencimiento = () => {
     const dias = getDiasHastaVencimiento();
     
-    if (dias === null) return "text-gray-500";
-    if (dias < 0) return "text-red-600";
-    if (dias <= 3) return "text-orange-600";
-    if (dias <= 7) return "text-yellow-600";
-    return "text-green-600";
+    if (dias === null) return "text-gray-500 dark:text-gray-400";
+    if (dias < 0) return "text-red-600 dark:text-red-400";
+    if (dias <= 3) return "text-orange-600 dark:text-orange-400";
+    if (dias <= 7) return "text-yellow-600 dark:text-yellow-400";
+    return "text-green-600 dark:text-green-400";
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            Programar Pago
+      <DialogContent className="max-w-full sm:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-white">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span>Programar Pago</span>
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Información de la cuenta */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
+          <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+                <div className="space-y-1.5 sm:space-y-2 flex-1">
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-gray-500" />
-                    <span className="font-medium">
+                    <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400" />
+                    <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
                       {cuenta.supplier?.name || 'Sin nombre'}
                     </span>
                   </div>
                   
                   {cuenta.supplier?.nit && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       NIT: {cuenta.supplier.nit}
                     </p>
                   )}
                   
                   {cuenta.invoice_purchase?.number_ext && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       Factura: {cuenta.invoice_purchase.number_ext}
                     </p>
                   )}
                   
-                  <div className={`flex items-center gap-1 text-sm ${getColorVencimiento()}`}>
-                    <Calendar className="w-4 h-4" />
+                  <div className={`flex items-center gap-1 text-xs sm:text-sm ${getColorVencimiento()}`}>
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span>{getSugerenciaFecha()}</span>
                   </div>
                 </div>
                 
-                <div className="text-right">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Saldo pendiente</p>
-                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                <div className="text-left sm:text-right w-full sm:w-auto">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Saldo pendiente</p>
+                  <p className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrency(cuenta.balance)}
                   </p>
                 </div>
@@ -301,12 +301,12 @@ export function ProgramarPagoModal({
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {/* Monto del pago */}
-            <div className="space-y-2">
-              <Label htmlFor="amount">
-                <DollarSign className="w-4 h-4 inline mr-1" />
-                Monto del Pago *
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="amount" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                <span>Monto del Pago *</span>
               </Label>
               <div className="relative">
                 <Input
@@ -319,7 +319,7 @@ export function ProgramarPagoModal({
                   placeholder="0.00"
                   value={formData.amount}
                   onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)}
-                  className={`${errors.amount ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''} ${formData.amount > cuenta.balance ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}
+                  className={`h-9 sm:h-10 text-sm sm:text-base dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${errors.amount ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''} ${formData.amount > cuenta.balance ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}
                 />
                 {formData.amount > cuenta.balance && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -345,17 +345,18 @@ export function ProgramarPagoModal({
               )}
               
               {errors.amount && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {errors.amount}
+                <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span>{errors.amount}</span>
                 </p>
               )}
-              <div className="flex gap-2 mt-2">
+              <div className="flex gap-1.5 sm:gap-2 mt-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('amount', cuenta.balance)}
+                  className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   Pago completo
                 </Button>
@@ -364,6 +365,7 @@ export function ProgramarPagoModal({
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('amount', cuenta.balance / 2)}
+                  className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   50%
                 </Button>
@@ -371,10 +373,10 @@ export function ProgramarPagoModal({
             </div>
 
             {/* Fecha programada */}
-            <div className="space-y-2">
-              <Label htmlFor="scheduled_date">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Fecha Programada *
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="scheduled_date" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                <span>Fecha Programada *</span>
               </Label>
               <Input
                 id="scheduled_date"
@@ -383,20 +385,21 @@ export function ProgramarPagoModal({
                 min={new Date().toISOString().split('T')[0]}
                 value={formData.scheduled_date}
                 onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
-                className={errors.scheduled_date ? 'border-red-500' : ''}
+                className={`h-9 sm:h-10 text-sm sm:text-base dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${errors.scheduled_date ? 'border-red-500' : ''}`}
               />
               {errors.scheduled_date && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {errors.scheduled_date}
+                <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span>{errors.scheduled_date}</span>
                 </p>
               )}
-              <div className="flex gap-2 mt-2">
+              <div className="flex gap-1.5 sm:gap-2 mt-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => handleInputChange('scheduled_date', new Date().toISOString().split('T')[0])}
+                  className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   Hoy
                 </Button>
@@ -406,6 +409,7 @@ export function ProgramarPagoModal({
                     variant="outline"
                     size="sm"
                     onClick={() => handleInputChange('scheduled_date', cuenta.due_date!.split('T')[0])}
+                    className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                   >
                     Vencimiento
                   </Button>
@@ -415,8 +419,8 @@ export function ProgramarPagoModal({
           </div>
 
           {/* Método de pago */}
-          <div className="space-y-2">
-            <Label>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Método de Pago Preferido *
             </Label>
             <Select 
@@ -424,19 +428,20 @@ export function ProgramarPagoModal({
               onValueChange={(value) => handleInputChange('payment_method', value)}
               disabled={loadingMetodos}
             >
-              <SelectTrigger className={errors.payment_method ? 'border-red-500' : ''}>
+              <SelectTrigger className={`h-9 sm:h-10 text-sm sm:text-base dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${errors.payment_method ? 'border-red-500' : ''}`}>
                 <SelectValue placeholder="Seleccionar método de pago" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 {metodosPago.map((metodo) => (
                   <SelectItem 
                     key={metodo.payment_method_code} 
                     value={metodo.payment_method_code}
+                    className="text-xs sm:text-sm dark:text-gray-300"
                   >
                     <div className="flex items-center justify-between w-full">
                       <span>{metodo.payment_methods?.name || metodo.payment_method_code}</span>
                       {metodo.payment_methods?.requires_reference && (
-                        <Badge variant="outline" className="ml-2">
+                        <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 dark:border-gray-600 dark:text-gray-300">
                           Requiere referencia
                         </Badge>
                       )}
@@ -446,16 +451,16 @@ export function ProgramarPagoModal({
               </SelectContent>
             </Select>
             {errors.payment_method && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />
-                {errors.payment_method}
+              <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span>{errors.payment_method}</span>
               </p>
             )}
           </div>
 
           {/* Referencia sugerida */}
-          <div className="space-y-2">
-            <Label htmlFor="reference">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="reference" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Referencia Sugerida
             </Label>
             <Input
@@ -464,15 +469,16 @@ export function ProgramarPagoModal({
               placeholder="Número de transacción, cheque, etc."
               value={formData.reference}
               onChange={(e) => handleInputChange('reference', e.target.value)}
+              className="h-9 sm:h-10 text-sm sm:text-base dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
               Opcional: Se puede completar al momento de la aprobación
             </p>
           </div>
 
           {/* Notas */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notas / Justificación</Label>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="notes" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Notas / Justificación</Label>
             <Textarea
               id="notes"
               name="notes"
@@ -480,41 +486,43 @@ export function ProgramarPagoModal({
               rows={3}
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
+              className="text-sm sm:text-base dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button 
               type="button" 
               variant="outline" 
               onClick={onClose}
               disabled={loading}
+              className="w-full sm:w-auto h-9 sm:h-10 text-sm sm:text-base dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Cancelar
             </Button>
             <Button 
               type="submit" 
               disabled={loading || formData.amount > cuenta.balance || formData.amount <= 0}
-              className={`min-w-[120px] ${
+              className={`w-full sm:w-auto min-w-[120px] h-9 sm:h-10 text-sm sm:text-base ${
                 formData.amount > cuenta.balance 
-                  ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-400' 
-                  : ''
+                  ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-400 dark:bg-red-600 dark:hover:bg-red-700' 
+                  : 'dark:bg-blue-600 dark:hover:bg-blue-700'
               }`}
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Programando...
+                  <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2 animate-spin" />
+                  <span>Programando...</span>
                 </>
               ) : formData.amount > cuenta.balance ? (
                 <>
-                  <AlertCircle className="w-4 h-4 mr-2" />
-                  Monto Excedido
+                  <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                  <span>Monto Excedido</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Programar Pago
+                  <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                  <span>Programar Pago</span>
                 </>
               )}
             </Button>

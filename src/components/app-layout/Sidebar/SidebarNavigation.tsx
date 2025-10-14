@@ -174,24 +174,26 @@ export const SidebarNavigation = ({
   ];
   
   return (
-    <div className="flex flex-col h-full justify-between transition-all duration-300">
-      {/* Contenedor superior para las secciones de navegación */}
-      <div className="space-y-1 flex-grow overflow-y-auto pb-4">
-        {/* Secciones de navegación utilizando el componente NavSection */}
-        {navSections.map((section, idx) => (
-          <NavSection
-            key={idx}
-            title={section.title}
-            items={section.items}
-            collapsed={collapsed}
-            sectionIdx={idx}
-            onNavigate={onNavigate}
-          />
-        ))}
+    <div className="flex flex-col h-full transition-all duration-300">
+      {/* Contenedor superior para las secciones de navegación - con altura limitada */}
+      <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="space-y-1 px-0 py-2 pb-32 lg:pb-4">
+          {/* Secciones de navegación utilizando el componente NavSection */}
+          {navSections.map((section, idx) => (
+            <NavSection
+              key={idx}
+              title={section.title}
+              items={section.items}
+              collapsed={collapsed}
+              sectionIdx={idx}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
       </div>
       
-      {/* Sección de perfil con el componente UserMenu compartido - siempre abajo */}
-      <div className="pt-3 mt-2 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 pb-safe">
+      {/* Sección de perfil con el componente UserMenu compartido - siempre visible abajo */}
+      <div className="flex-shrink-0 pt-3 mt-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 pb-safe-bottom pb-4">
         <div className="px-3">
           <ProfileDropdownMenu 
             userData={userData} 

@@ -124,140 +124,145 @@ export function CuentasPorCobrarPage() {
 
   return (
     <div className="container mx-auto p-4 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Cuentas por Cobrar
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Gestión y seguimiento de cuentas por cobrar
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="dark:border-gray-600 dark:hover:bg-gray-700"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
-        </div>
-      </div>
-
-      {/* Estadísticas */}
-      <EstadisticasCards estadisticas={estadisticas} isLoading={isLoading} />
-
-      {/* Tabs de navegación */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 dark:bg-gray-800 dark:border-gray-700">
-          <TabsTrigger value="cuentas" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Cuentas
-          </TabsTrigger>
-          <TabsTrigger value="aging" className="flex items-center gap-2">
-            <TrendingDown className="h-4 w-4" />
-            Aging
-          </TabsTrigger>
-          <TabsTrigger value="recordatorios" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Recordatorios
-          </TabsTrigger>
-          <TabsTrigger value="estadisticas" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Estadísticas
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="cuentas" className="space-y-6">
-          <CuentasPorCobrarFiltros
-            filtros={filtros}
-            onFiltrosChange={handleFiltrosChange}
-            onExportCSV={handleExportCSV}
-            onRefresh={handleRefresh}
-            isLoading={isLoading}
-          />
-          <CuentasPorCobrarTable
-            resultado={resultadoCuentas}
-            isLoading={isLoading}
-            onRefresh={handleRefresh}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
-        </TabsContent>
-
-        <TabsContent value="aging" className="space-y-6">
-          <AgingReport />
-        </TabsContent>
-
-        <TabsContent value="recordatorios" className="space-y-6">
-          <RecordatoriosPanel onRefresh={handleRefresh} />
-        </TabsContent>
-
-        <TabsContent value="estadisticas" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <EstadisticasDetalle estadisticas={estadisticas} />
-            <Card className="dark:bg-gray-800/50 dark:border-gray-700 light:bg-white">
-              <CardHeader>
-                <CardTitle className="text-lg text-gray-900 dark:text-white">
-                  Análisis de Tendencias
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">
-                      Eficiencia de cobro
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
-                        <div 
-                          className="h-2 bg-green-500 rounded-full"
-                          style={{ 
-                            width: `${estadisticas.total_amount > 0 ? (estadisticas.paid_amount / estadisticas.total_amount) * 100 : 0}%` 
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {estadisticas.total_amount > 0 ? ((estadisticas.paid_amount / estadisticas.total_amount) * 100).toFixed(1) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">
-                      Cartera vencida
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
-                        <div 
-                          className="h-2 bg-red-500 rounded-full"
-                          style={{ 
-                            width: `${estadisticas.total_balance > 0 ? (estadisticas.overdue_amount / estadisticas.total_balance) * 100 : 0}%` 
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {estadisticas.total_balance > 0 ? ((estadisticas.overdue_amount / estadisticas.total_balance) * 100).toFixed(1) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="pt-4 border-t dark:border-gray-700">
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      Promedio de días para cobro: <span className="font-medium text-gray-900 dark:text-white">
-                        {Math.round(estadisticas.promedio_dias_cobro)} días
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      <div className="space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+              Cuentas por Cobrar
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
+              Gestión y seguimiento de cuentas por cobrar
+            </p>
           </div>
-        </TabsContent>
-      </Tabs>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualizar</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Estadísticas */}
+        <EstadisticasCards estadisticas={estadisticas} isLoading={isLoading} />
+
+        {/* Tabs de navegación */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 dark:bg-gray-800 dark:border-gray-700">
+            <TabsTrigger value="cuentas" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3 dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Cuentas</span>
+              <span className="sm:hidden">Ctas</span>
+            </TabsTrigger>
+            <TabsTrigger value="aging" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3 dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+              <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span>Aging</span>
+            </TabsTrigger>
+            <TabsTrigger value="recordatorios" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3 dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+              <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Recordatorios</span>
+              <span className="sm:hidden">Recor</span>
+            </TabsTrigger>
+            <TabsTrigger value="estadisticas" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3 dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+              <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Estadísticas</span>
+              <span className="sm:hidden">Stats</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="cuentas" className="space-y-4 sm:space-y-6">
+            <CuentasPorCobrarFiltros
+              filtros={filtros}
+              onFiltrosChange={handleFiltrosChange}
+              onExportCSV={handleExportCSV}
+              onRefresh={handleRefresh}
+              isLoading={isLoading}
+            />
+            <CuentasPorCobrarTable
+              resultado={resultadoCuentas}
+              isLoading={isLoading}
+              onRefresh={handleRefresh}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </TabsContent>
+
+          <TabsContent value="aging" className="space-y-4 sm:space-y-6">
+            <AgingReport />
+          </TabsContent>
+
+          <TabsContent value="recordatorios" className="space-y-4 sm:space-y-6">
+            <RecordatoriosPanel onRefresh={handleRefresh} />
+          </TabsContent>
+
+          <TabsContent value="estadisticas" className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <EstadisticasDetalle estadisticas={estadisticas} />
+              <Card className="dark:bg-gray-800/50 dark:border-gray-700">
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">
+                    Análisis de Tendencias
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+                        Eficiencia de cobro
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 sm:w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                          <div 
+                            className="h-2 bg-green-500 dark:bg-green-400 rounded-full"
+                            style={{ 
+                              width: `${estadisticas.total_amount > 0 ? (estadisticas.paid_amount / estadisticas.total_amount) * 100 : 0}%` 
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                          {estadisticas.total_amount > 0 ? ((estadisticas.paid_amount / estadisticas.total_amount) * 100).toFixed(1) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+                        Cartera vencida
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 sm:w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                          <div 
+                            className="h-2 bg-red-500 dark:bg-red-400 rounded-full"
+                            style={{ 
+                              width: `${estadisticas.total_balance > 0 ? (estadisticas.overdue_amount / estadisticas.total_balance) * 100 : 0}%` 
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                          {estadisticas.total_balance > 0 ? ((estadisticas.overdue_amount / estadisticas.total_balance) * 100).toFixed(1) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-3 sm:pt-4 border-t dark:border-gray-700">
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+                        Promedio de días para cobro: <span className="font-medium text-gray-900 dark:text-white">
+                          {Math.round(estadisticas.promedio_dias_cobro)} días
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

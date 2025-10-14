@@ -50,15 +50,15 @@ export function EstadisticasCards({ estadisticas, isLoading }: EstadisticasCards
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="dark:bg-gray-800/50 dark:border-gray-700">
-            <CardHeader className="space-y-2">
-              <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
-              <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
+            <CardHeader className="space-y-2 p-4 sm:p-6">
+              <div className="h-3 sm:h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
+              <div className="h-5 sm:h-6 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
             </CardHeader>
-            <CardContent>
-              <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="h-3 sm:h-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
             </CardContent>
           </Card>
         ))}
@@ -67,22 +67,22 @@ export function EstadisticasCards({ estadisticas, isLoading }: EstadisticasCards
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {cards.map((card, index) => (
-        <Card key={index} className="dark:bg-gray-800/50 dark:border-gray-700 light:bg-white">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        <Card key={index} className="dark:bg-gray-800/50 dark:border-gray-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">
               {card.title}
             </CardTitle>
-            <div className={`p-2 rounded-full ${card.bgColor}`}>
-              <card.icon className={`h-4 w-4 ${card.color}`} />
+            <div className={`p-1.5 sm:p-2 rounded-full ${card.bgColor}`}>
+              <card.icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${card.color}`} />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
               {card.value}
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
               {card.subtitle}
             </p>
           </CardContent>
@@ -102,50 +102,50 @@ export function EstadisticasDetalle({ estadisticas }: { estadisticas: Estadistic
     : 0;
 
   return (
-    <Card className="dark:bg-gray-800/50 dark:border-gray-700 light:bg-white">
-      <CardHeader>
-        <CardTitle className="text-lg text-gray-900 dark:text-white">
+    <Card className="dark:bg-gray-800/50 dark:border-gray-700">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">
           Resumen Detallado
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
+      <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div className="space-y-1.5 sm:space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Total Facturado</span>
-              <span className="font-medium text-gray-900 dark:text-white">
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Total Facturado</span>
+              <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                 {formatCurrency(estadisticas.total_amount)}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Total Cobrado</span>
-              <span className="font-medium text-green-600 dark:text-green-400">
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Total Cobrado</span>
+              <span className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400">
                 {formatCurrency(estadisticas.paid_amount)}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Parcialmente Cobrado</span>
-              <span className="font-medium text-amber-600 dark:text-amber-400">
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Parcialmente Cobrado</span>
+              <span className="text-xs sm:text-sm font-medium text-amber-600 dark:text-amber-400">
                 {formatCurrency(estadisticas.partial_amount)}
               </span>
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Eficiencia de Cobro</span>
-              <Badge variant={porcentajePagado >= 80 ? 'default' : porcentajePagado >= 60 ? 'secondary' : 'destructive'}>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Eficiencia de Cobro</span>
+              <Badge variant={porcentajePagado >= 80 ? 'default' : porcentajePagado >= 60 ? 'secondary' : 'destructive'} className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-opacity-30">
                 {porcentajePagado.toFixed(1)}%
               </Badge>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Cartera Vencida</span>
-              <Badge variant={porcentajeVencido <= 10 ? 'default' : porcentajeVencido <= 25 ? 'secondary' : 'destructive'}>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Cartera Vencida</span>
+              <Badge variant={porcentajeVencido <= 10 ? 'default' : porcentajeVencido <= 25 ? 'secondary' : 'destructive'} className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-opacity-30">
                 {porcentajeVencido.toFixed(1)}%
               </Badge>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Cuentas Activas</span>
-              <span className="font-medium text-gray-900 dark:text-white">
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Cuentas Activas</span>
+              <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                 {estadisticas.total_cuentas}
               </span>
             </div>

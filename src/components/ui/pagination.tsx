@@ -69,8 +69,10 @@ const PaginationLink = ({
         variant: isActive ? "outline" : "ghost",
         size,
       }),
+      "dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white",
+      isActive && "dark:border-gray-600 dark:bg-gray-700 dark:text-white",
       className,
-      disabled && "pointer-events-none opacity-50"
+      disabled && "pointer-events-none opacity-50 dark:opacity-40"
     )}
     {...props}
   >
@@ -88,13 +90,13 @@ const PaginationPrevious = ({
   <PaginationLink
     aria-label="Ir a la página anterior"
     size="default"
-    className={cn("gap-1 pl-2", className)}
+    className={cn("gap-1 pl-2 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3", className)}
     disabled={disabled}
     onClick={onClick}
     {...props}
   >
-    <ChevronLeft className="h-4 w-4" />
-    <span>Anterior</span>
+    <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+    <span className="hidden sm:inline">Anterior</span>
   </PaginationLink>
 );
 PaginationPrevious.displayName = "PaginationPrevious";
@@ -108,13 +110,13 @@ const PaginationNext = ({
   <PaginationLink
     aria-label="Ir a la página siguiente"
     size="default"
-    className={cn("gap-1 pr-2", className)}
+    className={cn("gap-1 pr-2 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3", className)}
     disabled={disabled}
     onClick={onClick}
     {...props}
   >
-    <span>Siguiente</span>
-    <ChevronRight className="h-4 w-4" />
+    <span className="hidden sm:inline">Siguiente</span>
+    <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
   </PaginationLink>
 );
 PaginationNext.displayName = "PaginationNext";
@@ -127,10 +129,10 @@ const PaginationEllipsis = ({
 }) => (
   <span
     aria-hidden
-    className={cn("flex h-9 w-9 items-center justify-center", className)}
+    className={cn("flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center dark:text-gray-400", className)}
     {...props}
   >
-    <MoreHorizontal className="h-4 w-4" />
+    <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
     <span className="sr-only">Más páginas</span>
   </span>
 );

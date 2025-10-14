@@ -104,32 +104,32 @@ export function AgingReport({ className }: AgingReportProps) {
     const percentage = bucket.total > 0 ? (overdue / bucket.total) * 100 : 0;
     
     if (percentage >= 75) {
-      return <Badge variant="destructive" className="text-xs">Alto Riesgo</Badge>;
+      return <Badge variant="destructive" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-red-900/30 dark:text-red-400">Alto Riesgo</Badge>;
     } else if (percentage >= 50) {
-      return <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">Riesgo Medio</Badge>;
+      return <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Riesgo Medio</Badge>;
     } else if (percentage >= 25) {
-      return <Badge variant="outline" className="text-xs">Riesgo Bajo</Badge>;
+      return <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:border-gray-600 dark:text-gray-400">Riesgo Bajo</Badge>;
     }
-    return <Badge variant="default" className="text-xs bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">Bajo Riesgo</Badge>;
+    return <Badge variant="default" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Bajo Riesgo</Badge>;
   };
 
   if (isLoading) {
     return (
-      <Card className={`dark:bg-gray-800/50 dark:border-gray-700 light:bg-white ${className}`}>
-        <CardHeader>
-          <CardTitle className="text-lg text-gray-900 dark:text-white">
+      <Card className={`dark:bg-gray-800/50 dark:border-gray-700 ${className}`}>
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">
             Cargando reporte de aging...
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex items-center space-x-4">
-                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
-                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
-                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
-                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
-                <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
+                <div className="h-3 sm:h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
+                <div className="h-3 sm:h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
+                <div className="h-3 sm:h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
+                <div className="h-3 sm:h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
+                <div className="h-3 sm:h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/5 animate-pulse" />
               </div>
             ))}
           </div>
@@ -139,137 +139,183 @@ export function AgingReport({ className }: AgingReportProps) {
   }
 
   return (
-    <Card className={`dark:bg-gray-800/50 dark:border-gray-700 light:bg-white ${className}`}>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg text-gray-900 dark:text-white flex items-center gap-2">
-            <TrendingDown className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            Reporte de Aging (Antigüedad de Cartera)
+    <Card className={`dark:bg-gray-800/50 dark:border-gray-700 ${className}`}>
+      <CardHeader className="p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+          <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white flex items-center gap-2">
+            <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm sm:text-base">Reporte de Aging</span>
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5 sm:gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={loadAgingData}
               disabled={isLoading}
-              className="dark:border-gray-600 dark:hover:bg-gray-700"
+              className="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Actualizar
+              <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualizar</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={exportarAging}
-              className="dark:border-gray-600 dark:hover:bg-gray-700"
+              className="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
+              <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Exportar</span>
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 sm:p-6">
         {agingData.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-500 dark:text-gray-400">
             No hay datos de aging disponibles
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {/* Resumen de totales */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">0-30 días</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">0-30 días</p>
+                <p className="text-sm sm:text-lg font-bold text-green-600 dark:text-green-400">
                   {formatCurrency(totales.current)}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">31-60 días</p>
-                <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">31-60 días</p>
+                <p className="text-sm sm:text-lg font-bold text-amber-600 dark:text-amber-400">
                   {formatCurrency(totales.days_31_60)}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">61-90 días</p>
-                <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">61-90 días</p>
+                <p className="text-sm sm:text-lg font-bold text-orange-600 dark:text-orange-400">
                   {formatCurrency(totales.days_61_90)}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">+90 días</p>
-                <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">+90 días</p>
+                <p className="text-sm sm:text-lg font-bold text-red-600 dark:text-red-400">
                   {formatCurrency(totales.days_90_plus)}
                 </p>
               </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="text-center col-span-2 sm:col-span-1">
+                <p className="text-[10px] sm:text-sm text-gray-600 dark:text-gray-400">Total</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
                   {formatCurrency(totales.total)}
                 </p>
               </div>
             </div>
 
-            {/* Tabla detallada */}
-            <div className="rounded-md border dark:border-gray-700">
+            {/* Vista móvil - Cards */}
+            <div className="sm:hidden space-y-2">
+              {agingData.map((bucket) => (
+                <Card key={bucket.customer_id} className="dark:bg-gray-700/50 dark:border-gray-600">
+                  <CardContent className="p-3">
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-medium text-sm text-gray-900 dark:text-white">{bucket.customer_name}</h4>
+                          {bucket.customer_email && (
+                            <p className="text-[10px] text-gray-600 dark:text-gray-400 flex items-center mt-0.5">
+                              <Mail className="h-2 w-2 mr-0.5" />
+                              {bucket.customer_email}
+                            </p>
+                          )}
+                        </div>
+                        {getRiskBadge(bucket)}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">0-30:</span>
+                          <span className="ml-1 font-medium text-green-600 dark:text-green-400">{formatCurrency(bucket.current)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">31-60:</span>
+                          <span className="ml-1 font-medium text-amber-600 dark:text-amber-400">{formatCurrency(bucket.days_31_60)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">61-90:</span>
+                          <span className="ml-1 font-medium text-orange-600 dark:text-orange-400">{formatCurrency(bucket.days_61_90)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">+90:</span>
+                          <span className="ml-1 font-medium text-red-600 dark:text-red-400">{formatCurrency(bucket.days_90_plus)}</span>
+                        </div>
+                      </div>
+                      <div className="pt-1.5 border-t dark:border-gray-600">
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400">Total:</span>
+                        <span className="ml-1 text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(bucket.total)}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            {/* Vista desktop - Tabla */}
+            <div className="hidden sm:block rounded-md border dark:border-gray-700 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="dark:border-gray-700">
-                    <TableHead className="dark:text-gray-300">Cliente</TableHead>
-                    <TableHead className="dark:text-gray-300">Contacto</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">0-30 días</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">31-60 días</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">61-90 días</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">+90 días</TableHead>
-                    <TableHead className="dark:text-gray-300 text-right">Total</TableHead>
-                    <TableHead className="dark:text-gray-300">Riesgo</TableHead>
+                    <TableHead className="text-xs dark:text-gray-300">Cliente</TableHead>
+                    <TableHead className="text-xs dark:text-gray-300">Contacto</TableHead>
+                    <TableHead className="text-xs dark:text-gray-300 text-right">0-30 días</TableHead>
+                    <TableHead className="text-xs dark:text-gray-300 text-right">31-60 días</TableHead>
+                    <TableHead className="text-xs dark:text-gray-300 text-right">61-90 días</TableHead>
+                    <TableHead className="text-xs dark:text-gray-300 text-right">+90 días</TableHead>
+                    <TableHead className="text-xs dark:text-gray-300 text-right">Total</TableHead>
+                    <TableHead className="text-xs dark:text-gray-300">Riesgo</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {agingData.map((bucket) => (
-                    <TableRow key={bucket.customer_id} className="dark:border-gray-700">
-                      <TableCell className="font-medium dark:text-white">
-                        {bucket.customer_name}
-                      </TableCell>
-                      <TableCell className="dark:text-gray-300">
-                        <div className="flex flex-col space-y-1">
-                          {bucket.customer_email && (
-                            <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                              <Mail className="h-3 w-3 mr-1" />
-                              {bucket.customer_email}
-                            </div>
-                          )}
-                          {bucket.customer_phone && (
-                            <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                              <Phone className="h-3 w-3 mr-1" />
-                              {bucket.customer_phone}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${getAgingColor(bucket.current, bucket.total)}`}>
-                        {formatCurrency(bucket.current)}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${getAgingColor(bucket.days_31_60, bucket.total)}`}>
-                        {formatCurrency(bucket.days_31_60)}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${getAgingColor(bucket.days_61_90, bucket.total)}`}>
-                        {formatCurrency(bucket.days_61_90)}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${getAgingColor(bucket.days_90_plus, bucket.total)}`}>
-                        {formatCurrency(bucket.days_90_plus)}
-                      </TableCell>
-                      <TableCell className="text-right font-bold dark:text-white">
-                        {formatCurrency(bucket.total)}
-                      </TableCell>
-                      <TableCell>
-                        {getRiskBadge(bucket)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  <TableBody>
+                    {agingData.map((bucket) => (
+                      <TableRow key={bucket.customer_id} className="dark:border-gray-700 dark:hover:bg-gray-700/50">
+                        <TableCell className="text-sm font-medium dark:text-white">
+                          {bucket.customer_name}
+                        </TableCell>
+                        <TableCell className="dark:text-gray-300">
+                          <div className="flex flex-col space-y-1">
+                            {bucket.customer_email && (
+                              <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+                                <Mail className="h-2.5 w-2.5 mr-1" />
+                                <span className="truncate max-w-[150px]">{bucket.customer_email}</span>
+                              </div>
+                            )}
+                            {bucket.customer_phone && (
+                              <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+                                <Phone className="h-2.5 w-2.5 mr-1" />
+                                {bucket.customer_phone}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className={`text-right text-sm font-medium ${getAgingColor(bucket.current, bucket.total)}`}>
+                          {formatCurrency(bucket.current)}
+                        </TableCell>
+                        <TableCell className={`text-right text-sm font-medium ${getAgingColor(bucket.days_31_60, bucket.total)}`}>
+                          {formatCurrency(bucket.days_31_60)}
+                        </TableCell>
+                        <TableCell className={`text-right text-sm font-medium ${getAgingColor(bucket.days_61_90, bucket.total)}`}>
+                          {formatCurrency(bucket.days_61_90)}
+                        </TableCell>
+                        <TableCell className={`text-right text-sm font-medium ${getAgingColor(bucket.days_90_plus, bucket.total)}`}>
+                          {formatCurrency(bucket.days_90_plus)}
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-bold dark:text-white">
+                          {formatCurrency(bucket.total)}
+                        </TableCell>
+                        <TableCell>
+                          {getRiskBadge(bucket)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
           </div>
         )}
       </CardContent>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Building2, LogOut, CreditCard, X } from 'lucide-react';
 import Link from 'next/link';
@@ -21,9 +22,12 @@ interface ProfileDropdownMenuProps {
 export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSidebar = false, collapsed = false, orgName }: ProfileDropdownMenuProps) => {
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
-  // Detectar si estamos en móvil
+  // Detectar si estamos en móvil y si el componente está montado
   useEffect(() => {
+    setMounted(true);
+    
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024); // lg breakpoint
     };
@@ -33,6 +37,168 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
     
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+  
+  // Renderizar modal usando Portal para que aparezca fuera del contexto del sidebar
+  const renderMobileModal = () => {
+    if (!open || !mounted) return null;
+    
+    const modalContent = (
+      <>
+        {/* Overlay - z-index muy alto para estar sobre el sidebar */}
+        <div 
+          className="fixed inset-0 bg-black/50 lg:hidden"
+          onClick={() => setOpen(false)}
+          style={{ 
+            position: 'fixed',
+            inset: 0,
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 9998
+          }}
+        />
+        
+        {/* Panel - con width viewport completo y z-index muy alto */}
+        <div 
+          className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl animate-slide-up max-h-[85vh] flex flex-col lg:hidden"
+          style={{ 
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            maxWidth: '100vw',
+            zIndex: 9999
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Mi Cuenta</h3>
+            <button
+              onClick={() => setOpen(false)}
+              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <X size={20} className="text-gray-500 dark:text-gray-400" />
+            </button>
+          </div>
+          
+          {/* Contenido scrollable */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            {/* Info de usuario */}
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 relative w-16 h-16 overflow-hidden rounded-full">
+                  {userData?.avatar && getAvatarUrl(userData.avatar) ? (
+                    <Image 
+                      src={getAvatarUrl(userData.avatar)} 
+                      alt="Foto de perfil" 
+                      width={64} 
+                      height={64} 
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+                      <User size={32} />
+                    </div>
+                  )}
+                </div>
+                <div className="ml-4 flex-1">
+                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{userData?.name || 'Usuario'}</p>
+                  {userData?.role && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{userData.role}</p>
+                  )}
+                  {userData?.email && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1">{userData.email}</p>
+                  )}
+                  {orgName && (
+                    <div className="flex items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Building2 size={16} className="mr-1.5" />
+                      <span className="truncate">{orgName}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Botón de facturación destacado */}
+            <div className="p-4">
+              <Link 
+                href="/app/suscripcion"
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between w-full px-4 py-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg transition-colors min-h-[56px]"
+              >
+                <div className="flex items-center">
+                  <CreditCard size={20} className="mr-3" />
+                  <span className="font-medium">Facturación</span>
+                </div>
+                <ChevronRight size={20} />
+              </Link>
+            </div>
+            
+            {/* Opciones del menú */}
+            <div className="px-4 pb-4 space-y-2">
+              <Link 
+                href="/app/perfil"
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
+              >
+                <div className="flex items-center">
+                  <User size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Ver perfil</span>
+                </div>
+                <ChevronRight size={20} className="text-gray-400" />
+              </Link>
+              
+              <Link 
+                href="/app/configuraciones"
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
+              >
+                <div className="flex items-center">
+                  <Settings size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Configuraciones</span>
+                </div>
+                <ChevronRight size={20} className="text-gray-400" />
+              </Link>
+              
+              <Link 
+                href="/app/notificaciones"
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
+              >
+                <div className="flex items-center">
+                  <Bell size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Notificaciones</span>
+                </div>
+                <ChevronRight size={20} className="text-gray-400" />
+              </Link>
+              
+              {/* Botón cerrar sesión */}
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  handleSignOut();
+                }}
+                disabled={loading}
+                className="flex items-center justify-between w-full px-4 py-4 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 active:bg-red-200 dark:active:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors min-h-[56px] disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+              >
+                <div className="flex items-center">
+                  <LogOut size={20} className="mr-3" />
+                  <span className="font-medium">{loading ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+    
+    // Usar portal para renderizar el modal en el body
+    return createPortal(modalContent, document.body);
+  };
   
   // Renderizado condicional para header o sidebar
   if (isSidebar) {
@@ -78,158 +244,8 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
             </div>
           </button>
           
-          {/* Modal fullscreen para móvil */}
-          {open && (
-            <>
-              {/* Overlay - con position fixed absoluto */}
-              <div 
-                className="fixed bg-black bg-opacity-50 z-[100] lg:hidden"
-                onClick={() => setOpen(false)}
-                style={{ 
-                  position: 'fixed',
-                  inset: 0,
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '100vw',
-                  height: '100vh'
-                }}
-              />
-              
-              {/* Panel - con width viewport completo */}
-              <div 
-                className="fixed bottom-0 bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl animate-slide-up max-h-[85vh] flex flex-col z-[101] lg:hidden"
-                style={{ 
-                  position: 'fixed',
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  width: '100vw',
-                  maxWidth: '100vw'
-                }}
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Mi Cuenta</h3>
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <X size={20} className="text-gray-500 dark:text-gray-400" />
-                  </button>
-                </div>
-                
-                {/* Contenido scrollable */}
-                <div className="flex-1 overflow-y-auto overscroll-contain">
-                  {/* Info de usuario */}
-                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 relative w-16 h-16 overflow-hidden rounded-full">
-                        {userData?.avatar && getAvatarUrl(userData.avatar) ? (
-                          <Image 
-                            src={getAvatarUrl(userData.avatar)} 
-                            alt="Foto de perfil" 
-                            width={64} 
-                            height={64} 
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
-                            <User size={32} />
-                          </div>
-                        )}
-                      </div>
-                      <div className="ml-4 flex-1">
-                        <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{userData?.name || 'Usuario'}</p>
-                        {userData?.role && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{userData.role}</p>
-                        )}
-                        {userData?.email && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1">{userData.email}</p>
-                        )}
-                        {orgName && (
-                          <div className="flex items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
-                            <Building2 size={16} className="mr-1.5" />
-                            <span className="truncate">{orgName}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Botón de facturación destacado */}
-                  <div className="p-4">
-                    <Link 
-                      href="/app/suscripcion"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg transition-colors min-h-[56px]"
-                    >
-                      <div className="flex items-center">
-                        <CreditCard size={20} className="mr-3" />
-                        <span className="font-medium">Facturación</span>
-                      </div>
-                      <ChevronRight size={20} />
-                    </Link>
-                  </div>
-                  
-                  {/* Opciones del menú */}
-                  <div className="px-4 pb-4 space-y-2">
-                    <Link 
-                      href="/app/perfil"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
-                    >
-                      <div className="flex items-center">
-                        <User size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
-                        <span className="font-medium text-gray-900 dark:text-gray-100">Ver perfil</span>
-                      </div>
-                      <ChevronRight size={20} className="text-gray-400" />
-                    </Link>
-                    
-                    <Link 
-                      href="/app/configuraciones"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
-                    >
-                      <div className="flex items-center">
-                        <Settings size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
-                        <span className="font-medium text-gray-900 dark:text-gray-100">Configuraciones</span>
-                      </div>
-                      <ChevronRight size={20} className="text-gray-400" />
-                    </Link>
-                    
-                    <Link 
-                      href="/app/notificaciones"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
-                    >
-                      <div className="flex items-center">
-                        <Bell size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
-                        <span className="font-medium text-gray-900 dark:text-gray-100">Notificaciones</span>
-                      </div>
-                      <ChevronRight size={20} className="text-gray-400" />
-                    </Link>
-                    
-                    {/* Botón cerrar sesión */}
-                    <button
-                      onClick={() => {
-                        setOpen(false);
-                        handleSignOut();
-                      }}
-                      disabled={loading}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 active:bg-red-200 dark:active:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors min-h-[56px] disabled:opacity-50 disabled:cursor-not-allowed mt-4"
-                    >
-                      <div className="flex items-center">
-                        <LogOut size={20} className="mr-3" />
-                        <span className="font-medium">{loading ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+          {/* Renderizar modal usando Portal */}
+          {renderMobileModal()}
         </div>
       );
     }
@@ -349,158 +365,8 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
             </div>
           </button>
           
-          {/* Modal fullscreen para móvil - mismo que en sidebar */}
-          {open && (
-            <>
-              {/* Overlay */}
-              <div 
-                className="fixed bg-black bg-opacity-50 z-[100] lg:hidden"
-                onClick={() => setOpen(false)}
-                style={{ 
-                  position: 'fixed',
-                  inset: 0,
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '100vw',
-                  height: '100vh'
-                }}
-              />
-              
-              {/* Panel */}
-              <div 
-                className="fixed bottom-0 bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl animate-slide-up max-h-[85vh] flex flex-col z-[101] lg:hidden"
-                style={{ 
-                  position: 'fixed',
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  width: '100vw',
-                  maxWidth: '100vw'
-                }}
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Mi Cuenta</h3>
-                  <button
-                    onClick={() => setOpen(false)}
-                    className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <X size={20} className="text-gray-500 dark:text-gray-400" />
-                  </button>
-                </div>
-                
-                {/* Contenido scrollable */}
-                <div className="flex-1 overflow-y-auto overscroll-contain">
-                  {/* Info de usuario */}
-                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 relative w-16 h-16 overflow-hidden rounded-full">
-                        {userData?.avatar && getAvatarUrl(userData.avatar) ? (
-                          <Image 
-                            src={getAvatarUrl(userData.avatar)} 
-                            alt="Foto de perfil" 
-                            width={64} 
-                            height={64} 
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
-                            <User size={32} />
-                          </div>
-                        )}
-                      </div>
-                      <div className="ml-4 flex-1">
-                        <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{userData?.name || 'Usuario'}</p>
-                        {userData?.role && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{userData.role}</p>
-                        )}
-                        {userData?.email && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1">{userData.email}</p>
-                        )}
-                        {orgName && (
-                          <div className="flex items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
-                            <Building2 size={16} className="mr-1.5" />
-                            <span className="truncate">{orgName}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Botón de facturación destacado */}
-                  <div className="p-4">
-                    <Link 
-                      href="/app/suscripcion"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg transition-colors min-h-[56px]"
-                    >
-                      <div className="flex items-center">
-                        <CreditCard size={20} className="mr-3" />
-                        <span className="font-medium">Facturación</span>
-                      </div>
-                      <ChevronRight size={20} />
-                    </Link>
-                  </div>
-                  
-                  {/* Opciones del menú */}
-                  <div className="px-4 pb-4 space-y-2">
-                    <Link 
-                      href="/app/perfil"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
-                    >
-                      <div className="flex items-center">
-                        <User size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
-                        <span className="font-medium text-gray-900 dark:text-gray-100">Ver perfil</span>
-                      </div>
-                      <ChevronRight size={20} className="text-gray-400" />
-                    </Link>
-                    
-                    <Link 
-                      href="/app/configuraciones"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
-                    >
-                      <div className="flex items-center">
-                        <Settings size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
-                        <span className="font-medium text-gray-900 dark:text-gray-100">Configuraciones</span>
-                      </div>
-                      <ChevronRight size={20} className="text-gray-400" />
-                    </Link>
-                    
-                    <Link 
-                      href="/app/notificaciones"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
-                    >
-                      <div className="flex items-center">
-                        <Bell size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
-                        <span className="font-medium text-gray-900 dark:text-gray-100">Notificaciones</span>
-                      </div>
-                      <ChevronRight size={20} className="text-gray-400" />
-                    </Link>
-                    
-                    {/* Botón cerrar sesión */}
-                    <button
-                      onClick={() => {
-                        setOpen(false);
-                        handleSignOut();
-                      }}
-                      disabled={loading}
-                      className="flex items-center justify-between w-full px-4 py-4 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 active:bg-red-200 dark:active:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors min-h-[56px] disabled:opacity-50 disabled:cursor-not-allowed mt-4"
-                    >
-                      <div className="flex items-center">
-                        <LogOut size={20} className="mr-3" />
-                        <span className="font-medium">{loading ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+          {/* Renderizar modal usando Portal - igual que en sidebar */}
+          {renderMobileModal()}
         </div>
       );
     }

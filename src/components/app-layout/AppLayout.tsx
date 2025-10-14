@@ -446,11 +446,11 @@ export const AppLayout = ({
         transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
         lg:translate-x-0 transition-transform duration-300 ease-in-out
         bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-2xl lg:shadow-lg
-        h-screen
+        h-screen overflow-hidden
       `}>
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full overflow-hidden">
           {/* Logo y nombre */}
-          <div className="flex justify-between items-center p-4 min-h-[60px] bg-blue-600">
+          <div className="flex justify-between items-center p-4 min-h-[60px] bg-blue-600 flex-shrink-0">
             <h1 className={`text-lg sm:text-xl font-bold text-white ${sidebarCollapsed ? 'lg:hidden' : ''}`}>GO Admin ERP</h1>
             {sidebarCollapsed && <h1 className="hidden lg:block text-xl font-bold text-white text-center">GO</h1>}
             <div className="flex items-center gap-2">
@@ -476,7 +476,7 @@ export const AppLayout = ({
           
           {/* Selector de Organización */}
           {orgId && (
-            <div className={`mx-3 mt-3 mb-2 ${sidebarCollapsed ? 'p-2 lg:relative lg:group' : 'p-3'} bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-md border border-blue-100 dark:border-blue-800 transition-all duration-200 hover:shadow-lg`}>
+            <div className={`flex-shrink-0 mx-3 mt-3 mb-2 ${sidebarCollapsed ? 'p-2 lg:relative lg:group' : 'p-3'} bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-md border border-blue-100 dark:border-blue-800 transition-all duration-200 hover:shadow-lg`}>
               {/* Organización para sidebar colapsado */}
               {sidebarCollapsed && (
                 <>
@@ -528,8 +528,8 @@ export const AppLayout = ({
             </div>
           )}
           
-          {/* Navegación */}
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* Navegación - usa todo el espacio restante con scroll interno */}
+          <div className="flex-1 min-h-0 overflow-hidden">
             <SidebarNavigation 
               handleSignOut={handleSignOut}
               loading={loading}

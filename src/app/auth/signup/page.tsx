@@ -325,7 +325,7 @@ function SignupContent() {
 
   return (
     <div className="min-h-screen overflow-y-auto flex items-start sm:items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-6 md:py-10 px-4 sm:px-6 md:px-8 lg:px-10">
-      <div className={`${currentStep === 4 ? 'max-w-3xl' : 'max-w-2xl'} w-full space-y-3 sm:space-y-5 md:space-y-6 bg-white p-5 pb-6 sm:p-6 sm:pb-8 md:p-8 md:pb-10 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 my-4 max-h-[92vh] overflow-y-auto`}>
+      <div className={`${currentStep === 4 ? 'max-w-3xl' : 'max-w-2xl'} w-full space-y-3 sm:space-y-5 md:space-y-6 bg-white p-5 pb-20 sm:p-6 sm:pb-8 md:p-8 md:pb-10 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 my-4 max-h-[88vh] overflow-y-auto`}>
         <div className="flex flex-col items-center">
           {/* Logo GO Admin con diseño moderno */}
           <div className="mb-2 sm:mb-3">

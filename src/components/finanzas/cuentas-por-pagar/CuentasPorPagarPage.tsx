@@ -227,38 +227,42 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="container mx-auto p-4 space-y-6">
+      <div className="space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             Cuentas por Pagar
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Gestiona pagos a proveedores y obligaciones pendientes
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
             onClick={actualizarDatos}
             disabled={refreshing}
+            className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Actualizar
+            <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Actualizar</span>
           </Button>
           
           <Button
             variant="outline"
             size="sm"
             onClick={() => setMostrarModalAprobacion(true)}
+            className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            <Calendar className="w-4 h-4 mr-2" />
-            Aprobaciones
+            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Aprobaciones</span>
+            <span className="sm:hidden">Aprob.</span>
             {pagosProgramados.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ml-1 sm:ml-2 text-[10px] sm:text-xs px-1 sm:px-1.5 py-0 dark:bg-gray-700 dark:text-gray-300">
                 {pagosProgramados.length}
               </Badge>
             )}
@@ -269,9 +273,10 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
             size="sm"
             onClick={abrirModalExportar}
             disabled={cuentasSeleccionadas.length === 0}
+            className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Exportar</span>
           </Button>
         </div>
       </div>
@@ -290,26 +295,26 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
 
       {/* Contenido principal con tabs */}
       <Tabs value={tabActivo} onValueChange={setTabActivo} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="todas">
-            <FileText className="w-4 h-4 mr-2" />
-            Todas
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-0 dark:bg-gray-800 dark:border-gray-700">
+          <TabsTrigger value="todas" className="text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span>Todas</span>
           </TabsTrigger>
-          <TabsTrigger value="vencidas">
-            <AlertCircle className="w-4 h-4 mr-2" />
-            Vencidas
+          <TabsTrigger value="vencidas" className="text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+            <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span>Vencidas</span>
           </TabsTrigger>
-          <TabsTrigger value="proximas">
-            <Calendar className="w-4 h-4 mr-2" />
-            Próximas
+          <TabsTrigger value="proximas" className="text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span>Próximas</span>
           </TabsTrigger>
-          <TabsTrigger value="pendientes">
-            <Wallet className="w-4 h-4 mr-2" />
-            Pendientes
+          <TabsTrigger value="pendientes" className="text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+            <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span>Pendientes</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="todas" className="mt-6">
+        <TabsContent value="todas" className="mt-4 sm:mt-6">
           <CuentasPorPagarTable
             cuentas={cuentas}
             loading={loading}
@@ -330,7 +335,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           />
         </TabsContent>
 
-        <TabsContent value="vencidas" className="mt-6">
+        <TabsContent value="vencidas" className="mt-4 sm:mt-6">
           <CuentasPorPagarTable
             cuentas={cuentas.filter(c => c.days_overdue && c.days_overdue > 0)}
             loading={loading}
@@ -351,7 +356,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           />
         </TabsContent>
 
-        <TabsContent value="proximas" className="mt-6">
+        <TabsContent value="proximas" className="mt-4 sm:mt-6">
           <CuentasPorPagarTable
             cuentas={cuentas.filter(c => {
               if (!c.due_date) return false;
@@ -379,7 +384,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           />
         </TabsContent>
 
-        <TabsContent value="pendientes" className="mt-6">
+        <TabsContent value="pendientes" className="mt-4 sm:mt-6">
           <CuentasPorPagarTable
             cuentas={cuentas.filter(c => c.status === 'pending')}
             loading={loading}
@@ -453,6 +458,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           setCuentasSeleccionadas([]);
         }}
       />
+      </div>
     </div>
   );
 }

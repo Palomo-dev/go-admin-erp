@@ -74,24 +74,25 @@ export function CuentasPorPagarTable({
 
   // Funciones de utilidad
   const getStatusBadge = (status: string, daysOverdue?: number) => {
+    const baseClasses = "text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5";
     if (daysOverdue && daysOverdue > 0) {
       return (
-        <Badge variant="destructive">
-          <AlertCircle className="w-3 h-3 mr-1" />
-          Vencida ({daysOverdue}d)
+        <Badge variant="destructive" className={`${baseClasses} dark:bg-red-900/30 dark:text-red-400`}>
+          <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
+          <span>Vencida ({daysOverdue}d)</span>
         </Badge>
       );
     }
 
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary">Pendiente</Badge>;
+        return <Badge variant="secondary" className={`${baseClasses} dark:bg-gray-700 dark:text-gray-300`}>Pendiente</Badge>;
       case 'partial':
-        return <Badge variant="outline">Parcial</Badge>;
+        return <Badge variant="outline" className={`${baseClasses} border-yellow-500 text-yellow-600 dark:border-yellow-400 dark:text-yellow-400`}>Parcial</Badge>;
       case 'paid':
-        return <Badge variant="default">Pagada</Badge>;
+        return <Badge variant="default" className={`${baseClasses} bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700`}>Pagada</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="secondary" className={`${baseClasses} dark:bg-gray-700 dark:text-gray-300`}>{status}</Badge>;
     }
   };
 
@@ -153,38 +154,39 @@ export function CuentasPorPagarTable({
 
   // Componente de skeleton para loading
   const SkeletonRow = () => (
-    <TableRow>
-      <TableCell><Skeleton className="h-4 w-4" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+    <TableRow className="dark:border-gray-800">
+      <TableCell><Skeleton className="h-3 w-3 sm:h-4 sm:w-4 dark:bg-gray-700" /></TableCell>
+      <TableCell><Skeleton className="h-3 w-24 sm:h-4 sm:w-32 dark:bg-gray-700" /></TableCell>
+      <TableCell className="hidden sm:table-cell"><Skeleton className="h-3 w-20 sm:h-4 sm:w-24 dark:bg-gray-700" /></TableCell>
+      <TableCell className="hidden md:table-cell"><Skeleton className="h-3 w-16 sm:h-4 sm:w-20 dark:bg-gray-700" /></TableCell>
+      <TableCell><Skeleton className="h-3 w-12 sm:h-4 sm:w-16 dark:bg-gray-700" /></TableCell>
+      <TableCell className="hidden lg:table-cell"><Skeleton className="h-3 w-16 sm:h-4 sm:w-20 dark:bg-gray-700" /></TableCell>
+      <TableCell><Skeleton className="h-3 w-12 sm:h-4 sm:w-16 dark:bg-gray-700" /></TableCell>
+      <TableCell><Skeleton className="h-3 w-6 sm:h-4 sm:w-8 dark:bg-gray-700" /></TableCell>
     </TableRow>
   );
 
   return (
-    <Card>
+    <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-2 sm:mx-0">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
+              <TableRow className="dark:border-gray-800 border-b border-gray-200">
+                <TableHead className="w-8 sm:w-12">
                   <Checkbox
                     checked={selectAll}
                     onCheckedChange={handleSelectAll}
+                    className="dark:border-gray-600"
                   />
                 </TableHead>
-                <TableHead>Proveedor</TableHead>
-                <TableHead>Factura</TableHead>
-                <TableHead>Fecha Venc.</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Saldo</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="w-16">Acciones</TableHead>
+                <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Proveedor</TableHead>
+                <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">Factura</TableHead>
+                <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">Fecha Venc.</TableHead>
+                <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-right">Monto</TableHead>
+                <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-right hidden lg:table-cell">Saldo</TableHead>
+                <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Estado</TableHead>
+                <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 w-12 sm:w-16">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -195,14 +197,14 @@ export function CuentasPorPagarTable({
                 ))
               ) : cuentas.length === 0 ? (
                 // Estado vacío
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                <TableRow className="dark:border-gray-800">
+                  <TableCell colSpan={8} className="text-center py-6 sm:py-8">
                     <div className="flex flex-col items-center gap-2">
-                      <FileText className="w-8 h-8 text-gray-400" />
-                      <p className="text-gray-500 dark:text-gray-400">
+                      <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-600" />
+                      <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
                         No hay cuentas por pagar
                       </p>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">
                         Los pagos pendientes aparecerán aquí
                       </p>
                     </div>
@@ -211,47 +213,48 @@ export function CuentasPorPagarTable({
               ) : (
                 // Datos
                 cuentas.map((cuenta) => (
-                  <TableRow key={cuenta.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <TableCell>
+                  <TableRow key={cuenta.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 dark:border-gray-800 border-b border-gray-100">
+                    <TableCell className="py-2 sm:py-3">
                       <Checkbox
                         checked={cuentasSeleccionadas.includes(cuenta.id)}
                         onCheckedChange={(checked) => 
                           handleSelectCuenta(cuenta.id, checked as boolean)
                         }
+                        className="dark:border-gray-600"
                       />
                     </TableCell>
                     
-                    <TableCell>
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900 dark:text-white">
+                    <TableCell className="py-2 sm:py-3">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm sm:text-base font-medium text-gray-900 dark:text-white truncate">
                             {cuenta.supplier?.name || 'Sin nombre'}
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                             {cuenta.supplier?.nit && (
                               <span>NIT: {cuenta.supplier.nit}</span>
                             )}
                             {cuenta.supplier?.contact && (
-                              <span>{cuenta.supplier.contact}</span>
+                              <span className="hidden sm:inline">{cuenta.supplier.contact}</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             {cuenta.supplier?.phone && (
                               <a
                                 href={`tel:${cuenta.supplier.phone}`}
-                                className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800"
+                                className="inline-flex items-center text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                               >
-                                <Phone className="w-3 h-3 mr-1" />
-                                {cuenta.supplier.phone}
+                                <Phone className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1" />
+                                <span>{cuenta.supplier.phone}</span>
                               </a>
                             )}
                             {cuenta.supplier?.email && (
                               <a
                                 href={`mailto:${cuenta.supplier.email}`}
-                                className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800"
+                                className="inline-flex items-center text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 truncate max-w-[120px]"
                               >
-                                <Mail className="w-3 h-3 mr-1" />
-                                {cuenta.supplier.email}
+                                <Mail className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{cuenta.supplier.email}</span>
                               </a>
                             )}
                           </div>
@@ -259,87 +262,87 @@ export function CuentasPorPagarTable({
                       </div>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="py-2 sm:py-3 hidden sm:table-cell">
                       <div className="flex flex-col">
                         {cuenta.invoice_purchase?.number_ext ? (
                           <>
-                            <span className="font-medium">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
                               {cuenta.invoice_purchase.number_ext}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                               {cuenta.invoice_purchase.issue_date && 
                                 formatDate(cuenta.invoice_purchase.issue_date)
                               }
                             </span>
                           </>
                         ) : (
-                          <span className="text-gray-400">Sin factura</span>
+                          <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">Sin factura</span>
                         )}
                       </div>
                     </TableCell>
 
-                    <TableCell>
-                      <div className={`flex items-center gap-1 ${getDueDateColor(cuenta.due_date, cuenta.days_overdue)}`}>
-                        <Calendar className="w-4 h-4" />
+                    <TableCell className="py-2 sm:py-3 hidden md:table-cell">
+                      <div className={`flex items-center gap-1 text-xs sm:text-sm ${getDueDateColor(cuenta.due_date, cuenta.days_overdue)}`}>
+                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>
                           {cuenta.due_date ? formatDate(cuenta.due_date) : 'Sin fecha'}
                         </span>
                       </div>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="py-2 sm:py-3">
                       <div className="text-right">
-                        <div className="font-medium">
+                        <div className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
                           {formatCurrency(cuenta.amount)}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                           {cuenta.invoice_purchase?.currency || 'COP'}
                         </div>
                       </div>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="py-2 sm:py-3 hidden lg:table-cell">
                       <div className="text-right">
-                        <div className="font-semibold text-blue-600 dark:text-blue-400">
+                        <div className="text-sm sm:text-base font-semibold text-blue-600 dark:text-blue-400">
                           {formatCurrency(cuenta.balance)}
                         </div>
                         {cuenta.balance !== cuenta.amount && (
-                          <div className="text-xs text-gray-500">
+                          <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                             Pagado: {formatCurrency(cuenta.amount - cuenta.balance)}
                           </div>
                         )}
                       </div>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="py-2 sm:py-3">
                       {getStatusBadge(cuenta.status, cuenta.days_overdue)}
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="py-2 sm:py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:hover:bg-gray-700 dark:text-gray-300">
+                            <MoreHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuItem onClick={() => onRegistrarPago(cuenta)}>
-                            <CreditCard className="mr-2 h-4 w-4" />
-                            Registrar Pago
+                        <DropdownMenuContent align="end" className="w-48 sm:w-56 dark:bg-gray-800 dark:border-gray-700">
+                          <DropdownMenuItem onClick={() => onRegistrarPago(cuenta)} className="text-xs sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700">
+                            <CreditCard className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span>Registrar Pago</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onProgramarPago(cuenta)}>
-                            <Clock className="mr-2 h-4 w-4" />
-                            Programar Pago
+                          <DropdownMenuItem onClick={() => onProgramarPago(cuenta)} className="text-xs sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700">
+                            <Clock className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span>Programar Pago</span>
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => copiarInfoProveedor(cuenta.supplier)}>
-                            <Building2 className="mr-2 h-4 w-4" />
-                            Copiar Info Proveedor
+                          <DropdownMenuSeparator className="dark:bg-gray-700" />
+                          <DropdownMenuItem onClick={() => copiarInfoProveedor(cuenta.supplier)} className="text-xs sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700">
+                            <Building2 className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span>Copiar Info</span>
                           </DropdownMenuItem>
                           {cuenta.invoice_purchase && (
-                            <DropdownMenuItem onClick={() => verFactura(cuenta.invoice_purchase?.id || '')}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver Factura
+                            <DropdownMenuItem onClick={() => verFactura(cuenta.invoice_purchase?.id || '')} className="text-xs sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700">
+                              <Eye className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <span>Ver Factura</span>
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -354,23 +357,24 @@ export function CuentasPorPagarTable({
 
         {/* Paginación */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t">
-            <div className="text-sm text-gray-700 dark:text-gray-300">
-              Mostrando {((currentPage - 1) * 10) + 1} a {Math.min(currentPage * 10, totalRecords)} de {totalRecords} registros
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+              Mostrando {((currentPage - 1) * 10) + 1} a {Math.min(currentPage * 10, totalRecords)} de {totalRecords}
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={currentPage === 1}
+                className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
               >
-                <ChevronLeft className="h-4 w-4" />
-                Anterior
+                <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Anterior</span>
               </Button>
               
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-1 sm:flex-none justify-center">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   const page = i + 1;
                   return (
@@ -379,7 +383,11 @@ export function CuentasPorPagarTable({
                       variant={currentPage === page ? "default" : "outline"}
                       size="sm"
                       onClick={() => onPageChange(page)}
-                      className="w-8 h-8 p-0"
+                      className={`w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm ${
+                        currentPage === page 
+                          ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white' 
+                          : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+                      }`}
                     >
                       {page}
                     </Button>
@@ -392,9 +400,10 @@ export function CuentasPorPagarTable({
                 size="sm"
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
+                className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
               >
-                Siguiente
-                <ChevronRight className="h-4 w-4" />
+                <span className="hidden sm:inline">Siguiente</span>
+                <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:ml-1" />
               </Button>
             </div>
           </div>

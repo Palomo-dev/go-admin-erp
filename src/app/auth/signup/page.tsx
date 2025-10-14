@@ -324,8 +324,8 @@ function SignupContent() {
   // que se ejecuta cuando el email es confirmado por Supabase.
 
   return (
-    <div className="min-h-screen overflow-y-auto flex items-start sm:items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-6 md:py-10 px-2 sm:px-4 md:px-6 lg:px-8">
-      <div className={`${currentStep === 4 ? 'max-w-3xl' : 'max-w-2xl'} w-full space-y-3 sm:space-y-5 md:space-y-6 bg-white p-3 sm:p-5 md:p-7 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 my-4 max-h-[96vh] overflow-y-auto`}>
+    <div className="min-h-screen overflow-y-auto flex items-start sm:items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-6 md:py-10 px-4 sm:px-6 md:px-8 lg:px-10">
+      <div className={`${currentStep === 4 ? 'max-w-3xl' : 'max-w-2xl'} w-full space-y-3 sm:space-y-5 md:space-y-6 bg-white p-5 pb-6 sm:p-6 sm:pb-8 md:p-8 md:pb-10 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 my-4 max-h-[92vh] overflow-y-auto`}>
         <div className="flex flex-col items-center">
           {/* Logo GO Admin con diseño moderno */}
           <div className="mb-2 sm:mb-3">
@@ -464,8 +464,8 @@ function SignupContent() {
         )}
         
         {/* Enlace a login */}
-        <div className="text-center mt-2 sm:mt-3">
-          <p className="text-[11px] sm:text-xs text-gray-600">
+        <div className="text-center mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-gray-100">
+          <p className="text-xs sm:text-sm text-gray-600">
             ¿Ya tienes una cuenta?{' '}
             <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
               Iniciar sesión

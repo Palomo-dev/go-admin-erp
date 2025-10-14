@@ -141,56 +141,56 @@ export function CuentasPorPagarFiltros({
   };
 
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="space-y-4">
+    <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
+      <CardContent className="p-3 sm:p-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Filtros principales */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Búsqueda */}
-            <div className="space-y-2">
-              <Label htmlFor="busqueda">
-                <Search className="w-4 h-4 inline mr-1" />
-                Búsqueda
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="busqueda" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                <Search className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                <span>Búsqueda</span>
               </Label>
               <Input
                 id="busqueda"
-                placeholder="Buscar por proveedor, factura..."
+                placeholder="Buscar..."
                 value={filtros.busqueda}
                 onChange={handleBusquedaChange}
-                className="w-full"
+                className="w-full h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               />
             </div>
 
             {/* Estado */}
-            <div className="space-y-2">
-              <Label>Estado</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Estado</Label>
               <Select value={filtros.estado} onValueChange={handleEstadoChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos los estados" />
+                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                  <SelectValue placeholder="Todos" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="pendiente">Pendiente</SelectItem>
-                  <SelectItem value="vencida">Vencida</SelectItem>
-                  <SelectItem value="parcial">Pago parcial</SelectItem>
-                  <SelectItem value="pagada">Pagada</SelectItem>
+                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                  <SelectItem value="todos" className="text-xs sm:text-sm dark:text-gray-300">Todos</SelectItem>
+                  <SelectItem value="pendiente" className="text-xs sm:text-sm dark:text-gray-300">Pendiente</SelectItem>
+                  <SelectItem value="vencida" className="text-xs sm:text-sm dark:text-gray-300">Vencida</SelectItem>
+                  <SelectItem value="parcial" className="text-xs sm:text-sm dark:text-gray-300">Parcial</SelectItem>
+                  <SelectItem value="pagada" className="text-xs sm:text-sm dark:text-gray-300">Pagada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Vencimiento */}
-            <div className="space-y-2">
-              <Label>Vencimiento</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Vencimiento</Label>
               <Select value={filtros.vencimiento} onValueChange={handleVencimientoChange}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="hoy">Vence hoy</SelectItem>
-                  <SelectItem value="proximos_7">Próximos 7 días</SelectItem>
-                  <SelectItem value="proximos_30">Próximos 30 días</SelectItem>
-                  <SelectItem value="vencidas">Vencidas</SelectItem>
+                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                  <SelectItem value="todos" className="text-xs sm:text-sm dark:text-gray-300">Todos</SelectItem>
+                  <SelectItem value="hoy" className="text-xs sm:text-sm dark:text-gray-300">Vence hoy</SelectItem>
+                  <SelectItem value="proximos_7" className="text-xs sm:text-sm dark:text-gray-300">Próximos 7 días</SelectItem>
+                  <SelectItem value="proximos_30" className="text-xs sm:text-sm dark:text-gray-300">Próximos 30 días</SelectItem>
+                  <SelectItem value="vencidas" className="text-xs sm:text-sm dark:text-gray-300">Vencidas</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -199,19 +199,21 @@ export function CuentasPorPagarFiltros({
             <div className="flex items-end">
               <Button 
                 variant="outline" 
-                size="default"
+                size="sm"
                 onClick={() => setMostrarFiltrosAvanzados(!mostrarFiltrosAvanzados)}
-                className="flex items-center gap-2 w-full"
+                className="flex items-center gap-1.5 sm:gap-2 w-full h-8 sm:h-9 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
               >
                 {mostrarFiltrosAvanzados ? (
                   <>
-                    <ChevronUp className="w-4 h-4" />
-                    Menos filtros
+                    <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Menos filtros</span>
+                    <span className="sm:hidden">Menos</span>
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="w-4 h-4" />
-                    Más filtros
+                    <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Más filtros</span>
+                    <span className="sm:hidden">Más</span>
                   </>
                 )}
               </Button>
@@ -220,26 +222,26 @@ export function CuentasPorPagarFiltros({
 
           {/* Filtros avanzados */}
           {mostrarFiltrosAvanzados && (
-            <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-3 sm:p-4 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {/* Filtro por proveedor */}
-                <div className="space-y-2">
-                  <Label>Proveedor</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Proveedor</Label>
                   <Select 
                     value={filtros.proveedor} 
                     onValueChange={handleProveedorChange}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos los proveedores" />
+                    <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                      <SelectValue placeholder="Todos" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos los proveedores</SelectItem>
+                    <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                      <SelectItem value="todos" className="text-xs sm:text-sm dark:text-gray-300">Todos los proveedores</SelectItem>
                       {proveedores.map((proveedor) => (
-                        <SelectItem key={proveedor.value} value={proveedor.value}>
+                        <SelectItem key={proveedor.value} value={proveedor.value} className="dark:text-gray-300">
                           <div className="flex flex-col">
-                            <span>{proveedor.label}</span>
+                            <span className="text-xs sm:text-sm">{proveedor.label}</span>
                             {proveedor.nit && (
-                              <span className="text-xs text-gray-500">
+                              <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                                 NIT: {proveedor.nit}
                               </span>
                             )}
@@ -251,10 +253,10 @@ export function CuentasPorPagarFiltros({
                 </div>
 
                 {/* Monto mínimo */}
-                <div className="space-y-2">
-                  <Label htmlFor="montoMinimo">
-                    <DollarSign className="w-4 h-4 inline mr-1" />
-                    Monto mínimo
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="montoMinimo" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                    <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                    <span>Monto mínimo</span>
                   </Label>
                   <Input
                     id="montoMinimo"
@@ -262,14 +264,15 @@ export function CuentasPorPagarFiltros({
                     placeholder="0.00"
                     value={filtros.montoMinimo || ''}
                     onChange={handleMontoMinimoChange}
+                    className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                 </div>
 
                 {/* Monto máximo */}
-                <div className="space-y-2">
-                  <Label htmlFor="montoMaximo">
-                    <DollarSign className="w-4 h-4 inline mr-1" />
-                    Monto máximo
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="montoMaximo" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                    <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                    <span>Monto máximo</span>
                   </Label>
                   <Input
                     id="montoMaximo"
@@ -277,34 +280,37 @@ export function CuentasPorPagarFiltros({
                     placeholder="Sin límite"
                     value={filtros.montoMaximo || ''}
                     onChange={handleMontoMaximoChange}
+                    className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                 </div>
 
                 {/* Fecha desde */}
-                <div className="space-y-2">
-                  <Label htmlFor="fechaDesde">
-                    <Calendar className="w-4 h-4 inline mr-1" />
-                    Vence desde
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="fechaDesde" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                    <span>Vence desde</span>
                   </Label>
                   <Input
                     id="fechaDesde"
                     type="date"
                     value={filtros.fechaDesde}
                     onChange={handleFechaDesdeChange}
+                    className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                 </div>
 
                 {/* Fecha hasta */}
-                <div className="space-y-2">
-                  <Label htmlFor="fechaHasta">
-                    <Calendar className="w-4 h-4 inline mr-1" />
-                    Vence hasta
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="fechaHasta" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                    <span>Vence hasta</span>
                   </Label>
                   <Input
                     id="fechaHasta"
                     type="date"
                     value={filtros.fechaHasta}
                     onChange={handleFechaHastaChange}
+                    className="h-8 sm:h-9 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                 </div>
               </div>
@@ -313,10 +319,10 @@ export function CuentasPorPagarFiltros({
 
           {/* Resumen de filtros activos */}
           {hasFiltrosActivos() && (
-            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-                  <Filter className="w-4 h-4" />
+            <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-blue-700 dark:text-blue-300">
+                  <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <span>
                     {contarFiltrosActivos()} filtro{contarFiltrosActivos() !== 1 ? 's' : ''} activo{contarFiltrosActivos() !== 1 ? 's' : ''}
                   </span>
@@ -325,10 +331,10 @@ export function CuentasPorPagarFiltros({
                   variant="ghost" 
                   size="sm" 
                   onClick={onLimpiarFiltros}
-                  className="text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100"
+                  className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 dark:hover:bg-blue-900/30"
                 >
-                  <X className="w-4 h-4 mr-1" />
-                  Limpiar todo
+                  <X className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                  <span>Limpiar todo</span>
                 </Button>
               </div>
             </div>

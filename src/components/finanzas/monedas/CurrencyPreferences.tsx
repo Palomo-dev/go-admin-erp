@@ -308,12 +308,12 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="p-6 dark:bg-gray-800 dark:border-gray-700">
-        <h2 className="text-lg font-medium mb-4 dark:text-gray-300">Preferencias de Moneda</h2>
+    <div className="space-y-4 sm:space-y-6">
+      <Card className="p-4 sm:p-6 dark:bg-gray-800/50 dark:border-gray-700 bg-white border-gray-200">
+        <h2 className="text-base sm:text-lg font-medium mb-4 dark:text-gray-300">Preferencias de Moneda</h2>
 
-        <Alert className="mb-6 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
-          <AlertDescription className="text-blue-800 dark:text-blue-300">
+        <Alert className="mb-4 sm:mb-6 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+          <AlertDescription className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 leading-relaxed">
             Las preferencias de moneda afectan a toda la organización. La moneda predeterminada se usará como respaldo cuando no se especifique una moneda base.
           </AlertDescription>
         </Alert>
@@ -325,20 +325,20 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
               name="default_currency_code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="dark:text-gray-300">Moneda Predeterminada</FormLabel>
+                  <FormLabel className="text-sm dark:text-gray-300">Moneda Predeterminada</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
                     disabled={loading}
                   >
                     <FormControl>
-                      <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200">
+                      <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200">
                         <SelectValue placeholder="Seleccione moneda predeterminada" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="dark:bg-gray-800">
+                    <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                       {currencies.length === 0 ? (
-                        <SelectItem value="no_currency" disabled className="dark:text-gray-400">
+                        <SelectItem value="no_currency" disabled className="dark:text-gray-400 text-sm">
                           No hay monedas disponibles
                         </SelectItem>
                       ) : (
@@ -346,7 +346,7 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
                           <SelectItem 
                             key={currency.code} 
                             value={currency.code}
-                            className="dark:text-gray-200 dark:focus:bg-gray-700"
+                            className="dark:text-gray-200 dark:focus:bg-gray-700 text-sm"
                           >
                             {currency.code} - {currency.name} ({currency.symbol})
                           </SelectItem>
@@ -354,10 +354,10 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
                       )}
                     </SelectContent>
                   </Select>
-                  <FormDescription className="dark:text-gray-400">
+                  <FormDescription className="text-xs sm:text-sm dark:text-gray-400">
                     Esta moneda se utilizará como respaldo cuando no exista una moneda base.
                   </FormDescription>
-                  <FormMessage className="dark:text-red-400" />
+                  <FormMessage className="text-xs sm:text-sm dark:text-red-400" />
                 </FormItem>
               )}
             />
@@ -366,12 +366,12 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
               control={form.control as any}
               name="auto_sync_exchange_rates"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm dark:border-gray-700">
-                  <div className="space-y-0.5">
-                    <FormLabel className="dark:text-gray-300">
+                <FormItem className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border p-3 sm:p-4 shadow-sm dark:border-gray-700 gap-3 sm:gap-0">
+                  <div className="space-y-0.5 flex-1">
+                    <FormLabel className="text-sm dark:text-gray-300">
                       Sincronización Automática de Tasas
                     </FormLabel>
-                    <FormDescription className="dark:text-gray-400">
+                    <FormDescription className="text-xs sm:text-sm dark:text-gray-400">
                       Actualizar tasas de cambio automáticamente cada día usando OpenExchangeRates.
                     </FormDescription>
                   </div>
@@ -380,6 +380,7 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
                       checked={field.value}
                       onCheckedChange={field.onChange}
                       disabled={loading}
+                      className="data-[state=checked]:bg-green-600 dark:data-[state=checked]:bg-green-700"
                     />
                   </FormControl>
                 </FormItem>
@@ -388,18 +389,18 @@ export default function CurrencyPreferences({ organizationId }: CurrencyPreferen
 
             <Button 
               type="submit" 
-              className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800"
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800"
               disabled={saving || loading}
             >
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Guardando...
+                  <span className="text-sm sm:text-base">Guardando...</span>
                 </>
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Guardar Preferencias
+                  <span className="text-sm sm:text-base">Guardar Preferencias</span>
                 </>
               )}
             </Button>

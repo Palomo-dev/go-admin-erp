@@ -56,7 +56,7 @@ const MiniSparkline = ({ currencyCode }: { currencyCode: string }) => {
   }, [currencyCode]);
 
   if (historicalData.length < 2) {
-    return <div className="w-16 h-8 bg-gray-100 rounded animate-pulse"></div>;
+    return <div className="w-16 h-8 bg-gray-100 dark:bg-gray-700 rounded animate-pulse"></div>;
   }
 
   const rates = historicalData.map(d => d.rate);
@@ -153,7 +153,7 @@ const MiniSparkline = ({ currencyCode }: { currencyCode: string }) => {
       {/* Tooltip */}
       {hoveredPoint && (
         <div 
-          className="absolute bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg z-50 pointer-events-none whitespace-nowrap"
+          className="absolute bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-100 text-xs px-2 py-1 rounded shadow-lg z-50 pointer-events-none whitespace-nowrap border border-gray-700 dark:border-gray-600"
           style={{
             left: `${(hoveredPoint.x / 60) * 100}%`,
             top: '-45px',
@@ -161,11 +161,11 @@ const MiniSparkline = ({ currencyCode }: { currencyCode: string }) => {
           }}
         >
           <div className="font-medium">{hoveredPoint.rate.toFixed(6)}</div>
-          <div className="text-gray-300">
+          <div className="text-gray-300 dark:text-gray-400">
             {format(new Date(hoveredPoint.date), 'dd/MM', { locale: es })}
           </div>
           {/* Flecha del tooltip */}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-900"></div>
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
         </div>
       )}
     </div>
@@ -797,7 +797,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
     }
   }
 
-  // Actualizar tasas usando Edge Function (recomendado)
+  // Actualizar tasas usando el servicio directo (método confiable)
   async function syncRatesViaEdgeFunction(showNotifications = true) {
 
     // 🔒 GUARD: Prevenir actualizaciones concurrentes
@@ -818,45 +818,37 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       
       if (showNotifications) {
         toast({
-          title: 'Ejecutando actualización automática...',
-          description: 'Llamando al servicio de actualización diaria de tasas de cambio...',
+          title: 'Actualizando tasas de cambio...',
+          description: 'Obteniendo tasas actualizadas desde OpenExchangeRates...',
           variant: 'default',
         });
       }
 
-      // Llamar a la Edge Function usando el cliente de Supabase
-      const { data, error } = await supabase.functions.invoke('actualizar-tasas-cambio', {
-        body: {
-          source: 'manual_sync',
-          triggered_by: 'user_request'
-        }
-      });
+      // Usar directamente el método que funciona (sin Edge Function)
+      console.log('Iniciando actualización de tasas de cambio...');
       
-      if (error) {
-        console.error('Error llamando a Edge Function:', error);
-        throw new Error(error.message || 'Error en la Edge Function');
-      }
+      // Importar la función para actualización global de tasas
+      const { actualizarTasasDeCambioGlobal } = await import('@/lib/services/openexchangerates');
+
+      // Llamar a la función de actualización global de tasas
+      const result = await actualizarTasasDeCambioGlobal();
+      console.log('Resultado de actualización:', result);
       
-      console.log('Resultado de Edge Function:', data);
-      
-      if (data?.success) {
-        const performanceInfo = data.performance || {};
-        const resultsInfo = data.results || data; // Manejar ambos formatos
-        
+      if (result.success) {
         if (showNotifications) {
           toast({
-            title: '✅ Actualización automática completada',
-            description: `${data.message || 'Tasas actualizadas correctamente'} • ⚡ ${performanceInfo.total_time_ms || 'N/A'}ms`,
+            title: '✅ Tasas actualizadas correctamente',
+            description: `Se actualizaron ${result.updated_count || 0} tasas de cambio exitosamente.`,
             variant: 'default',
             duration: 6000
           });
           
-          // Mostrar métricas detalladas si están disponibles
-          if (resultsInfo.updated_count || resultsInfo.inserted_count) {
+          // Mostrar métricas detalladas
+          if (result.updated_count) {
             setTimeout(() => {
               toast({
                 title: '📊 Estadísticas de actualización',
-                description: `${resultsInfo.updated_count || 0} actualizadas • ${resultsInfo.inserted_count || 0} insertadas • ${resultsInfo.skipped_count || 0} omitidas`,
+                description: `${result.updated_count} tasas actualizadas • Base: ${result.base_currency || 'USD'}`,
                 variant: 'default',
                 duration: 4000
               });
@@ -864,34 +856,30 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
           }
         }
         
-        console.log('📈 Métricas de Edge Function:', {
-          performance: performanceInfo,
-          results: resultsInfo,
-          source: data.source,
-          api_timestamp: data.api_timestamp
+        console.log('📈 Métricas de actualización:', {
+          updated_count: result.updated_count,
+          base_currency: result.base_currency,
+          timestamp: result.timestamp
         });
         
         // Recargar información de actualización automática y tasas
         await loadAutoUpdateInfo();
         await loadRates();
       } else {
-        throw new Error(data?.message || 'Error en la actualización automática');
+        throw new Error(result.message || 'Error en la actualización de tasas');
       }
 
     } catch (err: any) {
-      console.error('Error al ejecutar Edge Function:', err);
+      console.error('Error al actualizar tasas:', err);
       
       if (showNotifications) {
         toast({
-          title: 'Intentando método alternativo...',
-          description: 'La actualización automática falló, usando método de respaldo.',
-          variant: 'default',
+          title: '❌ Error en actualización',
+          description: `No se pudieron actualizar las tasas: ${err.message}`,
+          variant: 'destructive',
+          duration: 7000
         });
       }
-      
-      // Fallback: usar el método anterior si la Edge Function falla
-      console.log('Intentando fallback con método anterior...');
-      await syncRatesLegacy(showNotifications);
     } finally {
       setUpdating(false);
     }
@@ -955,84 +943,107 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      {/* Header con DatePicker y Moneda Base */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <DatePicker
             date={date}
             onSelect={(selectedDate: Date | undefined) => selectedDate && setDate(selectedDate)}
           />
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Moneda base: </span>
-            <span className="font-bold">{baseCurrency?.code || 'USD'}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs sm:text-sm font-medium dark:text-gray-300">Moneda base:</span>
+            <span className="font-bold text-sm sm:text-base dark:text-gray-100">{baseCurrency?.code || 'USD'}</span>
             {tipoMonedaBase && (
               <Badge 
                 variant="outline" 
                 className={cn(
                   "text-xs",
-                  tipoMonedaBase === 'base' && "bg-green-50 text-green-700 border-green-200",
-                  tipoMonedaBase === 'usd' && "bg-blue-50 text-blue-700 border-blue-200",
-                  tipoMonedaBase === 'primera' && "bg-orange-50 text-orange-700 border-orange-200",
-                  tipoMonedaBase === 'global' && "bg-purple-50 text-purple-700 border-purple-200"
+                  tipoMonedaBase === 'base' && "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+                  tipoMonedaBase === 'usd' && "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+                  tipoMonedaBase === 'primera' && "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
+                  tipoMonedaBase === 'global' && "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800"
                 )}
               >
-                {tipoMonedaBase === 'base' && 'Base preferida'}
-                {tipoMonedaBase === 'usd' && 'USD (fallback)'}
-                {tipoMonedaBase === 'primera' && 'Primera disponible'}
-                {tipoMonedaBase === 'global' && 'Catálogo global'}
+                <span className="hidden sm:inline">
+                  {tipoMonedaBase === 'base' && 'Base preferida'}
+                  {tipoMonedaBase === 'usd' && 'USD (fallback)'}
+                  {tipoMonedaBase === 'primera' && 'Primera disponible'}
+                  {tipoMonedaBase === 'global' && 'Catálogo global'}
+                </span>
+                <span className="sm:hidden">
+                  {tipoMonedaBase === 'base' && 'Base'}
+                  {tipoMonedaBase === 'usd' && 'USD'}
+                  {tipoMonedaBase === 'primera' && 'Primera'}
+                  {tipoMonedaBase === 'global' && 'Global'}
+                </span>
               </Badge>
             )}
           </div>
-
-        </div>
-        <div className="flex items-center gap-3">
-
-
-
-          
-
         </div>
       </div>
 
+      {/* Card de información de tasas */}
       {rates.length > 0 && (
-        <div className="text-sm text-muted-foreground mb-4 p-4 bg-muted/30 rounded-lg border">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div>
-                <span className="font-medium">Datos de tasas: </span>
-                {new Date(rates[0].rate_date).toLocaleDateString('es', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+        <div className="text-sm mb-4 p-3 sm:p-4 bg-muted/30 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700">
+          <div className="flex flex-col gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 flex-wrap">
+              <div className="text-xs sm:text-sm dark:text-gray-300">
+                <span className="font-medium">Datos de tasas:</span>{' '}
+                <span className="hidden sm:inline">
+                  {new Date(rates[0].rate_date).toLocaleDateString('es', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+                <span className="sm:hidden">
+                  {new Date(rates[0].rate_date).toLocaleDateString('es', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </span>
               </div>
-              <div>
-                <span className="font-medium">Base: </span>
-                <Badge variant="outline" className="ml-1">
-                  {rates[0].base_currency_code || 'USD'}
-                </Badge>
-              </div>
-              <div>
-                <span className="font-medium">Fuente: </span>
-                <Badge 
-                  variant="outline" 
-                  className={cn(
-                    "ml-1",
-                    rates[0].source.includes('openexchangerates') && "bg-green-50 text-green-700 border-green-200",
-                    rates[0].source === 'manual' && "bg-blue-50 text-blue-700 border-blue-200"
-                  )}
-                >
-                  {rates[0].source === 'openexchangerates' ? 'API Automática' : 
-                   rates[0].source === 'openexchangerates-fallback' ? 'API Respaldo' : 
-                   rates[0].source}
-                </Badge>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1 text-xs sm:text-sm dark:text-gray-300">
+                  <span className="font-medium">Base:</span>
+                  <Badge variant="outline" className="text-xs dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
+                    {rates[0].base_currency_code || 'USD'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-1 text-xs sm:text-sm dark:text-gray-300">
+                  <span className="font-medium">Fuente:</span>
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "text-xs",
+                      rates[0].source.includes('openexchangerates') && "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+                      rates[0].source === 'manual' && "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
+                    )}
+                  >
+                    <span className="hidden sm:inline">
+                      {rates[0].source === 'openexchangerates' ? 'API Automática' : 
+                       rates[0].source === 'openexchangerates-fallback' ? 'API Respaldo' : 
+                       rates[0].source}
+                    </span>
+                    <span className="sm:hidden">
+                      {rates[0].source === 'openexchangerates' ? 'API' : 
+                       rates[0].source === 'openexchangerates-fallback' ? 'Respaldo' : 
+                       rates[0].source}
+                    </span>
+                  </Badge>
+                </div>
               </div>
             </div>
           </div>
           
-          <div className="text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
-              <span><strong>Información:</strong> Las tasas se actualizan automáticamente cada día a las 2:00 AM UTC. Use "Sincronizar Ahora" solo si necesita datos más recientes.</span>
+          <div className="text-xs dark:text-gray-400">
+            <div className="flex items-start gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400 mt-1 flex-shrink-0"></span>
+              <span className="leading-relaxed">
+                <strong className="dark:text-gray-300">Información:</strong> Las tasas se actualizan automáticamente cada día a las 2:00 AM UTC. 
+                <span className="hidden sm:inline">Use "Sincronizar Ahora" solo si necesita datos más recientes.</span>
+              </span>
             </div>
           </div>
         </div>
@@ -1050,89 +1061,93 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
         </div>
       </div>
       
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Moneda</TableHead>
-            <TableHead>Código</TableHead>
-            <TableHead>Tasa</TableHead>
-            <TableHead>Tendencia</TableHead>
-            <TableHead>Histórico (5d)</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rates.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center">
-                <div className="ml-auto flex gap-1">
-                  <Button
-                    className="h-8 px-2 text-xs ml-auto"
-                    variant="outline"
-                    onClick={(e) => syncRatesViaEdgeFunction(true)}
-                    disabled={updating}
-                  >
-                    {updating ? (
-                      <>
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        Sincronizando...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-1 h-3 w-3" />
-                        Sincronizar
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </TableCell>
+      {/* Tabla de tasas con responsive */}
+      <div className="border rounded-md dark:border-gray-700 overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <TableHead className="text-xs sm:text-sm dark:text-gray-300">Moneda</TableHead>
+              <TableHead className="text-xs sm:text-sm dark:text-gray-300 hidden sm:table-cell">Código</TableHead>
+              <TableHead className="text-xs sm:text-sm dark:text-gray-300">Tasa</TableHead>
+              <TableHead className="text-xs sm:text-sm dark:text-gray-300 hidden md:table-cell">Tendencia</TableHead>
+              <TableHead className="text-xs sm:text-sm dark:text-gray-300 hidden lg:table-cell">Histórico (5d)</TableHead>
             </TableRow>
-          ) : (
-            rates.map((rate) => (
-              <TableRow key={rate.code}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center">
-                    <span className="mr-2">{rate.currency_name || rate.code}</span>
-                    {rate.currency_symbol && (
-                      <Badge variant="secondary" className="text-xs">
-                        {rate.currency_symbol}
-                      </Badge>
-                    )}
+          </TableHeader>
+          <TableBody>
+            {rates.length === 0 ? (
+              <TableRow className="dark:border-gray-700">
+                <TableCell colSpan={5} className="text-center py-8 dark:text-gray-400">
+                  <div className="flex flex-col items-center gap-3">
+                    <p className="text-sm dark:text-gray-300">No hay tasas de cambio disponibles para esta fecha</p>
+                    <Button
+                      className="h-9 px-4 text-xs sm:text-sm"
+                      variant="outline"
+                      onClick={(e) => syncRatesViaEdgeFunction(true)}
+                      disabled={updating}
+                    >
+                      {updating ? (
+                        <>
+                          <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                          Sincronizando...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                          Sincronizar Tasas
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </TableCell>
-                <TableCell>{rate.code}</TableCell>
-                <TableCell>
-                  <span className="font-mono">{rate.rate.toFixed(6)}</span>
-                </TableCell>
-                <TableCell>
-                  {(() => {
-                    const trend = calculateTrend(rate.code, parseFloat(rate.rate.toString()));
-                    if (!trend) return <span>-</span>;
-                    
-                    return (
-                      <div className="flex items-center">
-                        {trend.isUp ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            <TrendingUp className="h-3 w-3 mr-1" />
-                            +{trend.percentChange.toFixed(2)}%
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                            <TrendingDown className="h-3 w-3 mr-1" />
-                            {trend.percentChange.toFixed(2)}%
-                          </Badge>
-                        )}
-                      </div>
-                    );
-                  })()} 
-                </TableCell>
-                <TableCell>
-                  <MiniSparkline currencyCode={rate.code} />
-                </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              rates.map((rate) => (
+                <TableRow key={rate.code} className="dark:border-gray-700">
+                  <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                      <span className="font-semibold">{rate.currency_name || rate.code}</span>
+                      {rate.currency_symbol && (
+                        <Badge variant="secondary" className="text-xs w-fit dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                          {rate.currency_symbol}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs sm:text-sm dark:text-gray-300 hidden sm:table-cell">{rate.code}</TableCell>
+                  <TableCell className="text-xs sm:text-sm dark:text-gray-200">
+                    <span className="font-mono font-semibold">{rate.rate.toFixed(6)}</span>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {(() => {
+                      const trend = calculateTrend(rate.code, parseFloat(rate.rate.toString()));
+                      if (!trend) return <span className="text-xs dark:text-gray-400">-</span>;
+                      
+                      return (
+                        <div className="flex items-center">
+                          {trend.isUp ? (
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                              +{trend.percentChange.toFixed(2)}%
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800">
+                              <TrendingDown className="h-3 w-3 mr-1" />
+                              {trend.percentChange.toFixed(2)}%
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })()} 
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <MiniSparkline currencyCode={rate.code} />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

@@ -221,26 +221,31 @@ const TaxesTable = () => {
 
   return (
     <div className="space-y-4">
-      <Card className="dark:bg-gray-800/50 light:bg-white">
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-xl text-blue-600 dark:text-blue-400">
+      <Card className="dark:bg-gray-800/50 bg-white border-gray-200 dark:border-gray-700">
+        <CardHeader className="pb-3 px-4 sm:px-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <CardTitle className="text-lg sm:text-xl text-blue-600 dark:text-blue-400">
               Impuestos de la Organización
             </CardTitle>
-            <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800">
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Impuesto
+            <Button 
+              onClick={handleAddNew} 
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 w-full sm:w-auto"
+              size="sm"
+            >
+              <Plus className="mr-2 h-4 w-4" /> 
+              <span className="sm:inline">Nuevo Impuesto</span>
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           <div className="flex items-center mb-4 gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground dark:text-gray-500" />
               <Input
                 placeholder="Buscar impuestos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 dark:bg-gray-900/50 dark:border-gray-700"
+                className="pl-9 text-sm dark:bg-gray-900/50 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
               />
             </div>
             <Button 
@@ -248,22 +253,22 @@ const TaxesTable = () => {
               size="icon"
               onClick={fetchTaxes}
               disabled={loading}
-              className="dark:border-gray-700 dark:hover:bg-gray-700"
+              className="dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300 shrink-0"
             >
               <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
 
-          <div className="border rounded-md dark:border-gray-700">
+          <div className="border rounded-md dark:border-gray-700 overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <TableHead className="font-medium">Nombre</TableHead>
-                  <TableHead className="font-medium">Tasa</TableHead>
-                  <TableHead className="font-medium">Descripción</TableHead>
-                  <TableHead className="font-medium">Estado</TableHead>
-                  <TableHead className="font-medium">Predeterminado</TableHead>
-                  <TableHead className="font-medium text-right">Acciones</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm">Nombre</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm">Tasa</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm hidden md:table-cell">Descripción</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm hidden lg:table-cell">Estado</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm hidden sm:table-cell">Predeterminado</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -272,17 +277,18 @@ const TaxesTable = () => {
                     <TableCell colSpan={6} className="h-24 text-center dark:border-gray-700">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <RefreshCcw className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
-                        <span>Cargando impuestos...</span>
+                        <span className="text-sm dark:text-gray-300">Cargando impuestos...</span>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : paginatedTaxes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center dark:border-gray-700">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <p className="text-gray-600 dark:text-gray-400">No hay impuestos disponibles</p>
+                      <div className="flex flex-col items-center justify-center gap-2 py-4">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">No hay impuestos disponibles</p>
                         <Button 
                           variant="outline" 
+                          size="sm"
                           className="mt-2 border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/50"
                           onClick={() => handleAddNew()}
                         >
@@ -295,49 +301,55 @@ const TaxesTable = () => {
                 ) : (
                   paginatedTaxes.map((tax) => (
                     <TableRow key={tax.id} className="dark:border-gray-700">
-                      <TableCell className="font-medium dark:text-gray-300">{tax.name}</TableCell>
+                      <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-300">{tax.name}</TableCell>
                       <TableCell>
-                        <Badge variant={tax.rate > 0 ? "default" : "outline"} className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                        <Badge 
+                          variant={tax.rate > 0 ? "default" : "outline"} 
+                          className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                        >
                           {formatPercent(tax.rate)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="dark:text-gray-400">{tax.description || '-'}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs sm:text-sm dark:text-gray-400 hidden md:table-cell">{tax.description || '-'}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="flex items-center space-x-2">
                           <Switch 
                             checked={tax.is_active} 
                             onCheckedChange={() => handleToggleActive(tax)}
                             className="data-[state=checked]:bg-green-600 dark:data-[state=checked]:bg-green-700"
                           />
-                          <span className="dark:text-gray-300">
+                          <span className="text-xs sm:text-sm dark:text-gray-300">
                             {tax.is_active ? 'Activo' : 'Inactivo'}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {tax.is_default ? (
-                          <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                          <Badge 
+                            variant="secondary" 
+                            className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                          >
                             Predeterminado
                           </Badge>
-                        ) : '-'}
+                        ) : <span className="text-xs sm:text-sm dark:text-gray-500">-</span>}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1 sm:gap-2">
                           <Button 
                             variant="outline" 
-                            size="sm"
+                            size="icon"
                             onClick={() => handleEdit(tax)}
-                            className="h-8 dark:border-gray-700 dark:hover:bg-gray-700"
+                            className="h-8 w-8 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
                           <Button 
                             variant="destructive" 
-                            size="sm"
+                            size="icon"
                             onClick={() => handleDelete(tax)}
-                            className="h-8 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+                            className="h-8 w-8 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -350,23 +362,28 @@ const TaxesTable = () => {
           
           {/* Controles de paginación */}
           {filteredTaxes.length > 0 && (
-            <div className="flex items-center justify-between space-x-2 py-4">
-              <div className="flex-1 text-sm text-muted-foreground dark:text-gray-400">
-                Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, filteredTaxes.length)} a {Math.min(currentPage * itemsPerPage, filteredTaxes.length)} de {filteredTaxes.length} impuestos
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-2 py-4">
+              <div className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400 text-center sm:text-left">
+                <span className="hidden sm:inline">
+                  Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, filteredTaxes.length)} a {Math.min(currentPage * itemsPerPage, filteredTaxes.length)} de {filteredTaxes.length} impuestos
+                </span>
+                <span className="sm:hidden">
+                  {Math.min((currentPage - 1) * itemsPerPage + 1, filteredTaxes.length)}-{Math.min(currentPage * itemsPerPage, filteredTaxes.length)} de {filteredTaxes.length}
+                </span>
               </div>
-              <div className="flex items-center space-x-6">
+              <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
                 <div className="flex items-center space-x-2">
-                  <p className="text-sm font-medium dark:text-gray-300">Filas por página</p>
+                  <p className="text-xs sm:text-sm font-medium dark:text-gray-300">Filas</p>
                   <Select
                     value={String(itemsPerPage)}
                     onValueChange={(value) => setItemsPerPage(Number(value))}
                   >
-                    <SelectTrigger className="h-8 w-[70px] dark:border-gray-700 dark:bg-gray-900/50">
+                    <SelectTrigger className="h-8 w-[60px] sm:w-[70px] text-xs sm:text-sm dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-200">
                       <SelectValue placeholder={itemsPerPage} />
                     </SelectTrigger>
                     <SelectContent className="dark:border-gray-700 dark:bg-gray-900">
                       {[5, 10, 15, 20].map((pageSize) => (
-                        <SelectItem key={pageSize} value={`${pageSize}`}>
+                        <SelectItem key={pageSize} value={`${pageSize}`} className="text-xs sm:text-sm dark:text-gray-200">
                           {pageSize}
                         </SelectItem>
                       ))}
@@ -374,38 +391,52 @@ const TaxesTable = () => {
                   </Select>
                 </div>
                 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2">
                   <Button
                     variant="outline"
                     size="icon"
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="h-8 w-8 dark:border-gray-700 dark:hover:bg-gray-800"
+                    className="h-8 w-8 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="sr-only">Página anterior</span>
                   </Button>
-                  <div className="flex items-center gap-1.5">
-                    {Array.from({length: totalPages}, (_, i) => i + 1).map(page => (
-                      <Button
-                        key={page}
-                        variant={page === currentPage ? "default" : "outline"}
-                        size="icon"
-                        onClick={() => setCurrentPage(page)}
-                        className={`h-8 w-8 ${page === currentPage ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800' : 'dark:border-gray-700 dark:hover:bg-gray-800'}`}
-                      >
-                        {page}
-                      </Button>
-                    ))}
+                  <div className="flex items-center gap-1">
+                    {Array.from({length: Math.min(totalPages, 5)}, (_, i) => {
+                      // En móvil, mostrar max 3 páginas, en desktop 5
+                      const maxVisiblePages = window.innerWidth < 640 ? 3 : 5;
+                      let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                      
+                      if (endPage - startPage + 1 < maxVisiblePages) {
+                        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                      }
+                      
+                      const page = startPage + i;
+                      if (page > endPage) return null;
+                      
+                      return (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? "default" : "outline"}
+                          size="icon"
+                          onClick={() => setCurrentPage(page)}
+                          className={`h-8 w-8 text-xs sm:text-sm ${page === currentPage ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white' : 'dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300'}`}
+                        >
+                          {page}
+                        </Button>
+                      );
+                    })}
                   </div>
                   <Button
                     variant="outline"
                     size="icon"
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
-                    className="h-8 w-8 dark:border-gray-700 dark:hover:bg-gray-800"
+                    className="h-8 w-8 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="sr-only">Página siguiente</span>
                   </Button>
                 </div>

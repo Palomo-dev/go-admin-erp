@@ -240,23 +240,23 @@ const TaxForm: React.FC<TaxFormProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={() => !loading && onClose()}>
-      <DialogContent className="sm:max-w-[500px] dark:bg-gray-800 dark:border-gray-700">
-        <DialogHeader>
-          <DialogTitle className="text-xl text-blue-600 dark:text-blue-400">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
+        <DialogHeader className="px-4 sm:px-6">
+          <DialogTitle className="text-lg sm:text-xl text-blue-600 dark:text-blue-400">
             {editMode ? 'Editar Impuesto' : 'Nuevo Impuesto'}
           </DialogTitle>
         </DialogHeader>
         
         {!editMode && templates.length > 0 && (
-          <div className="mx-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-sm text-blue-700 dark:text-blue-300">
+          <div className="mx-4 sm:mx-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
               ℹ️ <strong>Plantillas sugeridas:</strong> Se muestran automáticamente los impuestos 
               configurados para su país de operación. Puede usar una plantilla o crear un impuesto personalizado.
             </p>
           </div>
         )}
         
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 px-4 sm:px-6">
           {!editMode && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center space-x-2">
@@ -264,15 +264,16 @@ const TaxForm: React.FC<TaxFormProps> = ({
                   id="useTemplate" 
                   checked={useTemplate} 
                   onCheckedChange={(checked) => setUseTemplate(!!checked)}
+                  className="dark:border-gray-600"
                 />
-                <Label htmlFor="useTemplate" className="dark:text-gray-300">
+                <Label htmlFor="useTemplate" className="text-sm dark:text-gray-300 cursor-pointer">
                   Usar plantilla de impuesto
                 </Label>
               </div>
               
               {useTemplate && (
                 <div className="grid grid-cols-1 gap-2">
-                  <Label htmlFor="template" className="dark:text-gray-300">
+                  <Label htmlFor="template" className="text-sm dark:text-gray-300">
                     Plantillas de Impuestos Disponibles
                     {templates.length > 0 && templates[0]?.country && (
                       <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
@@ -281,8 +282,8 @@ const TaxForm: React.FC<TaxFormProps> = ({
                     )}
                   </Label>
                   {templates.length === 0 ? (
-                    <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800 text-center">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800/50 text-center">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                         No hay plantillas de impuestos disponibles para su país
                       </p>
                     </div>
@@ -292,11 +293,11 @@ const TaxForm: React.FC<TaxFormProps> = ({
                         id="template"
                         value={selectedTemplate || ''}
                         onChange={(e) => setSelectedTemplate(Number(e.target.value))}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 dark:border-gray-700 dark:bg-gray-900"
+                        className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-200 ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-2"
                       >
-                        <option value="">Seleccionar plantilla del país</option>
+                        <option value="" className="dark:bg-gray-900 dark:text-gray-400">Seleccionar plantilla del país</option>
                         {templates.map((template) => (
-                          <option key={template.id} value={template.id}>
+                          <option key={template.id} value={template.id} className="dark:bg-gray-900 dark:text-gray-200">
                             {template.name} - {template.rate}% {template.description ? `(${template.description})` : ''}
                           </option>
                         ))}
@@ -312,20 +313,20 @@ const TaxForm: React.FC<TaxFormProps> = ({
           )}
 
           <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="name" className="dark:text-gray-300">
+            <Label htmlFor="name" className="text-sm dark:text-gray-300">
               Nombre <span className="text-red-500">*</span>
             </Label>
             <Input 
               id="name" 
               value={name} 
               onChange={(e) => setName(e.target.value)}
-              className="dark:bg-gray-900 dark:border-gray-700"
+              className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
               placeholder="Ej: IVA 19%"
             />
           </div>
 
           <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="rate" className="dark:text-gray-300">
+            <Label htmlFor="rate" className="text-sm dark:text-gray-300">
               Tasa (%) <span className="text-red-500">*</span>
             </Label>
             <Input 
@@ -336,20 +337,22 @@ const TaxForm: React.FC<TaxFormProps> = ({
                 const value = e.target.value.replace(/[^0-9.]/g, '');
                 setRate(value);
               }}
-              className="dark:bg-gray-900 dark:border-gray-700"
+              className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
               placeholder="Ej: 19"
+              type="text"
+              inputMode="decimal"
             />
           </div>
 
           <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="description" className="dark:text-gray-300">
+            <Label htmlFor="description" className="text-sm dark:text-gray-300">
               Descripción
             </Label>
             <Textarea 
               id="description" 
               value={description} 
               onChange={(e) => setDescription(e.target.value)}
-              className="resize-none dark:bg-gray-900 dark:border-gray-700"
+              className="resize-none min-h-[80px] dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
               placeholder="Descripción del impuesto"
             />
           </div>
@@ -361,7 +364,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
               onCheckedChange={setIsActive}
               className="data-[state=checked]:bg-green-600 dark:data-[state=checked]:bg-green-700"
             />
-            <Label htmlFor="isActive" className="dark:text-gray-300">
+            <Label htmlFor="isActive" className="text-sm dark:text-gray-300 cursor-pointer">
               Impuesto activo
             </Label>
           </div>
@@ -373,33 +376,33 @@ const TaxForm: React.FC<TaxFormProps> = ({
               onCheckedChange={setIsDefault}
               className="data-[state=checked]:bg-amber-600 dark:data-[state=checked]:bg-amber-700"
             />
-            <Label htmlFor="isDefault" className="dark:text-gray-300">
+            <Label htmlFor="isDefault" className="text-sm dark:text-gray-300 cursor-pointer">
               Impuesto predeterminado
             </Label>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-4 sm:px-6 flex-col sm:flex-row gap-2">
           <Button 
             variant="outline" 
             onClick={() => onClose()} 
             disabled={loading}
-            className="dark:border-gray-700 dark:hover:bg-gray-700"
+            className="w-full sm:w-auto dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300"
           >
             Cancelar
           </Button>
           <Button 
             onClick={handleSave} 
             disabled={loading || !isFormValid()}
-            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Guardando...
+                <span className="text-sm sm:text-base">Guardando...</span>
               </>
             ) : (
-              'Guardar'
+              <span className="text-sm sm:text-base">Guardar</span>
             )}
           </Button>
         </DialogFooter>

@@ -154,37 +154,47 @@ export default function PaymentMethodsPage() {
   };
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Métodos de Pago</h1>
-          <p className="text-muted-foreground mt-1">
+    <div className="container mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-4 md:px-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="flex-1">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 dark:text-blue-400">Métodos de Pago</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Administra los métodos de pago aceptados por tu organización
           </p>
         </div>
-        <Button onClick={handleAddMethod}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Método
+        <Button onClick={handleAddMethod} className="w-full sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700">
+          <Plus className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline">Nuevo Método</span>
+          <span className="sm:hidden">Nuevo</span>
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="lista">Métodos Activos</TabsTrigger>
-          <TabsTrigger value="editar">
-            {selectedMethod ? "Editar Método" : "Nuevo Método"}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-4 sm:mb-6 w-full h-auto sm:w-auto grid grid-cols-2 sm:flex gap-2 p-2 bg-gray-100 dark:bg-gray-800/80 rounded-lg">
+          <TabsTrigger 
+            value="lista"
+            className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md whitespace-nowrap"
+          >
+            Métodos Activos
+          </TabsTrigger>
+          <TabsTrigger 
+            value="editar"
+            className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md whitespace-nowrap"
+          >
+            <span className="hidden sm:inline">{selectedMethod ? "Editar Método" : "Nuevo Método"}</span>
+            <span className="sm:hidden">{selectedMethod ? "Editar" : "Nuevo"}</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="lista">
-          <Card>
-            <CardHeader>
-              <CardTitle>Métodos de Pago Disponibles</CardTitle>
-              <CardDescription>
+          <Card className="dark:bg-gray-800/50 bg-white border-gray-200 dark:border-gray-700">
+            <CardHeader className="px-4 sm:px-6">
+              <CardTitle className="text-lg sm:text-xl text-blue-600 dark:text-blue-400">Métodos de Pago Disponibles</CardTitle>
+              <CardDescription className="text-sm dark:text-gray-400">
                 Gestiona los métodos de pago que tu organización acepta y configura sus opciones
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 sm:px-6">
               <PaymentMethodsList
                 paymentMethods={paymentMethods}
                 orgPaymentMethods={orgPaymentMethods}
@@ -199,18 +209,18 @@ export default function PaymentMethodsPage() {
         </TabsContent>
 
         <TabsContent value="editar">
-          <Card>
-            <CardHeader>
-              <CardTitle>
+          <Card className="dark:bg-gray-800/50 bg-white border-gray-200 dark:border-gray-700">
+            <CardHeader className="px-4 sm:px-6">
+              <CardTitle className="text-lg sm:text-xl text-blue-600 dark:text-blue-400">
                 {selectedMethod ? "Editar Método de Pago" : "Nuevo Método de Pago"}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm dark:text-gray-400">
                 {selectedMethod
                   ? "Modifica la configuración del método de pago seleccionado"
                   : "Configura un nuevo método de pago para tu organización"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 sm:px-6">
               {organizationId ? (
                 <PaymentMethodForm
                   organizationId={organizationId}
@@ -222,7 +232,7 @@ export default function PaymentMethodsPage() {
                   onCancel={() => setActiveTab("lista")}
                 />
               ) : (
-                <div className="py-4 text-center text-muted-foreground">
+                <div className="py-8 text-center text-sm sm:text-base text-gray-600 dark:text-gray-400">
                   No se pudo determinar la organización actual. Por favor, actualice la página.
                 </div>
               )}

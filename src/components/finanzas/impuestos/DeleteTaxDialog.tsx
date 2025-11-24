@@ -111,19 +111,22 @@ const DeleteTaxDialog: React.FC<DeleteTaxDialogProps> = ({ open, onClose, tax })
 
   return (
     <AlertDialog open={open} onOpenChange={() => !loading && onClose()}>
-      <AlertDialogContent className="bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="text-red-600 dark:text-red-400">
+      <AlertDialogContent className="bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 max-w-[90vw] sm:max-w-md">
+        <AlertDialogHeader className="px-4 sm:px-6">
+          <AlertDialogTitle className="text-lg sm:text-xl text-red-600 dark:text-red-400">
             Eliminar Impuesto
           </AlertDialogTitle>
-          <AlertDialogDescription className="dark:text-gray-300">
-            ¿Está seguro de que desea eliminar el impuesto <strong>{tax.name}</strong> ({formatPercent(tax.rate)})?
+          <AlertDialogDescription className="text-sm sm:text-base dark:text-gray-300 leading-relaxed">
+            ¿Está seguro de que desea eliminar el impuesto <strong className="text-gray-900 dark:text-gray-100">{tax.name}</strong> ({formatPercent(tax.rate)})?
             <br /><br />
             Esta acción no se puede deshacer. El impuesto será eliminado permanentemente.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading} className="dark:border-gray-700 dark:hover:bg-gray-700">
+        <AlertDialogFooter className="px-4 sm:px-6 flex-col sm:flex-row gap-2">
+          <AlertDialogCancel 
+            disabled={loading} 
+            className="w-full sm:w-auto dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300"
+          >
             Cancelar
           </AlertDialogCancel>
           <AlertDialogAction 
@@ -132,15 +135,15 @@ const DeleteTaxDialog: React.FC<DeleteTaxDialogProps> = ({ open, onClose, tax })
               handleDelete();
             }}
             disabled={loading}
-            className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+            className="w-full sm:w-auto bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white"
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Eliminando...
+                <span className="text-sm sm:text-base">Eliminando...</span>
               </>
             ) : (
-              'Eliminar'
+              <span className="text-sm sm:text-base">Eliminar</span>
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

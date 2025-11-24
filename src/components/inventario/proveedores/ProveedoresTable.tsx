@@ -52,11 +52,11 @@ const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
     
     let color;
     if (cumplimiento >= 80) {
-      color = theme === 'dark' ? 'bg-green-600' : 'bg-green-500';
+      color = 'bg-green-500 dark:bg-green-600';
     } else if (cumplimiento >= 60) {
-      color = theme === 'dark' ? 'bg-yellow-600' : 'bg-yellow-500';
+      color = 'bg-yellow-500 dark:bg-yellow-600';
     } else {
-      color = theme === 'dark' ? 'bg-red-600' : 'bg-red-500';
+      color = 'bg-red-500 dark:bg-red-600';
     }
     
     return (
@@ -67,37 +67,34 @@ const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
             style={{ width: `${cumplimiento}%` }}
           />
         </div>
-        <span>{cumplimiento}%</span>
+        <span className="text-xs sm:text-sm">{cumplimiento}%</span>
       </div>
     );
   };
   
   return (
-    <div className={`w-full rounded-md border ${
-      theme === 'dark' ? 'border-gray-800 bg-gray-950/50' : 'border-gray-200 bg-white'
-    }`}>
-      <Table>
-        <TableHeader>
-          <TableRow className={theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-100'}>
-            <TableHead className="w-[100px]">ID</TableHead>
-            <TableHead>Nombre</TableHead>
-            <TableHead>NIT</TableHead>
-            <TableHead>Contacto</TableHead>
-            <TableHead>Teléfono</TableHead>
-            <TableHead>Correo</TableHead>
-            <TableHead>Días Crédito</TableHead>
-            <TableHead>Cumplimiento</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
+    <div className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+              <TableHead className="w-[60px] sm:w-[80px] text-xs sm:text-sm dark:text-gray-300">ID</TableHead>
+              <TableHead className="text-xs sm:text-sm dark:text-gray-300">Nombre</TableHead>
+              <TableHead className="hidden md:table-cell text-xs sm:text-sm dark:text-gray-300">NIT</TableHead>
+              <TableHead className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">Contacto</TableHead>
+              <TableHead className="hidden sm:table-cell text-xs sm:text-sm dark:text-gray-300">Teléfono</TableHead>
+              <TableHead className="hidden xl:table-cell text-xs sm:text-sm dark:text-gray-300">Correo</TableHead>
+              <TableHead className="hidden md:table-cell text-xs sm:text-sm dark:text-gray-300">Días Crédito</TableHead>
+              <TableHead className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">Cumplimiento</TableHead>
+              <TableHead className="text-right text-xs sm:text-sm dark:text-gray-300">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {paginatedProveedores.length === 0 ? (
             <TableRow>
               <TableCell 
                 colSpan={9} 
-                className={`text-center py-10 ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                }`}
+                className="text-center py-8 sm:py-10 text-sm text-gray-500 dark:text-gray-400"
               >
                 No hay proveedores registrados
               </TableCell>
@@ -106,48 +103,48 @@ const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
             paginatedProveedores.map((proveedor) => (
               <TableRow 
                 key={proveedor.id}
-                className={theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-100'}
+                className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
-                <TableCell className="font-medium">{proveedor.id}</TableCell>
-                <TableCell className="font-medium">{proveedor.name}</TableCell>
-                <TableCell>{proveedor.nit || '-'}</TableCell>
-                <TableCell>{proveedor.contact || '-'}</TableCell>
-                <TableCell>{proveedor.phone || '-'}</TableCell>
-                <TableCell>{proveedor.email || '-'}</TableCell>
-                <TableCell>
+                <TableCell className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">{proveedor.id}</TableCell>
+                <TableCell className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">{proveedor.name}</TableCell>
+                <TableCell className="hidden md:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">{proveedor.nit || '-'}</TableCell>
+                <TableCell className="hidden lg:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">{proveedor.contact || '-'}</TableCell>
+                <TableCell className="hidden sm:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">{proveedor.phone || '-'}</TableCell>
+                <TableCell className="hidden xl:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">{proveedor.email || '-'}</TableCell>
+                <TableCell className="hidden md:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                   {proveedor.condiciones_pago?.dias_credito || '-'}
                 </TableCell>
-                <TableCell className="w-[200px]">
+                <TableCell className="hidden lg:table-cell w-[180px] sm:w-[200px]">
                   {getCumplimientoIndicator(proveedor.cumplimiento)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
+                  <div className="flex justify-end gap-1 sm:gap-2">
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => onView(proveedor)}
-                      className={theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}
+                      className="h-7 w-7 sm:h-8 sm:w-8 dark:border-gray-600 dark:hover:bg-gray-700"
+                      title="Ver detalles"
                     >
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => onEdit(proveedor)}
-                      className={theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}
+                      className="h-7 w-7 sm:h-8 sm:w-8 dark:border-gray-600 dark:hover:bg-gray-700"
+                      title="Editar"
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => onDelete(proveedor.id)}
-                      className={theme === 'dark' 
-                        ? 'text-red-500 hover:text-red-600 hover:bg-gray-800' 
-                        : 'text-red-500 hover:text-red-600 hover:bg-gray-100'
-                      }
+                      className="h-7 w-7 sm:h-8 sm:w-8 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500 dark:border-gray-600 dark:hover:bg-gray-700"
+                      title="Eliminar"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                 </TableCell>
@@ -156,39 +153,37 @@ const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
           )}
         </TableBody>
       </Table>
+      </div>
       
       {/* Paginación */}
       {totalPages > 1 && (
-        <div className={`flex items-center justify-between p-4 ${
-          theme === 'dark' ? 'border-t border-gray-800' : 'border-t border-gray-200'
-        }`}>
-          <div className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             Mostrando {start + 1}-{Math.min(end, proveedores.length)} de {proveedores.length}
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPage(page - 1)}
               disabled={page === 1}
-              className={theme === 'dark' 
-                ? 'border-gray-800 hover:bg-gray-800' 
-                : 'border-gray-200 hover:bg-gray-100'
-              }
+              className="text-xs sm:text-sm dark:border-gray-600 dark:hover:bg-gray-700"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline ml-1">Anterior</span>
             </Button>
+            <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 px-2">
+              {page} / {totalPages}
+            </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setPage(page + 1)}
               disabled={page === totalPages}
-              className={theme === 'dark' 
-                ? 'border-gray-800 hover:bg-gray-800' 
-                : 'border-gray-200 hover:bg-gray-100'
-              }
+              className="text-xs sm:text-sm dark:border-gray-600 dark:hover:bg-gray-700"
             >
-              <ChevronRight className="h-4 w-4" />
+              <span className="hidden sm:inline mr-1">Siguiente</span>
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
             </Button>
           </div>
         </div>

@@ -135,29 +135,29 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       case 'active':
         return (
           <div className="flex items-center">
-            <span className={`w-2 h-2 rounded-full mr-2 ${theme === 'dark' ? 'bg-green-500' : 'bg-green-500'}`}></span>
-            <span>Activo</span>
+            <span className="w-2 h-2 rounded-full mr-2 bg-green-500 dark:bg-green-400"></span>
+            <span className="text-sm dark:text-gray-200">Activo</span>
           </div>
         );
       case 'inactive':
         return (
           <div className="flex items-center">
-            <span className={`w-2 h-2 rounded-full mr-2 ${theme === 'dark' ? 'bg-gray-500' : 'bg-gray-400'}`}></span>
-            <span>Inactivo</span>
+            <span className="w-2 h-2 rounded-full mr-2 bg-gray-400 dark:bg-gray-500"></span>
+            <span className="text-sm dark:text-gray-200">Inactivo</span>
           </div>
         );
       case 'discontinued':
         return (
           <div className="flex items-center">
-            <span className={`w-2 h-2 rounded-full mr-2 ${theme === 'dark' ? 'bg-red-500' : 'bg-red-500'}`}></span>
-            <span>Descontinuado</span>
+            <span className="w-2 h-2 rounded-full mr-2 bg-red-500"></span>
+            <span className="text-sm dark:text-gray-200">Descontinuado</span>
           </div>
         );
       case 'deleted':
         return (
           <div className="flex items-center">
-            <span className={`w-2 h-2 rounded-full mr-2 ${theme === 'dark' ? 'bg-purple-500' : 'bg-purple-500'}`}></span>
-            <span>Eliminado</span>
+            <span className="w-2 h-2 rounded-full mr-2 bg-purple-500"></span>
+            <span className="text-sm dark:text-gray-200">Eliminado</span>
           </div>
         );
       default:
@@ -171,13 +171,9 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     if (stock === undefined) return '';
     
     if (stock <= 0) {
-      return theme === 'dark' 
-        ? 'bg-red-950/30 dark:border-red-800/30' 
-        : 'bg-red-50 border-red-100';
-    } else if (stock < 5) { // Esto debería ser un umbral configurable
-      return theme === 'dark' 
-        ? 'bg-amber-950/30 dark:border-amber-800/30' 
-        : 'bg-amber-50 border-amber-100';
+      return 'bg-red-50 dark:bg-red-950/30';
+    } else if (stock < 5) {
+      return 'bg-amber-50 dark:bg-amber-950/30';
     }
     
     return '';
@@ -185,9 +181,9 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
 
   if (loading) {
     return (
-      <div className={`rounded-lg border p-8 text-center ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-        <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+      <div className="rounded-lg border p-6 sm:p-8 text-center bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+        <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-blue-600 dark:text-blue-400" />
+        <p className="mt-2 text-sm sm:text-base text-gray-500 dark:text-gray-400">
           Cargando productos...
         </p>
       </div>
@@ -196,11 +192,12 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
 
   if (productos.length === 0) {
     return (
-      <div className={`rounded-lg border p-8 text-center ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-        <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+      <div className="rounded-lg border p-6 sm:p-8 text-center bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+        <PackageIcon className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-gray-400 dark:text-gray-500 mb-3" />
+        <p className="text-base sm:text-lg font-semibold text-gray-700 dark:text-gray-300">
           No se encontraron productos
         </p>
-        <p className={`mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Intente con otros filtros o cree un nuevo producto.
         </p>
       </div>
@@ -208,30 +205,30 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   }
 
   return (
-    <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+    <div className="rounded-lg border shadow-sm overflow-hidden bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
       <div className="overflow-x-auto">
         <Table>
-          <TableHeader className={theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}>
-            <TableRow>
-              <TableHead className="w-[80px]">Imagen</TableHead>
-              <TableHead className="w-[100px]">Código</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead className="text-right">Precio</TableHead>
-              <TableHead className="text-right">Costo</TableHead>
-              <TableHead className="text-center">Stock</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="w-[100px] text-right">Acciones</TableHead>
+          <TableHeader className="bg-gray-50 dark:bg-gray-800">
+            <TableRow className="dark:border-gray-700">
+              <TableHead className="w-[60px] sm:w-[80px] text-xs sm:text-sm dark:text-gray-300">Imagen</TableHead>
+              <TableHead className="hidden md:table-cell w-[80px] sm:w-[100px] text-xs sm:text-sm dark:text-gray-300">Código</TableHead>
+              <TableHead className="text-xs sm:text-sm dark:text-gray-300">Nombre</TableHead>
+              <TableHead className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">Categoría</TableHead>
+              <TableHead className="text-right text-xs sm:text-sm dark:text-gray-300">Precio</TableHead>
+              <TableHead className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">Costo</TableHead>
+              <TableHead className="text-center text-xs sm:text-sm dark:text-gray-300">Stock</TableHead>
+              <TableHead className="hidden sm:table-cell text-xs sm:text-sm dark:text-gray-300">Estado</TableHead>
+              <TableHead className="w-[60px] sm:w-[80px] text-right text-xs sm:text-sm dark:text-gray-300">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {currentProductos.map((producto) => (
               <TableRow 
                 key={typeof producto.id === 'number' ? producto.id : String(producto.id)}
-                className={`${getBgColorByStock(producto.stock)}`}
+                className={`dark:border-gray-700 ${getBgColorByStock(producto.stock)}`}
               >
                 <TableCell>
-                  <div className="relative h-14 w-14 rounded-md overflow-hidden border bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-md overflow-hidden border dark:border-gray-600 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                     {productImages[String(producto.id)] ? (
                       <img
                         src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImages[String(producto.id)]}`}
@@ -256,60 +253,62 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                         }}
                       />
                     ) : (
-                      <span className="text-gray-400 text-xs">Sin imagen</span>
+                      <span className="text-gray-400 dark:text-gray-500 text-xs">Sin imagen</span>
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="font-mono">{producto.sku}</TableCell>
-                <TableCell className="font-medium">{producto.name}</TableCell>
-                <TableCell>{producto.category?.name || '-'}</TableCell>
-                <TableCell className="text-right">{typeof producto.price === 'number' ? formatCurrency(producto.price) : '-'}</TableCell>
-                <TableCell className="text-right">{typeof producto.cost === 'number' ? formatCurrency(producto.cost) : '-'}</TableCell>
-                <TableCell className="text-center">
-                  <span className={producto.stock && producto.stock <= 0 ? 'text-red-500 font-semibold' : ''}>{producto.stock || 0}</span>
+                <TableCell className="hidden md:table-cell font-mono text-xs sm:text-sm dark:text-gray-300">{producto.sku}</TableCell>
+                <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
+                  <div className="max-w-[150px] sm:max-w-none truncate">{producto.name}</div>
                 </TableCell>
-                <TableCell>{renderEstado(producto.status)}</TableCell>
+                <TableCell className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">{producto.category?.name || '-'}</TableCell>
+                <TableCell className="text-right text-xs sm:text-sm dark:text-gray-300 font-semibold">{typeof producto.price === 'number' ? formatCurrency(producto.price) : '-'}</TableCell>
+                <TableCell className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">{typeof producto.cost === 'number' ? formatCurrency(producto.cost) : '-'}</TableCell>
+                <TableCell className="text-center text-xs sm:text-sm">
+                  <span className={`font-semibold ${producto.stock && producto.stock <= 0 ? 'text-red-500' : 'dark:text-gray-200'}`}>{producto.stock || 0}</span>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell">{renderEstado(producto.status)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
-                        className="h-8 w-8 p-0"
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:hover:bg-gray-700"
                       >
                         <span className="sr-only">Abrir menú</span>
-                        <MoreHorizontal className="h-4 w-4" />
+                        <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4 dark:text-gray-300" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent 
                       align="end"
-                      className={theme === 'dark' ? 'dark:bg-gray-950 dark:border-gray-800' : ''}
+                      className="dark:bg-gray-800 dark:border-gray-700 w-40 sm:w-48"
                     >
                       <DropdownMenuItem 
                         onClick={() => onView(producto)}
-                        className={theme === 'dark' ? 'dark:hover:bg-gray-900 dark:focus:bg-gray-900' : ''}
+                        className="dark:hover:bg-gray-700 dark:focus:bg-gray-700 dark:text-gray-200 text-sm"
                       >
-                        <Eye className="mr-2 h-4 w-4" />
-                        <span>Ver detalles</span>
+                        <Eye className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span>Ver</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => onEdit(producto)}
-                        className={theme === 'dark' ? 'dark:hover:bg-gray-900 dark:focus:bg-gray-900' : ''}
+                        className="dark:hover:bg-gray-700 dark:focus:bg-gray-700 dark:text-gray-200 text-sm"
                       >
-                        <Pencil className="mr-2 h-4 w-4" />
+                        <Pencil className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                         <span>Editar</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => onDuplicate(producto)}
-                        className={theme === 'dark' ? 'dark:hover:bg-gray-900 dark:focus:bg-gray-900' : ''}
+                        className="dark:hover:bg-gray-700 dark:focus:bg-gray-700 dark:text-gray-200 text-sm"
                       >
-                        <Copy className="mr-2 h-4 w-4" />
+                        <Copy className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                         <span>Duplicar</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => onDelete(producto.id)}
-                        className={`text-red-600 ${theme === 'dark' ? 'dark:hover:bg-gray-900 dark:focus:bg-gray-900' : ''}`}
+                        className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700 dark:focus:bg-gray-700 text-sm"
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Trash2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                         <span>Eliminar</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -322,38 +321,40 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       </div>
       
       {/* Paginación */}
-      <div className={`flex justify-between items-center px-4 py-3 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
-        <div className="flex items-center space-x-2">
-          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Mostrar</span>
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-3 sm:px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2">
+          <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Mostrar</span>
           <select
-            className={`border rounded-md px-1 py-1 text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'}`}
+            className="border rounded-md px-2 py-1 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
-              setCurrentPage(1); // Reset a la primera página al cambiar el tamaño
+              setCurrentPage(1);
             }}
           >
             <option value={25}>25</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
           </select>
-          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            de {productos.length} productos
+          <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+            de {productos.length}
           </span>
         </div>
         
-        <div className="flex space-x-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setCurrentPage((prev: number) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
+            className="text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            Anterior
+            <span className="hidden sm:inline">Anterior</span>
+            <span className="sm:hidden">«</span>
           </Button>
           
-          <span className={`flex items-center px-3 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-            {currentPage} de {totalPages || 1}
+          <span className="flex items-center px-2 sm:px-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+            {currentPage} / {totalPages || 1}
           </span>
           
           <Button
@@ -361,8 +362,10 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
             size="sm"
             onClick={() => setCurrentPage((prev: number) => Math.min(prev + 1, totalPages))}
             disabled={currentPage >= totalPages}
+            className="text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            Siguiente
+            <span className="hidden sm:inline">Siguiente</span>
+            <span className="sm:hidden">»</span>
           </Button>
         </div>
       </div>

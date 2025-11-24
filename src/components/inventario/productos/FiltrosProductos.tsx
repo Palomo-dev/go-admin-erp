@@ -132,16 +132,16 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
   };
 
   return (
-    <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-50/80 border-gray-200'}`}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="p-3 sm:p-4 rounded-lg border bg-gray-50/80 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Búsqueda */}
-        <div className="relative">
-          <Search className={`absolute left-3 top-3 h-4 w-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+        <div className="relative sm:col-span-2 lg:col-span-1">
+          <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
           <Input
             value={busquedaLocal}
             onChange={handleBusquedaChange}
-            placeholder="Buscar por nombre, código o barcode"
-            className={`pl-10 ${theme === 'dark' ? 'bg-gray-950 border-gray-800' : ''}`}
+            placeholder="Buscar productos..."
+            className="pl-8 sm:pl-10 text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
           />
         </div>
         
@@ -151,14 +151,14 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
             value={filters.categoria?.toString() || "todos"} 
             onValueChange={handleCategoriaChange}
           >
-            <SelectTrigger className={theme === 'dark' ? 'bg-gray-950 border-gray-800' : ''}>
+            <SelectTrigger className="text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100">
               <SelectValue placeholder="Categoría" />
             </SelectTrigger>
-            <SelectContent className={theme === 'dark' ? 'bg-gray-950 border-gray-800' : ''}>
+            <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
               <SelectGroup>
-                <SelectItem value="todos">Todas las categorías</SelectItem>
+                <SelectItem value="todos" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Todas</SelectItem>
                 {categorias.map((categoria) => (
-                  <SelectItem key={categoria.id} value={categoria.id.toString()}>
+                  <SelectItem key={categoria.id} value={categoria.id.toString()} className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">
                     {categoria.name}
                   </SelectItem>
                 ))}
@@ -173,16 +173,16 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
             value={filters.estado || "todos"} 
             onValueChange={handleEstadoChange}
           >
-            <SelectTrigger className={theme === 'dark' ? 'bg-gray-950 border-gray-800' : ''}>
+            <SelectTrigger className="text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100">
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
-            <SelectContent className={theme === 'dark' ? 'bg-gray-950 border-gray-800' : ''}>
+            <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
               <SelectGroup>
-                <SelectItem value="todos">Todos los estados</SelectItem>
-                <SelectItem value="active">Activo</SelectItem>
-                <SelectItem value="inactive">Inactivo</SelectItem>
-                <SelectItem value="discontinued">Descontinuado</SelectItem>
-                <SelectItem value="deleted">Eliminado</SelectItem>
+                <SelectItem value="todos" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Todos</SelectItem>
+                <SelectItem value="active" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Activo</SelectItem>
+                <SelectItem value="inactive" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Inactivo</SelectItem>
+                <SelectItem value="discontinued" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Descontinuado</SelectItem>
+                <SelectItem value="deleted" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Eliminado</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -194,15 +194,15 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
             value={filters.ordenarPor} 
             onValueChange={handleOrdenarPorChange}
           >
-            <SelectTrigger className={theme === 'dark' ? 'bg-gray-950 border-gray-800' : ''}>
+            <SelectTrigger className="text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100">
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
-            <SelectContent className={theme === 'dark' ? 'bg-gray-950 border-gray-800' : ''}>
+            <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
               <SelectGroup>
-                <SelectItem value="name">Nombre</SelectItem>
-                <SelectItem value="sku">Código (SKU)</SelectItem>
-                <SelectItem value="price">Precio</SelectItem>
-                <SelectItem value="created_at">Fecha de creación</SelectItem>
+                <SelectItem value="name" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Nombre</SelectItem>
+                <SelectItem value="sku" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Código (SKU)</SelectItem>
+                <SelectItem value="price" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Precio</SelectItem>
+                <SelectItem value="created_at" className="text-sm dark:text-gray-200 dark:focus:bg-gray-800">Fecha</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -211,18 +211,20 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
       </div>
       
       {/* Botones de acción */}
-      <div className="mt-4 flex justify-end gap-2">
+      <div className="mt-3 sm:mt-4 flex justify-end gap-2">
         <Button 
           variant="outline" 
           onClick={() => onFiltersChange({
             busqueda: '',
             categoria: null,
             estado: '',
-            ordenarPor: 'name'
+            ordenarPor: 'name',
+            mostrarEliminados: false
           })}
-          className={theme === 'dark' ? 'dark:border-gray-700 dark:text-gray-300' : ''}
+          className="text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
         >
-          Limpiar filtros
+          <span className="hidden sm:inline">Limpiar filtros</span>
+          <span className="sm:hidden">Limpiar</span>
         </Button>
       </div>
     </div>

@@ -355,19 +355,23 @@ export default function PaymentMethodForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleFormSubmit} className="space-y-6">
+      <form onSubmit={handleFormSubmit} className="space-y-4 sm:space-y-6">
         {isNewMethod ? (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nombre del método</FormLabel>
+                  <FormLabel className="text-sm dark:text-gray-200">Nombre del método</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej. Transferencia Banco XYZ" {...field} />
+                    <Input 
+                      placeholder="Ej. Transferencia Banco XYZ" 
+                      {...field} 
+                      className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm"
+                    />
                   </FormControl>
-                  <FormDescription>
+                  <FormDescription className="text-xs dark:text-gray-400">
                     Nombre descriptivo para el método de pago
                   </FormDescription>
                   <FormMessage />
@@ -380,11 +384,15 @@ export default function PaymentMethodForm({
               name="code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Código interno</FormLabel>
+                  <FormLabel className="text-sm dark:text-gray-200">Código interno</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej. TRANSFER_XYZ" {...field} />
+                    <Input 
+                      placeholder="Ej. TRANSFER_XYZ" 
+                      {...field} 
+                      className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm"
+                    />
                   </FormControl>
-                  <FormDescription>
+                  <FormDescription className="text-xs dark:text-gray-400">
                     Código único para el método de pago (sin espacios)
                   </FormDescription>
                   <FormMessage />
@@ -398,7 +406,7 @@ export default function PaymentMethodForm({
             name="payment_method_code"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Método de pago</FormLabel>
+                <FormLabel className="text-sm dark:text-gray-200">Método de pago</FormLabel>
                 <Select 
                   onValueChange={(value) => {
                     field.onChange(value);
@@ -408,15 +416,15 @@ export default function PaymentMethodForm({
                   disabled={selectedMethod !== null}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm">
                       <SelectValue placeholder="Selecciona un método de pago" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                     {/* Métodos Recomendados */}
                     {recommendedMethods.length > 0 && (
                       <>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border-b">
+                        <div className="px-2 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 border-b dark:border-gray-700">
                           ★ Recomendados {countryCode && `para ${countryCode}`}
                         </div>
                         {recommendedMethods.map((method) => {
@@ -425,7 +433,7 @@ export default function PaymentMethodForm({
                             <SelectItem 
                               key={method.code} 
                               value={method.code}
-                              className="bg-blue-50/50 border-l-2 border-l-blue-400"
+                              className="bg-blue-50/50 dark:bg-blue-900/20 border-l-2 border-l-blue-400 dark:border-l-blue-600 dark:text-gray-200 dark:focus:bg-gray-800"
                             >
                               ★ {method.name}
                               {method.settings && Object.keys(method.settings).length > 0 && (
@@ -434,7 +442,7 @@ export default function PaymentMethodForm({
                             </SelectItem>
                           ) : null;
                         })}
-                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-600 bg-gray-50 border-b">
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
                           Otros métodos disponibles
                         </div>
                       </>
@@ -443,15 +451,15 @@ export default function PaymentMethodForm({
                     {globalMethods
                       .filter(method => !recommendedMethods.some(rec => rec.code === method.code))
                       .map((method) => (
-                        <SelectItem key={method.code} value={method.code}>
+                        <SelectItem key={method.code} value={method.code} className="dark:text-gray-200 dark:focus:bg-gray-800">
                           {method.name} {method.is_system && "(Sistema)"}
                         </SelectItem>
                       ))
                     }
-                    <SelectItem value="new">+ Crear nuevo método</SelectItem>
+                    <SelectItem value="new" className="dark:text-gray-200 dark:focus:bg-gray-800">+ Crear nuevo método</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormDescription>
+                <FormDescription className="text-xs dark:text-gray-400">
                   Selecciona el método de pago que deseas configurar
                 </FormDescription>
                 <FormMessage />
@@ -461,23 +469,39 @@ export default function PaymentMethodForm({
         )}
         
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="gateway">Integración de Pago</TabsTrigger>
-            <TabsTrigger value="accounting">Contabilidad</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 sm:mt-6">
+          <TabsList className="grid grid-cols-3 gap-2 p-2 mb-4 sm:mb-6 bg-gray-100 dark:bg-gray-800/80 rounded-lg h-auto">
+            <TabsTrigger 
+              value="general"
+              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md"
+            >
+              General
+            </TabsTrigger>
+            <TabsTrigger 
+              value="gateway"
+              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md"
+            >
+              <span className="hidden sm:inline">Integración de Pago</span>
+              <span className="sm:hidden">Gateway</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="accounting"
+              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md"
+            >
+              Contabilidad
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="general">
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <FormField
                 control={form.control}
                 name="is_active"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Activado</FormLabel>
-                      <FormDescription>
+                  <FormItem className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border dark:border-gray-700 p-3 sm:p-4 space-y-2 sm:space-y-0">
+                    <div className="space-y-0.5 flex-1">
+                      <FormLabel className="text-sm sm:text-base dark:text-gray-200">Habilitar método</FormLabel>
+                      <FormDescription className="text-xs dark:text-gray-400">
                         Habilitar este método de pago para su uso en la organización
                       </FormDescription>
                     </div>
@@ -485,6 +509,7 @@ export default function PaymentMethodForm({
                       <Switch
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        className="data-[state=checked]:bg-blue-600"
                       />
                     </FormControl>
                   </FormItem>
@@ -495,10 +520,10 @@ export default function PaymentMethodForm({
                 control={form.control}
                 name="requires_reference"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Requiere referencia</FormLabel>
-                      <FormDescription>
+                  <FormItem className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border dark:border-gray-700 p-3 sm:p-4 space-y-2 sm:space-y-0">
+                    <div className="space-y-0.5 flex-1">
+                      <FormLabel className="text-sm sm:text-base dark:text-gray-200">Requiere referencia</FormLabel>
+                      <FormDescription className="text-xs dark:text-gray-400">
                         Solicitar número de referencia o transacción al procesar pagos
                       </FormDescription>
                     </div>
@@ -507,6 +532,7 @@ export default function PaymentMethodForm({
                         checked={field.value}
                         onCheckedChange={field.onChange}
                         disabled={!isNewMethod && selectedMethod !== null}
+                        className="dark:border-gray-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                       />
                     </FormControl>
                   </FormItem>
@@ -516,31 +542,31 @@ export default function PaymentMethodForm({
           </TabsContent>
           
           <TabsContent value="gateway">
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <FormField
                 control={form.control}
                 name="gateway"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Integración de pago</FormLabel>
+                    <FormLabel className="text-sm dark:text-gray-200">Integración de pago</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       value={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm">
                           <SelectValue placeholder="Selecciona un gateway" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                         {gatewayOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
+                          <SelectItem key={option.value} value={option.value} className="dark:text-gray-200 dark:focus:bg-gray-800">
                             {option.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormDescription>
+                    <FormDescription className="text-xs dark:text-gray-400">
                       Selecciona el pasarelas de pagos en línea (si aplica)
                     </FormDescription>
                     <FormMessage />
@@ -550,7 +576,7 @@ export default function PaymentMethodForm({
 
               {form.watch("gateway") && (
                 <>
-                  <Separator className="my-6" />
+                  <Separator className="my-4 sm:my-6 dark:bg-gray-700" />
                   <PaymentMethodGatewayConfig
                     organizationId={organizationId}
                     paymentMethodCode={selectedMethod?.payment_method_code || form.watch("payment_method_code") || ""}
@@ -571,8 +597,14 @@ export default function PaymentMethodForm({
           </TabsContent>
         </Tabs>
         
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
+        <div className="flex flex-col sm:flex-row justify-end gap-2 sm:space-x-2 pt-4 sm:pt-6">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel} 
+            disabled={isSaving}
+            className="w-full sm:w-auto dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 text-sm"
+          >
             Cancelar
           </Button>
           <Button 
@@ -582,8 +614,9 @@ export default function PaymentMethodForm({
               handleFormSubmit(e as any);
             }} 
             disabled={isSaving}
+            className="w-full sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700 text-sm"
           >
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSaving && <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />}
             Guardar
           </Button>
         </div>

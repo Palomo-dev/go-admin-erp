@@ -27,20 +27,33 @@ export function DatePicker({ date, onSelect, className }: DatePickerProps) {
         <Button
           variant="outline"
           className={cn(
-            "w-full justify-start text-left font-normal text-sm",
+            "w-full sm:w-auto justify-start text-left font-normal text-xs sm:text-sm",
             "bg-white dark:bg-gray-900",
             "border-gray-300 dark:border-gray-600",
             "text-gray-900 dark:text-gray-100",
             "hover:bg-gray-50 dark:hover:bg-gray-800",
+            "h-9 sm:h-10",
             !date && "text-gray-500 dark:text-gray-400",
             className
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0 text-gray-600 dark:text-gray-400" />
-          {date ? format(date, "PPP", { locale: es }) : <span>Seleccionar fecha</span>}
+          <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 text-gray-600 dark:text-gray-400" />
+          <span className="truncate">
+            {date ? (
+              <>
+                <span className="hidden sm:inline">{format(date, "PPP", { locale: es })}</span>
+                <span className="sm:hidden">{format(date, "dd/MM/yyyy", { locale: es })}</span>
+              </>
+            ) : (
+              <>
+                <span className="hidden sm:inline">Seleccionar fecha</span>
+                <span className="sm:hidden">Fecha</span>
+              </>
+            )}
+          </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700" align="start">
         <Calendar
           mode="single"
           selected={date}

@@ -504,19 +504,19 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
     if (!message) return null;
     
     return (
-      <div className="p-6 flex flex-col items-center justify-center space-y-4 text-center">
-        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md border border-red-200 dark:border-red-800">
+      <div className="p-4 sm:p-6 flex flex-col items-center justify-center space-y-3 sm:space-y-4 text-center">
+        <div className="bg-red-50 dark:bg-red-900/20 p-3 sm:p-4 rounded-md border border-red-200 dark:border-red-800 w-full max-w-md">
           <div className="flex items-center justify-center mb-2">
-            <AlertTriangle className="text-red-500 dark:text-red-400 h-5 w-5 mr-2" />
-            <h3 className="text-red-600 dark:text-red-400 font-medium">Error en el componente</h3>
+            <AlertTriangle className="text-red-500 dark:text-red-400 h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+            <h3 className="text-sm sm:text-base text-red-600 dark:text-red-400 font-medium">Error en el componente</h3>
           </div>
-          <p className="text-sm text-red-500 dark:text-red-300">{message}</p>
+          <p className="text-xs sm:text-sm text-red-500 dark:text-red-300">{message}</p>
         </div>
         <button 
           onClick={() => window.location.reload()}
-          className="inline-flex items-center px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          className="inline-flex items-center px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm bg-blue-500 text-white rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors w-full sm:w-auto"
         >
-          <RefreshCw className="h-4 w-4 mr-2" /> Recargar página
+          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-2" /> Recargar página
         </button>
       </div>
     );
@@ -525,113 +525,116 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
   // Si hay un error conocido, mostrar el estado de error
   if (error) {
     return (
-      <Card className="overflow-hidden border">
+      <Card className="overflow-hidden border dark:border-gray-700 dark:bg-gray-800/50 bg-white">
         <ErrorState message={error} />
       </Card>
     );
   }
 
   return (
-    <Card className="overflow-hidden border">
-      <div className="p-6 space-y-6">
+    <Card className="overflow-hidden border dark:border-gray-700 dark:bg-gray-800/50">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Tabs defaultValue="chart">
-          <div className="flex justify-between mb-4">
-            <TabsList>
-              <TabsTrigger value="chart">Gráfico Histórico</TabsTrigger>
-              <TabsTrigger value="logs">Logs de Actualización</TabsTrigger>
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-3 sm:gap-0 mb-4">
+            <TabsList className="dark:bg-gray-800">
+              <TabsTrigger value="chart" className="text-xs sm:text-sm dark:data-[state=active]:bg-gray-700">Gráfico Histórico</TabsTrigger>
+              <TabsTrigger value="logs" className="text-xs sm:text-sm dark:data-[state=active]:bg-gray-700">Logs de Actualización</TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="chart">
             <div className="mb-4 space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-medium dark:text-gray-300">Evolución de Tasas - Últimos 30 días</h3>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <h3 className="text-base sm:text-lg font-medium dark:text-gray-300">Evolución de Tasas - Últimos 30 días</h3>
                   {/* Estado de depuración */}
-                  <div className="text-xs bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-1.5 py-0.5 rounded">
+                  <div className="hidden sm:inline-flex text-xs bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-1.5 py-0.5 rounded">
                     {currencies.length} monedas | {selectedCurrency || 'ninguna'} seleccionada
                   </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <button
                     onClick={actualizarTasas}
                     disabled={updatingRates}
-                    className="inline-flex items-center px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center justify-center px-3 py-2 text-xs sm:text-sm border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
                     title="Actualizar tasas desde OpenExchangeRates API"
                   >
                     {updatingRates ? (
                       <>
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Actualizando...
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 animate-spin" /> Actualizando...
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="h-3 w-3 mr-1" /> Actualizar tasas
+                        <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" /> Actualizar tasas
                       </>
                     )}
                   </button>
-                </div>
-                
-                <div className="w-full sm:w-64">
-                  <Select 
-                    value={selectedCurrency || ''} 
-                    onValueChange={(value) => {
-                      console.log('Moneda seleccionada:', value);
-                      setSelectedCurrency(value);
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar moneda" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>Monedas ({currencies.length})</SelectLabel>
-                        {currencies.length > 0 ? currencies.map(currency => (
-                          <SelectItem key={currency.code} value={currency.code}>
-                            {currency.code} - {currency.name}
-                          </SelectItem>
-                        )) : (
-                          <SelectItem value="no-data" disabled>
-                            No hay monedas disponibles
-                          </SelectItem>
-                        )}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  
+                  <div className="w-full sm:w-64">
+                    <Select 
+                      value={selectedCurrency || ''} 
+                      onValueChange={(value) => {
+                        console.log('Moneda seleccionada:', value);
+                        setSelectedCurrency(value);
+                      }}
+                    >
+                      <SelectTrigger className="w-full dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200">
+                        <SelectValue placeholder="Seleccionar moneda" />
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
+                        <SelectGroup>
+                          <SelectLabel className="text-xs sm:text-sm dark:text-gray-400">Monedas ({currencies.length})</SelectLabel>
+                          {currencies.length > 0 ? currencies.map(currency => (
+                            <SelectItem key={currency.code} value={currency.code} className="text-xs sm:text-sm dark:text-gray-200 dark:focus:bg-gray-700">
+                              {currency.code} - {currency.name}
+                            </SelectItem>
+                          )) : (
+                            <SelectItem value="no-data" disabled className="text-xs sm:text-sm dark:text-gray-400">
+                              No hay monedas disponibles
+                            </SelectItem>
+                          )}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
-              <Card className="p-4 dark:bg-gray-800 dark:border-gray-700">
+              <Card className="p-3 sm:p-4 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
                 {loadingHistory ? (
                   <div className="flex items-center justify-center h-64">
                     <div className="text-center">
-                      <RefreshCw className="animate-spin h-6 w-6 mx-auto mb-2 dark:text-gray-400" />
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Cargando historial de tasas...</p>
+                      <RefreshCw className="animate-spin h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Cargando historial de tasas...</p>
                     </div>
                   </div>
                 ) : rateHistory.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-64 space-y-4">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No hay datos históricos disponibles para {selectedCurrency}.</p>
+                  <div className="flex flex-col items-center justify-center h-64 space-y-3 sm:space-y-4 px-4">
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center">No hay datos históricos disponibles para {selectedCurrency}.</p>
                     <div className="text-center">
                       <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Posibles causas:</p>
-                      <ul className="text-xs text-gray-400 dark:text-gray-500 list-disc list-inside text-left">
+                      <ul className="text-xs text-gray-400 dark:text-gray-500 list-disc list-inside text-left space-y-1">
                         <li>La moneda no tiene datos en la tabla currency_rates</li>
                         <li>No hay registros para los últimos 30 días</li>
                         <li>La moneda no está configurada para actualización automática</li>
                       </ul>
                       {selectedCurrency && (
                         <div className="mt-2 text-xs bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2 py-1 rounded">
-                          Moneda seleccionada: <strong>{selectedCurrency}</strong>
+                          Moneda seleccionada: <strong className="dark:text-blue-300">{selectedCurrency}</strong>
                         </div>
                       )}
-                      <div className="flex flex-col sm:flex-row justify-end gap-2 mb-4">
+                      <div className="flex flex-col sm:flex-row justify-center gap-2 mt-3">
                         <button 
                           onClick={() => selectedCurrency && loadRateHistory(selectedCurrency)}
-                          className="inline-flex items-center px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className="inline-flex items-center justify-center px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors w-full sm:w-auto"
                         >
                           <RefreshCw className="h-3 w-3 mr-1" /> Reintentar carga
                         </button>
                         <button
                           onClick={actualizarTasas}
                           disabled={updatingRates}
-                          className="inline-flex items-center px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className="inline-flex items-center justify-center px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
                         >
                           {updatingRates ? (
                             <>
@@ -649,15 +652,15 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
                 ) : (
                   <div className="h-64">
                     {rateHistory && rateHistory.length > 0 && (
-                      <div className="mb-2 flex items-center justify-end gap-2">
+                      <div className="mb-2 flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
                         {rateHistory[0]?.base_currency_code && (
                           <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
-                            Moneda base: {rateHistory[0].base_currency_code}
+                            Base: {rateHistory[0].base_currency_code}
                           </Badge>
                         )}
                         {selectedCurrency && (
                           <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800">
-                            Mostrando: {selectedCurrency}
+                            <span className="hidden sm:inline">Mostrando: </span>{selectedCurrency}
                           </Badge>
                         )}
                       </div>
@@ -716,48 +719,49 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
           
           <TabsContent value="logs">
             <div className="mb-4 space-y-4">
-              <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium dark:text-gray-300">Histórico de Actualizaciones</h3>
-              <button
-                onClick={loadLogs}
-                className="inline-flex items-center px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" /> Recargar logs
-              </button>
-            </div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <h3 className="text-base sm:text-lg font-medium dark:text-gray-300">Histórico de Actualizaciones</h3>
+                <button
+                  onClick={loadLogs}
+                  className="inline-flex items-center justify-center px-3 py-2 text-xs sm:text-sm border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors w-full sm:w-auto"
+                >
+                  <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Recargar logs
+                </button>
+              </div>
             
             {logs.length === 0 ? (
-              <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700">
-                <p className="text-gray-500 dark:text-gray-400">No hay registros de actualizaciones disponibles.</p>
+              <div className="text-center p-4 sm:p-6 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">No hay registros de actualizaciones disponibles.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto border rounded-md dark:border-gray-700">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Organizaciones</TableHead>
-                      <TableHead>Detalles</TableHead>
+                    <TableRow className="dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                      <TableHead className="text-xs sm:text-sm dark:text-gray-300">Fecha</TableHead>
+                      <TableHead className="text-xs sm:text-sm dark:text-gray-300">Estado</TableHead>
+                      <TableHead className="text-xs sm:text-sm dark:text-gray-300 hidden sm:table-cell">Organizaciones</TableHead>
+                      <TableHead className="text-xs sm:text-sm dark:text-gray-300 hidden md:table-cell">Detalles</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {logs.map(log => (
-                      <TableRow key={log.id}>
-                        <TableCell>
-                          {format(new Date(log.execution_date), 'dd/MM/yyyy HH:mm:ss', { locale: es })}
+                      <TableRow key={log.id} className="dark:border-gray-700">
+                        <TableCell className="text-xs sm:text-sm dark:text-gray-300">
+                          <span className="hidden sm:inline">{format(new Date(log.execution_date), 'dd/MM/yyyy HH:mm:ss', { locale: es })}</span>
+                          <span className="sm:hidden">{format(new Date(log.execution_date), 'dd/MM/yy HH:mm', { locale: es })}</span>
                         </TableCell>
                         <TableCell>
                           <Badge
-                            className={log.success ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'}
+                            className={log.success ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800 text-xs' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800 text-xs'}
                           >
                             {log.success ? 'Éxito' : 'Error'}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-xs sm:text-sm dark:text-gray-300 hidden sm:table-cell">
                           {log.organizations_success}/{log.organizations_total}
                         </TableCell>
-                        <TableCell className="max-w-xs truncate">
+                        <TableCell className="max-w-xs truncate text-xs sm:text-sm dark:text-gray-400 hidden md:table-cell">
                           {log.error_message || formatLogDetails(log.details)}
                         </TableCell>
                       </TableRow>

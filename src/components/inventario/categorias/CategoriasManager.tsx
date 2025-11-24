@@ -209,7 +209,16 @@ const CategoriasManager: React.FC = () => {
   };
 
   // Actualizar categoría existente
-  const actualizarCategoria = async (categoria: Categoria) => {
+  const actualizarCategoria = async (categoria: Partial<Categoria>) => {
+    if (!categoria.id || !categoria.name) {
+      toast({
+        title: "Error",
+        description: "Datos incompletos para actualizar la categoría",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       // Generar slug a partir del nombre
       const slug = categoria.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
@@ -219,7 +228,7 @@ const CategoriasManager: React.FC = () => {
         .update({
           name: categoria.name,
           slug: slug,
-          parent_id: categoria.parent_id
+          parent_id: categoria.parent_id || null
         })
         .eq('id', categoria.id);
         
@@ -347,15 +356,15 @@ const CategoriasManager: React.FC = () => {
       />
       
       {loading ? (
-        <div className="w-full flex justify-center my-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="w-full flex justify-center my-6 sm:my-8">
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-4 sm:mt-6">
           {/* Árbol de categorías */}
           <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">Estructura de Categorías</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Estructura de Categorías</h2>
               {categoriasFiltradas.length > 0 ? (
                 <CategoriaTree 
                   categorias={categoriasFiltradas} 
@@ -364,7 +373,7 @@ const CategoriasManager: React.FC = () => {
                   onDelete={eliminarCategoria}
                 />
               ) : (
-                <p className="text-gray-500 dark:text-gray-400 italic">
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic">
                   {searchTerm 
                     ? "No se encontraron categorías con ese término" 
                     : "No hay categorías definidas. Crea la primera categoría."
@@ -376,10 +385,10 @@ const CategoriasManager: React.FC = () => {
           
           {/* Panel de edición/creación */}
           <div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
               {isCreando ? (
                 <>
-                  <h2 className="text-lg font-semibold mb-4">Crear Categoría</h2>
+                  <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Crear Categoría</h2>
                   <CategoriaForm 
                     categoriasPadre={categorias}
                     onSubmit={crearCategoria}
@@ -388,7 +397,7 @@ const CategoriasManager: React.FC = () => {
                 </>
               ) : isEditando && categoriaSeleccionada ? (
                 <>
-                  <h2 className="text-lg font-semibold mb-4">Editar Categoría</h2>
+                  <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Editar Categoría</h2>
                   <CategoriaForm 
                     categoria={categoriaSeleccionada}
                     categoriasPadre={categorias.filter(c => c.id !== categoriaSeleccionada.id)}
@@ -400,9 +409,9 @@ const CategoriasManager: React.FC = () => {
                   />
                 </>
               ) : (
-                <div className="text-center py-10">
-                  <h2 className="text-lg font-semibold mb-2">Gestión de Categorías</h2>
-                  <p className="text-gray-500 dark:text-gray-400">
+                <div className="text-center py-8 sm:py-10">
+                  <h2 className="text-base sm:text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">Gestión de Categorías</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Selecciona una categoría para editar o crea una nueva.
                   </p>
                 </div>

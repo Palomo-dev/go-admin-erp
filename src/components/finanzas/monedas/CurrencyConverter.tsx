@@ -400,23 +400,23 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
   };
 
   return (
-    <Card className="shadow-md border-t-4 border-t-primary">
-      <CardHeader className="bg-gray-50">
-        <CardTitle className="flex items-center text-primary">
-          <ArrowRightLeft className="mr-2 h-5 w-5" />
+    <Card className="shadow-md border-t-4 border-t-primary dark:bg-gray-800/50 dark:border-gray-700">
+      <CardHeader className="bg-gray-50 dark:bg-gray-800/80 border-b dark:border-gray-700">
+        <CardTitle className="flex items-center text-primary dark:text-blue-400 text-base sm:text-lg">
+          <ArrowRightLeft className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
           Conversor de Monedas
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         {loading ? (
           <div className="flex justify-center items-center p-6">
-            <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent"></div>
-            <span className="ml-2 text-gray-600">Cargando monedas...</span>
+            <div className="animate-spin h-5 w-5 sm:h-6 sm:w-6 border-2 border-primary dark:border-blue-400 rounded-full border-t-transparent"></div>
+            <span className="ml-2 text-sm sm:text-base text-gray-600 dark:text-gray-300">Cargando monedas...</span>
           </div>
         ) : (
-              <div className="grid grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:gap-6">
                 {/* Sección superior con etiquetas descriptivas */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-500">
+                <div className="hidden md:grid md:grid-cols-3 gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   <div className="text-center md:text-left">Monto</div>
                   <div className="text-center">Monedas</div>
                   <div className="text-center md:text-right">Resultado</div>
@@ -431,7 +431,7 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
                         type="number"
                         value={amount}
                         onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                        className="text-right font-medium text-base border-gray-300 hover:border-gray-400 focus:border-primary w-full"
+                        className="text-right font-medium text-sm sm:text-base border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 focus:border-primary dark:focus:border-blue-400 w-full dark:bg-gray-900 dark:text-gray-100"
                         placeholder="Ingrese un monto"
                         min="0"
                         step="100"
@@ -443,97 +443,12 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
                     <div className="flex flex-row items-center justify-between space-x-2 w-full">
                       <div className="w-[42%] flex-shrink-0">
                         <Select value={fromCurrency} onValueChange={setFromCurrency}>
-                          <SelectTrigger className="w-full text-xs px-2">
+                          <SelectTrigger className="w-full text-xs px-2 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
                             <SelectValue placeholder="Moneda" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                             {localCurrencies.map((currency, index) => (
-                              <SelectItem key={`${currency.code}-${index}`} value={currency.code}>
-                                <div className="flex items-center">
-                                  <span className="mr-1">{currency.symbol}</span>
-                                  <span>{currency.code}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        onClick={swapCurrencies} 
-                        className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors h-8 w-8 flex-shrink-0"
-                      >
-                        <ArrowRightLeft className="h-3 w-3" />
-                      </Button>
-                      
-                      <div className="w-[42%] flex-shrink-0">
-                        <Select value={toCurrency} onValueChange={setToCurrency}>
-                          <SelectTrigger className="w-full text-xs px-2">
-                            <SelectValue placeholder="Moneda" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {localCurrencies.map((currency, index) => (
-                              <SelectItem key={`${currency.code}-${index}`} value={currency.code}>
-                                <div className="flex items-center">
-                                  <span className="mr-1">{currency.symbol}</span>
-                                  <span>{currency.code}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    {/* Resultado en móviles */}
-                    <div className="flex flex-col items-center w-full">
-                      {convertedAmount !== null ? (
-                        <div className="text-lg font-bold text-center break-words w-full">
-                          {getCurrencySymbol(toCurrency)}{' '}
-                          {convertedAmount.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-lg font-bold text-gray-400 text-center">---</div>
-                      )}
-                      
-                      {/* Nombre de moneda en móviles */}
-                      <div className="text-xs text-gray-500 mt-1 text-center w-full">
-                        {getCurrencyName(toCurrency)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Diseño para pantallas medianas y grandes */}
-                  <div className="hidden md:grid md:grid-cols-3 md:gap-4 md:w-full">
-                    {/* Columna 1: Input de monto */}
-                    <div className="flex items-center w-full">
-                      <Input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                        className="text-right font-medium text-base border-gray-300 hover:border-gray-400 focus:border-primary w-[95%] h-8"
-                        placeholder="Ingrese un monto"
-                        min="0"
-                        step="100"
-                        aria-label="Monto a convertir"
-                      />
-                    </div>
-                    
-                    {/* Columna 2: Selectores de moneda con botón de intercambio */}
-                    <div className="flex flex-row items-center justify-center space-x-1 w-full">
-                      <div className="w-auto">
-                        <Select value={fromCurrency} onValueChange={setFromCurrency}>
-                          <SelectTrigger className="w-[90px] text-xs px-2 h-8">
-                            <SelectValue placeholder="Moneda" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {localCurrencies.map((currency, index) => (
-                              <SelectItem key={`${currency.code}-${index}`} value={currency.code}>
+                              <SelectItem key={`${currency.code}-${index}`} value={currency.code} className="dark:text-gray-200 dark:focus:bg-gray-800">
                                 <div className="flex items-center text-xs">
                                   <span className="mr-1">{currency.symbol}</span>
                                   <span>{currency.code}</span>
@@ -548,19 +463,104 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
                         variant="outline" 
                         size="icon" 
                         onClick={swapCurrencies} 
-                        className="rounded-full hover:bg-primary/10 hover:text-primary transition-colors h-7 w-7 flex-shrink-0 mx-1"
+                        className="rounded-full hover:bg-primary/10 hover:text-primary dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors h-8 w-8 flex-shrink-0 dark:border-gray-600 dark:text-gray-300"
+                      >
+                        <ArrowRightLeft className="h-3 w-3" />
+                      </Button>
+                      
+                      <div className="w-[42%] flex-shrink-0">
+                        <Select value={toCurrency} onValueChange={setToCurrency}>
+                          <SelectTrigger className="w-full text-xs px-2 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
+                            <SelectValue placeholder="Moneda" />
+                          </SelectTrigger>
+                          <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
+                            {localCurrencies.map((currency, index) => (
+                              <SelectItem key={`${currency.code}-${index}`} value={currency.code} className="dark:text-gray-200 dark:focus:bg-gray-800">
+                                <div className="flex items-center text-xs">
+                                  <span className="mr-1">{currency.symbol}</span>
+                                  <span>{currency.code}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    {/* Resultado en móviles */}
+                    <div className="flex flex-col items-center w-full">
+                      {convertedAmount !== null ? (
+                        <div className="text-lg sm:text-xl font-bold text-center break-words w-full dark:text-gray-100">
+                          {getCurrencySymbol(toCurrency)}{' '}
+                          {convertedAmount.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-lg sm:text-xl font-bold text-gray-400 dark:text-gray-500 text-center">---</div>
+                      )}
+                      
+                      {/* Nombre de moneda en móviles */}
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center w-full">
+                        {getCurrencyName(toCurrency)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Diseño para pantallas medianas y grandes */}
+                  <div className="hidden md:grid md:grid-cols-3 md:gap-4 md:w-full">
+                    {/* Columna 1: Input de monto */}
+                    <div className="flex items-center w-full">
+                      <Input
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+                        className="text-right font-medium text-sm sm:text-base border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 focus:border-primary dark:focus:border-blue-400 w-[95%] h-8 dark:bg-gray-900 dark:text-gray-100"
+                        placeholder="Ingrese un monto"
+                        min="0"
+                        step="100"
+                        aria-label="Monto a convertir"
+                      />
+                    </div>
+                    
+                    {/* Columna 2: Selectores de moneda con botón de intercambio */}
+                    <div className="flex flex-row items-center justify-center space-x-1 w-full">
+                      <div className="w-auto">
+                        <Select value={fromCurrency} onValueChange={setFromCurrency}>
+                          <SelectTrigger className="w-[90px] text-xs px-2 h-8 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
+                            <SelectValue placeholder="Moneda" />
+                          </SelectTrigger>
+                          <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
+                            {localCurrencies.map((currency, index) => (
+                              <SelectItem key={`${currency.code}-${index}`} value={currency.code} className="dark:text-gray-200 dark:focus:bg-gray-800">
+                                <div className="flex items-center text-xs">
+                                  <span className="mr-1">{currency.symbol}</span>
+                                  <span>{currency.code}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={swapCurrencies} 
+                        className="rounded-full hover:bg-primary/10 hover:text-primary dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors h-7 w-7 flex-shrink-0 mx-1 dark:border-gray-600 dark:text-gray-300"
                       >
                         <ArrowRightLeft className="h-3 w-3" />
                       </Button>
                       
                       <div className="w-auto">
                         <Select value={toCurrency} onValueChange={setToCurrency}>
-                          <SelectTrigger className="w-[90px] text-xs px-2 h-8">
+                          <SelectTrigger className="w-[90px] text-xs px-2 h-8 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
                             <SelectValue placeholder="Moneda" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                             {localCurrencies.map((currency, index) => (
-                              <SelectItem key={`${currency.code}-${index}`} value={currency.code}>
+                              <SelectItem key={`${currency.code}-${index}`} value={currency.code} className="dark:text-gray-200 dark:focus:bg-gray-800">
                                 <div className="flex items-center text-xs">
                                   <span className="mr-1">{currency.symbol}</span>
                                   <span>{currency.code}</span>
@@ -575,7 +575,7 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
                     {/* Columna 3: Resultado de la conversión */}
                     <div className="flex flex-col items-end w-full">
                       {convertedAmount !== null ? (
-                        <div className="text-2xl font-bold text-right break-words w-full">
+                        <div className="text-xl sm:text-2xl font-bold text-right break-words w-full dark:text-gray-100">
                           {getCurrencySymbol(toCurrency)}{' '}
                           {convertedAmount.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
@@ -583,11 +583,11 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
                           })}
                         </div>
                       ) : (
-                        <div className="text-2xl font-bold text-gray-400 text-right">---</div>
+                        <div className="text-xl sm:text-2xl font-bold text-gray-400 dark:text-gray-500 text-right">---</div>
                       )}
                       
                       {/* Mostrar nombre completo de la moneda de destino */}
-                      <div className="text-sm text-gray-500 mt-1 text-right w-full">
+                      <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 text-right w-full">
                         {getCurrencyName(toCurrency)}
                       </div>
                     </div>
@@ -595,10 +595,10 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
                 </div>
                 
                 {/* Sección inferior con información adicional */}
-                <div className="border-t pt-4 mt-2">
-                  <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="border-t dark:border-gray-700 pt-3 sm:pt-4 mt-2">
+                  <div className="flex flex-col items-center justify-center space-y-3 sm:space-y-4">
                     {/* Información sobre la tasa de cambio actual */}
-                    <div className="text-sm text-gray-600">
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 font-mono">
                       1 {fromCurrency} = {(convertedAmount !== null && amount > 0) ? (convertedAmount / amount).toFixed(6) : '0.00'} {toCurrency}
                     </div>
                     
@@ -616,9 +616,9 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
                             variant="outline"
                             className={cn(
                               "py-1 px-2 text-xs font-semibold",
-                              rateDiff > 0 ? "bg-green-50 text-green-700 border-green-200" :
-                              rateDiff < 0 ? "bg-red-50 text-red-700 border-red-200" :
-                              "bg-gray-50 text-gray-700 border-gray-200"
+                              rateDiff > 0 ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800" :
+                              rateDiff < 0 ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800" :
+                              "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
                             )}
                           >
                             <div className="flex items-center">
@@ -642,7 +642,7 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
                     </div>
                     
                     {/* Fecha de la tasa de cambio */}
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
                       Última actualización: {format(date, 'dd/MM/yyyy', { locale: es })}
                     </div>
                   </div>
@@ -651,9 +651,9 @@ export default function CurrencyConverter({ rates = [], currencies = [], date = 
             )}
       </CardContent>
       {/* Footer con información de la fuente de datos */}
-      <div className="border-t border-gray-100 p-4 flex justify-between items-center text-xs text-gray-500">
-        <div>Fuente: OpenExchangeRates API</div>
-        <Button variant="ghost" size="sm" onClick={() => loadGlobalData()} className="h-8">
+      <div className="border-t border-gray-100 dark:border-gray-700 p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0 text-xs text-gray-500 dark:text-gray-400">
+        <div className="text-center sm:text-left">Fuente: OpenExchangeRates API</div>
+        <Button variant="ghost" size="sm" onClick={() => loadGlobalData()} className="h-8 dark:hover:bg-gray-700 dark:text-gray-300">
           <svg className="mr-1 h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" /></svg>
           Actualizar
         </Button>

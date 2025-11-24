@@ -102,7 +102,7 @@ const CategoriaNode: React.FC<CategoriaNodeProps> = ({
       <div 
         ref={ref}
         className={cn(
-          "flex items-center py-2 px-1 rounded-md my-1 group",
+          "flex items-center py-1.5 sm:py-2 px-1 rounded-md my-1 group",
           "transition-colors duration-200",
           "hover:bg-gray-100 dark:hover:bg-gray-700/50",
           dropLineClasses.inside
@@ -113,42 +113,44 @@ const CategoriaNode: React.FC<CategoriaNodeProps> = ({
         
         {/* Icono de expansión */}
         <div 
-          className="w-6 flex justify-center cursor-pointer"
+          className="w-5 sm:w-6 flex justify-center cursor-pointer"
           onClick={() => onToggle(categoria.id)}
         >
           {hasChildren && (
             isExpanded 
-              ? <ChevronDown className="h-4 w-4 text-gray-500" /> 
-              : <ChevronRight className="h-4 w-4 text-gray-500" />
+              ? <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500 dark:text-gray-400" /> 
+              : <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500 dark:text-gray-400" />
           )}
         </div>
         
         {/* Icono de arrastrar */}
-        <div className="mr-2 opacity-0 group-hover:opacity-100 cursor-grab">
-          <GripVertical className="h-4 w-4 text-gray-400" />
+        <div className="mr-1 sm:mr-2 opacity-0 group-hover:opacity-100 cursor-grab">
+          <GripVertical className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
         </div>
         
         {/* Nombre de la categoría */}
         <div 
-          className="flex-1 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+          className="flex-1 cursor-pointer text-sm sm:text-base text-gray-900 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 truncate"
           onClick={() => onSelect(categoria)}
         >
           {categoria.name}
         </div>
         
         {/* Acciones */}
-        <div className="flex space-x-2 opacity-0 group-hover:opacity-100">
+        <div className="flex gap-1 sm:gap-2 opacity-0 group-hover:opacity-100">
           <button 
-            className="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+            className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             onClick={() => onSelect(categoria)}
+            title="Editar"
           >
-            <Edit className="h-4 w-4" />
+            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
           </button>
           <button 
-            className="text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+            className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             onClick={() => onDelete(categoria.id)}
+            title="Eliminar"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
           </button>
         </div>
       </div>
@@ -157,7 +159,7 @@ const CategoriaNode: React.FC<CategoriaNodeProps> = ({
       
       {/* Renderizar hijos */}
       {hasChildren && isExpanded && (
-        <div className="pl-4">
+        <div className="pl-3 sm:pl-4">
           {categoria.children!.map(child => (
             <CategoriaNodeWithState
               key={child.id}
@@ -273,18 +275,24 @@ const CategoriaTree: React.FC<CategoriaTreeProps> = ({
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="border border-gray-200 dark:border-gray-700 rounded-md p-2 overflow-auto max-h-[calc(100vh-300px)]">
-        {categorias.map(categoria => (
-          <CategoriaNodeWithState
-            key={categoria.id}
-            categoria={categoria}
-            level={0}
-            onSelect={onSelect}
-            onDelete={onDelete}
-            onToggle={() => {}} // Se maneja internamente en CategoriaNodeWithState
-            onDrop={handleDrop}
-          />
-        ))}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md p-2 sm:p-3 overflow-auto max-h-[calc(100vh-250px)] sm:max-h-[calc(100vh-300px)]">
+        {categorias.length > 0 ? (
+          categorias.map(categoria => (
+            <CategoriaNodeWithState
+              key={categoria.id}
+              categoria={categoria}
+              level={0}
+              onSelect={onSelect}
+              onDelete={onDelete}
+              onToggle={() => {}} // Se maneja internamente en CategoriaNodeWithState
+              onDrop={handleDrop}
+            />
+          ))
+        ) : (
+          <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
+            No hay categorías para mostrar
+          </div>
+        )}
       </div>
     </DndProvider>
   );

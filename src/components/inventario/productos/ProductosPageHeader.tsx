@@ -28,45 +28,47 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
   const { theme } = useTheme();
   
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 dark:text-blue-400">
         Catálogo de Productos
       </h1>
       
       <div className="flex flex-col sm:flex-row gap-2">
         <Button 
           onClick={onCrearClick}
-          className={`${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-sm"
         >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Nuevo Producto
+          <PlusCircle className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline">Nuevo Producto</span>
+          <span className="sm:hidden">Nuevo</span>
         </Button>
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 
               variant="outline" 
-              className={theme === 'dark' ? 'dark:border-gray-700 dark:text-gray-200' : ''}
+              className="w-full sm:w-auto dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 text-sm"
             >
-              Más opciones
+              <span className="hidden sm:inline">Más opciones</span>
+              <span className="sm:hidden">Opciones</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent 
-            className={`w-56 ${theme === 'dark' ? 'dark:bg-gray-900 dark:text-gray-200 dark:border-gray-800' : ''}`}
+            className="w-48 sm:w-56 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
             align="end"
           >
             <DropdownMenuItem 
               onClick={onImportarClick}
-              className={theme === 'dark' ? 'dark:hover:bg-gray-800' : ''}
+              className="dark:hover:bg-gray-700 dark:focus:bg-gray-700 text-sm"
             >
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              <FileSpreadsheet className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               <span>Importar CSV</span>
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={onExportarClick}
-              className={theme === 'dark' ? 'dark:hover:bg-gray-800' : ''}
+              className="dark:hover:bg-gray-700 dark:focus:bg-gray-700 text-sm"
             >
-              <Download className="mr-2 h-4 w-4" />
+              <Download className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               <span>Exportar</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

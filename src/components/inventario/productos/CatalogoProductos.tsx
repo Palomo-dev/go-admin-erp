@@ -490,7 +490,8 @@ const CatalogoProductos: React.FC = () => {
   };
 
   const handleEliminarClick = async (productoId: number | string) => {
-    setProductoToDelete(productoId);
+    const id = typeof productoId === 'string' ? parseInt(productoId, 10) : productoId;
+    setProductoToDelete(id);
     setIsDeleteDialogOpen(true);
   };
 
@@ -577,7 +578,7 @@ const CatalogoProductos: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5">
       {/* Header con título y botón de nuevo */}
       <ProductosPageHeader onCrearClick={handleCrear} />
       
@@ -599,18 +600,18 @@ const CatalogoProductos: React.FC = () => {
       
       {/* Diálogo de confirmación para eliminar */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className={`sm:max-w-md ${theme === 'dark' ? 'dark:bg-gray-950 dark:text-gray-200' : 'bg-white text-gray-800'}`}>
+        <DialogContent className="sm:max-w-md dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader>
-            <DialogTitle>¿Eliminar producto?</DialogTitle>
-            <DialogDescription className={theme === 'dark' ? 'dark:text-gray-400' : 'text-gray-500'}>
+            <DialogTitle className="text-base sm:text-lg dark:text-gray-100">¿Eliminar producto?</DialogTitle>
+            <DialogDescription className="text-sm dark:text-gray-400">
               Esta acción no se puede deshacer. ¿Está seguro de que desea eliminar este producto?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex flex-row justify-end gap-3 sm:justify-end">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
-              className={theme === 'dark' ? 'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700' : ''}
+              className="w-full sm:w-auto dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 text-sm"
             >
               Cancelar
             </Button>
@@ -618,8 +619,9 @@ const CatalogoProductos: React.FC = () => {
               variant="destructive"
               onClick={handleConfirmDelete}
               disabled={loading}
+              className="w-full sm:w-auto text-sm"
             >
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {loading ? <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : null}
               Eliminar
             </Button>
           </DialogFooter>

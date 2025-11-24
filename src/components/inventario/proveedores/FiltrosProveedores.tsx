@@ -38,25 +38,17 @@ const FiltrosProveedores: React.FC<FiltrosProveedoresProps> = ({
   };
   
   return (
-    <div className={`p-4 rounded-md border ${
-      theme === 'dark' ? 'border-gray-800 bg-gray-950/50' : 'border-gray-200 bg-white'
-    }`}>
-      <div className="flex flex-wrap gap-4">
+    <div className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/50">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
         <div className="flex-1">
           <div className="relative">
-            <Search className={`absolute left-2.5 top-2.5 h-4 w-4 ${
-              theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-            }`} />
+            <Search className="absolute left-2 sm:left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
             <Input
               type="search"
               placeholder="Buscar por nombre, NIT, contacto..."
               value={filters.busqueda}
               onChange={handleSearchChange}
-              className={`pl-9 ${
-                theme === 'dark' 
-                  ? 'border-gray-800 bg-gray-900 text-gray-300 placeholder:text-gray-500' 
-                  : 'border-gray-300 bg-white text-gray-900 placeholder:text-gray-400'
-              }`}
+              className="pl-8 sm:pl-9 text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
             />
           </div>
         </div>
@@ -66,15 +58,12 @@ const FiltrosProveedores: React.FC<FiltrosProveedoresProps> = ({
         <Button
           variant="outline"
           onClick={handleClearFilters}
-          className={`${
-            theme === 'dark' 
-              ? 'border-gray-700 text-gray-300 hover:bg-gray-800' 
-              : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-          }`}
+          className="w-full sm:w-auto text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           disabled={!filters.busqueda && !filters.estado}
         >
-          <X className="mr-2 h-4 w-4" />
-          Limpiar filtros
+          <X className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline">Limpiar filtros</span>
+          <span className="sm:hidden">Limpiar</span>
         </Button>
       </div>
     </div>

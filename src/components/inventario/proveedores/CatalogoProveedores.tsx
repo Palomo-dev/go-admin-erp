@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase/config';
 import { Button } from "@/components/ui/button";
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 // Importaciones de los componentes creados
 import ProveedoresPageHeader from './ProveedoresPageHeader';
@@ -54,70 +55,10 @@ const CatalogoProveedores: React.FC = () => {
       try {
         setLoading(true);
         
-        // Obtener el ID de organización del almacenamiento local
-        let organizationId = null;
+        // Obtener el ID de organización usando la función estándar del sistema
+        const organizationId = getOrganizationId();
         
-        if (typeof window !== 'undefined') {
-          // Intentar obtener primero desde localStorage
-          const storedOrg = localStorage.getItem('selectedOrganization');
-          if (storedOrg) {
-            try {
-              const parsedOrg = JSON.parse(storedOrg);
-              organizationId = parsedOrg.id || parsedOrg.organization_id;
-            } catch (e) {
-              console.error('Error al parsear organización del localStorage:', e);
-            }
-          }
-          
-          // Si no existe en localStorage, intentar en sessionStorage
-          if (!organizationId) {
-            const sessionOrg = sessionStorage.getItem('selectedOrganization');
-            if (sessionOrg) {
-              try {
-                const parsedOrg = JSON.parse(sessionOrg);
-                organizationId = parsedOrg.id || parsedOrg.organization_id;
-              } catch (e) {
-                console.error('Error al parsear organización del sessionStorage:', e);
-              }
-            }
-          }
-        }
-        
-        // Si no tenemos ID, intentar obtenerlo de Supabase como fallback
-        if (!organizationId) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            // Consultar la primera organización del usuario desde la tabla organization_members
-            const { data: orgMember } = await supabase
-              .from('organization_members')
-              .select('organization_id')
-              .eq('user_id', session.user.id)
-              .eq('is_active', true)
-              .limit(1)
-              .single();
-              
-            if (orgMember) {
-              organizationId = orgMember.organization_id;
-            } else {
-              // Si no hay relación en organization_members, intentar con la primera organización
-              const { data: org } = await supabase
-                .from('organizations')
-                .select('id')
-                .limit(1)
-                .single();
-                
-              if (org) {
-                organizationId = org.id;
-              }
-            }
-          }
-        }
-
-        // Si aún no tenemos ID después de todos los intentos, usar 1 como fallback
-        if (!organizationId) {
-          console.warn('No se pudo obtener ID de organización. Usando valor por defecto (1)');
-          organizationId = 1;
-        }
+        console.log('🔍 Buscando proveedores para organization_id:', organizationId);
         
         // Consulta básica a la tabla de proveedores filtrada por organization_id
         let query = supabase
@@ -135,7 +76,11 @@ const CatalogoProveedores: React.FC = () => {
         
         const { data, error } = await query;
         
+        console.log('📦 Proveedores encontrados:', data?.length || 0);
+        console.log('🔍 Datos recibidos:', data);
+        
         if (error) {
+          console.error('❌ Error al cargar proveedores:', error);
           throw error;
         }
         
@@ -179,11 +124,16 @@ const CatalogoProveedores: React.FC = () => {
   // Función para crear un nuevo proveedor
   const handleCreateProveedor = async (proveedor: Partial<Proveedor>) => {
     try {
+      // Obtener el organization_id actual del sistema
+      const organizationId = getOrganizationId();
+      
+      console.log('📝 Creando proveedor para organization_id:', organizationId);
+      
       // Preparar datos para inserción
       const { data, error } = await supabase
         .from('suppliers')
         .insert([{
-          organization_id: proveedor.organization_id,
+          organization_id: organizationId, // Usar el ID correcto del sistema
           name: proveedor.name,
           nit: proveedor.nit,
           contact: proveedor.contact,
@@ -225,17 +175,26 @@ const CatalogoProveedores: React.FC = () => {
   };
 
   // Función para actualizar un proveedor existente
-  const handleUpdateProveedor = async (proveedor: Proveedor) => {
+  const handleUpdateProveedor = async (proveedor: Partial<Proveedor>) => {
+    if (!proveedor.id || !proveedor.name) {
+      toast({
+        title: "Error",
+        description: "Datos incompletos para actualizar el proveedor",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       const { error } = await supabase
         .from('suppliers')
         .update({
           name: proveedor.name,
-          nit: proveedor.nit,
-          contact: proveedor.contact,
-          phone: proveedor.phone,
-          email: proveedor.email,
-          notes: proveedor.notes
+          nit: proveedor.nit || null,
+          contact: proveedor.contact || null,
+          phone: proveedor.phone || null,
+          email: proveedor.email || null,
+          notes: proveedor.notes || null
         })
         .eq('id', proveedor.id);
       
@@ -323,7 +282,7 @@ const CatalogoProveedores: React.FC = () => {
   };
 
   return (
-    <div className={`flex flex-col gap-6 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+    <div className="flex flex-col gap-4 sm:gap-5 lg:gap-6 text-gray-800 dark:text-gray-200">
       <ProveedoresPageHeader 
         onNuevoProveedor={() => setIsCreating(true)} 
       />
@@ -334,8 +293,8 @@ const CatalogoProveedores: React.FC = () => {
       />
       
       {loading ? (
-        <div className="flex justify-center items-center py-10">
-          <Loader2 className={`h-10 w-10 animate-spin ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+        <div className="flex justify-center items-center py-8 sm:py-10">
+          <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
       ) : (
         <ProveedoresTable 
@@ -382,25 +341,27 @@ const CatalogoProveedores: React.FC = () => {
 
       {/* Diálogo de confirmación para eliminar proveedor */}
       {isDeleteDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-2">Confirmar eliminación</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
+            <h3 className="text-base sm:text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">Confirmar eliminación</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               ¿Estás seguro de que deseas eliminar este proveedor? Esta acción no se puede deshacer.
             </p>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => {
                   setIsDeleteDialogOpen(false);
                   setProveedorToDelete(null);
                 }}
+                className="w-full sm:w-auto text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
               >
                 Cancelar
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleConfirmDelete}
+                className="w-full sm:w-auto text-sm"
               >
                 Eliminar
               </Button>

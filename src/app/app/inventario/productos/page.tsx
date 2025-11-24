@@ -12,7 +12,7 @@ import CatalogoProductos from '@/components/inventario/productos/CatalogoProduct
  */
 export default function ProductosPage() {
   return (
-    <div className="container mx-auto py-6 px-4">
+    <div className="container mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-4 md:px-6">
       <CatalogoProductos />
     </div>
   );

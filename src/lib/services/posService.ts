@@ -166,22 +166,23 @@ export class POSService {
 
       if (error) throw error;
 
-      // Obtener las imágenes principales de los productos
+      // Obtener las imágenes de los productos
       const productIds = data?.map(p => p.id) || [];
-      let productImages: Record<string | number, string> = {};
+      let productImagesMap: Record<string | number, any[]> = {};
       
       if (productIds.length > 0) {
         const { data: images, error: imagesError } = await supabase
           .from('product_images')
-          .select('id, product_id, storage_path, is_primary')
+          .select('id, product_id, storage_path, is_primary, display_order')
           .in('product_id', productIds)
-          .eq('is_primary', true);
+          .order('display_order');
           
         if (!imagesError && images) {
           images.forEach((img: any) => {
-            if (img.storage_path) {
-              productImages[img.product_id] = img.storage_path;
+            if (!productImagesMap[img.product_id]) {
+              productImagesMap[img.product_id] = [];
             }
+            productImagesMap[img.product_id].push(img);
           });
         }
       }
@@ -189,9 +190,11 @@ export class POSService {
       const products = data?.map((product: any) => ({
         ...product,
         category: product.categories,
-        price: product.product_prices?.[0]?.price || null, // Extraer precio del primer elemento del array
-        image: productImages[product.id] ? 
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImages[product.id]}` :
+        price: product.product_prices?.[0]?.price || null,
+        product_images: productImagesMap[product.id] || [],
+        // Mantener compatibilidad con código que use 'image'
+        image: productImagesMap[product.id]?.[0]?.storage_path ? 
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImagesMap[product.id][0].storage_path}` :
           null
       })) || [];
 

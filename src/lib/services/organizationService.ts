@@ -117,6 +117,59 @@ export const organizationService = {
   },
 
   /**
+   * Obtiene los métodos de pago activos de una organización
+   */
+  async getOrganizationPaymentMethods(organizationId: number): Promise<Array<{
+    code: string;
+    name: string;
+    requires_reference: boolean;
+  }>> {
+    try {
+      const { data, error } = await supabase
+        .from('organization_payment_methods')
+        .select(`
+          payment_method_code,
+          payment_methods!inner (
+            code,
+            name,
+            requires_reference,
+            is_active
+          )
+        `)
+        .eq('organization_id', organizationId)
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error al obtener métodos de pago:', error);
+        throw error;
+      }
+
+      // Transformar la respuesta
+      const methods = (data || []).map((item: any) => {
+        const method = Array.isArray(item.payment_methods)
+          ? item.payment_methods[0]
+          : item.payment_methods;
+        
+        return {
+          code: method.code,
+          name: method.name,
+          requires_reference: method.requires_reference || false,
+        };
+      });
+
+      return methods;
+    } catch (error) {
+      console.error('Error obteniendo métodos de pago de la organización:', error);
+      // Retornar métodos por defecto en caso de error
+      return [
+        { code: 'cash', name: 'Efectivo', requires_reference: false },
+        { code: 'card', name: 'Tarjeta', requires_reference: true },
+        { code: 'transfer', name: 'Transferencia', requires_reference: true },
+      ];
+    }
+  },
+
+  /**
    * Crea una nueva organización
    */
   async createOrganization(organization: Organization, userId: string): Promise<Organization> {

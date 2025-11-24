@@ -1,0 +1,10 @@
+export { SpaceCard } from './SpaceCard';
+export { SpaceDialog } from './SpaceDialog';
+export { CreateSpaceTypeDialog } from './CreateSpaceTypeDialog';
+export { EspaciosPageHeader } from './EspaciosPageHeader';
+export { EspaciosFilters } from './EspaciosFilters';
+export { BulkActionsBar } from './BulkActionsBar';
+export { EspaciosGrid } from './EspaciosGrid';
+export { EspaciosEmptyState } from './EspaciosEmptyState';
+export { EspaciosLoadingState } from './EspaciosLoadingState';
+export { EspaciosPagination } from './EspaciosPagination';

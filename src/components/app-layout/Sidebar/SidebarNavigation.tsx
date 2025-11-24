@@ -114,22 +114,34 @@ export const SidebarNavigation = ({
             { name: "POS", href: "/app/pos" },
             { name: "Cajas", href: "/app/pos/cajas" },
             { name: "Devoluciones", href: "/app/pos/devoluciones" },
+            { name: "Mesas", href: "/app/pos/mesas" },
+            { name: "Comandas", href: "/app/pos/comandas" },
             /*{ name: "Pagos Pendientes", href: "/app/pos/pagos-pendientes" },
             { name: "Cuentas por Cobrar", href: "/app/pos/cuentas-por-cobrar" },
             { name: "Carritos", href: "/app/pos/carritos" },
             { name: "Reportes", href: "/app/pos/reportes" },
             { name: "Configuración", href: "/app/pos/configuración" },
-            { name: "Mesas", href: "/app/pos/mesas" },
-            { name: "Habitaciones", href: "/app/pos/habitaciones" },
-            { name: "Comandas", href: "/app/pos/comandas" },*/  
+            { name: "Habitaciones", href: "/app/pos/habitaciones" },*/  
           ]
         },
-        /*{ 
+        { 
           name: "PMS", 
           href: "/app/pms", 
           icon: <Building2 size={18} />,
-          submenu: []
-        }*/
+          submenu: [
+            { name: "Reservas", href: "/app/pms/reservas" },
+            { name: "Llegadas (Check-in)", href: "/app/pms/checkin" },
+            { name: "Salidas (Check-out)", href: "/app/pms/checkout" },
+            { name: "Espacios", href: "/app/pms/espacios" },
+            { name: "Mantenimiento", href: "/app/pms/mantenimiento" },
+            { name: "Tarifas", href: "/app/pms/tarifas" },
+            { name: "Limpieza", href: "/app/pms/housekeeping" },
+            { name: "Consumos", href: "/app/pms/folios" },
+            { name: "Origenes", href: "/app/pms/origenes" },
+            { name: "Parquedero", href: "/app/pms/parking" },
+            { name: "Configuración", href: "/app/pms/configuración" },
+          ]
+        }
       ]
     },
     {

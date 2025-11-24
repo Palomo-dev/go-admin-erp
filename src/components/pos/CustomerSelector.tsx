@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, UserPlus, Search, Phone, Mail, FileText, X, MapPin, CreditCard } from 'lucide-react';
+import { User, UserPlus, Search, Phone, Mail, FileText, X, MapPin, CreditCard, Building2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,16 +16,39 @@ import { Separator } from '@/components/ui/separator';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { POSService } from '@/lib/services/posService';
 import { Customer, CustomerFilter } from './types';
+import { supabase } from '@/lib/supabase/config';
+
+export interface OccupiedSpace {
+  space_id: string;
+  space_label: string;
+  reservation_id: string;
+  customer_id: string;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  checkin: string;
+  checkout: string;
+  folio_id?: string;
+}
+
+export interface CustomerWithRoom {
+  customer: Customer;
+  room?: OccupiedSpace;
+}
 
 interface CustomerSelectorProps {
   selectedCustomer?: Customer;
-  onCustomerSelect: (customer?: Customer) => void;
+  selectedRoom?: OccupiedSpace;
+  onCustomerSelect: (customer?: Customer, room?: OccupiedSpace) => void;
   className?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CustomerSelector({ selectedCustomer, onCustomerSelect, className }: CustomerSelectorProps) {
+export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSelect, className, open, onOpenChange }: CustomerSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [occupiedSpaces, setOccupiedSpaces] = useState<OccupiedSpace[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showCustomerList, setShowCustomerList] = useState(false);
@@ -40,25 +63,92 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
     country: 'Colombia'
   });
 
-  // Buscar clientes
+  // Buscar clientes Y espacios ocupados
   const searchCustomers = async (term: string) => {
-    if (!term.trim()) {
-      setCustomers([]);
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const filter: CustomerFilter = {
-        search: term.trim(),
-        status: 'active'
-      };
-      
-      const results = await POSService.searchCustomers(filter);
-      setCustomers(results);
+      // 1. Buscar espacios ocupados
+      const { data: reservations, error: roomsError } = await supabase
+        .from('reservations')
+        .select(`
+          id,
+          customer_id,
+          checkin,
+          checkout,
+          customers!inner (
+            id,
+            full_name,
+            email,
+            phone
+          ),
+          reservation_spaces!inner (
+            space_id,
+            spaces!inner (
+              id,
+              label
+            )
+          ),
+          folios (
+            id
+          )
+        `)
+        .in('status', ['confirmed', 'checked_in'])
+        .order('checkin', { ascending: false })
+        .limit(20);
+
+      if (!roomsError && reservations) {
+        const spaces: OccupiedSpace[] = [];
+        
+        reservations.forEach((reservation: any) => {
+          const customer = reservation.customers;
+          const reservationSpaces = Array.isArray(reservation.reservation_spaces) 
+            ? reservation.reservation_spaces 
+            : [reservation.reservation_spaces];
+
+          reservationSpaces.forEach((rs: any) => {
+            const space = rs.spaces;
+            const customerName = customer.full_name || '';
+            
+            // Filtrar por término de búsqueda
+            if (term && !space.label.toLowerCase().includes(term.toLowerCase()) && 
+                !customerName.toLowerCase().includes(term.toLowerCase())) {
+              return;
+            }
+
+            spaces.push({
+              space_id: space.id,
+              space_label: space.label,
+              reservation_id: reservation.id,
+              customer_id: customer.id,
+              customer_name: customerName,
+              customer_email: customer.email,
+              customer_phone: customer.phone,
+              checkin: reservation.checkin,
+              checkout: reservation.checkout,
+              folio_id: reservation.folios?.[0]?.id,
+            });
+          });
+        });
+
+        setOccupiedSpaces(spaces);
+      }
+
+      // 2. Buscar clientes regulares solo si hay término de búsqueda
+      if (term.trim()) {
+        const filter: CustomerFilter = {
+          search: term.trim(),
+          status: 'active'
+        };
+        
+        const results = await POSService.searchCustomers(filter);
+        setCustomers(results);
+      } else {
+        setCustomers([]);
+      }
     } catch (error) {
-      console.error('Error searching customers:', error);
+      console.error('Error searching:', error);
       setCustomers([]);
+      setOccupiedSpaces([]);
     } finally {
       setIsLoading(false);
     }
@@ -101,19 +191,52 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
   };
 
   // Seleccionar cliente
-  const handleSelectCustomer = (customer: Customer) => {
-    onCustomerSelect(customer);
+  const handleSelectCustomer = (customer: Customer, room?: OccupiedSpace) => {
+    onCustomerSelect(customer, room);
     setShowCustomerList(false);
     setSearchTerm('');
+    // Cerrar dialog si está en modo dialog
+    if (onOpenChange) {
+      onOpenChange(false);
+    }
+  };
+
+  // Seleccionar espacio ocupado
+  const handleSelectRoom = (room: OccupiedSpace) => {
+    // Crear objeto Customer desde los datos del room
+    const customer: Customer = {
+      id: room.customer_id,
+      organization_id: 0,
+      full_name: room.customer_name,
+      email: room.customer_email || '',
+      phone: room.customer_phone || '',
+      doc_type: 'CC',
+      doc_number: '',
+      address: '',
+      city: '',
+      country: 'Colombia',
+      roles: [],
+      tags: [],
+      preferences: {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    onCustomerSelect(customer, room);
+    setShowCustomerList(false);
+    setSearchTerm('');
+    if (onOpenChange) {
+      onOpenChange(false);
+    }
   };
 
   // Limpiar selección
   const handleClearSelection = () => {
-    onCustomerSelect(undefined);
+    onCustomerSelect(undefined, undefined);
   };
 
-  return (
-    <div className={`space-y-2 ${className}`}>
+  const content = (
+    <div className={`space-y-2 ${open ? '' : className}`}>
       {/* Cliente seleccionado */}
       {selectedCustomer ? (
         <Card className="dark:bg-gradient-to-r dark:from-blue-900/20 dark:to-purple-900/10 dark:border-blue-500/30 light:bg-gradient-to-r light:from-blue-50 light:to-indigo-50 light:border-blue-200 border shadow-sm">
@@ -230,60 +353,124 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
 
                 {/* Resultados de búsqueda */}
                 <ScrollArea className="h-64">
-                  <div className="space-y-2 pr-4">
+                  <div className="space-y-3 pr-4">
                     {isLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <div className="flex items-center gap-2 text-sm dark:text-gray-400 light:text-gray-600">
                           <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                          <span>Buscando clientes...</span>
+                          <span>Buscando...</span>
                         </div>
                       </div>
-                    ) : customers.length === 0 && searchTerm ? (
+                    ) : occupiedSpaces.length === 0 && customers.length === 0 && searchTerm ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
                         <User className="h-12 w-12 dark:text-gray-600 light:text-gray-400 mb-2" />
-                        <p className="text-sm font-medium dark:text-gray-400 light:text-gray-600 mb-1">No se encontraron clientes</p>
+                        <p className="text-sm font-medium dark:text-gray-400 light:text-gray-600 mb-1">No se encontraron resultados</p>
                         <p className="text-xs dark:text-gray-500 light:text-gray-500">Intenta con otro término de búsqueda</p>
                       </div>
-                    ) : searchTerm ? (
-                      customers.map((customer) => (
-                        <div
-                          key={customer.id}
-                          className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-gray-800 light:hover:bg-gray-50 dark:hover:border-blue-500/30 light:hover:border-blue-200 border border-transparent"
-                          onClick={() => handleSelectCustomer(customer)}
-                        >
-                          <UserAvatar 
-                            name={customer.full_name} 
-                            avatarUrl={customer.avatar_url} 
-                            size="sm" 
-                            className="shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm dark:text-white light:text-gray-900 truncate">
-                              {customer.full_name}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {customer.email && (
-                                <div className="flex items-center gap-1 text-xs dark:text-gray-400 light:text-gray-600">
-                                  <Mail className="h-3 w-3" />
-                                  <span className="truncate max-w-[120px]">{customer.email}</span>
-                                </div>
-                              )}
-                              {customer.phone && (
-                                <div className="flex items-center gap-1 text-xs dark:text-gray-400 light:text-gray-600">
-                                  <Phone className="h-3 w-3" />
-                                  <span>{customer.phone}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <Search className="h-12 w-12 dark:text-gray-600 light:text-gray-400 mb-2" />
-                        <p className="text-sm font-medium dark:text-gray-400 light:text-gray-600 mb-1">Comienza a escribir</p>
-                        <p className="text-xs dark:text-gray-500 light:text-gray-500">Busca clientes por nombre, email o teléfono</p>
-                      </div>
+                      <>
+                        {/* Espacios Ocupados */}
+                        {occupiedSpaces.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 px-1">
+                              <Building2 className="h-3.5 w-3.5 text-green-600" />
+                              <p className="text-xs font-semibold dark:text-gray-400 light:text-gray-600">
+                                ESPACIOS OCUPADOS ({occupiedSpaces.length})
+                              </p>
+                            </div>
+                            {occupiedSpaces.map((room) => (
+                              <div
+                                key={`${room.space_id}-${room.reservation_id}`}
+                                className="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-green-900/20 light:hover:bg-green-50 dark:border-green-500/30 light:border-green-200 border"
+                                onClick={() => handleSelectRoom(room)}
+                              >
+                                <div className="flex-shrink-0">
+                                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                    <Building2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="font-semibold text-sm dark:text-white light:text-gray-900">
+                                      {room.space_label}
+                                    </p>
+                                    <Badge className="bg-green-600 text-xs">Ocupada</Badge>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-xs dark:text-gray-400 light:text-gray-600 mb-0.5">
+                                    <User className="h-3 w-3" />
+                                    <span className="font-medium">{room.customer_name}</span>
+                                  </div>
+                                  {room.customer_email && (
+                                    <div className="flex items-center gap-1 text-xs dark:text-gray-500 light:text-gray-500">
+                                      <Mail className="h-3 w-3" />
+                                      <span className="truncate">{room.customer_email}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Separador si hay ambos */}
+                        {occupiedSpaces.length > 0 && customers.length > 0 && searchTerm && (
+                          <Separator className="dark:bg-gray-800 light:bg-gray-200" />
+                        )}
+
+                        {/* Clientes Regulares */}
+                        {customers.length > 0 && searchTerm && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 px-1">
+                              <User className="h-3.5 w-3.5 text-blue-600" />
+                              <p className="text-xs font-semibold dark:text-gray-400 light:text-gray-600">
+                                CLIENTES ({customers.length})
+                              </p>
+                            </div>
+                            {customers.map((customer) => (
+                              <div
+                                key={customer.id}
+                                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-gray-800 light:hover:bg-gray-50 dark:hover:border-blue-500/30 light:hover:border-blue-200 border border-transparent"
+                                onClick={() => handleSelectCustomer(customer)}
+                              >
+                                <UserAvatar 
+                                  name={customer.full_name} 
+                                  avatarUrl={customer.avatar_url} 
+                                  size="sm" 
+                                  className="shrink-0"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm dark:text-white light:text-gray-900 truncate">
+                                    {customer.full_name}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {customer.email && (
+                                      <div className="flex items-center gap-1 text-xs dark:text-gray-400 light:text-gray-600">
+                                        <Mail className="h-3 w-3" />
+                                        <span className="truncate max-w-[120px]">{customer.email}</span>
+                                      </div>
+                                    )}
+                                    {customer.phone && (
+                                      <div className="flex items-center gap-1 text-xs dark:text-gray-400 light:text-gray-600">
+                                        <Phone className="h-3 w-3" />
+                                        <span>{customer.phone}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Estado vacío inicial */}
+                        {!searchTerm && occupiedSpaces.length === 0 && customers.length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-8 text-center">
+                            <Search className="h-12 w-12 dark:text-gray-600 light:text-gray-400 mb-2" />
+                            <p className="text-sm font-medium dark:text-gray-400 light:text-gray-600 mb-1">Comienza a escribir</p>
+                            <p className="text-xs dark:text-gray-500 light:text-gray-500">Busca espacios ocupados o clientes</p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </ScrollArea>
@@ -502,4 +689,23 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
       </Dialog>
     </div>
   );
+
+  // Si se pasa open/onOpenChange, envolver en Dialog
+  if (open !== undefined && onOpenChange) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>Seleccionar Cliente</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[calc(85vh-8rem)]">
+            {content}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Modo inline
+  return content;
 }

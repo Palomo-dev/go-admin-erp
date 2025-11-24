@@ -195,17 +195,17 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">Monedas Disponibles</h3>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <h3 className="text-base sm:text-lg font-medium dark:text-gray-300">Monedas Disponibles</h3>
         <Dialog open={openSelector} onOpenChange={setOpenSelector}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800">
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800 w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" /> Nueva Moneda
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md dark:bg-gray-800 dark:border-gray-700">
             <DialogHeader>
-              <DialogTitle>Agregar Nueva Moneda</DialogTitle>
+              <DialogTitle className="text-lg dark:text-blue-400">Agregar Nueva Moneda</DialogTitle>
             </DialogHeader>
             <CurrencySelector 
               organizationId={organizationId} 
@@ -219,47 +219,47 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
       </div>
 
       {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
+        <Alert variant="destructive" className="mb-4 dark:border-red-800 dark:bg-red-900/20">
+          <AlertDescription className="text-sm dark:text-red-300">{error}</AlertDescription>
         </Alert>
       )}
 
-      <div className="border rounded-md dark:border-gray-700">
+      <div className="border rounded-md dark:border-gray-700 overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="dark:border-gray-700">
-              <TableHead className="dark:text-gray-300">Código</TableHead>
-              <TableHead className="dark:text-gray-300">Nombre</TableHead>
-              <TableHead className="dark:text-gray-300">Símbolo</TableHead>
-              <TableHead className="dark:text-gray-300">Decimales</TableHead>
-              <TableHead className="dark:text-gray-300">Base</TableHead>
-              <TableHead className="dark:text-gray-300">Auto</TableHead>
-              <TableHead className="dark:text-gray-300">Acciones</TableHead>
+            <TableRow className="dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <TableHead className="dark:text-gray-300 text-xs sm:text-sm">Código</TableHead>
+              <TableHead className="dark:text-gray-300 text-xs sm:text-sm hidden md:table-cell">Nombre</TableHead>
+              <TableHead className="dark:text-gray-300 text-xs sm:text-sm">Símbolo</TableHead>
+              <TableHead className="dark:text-gray-300 text-xs sm:text-sm hidden lg:table-cell">Decimales</TableHead>
+              <TableHead className="dark:text-gray-300 text-xs sm:text-sm">Base</TableHead>
+              <TableHead className="dark:text-gray-300 text-xs sm:text-sm hidden sm:table-cell">Auto</TableHead>
+              <TableHead className="dark:text-gray-300 text-xs sm:text-sm text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-6 dark:text-gray-400">
-                  <RefreshCw className="animate-spin h-5 w-5 mx-auto mb-2" />
-                  Cargando monedas...
+                  <RefreshCw className="animate-spin h-5 w-5 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm">Cargando monedas...</span>
                 </TableCell>
               </TableRow>
             ) : currencies.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-6 dark:text-gray-400">
-                  No hay monedas disponibles.
+                  <span className="text-sm">No hay monedas disponibles.</span>
                 </TableCell>
               </TableRow>
             ) : (
               currencies.map((currency) => (
                 <TableRow key={currency.code} className="dark:border-gray-700">
-                  <TableCell className="font-medium dark:text-gray-200">
+                  <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
                     {currency.code}
                   </TableCell>
-                  <TableCell className="dark:text-gray-300">{currency.name}</TableCell>
-                  <TableCell className="dark:text-gray-300">{currency.symbol}</TableCell>
-                  <TableCell className="dark:text-gray-300">{currency.decimals}</TableCell>
+                  <TableCell className="text-xs sm:text-sm dark:text-gray-300 hidden md:table-cell">{currency.name}</TableCell>
+                  <TableCell className="text-xs sm:text-sm dark:text-gray-300">{currency.symbol}</TableCell>
+                  <TableCell className="text-xs sm:text-sm dark:text-gray-300 hidden lg:table-cell">{currency.decimals}</TableCell>
                   <TableCell>
                     <div className="flex justify-center">
                       <Button
@@ -269,31 +269,33 @@ export default function CurrencyTable({ organizationId }: CurrencyTableProps) {
                         disabled={currency.is_base}
                         className={
                           currency.is_base 
-                            ? "bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800" 
-                            : "dark:text-gray-200 dark:border-gray-600"
+                            ? "bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800 text-xs h-7" 
+                            : "dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 text-xs h-7"
                         }
                       >
                         {currency.is_base ? "Base" : "Establecer"}
                       </Button>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <div className="flex justify-center">
                       <Switch
                         checked={currency.org_auto_update ?? currency.auto_update}
                         onCheckedChange={() => toggleAutoUpdate(currency.code, currency.org_auto_update ?? currency.auto_update)}
+                        className="data-[state=checked]:bg-green-600 dark:data-[state=checked]:bg-green-700"
                       />
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex space-x-2 justify-end">
+                    <div className="flex space-x-1 sm:space-x-2 justify-end">
                       <Button 
                         variant="destructive" 
-                        size="sm"
+                        size="icon"
                         onClick={() => deleteCurrency(currency.code)}
                         disabled={currency.is_base}
+                        className="h-8 w-8 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </TableCell>

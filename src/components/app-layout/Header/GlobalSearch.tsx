@@ -274,17 +274,14 @@ const GlobalSearch = () => {
           Buscar en organizaciones, clientes, productos y más
         </DialogDescription>
         
-        <div className="flex items-center px-3 border-b">
-          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <CommandInput
-            ref={inputRef}
-            value={query}
-            onValueChange={handleInputChange}
-            placeholder="Buscar organizaciones, clientes, productos..."
-            className="flex-1 py-3 text-base outline-none placeholder:text-gray-500 h-12"
-            autoFocus
-          />
-        </div>
+        <CommandInput
+          ref={inputRef}
+          value={query}
+          onValueChange={handleInputChange}
+          placeholder="Buscar organizaciones, clientes, productos..."
+          className="flex-1 py-3 text-base outline-none placeholder:text-gray-500 h-12 px-3 border-b"
+          autoFocus
+        />
 
         <CommandList className="max-h-[500px] overflow-y-auto py-2">
           {results.length === 0 && !isLoading && query.length > 0 && (

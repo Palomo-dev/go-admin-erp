@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Printer, Receipt, Split } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { PreCuenta } from './types';
+import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 
 interface PreCuentaDialogProps {
   open: boolean;
@@ -21,9 +22,10 @@ interface PreCuentaDialogProps {
   preCuenta: PreCuenta | null;
   tableName: string;
   onPrint?: () => void;
-  onGenerateBill?: () => void;
+  onGenerateBill?: (sendToFactus?: boolean) => void;
   onSplitBill?: () => void;
   customers?: number;
+  showEInvoiceOption?: boolean;
 }
 
 export function PreCuentaDialog({
@@ -35,7 +37,10 @@ export function PreCuentaDialog({
   onGenerateBill,
   onSplitBill,
   customers = 1,
+  showEInvoiceOption = true,
 }: PreCuentaDialogProps) {
+  const [sendToFactus, setSendToFactus] = React.useState(false);
+  
   if (!preCuenta) return null;
 
   return (
@@ -66,7 +71,7 @@ export function PreCuentaDialog({
                     </p>
                     {item.notes && (
                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        📝 {item.notes}
+                        📝 {typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes}
                       </p>
                     )}
                   </div>
@@ -129,6 +134,19 @@ export function PreCuentaDialog({
               Esta es una pre-cuenta. El cobro se realizará al cerrar la mesa.
             </p>
           </Card>
+
+          {/* Opción de Factura Electrónica */}
+          {showEInvoiceOption && (
+            <Card className="p-3 bg-gray-50 dark:bg-gray-800/50">
+              <ElectronicInvoiceToggle
+                checked={sendToFactus}
+                onCheckedChange={setSendToFactus}
+                showLabel={true}
+                showTooltip={true}
+                size="md"
+              />
+            </Card>
+          )}
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
@@ -148,7 +166,7 @@ export function PreCuentaDialog({
           </div>
           <div className="flex gap-2">
             {onGenerateBill && (
-              <Button onClick={onGenerateBill}>
+              <Button onClick={() => onGenerateBill(sendToFactus)}>
                 <Receipt className="h-4 w-4 mr-2" />
                 Procesar Pago
               </Button>

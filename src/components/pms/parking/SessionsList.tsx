@@ -12,6 +12,7 @@ import type { ParkingSession } from '@/lib/services/parkingService';
 interface SessionsListProps {
   sessions: ParkingSession[];
   onExit: (session: ParkingSession) => void;
+  onSessionClick?: (session: ParkingSession) => void;
 }
 
 const getStatusInfo = (status: string) => {
@@ -34,7 +35,7 @@ const getStatusInfo = (status: string) => {
   }
 };
 
-export function SessionsList({ sessions, onExit }: SessionsListProps) {
+export function SessionsList({ sessions, onExit, onSessionClick }: SessionsListProps) {
   if (sessions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
@@ -55,7 +56,11 @@ export function SessionsList({ sessions, onExit }: SessionsListProps) {
         const statusInfo = getStatusInfo(session.status);
         
         return (
-          <Card key={session.id} className="p-5">
+          <Card 
+            key={session.id} 
+            className="p-5 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all"
+            onClick={() => onSessionClick?.(session)}
+          >
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-bold text-gray-900 dark:text-gray-100">
@@ -104,7 +109,10 @@ export function SessionsList({ sessions, onExit }: SessionsListProps) {
 
             {session.status === 'open' && (
               <Button
-                onClick={() => onExit(session)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExit(session);
+                }}
                 className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
               >
                 <LogOut className="h-4 w-4 mr-2" />

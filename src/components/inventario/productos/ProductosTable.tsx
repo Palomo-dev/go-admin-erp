@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { 
   Table, 
@@ -15,6 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { 
@@ -25,7 +28,8 @@ import {
   Eye, 
   Trash2,
   Copy,
-  PackageIcon
+  PackageIcon,
+  ExternalLink
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
@@ -225,7 +229,8 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
             {currentProductos.map((producto) => (
               <TableRow 
                 key={typeof producto.id === 'number' ? producto.id : String(producto.id)}
-                className={`dark:border-gray-700 ${getBgColorByStock(producto.stock)}`}
+                className={`dark:border-gray-700 ${getBgColorByStock(producto.stock)} cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors`}
+                onClick={() => onView(producto)}
               >
                 <TableCell>
                   <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-md overflow-hidden border dark:border-gray-600 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -268,47 +273,48 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                   <span className={`font-semibold ${producto.stock && producto.stock <= 0 ? 'text-red-500' : 'dark:text-gray-200'}`}>{producto.stock || 0}</span>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">{renderEstado(producto.status)}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
-                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 dark:hover:bg-gray-700"
+                        className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         <span className="sr-only">Abrir menú</span>
-                        <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4 dark:text-gray-300" />
+                        <MoreHorizontal className="h-4 w-4 dark:text-gray-300" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent 
                       align="end"
-                      className="dark:bg-gray-800 dark:border-gray-700 w-40 sm:w-48"
+                      className="dark:bg-gray-800 dark:border-gray-700 w-48"
                     >
                       <DropdownMenuItem 
                         onClick={() => onView(producto)}
-                        className="dark:hover:bg-gray-700 dark:focus:bg-gray-700 dark:text-gray-200 text-sm"
+                        className="cursor-pointer"
                       >
-                        <Eye className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                        <span>Ver</span>
+                        <Eye className="mr-2 h-4 w-4" />
+                        <span>Ver detalle</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => onEdit(producto)}
-                        className="dark:hover:bg-gray-700 dark:focus:bg-gray-700 dark:text-gray-200 text-sm"
+                        className="cursor-pointer"
                       >
-                        <Pencil className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <Pencil className="mr-2 h-4 w-4" />
                         <span>Editar</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => onDuplicate(producto)}
-                        className="dark:hover:bg-gray-700 dark:focus:bg-gray-700 dark:text-gray-200 text-sm"
+                        className="cursor-pointer"
                       >
-                        <Copy className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <Copy className="mr-2 h-4 w-4" />
                         <span>Duplicar</span>
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         onClick={() => onDelete(producto.id)}
-                        className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700 dark:focus:bg-gray-700 text-sm"
+                        className="text-red-600 dark:text-red-400 cursor-pointer"
                       >
-                        <Trash2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <Trash2 className="mr-2 h-4 w-4" />
                         <span>Eliminar</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>

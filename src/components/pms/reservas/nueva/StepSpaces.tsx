@@ -12,6 +12,8 @@ interface Space {
   label: string;
   floor_zone?: string;
   capacity?: number;
+  isAvailable?: boolean;
+  hasConflict?: boolean;
   space_types?: {
     name: string;
     base_rate?: number;
@@ -114,24 +116,29 @@ export function StepSpaces({
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {spaces.map((space) => {
                   const isSelected = selectedSpaces.includes(space.id);
+                  const isAvailable = space.isAvailable !== false; // Default true si no está definido
                   const basePrice = space.space_types?.base_rate || 0;
                   const total = calculateTotal(basePrice);
 
                   return (
                     <Card
                       key={space.id}
-                      className={`p-4 cursor-pointer transition-all ${
-                        isSelected
-                          ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
-                          : 'hover:border-gray-400 dark:hover:border-gray-500'
+                      className={`p-4 transition-all ${
+                        !isAvailable
+                          ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600'
+                          : isSelected
+                          ? 'cursor-pointer border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
+                          : 'cursor-pointer hover:border-gray-400 dark:hover:border-gray-500'
                       }`}
-                      onClick={() => onSpaceToggle(space.id)}
+                      onClick={() => isAvailable && onSpaceToggle(space.id)}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <div
                             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              isSelected
+                              !isAvailable
+                                ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
+                                : isSelected
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
                             }`}
@@ -139,7 +146,7 @@ export function StepSpaces({
                             <DoorOpen className="h-5 w-5" />
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                            <h4 className={`font-semibold ${!isAvailable ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
                               {space.label}
                             </h4>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -147,15 +154,19 @@ export function StepSpaces({
                             </p>
                           </div>
                         </div>
-                        {isSelected && (
+                        {!isAvailable ? (
+                          <Badge variant="secondary" className="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                            Ocupado
+                          </Badge>
+                        ) : isSelected ? (
                           <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
                             <Check className="w-4 h-4 text-white" />
                           </div>
-                        )}
+                        ) : null}
                       </div>
 
                       {space.capacity && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        <div className={`flex items-center gap-1 text-sm mb-2 ${!isAvailable ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-400'}`}>
                           <Users className="h-4 w-4" />
                           <span>Capacidad: {space.capacity}</span>
                         </div>
@@ -164,10 +175,10 @@ export function StepSpaces({
                       {basePrice > 0 && (
                         <div className="pt-2 border-t dark:border-gray-700">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className={`text-sm ${!isAvailable ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-400'}`}>
                               ${basePrice} × {nights} noche{nights !== 1 ? 's' : ''}
                             </span>
-                            <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                            <span className={`text-lg font-bold ${!isAvailable ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'}`}>
                               ${total}
                             </span>
                           </div>

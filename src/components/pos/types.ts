@@ -197,6 +197,8 @@ export interface CheckoutData {
   change: number;
   total_paid: number;
   tax_included?: boolean;
+  tip_amount?: number;
+  tip_server_id?: string;
 }
 
 // Para impuestos

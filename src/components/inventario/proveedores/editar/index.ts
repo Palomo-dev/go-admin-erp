@@ -1,0 +1,1 @@
+export { EditarProveedorForm } from './EditarProveedorForm';

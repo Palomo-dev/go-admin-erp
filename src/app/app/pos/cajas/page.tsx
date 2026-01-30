@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Wallet, Clock, AlertCircle, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
+import { Wallet, Clock, AlertCircle, RefreshCw, History, Eye, Calculator, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, cn } from '@/utils/Utils';
 
 // Componentes del módulo de cajas
 import { AperturaCajaDialog } from '@/components/pos/cajas/AperturaCajaDialog';
@@ -24,15 +26,17 @@ import { toast } from 'sonner';
 export default function CajasPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
+  const [sessionHistory, setSessionHistory] = useState<CashSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  // Cargar sesión activa al inicio
+  // Cargar sesión activa e historial al inicio
   useEffect(() => {
     if (organization?.id) {
       loadActiveSession();
+      loadSessionHistory();
     }
   }, [organization]);
 
@@ -51,7 +55,17 @@ export default function CajasPage() {
     }
   };
 
+  const loadSessionHistory = async () => {
+    try {
+      const history = await CajasService.getSessionHistory({ status: 'all' });
+      setSessionHistory(history.slice(0, 10)); // Últimas 10 sesiones
+    } catch (error: any) {
+      console.error('Error loading session history:', error);
+    }
+  };
+
   const handleSessionOpened = (session: CashSession) => {
+    loadSessionHistory();
     setActiveSession(session);
     setRefreshTrigger(prev => prev + 1);
     toast.success('Caja abierta exitosamente', {
@@ -60,6 +74,7 @@ export default function CajasPage() {
   };
 
   const handleSessionClosed = (session: CashSession) => {
+    loadSessionHistory();
     setActiveSession(session);
     setRefreshTrigger(prev => prev + 1);
     toast.success('Caja cerrada exitosamente', {
@@ -263,11 +278,6 @@ export default function CajasPage() {
                     />
                   )}
                   
-                  <ReportGenerator 
-                    sessionId={activeSession.id}
-                    disabled={false}
-                  />
-                  
                   {activeSession.status === 'closed' && (
                     <AperturaCajaDialog onSessionOpened={handleSessionOpened} />
                   )}
@@ -300,6 +310,69 @@ export default function CajasPage() {
             </div>
           </>
         )}
+
+        {/* Historial de Sesiones */}
+        <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg dark:text-white">
+              <History className="h-5 w-5" />
+              Historial de Sesiones
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {sessionHistory.length === 0 ? (
+              <p className="text-center text-gray-500 dark:text-gray-400 py-8">No hay sesiones anteriores</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Apertura</TableHead>
+                    <TableHead>Cierre</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Inicial</TableHead>
+                    <TableHead className="text-right">Final</TableHead>
+                    <TableHead className="text-right">Diferencia</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sessionHistory.map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell className="font-mono text-sm">#{session.id}</TableCell>
+                      <TableCell className="text-sm">{formatDateTime(new Date(session.opened_at))}</TableCell>
+                      <TableCell className="text-sm">{session.closed_at ? formatDateTime(new Date(session.closed_at)) : '-'}</TableCell>
+                      <TableCell>
+                        <Badge className={cn(
+                          session.status === 'open'
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                        )}>
+                          {session.status === 'open' ? 'Abierta' : 'Cerrada'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(session.initial_amount)}</TableCell>
+                      <TableCell className="text-right">{session.final_amount ? formatCurrency(session.final_amount) : '-'}</TableCell>
+                      <TableCell className={cn(
+                        "text-right font-medium",
+                        (session.difference || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                      )}>
+                        {session.difference !== null && session.difference !== undefined ? formatCurrency(session.difference) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/app/pos/cajas/${session.uuid}`}>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Footer informativo */}
         <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">

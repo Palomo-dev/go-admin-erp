@@ -20,6 +20,7 @@ export interface CreateSubscriptionData {
   customerEmail: string
   customerName?: string
   paymentMethodId?: string // Requerido si useTrial = false
+  existingCustomerId?: string // Customer ID creado en el paso de método de pago
 }
 
 export interface SubscriptionResult {
@@ -74,26 +75,41 @@ export async function createSubscription(
     // 1. Crear o obtener customer en Stripe
     let customerId: string
     
-    // Buscar si ya existe un customer con este email
-    const existingCustomers = await stripe.customers.list({
-      email: data.customerEmail,
-      limit: 1,
-    })
-
-    if (existingCustomers.data.length > 0) {
-      customerId = existingCustomers.data[0].id
-      console.log('✅ Customer existente encontrado:', customerId)
-    } else {
-      const customer = await stripe.customers.create({
-        email: data.customerEmail,
-        name: data.customerName,
+    // Si ya existe un customer ID (del paso de método de pago), usarlo
+    if (data.existingCustomerId) {
+      customerId = data.existingCustomerId
+      console.log('✅ Usando customer existente del registro:', customerId)
+      
+      // Actualizar metadata del customer con la organización
+      await stripe.customers.update(customerId, {
         metadata: {
           organizationId: data.organizationId.toString(),
           planCode: data.planCode,
+          status: 'active',
         },
       })
-      customerId = customer.id
-      console.log('✅ Customer creado:', customerId)
+    } else {
+      // Buscar si ya existe un customer con este email
+      const existingCustomers = await stripe.customers.list({
+        email: data.customerEmail,
+        limit: 1,
+      })
+
+      if (existingCustomers.data.length > 0) {
+        customerId = existingCustomers.data[0].id
+        console.log('✅ Customer existente encontrado:', customerId)
+      } else {
+        const customer = await stripe.customers.create({
+          email: data.customerEmail,
+          name: data.customerName,
+          metadata: {
+            organizationId: data.organizationId.toString(),
+            planCode: data.planCode,
+          },
+        })
+        customerId = customer.id
+        console.log('✅ Customer creado:', customerId)
+      }
     }
 
     // 2. Crear suscripción según si usa trial o no
@@ -300,6 +316,241 @@ export async function updateSubscriptionPaymentMethod(
     }
   } catch (error: any) {
     console.error('❌ Error actualizando payment method:', error)
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+}
+
+/**
+ * Cambiar plan de suscripción en Stripe
+ */
+export async function changeSubscriptionPlan(
+  stripeSubscriptionId: string,
+  newPlanCode: string,
+  billingPeriod: 'monthly' | 'yearly'
+) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
+    // Obtener el nuevo plan
+    const { data: newPlan, error: planError } = await supabase
+      .from('plans')
+      .select('id, stripe_price_monthly_id, stripe_price_yearly_id')
+      .eq('code', newPlanCode)
+      .single()
+
+    if (planError || !newPlan) {
+      throw new Error('Plan no encontrado')
+    }
+
+    const newPriceId = billingPeriod === 'monthly' 
+      ? newPlan.stripe_price_monthly_id 
+      : newPlan.stripe_price_yearly_id
+
+    if (!newPriceId) {
+      throw new Error(`Plan ${newPlanCode} no tiene precio configurado para ${billingPeriod}`)
+    }
+
+    // Obtener la suscripción actual
+    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId)
+    
+    // Actualizar la suscripción con el nuevo precio
+    const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+      items: [{
+        id: subscription.items.data[0].id,
+        price: newPriceId,
+      }],
+      proration_behavior: 'create_prorations',
+      metadata: {
+        ...subscription.metadata,
+        planCode: newPlanCode,
+        billingPeriod,
+      },
+    })
+
+    console.log('✅ Plan actualizado en Stripe:', updatedSubscription.id)
+
+    // Actualizar en Supabase
+    await supabase
+      .from('subscriptions')
+      .update({
+        plan_id: newPlan.id,
+        billing_period: billingPeriod,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('stripe_subscription_id', stripeSubscriptionId)
+
+    return {
+      success: true,
+      subscriptionId: updatedSubscription.id,
+      newPlanCode,
+      billingPeriod,
+    }
+  } catch (error: any) {
+    console.error('❌ Error cambiando plan:', error)
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+}
+
+/**
+ * Obtener portal de facturación de Stripe
+ */
+export async function createBillingPortalSession(
+  customerId: string,
+  returnUrl: string
+) {
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    })
+
+    return {
+      success: true,
+      url: session.url,
+    }
+  } catch (error: any) {
+    console.error('❌ Error creando sesión del portal:', error)
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+}
+
+/**
+ * Obtener facturas de un cliente
+ */
+export async function getCustomerInvoices(customerId: string, limit: number = 10) {
+  try {
+    const invoices = await stripe.invoices.list({
+      customer: customerId,
+      limit,
+    })
+
+    return {
+      success: true,
+      invoices: invoices.data.map(inv => ({
+        id: inv.id,
+        number: inv.number,
+        status: inv.status,
+        amount: inv.amount_due,
+        currency: inv.currency,
+        created: new Date(inv.created * 1000),
+        dueDate: inv.due_date ? new Date(inv.due_date * 1000) : null,
+        paidAt: inv.status_transitions?.paid_at ? new Date(inv.status_transitions.paid_at * 1000) : null,
+        invoicePdf: inv.invoice_pdf,
+        hostedInvoiceUrl: inv.hosted_invoice_url,
+      })),
+    }
+  } catch (error: any) {
+    console.error('❌ Error obteniendo facturas:', error)
+    return {
+      success: false,
+      error: error.message,
+      invoices: [],
+    }
+  }
+}
+
+/**
+ * Reactivar suscripción cancelada
+ */
+export async function reactivateSubscription(subscriptionId: string) {
+  try {
+    const subscription = await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: false,
+    })
+
+    console.log('✅ Suscripción reactivada:', subscriptionId)
+    
+    return {
+      success: true,
+      subscriptionId: subscription.id,
+    }
+  } catch (error: any) {
+    console.error('❌ Error reactivando suscripción:', error)
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+}
+
+/**
+ * Obtener métodos de pago de un cliente
+ */
+export async function getCustomerPaymentMethods(customerId: string) {
+  try {
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: customerId,
+      type: 'card',
+    })
+
+    return {
+      success: true,
+      paymentMethods: paymentMethods.data.map(pm => ({
+        id: pm.id,
+        brand: pm.card?.brand,
+        last4: pm.card?.last4,
+        expMonth: pm.card?.exp_month,
+        expYear: pm.card?.exp_year,
+        isDefault: false, // Se establece después
+      })),
+    }
+  } catch (error: any) {
+    console.error('❌ Error obteniendo métodos de pago:', error)
+    return {
+      success: false,
+      error: error.message,
+      paymentMethods: [],
+    }
+  }
+}
+
+/**
+ * Eliminar método de pago
+ */
+export async function deletePaymentMethod(paymentMethodId: string) {
+  try {
+    await stripe.paymentMethods.detach(paymentMethodId)
+    
+    return { success: true }
+  } catch (error: any) {
+    console.error('❌ Error eliminando método de pago:', error)
+    return {
+      success: false,
+      error: error.message,
+    }
+  }
+}
+
+/**
+ * Crear Setup Intent para agregar método de pago
+ */
+export async function createSetupIntent(customerId: string) {
+  try {
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+    })
+
+    return {
+      success: true,
+      clientSecret: setupIntent.client_secret,
+    }
+  } catch (error: any) {
+    console.error('❌ Error creando setup intent:', error)
     return {
       success: false,
       error: error.message,

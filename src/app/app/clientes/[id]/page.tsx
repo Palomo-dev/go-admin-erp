@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
+import { ArrowLeft, User, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Importamos los componentes del perfil del cliente
 import ClienteHeader from '@/components/clientes/id/ClienteHeader';
@@ -81,47 +84,70 @@ export default function PerfilCliente() {
   
   if (loading) {
     return (
-      <div className="w-full h-96 flex justify-center items-center">
-        <div className="flex flex-col items-center">
-          <div className="loading loading-spinner loading-lg text-primary mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Cargando información del cliente...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando perfil del cliente...</p>
       </div>
     );
   }
   
   if (error || !cliente) {
     return (
-      <div className="w-full h-96 flex justify-center items-center">
-        <div className="flex flex-col items-center">
-          <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <p className="text-red-500 font-medium mb-2">Error al cargar el cliente</p>
-          <p className="text-gray-600 dark:text-gray-400 text-center">{error || 'No se pudo encontrar el cliente solicitado'}</p>
+      <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div className="flex items-center gap-3">
+          <Link href="/app/clientes">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cliente no encontrado</h1>
+        </div>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
+          <p className="text-red-600 dark:text-red-400 mb-4">{error || 'No se pudo encontrar el cliente solicitado'}</p>
+          <Link href="/app/clientes">
+            <Button variant="outline" className="border-red-300 text-red-700">
+              Volver a clientes
+            </Button>
+          </Link>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="container mx-auto py-6 px-4">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      {/* Header con botón volver */}
+      <div className="flex items-center gap-3">
+        <Link href="/app/clientes">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <User className="h-7 w-7 text-blue-600" />
+            {cliente.full_name}
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Clientes / Perfil
+          </p>
+        </div>
+      </div>
+
       {/* Header del perfil del cliente */}
       <ClienteHeader cliente={cliente} />
       
       {/* Contenido principal con pestañas y barra lateral */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sección principal con pestañas */}
         <div className="col-span-1 lg:col-span-2">
           <Tabs defaultValue="resumen" className="w-full">
-            <TabsList className="mb-6">
-              <TabsTrigger value="resumen">Resumen</TabsTrigger>
-              <TabsTrigger value="info">Información</TabsTrigger>
-              <TabsTrigger value="timeline">Timeline</TabsTrigger>
-              <TabsTrigger value="cuentas">Cuentas por cobrar</TabsTrigger>
-              <TabsTrigger value="notas">Notas y archivos</TabsTrigger>
+            <TabsList className="mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1 rounded-lg">
+              <TabsTrigger value="resumen" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Resumen</TabsTrigger>
+              <TabsTrigger value="info" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Información</TabsTrigger>
+              <TabsTrigger value="timeline" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Timeline</TabsTrigger>
+              <TabsTrigger value="cuentas" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Cuentas por cobrar</TabsTrigger>
+              <TabsTrigger value="notas" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Notas y archivos</TabsTrigger>
             </TabsList>
             
             <TabsContent value="resumen">

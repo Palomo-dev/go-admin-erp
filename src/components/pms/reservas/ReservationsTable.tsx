@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Eye, 
   Edit, 
@@ -34,6 +35,8 @@ import { type ReservationListItem } from '@/lib/services/reservationListService'
 
 interface ReservationsTableProps {
   reservations: ReservationListItem[];
+  selectedIds: Set<string>;
+  onSelectionChange: (ids: Set<string>) => void;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onCheckIn: (id: string) => void;
@@ -60,12 +63,34 @@ const CHANNEL_CONFIG: Record<string, { label: string; color: string }> = {
 
 export function ReservationsTable({
   reservations,
+  selectedIds,
+  onSelectionChange,
   onView,
   onEdit,
   onCheckIn,
   onCheckOut,
   onCancel,
 }: ReservationsTableProps) {
+  const allSelected = reservations.length > 0 && reservations.every((r) => selectedIds.has(r.id));
+  const someSelected = reservations.some((r) => selectedIds.has(r.id)) && !allSelected;
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      onSelectionChange(new Set());
+    } else {
+      onSelectionChange(new Set(reservations.map((r) => r.id)));
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    const newSelection = new Set(selectedIds);
+    if (newSelection.has(id)) {
+      newSelection.delete(id);
+    } else {
+      newSelection.add(id);
+    }
+    onSelectionChange(newSelection);
+  };
   const formatDate = (dateString: string) => {
     // Agregar hora para evitar problemas de zona horaria
     const date = new Date(dateString + 'T00:00:00');
@@ -93,6 +118,16 @@ export function ReservationsTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-gray-50 dark:bg-gray-800">
+            <TableHead className="w-12">
+              <Checkbox
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) (el as any).indeterminate = someSelected;
+                }}
+                onCheckedChange={handleSelectAll}
+                aria-label="Seleccionar todas"
+              />
+            </TableHead>
             <TableHead className="font-semibold">Código</TableHead>
             <TableHead className="font-semibold">Huésped</TableHead>
             <TableHead className="font-semibold">Fechas</TableHead>
@@ -107,7 +142,7 @@ export function ReservationsTable({
         <TableBody>
           {reservations.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <TableCell colSpan={10} className="text-center py-8 text-gray-500 dark:text-gray-400">
                 No se encontraron reservas
               </TableCell>
             </TableRow>
@@ -115,8 +150,17 @@ export function ReservationsTable({
             reservations.map((reservation) => (
               <TableRow
                 key={reservation.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                  selectedIds.has(reservation.id) ? 'bg-blue-50 dark:bg-blue-950/30' : ''
+                }`}
               >
+                <TableCell>
+                  <Checkbox
+                    checked={selectedIds.has(reservation.id)}
+                    onCheckedChange={() => handleSelectOne(reservation.id)}
+                    aria-label={`Seleccionar reserva ${reservation.code}`}
+                  />
+                </TableCell>
                 <TableCell>
                   <button
                     onClick={() => onView(reservation.id)}

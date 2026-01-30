@@ -141,7 +141,7 @@ export default function CategoriasPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <CategoriesHeader
         onNew={handleNew}
@@ -150,7 +150,7 @@ export default function CategoriasPage() {
       />
 
       {/* Content */}
-      <div className="container mx-auto px-6 py-6">
+      <div>
         {isLoading ? (
           <CategoriesLoadingState />
         ) : categories.length === 0 ? (

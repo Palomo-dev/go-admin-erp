@@ -1,28 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
+import { useRouter } from 'next/navigation';
 import { Proveedor, FiltrosProveedores as FiltrosProveedoresType } from './types';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from "@/components/ui/button";
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { supplierService } from '@/lib/services/supplierService';
 
 // Importaciones de los componentes creados
 import ProveedoresPageHeader from './ProveedoresPageHeader';
 import FiltrosProveedores from '@/components/inventario/proveedores/FiltrosProveedores';
 import ProveedoresTable from './ProveedoresTable';
-import FormularioProveedor from './FormularioProveedor';
-import DetalleProveedor from './DetalleProveedor';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 /**
  * Componente principal para el catálogo de proveedores
@@ -31,14 +33,10 @@ import {
  * incluyendo listado, filtrado, creación, edición y visualización de detalles.
  */
 const CatalogoProveedores: React.FC = () => {
-  // Tema actual
   const { theme } = useTheme();
+  const router = useRouter();
   
-  // Estados para gestionar la interfaz y los datos
-  const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [isViewing, setIsViewing] = useState<boolean>(false);
-  const [selectedProveedor, setSelectedProveedor] = useState<Proveedor | null>(null);
+  // Estados
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [filters, setFilters] = useState<FiltrosProveedoresType>({
@@ -46,8 +44,9 @@ const CatalogoProveedores: React.FC = () => {
     estado: '',
     ordenarPor: 'name'
   });
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
-  const [proveedorToDelete, setProveedorToDelete] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [proveedorToDelete, setProveedorToDelete] = useState<string | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState<boolean>(false);
 
   // Cargar proveedores desde Supabase
   useEffect(() => {
@@ -87,6 +86,7 @@ const CatalogoProveedores: React.FC = () => {
         // Transformar los datos a nuestro formato de interfaz
         const proveedoresData = data.map((p: any): Proveedor => ({
           id: p.id,
+          uuid: p.uuid,
           organization_id: p.organization_id,
           name: p.name,
           nit: p.nit || '',
@@ -121,170 +121,115 @@ const CatalogoProveedores: React.FC = () => {
     fetchProveedores();
   }, [filters]);
 
-  // Función para crear un nuevo proveedor
-  const handleCreateProveedor = async (proveedor: Partial<Proveedor>) => {
+  // Función para duplicar proveedor
+  const handleDuplicate = async (uuid: string) => {
     try {
-      // Obtener el organization_id actual del sistema
+      setIsDuplicating(true);
       const organizationId = getOrganizationId();
       
-      console.log('📝 Creando proveedor para organization_id:', organizationId);
+      const { data, error } = await supplierService.duplicateSupplier(uuid, organizationId);
       
-      // Preparar datos para inserción
-      const { data, error } = await supabase
-        .from('suppliers')
-        .insert([{
-          organization_id: organizationId, // Usar el ID correcto del sistema
-          name: proveedor.name,
-          nit: proveedor.nit,
-          contact: proveedor.contact,
-          phone: proveedor.phone,
-          email: proveedor.email,
-          notes: proveedor.notes
-        }])
-        .select();
-      
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       toast({
         title: "Éxito",
-        description: "Proveedor creado con éxito",
-        variant: "default",
+        description: "Proveedor duplicado correctamente",
       });
-      setIsCreating(false);
       
-      // Actualizar lista de proveedores
-      setProveedores([...proveedores, {
-        ...data[0],
-        condiciones_pago: {
-          dias_credito: 30,
-          limite_credito: 5000000,
-          metodo_pago_preferido: 'Transferencia'
-        },
-        cumplimiento: 100 // Nuevo proveedor inicia con 100%
-      }]);
-    } catch (error) {
-      console.error('Error al crear proveedor:', error);
-      toast({
-        title: "Error",
-        description: "Error al crear proveedor",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Función para actualizar un proveedor existente
-  const handleUpdateProveedor = async (proveedor: Partial<Proveedor>) => {
-    if (!proveedor.id || !proveedor.name) {
-      toast({
-        title: "Error",
-        description: "Datos incompletos para actualizar el proveedor",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      const { error } = await supabase
-        .from('suppliers')
-        .update({
-          name: proveedor.name,
-          nit: proveedor.nit || null,
-          contact: proveedor.contact || null,
-          phone: proveedor.phone || null,
-          email: proveedor.email || null,
-          notes: proveedor.notes || null
-        })
-        .eq('id', proveedor.id);
-      
-      if (error) {
-        throw error;
+      // Redirigir a editar el nuevo proveedor
+      if (data) {
+        router.push(`/app/inventario/proveedores/${data.uuid}/editar`);
       }
-      
-      toast({
-        title: "Éxito",
-        description: "Proveedor actualizado con éxito",
-        variant: "default",
-      });
-      setIsEditing(false);
-      setSelectedProveedor(null);
-      
-      // Actualizar lista de proveedores
-      setProveedores(proveedores.map(p => 
-        p.id === proveedor.id ? {...p, ...proveedor} : p
-      ));
     } catch (error) {
-      console.error('Error al actualizar proveedor:', error);
+      console.error('Error duplicando proveedor:', error);
       toast({
         title: "Error",
-        description: "Error al actualizar proveedor",
+        description: "No se pudo duplicar el proveedor",
         variant: "destructive",
       });
+    } finally {
+      setIsDuplicating(false);
     }
   };
 
-  // Función para mostrar el diálogo de confirmación de eliminación
-  const handleShowDeleteDialog = (id: number) => {
-    setProveedorToDelete(id);
-    setIsDeleteDialogOpen(true);
-  };
-
-  // Función para confirmar la eliminación de un proveedor
+  // Función para confirmar eliminación
   const handleConfirmDelete = async () => {
     if (!proveedorToDelete) return;
     
     try {
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', proveedorToDelete);
+      const organizationId = getOrganizationId();
+      const { success, error } = await supplierService.deleteSupplier(proveedorToDelete, organizationId);
       
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       toast({
         title: "Éxito",
-        description: "Proveedor eliminado con éxito",
-        variant: "default",
+        description: "Proveedor eliminado correctamente",
       });
       
-      // Actualizar lista de proveedores
-      setProveedores(proveedores.filter(p => p.id !== proveedorToDelete));
-      
-      // Cerrar el diálogo y limpiar el estado
-      setIsDeleteDialogOpen(false);
+      setProveedores(proveedores.filter(p => p.uuid !== proveedorToDelete));
+      setDeleteDialogOpen(false);
       setProveedorToDelete(null);
     } catch (error) {
-      console.error('Error al eliminar proveedor:', error);
+      console.error('Error eliminando proveedor:', error);
       toast({
         title: "Error",
-        description: "Error al eliminar proveedor",
+        description: "No se pudo eliminar el proveedor",
         variant: "destructive",
       });
     }
   };
 
-  // Función legacy para eliminar un proveedor (actualizada para usar el diálogo)
-  const handleDeleteProveedor = (id: number) => {
-    handleShowDeleteDialog(id);
+  // Función para mostrar diálogo de eliminación
+  const handleDelete = (uuid: string) => {
+    setProveedorToDelete(uuid);
+    setDeleteDialogOpen(true);
   };
-  
-  // Función para cerrar todos los modales
-  const handleCloseModals = () => {
-    setIsCreating(false);
-    setIsEditing(false);
-    setIsViewing(false);
-    setSelectedProveedor(null);
-    setIsDeleteDialogOpen(false);
-    setProveedorToDelete(null);
+
+  // Función para exportar proveedores
+  const handleExport = async () => {
+    try {
+      const organizationId = getOrganizationId();
+      const csv = await supplierService.exportSuppliersToCSV(organizationId);
+      
+      if (!csv) {
+        toast({
+          variant: 'destructive',
+          title: 'Sin datos',
+          description: 'No hay proveedores para exportar'
+        });
+        return;
+      }
+
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `proveedores_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Exportación completada',
+        description: 'El archivo CSV ha sido descargado'
+      });
+    } catch (error) {
+      console.error('Error exportando:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo exportar los proveedores'
+      });
+    }
   };
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5 lg:gap-6 text-gray-800 dark:text-gray-200">
       <ProveedoresPageHeader 
-        onNuevoProveedor={() => setIsCreating(true)} 
+        onNuevoProveedor={() => router.push('/app/inventario/proveedores/nuevo')}
+        onExport={handleExport}
       />
       
       <FiltrosProveedores 
@@ -292,83 +237,41 @@ const CatalogoProveedores: React.FC = () => {
         setFilters={setFilters} 
       />
       
-      {loading ? (
+      {loading || isDuplicating ? (
         <div className="flex justify-center items-center py-8 sm:py-10">
           <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-blue-600 dark:text-blue-400" />
+          {isDuplicating && <span className="ml-2 text-gray-500">Duplicando...</span>}
         </div>
       ) : (
         <ProveedoresTable 
           proveedores={proveedores}
-          onView={(proveedor) => {
-            setSelectedProveedor(proveedor);
-            setIsViewing(true);
-          }}
-          onEdit={(proveedor) => {
-            setSelectedProveedor(proveedor);
-            setIsEditing(true);
-          }}
-          onDelete={handleDeleteProveedor}
-        />
-      )}
-      
-      {/* Modal para creación de proveedor */}
-      {isCreating && (
-        <FormularioProveedor 
-          onSubmit={handleCreateProveedor}
-          onCancel={() => setIsCreating(false)}
-        />
-      )}
-      
-      {/* Modal para edición de proveedor */}
-      {isEditing && selectedProveedor && (
-        <FormularioProveedor 
-          proveedor={selectedProveedor}
-          onSubmit={handleUpdateProveedor}
-          onCancel={() => {
-            setIsEditing(false);
-            setSelectedProveedor(null);
-          }}
-        />
-      )}
-      
-      {/* Modal para visualización de detalles */}
-      {isViewing && selectedProveedor && (
-        <DetalleProveedor 
-          proveedor={selectedProveedor}
-          onClose={handleCloseModals}
+          onDelete={handleDelete}
+          onDuplicate={handleDuplicate}
         />
       )}
 
-      {/* Diálogo de confirmación para eliminar proveedor */}
-      {isDeleteDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
-            <h3 className="text-base sm:text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">Confirmar eliminación</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      {/* Diálogo de confirmación para eliminar */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="dark:bg-gray-900 dark:border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-white">Confirmar eliminación</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
               ¿Estás seguro de que deseas eliminar este proveedor? Esta acción no se puede deshacer.
-            </p>
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsDeleteDialogOpen(false);
-                  setProveedorToDelete(null);
-                }}
-                className="w-full sm:w-auto text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleConfirmDelete}
-                className="w-full sm:w-auto text-sm"
-              >
-                Eliminar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

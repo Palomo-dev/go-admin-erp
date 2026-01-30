@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
   if (code) {
     try {
       console.log('Processing code exchange (OAuth or email confirmation)...');
-      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(token);
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       console.log('Code exchange result:', data, exchangeError);
       if (exchangeError) {
         console.error('Code exchange error:', exchangeError);
@@ -104,8 +104,9 @@ export async function GET(request: NextRequest) {
             // Mantener la sesión activa para invitaciones
             return NextResponse.redirect(new URL(redirectTo, request.url));
           } else {
-            // Para signup normal, cerrar sesión y redirigir al login
-            console.log('Normal signup, redirecting to login...');
+            // Para signup normal, completar registro y cerrar sesión
+            console.log('Normal signup, completing registration...');
+            await completeSignupAfterEmailConfirmation(supabase, user);
             await supabase.auth.signOut();
             
             return NextResponse.redirect(
@@ -245,5 +246,173 @@ async function checkUserOrganization(supabase: any, userId: string): Promise<boo
   } catch (error: any) {
     console.error('Error in checkUserOrganization:', error);
     return false;
+  }
+}
+
+// Función para completar el registro después de confirmar el email
+async function completeSignupAfterEmailConfirmation(supabase: any, user: any) {
+  try {
+    console.log('🚀 Starting complete signup for user:', user.id);
+    
+    // Extraer datos del signup guardados en metadata
+    const metadata = user.user_metadata || {};
+    let signupData: any = {};
+    
+    if (metadata.signup_data) {
+      try {
+        signupData = JSON.parse(metadata.signup_data);
+      } catch (e) {
+        console.error('Error parsing signup_data:', e);
+        signupData = {};
+      }
+    }
+    
+    // 1. Crear perfil del usuario
+    console.log('1️⃣ Creating user profile...');
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        first_name: signupData.firstName || metadata.first_name || '',
+        last_name: signupData.lastName || metadata.last_name || '',
+        email: user.email,
+        avatar_url: signupData.avatarUrl || '',
+        preferred_language: signupData.preferredLanguage || 'es',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    
+    if (profileError) {
+      console.error('❌ Error creating profile:', profileError);
+      throw profileError;
+    }
+    console.log('✅ Profile created successfully');
+    
+    // 2. Crear organización (solo si es tipo 'create')
+    if (signupData.joinType === 'create' && signupData.organizationName) {
+      console.log('2️⃣ Creating organization...');
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: signupData.organizationName,
+          legal_name: signupData.organizationLegalName || signupData.organizationName,
+          type_id: parseInt(signupData.organizationTypeId) || 2,
+          country: signupData.organizationCountry || 'Colombia',
+          country_code: signupData.organizationCountryCode || 'COL',
+          tax_id: signupData.organizationTaxId || '',
+          email: signupData.organizationEmail || user.email,
+          phone: signupData.organizationPhone || '',
+          address: signupData.organizationAddress || '',
+          city: signupData.organizationCity || '',
+          state: signupData.organizationState || '',
+          postal_code: signupData.organizationPostalCode || '',
+          primary_color: signupData.organizationPrimaryColor || '#3B82F6',
+          secondary_color: signupData.organizationSecondaryColor || '#F59E0B',
+          created_by: user.id,
+          owner_user_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (orgError) {
+        console.error('❌ Error creating organization:', orgError);
+        throw orgError;
+      }
+      console.log('✅ Organization created with ID:', orgData.id);
+      
+      // 3. Crear sucursal principal
+      console.log('3️⃣ Creating main branch...');
+      const { data: branchData, error: branchError } = await supabase
+        .from('branches')
+        .insert({
+          organization_id: orgData.id,
+          name: signupData.branchName || 'Sucursal Principal',
+          branch_code: signupData.branchCode || 'MAIN-001',
+          address: signupData.branchAddress || '',
+          city: signupData.branchCity || '',
+          state: signupData.branchState || '',
+          country: signupData.branchCountry === 'COL' ? 'Colombia' : (signupData.branchCountry || 'Colombia'),
+          postal_code: signupData.branchPostalCode || '',
+          phone: signupData.branchPhone || '',
+          email: signupData.branchEmail || '',
+          is_main: true,
+          is_active: true,
+          opening_hours: signupData.branchOpeningHours || {
+            monday: { open: '09:00', close: '18:00', closed: false },
+            tuesday: { open: '09:00', close: '18:00', closed: false },
+            wednesday: { open: '09:00', close: '18:00', closed: false },
+            thursday: { open: '09:00', close: '18:00', closed: false },
+            friday: { open: '09:00', close: '18:00', closed: false },
+            saturday: { open: '10:00', close: '15:00', closed: false },
+            sunday: { closed: true }
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (branchError) {
+        console.error('❌ Error creating branch:', branchError);
+        throw branchError;
+      }
+      console.log('✅ Branch created with ID:', branchData.id);
+      
+      // 4. Crear membresía del usuario como super admin
+      console.log('4️⃣ Creating organization membership...');
+      const { error: memberError } = await supabase
+        .from('organization_members')
+        .insert({
+          organization_id: orgData.id,
+          user_id: user.id,
+          role_id: 2, // Admin de organización
+          is_super_admin: true,
+          is_active: true,
+          created_at: new Date().toISOString()
+        });
+      
+      if (memberError) {
+        console.error('❌ Error creating membership:', memberError);
+        throw memberError;
+      }
+      console.log('✅ Membership created successfully');
+      
+      // 5. Crear suscripción
+      console.log('5️⃣ Creating subscription...');
+      const planId = signupData.subscriptionPlan === 'business' ? 3 : (signupData.subscriptionPlan === 'pro' ? 2 : 1);
+      const trialDays = planId === 3 ? 30 : (planId === 2 ? 15 : 0);
+      
+      const { error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .insert({
+          organization_id: orgData.id,
+          plan_id: planId,
+          status: 'active',
+          billing_period: signupData.billingPeriod || 'monthly',
+          trial_start: new Date().toISOString(),
+          trial_end: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString(),
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          stripe_subscription_id: null,
+          stripe_customer_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      
+      if (subscriptionError) {
+        console.error('❌ Error creating subscription:', subscriptionError);
+        throw subscriptionError;
+      }
+      console.log('✅ Subscription created successfully');
+      
+      console.log('🎉 Complete signup finished successfully!');
+    } else {
+      console.log('⚠️ Skipping organization creation - join type is not "create" or no organization name');
+    }
+  } catch (error: any) {
+    console.error('❌ Error in completeSignupAfterEmailConfirmation:', error);
+    // No lanzar error para no interrumpir el flujo de confirmación
   }
 }

@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
 import DetalleFactura from './id/DetalleFactura';
 import { PagosFactura } from './PagosFactura';
+import { ElectronicInvoiceStatus } from '@/components/finanzas/facturacion-electronica';
 
 // Función para formatear fechas sin usar Date (evita errores de tipo)
 const formatearFecha = (fechaStr: string | null): string => {
@@ -482,6 +483,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
             <TableHead className="min-w-[100px] text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Saldo</TableHead>
             <TableHead className="min-w-[120px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Método</TableHead>
             <TableHead className="min-w-[100px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Estado</TableHead>
+            <TableHead className="min-w-[90px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">FE</TableHead>
             <TableHead className="w-16 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300"></TableHead>
           </TableRow>
         </TableHeader>
@@ -537,6 +539,13 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                 <Badge className={`text-[10px] sm:text-xs px-2 py-0.5 ${getStatusColor(factura.status)}`}>
                   {getStatusText(factura.status)}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                <ElectronicInvoiceStatus
+                  invoiceId={factura.id}
+                  size="sm"
+                  showTooltip={true}
+                />
               </TableCell>
               <TableCell>
                 <DropdownMenu>
@@ -618,7 +627,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
             {/* Fila expandida para mostrar los pagos */}
             {estaExpandida && (
               <TableRow className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                <TableCell colSpan={11} className="p-3 sm:p-4">
+                <TableCell colSpan={12} className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                     <span className="text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400">Historial de Pagos</span>

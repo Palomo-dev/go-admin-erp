@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +17,13 @@ interface EditarFacturaCompraProps {
 
 export function EditarFacturaCompra({ facturaId }: EditarFacturaCompraProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(true);
+  
+  // Detectar si estamos en inventario o finanzas
+  const basePath = pathname.includes('/inventario/') 
+    ? '/app/inventario/facturas-compra' 
+    : '/app/finanzas/facturas-compra';
   const [saving, setSaving] = useState(false);
   const [factura, setFactura] = useState<InvoicePurchase | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +75,7 @@ export function EditarFacturaCompra({ facturaId }: EditarFacturaCompraProps) {
       });
       
       // Redirigir al detalle de la factura
-      router.push(`/app/finanzas/facturas-compra/${factura.id}`);
+      router.push(`${basePath}/${factura.id}`);
       
     } catch (error: any) {
       console.error('Error actualizando factura:', error);
@@ -153,7 +159,7 @@ export function EditarFacturaCompra({ facturaId }: EditarFacturaCompraProps) {
               Intentar de nuevo
             </button>
             <button
-              onClick={() => router.push('/app/finanzas/facturas-compra')}
+              onClick={() => router.push(basePath)}
               className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
             >
               Volver a lista

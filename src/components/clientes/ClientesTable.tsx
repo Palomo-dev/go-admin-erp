@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, ChevronLeft, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,8 +9,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { ClientesPagination } from './ClientesPagination';
 
 interface Customer {
   id: string;
@@ -29,6 +31,9 @@ interface Customer {
   ar_status?: string | null;
   sales_count?: number;
   total_sales?: number;
+  avatar_url?: string | null;
+  first_name?: string;
+  last_name?: string;
 }
 
 interface ClientesTableProps {
@@ -37,6 +42,10 @@ interface ClientesTableProps {
   pageSize: number;
   count: number;
   onPageChange: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
+  selectedIds: string[];
+  onSelectionChange: (ids: string[]) => void;
+  isLoading?: boolean;
 }
 
 const ClientesTable: React.FC<ClientesTableProps> = ({
@@ -45,6 +54,10 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   pageSize,
   count,
   onPageChange,
+  onPageSizeChange,
+  selectedIds,
+  onSelectionChange,
+  isLoading = false,
 }) => {
   // Función para formatear fechas
   const formatDate = (dateString: string | null | undefined) => {
@@ -87,6 +100,38 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   const startItem = page * pageSize + 1;
   const endItem = Math.min((page + 1) * pageSize, count);
 
+  // Funciones de selección
+  const isAllSelected = customers.length > 0 && customers.every(c => selectedIds.includes(c.id));
+  const isSomeSelected = customers.some(c => selectedIds.includes(c.id)) && !isAllSelected;
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = [...selectedIds, ...customers.map(c => c.id)];
+      const newIds = allIds.filter((id, index) => allIds.indexOf(id) === index);
+      onSelectionChange(newIds);
+    } else {
+      const customerIds = customers.map(c => c.id);
+      onSelectionChange(selectedIds.filter(id => !customerIds.includes(id)));
+    }
+  };
+
+  const handleSelectOne = (customerId: string, checked: boolean) => {
+    if (checked) {
+      onSelectionChange([...selectedIds, customerId]);
+    } else {
+      onSelectionChange(selectedIds.filter(id => id !== customerId));
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="mt-2 text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       {customers.length === 0 ? (
@@ -101,6 +146,14 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
             <table className="w-full text-xs sm:text-sm">
               <thead className="bg-gray-50 dark:bg-gray-900/50 text-left">
                 <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="px-3 sm:px-4 py-3 w-12">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Seleccionar todos"
+                      className={isSomeSelected ? "data-[state=checked]:bg-blue-600" : ""}
+                    />
+                  </th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Cliente</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden sm:table-cell">Contacto</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden md:table-cell">Documento</th>
@@ -116,28 +169,53 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                 {customers.map((customer) => (
                   <tr 
                     key={customer.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${selectedIds.includes(customer.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                   >
                     <td className="px-3 sm:px-4 py-3">
-                      <div className="flex flex-col min-w-[120px] sm:min-w-0">
-                        <span className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
-                          {customer.full_name}
-                        </span>
-                        {/* Mostrar contacto en móvil */}
-                        <div className="sm:hidden flex flex-col mt-1 text-xs text-gray-600 dark:text-gray-400">
-                          {customer.email && <span className="truncate">{customer.email}</span>}
-                          {customer.phone && <span>{customer.phone}</span>}
+                      <Checkbox
+                        checked={selectedIds.includes(customer.id)}
+                        onCheckedChange={(checked) => handleSelectOne(customer.id, !!checked)}
+                        aria-label={`Seleccionar ${customer.full_name}`}
+                      />
+                    </td>
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="flex items-center gap-3 min-w-[120px] sm:min-w-0">
+                        {/* Avatar del cliente */}
+                        <div className="flex-shrink-0">
+                          {customer.avatar_url ? (
+                            <img
+                              src={customer.avatar_url}
+                              alt={customer.full_name}
+                              className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center border-2 border-blue-200 dark:border-blue-800">
+                              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                {customer.full_name?.charAt(0)?.toUpperCase() || '?'}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {customer.roles?.slice(0, 1).map(role => (
-                            <Badge 
-                              key={role} 
-                              variant="secondary"
-                              className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium"
-                            >
-                              {role}
-                            </Badge>
-                          ))}
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
+                            {customer.full_name}
+                          </span>
+                          {/* Mostrar contacto en móvil */}
+                          <div className="sm:hidden flex flex-col mt-1 text-xs text-gray-600 dark:text-gray-400">
+                            {customer.email && <span className="truncate">{customer.email}</span>}
+                            {customer.phone && <span>{customer.phone}</span>}
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {customer.roles?.slice(0, 1).map(role => (
+                              <Badge 
+                                key={role} 
+                                variant="secondary"
+                                className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium"
+                              >
+                                {role}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -282,38 +360,15 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
           </div>
           
           {/* Paginación */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
-            <div className="text-center sm:text-left">
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                Mostrando <span className="font-semibold text-gray-900 dark:text-gray-100">{startItem}</span> a <span className="font-semibold text-gray-900 dark:text-gray-100">{endItem}</span> de{' '}
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{count}</span> clientes
-              </p>
-            </div>
-            <div className="flex justify-center gap-2 w-full sm:w-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onPageChange(page - 1)}
-                disabled={page === 0}
-                className="flex-1 sm:flex-none min-h-[40px] text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4 mr-1 sm:mr-0" />
-                <span className="sm:hidden">Anterior</span>
-                <span className="sr-only sm:not-sr-only">Anterior</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onPageChange(page + 1)}
-                disabled={page >= totalPages - 1}
-                className="flex-1 sm:flex-none min-h-[40px] text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="sm:hidden">Siguiente</span>
-                <span className="sr-only sm:not-sr-only">Siguiente</span>
-                <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4 ml-1 sm:ml-0" />
-              </Button>
-            </div>
-          </div>
+          <ClientesPagination
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={count}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+            showPageSizeSelector={!!onPageSizeChange}
+          />
         </>
       )}
     </div>

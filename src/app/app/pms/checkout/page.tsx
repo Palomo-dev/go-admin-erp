@@ -9,6 +9,7 @@ import CheckoutService, {
   type CheckoutReservation,
   type CheckoutStats as CheckoutStatsType,
 } from '@/lib/services/checkoutService';
+import { supabase } from '@/lib/supabase/config';
 import {
   CheckoutStats,
   DeparturesTable,
@@ -111,8 +112,14 @@ export default function CheckoutPage() {
     try {
       console.log('Iniciando check-out para:', data);
 
-      // Realizar check-out
-      await CheckoutService.performCheckout(data);
+      // Obtener usuario actual para auditoría
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Realizar check-out con userId para auditoría
+      await CheckoutService.performCheckout({
+        ...data,
+        userId: user?.id,
+      });
 
       toast({
         title: '¡Check-out exitoso!',
@@ -158,8 +165,8 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-6 py-6">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between gap-4">

@@ -15,6 +15,15 @@ import { CuentaPorCobrarDetalle, AccountActions } from './types';
 import { CuentaPorCobrarDetailService } from './service';
 import { formatCurrency } from '@/utils/Utils';
 
+interface Installment {
+  id: string;
+  installment_number: number;
+  amount: number;
+  balance: number;
+  status: string;
+  due_date: string;
+}
+
 interface AccountActionsCardProps {
   account: CuentaPorCobrarDetalle;
   actions: AccountActions;
@@ -24,11 +33,29 @@ interface AccountActionsCardProps {
 export function AccountActionsCard({ account, actions, onUpdate }: AccountActionsCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [reminderMessage, setReminderMessage] = useState('');
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [installments, setInstallments] = useState<Installment[]>([]);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentData, setPaymentData] = useState({
     amount: '',
-    method: 'efectivo',
-    reference: ''
+    method: '',
+    reference: '',
+    installmentId: ''
   });
+
+  // Cargar métodos de pago e installments al abrir el diálogo
+  const loadPaymentData = async () => {
+    try {
+      const [methods, cuotas] = await Promise.all([
+        CuentaPorCobrarDetailService.obtenerMetodosPago(),
+        CuentaPorCobrarDetailService.obtenerCuotas(account.id)
+      ]);
+      setPaymentMethods(methods);
+      setInstallments(cuotas.filter((c: Installment) => c.status !== 'paid'));
+    } catch (error) {
+      console.error('Error cargando datos de pago:', error);
+    }
+  };
 
   const handleSendReminder = async () => {
     if (!reminderMessage.trim()) {
@@ -56,22 +83,68 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
       return;
     }
 
-    if (parseFloat(paymentData.amount) > account.balance) {
-      toast.error('El monto no puede ser mayor al balance pendiente');
+    if (!paymentData.method) {
+      toast.error('Por favor selecciona un método de pago');
       return;
     }
 
+    const amount = parseFloat(paymentData.amount);
+
     try {
       setIsLoading(true);
-      await CuentaPorCobrarDetailService.aplicarPago(
-        account.id,
-        parseFloat(paymentData.amount),
-        paymentData.method,
-        paymentData.reference || undefined
-      );
+
+      // Si seleccionó una cuota específica, pagar esa cuota
+      if (paymentData.installmentId && paymentData.installmentId !== 'general') {
+        const selectedInstallment = installments.find(i => i.id === paymentData.installmentId);
+        if (selectedInstallment && amount > selectedInstallment.balance) {
+          toast.error('El monto no puede ser mayor al saldo de la cuota');
+          setIsLoading(false);
+          return;
+        }
+
+        await CuentaPorCobrarDetailService.pagarCuota(
+          paymentData.installmentId,
+          amount,
+          paymentData.method,
+          paymentData.reference || undefined
+        );
+      } else {
+        // Pago general - aplicar automáticamente a cuotas pendientes (de la más antigua a la más nueva)
+        if (amount > account.balance) {
+          toast.error('El monto no puede ser mayor al balance pendiente');
+          setIsLoading(false);
+          return;
+        }
+
+        // Si hay cuotas pendientes, aplicar el pago automáticamente
+        if (installments.length > 0) {
+          let remainingAmount = amount;
+          for (const installment of installments) {
+            if (remainingAmount <= 0) break;
+            
+            const paymentForInstallment = Math.min(remainingAmount, installment.balance);
+            await CuentaPorCobrarDetailService.pagarCuota(
+              installment.id,
+              paymentForInstallment,
+              paymentData.method,
+              paymentData.reference || undefined
+            );
+            remainingAmount -= paymentForInstallment;
+          }
+        } else {
+          // Si no hay cuotas, aplicar pago directo a la cuenta
+          await CuentaPorCobrarDetailService.aplicarPago(
+            account.id,
+            amount,
+            paymentData.method,
+            paymentData.reference || undefined
+          );
+        }
+      }
       
       toast.success('Pago aplicado exitosamente');
-      setPaymentData({ amount: '', method: 'efectivo', reference: '' });
+      setPaymentData({ amount: '', method: '', reference: '', installmentId: '' });
+      setShowPaymentDialog(false);
       onUpdate();
     } catch (error) {
       console.error('Error al aplicar pago:', error);
@@ -218,15 +291,19 @@ Saludos cordiales.`;
 
         {/* Apply Payment */}
         {actions.canApplyPayment && (
-          <Dialog>
+          <Dialog open={showPaymentDialog} onOpenChange={(open) => {
+            setShowPaymentDialog(open);
+            if (open) loadPaymentData();
+          }}>
             <DialogTrigger asChild>
               <Button 
+                id="btn-registrar-cobro"
                 variant="outline" 
                 className="w-full justify-start h-auto p-4 dark:border-gray-600 dark:hover:bg-gray-800"
               >
                 <CreditCard className="h-4 w-4 mr-3 text-blue-600 dark:text-blue-400" />
                 <div className="text-left">
-                  <div className="font-medium">Aplicar Pago</div>
+                  <div className="font-medium">Registrar Cobro</div>
                   <div className="text-sm text-gray-500 dark:text-gray-400">
                     Registrar un pago parcial o total
                   </div>
@@ -236,13 +313,47 @@ Saludos cordiales.`;
             <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
               <DialogHeader>
                 <DialogTitle className="text-gray-900 dark:text-white">
-                  Aplicar Pago
+                  Registrar Cobro
                 </DialogTitle>
                 <DialogDescription className="text-gray-600 dark:text-gray-400">
                   Balance pendiente: {formatCurrency(account.balance)}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                {/* Selector de cuota si hay cuotas */}
+                {installments.length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Aplicar a cuota (opcional)
+                    </Label>
+                    <Select 
+                      value={paymentData.installmentId} 
+                      onValueChange={(value) => {
+                        const selectedInst = installments.find(i => i.id === value);
+                        setPaymentData({ 
+                          ...paymentData, 
+                          installmentId: value,
+                          amount: selectedInst ? selectedInst.balance.toString() : paymentData.amount
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
+                        <SelectValue placeholder="Seleccionar cuota o aplicar automáticamente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="general">Aplicar automáticamente a cuotas pendientes</SelectItem>
+                        {installments.map((inst) => (
+                          <SelectItem key={inst.id} value={inst.id}>
+                            Cuota #{inst.installment_number} - Saldo: {formatCurrency(inst.balance)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Si no seleccionas una cuota, el pago se aplicará automáticamente a las cuotas más antiguas
+                    </p>
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="paymentAmount" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Monto del pago
@@ -282,13 +393,14 @@ Saludos cordiales.`;
                   </Label>
                   <Select value={paymentData.method} onValueChange={(value) => setPaymentData({ ...paymentData, method: value })}>
                     <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                      <SelectValue />
+                      <SelectValue placeholder="Seleccionar método" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="transferencia">Transferencia</SelectItem>
-                      <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                      <SelectItem value="cheque">Cheque</SelectItem>
+                      {paymentMethods.map((method) => (
+                        <SelectItem key={method.id} value={method.payment_method?.code || method.id.toString()}>
+                          {method.payment_method?.name || 'Sin nombre'}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -310,7 +422,7 @@ Saludos cordiales.`;
                   className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
                   <DollarSign className="h-4 w-4 mr-2" />
-                  {isLoading ? 'Aplicando...' : 'Aplicar Pago'}
+                  {isLoading ? 'Aplicando...' : 'Registrar Cobro'}
                 </Button>
               </div>
             </DialogContent>
@@ -322,6 +434,7 @@ Saludos cordiales.`;
           <Dialog>
             <DialogTrigger asChild>
               <Button 
+                id="btn-marcar-cobrada"
                 variant="outline" 
                 className="w-full justify-start h-auto p-4 dark:border-gray-600 dark:hover:bg-gray-800"
               >

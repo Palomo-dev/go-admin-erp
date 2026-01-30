@@ -1,15 +1,21 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Plus } from 'lucide-react';
+import { FileText, Download, Plus, Upload, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { ImportarCSVDialog } from './ImportarCSVDialog';
 
-export function PageHeader() {
-  // Usamos el router para la navegación
+interface PageHeaderProps {
+  onRefresh?: () => void;
+}
+
+export function PageHeader({ onRefresh }: PageHeaderProps) {
   const router = useRouter();
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Función para manejar la creación de nueva factura
   const handleNuevaFactura = () => {
@@ -40,15 +46,25 @@ export function PageHeader() {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
       {/* Título con icono */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="flex-shrink-0 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-          <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
+      <div className="flex items-center gap-3">
+        <Link href="/app/finanzas">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+          <FileText className="h-6 w-6 text-blue-600" />
         </div>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-          Facturas de Venta
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Facturas de Venta
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Finanzas / Facturas de Venta
+          </p>
+        </div>
       </div>
       
       {/* Botones de acción */}
@@ -69,6 +85,22 @@ export function PageHeader() {
           <span className="text-sm font-medium">Exportar</span>
         </Button>
         <Button 
+          variant="outline"
+          size="sm"
+          className="
+            flex items-center justify-center gap-2 flex-1 sm:flex-initial
+            bg-white dark:bg-gray-800 
+            border-gray-300 dark:border-gray-600
+            hover:bg-gray-50 dark:hover:bg-gray-700
+            text-gray-700 dark:text-gray-200
+            transition-colors
+          "
+          onClick={() => setShowImportDialog(true)}
+        >
+          <Upload className="h-4 w-4 flex-shrink-0" />
+          <span className="text-sm font-medium hidden sm:inline">Importar CSV</span>
+        </Button>
+        <Button 
           size="sm"
           className="
             flex items-center justify-center gap-2 flex-1 sm:flex-initial
@@ -84,6 +116,16 @@ export function PageHeader() {
           <span className="text-sm font-medium">Nueva Factura</span>
         </Button>
       </div>
+
+      {/* Diálogo de importación CSV */}
+      <ImportarCSVDialog
+        isOpen={showImportDialog}
+        onClose={() => setShowImportDialog(false)}
+        onImportComplete={() => {
+          setShowImportDialog(false);
+          if (onRefresh) onRefresh();
+        }}
+      />
     </div>
   );
 }

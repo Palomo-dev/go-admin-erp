@@ -21,7 +21,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
  * Configurado con la versión de API más reciente
  */
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-09-30.clover', // Última versión estable
+  apiVersion: '2025-09-30.clover', // Versión requerida por stripe@19.1.0
   typescript: true,
   appInfo: {
     name: 'GO Admin ERP',

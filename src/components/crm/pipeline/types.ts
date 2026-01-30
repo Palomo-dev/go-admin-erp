@@ -5,6 +5,7 @@ export interface Customer {
   phone?: string;
   address?: string;
   notes?: string;
+  avatar_url?: string;
   has_opportunities: boolean;
   organization_id: string;
   created_at: string;

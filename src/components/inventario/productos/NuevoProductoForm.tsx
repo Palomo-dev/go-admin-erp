@@ -31,7 +31,8 @@ const productoSchema = z.object({
   description: z.string().optional(),
   category_id: z.number().optional(),
   unit_code: z.string().optional(),
-  tax_id: z.number().optional(),
+  tax_id: z.string().optional(), // UUID del impuesto en organization_taxes
+  supplier_id: z.number().optional(), // Proveedor principal
   parent_product_id: z.number().optional(), // Para variantes
   tag_id: z.number().optional(),
   
@@ -47,7 +48,8 @@ const productoSchema = z.object({
       qty_on_hand: z.number().min(0),
       avg_cost: z.number().min(0),
       qty_reserved: z.number().min(0),
-      lot_id: z.number().nullable().optional()
+      lot_id: z.number().nullable().optional(),
+      min_level: z.number().min(0).optional() // Stock mínimo
     })
   ).optional(),
 
@@ -92,7 +94,8 @@ export default function FormularioProducto() {
       description: '',
       category_id: undefined,
       unit_code: '',
-      tax_id: undefined,
+      tax_id: '',
+      supplier_id: undefined,
       parent_product_id: undefined,
       tag_id: undefined,
       
@@ -143,12 +146,17 @@ export default function FormularioProducto() {
       };
       
       // Extraer datos para tablas separadas
-      const { price, cost, stock_inicial, ...productData } = data;
+      const { price, cost, stock_inicial, tax_id, supplier_id, ...productData } = data;
+      
+      // Obtener variantes para determinar si es producto padre
+      const variantesTemp = variantesRef.current?.getVariantes() || [];
+      const tieneVariantes = variantesTemp.length > 0;
       
       // Preparar los datos del producto principal
       const productoData = {
         ...productData,
-        organization_id
+        organization_id,
+        is_parent: tieneVariantes // Marcar como padre si tiene variantes
       };
       
       // Verificar que el SKU del producto principal sea único antes de insertarlo
@@ -197,7 +205,45 @@ export default function FormularioProducto() {
         }
       }
       
-      // 4. Si hay stock inicial, insertarlo
+      // 4. Guardar relación con impuesto en product_tax_relations
+      if (tax_id && producto) {
+        try {
+          const { error: taxError } = await supabase
+            .from('product_tax_relations')
+            .insert({
+              product_id: producto.id,
+              tax_id: tax_id // UUID del impuesto
+            });
+          
+          if (taxError) {
+            console.error('Error al guardar relación de impuesto:', taxError);
+          }
+        } catch (taxError) {
+          console.error('Error al guardar impuesto:', taxError);
+        }
+      }
+      
+      // 5. Guardar relación con proveedor en product_suppliers
+      if (supplier_id && producto) {
+        try {
+          const { error: supplierError } = await supabase
+            .from('product_suppliers')
+            .insert({
+              product_id: producto.id,
+              supplier_id: supplier_id,
+              cost: cost || 0,
+              is_preferred: true // Es el proveedor principal
+            });
+          
+          if (supplierError) {
+            console.error('Error al guardar relación de proveedor:', supplierError);
+          }
+        } catch (supplierError) {
+          console.error('Error al guardar proveedor:', supplierError);
+        }
+      }
+      
+      // 6. Si hay stock inicial, insertarlo
       if (stock_inicial && stock_inicial.length > 0 && producto) {
         try {
           console.log('Insertando stock_levels:', stock_inicial.length, 'elementos');
@@ -205,11 +251,11 @@ export default function FormularioProducto() {
           const stockData = stock_inicial.map(item => ({
             product_id: producto.id,
             branch_id: item.branch_id,
-            // Asegurarnos que lot_id sea null si no existe
             lot_id: item.lot_id || null,
             qty_on_hand: parseFloat(String(item.qty_on_hand)) || 0,
             qty_reserved: parseFloat(String(item.qty_reserved || 0)) || 0,
-            avg_cost: parseFloat(String(item.avg_cost || cost || 0)) || 0
+            avg_cost: parseFloat(String(item.avg_cost || cost || 0)) || 0,
+            min_level: parseFloat(String(item.min_level || 0)) || 0 // Stock mínimo
           }));
           
           console.log('Datos de stock_levels a insertar:', stockData);
@@ -226,7 +272,7 @@ export default function FormularioProducto() {
           
           console.log('Stock insertado correctamente');
           
-          // 5. Registrar los movimientos de stock
+          // 7. Registrar los movimientos de stock
           try {
             const movimientosData = stock_inicial.map(item => ({
               product_id: producto.id,
@@ -265,7 +311,7 @@ export default function FormularioProducto() {
         }
       }
       
-      // 6. Guardar imágenes del producto
+      // 8. Guardar imágenes del producto
       if (producto && imagenesRef.current) {
         try {
           const { success, error: imgError } = await imagenesRef.current.guardarImagenesEnBD(producto.id);
@@ -278,23 +324,39 @@ export default function FormularioProducto() {
         }
       }
       
-      // 7. Guardar variantes del producto como productos hijos
+      // 9. Guardar variantes del producto como productos hijos
       if (variantes.length > 0 && producto) {
         for (const variante of variantes) {
           // Asegurar que el SKU sea único antes de insertar
           const skuUnico = await verificarSkuUnico(variante.sku);
           
-          // Insertar la variante como un producto con parent_product_id
+          // Construir variant_data con los atributos de la variante (color, talla, etc.)
+          const variantData: Record<string, string> = {};
+          if (variante.attributes && variante.attributes.length > 0) {
+            variante.attributes.forEach((attr: any) => {
+              const key = (attr.typeName || attr.type_name || 'atributo').toLowerCase();
+              variantData[key] = attr.value;
+            });
+          }
+          
+          // Generar nombre descriptivo de la variante
+          const nombreVariante = variante.attributes && variante.attributes.length > 0
+            ? `${productoData.name} - ${variante.attributes.map((a: any) => a.value).join(' / ')}`
+            : `${productoData.name} - ${variante.nombre || 'Variante'}`;
+          
+          // Insertar la variante como un producto con parent_product_id y variant_data
           const { data: varProducto, error: varError } = await supabase
             .from('products')
             .insert({
               organization_id,
               sku: skuUnico,
-              name: `${productoData.name} - ${variante.nombre || 'Variante'}`,
+              name: nombreVariante,
               parent_product_id: producto.id, // Relación con producto padre
+              is_parent: false, // Las variantes no son productos padre
               category_id: productoData.category_id,
               unit_code: productoData.unit_code,
-              status: productoData.status
+              status: productoData.status,
+              variant_data: variantData // Datos de la variante (color: "Rojo", talla: "M")
             })
             .select()
             .single();
@@ -391,7 +453,7 @@ export default function FormularioProducto() {
         }
       }
       
-      // 8. Guardar las notas del producto
+      // 10. Guardar las notas del producto
       if (notasRef.current && producto) {
         try {
           const { success, error } = await notasRef.current.guardarNotasEnBD(producto.id);
@@ -403,7 +465,7 @@ export default function FormularioProducto() {
         }
       }
       
-      // 9. Guardar las etiquetas del producto
+      // 11. Guardar las etiquetas del producto
       if (etiquetasRef.current && producto) {
         try {
           const { success, error } = await etiquetasRef.current.guardarEtiquetasEnBD(producto.id);
@@ -424,13 +486,13 @@ export default function FormularioProducto() {
       // Log para diagnóstico
       console.log('Producto guardado exitosamente:', producto.id);
       
-      // Redireccionar a la página de detalle del producto
+      // Redireccionar a la página de detalle del producto usando UUID
       setTimeout(() => {
         try {
-          router.push(`/app/inventario/productos/${producto.id}`);
+          router.push(`/app/inventario/productos/${producto.uuid}`);
         } catch (navError) {
           console.error('Error al redireccionar:', navError);
-          window.location.href = `/app/inventario/productos/${producto.id}`;
+          window.location.href = `/app/inventario/productos/${producto.uuid}`;
         }
       }, 500);
       

@@ -1,0 +1,1 @@
+export { OrdenCompraDetalle } from './OrdenCompraDetalle';

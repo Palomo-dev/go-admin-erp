@@ -1,5 +1,57 @@
 import { supabase } from '@/lib/supabase/config';
 
+export interface ParkingZone {
+  id: string;
+  branch_id: number;
+  name: string;
+  description?: string;
+  capacity: number;
+  rate_multiplier: number;
+  is_covered: boolean;
+  is_vip: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ParkingPassType {
+  id: string;
+  organization_id: number;
+  name: string;
+  description?: string;
+  duration_days: number;
+  price: number;
+  max_entries_per_day?: number;
+  includes_car_wash: boolean;
+  includes_valet: boolean;
+  allowed_vehicle_types: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ParkingPass {
+  id: string;
+  organization_id: number;
+  customer_id: string;
+  vehicle_plate: string;
+  plan_name: string;
+  pass_type_id?: string;
+  start_date: string;
+  end_date: string;
+  price: number;
+  status: 'active' | 'expired' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+  pass_type?: ParkingPassType;
+  customer?: {
+    id: string;
+    full_name: string;
+    email?: string;
+    phone?: string;
+  };
+}
+
 export interface ParkingSession {
   id: string;
   branch_id: number;
@@ -170,6 +222,251 @@ class ParkingService {
       };
     } catch (error: any) {
       console.error('Error obteniendo estadísticas:', error.message || error);
+      throw error;
+    }
+  }
+
+  // ==================== ZONAS ====================
+
+  /**
+   * Obtener zonas de parking
+   */
+  async getZones(branchId: number): Promise<ParkingZone[]> {
+    try {
+      const { data, error } = await supabase
+        .from('parking_zones')
+        .select('*')
+        .eq('branch_id', branchId)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return (data || []) as ParkingZone[];
+    } catch (error) {
+      console.error('Error obteniendo zonas:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Crear zona de parking
+   */
+  async createZone(data: Partial<ParkingZone>): Promise<ParkingZone> {
+    try {
+      const { data: zone, error } = await supabase
+        .from('parking_zones')
+        .insert(data)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return zone as ParkingZone;
+    } catch (error) {
+      console.error('Error creando zona:', error);
+      throw error;
+    }
+  }
+
+  // ==================== TIPOS DE PASES ====================
+
+  /**
+   * Obtener tipos de pases de parking
+   */
+  async getPassTypes(organizationId: number): Promise<ParkingPassType[]> {
+    try {
+      const { data, error } = await supabase
+        .from('parking_pass_types')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return (data || []) as ParkingPassType[];
+    } catch (error) {
+      console.error('Error obteniendo tipos de pases:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Crear tipo de pase
+   */
+  async createPassType(data: Partial<ParkingPassType>): Promise<ParkingPassType> {
+    try {
+      const { data: passType, error } = await supabase
+        .from('parking_pass_types')
+        .insert(data)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return passType as ParkingPassType;
+    } catch (error) {
+      console.error('Error creando tipo de pase:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualizar tipo de pase
+   */
+  async updatePassType(id: string, data: Partial<ParkingPassType>): Promise<ParkingPassType> {
+    try {
+      const { data: passType, error } = await supabase
+        .from('parking_pass_types')
+        .update({ ...data, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return passType as ParkingPassType;
+    } catch (error) {
+      console.error('Error actualizando tipo de pase:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Eliminar tipo de pase (soft delete)
+   */
+  async deletePassType(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('parking_pass_types')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error eliminando tipo de pase:', error);
+      throw error;
+    }
+  }
+
+  // ==================== PASES/ABONADOS ====================
+
+  /**
+   * Obtener pases de parking (abonados)
+   */
+  async getPasses(organizationId: number): Promise<ParkingPass[]> {
+    try {
+      const { data, error } = await supabase
+        .from('parking_passes')
+        .select(`
+          *,
+          pass_type:parking_pass_types(*),
+          customer:customers(id, full_name, email, phone)
+        `)
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as ParkingPass[];
+    } catch (error) {
+      console.error('Error obteniendo pases:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Crear pase de parking
+   */
+  async createPass(data: {
+    organization_id: number;
+    customer_id: string;
+    vehicle_plate: string;
+    pass_type_id: string;
+    start_date: string;
+    end_date: string;
+    price: number;
+    plan_name: string;
+  }): Promise<ParkingPass> {
+    try {
+      const { data: pass, error } = await supabase
+        .from('parking_passes')
+        .insert({
+          ...data,
+          status: 'active',
+        })
+        .select(`
+          *,
+          pass_type:parking_pass_types(*),
+          customer:customers(id, full_name, email, phone)
+        `)
+        .single();
+
+      if (error) throw error;
+      return pass as ParkingPass;
+    } catch (error) {
+      console.error('Error creando pase:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualizar pase
+   */
+  async updatePass(id: string, data: Partial<ParkingPass>): Promise<ParkingPass> {
+    try {
+      const { data: pass, error } = await supabase
+        .from('parking_passes')
+        .update({ ...data, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select(`
+          *,
+          pass_type:parking_pass_types(*),
+          customer:customers(id, full_name, email, phone)
+        `)
+        .single();
+
+      if (error) throw error;
+      return pass as ParkingPass;
+    } catch (error) {
+      console.error('Error actualizando pase:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancelar pase
+   */
+  async cancelPass(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('parking_passes')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error cancelando pase:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar clientes para asignar pase
+   */
+  async searchCustomers(organizationId: number, query: string): Promise<Array<{
+    id: string;
+    full_name: string;
+    email?: string;
+    phone?: string;
+  }>> {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, full_name, email, phone')
+        .eq('organization_id', organizationId)
+        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%`)
+        .limit(10);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error buscando clientes:', error);
       throw error;
     }
   }

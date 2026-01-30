@@ -1,0 +1,1 @@
+export { NuevoMovimientoPage } from './NuevoMovimientoPage';

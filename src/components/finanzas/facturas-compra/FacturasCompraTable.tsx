@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -36,6 +36,7 @@ interface FacturasCompraTableProps {
 
 export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [facturas, setFacturas] = useState<InvoicePurchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -44,6 +45,11 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<InvoicePurchase | null>(null);
   const pageSize = 10;
+
+  // Detectar si estamos en inventario o finanzas
+  const basePath = pathname.includes('/inventario/') 
+    ? '/app/inventario/facturas-compra' 
+    : '/app/finanzas/facturas-compra';
 
   // Cargar facturas
   useEffect(() => {
@@ -70,11 +76,11 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
   };
 
   const handleVerDetalles = (id: string) => {
-    router.push(`/app/finanzas/facturas-compra/${id}`);
+    router.push(`${basePath}/${id}`);
   };
 
   const handleEditarFactura = (id: string) => {
-    router.push(`/app/finanzas/facturas-compra/${id}/editar`);
+    router.push(`${basePath}/${id}/editar`);
   };
 
   const handleEliminarFactura = async (id: string) => {
@@ -174,8 +180,35 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-48 sm:h-64">
-        <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+      <div className="space-y-4">
+        {/* Skeleton de tabla */}
+        <div className="rounded-lg border dark:border-gray-700 overflow-hidden">
+          {/* Header skeleton */}
+          <div className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 p-4">
+            <div className="flex gap-4">
+              {[100, 150, 80, 80, 90, 70, 80].map((w, i) => (
+                <div key={i} className={`h-4 bg-gray-200 dark:bg-gray-600 rounded animate-pulse`} style={{ width: w }}></div>
+              ))}
+            </div>
+          </div>
+          {/* Rows skeleton */}
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="border-b dark:border-gray-700 p-4 flex items-center gap-4 animate-pulse" style={{ animationDelay: `${i * 100}ms` }}>
+              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-600 rounded"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-40 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                <div className="h-3 w-24 bg-gray-100 dark:bg-gray-700 rounded"></div>
+              </div>
+              <div className="h-4 w-20 bg-gray-200 dark:bg-gray-600 rounded"></div>
+              <div className="h-4 w-20 bg-gray-200 dark:bg-gray-600 rounded"></div>
+              <div className="h-6 w-16 bg-blue-100 dark:bg-blue-900/30 rounded-full"></div>
+              <div className="flex gap-1">
+                <div className="h-8 w-8 bg-gray-100 dark:bg-gray-700 rounded"></div>
+                <div className="h-8 w-8 bg-gray-100 dark:bg-gray-700 rounded"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

@@ -149,3 +149,42 @@ export interface PaginatedSaleResponse {
   limit: number;
   totalPages: number;
 }
+
+// Tipos para motivos de devolución
+export interface ReturnReason {
+  id: number;
+  organization_id: number;
+  code: string;
+  name: string;
+  description?: string;
+  requires_photo: boolean;
+  affects_inventory: boolean;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+}
+
+export interface CreateReturnReasonData {
+  code: string;
+  name: string;
+  description?: string;
+  requires_photo?: boolean;
+  affects_inventory?: boolean;
+  is_active?: boolean;
+  display_order?: number;
+}
+
+export interface UpdateReturnReasonData {
+  code?: string;
+  name?: string;
+  description?: string;
+  requires_photo?: boolean;
+  affects_inventory?: boolean;
+  is_active?: boolean;
+  display_order?: number;
+}
+
+export interface ReturnReasonFilters {
+  search?: string;
+  is_active?: boolean;
+}

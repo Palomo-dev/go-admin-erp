@@ -16,6 +16,7 @@ import { Plus, Minus, Search, X, ShoppingCart, Package } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { POSService } from '@/lib/services/posService';
+import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
 
 interface Product {
   id: number;
@@ -62,6 +63,10 @@ export function AddConsumptionDialog({
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<Map<number, ConsumptionToAdd>>(new Map());
+  
+  // Estado para selector de variantes
+  const [showVariantDialog, setShowVariantDialog] = useState(false);
+  const [selectedParentProduct, setSelectedParentProduct] = useState<any>(null);
 
   useEffect(() => {
     if (open) {
@@ -114,7 +119,24 @@ export function AddConsumptionDialog({
     }
   }, [searchTerm, selectedCategory, open]);
 
-  const addToCart = (product: Product) => {
+  // Manejar click en producto (con o sin variantes)
+  const handleProductClick = (product: any) => {
+    if (product.has_variants && product.variant_count > 0) {
+      setSelectedParentProduct(product);
+      setShowVariantDialog(true);
+    } else {
+      addToCart(product);
+    }
+  };
+
+  // Manejar selección de variante desde el diálogo
+  const handleVariantSelect = (variant: any) => {
+    addToCart(variant);
+    setShowVariantDialog(false);
+    setSelectedParentProduct(null);
+  };
+
+  const addToCart = (product: any) => {
     const unitPrice = product.price || 0;
     if (unitPrice === 0) {
       alert('Este producto no tiene precio configurado');
@@ -284,20 +306,23 @@ export function AddConsumptionDialog({
                 </div>
               ) : (
                 <div className="grid grid-cols-4 gap-3">
-                  {products.map((product) => {
+                  {products.map((product: any) => {
                     const productImage = getProductImage(product);
                     const price = product.price || 0;
                     const inCart = cart.has(product.id);
+                    const hasVariants = product.has_variants && product.variant_count > 0;
 
                     return (
                       <button
                         key={product.id}
                         type="button"
-                        onClick={() => addToCart(product)}
+                        onClick={() => handleProductClick(product)}
                         className={`relative group rounded-xl border-2 transition-all hover:shadow-lg ${
                           inCart
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
-                            : 'border-gray-200 bg-white hover:border-blue-300'
+                            : hasVariants
+                              ? 'border-purple-200 bg-white hover:border-purple-400'
+                              : 'border-gray-200 bg-white hover:border-blue-300'
                         }`}
                       >
                         {/* Imagen */}
@@ -315,6 +340,12 @@ export function AddConsumptionDialog({
                               <Package className="h-12 w-12 text-gray-300" />
                             </div>
                           )}
+                          {/* Badge de variantes */}
+                          {hasVariants && (
+                            <div className="absolute top-2 left-2 bg-purple-600 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                              {product.variant_count} var
+                            </div>
+                          )}
                           {inCart && (
                             <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
                               {cart.get(product.id)?.quantity}
@@ -328,10 +359,10 @@ export function AddConsumptionDialog({
                             {product.name}
                           </h3>
                           <div className="flex items-center justify-between mt-1">
-                            <span className="text-lg font-bold text-blue-600">
-                              {formatCurrency(price)}
+                            <span className={`text-lg font-bold ${hasVariants ? 'text-purple-600' : 'text-blue-600'}`}>
+                              {hasVariants ? 'Desde' : ''} {formatCurrency(price || 0)}
                             </span>
-                            <Plus className="h-5 w-5 text-blue-600 group-hover:scale-110 transition-transform" />
+                            <Plus className={`h-5 w-5 ${hasVariants ? 'text-purple-600' : 'text-blue-600'} group-hover:scale-110 transition-transform`} />
                           </div>
                         </div>
                       </button>
@@ -477,6 +508,16 @@ export function AddConsumptionDialog({
           </div>
         </div>
       </DialogContent>
+      
+      {/* Selector de variantes */}
+      {selectedParentProduct && (
+        <VariantSelectorDialog
+          open={showVariantDialog}
+          onOpenChange={setShowVariantDialog}
+          product={selectedParentProduct}
+          onSelectVariant={handleVariantSelect}
+        />
+      )}
     </Dialog>
   );
 }

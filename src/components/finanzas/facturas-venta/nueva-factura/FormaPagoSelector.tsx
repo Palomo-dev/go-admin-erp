@@ -125,18 +125,18 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
         </SelectTrigger>
         <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           {isLoading ? (
-            <SelectItem value="" disabled className="text-gray-500 dark:text-gray-400">
+            <SelectItem value="_loading" disabled className="text-gray-500 dark:text-gray-400">
               Cargando métodos...
             </SelectItem>
           ) : metodosPago.length === 0 ? (
-            <SelectItem value="" disabled className="text-gray-500 dark:text-gray-400">
+            <SelectItem value="_empty" disabled className="text-gray-500 dark:text-gray-400">
               No hay métodos de pago disponibles
             </SelectItem>
           ) : (
             metodosPago.map(metodo => (
               <SelectItem 
                 key={metodo.payment_method_code} 
-                value={metodo.payment_method_code}
+                value={metodo.payment_method_code || '_unknown'}
                 className="text-gray-900 dark:text-gray-100"
               >
                 {metodo.payment_method?.name || metodo.payment_method_code}

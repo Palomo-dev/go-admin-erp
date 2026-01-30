@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,8 +25,11 @@ import {
   Clock,
   Printer,
   Download,
-  Send
+  Send,
+  Loader2,
+  CheckCircle
 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import { FacturasCompraService } from '../FacturasCompraService';
 import { InvoicePurchase } from '../types';
 import { RegistrarPagoModal } from '../RegistrarPagoModal';
@@ -42,9 +45,17 @@ interface DetalleFacturaCompraProps {
 
 export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [factura, setFactura] = useState<InvoicePurchase | null>(null);
+  
+  // Detectar si estamos en inventario o finanzas
+  const basePath = pathname.includes('/inventario/') 
+    ? '/app/inventario/facturas-compra' 
+    : '/app/finanzas/facturas-compra';
   const [loading, setLoading] = useState(true);
   const [showPagoModal, setShowPagoModal] = useState(false);
+  const [recepcionando, setRecepcionando] = useState(false);
+  const { toast } = useToast();
   
   // Estados para cuentas por pagar y pagos
   const [cuentaPorPagar, setCuentaPorPagar] = useState<any | null>(null);
@@ -101,19 +112,49 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   };
 
   const handleVolver = () => {
-    router.push('/app/finanzas/facturas-compra');
+    router.push(basePath);
   };
 
   const handleEditar = () => {
-    router.push(`/app/finanzas/facturas-compra/${facturaId}/editar`);
+    router.push(`${basePath}/${facturaId}/editar`);
   };
 
   const handleRegistrarPago = () => {
     setShowPagoModal(true);
   };
 
-  const handleRecepcionar = () => {
-    router.push(`/app/inventario/entradas/nueva?factura_id=${facturaId}`);
+  const handleRecepcionar = async () => {
+    if (recepcionando) return;
+    
+    try {
+      setRecepcionando(true);
+      
+      const resultado = await FacturasCompraService.recepcionarInventario(facturaId);
+      
+      if (resultado.success) {
+        toast({
+          title: "Inventario recepcionado",
+          description: resultado.mensaje,
+        });
+        // Recargar factura para actualizar el estado
+        await cargarFactura();
+      } else {
+        toast({
+          title: "Aviso",
+          description: resultado.mensaje,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error recepcionando inventario:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Error al recepcionar inventario",
+        variant: "destructive",
+      });
+    } finally {
+      setRecepcionando(false);
+    }
   };
   
   const handleImprimir = () => {
@@ -251,17 +292,36 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
             <span className="hidden sm:inline">PDF</span>
           </Button>
           
-          {factura.status === 'received' && (
+          {['draft', 'confirmed', 'partial'].includes(factura.status) && (
             <Button
               variant="outline"
               size="sm"
               onClick={handleRecepcionar}
-              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              disabled={recepcionando}
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 border-green-500 text-green-600 hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/20"
             >
-              <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Recepcionar</span>
-              <span className="sm:hidden">Recep.</span>
+              {recepcionando ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
+                  <span className="hidden sm:inline">Recepcionando...</span>
+                  <span className="sm:hidden">...</span>
+                </>
+              ) : (
+                <>
+                  <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Recepcionar Inventario</span>
+                  <span className="sm:hidden">Recep.</span>
+                </>
+              )}
             </Button>
+          )}
+          
+          {factura.status === 'received' && (
+            <Badge variant="outline" className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm border-green-500 text-green-600 dark:border-green-400 dark:text-green-400 flex items-center gap-1">
+              <CheckCircle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Inventario Recibido</span>
+              <span className="sm:hidden">Recibido</span>
+            </Badge>
           )}
           
           {factura.balance > 0 && ['confirmed', 'received', 'partial'].includes(factura.status) && (

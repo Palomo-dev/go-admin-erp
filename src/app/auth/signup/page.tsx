@@ -11,6 +11,7 @@ import OrganizationStep from '../../../components/auth/OrganizationStep';
 import BranchStep from '../../../components/auth/BranchStep';
 import VerificationStep from '../../../components/auth/VerificationStep';
 import SubscriptionStep from '../../../components/auth/SubscriptionStep';
+import PaymentMethodStep from '../../../components/auth/PaymentMethodStep';
 import { supabase } from '@/lib/supabase/config';
 import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
 
@@ -65,6 +66,9 @@ interface SignupData {
   // Datos de suscripción
   subscriptionPlan: string;
   billingPeriod: 'monthly' | 'yearly';
+  // Datos de Stripe (método de pago)
+  stripeCustomerId?: string;
+  stripePaymentMethodId?: string;
 }
 
 function SignupContent() {
@@ -207,7 +211,225 @@ function SignupContent() {
     setCurrentStep((prev) => prev - 1);
   };
 
-  // Manejar el registro de usuario - solo crear en Supabase Auth
+  // Función para crear todos los datos del registro (perfil, org, branch, etc.)
+  const createSignupData = async (userId: string, email: string) => {
+    console.log('🚀 Creando datos de registro para usuario:', userId);
+    
+    try {
+      // 1. Crear perfil del usuario
+      console.log('1️⃣ Creando perfil...');
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          first_name: signupData.firstName,
+          last_name: signupData.lastName,
+          email: email,
+          phone: signupData.phone || null,
+          avatar_url: signupData.avatarUrl || null,
+          preferred_language: signupData.preferredLanguage || 'es',
+          status: 'active'
+        });
+      
+      if (profileError) {
+        console.error('❌ Error creando perfil:', profileError);
+        throw profileError;
+      }
+      console.log('✅ Perfil creado exitosamente');
+      
+      // 2. Crear organización (solo si joinType es 'create')
+      if (signupData.joinType === 'create' && signupData.organizationName) {
+        console.log('2️⃣ Creando organización:', signupData.organizationName);
+        
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .insert({
+            name: signupData.organizationName,
+            legal_name: signupData.organizationLegalName || signupData.organizationName,
+            type_id: signupData.organizationType || 2,
+            description: signupData.organizationDescription || null,
+            email: signupData.organizationEmail || email,
+            phone: signupData.organizationPhone || null,
+            website: signupData.organizationWebsite || null,
+            tax_id: signupData.organizationTaxId || null,
+            nit: signupData.organizationNit || null,
+            address: signupData.organizationAddress || null,
+            city: signupData.organizationCity || null,
+            state: signupData.organizationState || null,
+            country: signupData.organizationCountry || 'Colombia',
+            country_code: signupData.organizationCountryCode || 'COL',
+            postal_code: signupData.organizationPostalCode || null,
+            primary_color: signupData.organizationPrimaryColor || '#3B82F6',
+            secondary_color: signupData.organizationSecondaryColor || '#F59E0B',
+            subdomain: signupData.organizationSubdomain || null,
+            logo_url: signupData.logoUrl || null,
+            owner_user_id: userId,
+            created_by: userId,
+            status: 'active'
+          })
+          .select('id')
+          .single();
+        
+        if (orgError) {
+          console.error('❌ Error creando organización:', orgError);
+          throw orgError;
+        }
+        
+        const orgId = orgData.id;
+        console.log('✅ Organización creada con ID:', orgId);
+        // NOTA: El trigger create_default_subscription ya crea la suscripción automáticamente
+        // NOTA: El trigger setup_organization_defaults configura impuestos, monedas y métodos de pago
+        
+        // 3. Crear membresía del usuario como super admin (ANTES de branches para cumplir RLS)
+        console.log('3️⃣ Creando membresía de organización...');
+        const { error: memberError } = await supabase
+          .from('organization_members')
+          .insert({
+            organization_id: orgId,
+            user_id: userId,
+            role_id: 2, // Admin de organización
+            is_super_admin: true,
+            is_active: true
+          });
+        
+        if (memberError) {
+          console.error('❌ Error creando membresía:', memberError);
+          throw memberError;
+        }
+        console.log('✅ Membresía creada exitosamente');
+        
+        // 4. Crear sucursal principal (después de membresía para cumplir RLS)
+        console.log('4️⃣ Creando sucursal principal...');
+        const openingHours = signupData.branchOpeningHours ? 
+          (typeof signupData.branchOpeningHours === 'string' ? JSON.parse(signupData.branchOpeningHours) : signupData.branchOpeningHours) :
+          {
+            monday: { open: '09:00', close: '18:00', closed: false },
+            tuesday: { open: '09:00', close: '18:00', closed: false },
+            wednesday: { open: '09:00', close: '18:00', closed: false },
+            thursday: { open: '09:00', close: '18:00', closed: false },
+            friday: { open: '09:00', close: '18:00', closed: false },
+            saturday: { open: '10:00', close: '15:00', closed: false },
+            sunday: { closed: true }
+          };
+        
+        const features = signupData.branchFeatures ?
+          (typeof signupData.branchFeatures === 'string' ? JSON.parse(signupData.branchFeatures) : signupData.branchFeatures) :
+          {};
+        
+        const { error: branchError } = await supabase
+          .from('branches')
+          .insert({
+            organization_id: orgId,
+            name: signupData.branchName || 'Sucursal Principal',
+            branch_code: signupData.branchCode || 'MAIN-001',
+            address: signupData.branchAddress || null,
+            city: signupData.branchCity || null,
+            state: signupData.branchState || null,
+            country: signupData.branchCountry === 'COL' ? 'Colombia' : (signupData.branchCountry || 'Colombia'),
+            postal_code: signupData.branchPostalCode || null,
+            phone: signupData.branchPhone || null,
+            email: signupData.branchEmail || null,
+            tax_identification: signupData.branchTaxIdentification || null,
+            opening_hours: openingHours,
+            features: features,
+            is_main: true,
+            is_active: true
+          });
+        
+        if (branchError) {
+          console.error('❌ Error creando sucursal:', branchError);
+          throw branchError;
+        }
+        console.log('✅ Sucursal creada exitosamente');
+        
+        // 5. Crear suscripción en Stripe si el plan no es free
+        if (signupData.subscriptionPlan !== 'free') {
+          console.log('5️⃣ Creando suscripción en Stripe...');
+          const planCode = signupData.subscriptionPlan === 'business' ? 'business' : 'pro';
+          const planId = signupData.subscriptionPlan === 'business' ? 3 : 2;
+          
+          try {
+            // Llamar a la API de Stripe para crear la suscripción con trial
+            // Si ya se verificó un método de pago, pasarlo para asociarlo al customer
+            const stripeResponse = await fetch('/api/stripe/create-subscription', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                organizationId: orgId,
+                planCode: planCode,
+                billingPeriod: signupData.billingPeriod || 'monthly',
+                useTrial: true, // Siempre usar trial en el registro
+                existingCustomerId: signupData.stripeCustomerId || undefined,
+                paymentMethodId: signupData.stripePaymentMethodId || undefined,
+              }),
+            });
+
+            const stripeResult = await stripeResponse.json();
+
+            if (stripeResponse.ok && stripeResult.success) {
+              console.log('✅ Suscripción creada en Stripe:', stripeResult.subscriptionId);
+              
+              // Actualizar la suscripción local con el ID de Stripe
+              await supabase
+                .from('subscriptions')
+                .update({
+                  plan_id: planId,
+                  stripe_subscription_id: stripeResult.subscriptionId,
+                  billing_period: signupData.billingPeriod || 'monthly',
+                  trial_start: new Date().toISOString(),
+                  trial_end: stripeResult.trialEnd || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+                  status: 'trialing'
+                })
+                .eq('organization_id', orgId);
+            } else {
+              console.warn('⚠️ Error creando suscripción en Stripe:', stripeResult.error);
+              // Fallback: actualizar solo en Supabase sin Stripe
+              const trialDays = planId === 3 ? 30 : 15;
+              await supabase
+                .from('subscriptions')
+                .update({
+                  plan_id: planId,
+                  billing_period: signupData.billingPeriod || 'monthly',
+                  trial_start: new Date().toISOString(),
+                  trial_end: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
+                })
+                .eq('organization_id', orgId);
+            }
+          } catch (stripeError) {
+            console.error('⚠️ Error en integración con Stripe (no crítico):', stripeError);
+            // Fallback: actualizar solo en Supabase
+            const trialDays = planId === 3 ? 30 : 15;
+            await supabase
+              .from('subscriptions')
+              .update({
+                plan_id: planId,
+                billing_period: signupData.billingPeriod || 'monthly',
+                trial_start: new Date().toISOString(),
+                trial_end: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
+              })
+              .eq('organization_id', orgId);
+          }
+        } else {
+          console.log('5️⃣ Usando suscripción Free creada por trigger');
+        }
+        
+        // Actualizar last_org_id en el perfil
+        await supabase
+          .from('profiles')
+          .update({ last_org_id: orgId })
+          .eq('id', userId);
+        
+        console.log('🎉 ¡Registro completo exitosamente!');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error en createSignupData:', error);
+      throw error;
+    }
+  };
+
+  // Manejar el registro de usuario - crear en Supabase Auth y datos
   const handleAuthSignup = async () => {
     setLoading(true);
     setError(null);
@@ -229,6 +451,7 @@ function SignupContent() {
       if (isGoogleUser && googleUserData) {
         // Usuario de Google ya autenticado, crear datos con el flujo completo
         console.log('Usuario de Google completando signup:', googleUserData.id);
+        await createSignupData(googleUserData.id, googleUserData.email);
         router.push('/app/inicio');
         return;
       }
@@ -263,7 +486,7 @@ function SignupContent() {
               organizationCity: signupData.organizationCity,
               organizationState: signupData.organizationState,
               organizationCountry: signupData.organizationCountry || 'Colombia',
-              organizationCountryCode: signupData.organizationCountryCode || 'COL', // Cambiar a COL
+              organizationCountryCode: signupData.organizationCountryCode || 'COL',
               organizationPostalCode: signupData.organizationPostalCode,
               organizationTaxId: signupData.organizationTaxId,
               organizationNit: signupData.organizationNit,
@@ -280,7 +503,7 @@ function SignupContent() {
               branchAddress: signupData.branchAddress,
               branchCity: signupData.branchCity,
               branchState: signupData.branchState,
-              branchCountry: signupData.branchCountry || 'COL', // Cambiar a COL
+              branchCountry: signupData.branchCountry || 'COL',
               branchPostalCode: signupData.branchPostalCode,
               branchPhone: signupData.branchPhone,
               branchEmail: signupData.branchEmail,
@@ -306,9 +529,32 @@ function SignupContent() {
       }
 
       console.log('Usuario creado exitosamente en Auth:', authData.user.id);
-      console.log('Email de verificación enviado a:', signupData.email);
       
-      // Avanzar al paso de verificación
+      // IMPORTANTE: Verificar si el email ya está confirmado (confirmación deshabilitada)
+      // Si email_confirmed_at existe, el email ya está confirmado y debemos crear los datos inmediatamente
+      if (authData.user.email_confirmed_at || authData.session) {
+        console.log('📧 Email ya confirmado o sesión activa, creando datos inmediatamente...');
+        
+        try {
+          await createSignupData(authData.user.id, signupData.email);
+          
+          // Cerrar sesión para que el usuario inicie sesión de nuevo
+          await supabase.auth.signOut();
+          
+          // Redirigir al login con mensaje de éxito
+          router.push('/auth/login?success=signup-complete&message=' + 
+            encodeURIComponent('¡Cuenta creada exitosamente! Por favor, inicia sesión.'));
+          return;
+        } catch (createError: any) {
+          console.error('Error creando datos de registro:', createError);
+          // Si falla la creación de datos, aún así el usuario existe
+          // Intentar limpiar y mostrar error
+          throw new Error('Error al configurar tu cuenta. Por favor, contacta a soporte.');
+        }
+      }
+      
+      // Si llegamos aquí, el email necesita confirmación
+      console.log('Email de verificación enviado a:', signupData.email);
       nextStep();
       
     } catch (err: any) {
@@ -359,27 +605,31 @@ function SignupContent() {
             </p>
           )}
           
-          {/* Indicador de pasos */}
+          {/* Indicador de pasos (6 pasos) */}
           <div className="flex justify-center w-full mt-2 sm:mt-3 mb-3 sm:mb-4">
-            <div className="flex items-center space-x-1.5 sm:space-x-3">
-              <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-medium ${currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 1
               </div>
-              <div className={`w-6 sm:w-12 h-0.5 ${currentStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-medium ${currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 2
               </div>
-              <div className={`w-6 sm:w-12 h-0.5 ${currentStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-medium ${currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 3
               </div>
-              <div className={`w-6 sm:w-12 h-0.5 ${currentStep >= 4 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-medium ${currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 4 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 4
               </div>
-              <div className={`w-6 sm:w-12 h-0.5 ${currentStep >= 5 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-medium ${currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 5 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 5
+              </div>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 6 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 6 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                6
               </div>
             </div>
           </div>
@@ -451,13 +701,24 @@ function SignupContent() {
           <SubscriptionStep 
             formData={signupData} 
             updateFormData={updateFormData} 
-            onNext={handleAuthSignup}
+            onNext={nextStep}
             onBack={prevStep}
             loading={loading}
           />
         )}
         
         {currentStep === 5 && (
+          <PaymentMethodStep 
+            formData={signupData} 
+            updateFormData={updateFormData} 
+            onNext={handleAuthSignup}
+            onBack={prevStep}
+            onSkip={handleAuthSignup}
+            loading={loading}
+          />
+        )}
+        
+        {currentStep === 6 && (
           <VerificationStep 
             email={signupData.email}
           />

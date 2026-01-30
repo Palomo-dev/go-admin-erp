@@ -183,6 +183,94 @@ class ReservationListService {
   }
 
   /**
+   * Confirmar múltiples reservas
+   */
+  async confirmMultipleReservations(reservationIds: string[]): Promise<{ success: number; failed: number }> {
+    let success = 0;
+    let failed = 0;
+
+    for (const id of reservationIds) {
+      try {
+        await this.updateReservationStatus(id, 'confirmed');
+        success++;
+      } catch (error) {
+        console.error(`Error confirmando reserva ${id}:`, error);
+        failed++;
+      }
+    }
+
+    return { success, failed };
+  }
+
+  /**
+   * Cancelar múltiples reservas
+   */
+  async cancelMultipleReservations(reservationIds: string[]): Promise<{ success: number; failed: number }> {
+    let success = 0;
+    let failed = 0;
+
+    for (const id of reservationIds) {
+      try {
+        await this.updateReservationStatus(id, 'cancelled');
+        success++;
+      } catch (error) {
+        console.error(`Error cancelando reserva ${id}:`, error);
+        failed++;
+      }
+    }
+
+    return { success, failed };
+  }
+
+  /**
+   * Exportar reservas a CSV
+   */
+  exportToCSV(reservations: ReservationListItem[]): void {
+    const headers = [
+      'Código',
+      'Huésped',
+      'Email',
+      'Check-in',
+      'Check-out',
+      'Noches',
+      'Estado',
+      'Canal',
+      'Total',
+      'Saldo',
+      'Espacios',
+    ];
+
+    const rows = reservations.map((r) => [
+      r.code,
+      r.customer_name,
+      r.customer_email,
+      r.checkin,
+      r.checkout,
+      r.nights.toString(),
+      r.status,
+      r.channel,
+      r.total_estimated.toString(),
+      r.balance.toString(),
+      r.spaces.join('; '),
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reservas_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  /**
    * Obtener estadísticas de reservas
    */
   async getReservationStats(organizationId: number): Promise<{

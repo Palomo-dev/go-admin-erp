@@ -1,57 +1,56 @@
 "use client"
 
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import Link from 'next/link'
-import React from 'react'
+import { useParams } from 'next/navigation'
 
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import FormularioEdicionProducto from '@/components/inventario/productos/editar/FormularioEdicionProducto'
 
-// Interfaz para las props del componente
-type PageProps = {
-  params: {
-    id: string
-  }
-}
-
-export default function EditarProductoPage({ params }: PageProps) {
-  // En Next.js 14+, params es una promesa, así que usamos React.use para desenvolverla
-  const resolvedParams = React.use(params as any) as { id: string }
-  // Convertir el ID de string a number para pasarlo al formulario
-  const productoId = parseInt(resolvedParams.id)
+export default function EditarProductoPage() {
+  const params = useParams();
+  // El id ahora es un UUID (string)
+  const productoUuid = params?.id as string;
   
   return (
-    <div className="flex flex-col gap-4 p-4">
-      {/* Encabezado de la página */}
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-4">
-          <Link 
-            href="/app/inventario/productos"
-            className="flex items-center text-sm px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1.5" /> 
-            <span>Volver a productos</span>
-          </Link>
-          
-          <Link 
-            href={`/app/inventario/productos/${productoId}`}
-            className="flex items-center text-sm px-3 py-1.5 text-blue-600 border border-blue-300 rounded-md hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900/20 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1.5" /> 
-            <span>Detalle del producto</span>
-          </Link>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header mejorado */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            {/* Info izquierda */}
+            <div className="flex items-center gap-4">
+              <Link href={`/app/inventario/productos/${productoUuid}`} prefetch={true}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg shadow-amber-500/20">
+                  <Pencil className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+                    Editar Producto
+                  </h1>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                    Actualiza la información del producto
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <h1 className="text-2xl font-bold dark:text-gray-100">
-          Editar Producto
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          Actualiza la información del producto, variantes, imágenes y stock
-        </p>
       </div>
-      
-      {/* Formulario de edición */}
-      <FormularioEdicionProducto productoId={productoId} />
+
+      {/* Contenedor del formulario */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <FormularioEdicionProducto productoUuid={productoUuid} />
+      </div>
     </div>
   )
 }

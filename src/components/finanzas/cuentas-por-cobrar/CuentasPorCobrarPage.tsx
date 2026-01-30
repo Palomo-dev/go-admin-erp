@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, TrendingDown, Bell, BarChart3, RefreshCw } from 'lucide-react';
+import { FileText, TrendingDown, Bell, BarChart3, RefreshCw, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { CuentaPorCobrar, FiltrosCuentasPorCobrar, EstadisticasCxC, ResultadoPaginado } from './types';
 import { CuentasPorCobrarService } from './service';
 import { EstadisticasCards, EstadisticasDetalle } from './EstadisticasCards';
@@ -123,27 +124,37 @@ export function CuentasPorCobrarPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
-              Cuentas por Cobrar
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-              Gestión y seguimiento de cuentas por cobrar
-            </p>
+          <div className="flex items-center gap-3">
+            <Link href="/app/finanzas">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+              <FileText className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Cuentas por Cobrar
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400">
+                Finanzas / Cuentas por Cobrar
+              </p>
+            </div>
           </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
               onClick={handleRefresh}
               disabled={isLoading}
-              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              className="h-9 px-3 text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             >
-              <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Actualizar</span>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Actualizar
             </Button>
           </div>
         </div>

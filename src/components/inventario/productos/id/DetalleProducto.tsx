@@ -9,7 +9,9 @@ import {
   Power, 
   Trash2,
   AlertTriangle, 
-  ArrowLeft
+  ArrowLeft,
+  PackagePlus,
+  ArrowLeftRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,64 +62,25 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
 
   // Funciones para manejar acciones principales
   const handleEditProduct = () => {
-    router.push(`/app/inventario/productos/${producto.id}/editar`);
+    // Usar UUID si está disponible
+    const productUuid = producto.uuid || producto.id;
+    router.push(`/app/inventario/productos/${productUuid}/editar`);
   };
 
-  const handleDuplicateProduct = async () => {
-    setLoading(true);
-    try {
-      // Preparar el producto duplicado con cambios en los campos únicos
-      const duplicatedProduct = {
-        ...producto,
-        id: 'duplicate', // Marcar como duplicado para la página de creación
-        sku: `${producto.sku}-COPIA`,
-        name: `${producto.name} (Copia)`,
-        barcode: producto.barcode ? `${producto.barcode}-COPIA` : '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        // Mantener referencias a datos relacionados pero quitar IDs para que sean nuevos al guardar
-        product_prices: producto.product_prices ? producto.product_prices.map((p: any) => ({
-          ...p,
-          id: 'new',
-          product_id: 'duplicate'
-        })) : [],
-        product_costs: producto.product_costs ? producto.product_costs.map((c: any) => ({
-          ...c,
-          id: 'new',
-          product_id: 'duplicate'
-        })) : [],
-        product_images: [], // No duplicar imágenes directamente
-        // Preparar variantes (productos hijos)
-        children: producto.children ? producto.children.map((child: any) => ({
-          ...child,
-          id: 'new-child',
-          sku: `${child.sku}-COPIA`,
-          name: `${child.name} (Copia)`,
-          parent_product_id: 'duplicate'
-        })) : []
-      };
-      
-      // Guardar el producto duplicado en sessionStorage para la página de creación
-      sessionStorage.setItem('duplicated_product_data', JSON.stringify(duplicatedProduct));
-      console.log('Datos del producto duplicado guardados en sessionStorage');
-      
-      toast({
-        title: "Producto preparado para duplicar",
-        description: "Complete la información en el formulario y guarde para crear la copia.",
-      });
-      
-      // Redirigir a la página de creación con indicador de que es una duplicación
-      router.push('/app/inventario/productos/nuevo?from=duplicate');
-    } catch (error) {
-      console.error('Error al duplicar producto:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo duplicar el producto. Intente de nuevo más tarde.",
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleDuplicateProduct = () => {
+    // Usar UUID si está disponible
+    const productUuid = producto.uuid || producto.id;
+    router.push(`/app/inventario/productos/${productUuid}/duplicar`);
+  };
+
+  // Navegar a ajuste de inventario con producto preseleccionado
+  const handleAjustarStock = () => {
+    router.push(`/app/inventario/ajustes/nuevo?producto_id=${producto.id}`);
+  };
+
+  // Navegar a transferencia con producto preseleccionado
+  const handleTransferir = () => {
+    router.push(`/app/inventario/transferencias/nuevo?producto_id=${producto.id}`);
   };
 
   const handleChangeStatus = async (newStatus: string) => {
@@ -212,6 +175,25 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
         
         <Button variant="outline" onClick={handleDuplicateProduct} disabled={loading}>
           <Copy className="h-4 w-4 mr-2" /> Duplicar
+        </Button>
+
+        {/* Acciones rápidas de inventario */}
+        <Button 
+          variant="outline"
+          onClick={handleAjustarStock}
+          disabled={loading}
+          className="border-green-500 text-green-600 hover:bg-green-50 dark:border-green-600 dark:text-green-400 dark:hover:bg-green-950"
+        >
+          <PackagePlus className="h-4 w-4 mr-2" /> Ajustar Stock
+        </Button>
+        
+        <Button 
+          variant="outline"
+          onClick={handleTransferir}
+          disabled={loading}
+          className="border-blue-500 text-blue-600 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-950"
+        >
+          <ArrowLeftRight className="h-4 w-4 mr-2" /> Transferir
         </Button>
         
         <Button 

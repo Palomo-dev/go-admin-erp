@@ -1,0 +1,1 @@
+export { SegmentoNuevoPage } from './SegmentoNuevoPage';

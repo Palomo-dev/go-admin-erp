@@ -1,0 +1,1 @@
+export { CampanaDetallePage } from './CampanaDetallePage';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle } from 'lucide-react';
+import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { POSService } from '@/lib/services/posService';
-import { Cart, PaymentMethod, CheckoutData, Sale, Currency } from './types';
+import { PrintService, BusinessInfo, CashierInfo, BranchInfo } from '@/lib/services/printService';
+import { Cart, PaymentMethod, CheckoutData, Sale, Currency, SaleItem } from './types';
 import { formatCurrency } from '@/utils/Utils';
 import { 
   calculateCartTaxes, 
@@ -25,6 +26,26 @@ interface CheckoutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCheckoutComplete: (sale: Sale) => void;
+  organization?: {
+    name?: string;
+    legal_name?: string;
+    nit?: string;
+    tax_id?: string;
+    address?: string;
+    city?: string;
+    phone?: string;
+    email?: string;
+  };
+  currentUser?: {
+    name?: string;
+    email?: string;
+  };
+  branch?: {
+    name?: string;
+    address?: string;
+    city?: string;
+    phone?: string;
+  };
 }
 
 interface PaymentEntry {
@@ -33,7 +54,7 @@ interface PaymentEntry {
   amount: number;
 }
 
-export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }: CheckoutDialogProps) {
+export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, organization, currentUser, branch }: CheckoutDialogProps) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [currency, setCurrency] = useState<Currency | null>(null);
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
@@ -51,9 +72,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
     finalTotal: 0
   });
   
-  // Calculados - usar totales con impuestos
+  // Estados para propina
+  const [tipAmount, setTipAmount] = useState(0);
+  const [tipPercentage, setTipPercentage] = useState<number | null>(null);
+  const [serverId, setServerId] = useState<string>('');
+  const [servers, setServers] = useState<{ id: string; name: string }[]>([]);
+  
+  // Calculados - usar totales con impuestos + propina
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const cartTotal = calculatedTotals.finalTotal > 0 ? calculatedTotals.finalTotal : cart.total;
+  const baseTotal = calculatedTotals.finalTotal > 0 ? calculatedTotals.finalTotal : cart.total;
+  const cartTotal = baseTotal + tipAmount;
   const remaining = Math.max(0, cartTotal - totalPaid);
   const change = Math.max(0, totalPaid - cartTotal);
   const canComplete = totalPaid >= cartTotal;
@@ -63,10 +91,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
     if (open) {
       loadPaymentData();
       loadTaxData();
+      loadServers();
       // Agregar primer método de pago por defecto
       if (payments.length === 0) {
         addPayment();
       }
+      // Reset propina
+      setTipAmount(0);
+      setTipPercentage(null);
     }
   }, [open]);
   
@@ -87,6 +119,37 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
     } catch (error) {
       console.error('Error loading payment data:', error);
     }
+  };
+  
+  const loadServers = async () => {
+    try {
+      const members = await POSService.getOrganizationMembers();
+      setServers(members.map(m => ({
+        id: m.user_id,
+        name: m.users?.raw_user_meta_data?.full_name || 
+              m.users?.raw_user_meta_data?.name || 
+              m.users?.email || 'Sin nombre'
+      })));
+    } catch (error) {
+      console.error('Error loading servers:', error);
+    }
+  };
+  
+  const handleTipPercentage = (percentage: number) => {
+    if (tipPercentage === percentage) {
+      // Deseleccionar si ya está seleccionado
+      setTipPercentage(null);
+      setTipAmount(0);
+    } else {
+      setTipPercentage(percentage);
+      const calculatedTip = Math.round(baseTotal * (percentage / 100));
+      setTipAmount(calculatedTip);
+    }
+  };
+  
+  const handleTipAmountChange = (value: number) => {
+    setTipPercentage(null);
+    setTipAmount(value);
   };
   
   const loadTaxData = async () => {
@@ -253,21 +316,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
         payments: payments.map(p => ({ method: p.method, amount: p.amount })),
         change,
         total_paid: totalPaid,
-        tax_included: taxIncluded
+        tax_included: taxIncluded,
+        tip_amount: tipAmount,
+        tip_server_id: serverId && serverId !== '__none__' ? serverId : undefined
       };
 
       const sale = await POSService.checkout(checkoutData);
       setCompletedSale(sale);
       setShowReceipt(true);
       
-      // Resetear el dialog después de un momento
-      setTimeout(() => {
-        onCheckoutComplete(sale);
-        onOpenChange(false);
-        setPayments([]);
-        setShowReceipt(false);
-        setCompletedSale(null);
-      }, 3000);
+      // NO cerrar automáticamente - el usuario debe cerrar manualmente después de imprimir
       
     } catch (error) {
       console.error('Error during checkout:', error);
@@ -279,9 +337,78 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
 
   const handlePrint = () => {
     if (completedSale) {
-      // Implementar impresión del ticket
-      window.print();
+      // Convertir items del carrito a formato SaleItem para impresión
+      const saleItems = cart.items.map(item => ({
+        id: item.id,
+        sale_id: completedSale.id,
+        product_id: item.product?.id || 0,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        discount: (item as any).discount || 0,
+        tax: (item as any).tax || 0,
+        total: item.total,
+        notes: { product_name: item.product?.name || 'Producto' },
+        product_name: item.product?.name || 'Producto',
+        product: item.product
+      }));
+
+      // Crear array de pagos para el ticket
+      const paymentsList = payments.map(p => ({
+        id: p.id,
+        method: p.method,
+        amount: p.amount
+      }));
+
+      // Datos del negocio para el ticket
+      const businessInfo: BusinessInfo = {
+        name: organization?.name || 'GO Admin ERP',
+        legalName: organization?.legal_name,
+        nit: organization?.nit,
+        taxId: organization?.tax_id,
+        address: organization?.address,
+        city: organization?.city,
+        phone: organization?.phone,
+        email: organization?.email
+      };
+
+      // Datos del cajero
+      const cashierInfo: CashierInfo = {
+        name: currentUser?.name || 'Sistema POS',
+        email: currentUser?.email
+      };
+
+      // Datos de la sucursal
+      const branchInfo: BranchInfo = branch ? {
+        name: branch.name,
+        address: branch.address,
+        city: branch.city,
+        phone: branch.phone
+      } : undefined as any;
+
+      // Usar PrintService para generar e imprimir el ticket formateado
+      PrintService.printTicket(
+        completedSale,
+        saleItems as any,
+        cart.customer as any,
+        paymentsList as any,
+        businessInfo,
+        cashierInfo,
+        branchInfo
+      );
     }
+  };
+
+  const handleCloseReceipt = () => {
+    if (completedSale) {
+      onCheckoutComplete(completedSale);
+    }
+    onOpenChange(false);
+    setPayments([]);
+    setShowReceipt(false);
+    setCompletedSale(null);
+    setTipAmount(0);
+    setTipPercentage(null);
+    setServerId('');
   };
 
   const quickAmountButtons = [
@@ -330,13 +457,22 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
                 )}
               </div>
 
-              <Button
-                onClick={handlePrint}
-                className="mt-3 sm:mt-4 h-10 sm:h-11 dark:bg-blue-600 dark:hover:bg-blue-700 light:bg-blue-600 light:hover:bg-blue-700 text-sm sm:text-base"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimir Recibo
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4">
+                <Button
+                  onClick={handlePrint}
+                  className="flex-1 h-10 sm:h-11 dark:bg-blue-600 dark:hover:bg-blue-700 light:bg-blue-600 light:hover:bg-blue-700 text-sm sm:text-base"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir Recibo
+                </Button>
+                <Button
+                  onClick={handleCloseReceipt}
+                  variant="outline"
+                  className="flex-1 h-10 sm:h-11 text-sm sm:text-base dark:border-gray-600 dark:hover:bg-gray-800"
+                >
+                  Cerrar
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
@@ -521,6 +657,87 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete }:
                         Impuestos incluidos en precios
                       </span>
                     </label>
+                  </div>
+
+                  {/* Sección de Propina */}
+                  <div className="pt-3 border-t dark:border-gray-700 light:border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Banknote className="h-4 w-4 dark:text-green-400 light:text-green-600" />
+                      <Label className="text-sm font-medium dark:text-gray-200 light:text-gray-900">
+                        Propina (opcional)
+                      </Label>
+                    </div>
+                    
+                    {/* Botones de porcentaje */}
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      {[5, 10, 15, 20].map((pct) => (
+                        <Button
+                          key={pct}
+                          type="button"
+                          size="sm"
+                          variant={tipPercentage === pct ? "default" : "outline"}
+                          onClick={() => handleTipPercentage(pct)}
+                          className={`h-9 text-xs ${
+                            tipPercentage === pct
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'dark:border-gray-600 dark:hover:bg-gray-700 light:border-gray-300 light:hover:bg-gray-100'
+                          }`}
+                        >
+                          {pct}%
+                        </Button>
+                      ))}
+                    </div>
+                    
+                    {/* Monto personalizado */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 light:text-gray-600">
+                          Monto personalizado
+                        </Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 light:text-gray-500" />
+                          <Input
+                            type="number"
+                            min="0"
+                            step="100"
+                            value={tipAmount || ''}
+                            onChange={(e) => handleTipAmountChange(Number(e.target.value) || 0)}
+                            placeholder="0"
+                            className="pl-10 dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-300"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 light:text-gray-600">
+                          Mesero (opcional)
+                        </Label>
+                        <Select value={serverId} onValueChange={setServerId}>
+                          <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-300">
+                            <SelectValue placeholder="Seleccionar..." />
+                          </SelectTrigger>
+                          <SelectContent className="dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200">
+                            <SelectItem value="__none__">Sin asignar</SelectItem>
+                            {servers.map((server) => (
+                              <SelectItem key={server.id} value={server.id}>
+                                {server.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    {tipAmount > 0 && (
+                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="dark:text-green-400 light:text-green-700">Propina:</span>
+                          <span className="font-semibold dark:text-green-400 light:text-green-700">
+                            {formatCurrency(tipAmount)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Resumen de pagos con impuestos */}

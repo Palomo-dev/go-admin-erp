@@ -1,14 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CreditCard, Calendar, DollarSign, Receipt, Plus, Search, Filter, FileText } from 'lucide-react';
+import { CreditCard, Calendar, DollarSign, Receipt, Search, Filter } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { PaymentRecord } from './types';
@@ -29,12 +26,6 @@ export function PaymentHistoryCard({ accountId, organizationId, onUpdate }: Paym
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAddingPayment, setIsAddingPayment] = useState(false);
-  const [newPayment, setNewPayment] = useState({
-    amount: '',
-    method: 'efectivo',
-    reference: ''
-  });
 
   // Cargar pagos filtrados
   const loadPayments = async () => {
@@ -67,33 +58,6 @@ export function PaymentHistoryCard({ accountId, organizationId, onUpdate }: Paym
 
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const totalPages = Math.ceil(totalCount / pageSize);
-
-  const handleAddPayment = async () => {
-    if (!newPayment.amount || parseFloat(newPayment.amount) <= 0) {
-      toast.error('Por favor ingresa un monto válido');
-      return;
-    }
-
-    try {
-      setIsAddingPayment(true);
-      await CuentaPorCobrarDetailService.aplicarPago(
-        accountId,
-        parseFloat(newPayment.amount),
-        newPayment.method,
-        newPayment.reference || undefined
-      );
-      
-      toast.success('Pago aplicado exitosamente');
-      setNewPayment({ amount: '', method: 'efectivo', reference: '' });
-      loadPayments();
-      onUpdate();
-    } catch (error) {
-      console.error('Error al aplicar pago:', error);
-      toast.error('Error al aplicar el pago');
-    } finally {
-      setIsAddingPayment(false);
-    }
-  };
 
   const getMethodBadge = (method: string) => {
     const methodConfig = {
@@ -157,74 +121,6 @@ export function PaymentHistoryCard({ accountId, organizationId, onUpdate }: Paym
               {payments.length} pagos registrados • Total pagado: {formatCurrency(totalPaid)}
             </CardDescription>
           </div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar Pago
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
-              <DialogHeader>
-                <DialogTitle className="text-gray-900 dark:text-white">
-                  Agregar Nuevo Pago
-                </DialogTitle>
-                <DialogDescription className="text-gray-600 dark:text-gray-400">
-                  Registra un nuevo pago para esta cuenta por cobrar
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="amount" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Monto
-                  </Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    placeholder="0.00"
-                    value={newPayment.amount}
-                    onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })}
-                    className="dark:bg-gray-900 dark:border-gray-600"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="method" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Método de Pago
-                  </Label>
-                  <Select value={newPayment.method} onValueChange={(value) => setNewPayment({ ...newPayment, method: value })}>
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="transferencia">Transferencia</SelectItem>
-                      <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                      <SelectItem value="cheque">Cheque</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="reference" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Referencia (Opcional)
-                  </Label>
-                  <Input
-                    id="reference"
-                    placeholder="Número de referencia o comprobante"
-                    value={newPayment.reference}
-                    onChange={(e) => setNewPayment({ ...newPayment, reference: e.target.value })}
-                    className="dark:bg-gray-900 dark:border-gray-600"
-                  />
-                </div>
-                <Button 
-                  onClick={handleAddPayment}
-                  disabled={isAddingPayment}
-                  className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
-                >
-                  {isAddingPayment ? 'Procesando...' : 'Agregar Pago'}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </CardHeader>
       <CardContent>

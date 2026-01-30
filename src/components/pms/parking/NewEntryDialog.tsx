@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Car, Bike, Truck, Plus, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
+import ParkingService, { type ParkingZone } from '@/lib/services/parkingService';
 
 interface NewEntryDialogProps {
   open: boolean;
@@ -65,31 +66,39 @@ export function NewEntryDialog({
   const [newSpaceLabel, setNewSpaceLabel] = useState('');
   const [newSpaceZone, setNewSpaceZone] = useState('');
   const [isCreatingSpace, setIsCreatingSpace] = useState(false);
+  const [zones, setZones] = useState<ParkingZone[]>([]);
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('');
 
-  // Cargar espacios disponibles
+  // Cargar espacios de parking y zonas disponibles
   useEffect(() => {
-    const loadParkingSpaces = async () => {
-      if (!branchId || !open) return;
+    const loadData = async () => {
+      if (!open || !branchId) return;
 
       setIsLoadingSpaces(true);
       try {
+        // Cargar espacios
         const { data, error } = await supabase
           .from('parking_spaces')
-          .select('id, label, zone, type, state')
+          .select('id, label, zone, type, state, zone_id')
           .eq('branch_id', branchId)
           .in('state', ['free', 'reserved'])
           .order('label');
 
-        if (error) throw error;
-        setParkingSpaces(data || []);
+        if (!error) {
+          setParkingSpaces(data || []);
+        }
+
+        // Cargar zonas del catálogo
+        const zonesData = await ParkingService.getZones(branchId);
+        setZones(zonesData);
       } catch (error) {
-        console.error('Error cargando espacios:', error);
+        console.error('Error cargando datos:', error);
       } finally {
         setIsLoadingSpaces(false);
       }
     };
 
-    loadParkingSpaces();
+    loadData();
   }, [branchId, open]);
 
   // Limpiar formulario al cerrar
@@ -101,46 +110,34 @@ export function NewEntryDialog({
       setShowNewSpaceForm(false);
       setNewSpaceLabel('');
       setNewSpaceZone('');
+      setSelectedZoneId('');
     }
   }, [open]);
 
   const handleCreateSpace = async () => {
-    console.log('handleCreateSpace llamado con:', {
-      newSpaceLabel,
-      newSpaceLabelTrim: newSpaceLabel.trim(),
-      newSpaceZone,
-      branchId,
-      validacion: {
-        tieneLabel: !!newSpaceLabel.trim(),
-        tieneBranchId: !!branchId
-      }
-    });
-
     if (!newSpaceLabel.trim()) {
       alert('Por favor ingresa un nombre para el espacio');
       return;
     }
 
     if (!branchId) {
-      console.error('Validación falló: No hay branch_id disponible');
       alert('Error: No se encontró la sucursal. Por favor recarga la página e intenta nuevamente.');
       return;
     }
 
     setIsCreatingSpace(true);
     try {
-      console.log('Creando espacio:', {
-        branch_id: branchId,
-        label: newSpaceLabel.trim(),
-        zone: newSpaceZone.trim() || null,
-      });
+      // Obtener nombre de zona si se seleccionó una del catálogo
+      const selectedZone = zones.find(z => z.id === selectedZoneId);
+      const zoneName = selectedZone?.name || newSpaceZone.trim() || null;
 
       const { data, error } = await supabase
         .from('parking_spaces')
         .insert({
           branch_id: branchId,
           label: newSpaceLabel.trim(),
-          zone: newSpaceZone.trim() || null,
+          zone: zoneName,
+          zone_id: selectedZoneId || null,
           type: 'car',
           state: 'free',
         })
@@ -245,60 +242,61 @@ export function NewEntryDialog({
             </Select>
           </div>
 
+          {/* Espacio de Parqueo (Opcional) */}
           <div className="space-y-2">
             <Label htmlFor="parking_space">
               Espacio de Parqueo (Opcional)
             </Label>
-            {!branchId ? (
-              <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
-                ⚠️ No se encontró una sucursal configurada. No puedes crear espacios de parqueo sin una sucursal.
-              </div>
-            ) : isLoadingSpaces ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Cargando espacios...
-              </div>
-            ) : parkingSpaces.length > 0 || showNewSpaceForm ? (
-              <>
-                <Select 
-                  value={parkingSpaceId || 'none'} 
-                  onValueChange={(value) => setParkingSpaceId(value === 'none' ? '' : value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin espacio asignado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin espacio asignado</SelectItem>
-                    {parkingSpaces.map((space) => (
-                      <SelectItem key={space.id} value={space.id}>
-                        {space.label}
-                        {space.zone && ` - ${space.zone}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {!branchId ? (
+                <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
+                  ⚠️ No se encontró una sucursal configurada. No puedes crear espacios de parqueo sin una sucursal.
+                </div>
+              ) : isLoadingSpaces ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Cargando espacios...
+                </div>
+              ) : parkingSpaces.length > 0 || showNewSpaceForm ? (
+                <>
+                  <Select 
+                    value={parkingSpaceId || 'none'} 
+                    onValueChange={(value) => setParkingSpaceId(value === 'none' ? '' : value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sin espacio asignado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin espacio asignado</SelectItem>
+                      {parkingSpaces.map((space) => (
+                        <SelectItem key={space.id} value={space.id}>
+                          {space.label}
+                          {space.zone && ` - ${space.zone}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowNewSpaceForm(!showNewSpaceForm)}
+                    className="w-full mt-2"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {showNewSpaceForm ? 'Cancelar' : 'Crear Nuevo Espacio'}
+                  </Button>
+                </>
+              ) : (
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  onClick={() => setShowNewSpaceForm(!showNewSpaceForm)}
-                  className="w-full mt-2"
+                  onClick={() => setShowNewSpaceForm(true)}
+                  className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  {showNewSpaceForm ? 'Cancelar' : 'Crear Nuevo Espacio'}
+                  Crear Primer Espacio
                 </Button>
-              </>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowNewSpaceForm(true)}
-                className="w-full"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Crear Primer Espacio
-              </Button>
-            )}
+              )}
 
             {showNewSpaceForm && (
               <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mt-2">
@@ -318,12 +316,30 @@ export function NewEntryDialog({
                   <Label htmlFor="new_space_zone" className="text-sm font-medium">
                     Zona (Opcional)
                   </Label>
-                  <Input
-                    id="new_space_zone"
-                    placeholder="Ej: Nivel 1, Zona A, Exterior"
-                    value={newSpaceZone}
-                    onChange={(e) => setNewSpaceZone(e.target.value)}
-                  />
+                  {zones.length > 0 ? (
+                    <Select value={selectedZoneId} onValueChange={setSelectedZoneId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar zona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Sin zona</SelectItem>
+                        {zones.map((zone) => (
+                          <SelectItem key={zone.id} value={zone.id}>
+                            {zone.name}
+                            {zone.is_vip && ' (VIP)'}
+                            {zone.is_covered && ' - Cubierta'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="new_space_zone"
+                      placeholder="Ej: Nivel 1, Zona A, Exterior"
+                      value={newSpaceZone}
+                      onChange={(e) => setNewSpaceZone(e.target.value)}
+                    />
+                  )}
                 </div>
 
                 <Button

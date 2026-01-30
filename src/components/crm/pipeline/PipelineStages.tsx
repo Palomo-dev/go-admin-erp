@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, getCurrentTheme, applyTheme } from "@/utils/Utils";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
-import { BarChart3, Calendar, DollarSign, Loader2, Settings } from "lucide-react";
+import { BarChart3, Calendar, DollarSign, Loader2, Settings, Plus, GripVertical, Trash2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
@@ -65,6 +65,14 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   const [stageColor, setStageColor] = useState("#3b82f6");
   const [stageDescription, setStageDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Estado para crear nueva etapa
+  const [isNewStageOpen, setIsNewStageOpen] = useState(false);
+  const [newStageName, setNewStageName] = useState("");
+  const [isCreatingStage, setIsCreatingStage] = useState(false);
+  
+  // Estado para drag & drop de etapas
+  const [isDraggingStage, setIsDraggingStage] = useState(false);
 
   // Obtener ID de la organización y el usuario
   useEffect(() => {
@@ -179,6 +187,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       // Verificar si se encontraron etapas
       if (!data || data.length === 0) {
         console.log('No se encontraron etapas para el pipeline', pipelineId);
+        setStages([]); // Limpiar etapas para evitar mostrar las de otro pipeline
         return;
       }
 
@@ -319,7 +328,11 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   const handleConfigStage = (stageToEdit: any) => {
     setConfigStage(stageToEdit);
     setStageName(stageToEdit.name || "");
-    setStageProbability(stageToEdit.probability || null);
+    // Convertir de decimal (0-1) a porcentaje (0-100) para mostrar en el modal
+    const probabilityPercent = stageToEdit.probability != null 
+      ? Math.round(stageToEdit.probability * 100) 
+      : null;
+    setStageProbability(probabilityPercent);
     setStageColor(stageToEdit.color || "#3b82f6"); // Color predeterminado azul
     setStageDescription(stageToEdit.description || "");
     setIsConfigOpen(true);
@@ -555,6 +568,205 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     }
   };
 
+  // Función para crear nueva etapa
+  const handleCreateStage = async () => {
+    if (!newStageName.trim()) {
+      toast({
+        title: "Error",
+        description: "El nombre de la etapa es obligatorio",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!organizationId || !pipelineId) {
+      toast({
+        title: "Error",
+        description: "No se pudo determinar la organización o pipeline",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreatingStage(true);
+
+    try {
+      // Obtener la última posición
+      const maxPosition = stages.length > 0 
+        ? Math.max(...stages.map(s => s.position)) 
+        : 0;
+      
+      // Calcular probabilidad basada en posición (lógica progresiva)
+      // Las etapas intermedias tienen probabilidad proporcional
+      const totalStages = stages.length + 1;
+      const newPosition = maxPosition + 1;
+      // Probabilidad: primera etapa 10%, aumenta progresivamente hasta 90% (antes de Ganado/Perdido)
+      const probability = Math.min(0.1 + ((newPosition - 1) / Math.max(totalStages - 1, 1)) * 0.8, 0.9);
+
+      const { data, error } = await supabase
+        .from('stages')
+        .insert({
+          pipeline_id: pipelineId,
+          name: newStageName.trim(),
+          position: newPosition,
+          probability: probability,
+          color: '#3b82f6',
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Agregar a la lista local
+      setStages(prev => [...prev, data]);
+      
+      toast({
+        title: "Éxito",
+        description: "Etapa creada correctamente",
+      });
+
+      // Limpiar y cerrar
+      setNewStageName("");
+      setIsNewStageOpen(false);
+    } catch (error: any) {
+      console.error('Error al crear etapa:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear la etapa",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingStage(false);
+    }
+  };
+
+  // Función para eliminar etapa
+  const handleDeleteStage = async (stageId: string) => {
+    const stageToDelete = stages.find(s => s.id === stageId);
+    if (!stageToDelete) return;
+
+    // Verificar si hay oportunidades en esta etapa
+    const oppsInStage = getOpportunitiesByStage(stageId);
+    if (oppsInStage.length > 0) {
+      toast({
+        title: "No se puede eliminar",
+        description: `Esta etapa tiene ${oppsInStage.length} oportunidad(es). Muévelas primero a otra etapa.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`¿Estás seguro de eliminar la etapa "${stageToDelete.name}"?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('stages')
+        .delete()
+        .eq('id', stageId);
+
+      if (error) throw error;
+
+      // Actualizar lista local
+      setStages(prev => prev.filter(s => s.id !== stageId));
+
+      toast({
+        title: "Éxito",
+        description: "Etapa eliminada correctamente",
+      });
+    } catch (error: any) {
+      console.error('Error al eliminar etapa:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar la etapa",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Función para reordenar etapas (drag & drop)
+  const handleStageDragEnd = async (result: any) => {
+    if (!result.destination || result.type !== 'STAGE') return;
+
+    const { source, destination } = result;
+    if (source.index === destination.index) return;
+
+    const reorderedStages = Array.from(stages);
+    const [movedStage] = reorderedStages.splice(source.index, 1);
+    reorderedStages.splice(destination.index, 0, movedStage);
+
+    // Recalcular posiciones y probabilidades
+    const updatedStages = reorderedStages.map((stage, index) => {
+      const totalStages = reorderedStages.length;
+      let probability: number;
+      
+      // Lógica de probabilidad:
+      // - Etapas con nombre "Ganado" o "Ganada" = 100%
+      // - Etapas con nombre "Perdido" o "Perdida" = 0%
+      // - Resto: probabilidad progresiva basada en posición
+      const stageLower = stage.name.toLowerCase();
+      if (stageLower.includes('ganado') || stageLower.includes('ganada') || stageLower === 'won') {
+        probability = 1.0;
+      } else if (stageLower.includes('perdido') || stageLower.includes('perdida') || stageLower === 'lost') {
+        probability = 0;
+      } else {
+        // Probabilidad progresiva: primera etapa ~10%, última antes de Ganado/Perdido ~90%
+        const normalStages = reorderedStages.filter(s => {
+          const name = s.name.toLowerCase();
+          return !name.includes('ganado') && !name.includes('ganada') && 
+                 !name.includes('perdido') && !name.includes('perdida') &&
+                 name !== 'won' && name !== 'lost';
+        });
+        const posInNormal = normalStages.findIndex(s => s.id === stage.id);
+        if (posInNormal >= 0 && normalStages.length > 1) {
+          probability = 0.1 + (posInNormal / (normalStages.length - 1)) * 0.8;
+        } else {
+          probability = 0.5; // Por defecto 50% si es la única etapa normal
+        }
+      }
+
+      return {
+        ...stage,
+        position: index + 1,
+        probability
+      };
+    });
+
+    // Actualizar estado local inmediatamente
+    setStages(updatedStages);
+
+    // Actualizar en la base de datos
+    try {
+      const updates = updatedStages.map(stage => 
+        supabase
+          .from('stages')
+          .update({ 
+            position: stage.position,
+            probability: stage.probability,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', stage.id)
+      );
+
+      await Promise.all(updates);
+
+      toast({
+        title: "Éxito",
+        description: "Orden de etapas actualizado",
+      });
+    } catch (error: any) {
+      console.error('Error al reordenar etapas:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el nuevo orden",
+        variant: "destructive",
+      });
+      // Revertir cambios
+      loadStages();
+    }
+  };
+
   // Calcular el valor total del pipeline completo
   const totalPipelineValue = useMemo(() => {
     return opportunities.reduce((total, opp) => total + (opp.amount || 0), 0);
@@ -568,8 +780,14 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     }, 0);
   }, [opportunities]);
 
-  // Manejar el arrastre y soltar de oportunidades entre etapas
+  // Manejar el arrastre y soltar (oportunidades y etapas)
   const handleDragEnd = async (result: any) => {
+    // Si es un drag de etapas, usar la función específica
+    if (result.type === 'STAGE') {
+      await handleStageDragEnd(result);
+      return;
+    }
+
     if (!result.destination) {
       console.log('Drag cancelado: no hay destino');
       return;
@@ -779,153 +997,216 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
           scrollbarWidth: 'thin'
         }}
       >
-        <div className="flex gap-3 sm:gap-6 p-3 sm:p-6 min-h-[calc(100vh-10rem)] bg-gray-50 dark:bg-gray-900 transition-colors duration-200 min-w-min">
-          {stages.map((stage) => (
+        <Droppable droppableId="stages-container" direction="horizontal" type="STAGE">
+          {(stagesProvided) => (
             <div 
-              key={stage.id} 
-              className="flex-shrink-0 w-[280px] sm:w-72 bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-all duration-200 border border-blue-100 dark:border-blue-900"
+              ref={stagesProvided.innerRef}
+              {...stagesProvided.droppableProps}
+              className="flex gap-3 sm:gap-6 p-3 sm:p-6 min-h-[calc(100vh-10rem)] bg-gray-50 dark:bg-gray-900 transition-colors duration-200 min-w-min"
             >
-            <div 
-              className="p-3 border-b border-blue-100 dark:border-blue-900 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white dark:from-blue-950 dark:to-gray-900"
-              style={{
-                borderLeft: stage.color ? `4px solid ${stage.color}` : undefined,
-                borderTopLeftRadius: '0.375rem',
-                borderTopRightRadius: '0.375rem'
-              }}
-            >
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <h3 className="font-semibold text-gray-800 dark:text-gray-200 cursor-help">{stage.name}</h3>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {stage.description ? (
-                      <p>{stage.description}</p>
-                    ) : (
-                      <p>Sin descripción</p>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <div className="flex items-center gap-2">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-800">
-                        {getOpportunitiesByStage(stage.id).length}
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Número de oportunidades</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <button 
-                  onClick={() => handleConfigStage(stage)}
-                  className="ml-1 p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400"
-                  title="Configurar etapa"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-settings">
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            
-            {/* Mostrar valor total de etapa */}
-            <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/30 flex justify-between items-center text-sm border-b border-blue-100 dark:border-blue-900">
-              <div className="flex items-center">
-                <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-1.5" />
-                <span className="text-blue-700 dark:text-blue-300">Valor total:</span>
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="font-medium text-blue-700 dark:text-blue-300">
-                      {formatCurrency(calculateStageValue(stage.id))}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Valor ponderado por probabilidad</p>
-                    <p className="text-xs text-gray-500">Total sin ponderar: {formatCurrency(getOpportunitiesByStage(stage.id).reduce((acc, opp) => acc + (opp.amount || 0), 0))}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            
-            <Droppable droppableId={stage.id}>
-              {(provided) => (
-                <div 
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  className="min-h-[12rem] p-2 bg-white dark:bg-gray-800"
-                >
-                  {getOpportunitiesByStage(stage.id).map((opportunity, index) => (
-                    <Draggable 
-                      key={opportunity.id} 
-                      draggableId={opportunity.id} 
-                      index={index}
+              {stages.map((stage, stageIndex) => (
+                <Draggable key={stage.id} draggableId={`stage-${stage.id}`} index={stageIndex}>
+                  {(stageDragProvided, stageDragSnapshot) => (
+                    <div 
+                      ref={stageDragProvided.innerRef}
+                      {...stageDragProvided.draggableProps}
+                      className={`flex-shrink-0 w-[280px] sm:w-72 bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-all duration-200 border ${stageDragSnapshot.isDragging ? 'border-blue-500 shadow-lg' : 'border-gray-200 dark:border-gray-700'}`}
                     >
-                      {(provided) => (
-                        <Card
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className={`p-3 mb-2 cursor-pointer transition-all duration-200 shadow-sm hover:shadow ${opportunity.status === 'won' 
-                            ? 'border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10 hover:border-green-300 hover:bg-green-50 dark:hover:border-green-700 dark:hover:bg-green-900/20' 
-                            : opportunity.status === 'lost'
-                            ? 'border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 hover:border-red-300 hover:bg-red-50 dark:hover:border-red-700 dark:hover:bg-red-900/20'
-                            : 'border border-blue-100 dark:border-blue-900 hover:border-blue-300 hover:bg-blue-50 dark:hover:border-blue-700 dark:hover:bg-blue-900/20'}`}
-                        >
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100 flex items-center">
-                            {opportunity.name}
-                            {opportunity.status === 'won' && (
-                              <span className="ml-1.5 text-green-600 dark:text-green-400 text-xs bg-green-100 dark:bg-green-900/30 rounded-full px-1.5 py-0.5">
-                                {translateOpportunityStatus('won')}
-                              </span>
-                            )}
-                            {opportunity.status === 'lost' && (
-                              <span className="ml-1.5 text-red-600 dark:text-red-400 text-xs bg-red-100 dark:bg-red-900/30 rounded-full px-1.5 py-0.5">
-                                {translateOpportunityStatus('lost')}
-                              </span>
-                            )}
-                          </h4>
-                          
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center">
-                            {opportunity.customer?.full_name || 'Cliente no especificado'}
+                      <div 
+                        className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800 rounded-t-lg"
+                        style={{
+                          borderLeft: stage.color ? `4px solid ${stage.color}` : '4px solid #3b82f6',
+                        }}
+                      >
+                        {/* Handle para arrastrar etapa */}
+                        <div {...stageDragProvided.dragHandleProps} className="cursor-grab active:cursor-grabbing mr-2">
+                          <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <h3 className="font-semibold text-gray-800 dark:text-gray-200 cursor-help flex-1">{stage.name}</h3>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {stage.description ? <p>{stage.description}</p> : <p>Sin descripción</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-800">
+                            {getOpportunitiesByStage(stage.id).length}
+                          </Badge>
+                          <button 
+                            onClick={() => handleConfigStage(stage)}
+                            className="p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400"
+                            title="Configurar etapa"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteStage(stage.id)}
+                            className="p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900 text-red-500 dark:text-red-400"
+                            title="Eliminar etapa"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Mostrar valor total de etapa */}
+                      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/30 flex justify-between items-center text-sm border-b border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center">
+                          <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-1.5" />
+                          <span className="text-gray-600 dark:text-gray-300">Valor total:</span>
+                        </div>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {formatCurrency(calculateStageValue(stage.id))}
+                        </span>
+                      </div>
+                      
+                      <Droppable droppableId={stage.id} type="OPPORTUNITY">
+                        {(oppDropProvided) => (
+                          <div 
+                            {...oppDropProvided.droppableProps}
+                            ref={oppDropProvided.innerRef}
+                            className="min-h-[12rem] p-2 bg-white dark:bg-gray-800"
+                          >
+                            {getOpportunitiesByStage(stage.id).map((opportunity, index) => (
+                              <Draggable 
+                                key={opportunity.id} 
+                                draggableId={opportunity.id} 
+                                index={index}
+                              >
+                                {(oppDragProvided) => (
+                                  <Card
+                                    ref={oppDragProvided.innerRef}
+                                    {...oppDragProvided.draggableProps}
+                                    {...oppDragProvided.dragHandleProps}
+                                    className={`p-3 mb-2 cursor-pointer transition-all duration-200 shadow-sm hover:shadow ${opportunity.status === 'won' 
+                                      ? 'border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10' 
+                                      : opportunity.status === 'lost'
+                                      ? 'border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10'
+                                      : 'border border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-blue-50/50 dark:hover:border-blue-700'}`}
+                                  >
+                                    <h4 className="font-medium text-gray-900 dark:text-gray-100 flex items-center">
+                                      {opportunity.name}
+                                      {opportunity.status === 'won' && (
+                                        <span className="ml-1.5 text-green-600 dark:text-green-400 text-xs bg-green-100 dark:bg-green-900/30 rounded-full px-1.5 py-0.5">
+                                          {translateOpportunityStatus('won')}
+                                        </span>
+                                      )}
+                                      {opportunity.status === 'lost' && (
+                                        <span className="ml-1.5 text-red-600 dark:text-red-400 text-xs bg-red-100 dark:bg-red-900/30 rounded-full px-1.5 py-0.5">
+                                          {translateOpportunityStatus('lost')}
+                                        </span>
+                                      )}
+                                    </h4>
+                                    
+                                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                      {opportunity.customer?.full_name || 'Cliente no especificado'}
+                                    </div>
+                                    
+                                    {opportunity.expected_close_date && (
+                                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                        <Calendar className="h-3 w-3 mr-1 text-blue-500 dark:text-blue-400" />
+                                        {new Date(opportunity.expected_close_date).toLocaleDateString('es-ES')}
+                                      </div>
+                                    )}
+                                    
+                                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                      <div className={`font-medium flex items-center ${opportunity.status === 'won' ? 'text-green-600 dark:text-green-400' : opportunity.status === 'lost' ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                                        <DollarSign className="h-3 w-3 mr-0.5" />
+                                        {formatCurrency(opportunity.amount)}
+                                      </div>
+                                      <Badge className="text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                        {opportunity.currency || 'COP'}
+                                      </Badge>
+                                    </div>
+                                  </Card>
+                                )}
+                              </Draggable>
+                            ))}
+                            {oppDropProvided.placeholder}
                           </div>
-                          
-                          {opportunity.expected_close_date && (
-                            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                              <Calendar className="h-3 w-3 mr-1 text-blue-500 dark:text-blue-400" />
-                              {new Date(opportunity.expected_close_date).toLocaleDateString('es-ES')}
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-50 dark:border-blue-900/50">
-                            <div className={`font-medium flex items-center ${opportunity.status === 'won' ? 'text-green-600 dark:text-green-400' : opportunity.status === 'lost' ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                              <DollarSign className="h-3 w-3 mr-0.5" />
-                              {formatCurrency(opportunity.amount)}
-                            </div>
-                            <Badge 
-                              className={`capitalize ${opportunity.status === 'won' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : opportunity.status === 'lost' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}`}
-                            >
-                              {opportunity.currency || 'COP'}
-                            </Badge>
-                          </div>
-                        </Card>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </div>
-        ))}
-        </div>
+                        )}
+                      </Droppable>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {stagesProvided.placeholder}
+              
+              {/* Botón para agregar nueva etapa */}
+              <div className="flex-shrink-0 w-[280px] sm:w-72">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsNewStageOpen(true)}
+                  className="w-full h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                >
+                  <Plus className="h-6 w-6 mr-2" />
+                  Nueva Etapa
+                </Button>
+              </div>
+            </div>
+          )}
+        </Droppable>
       </div>
+      
+      {/* Diálogo para crear nueva etapa */}
+      <Dialog open={isNewStageOpen} onOpenChange={setIsNewStageOpen}>
+        <DialogContent className="sm:max-w-md mx-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">Nueva Etapa</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="newStageName" className="text-gray-900 dark:text-gray-100 font-medium">
+                Nombre de la etapa <span className="text-red-600">*</span>
+              </Label>
+              <Input
+                id="newStageName"
+                value={newStageName}
+                onChange={(e) => setNewStageName(e.target.value)}
+                placeholder="Ej: Propuesta Enviada"
+                className="min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                La probabilidad se calculará automáticamente según la posición de la etapa.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsNewStageOpen(false);
+                setNewStageName("");
+              }} 
+              disabled={isCreatingStage}
+              className="w-full sm:w-auto min-h-[44px]"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCreateStage} 
+              disabled={isCreatingStage || !newStageName.trim()}
+              className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700"
+            >
+              {isCreatingStage ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Creando...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear Etapa
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* Diálogo de configuración de etapa */}
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>

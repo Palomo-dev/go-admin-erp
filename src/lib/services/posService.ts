@@ -121,13 +121,15 @@ export class POSService {
     limit = 12,
     search = '',
     category_id = null,
-    status = 'active'
+    status = 'active',
+    includeVariants = false // Nueva opción para incluir variantes
   }: {
     page?: number;
     limit?: number;
     search?: string;
     category_id?: number | null;
     status?: string;
+    includeVariants?: boolean;
   }) {
     try {
       let query = supabase
@@ -139,11 +141,17 @@ export class POSService {
           name,
           slug
         ),
-        product_prices!inner(
+        product_prices(
           price
         )
       `, { count: 'exact' })
       .eq('organization_id', this.organizationId);
+
+      // Filtrar variantes: mostrar solo productos principales y productos simples
+      // NO mostrar productos que son variantes (tienen parent_product_id)
+      if (!includeVariants) {
+        query = query.is('parent_product_id', null);
+      }
 
       if (status !== 'all') {
         query = query.eq('status', status);
@@ -187,11 +195,32 @@ export class POSService {
         }
       }
 
+      // Para productos padre, contar sus variantes
+      const parentIds = data?.filter(p => p.is_parent).map(p => p.id) || [];
+      let variantCountMap: Record<number, number> = {};
+      
+      if (parentIds.length > 0) {
+        const { data: variantCounts, error: variantError } = await supabase
+          .from('products')
+          .select('parent_product_id')
+          .in('parent_product_id', parentIds)
+          .eq('status', 'active');
+          
+        if (!variantError && variantCounts) {
+          variantCounts.forEach((v: any) => {
+            variantCountMap[v.parent_product_id] = (variantCountMap[v.parent_product_id] || 0) + 1;
+          });
+        }
+      }
+
       const products = data?.map((product: any) => ({
         ...product,
         category: product.categories,
         price: product.product_prices?.[0]?.price || null,
         product_images: productImagesMap[product.id] || [],
+        // Información de variantes
+        has_variants: product.is_parent === true,
+        variant_count: variantCountMap[product.id] || 0,
         // Mantener compatibilidad con código que use 'image'
         image: productImagesMap[product.id]?.[0]?.storage_path ? 
           `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImagesMap[product.id][0].storage_path}` :
@@ -207,6 +236,55 @@ export class POSService {
       };
     } catch (error) {
       console.error('Error getting products paginated:', error);
+      throw error;
+    }
+  }
+
+  // Obtener variantes de un producto padre
+  static async getProductVariants(parentProductId: number) {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          product_prices(price)
+        `)
+        .eq('parent_product_id', parentProductId)
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) throw error;
+
+      // Obtener imágenes de las variantes
+      const variantIds = data?.map(p => p.id) || [];
+      let variantImagesMap: Record<number, any[]> = {};
+      
+      if (variantIds.length > 0) {
+        const { data: images } = await supabase
+          .from('product_images')
+          .select('id, product_id, storage_path, is_primary')
+          .in('product_id', variantIds);
+          
+        if (images) {
+          images.forEach((img: any) => {
+            if (!variantImagesMap[img.product_id]) {
+              variantImagesMap[img.product_id] = [];
+            }
+            variantImagesMap[img.product_id].push(img);
+          });
+        }
+      }
+
+      return data?.map((variant: any) => ({
+        ...variant,
+        price: variant.product_prices?.[0]?.price || null,
+        product_images: variantImagesMap[variant.id] || [],
+        image: variantImagesMap[variant.id]?.[0]?.storage_path ? 
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${variantImagesMap[variant.id][0].storage_path}` :
+          null
+      })) || [];
+    } catch (error) {
+      console.error('Error getting product variants:', error);
       throw error;
     }
   }
@@ -1090,6 +1168,33 @@ export class POSService {
         if (arError) throw arError;
       }
 
+      // Guardar propina si existe
+      if (checkoutData.tip_amount && checkoutData.tip_amount > 0) {
+        const tipPayment = payments.find(p => p.amount > 0);
+        const tipData = {
+          organization_id: cart.organization_id,
+          branch_id: getCurrentBranchId(),
+          sale_id: saleData.id,
+          server_id: checkoutData.tip_server_id || userId,
+          amount: checkoutData.tip_amount,
+          tip_type: tipPayment?.method === 'card' ? 'card' : 
+                   tipPayment?.method === 'transfer' ? 'transfer' : 'cash',
+          is_distributed: false,
+          notes: `Propina de venta #${saleData.id.slice(-8)}`
+        };
+        
+        const { error: tipError } = await supabase
+          .from('tips')
+          .insert(tipData);
+        
+        if (tipError) {
+          console.error('Error creating tip:', tipError);
+          // No lanzamos error para que no falle todo el checkout
+        } else {
+          console.log('Tip created successfully:', checkoutData.tip_amount);
+        }
+      }
+
       // Eliminar el carrito del localStorage
       await this.removeCart(cart.id);
 
@@ -1736,6 +1841,71 @@ export class POSService {
     } catch (error) {
       console.error('Error al anular deuda con nota de crédito:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Obtener miembros de la organización (para propinas)
+   */
+  static async getOrganizationMembers(): Promise<any[]> {
+    try {
+      const orgId = getOrganizationId();
+      if (!orgId) {
+        console.warn('No organization ID available');
+        return [];
+      }
+
+      // Obtener miembros activos
+      const { data: members, error: membersError } = await supabase
+        .from('organization_members')
+        .select('user_id, role_id, is_active')
+        .eq('organization_id', orgId)
+        .eq('is_active', true);
+
+      if (membersError) throw membersError;
+      if (!members || members.length === 0) return [];
+
+      // Obtener perfiles de los usuarios
+      const userIds = members.map(m => m.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Crear mapa de perfiles
+      const profilesMap: Record<string, any> = {};
+      (profiles || []).forEach(p => {
+        profilesMap[p.id] = p;
+      });
+
+      // Combinar datos
+      return members.map(m => {
+        const profile = profilesMap[m.user_id];
+        const firstName = profile?.first_name || '';
+        const lastName = profile?.last_name || '';
+        const fullName = [firstName, lastName].filter(Boolean).join(' ') || null;
+        
+        return {
+          user_id: m.user_id,
+          role_id: m.role_id,
+          is_active: m.is_active,
+          users: profile ? {
+            id: profile.id,
+            email: profile.email,
+            first_name: firstName,
+            last_name: lastName,
+            raw_user_meta_data: {
+              full_name: fullName,
+              name: firstName || null
+            }
+          } : null
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching organization members:', error);
+      return [];
     }
   }
 }

@@ -85,6 +85,21 @@ export function formatPercent(value: number, decimalPlaces: number = 2, includeS
 }
 
 /**
+ * Formatea un número con separadores de miles
+ * 
+ * @param value - Valor numérico a formatear
+ * @param decimalPlaces - Número de decimales a mostrar (por defecto 2)
+ * @param locale - Configuración regional (por defecto es-CO)
+ * @returns Cadena formateada con separadores de miles
+ */
+export function formatNumber(value: number, decimalPlaces: number = 2, locale: string = 'es-CO'): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: decimalPlaces,
+    maximumFractionDigits: decimalPlaces
+  }).format(value);
+}
+
+/**
  * Función de debounce que limita la frecuencia de ejecución de una función
  * 
  * @param func - La función a ejecutar con debounce
@@ -165,3 +180,4 @@ export function applyTheme(theme: ThemeMode): void {
   // Disparar evento para que otros componentes actualicen su tema
   window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme } }));
 }
+

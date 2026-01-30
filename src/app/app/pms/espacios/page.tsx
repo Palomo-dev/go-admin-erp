@@ -376,7 +376,7 @@ export default function EspaciosPage() {
   const hasFilters = searchTerm !== '' || statusFilter !== 'all' || zoneFilter !== 'all' || typeFilter !== 'all';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
       {/* Header */}
       <EspaciosPageHeader
         onRefresh={loadData}
@@ -418,7 +418,7 @@ export default function EspaciosPage() {
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto p-6">
         {isLoading ? (
           <EspaciosLoadingState />
         ) : filteredSpaces.length === 0 ? (

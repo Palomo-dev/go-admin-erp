@@ -16,7 +16,8 @@ import {
   Mail,
   Send,
   Download,
-  Printer
+  Printer,
+  Copy
 } from 'lucide-react';
 import { 
   Card,
@@ -48,6 +49,9 @@ import { NotaCreditoDialog } from './NotaCreditoDialog';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { PDFService, InvoiceDataForPDF } from '@/lib/services/pdfService';
+import { SendToFactusButton, FactusStatusBadge } from '@/components/finanzas/facturacion-electronica';
+import { electronicInvoicingService, type EInvoiceStatus } from '@/lib/services/electronicInvoicingService';
 
 // Mapeo de estados a colores de badge
 const estadoColors: Record<string, string> = {
@@ -89,6 +93,15 @@ const traducirMetodoPago = (metodo: string | null): string => {
   return metodosMap[metodo.toLowerCase()] || metodo;
 };
 
+// Interfaz para datos de organización en PDF
+interface OrganizationPDFData {
+  name: string;
+  tax_id?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+}
+
 export default function DetalleFactura({ factura }: { factura: any }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -97,6 +110,58 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const [dialogNotaCreditoOpen, setDialogNotaCreditoOpen] = useState(false);
   const [facturaActual, setFacturaActual] = useState(factura);
   const [pagosActuales, setPagosActuales] = useState(factura.pagos);
+  const [organizationData, setOrganizationData] = useState<OrganizationPDFData | null>(null);
+  const [eInvoiceStatus, setEInvoiceStatus] = useState<EInvoiceStatus | null>(null);
+  const [eInvoiceCufe, setEInvoiceCufe] = useState<string | null>(null);
+
+  // Cargar datos de la organización al montar
+  useEffect(() => {
+    const loadOrganizationData = async () => {
+      try {
+        const org = obtenerOrganizacionActiva();
+        if (!org?.id) return;
+
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('name, tax_id, nit, address, phone, email')
+          .eq('id', org.id)
+          .single();
+
+        if (error) {
+          console.error('Error cargando organización:', error);
+          return;
+        }
+
+        if (data) {
+          setOrganizationData({
+            name: data.name || 'Mi Empresa',
+            tax_id: data.tax_id || data.nit,
+            address: data.address,
+            phone: data.phone,
+            email: data.email
+          });
+        }
+      } catch (error) {
+        console.error('Error cargando datos de organización:', error);
+      }
+    };
+
+    loadOrganizationData();
+    loadEInvoiceStatus();
+  }, []);
+
+  // Cargar estado de facturación electrónica
+  const loadEInvoiceStatus = async () => {
+    try {
+      const job = await electronicInvoicingService.getInvoiceEInvoiceStatus(factura.id);
+      if (job) {
+        setEInvoiceStatus(job.status);
+        setEInvoiceCufe(job.cufe);
+      }
+    } catch (error) {
+      console.error('Error loading e-invoice status:', error);
+    }
+  };
 
   // Función para actualizar los pagos después de registrar uno nuevo usando RPC unificado
   const actualizarPagos = useCallback(async () => {
@@ -306,9 +371,42 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   };
 
   const generarPDF = () => {
+    // Preparar datos para el PDF usando el servicio centralizado
+    const pdfData: InvoiceDataForPDF = {
+      id: facturaActual.id,
+      number: facturaActual.number,
+      issue_date: facturaActual.issue_date,
+      due_date: facturaActual.due_date,
+      status: facturaActual.status,
+      currency: facturaActual.currency || 'COP',
+      subtotal: facturaActual.subtotal || 0,
+      tax_total: facturaActual.tax_total || 0,
+      total: facturaActual.total || 0,
+      balance: facturaActual.balance || 0,
+      notes: facturaActual.notes,
+      organization: organizationData || undefined,
+      customer: factura.customers ? {
+        full_name: factura.customers.full_name,
+        email: factura.customers.email,
+        phone: factura.customers.phone,
+        address: factura.customers.address,
+        tax_id: factura.customers.tax_id
+      } : undefined,
+      items: factura.invoice_items?.map((item: any) => ({
+        description: item.description,
+        qty: item.qty,
+        unit_price: item.unit_price,
+        tax_rate: item.tax_rate,
+        total_line: item.total_line
+      })) || []
+    };
+
+    // Usar el servicio centralizado de PDF
+    PDFService.printInvoiceHTML(pdfData);
+
     toast({
-      title: 'Generando PDF',
-      description: `El PDF de la factura ${facturaActual.number} se está descargando.`,
+      title: 'PDF Generado',
+      description: `La factura ${facturaActual.number} está lista para imprimir/descargar.`,
     });
   };
   
@@ -354,6 +452,35 @@ export default function DetalleFactura({ factura }: { factura: any }) {
     }
   };
   
+  // Función para duplicar la factura
+  const duplicarFactura = async () => {
+    try {
+      // Redirigir a la página de nueva factura con parámetros de duplicación
+      const params = new URLSearchParams({
+        duplicar: facturaActual.id,
+        cliente: facturaActual.customer_id || '',
+        moneda: facturaActual.currency || 'COP',
+        terminos: facturaActual.payment_terms?.toString() || '30',
+        metodo_pago: facturaActual.payment_method || '',
+        notas: facturaActual.notes || ''
+      });
+      
+      router.push(`/app/finanzas/facturas-venta/nuevo?${params.toString()}`);
+      
+      toast({
+        title: "Duplicando factura",
+        description: "Se está creando una nueva factura basada en la seleccionada.",
+      });
+    } catch (error: any) {
+      console.error('Error al duplicar factura:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo duplicar la factura",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Manejar la navegación de regreso
   const handleBack = () => {
     router.back();
@@ -378,6 +505,14 @@ export default function DetalleFactura({ factura }: { factura: any }) {
           <Badge variant={getBadgeVariant(facturaActual.status)} className="text-xs sm:text-sm py-1 px-2 sm:py-1.5 sm:px-3">
             {getStatusText(facturaActual.status)}
           </Badge>
+          {eInvoiceStatus && (
+            <FactusStatusBadge
+              status={eInvoiceStatus}
+              cufe={eInvoiceCufe}
+              size="md"
+              showTooltip={true}
+            />
+          )}
         </div>
         
         <div className="flex gap-1.5 sm:gap-2 flex-wrap w-full sm:w-auto">
@@ -432,6 +567,28 @@ export default function DetalleFactura({ factura }: { factura: any }) {
           >
             <Send size={14} />
             <span className="hidden sm:inline">WhatsApp</span>
+          </Button>
+          {!isDraft && facturaActual.status !== 'void' && (
+            <SendToFactusButton
+              invoiceId={facturaActual.id}
+              invoiceNumber={facturaActual.number}
+              organizationId={facturaActual.organization_id}
+              currentStatus={eInvoiceStatus}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs"
+              onSuccess={loadEInvoiceStatus}
+            />
+          )}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={duplicarFactura}
+            className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+            title="Duplicar factura"
+          >
+            <Copy size={14} />
+            <span className="hidden sm:inline">Duplicar</span>
           </Button>
           
           {facturaActual.status !== 'paid' && facturaActual.status !== 'void' && (

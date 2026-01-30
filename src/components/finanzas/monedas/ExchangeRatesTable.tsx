@@ -282,7 +282,9 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
     }
   }
   
-  // 🚀 Precarga inteligente automática
+  // DESHABILITADO: Precarga automática - las tasas se actualizan via cron job diario
+  // La página solo carga datos de la BD, no intenta sincronizar desde la API
+  /*
   async function intelligentPreload() {
     if (autoSyncAttempted) return;
     
@@ -294,10 +296,8 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       setDailyDataStatus('syncing');
       
       try {
-        await syncRatesViaEdgeFunction(false); // Sin notificaciones para UX suave
+        await syncRatesViaEdgeFunction(false);
         setDailyDataStatus('available');
-        
-        // Recargar datos después de sincronización exitosa
         setTimeout(() => loadRates(), 2000);
       } catch (error) {
         console.error('Error en precarga automática:', error);
@@ -305,14 +305,13 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
       }
     }
   }
+  */
   
   // Función auxiliar para cargar datos iniciales
   const initData = async () => {
     await loadCurrencies();
     await loadRates();
-    
-    // 🚀 Iniciar precarga inteligente después de cargar datos básicos
-    await intelligentPreload();
+    // NO sincronizar automáticamente - las tasas se actualizan via cron job diario
   };
   
   // Cargar monedas y tasas de cambio al iniciar
@@ -543,121 +542,87 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
         }
         
         if (isToday) {
-          console.log('La fecha seleccionada es hoy. Intentando sincronizar automáticamente...');
-          try {
+          // NO sincronizar automáticamente - solo usar datos de fechas anteriores como fallback
+          console.log('No hay datos para hoy, buscando datos de fechas anteriores...');
+          
+          // Buscar la fecha más reciente con datos disponibles
+          const { data: recentData, error: recentError } = await supabase
+            .from('currency_rates')
+            .select('*')
+            .lt('rate_date', formattedDate)
+            .order('rate_date', { ascending: false })
+            .limit(200);
+          
+          if (!recentError && recentData && recentData.length > 0) {
+            // Usar datos de la fecha más reciente
+            const latestDate = recentData[0].rate_date;
+            const latestRates = recentData.filter(r => r.rate_date === latestDate);
+            
+            console.log(`Usando datos de ${latestDate} como fallback (${latestRates.length} tasas)`);
+            
+            // Procesar datos con indicación de que son datos anteriores
+            await processAndShowRates(latestRates, formattedDate);
+            
             toast({
-              title: 'Sincronizando automáticamente',
-              description: `No hay tasas para hoy. Obteniendo datos actualizados...`,
+              title: 'Tasas de cambio',
+              description: `Mostrando tasas del ${format(new Date(latestDate), 'dd/MM/yyyy', { locale: es })} (última actualización disponible)`,
               variant: 'default',
-            });
-            
-            // Intentar sincronizar automáticamente
-            await syncRatesViaEdgeFunction(true);
-            
-            // Volver a cargar las tasas después de la sincronización
-            const { data: refreshedData, error: refreshError } = await supabase
-              .from('currency_rates')
-              .select(`id, code, rate, rate_date, source, base_currency_code`)
-              .eq('rate_date', formattedDate);
-            
-            console.log('Datos refrescados después de sincronización:', refreshedData?.length || 0);
-              
-            if (!refreshError && refreshedData && refreshedData.length > 0) {
-              // Mostrar las tasas actualizadas
-              toast({
-                title: 'Datos actualizados',
-                description: `Se encontraron ${refreshedData.length} tasas de cambio para hoy.`,
-                variant: 'default',
-              });
-              
-              // Procesar y mostrar los datos actualizados
-              await processAndShowRates(refreshedData, formattedDate);
-              return; // Terminar la función aquí ya que hemos procesado los datos
-            }
-            
-            // Si llegamos aquí, usar fallback con datos de la fecha más reciente
-            console.log('Sincronización falló, buscando datos de fechas anteriores...');
-            
-            // Buscar la fecha más reciente con datos disponibles
-            const { data: recentData, error: recentError } = await supabase
-              .from('currency_rates')
-              .select('*')
-              .lt('rate_date', formattedDate)
-              .order('rate_date', { ascending: false })
-              .limit(20);
-            
-            if (!recentError && recentData && recentData.length > 0) {
-              // Usar datos de la fecha más reciente
-              const latestDate = recentData[0].rate_date;
-              const latestRates = recentData.filter(r => r.rate_date === latestDate);
-              
-              console.log(`Usando datos de ${latestDate} como fallback (${latestRates.length} tasas)`);
-              
-              // Procesar datos con indicación de que son datos anteriores
-              await processAndShowRates(latestRates, formattedDate);
-              
-              toast({
-                title: 'Datos de fecha anterior',
-                description: `Se muestran tasas del ${format(new Date(latestDate), 'dd/MM/yyyy', { locale: es })} (más reciente disponible)`,
-                variant: 'default',
-              });
-              return;
-            }
-          } catch (syncError) {
-            console.error('Error en sincronización automática:', syncError);
-            
-            // Para la fecha actual, mostrar modo contingencia
-            const { data: currencies } = await supabase
-              .from('currencies')
-              .select('code, name, symbol')
-              .eq('is_active', true);
-            
-            // Si hay monedas, crear datos temporales para mostrar
-            if (currencies && currencies.length > 0) {
-              console.log('Usando datos temporales del catálogo de monedas:', currencies.length);
-              
-              // Crear datos temporales para mostrar
-              const tempRates = currencies.map(curr => ({
-                id: crypto.randomUUID(),
-                code: curr.code,
-                rate: curr.code === 'USD' ? 1 : 0, // Usar number en lugar de string
-                rate_date: formattedDate,
-                source: 'manual',
-                base_currency_code: 'USD',
-                currency_name: curr.name,
-                currency_symbol: curr.symbol,
-              }));
-              
-              // Convertir explícitamente al tipo CurrencyRate[]
-              setRates(tempRates as any);
-              setPreviousRates([]);
-              toast({
-                title: 'Modo contingencia',
-                description: 'Mostrando catálogo de monedas sin tasas actualizadas. Por favor intente sincronizar manualmente.',
-                variant: 'destructive',
-              });
-              setLoading(false);
-              return;
-            }
-            
-            // Si no hay monedas tampoco, mostrar error completo
-            setRates([]);
-            setPreviousRates([]);
-            toast({
-              title: 'Error de sincronización',
-              description: 'No se pudieron obtener tasas actualizadas. Intente sincronizar manualmente.',
-              variant: 'destructive',
             });
             setLoading(false);
             return;
           }
-        } else {
-          // Para fechas pasadas sin datos, mostrar mensaje informativo y limpiar estados
+          
+          // Si no hay datos anteriores, mostrar catálogo de monedas vacío
+          const { data: currencies } = await supabase
+            .from('currencies')
+            .select('code, name, symbol')
+            .eq('is_active', true);
+          
+          // Si hay monedas, crear datos temporales para mostrar
+          if (currencies && currencies.length > 0) {
+            console.log('No hay tasas disponibles, mostrando catálogo de monedas:', currencies.length);
+            
+            // Crear datos temporales para mostrar
+            const tempRates = currencies.map(curr => ({
+              id: crypto.randomUUID(),
+              code: curr.code,
+              rate: curr.code === 'USD' ? 1 : 0,
+              rate_date: formattedDate,
+              source: 'pendiente',
+              base_currency_code: 'USD',
+              currency_name: curr.name,
+              currency_symbol: curr.symbol,
+            }));
+              
+            // Convertir explícitamente al tipo CurrencyRate[]
+            setRates(tempRates as any);
+            setPreviousRates([]);
+            toast({
+              title: 'Sin tasas disponibles',
+              description: 'No hay tasas de cambio en la base de datos. Las tasas se actualizan automáticamente cada día.',
+              variant: 'default',
+            });
+            setLoading(false);
+            return;
+          }
+          
+          // Si no hay monedas tampoco, mostrar mensaje
           setRates([]);
           setPreviousRates([]);
           toast({
             title: 'Sin datos',
-            description: `No hay tasas de cambio disponibles para el ${format(date, 'dd/MM/yyyy', { locale: es })}. Intente sincronizar o seleccionar otra fecha.`,
+            description: 'No hay tasas de cambio disponibles. Las tasas se actualizan automáticamente cada día.',
+            variant: 'default',
+          });
+          setLoading(false);
+          return;
+        } else {
+          // Para fechas pasadas sin datos, mostrar mensaje informativo
+          setRates([]);
+          setPreviousRates([]);
+          toast({
+            title: 'Sin datos',
+            description: `No hay tasas de cambio disponibles para el ${format(date, 'dd/MM/yyyy', { locale: es })}.`,
             variant: 'default',
           });
           setLoading(false);
@@ -665,22 +630,8 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
         }
       }
       
-      console.log('Tasas encontradas en base de datos:', data.length, data);
-
-      // Obtener información de todas las monedas del catálogo global
-      const { data: templates, error: templatesError } = await supabase
-        .from('currencies')
-        .select('code, name, symbol');
-        
-      if (templatesError) throw templatesError;
-      
-      // Crear un mapa de monedas para acceso rápido
-      const templateMap = templates.reduce((acc: Record<string, any>, curr: any) => {
-        acc[curr.code] = curr;
-        return acc;
-      }, {});
-
-      // Procesar y mostrar los datos obtenidos
+      // Hay datos disponibles - procesarlos
+      console.log('Tasas encontradas en base de datos:', data.length);
       await processAndShowRates(data, formattedDate);
     } catch (err: any) {
       console.error('Error al cargar tasas de cambio:', err);

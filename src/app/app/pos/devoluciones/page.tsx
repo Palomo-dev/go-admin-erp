@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeftRight, RefreshCw, Package, History, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeftRight, RefreshCw, Package, History, RotateCcw, Tag, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -78,7 +79,13 @@ export default function DevolucionesPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center gap-3">
+                <Link href="/app/pos/devoluciones/motivos">
+                  <Button variant="outline" size="sm" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600">
+                    <Tag className="h-4 w-4 mr-2" />
+                    Motivos
+                  </Button>
+                </Link>
                 <div className="text-right">
                   <div className="flex items-center space-x-2">
                     <Package className="h-4 w-4 text-gray-400" />
@@ -200,7 +207,7 @@ export default function DevolucionesPage() {
         </Card>
 
         {/* Información adicional */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
@@ -242,6 +249,22 @@ export default function DevolucionesPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Link href="/app/pos/devoluciones/motivos">
+            <Card className="dark:bg-gray-800 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors cursor-pointer h-full">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                    <Tag className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Catálogo de Motivos</p>
+                    <p className="font-medium dark:text-white">Gestionar motivos</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </div>

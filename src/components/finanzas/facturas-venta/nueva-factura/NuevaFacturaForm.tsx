@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,8 +15,10 @@ import { ItemsFactura } from './ItemsFactura';
 import { ImpuestosFactura } from './ImpuestosFactura';
 import { FormaPagoSelector } from './FormaPagoSelector';
 import { format } from 'date-fns';
-import { Save, FileCheck, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Save, FileCheck, ArrowLeft, RefreshCw, Coins } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
+import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
+import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 
 // Tipo para un ítem de factura
 export type InvoiceItem = {
@@ -62,7 +64,16 @@ interface Invoice {
 
 export function NuevaFacturaForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const organizationId = getOrganizationId();
+  
+  // Parámetros de duplicación
+  const duplicarId = searchParams.get('duplicar');
+  const clienteParam = searchParams.get('cliente');
+  const monedaParam = searchParams.get('moneda');
+  const terminosParam = searchParams.get('terminos');
+  const metodoPagoParam = searchParams.get('metodo_pago');
+  const notasParam = searchParams.get('notas');
 
   // Estados para el formulario
   const [isLoading, setIsLoading] = useState(false);
@@ -83,14 +94,136 @@ export function NuevaFacturaForm() {
   const [isCustomPaymentTerm, setIsCustomPaymentTerm] = useState<boolean>(false);
   const [paymentMethodCode, setPaymentMethodCode] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [sendToFactus, setSendToFactus] = useState<boolean>(false);
+
+  // Estados para moneda
+  const [currency, setCurrency] = useState<string>('COP');
+  const [currencies, setCurrencies] = useState<{code: string; name: string; symbol: string}[]>([]);
+  const [loadingCurrencies, setLoadingCurrencies] = useState<boolean>(false);
 
   // Estados para impuestos
   const [taxIncluded, setTaxIncluded] = useState<boolean>(false);
-  const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
-  const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: any}>({});
+  const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({}); // Indicador de impuestos aplicados
+  const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: any}>({}); // Totales de impuestos aplicados
   const [subtotal, setSubtotal] = useState<number>(0);
   const [taxTotal, setTaxTotal] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
+
+  // Función para cargar monedas de la organización
+  const loadCurrencies = useCallback(async () => {
+    if (!organizationId) return;
+    
+    setLoadingCurrencies(true);
+    try {
+      // Primero obtener las monedas de la organización
+      const { data: orgCurrencies, error: orgError } = await supabase
+        .from('organization_currencies')
+        .select('currency_code, is_base')
+        .eq('organization_id', organizationId);
+        
+      if (orgError) throw orgError;
+      
+      if (orgCurrencies && orgCurrencies.length > 0) {
+        // Obtener los detalles de las monedas
+        const currencyCodes = orgCurrencies.map(oc => oc.currency_code);
+        const { data: currencyDetails, error: currError } = await supabase
+          .from('currencies')
+          .select('code, name, symbol')
+          .in('code', currencyCodes);
+          
+        if (currError) throw currError;
+        
+        const currencyList = orgCurrencies.map((item: any) => {
+          const details = currencyDetails?.find(c => c.code === item.currency_code);
+          return {
+            code: item.currency_code,
+            name: details?.name || item.currency_code,
+            symbol: details?.symbol || '$'
+          };
+        });
+        setCurrencies(currencyList);
+        
+        // Establecer la moneda base como predeterminada
+        const baseCurrency = orgCurrencies.find((item: any) => item.is_base);
+        if (baseCurrency) {
+          setCurrency(baseCurrency.currency_code);
+        } else if (currencyList.length > 0) {
+          setCurrency(currencyList[0].code);
+        }
+      } else {
+        // Si no hay monedas configuradas, usar COP por defecto
+        setCurrencies([{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }]);
+        setCurrency('COP');
+      }
+    } catch (error) {
+      console.error('Error al cargar monedas:', error);
+      // Si falla, usar COP por defecto
+      setCurrencies([{ code: 'COP', name: 'Peso Colombiano', symbol: '$' }]);
+      setCurrency('COP');
+    } finally {
+      setLoadingCurrencies(false);
+    }
+  }, [organizationId]);
+
+  // Cargar monedas al iniciar
+  useEffect(() => {
+    loadCurrencies();
+  }, [loadCurrencies]);
+
+  // Cargar datos de factura a duplicar
+  useEffect(() => {
+    const cargarDatosDuplicacion = async () => {
+      if (!duplicarId || !organizationId) return;
+      
+      try {
+        // Cargar items de la factura original
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('invoice_items')
+          .select('*')
+          .eq('invoice_sales_id', duplicarId);
+          
+        if (itemsError) throw itemsError;
+        
+        if (itemsData && itemsData.length > 0) {
+          const itemsFormateados = itemsData.map((item: any) => ({
+            id: undefined, // Nuevo ID al guardar
+            product_id: item.product_id,
+            description: item.description,
+            qty: item.qty,
+            unit_price: item.unit_price,
+            tax_code: item.tax_code,
+            tax_rate: item.tax_rate,
+            tax_included: item.tax_included || false,
+            total_line: item.total_line,
+            discount_amount: item.discount_amount || 0
+          }));
+          setItems(itemsFormateados);
+        }
+        
+        // Aplicar parámetros de duplicación
+        if (clienteParam) setSelectedCustomerId(clienteParam);
+        if (monedaParam) setCurrency(monedaParam);
+        if (terminosParam) setPaymentTerms(parseInt(terminosParam) || 30);
+        if (metodoPagoParam) setPaymentMethodCode(metodoPagoParam);
+        if (notasParam) setNotes(notasParam);
+        
+        toast({
+          title: "Factura duplicada",
+          description: "Se han cargado los datos de la factura original. Modifique según necesite.",
+        });
+        
+      } catch (error) {
+        console.error('Error al cargar datos de duplicación:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los datos de la factura a duplicar.",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    cargarDatosDuplicacion();
+  }, [duplicarId, organizationId, clienteParam, monedaParam, terminosParam, metodoPagoParam, notasParam]);
 
   // Función para verificar si el número de factura ya existe
   const checkDuplicateInvoiceNumber = useCallback(async (number: string) => {
@@ -285,7 +418,7 @@ export function NuevaFacturaForm() {
         number: invoiceNumber,
         issue_date: issueDate?.toISOString().split('T')[0] || null,
         due_date: dueDate?.toISOString().split('T')[0] || null,
-        currency: 'COP', // Por defecto, debe ser seleccionable
+        currency: currency, // Moneda seleccionada por el usuario
         subtotal: subtotal,
         tax_total: taxTotal,
         total: total,
@@ -334,17 +467,42 @@ export function NuevaFacturaForm() {
       const itemsError = itemsResults.find(result => result.error);
       if (itemsError) throw itemsError.error;
       
-      toast({
-        title: "Éxito",
-        description: "La factura se ha creado correctamente.",
-      });
+      // 7. Si está activada la opción de factura electrónica, enviar a DIAN
+      if (sendToFactus) {
+        try {
+          const result = await electronicInvoicingService.sendToFactus(
+            invoiceData.id,
+            Number(organizationId)
+          );
+          
+          if (result.success) {
+            toast({
+              title: "Factura creada y enviada a DIAN",
+              description: `La factura ${invoiceNumber} se ha creado y enviado para validación electrónica.`,
+            });
+          } else {
+            toast({
+              title: "Factura creada",
+              description: `La factura se creó pero hubo un error al enviar a DIAN: ${result.error}`,
+              variant: "destructive",
+            });
+          }
+        } catch (eInvoiceError) {
+          console.error('Error al enviar a Factus:', eInvoiceError);
+          toast({
+            title: "Factura creada",
+            description: "La factura se creó correctamente pero no se pudo enviar a DIAN. Puede intentarlo desde el detalle de la factura.",
+          });
+        }
+      } else {
+        toast({
+          title: "Éxito",
+          description: "La factura se ha creado correctamente.",
+        });
+      }
       
       // Redireccionar a la vista de la factura
-      // Aseguramos que el ID se maneje como string para compatibilidad con UUID
       router.push(`/app/finanzas/facturas-venta/${invoiceData.id.toString()}`);
-      
-      // Registro de diagnóstico
-      console.log('Factura creada con UUID:', invoiceData.id);
       
     } catch (error) {
       console.error('Error al guardar la factura:', error);
@@ -440,6 +598,40 @@ export function NuevaFacturaForm() {
             date={dueDate}
             onSelect={setDueDate}
           />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="currency" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <span className="flex items-center gap-1.5">
+              <Coins className="h-3.5 w-3.5" />
+              Moneda
+            </span>
+          </Label>
+          <Select 
+            value={currency} 
+            onValueChange={setCurrency}
+            disabled={loadingCurrencies}
+          >
+            <SelectTrigger className="
+              w-full text-sm
+              bg-white dark:bg-gray-900
+              border-gray-300 dark:border-gray-600
+              text-gray-900 dark:text-gray-100
+            ">
+              <SelectValue placeholder={loadingCurrencies ? "Cargando..." : "Seleccionar moneda"} />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              {currencies.map((curr) => (
+                <SelectItem 
+                  key={curr.code} 
+                  value={curr.code}
+                  className="text-gray-900 dark:text-gray-100"
+                >
+                  {curr.code} - {curr.name} ({curr.symbol})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -587,6 +779,15 @@ export function NuevaFacturaForm() {
                 text-gray-900 dark:text-gray-100
                 placeholder:text-gray-500 dark:placeholder:text-gray-400
               "
+            />
+          </div>
+          <div className="lg:col-span-2 pt-2">
+            <ElectronicInvoiceToggle
+              checked={sendToFactus}
+              onCheckedChange={setSendToFactus}
+              showLabel={true}
+              showTooltip={true}
+              size="md"
             />
           </div>
         </div>

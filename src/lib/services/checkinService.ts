@@ -204,6 +204,7 @@ class CheckinService {
    */
   async performCheckin(data: {
     reservationId: string;
+    userId?: string;
     notes?: string;
     depositAmount?: number;
     signatureData?: string;
@@ -217,6 +218,7 @@ class CheckinService {
   }): Promise<void> {
     const { 
       reservationId, 
+      userId,
       notes, 
       depositAmount, 
       signatureData,
@@ -255,16 +257,19 @@ class CheckinService {
         .eq('id', reservation.customer_id);
     }
 
-    // Actualizar estado de la reserva con metadata completo
+    // Actualizar estado de la reserva con campos de auditoría y metadata
     const updateData: any = {
       status: 'checked_in',
       updated_at: new Date().toISOString(),
+      // Campos de auditoría
+      actual_checkin_at: new Date().toISOString(),
+      checkin_by: userId || null,
+      checkin_notes: notes || null,
+      // Metadata adicional
       metadata: {
         ...(reservation?.metadata || {}),
-        checkin_notes: notes,
         deposit_amount: depositAmount,
         signature: signatureData,
-        checkin_date: new Date().toISOString(),
         // Datos de procedencia y destino
         nationality,
         origin_city: originCity,

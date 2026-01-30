@@ -9,6 +9,7 @@ import CheckinService, {
   type CheckinReservation,
   type CheckinStats as CheckinStatsType,
 } from '@/lib/services/checkinService';
+import { supabase } from '@/lib/supabase/config';
 import {
   CheckinStats,
   ArrivalsTable,
@@ -91,9 +92,13 @@ export default function CheckinPage() {
     try {
       console.log('Iniciando check-in para:', data);
 
+      // Obtener usuario actual para auditoría
+      const { data: { user } } = await supabase.auth.getUser();
+
       // Realizar check-in con todos los datos
       await CheckinService.performCheckin({
         reservationId: data.reservationId,
+        userId: user?.id,
         notes: data.notes,
         depositAmount: data.depositAmount,
         signatureData: data.signatureData,
@@ -167,8 +172,8 @@ export default function CheckinPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-6 py-6">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between gap-4">

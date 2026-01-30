@@ -17,6 +17,9 @@ export interface CuentaPorCobrarDetalle {
   customer_email: string;
   customer_phone: string;
   customer_address: string;
+  // Datos de la factura
+  invoice_number?: string;
+  invoice_date?: string;
   // Historial de pagos
   payment_history: PaymentRecord[];
 }

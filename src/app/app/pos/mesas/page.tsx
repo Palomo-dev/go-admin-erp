@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -65,6 +66,10 @@ export default function MesasPage() {
   const [mesaSeleccionada, setMesaSeleccionada] = useState<string | null>(null);
   const [mesaParaComensales, setMesaParaComensales] = useState<TableWithSession | null>(null);
   const [comensales, setComensales] = useState(2);
+  
+  // Estados para abrir sesión
+  const [mesaParaAbrirSesion, setMesaParaAbrirSesion] = useState<TableWithSession | null>(null);
+  const [comensalesNuevaSesion, setComensalesNuevaSesion] = useState(2);
   
   // Modo de combinación rápida
   const [modoCombinar, setModoCombinar] = useState(false);
@@ -298,6 +303,47 @@ export default function MesasPage() {
     }
   };
 
+  const handleAbrirSesion = async () => {
+    if (!mesaParaAbrirSesion) return;
+
+    try {
+      await MesasService.abrirSesion(mesaParaAbrirSesion.id, {
+        customers: comensalesNuevaSesion
+      });
+      await cargarDatos();
+      toast({
+        title: 'Sesión abierta',
+        description: `Mesa ${mesaParaAbrirSesion.name} ahora está ocupada`,
+      });
+      setMesaParaAbrirSesion(null);
+      // Navegar a la mesa
+      router.push(`/app/pos/mesas/${mesaParaAbrirSesion.id}`);
+    } catch (error: any) {
+      console.error('Error abriendo sesión:', error);
+      toast({
+        title: 'Error',
+        description: error?.message || 'No se pudo abrir la sesión',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleMesaClick = (mesa: TableWithSession) => {
+    if (modoCombinar) {
+      handleToggleMesaCombinar(mesa.id);
+      return;
+    }
+    
+    if (mesa.state === 'free' && !mesa.session) {
+      // Mesa libre - preguntar si desea abrir sesión
+      setMesaParaAbrirSesion(mesa);
+      setComensalesNuevaSesion(2);
+    } else {
+      // Mesa ocupada - ir a detalle
+      router.push(`/app/pos/mesas/${mesa.id}`);
+    }
+  };
+
   const handleToggleModoCombinar = () => {
     setModoCombinar(!modoCombinar);
     setMesasParaCombinar([]);
@@ -342,27 +388,100 @@ export default function MesasPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Plano de Mesas
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Gestiona las mesas del restaurante
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Link href="/app/pos">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <UtensilsCrossed className="h-6 w-6 text-blue-600" />
+              </div>
+              Plano de Mesas
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">
+              POS / Mesas
+            </p>
+          </div>
         </div>
-
-        <div className="flex gap-2">
-          <Button onClick={() => setShowMesaForm(true)}>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={cargarDatos}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => setShowMesaForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="h-4 w-4 mr-2" />
             Nueva Mesa
           </Button>
-          <Button variant="outline" onClick={cargarDatos}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
         </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {mesas.filter((m) => m.state === 'free').length}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Libres</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                <Users className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {mesas.filter((m) => m.state === 'occupied').length}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Ocupadas</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <Clock className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {mesas.filter((m) => m.session?.status === 'bill_requested').length}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Con Cuenta</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Hash className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {mesas.length}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
+              </div>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Acciones rápidas */}
@@ -476,7 +595,7 @@ export default function MesasPage() {
                           setMesaParaComensales(mesa);
                           setComensales(mesa.session?.customers || 2);
                         }}
-                        onClick={() => router.push(`/app/pos/mesas/${mesa.id}`)}
+                        onClick={() => handleMesaClick(mesa)}
                         modoCombinar={modoCombinar}
                         isSelected={mesasParaCombinar.includes(mesa.id)}
                         selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
@@ -515,7 +634,7 @@ export default function MesasPage() {
                             setMesaParaComensales(mesa);
                             setComensales(mesa.session?.customers || 2);
                           }}
-                          onClick={() => router.push(`/app/pos/mesas/${mesa.id}`)}
+                          onClick={() => handleMesaClick(mesa)}
                           modoCombinar={modoCombinar}
                           isSelected={mesasParaCombinar.includes(mesa.id)}
                           selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
@@ -543,7 +662,7 @@ export default function MesasPage() {
                     setMesaParaComensales(mesa);
                     setComensales(mesa.session?.customers || 2);
                   }}
-                  onClick={() => router.push(`/app/pos/mesas/${mesa.id}`)}
+                  onClick={() => handleMesaClick(mesa)}
                   modoCombinar={modoCombinar}
                   isSelected={mesasParaCombinar.includes(mesa.id)}
                   selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
@@ -569,41 +688,6 @@ export default function MesasPage() {
         )}
       </>
       )}
-
-      {/* Estadísticas */}
-      <Card className="p-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-          <div>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {mesas.filter((m) => m.state === 'free').length}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Libres</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {mesas.filter((m) => m.state === 'occupied').length}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Ocupadas</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-              {
-                mesas.filter((m) => m.session?.status === 'bill_requested')
-                  .length
-              }
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Con Cuenta
-            </p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {mesas.length}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
-          </div>
-        </div>
-      </Card>
 
       {/* Modales */}
       <MesaFormDialog
@@ -701,6 +785,47 @@ export default function MesasPage() {
             </Button>
             <Button onClick={handleActualizarComensales}>
               Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para abrir sesión de mesa */}
+      <Dialog open={!!mesaParaAbrirSesion} onOpenChange={(open) => !open && setMesaParaAbrirSesion(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Abrir Mesa - {mesaParaAbrirSesion?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="comensalesNuevaSesion">Número de comensales</Label>
+              <Input
+                id="comensalesNuevaSesion"
+                type="number"
+                min={1}
+                max={mesaParaAbrirSesion?.capacity || 20}
+                value={comensalesNuevaSesion}
+                onChange={(e) => setComensalesNuevaSesion(parseInt(e.target.value) || 1)}
+                className="text-lg"
+              />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Capacidad máxima: {mesaParaAbrirSesion?.capacity} personas
+              </p>
+            </div>
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Se creará una nueva sesión y la mesa pasará a estado <strong>ocupada</strong>.
+                Después podrás agregar productos desde el detalle de la mesa.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMesaParaAbrirSesion(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAbrirSesion} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Abrir Mesa
             </Button>
           </DialogFooter>
         </DialogContent>

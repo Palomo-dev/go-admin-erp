@@ -75,9 +75,6 @@ export class PedidosService {
           console.error('Error consultando items:', itemsError);
           throw new Error(`Error en consulta de items: ${itemsError.message || JSON.stringify(itemsError)}`);
         }
-
-        // DEBUG: Ver qué datos están llegando
-        console.log('🔍 DEBUG - Items obtenidos:', JSON.stringify(items?.slice(0, 2), null, 2));
         
         allItems = items || [];
       }
@@ -240,7 +237,7 @@ export class PedidosService {
           .eq('id', sessionId);
       }
 
-      // 2. Insertar items de venta
+      // 2. Insertar items de venta (guardar nombre del producto en notes para impresión)
       const saleItems = productos.map((p) => ({
         sale_id: saleId,
         product_id: p.product_id,
@@ -249,7 +246,7 @@ export class PedidosService {
         total: p.quantity * p.unit_price,
         tax_amount: 0,
         discount_amount: 0,
-        notes: p.notes || null,
+        notes: { product_name: p.product_name, ...(p.notes ? { extra: p.notes } : {}) },
       }));
 
       const { data: insertedItems, error: itemsError } = await supabase

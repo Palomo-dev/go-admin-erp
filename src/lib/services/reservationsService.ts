@@ -135,7 +135,8 @@ class ReservationsService {
   }
 
   /**
-   * Obtener espacios disponibles por categoría y fechas
+   * Obtener espacios por categoría y fechas con indicador de disponibilidad
+   * Retorna TODOS los espacios, marcando cuáles tienen conflictos
    */
   async getAvailableSpaces(
     organizationId: number,
@@ -143,7 +144,7 @@ class ReservationsService {
     checkin: string,
     checkout: string
   ): Promise<any[]> {
-    // Obtener todos los espacios de la categoría
+    // Obtener todos los espacios de la categoría (sin filtrar por status)
     const { data: spaces, error: spacesError } = await supabase
       .from('spaces')
       .select(`
@@ -159,33 +160,80 @@ class ReservationsService {
       `)
       .eq('space_types.organization_id', organizationId)
       .eq('space_types.category_code', categoryCode)
-      .eq('status', 'available');
+      .neq('status', 'maintenance'); // Solo excluir espacios en mantenimiento
 
     if (spacesError) throw spacesError;
 
-    // Verificar disponibilidad de cada espacio
-    const availableSpaces = [];
+    // Verificar disponibilidad de cada espacio y agregar flag
+    const spacesWithAvailability = [];
     for (const space of spaces || []) {
-      const { data: conflicts, error: conflictError } = await supabase
+      // Verificar conflictos en reservation_spaces (las fechas están en reservations)
+      // Conflicto si: checkin_existente < checkout_nuevo Y checkout_existente > checkin_nuevo
+      // Usamos .gt para checkout porque el checkout (11am) ocurre antes del checkin (3pm) del mismo día
+      const { data: rsConflicts, error: rsError } = await supabase
         .from('reservation_spaces')
-        .select('id')
+        .select(`
+          id,
+          reservations!inner (
+            id,
+            status,
+            checkin,
+            checkout
+          )
+        `)
         .eq('space_id', space.id)
-        .or(`and(checkin.lte.${checkout},checkout.gte.${checkin})`);
+        .neq('reservations.status', 'cancelled')
+        .lt('reservations.checkin', checkout)
+        .gt('reservations.checkout', checkin);
 
-      if (conflictError) throw conflictError;
+      if (rsError) throw rsError;
 
-      if (!conflicts || conflicts.length === 0) {
-        availableSpaces.push(space);
-      }
+      // Verificar conflictos en reservations.space_id directamente
+      // Misma lógica: conflicto si los rangos se solapan considerando horas de hotel
+      const { data: directConflicts, error: directError } = await supabase
+        .from('reservations')
+        .select('id, checkin, checkout')
+        .eq('space_id', space.id)
+        .neq('status', 'cancelled')
+        .lt('checkin', checkout)
+        .gt('checkout', checkin);
+
+      if (directError) throw directError;
+
+      const hasConflicts = (rsConflicts && rsConflicts.length > 0) || 
+                          (directConflicts && directConflicts.length > 0);
+
+      // Agregar espacio con flag de disponibilidad
+      spacesWithAvailability.push({
+        ...space,
+        isAvailable: !hasConflicts,
+        hasConflict: hasConflicts
+      });
     }
 
-    return availableSpaces;
+    return spacesWithAvailability;
   }
 
   /**
    * Crear reserva completa con espacios
    */
   async createReservation(reservationData: CreateReservationData): Promise<Reservation> {
+    // 0. Verificar que los espacios no estén bloqueados
+    if (reservationData.spaces && reservationData.spaces.length > 0) {
+      for (const spaceId of reservationData.spaces) {
+        const { data: blocks } = await supabase
+          .from('reservation_blocks')
+          .select('id, block_type, reason')
+          .eq('space_id', spaceId)
+          .lte('date_from', reservationData.checkout)
+          .gte('date_to', reservationData.checkin);
+
+        if (blocks && blocks.length > 0) {
+          throw new Error(`El espacio está bloqueado (${blocks[0].block_type}): ${blocks[0].reason || 'Sin razón especificada'}`);
+        }
+      }
+    }
+
     // 1. Crear la reserva principal
     const { data: reservation, error: reservationError } = await supabase
       .from('reservations')
@@ -282,7 +330,7 @@ class ReservationsService {
   }
 
   /**
-   * Calcular precio estimado de reserva
+   * Calcular precio estimado de reserva (método legacy usando base_rate)
    */
   calculateEstimatedTotal(
     nights: number,
@@ -293,6 +341,48 @@ class ReservationsService {
     const roomsTotal = nights * basePrice * numberOfSpaces;
     const extrasTotal = extras.reduce((sum, extra) => sum + extra.price, 0);
     return roomsTotal + extrasTotal;
+  }
+
+  /**
+   * Calcular precio estimado usando tarifas dinámicas
+   * Busca la tarifa correcta según fecha y tipo de espacio
+   */
+  async calculateDynamicTotal(
+    organizationId: number,
+    spaceTypeId: string,
+    checkin: string,
+    checkout: string,
+    numberOfSpaces: number = 1,
+    extras: { price: number }[] = [],
+    plan?: string
+  ): Promise<{
+    total: number;
+    nights: number;
+    dailyRate: number;
+    rateSource: 'tarifa' | 'base_rate';
+    extrasTotal: number;
+  }> {
+    const { data, error } = await supabase.rpc('calculate_reservation_total', {
+      p_organization_id: organizationId,
+      p_space_type_id: spaceTypeId,
+      p_checkin: checkin,
+      p_checkout: checkout,
+      p_plan: plan || null,
+    });
+
+    if (error) throw error;
+
+    const result = data?.[0];
+    const baseTotal = parseFloat(result?.total_amount) || 0;
+    const extrasTotal = extras.reduce((sum, extra) => sum + extra.price, 0);
+    
+    return {
+      total: (baseTotal * numberOfSpaces) + extrasTotal,
+      nights: result?.nights || 0,
+      dailyRate: parseFloat(result?.daily_rate) || 0,
+      rateSource: result?.rate_source || 'base_rate',
+      extrasTotal,
+    };
   }
 
   /**

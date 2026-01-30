@@ -33,6 +33,7 @@ import {
 import { cn, formatCurrency } from '@/utils/Utils';
 import Image from 'next/image';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
+import { VariantSelectorDialog } from './VariantSelectorDialog';
 
 interface ProductSearchProps {
   onProductSelect: (product: Product) => void;
@@ -48,6 +49,10 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     totalPages: 0
   });
   const [loading, setLoading] = useState(true);
+  
+  // Estado para selector de variantes
+  const [showVariantDialog, setShowVariantDialog] = useState(false);
+  const [selectedParentProduct, setSelectedParentProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -162,6 +167,25 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   // Función para cerrar el scanner
   const handleCloseScanner = () => {
     setShowScanner(false);
+  };
+
+  // Manejar selección de producto (con o sin variantes)
+  const handleProductClick = (product: any) => {
+    // Si el producto tiene variantes, abrir el selector
+    if (product.has_variants && product.variant_count > 0) {
+      setSelectedParentProduct(product);
+      setShowVariantDialog(true);
+    } else {
+      // Producto simple, agregar directamente
+      onProductSelect(product);
+    }
+  };
+
+  // Manejar selección de variante desde el diálogo
+  const handleVariantSelect = (variant: any) => {
+    onProductSelect(variant);
+    setShowVariantDialog(false);
+    setSelectedParentProduct(null);
   };
 
   const hasFilters = searchTerm || selectedCategory;
@@ -392,11 +416,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                 "grid gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6",
                 gridSize === 'large' ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
               )}>
-                {productsData.data.map((product) => (
+                {productsData.data.map((product: any) => (
                   <Card 
                     key={product.id}
                     className="group overflow-hidden hover:shadow-xl transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 light:bg-white hover:scale-[1.02] active:scale-[0.98]"
-                    onClick={() => onProductSelect(product)}
+                    onClick={() => handleProductClick(product)}
                   >
                     {/* Imagen del producto */}
                     <div className={cn(
@@ -432,6 +456,15 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                           variant="secondary"
                         >
                           {product.category.name}
+                        </Badge>
+                      )}
+                      
+                      {/* Badge de variantes */}
+                      {product.has_variants && product.variant_count > 0 && (
+                        <Badge 
+                          className="absolute top-2 right-2 bg-purple-600 text-white hover:bg-purple-700 text-xs"
+                        >
+                          {product.variant_count} variantes
                         </Badge>
                       )}
                     </div>
@@ -476,17 +509,24 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       
                       <Button 
                         size="sm" 
-                        className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white h-7 sm:h-8 text-xs sm:text-sm"
+                        className={cn(
+                          "w-full text-white h-7 sm:h-8 text-xs sm:text-sm",
+                          product.has_variants && product.variant_count > 0
+                            ? "bg-purple-600 hover:bg-purple-700"
+                            : "bg-blue-600 hover:bg-blue-700"
+                        )}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onProductSelect(product);
+                          handleProductClick(product);
                         }}
                       >
                         <ShoppingCart className={cn(
                           "sm:mr-1",
                           gridSize === 'large' ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3 w-3"
                         )} />
-                        <span className="hidden xs:inline">Agregar</span>
+                        <span className="hidden xs:inline">
+                          {product.has_variants && product.variant_count > 0 ? 'Elegir' : 'Agregar'}
+                        </span>
                         <span className="inline xs:hidden">+</span>
                       </Button>
                     </div>
@@ -581,6 +621,16 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         <BarcodeScanner
           onScan={handleBarcodeScan}
           onClose={handleCloseScanner}
+        />
+      )}
+      
+      {/* Selector de variantes */}
+      {selectedParentProduct && (
+        <VariantSelectorDialog
+          open={showVariantDialog}
+          onOpenChange={setShowVariantDialog}
+          product={selectedParentProduct}
+          onSelectVariant={handleVariantSelect}
         />
       )}
     </div>

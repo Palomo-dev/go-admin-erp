@@ -12,6 +12,7 @@
  */
 export interface Proveedor {
   id: number;
+  uuid: string;
   organization_id: number;
   name: string;
   nit?: string;  

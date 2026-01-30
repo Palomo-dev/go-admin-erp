@@ -10,14 +10,22 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import PaymentMethodsList from "./PaymentMethodsList";
 import PaymentMethodForm from "./PaymentMethodForm";
+
+export interface PaymentMethodCountry {
+  country_code: string;
+  is_recommended: boolean;
+  country?: {
+    code: string;
+    name: string;
+  };
+}
 
 export interface PaymentMethod {
   code: string;
@@ -25,6 +33,7 @@ export interface PaymentMethod {
   requires_reference: boolean;
   is_active: boolean;
   is_system: boolean;
+  countries?: PaymentMethodCountry[];
 }
 
 export interface OrganizationPaymentMethod {
@@ -38,6 +47,12 @@ export interface OrganizationPaymentMethod {
     account_mapping?: Record<string, string>;
   };
   payment_method?: PaymentMethod;
+  // Campos de configuración para Website
+  show_on_website?: boolean;
+  website_display_order?: number;
+  website_display_name?: string;
+  website_description?: string;
+  website_icon?: string;
 }
 
 export default function PaymentMethodsPage() {
@@ -67,29 +82,23 @@ export default function PaymentMethodsPage() {
     try {
       setIsLoading(true);
       
-      // Obtener métodos de pago globales
+      // Obtener métodos de pago globales con sus países
       const { data: methodsData, error: methodsError } = await supabase
         .from("payment_methods")
-        .select("*")
+        .select(`
+          *,
+          countries:country_payment_methods(
+            country_code,
+            is_recommended,
+            display_order,
+            is_active,
+            country:country_code(code, name)
+          )
+        `)
         .eq("is_active", true)
         .order("name");
         
       if (methodsError) throw methodsError;
-      
-      // Obtener métodos de pago de la organización
-      const { data: orgMethodsData, error: orgMethodsError } = await supabase
-        .from("organization_payment_methods")
-        .select(`
-          id,
-          organization_id,
-          payment_method_code,
-          is_active,
-          settings,
-          payment_method:payment_method_code(*)
-        `)
-        .eq("organization_id", organizationId);
-
-      if (orgMethodsError) throw orgMethodsError;
       
       // Obtener country_code directamente de la base de datos si no está disponible
       let currentCountryCode = countryCode;
@@ -105,6 +114,39 @@ export default function PaymentMethodsPage() {
         }
       }
       
+      // Filtrar métodos de pago según el país de la organización
+      let filteredMethods = methodsData || [];
+      if (currentCountryCode) {
+        filteredMethods = (methodsData || []).filter(method => {
+          // Si no tiene países asignados, es global (disponible para todos)
+          if (!method.countries || method.countries.length === 0) {
+            return true;
+          }
+          // Si tiene países asignados, verificar si incluye el país de la organización
+          return method.countries.some((c: any) => c.country_code === currentCountryCode);
+        });
+      }
+      
+      // Obtener métodos de pago de la organización
+      const { data: orgMethodsData, error: orgMethodsError } = await supabase
+        .from("organization_payment_methods")
+        .select(`
+          id,
+          organization_id,
+          payment_method_code,
+          is_active,
+          settings,
+          show_on_website,
+          website_display_order,
+          website_display_name,
+          website_description,
+          website_icon,
+          payment_method:payment_method_code(*)
+        `)
+        .eq("organization_id", organizationId);
+
+      if (orgMethodsError) throw orgMethodsError;
+      
       // Obtener métodos recomendados del país si está disponible
       let recommendedData = [];
       if (currentCountryCode) {
@@ -116,7 +158,7 @@ export default function PaymentMethodsPage() {
         }
       }
       
-      setPaymentMethods(methodsData || []);
+      setPaymentMethods(filteredMethods);
       setOrgPaymentMethods(orgMethodsData?.map(item => ({
         ...item,
         payment_method: item.payment_method as unknown as PaymentMethod
@@ -154,18 +196,29 @@ export default function PaymentMethodsPage() {
   };
 
   return (
-    <div className="container mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-4 md:px-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <div className="flex-1">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 dark:text-blue-400">Métodos de Pago</h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-            Administra los métodos de pago aceptados por tu organización
-          </p>
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-3">
+          <Link href="/app/finanzas">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+            <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Métodos de Pago</h1>
+            <p className="text-gray-500 dark:text-gray-400">
+              Finanzas / Métodos de Pago
+            </p>
+          </div>
         </div>
-        <Button onClick={handleAddMethod} className="w-full sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700">
-          <Plus className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-          <span className="hidden sm:inline">Nuevo Método</span>
-          <span className="sm:hidden">Nuevo</span>
+        <Button onClick={handleAddMethod} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+          <Plus className="mr-2 h-4 w-4" />
+          Nuevo Método
         </Button>
       </div>
 

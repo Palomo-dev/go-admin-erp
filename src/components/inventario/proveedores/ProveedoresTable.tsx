@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTheme } from 'next-themes';
+import { useRouter } from 'next/navigation';
 import { 
   Table, 
   TableBody, 
@@ -16,16 +17,17 @@ import {
   Pencil, 
   Trash2, 
   ChevronLeft, 
-  ChevronRight 
+  ChevronRight,
+  Copy
 } from 'lucide-react';
 import { Proveedor } from './types';
 import { cn } from '@/utils/Utils';
+import Link from 'next/link';
 
 interface ProveedoresTableProps {
   proveedores: Proveedor[];
-  onView: (proveedor: Proveedor) => void;
-  onEdit: (proveedor: Proveedor) => void;
-  onDelete: (id: number) => void;
+  onDelete: (uuid: string) => void;
+  onDuplicate?: (uuid: string) => void;
 }
 
 /**
@@ -33,11 +35,11 @@ interface ProveedoresTableProps {
  */
 const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
   proveedores,
-  onView,
-  onEdit,
-  onDelete
+  onDelete,
+  onDuplicate
 }) => {
   const { theme } = useTheme();
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
   
@@ -119,28 +121,41 @@ const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1 sm:gap-2">
+                    <Link href={`/app/inventario/proveedores/${proveedor.uuid}`}>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7 sm:h-8 sm:w-8 dark:border-gray-600 dark:hover:bg-gray-700"
+                        title="Ver detalles"
+                      >
+                        <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                    </Link>
+                    <Link href={`/app/inventario/proveedores/${proveedor.uuid}/editar`}>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7 sm:h-8 sm:w-8 dark:border-gray-600 dark:hover:bg-gray-700"
+                        title="Editar"
+                      >
+                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                    </Link>
+                    {onDuplicate && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => onDuplicate(proveedor.uuid)}
+                        className="h-7 w-7 sm:h-8 sm:w-8 dark:border-gray-600 dark:hover:bg-gray-700"
+                        title="Duplicar"
+                      >
+                        <Copy className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => onView(proveedor)}
-                      className="h-7 w-7 sm:h-8 sm:w-8 dark:border-gray-600 dark:hover:bg-gray-700"
-                      title="Ver detalles"
-                    >
-                      <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => onEdit(proveedor)}
-                      className="h-7 w-7 sm:h-8 sm:w-8 dark:border-gray-600 dark:hover:bg-gray-700"
-                      title="Editar"
-                    >
-                      <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => onDelete(proveedor.id)}
+                      onClick={() => onDelete(proveedor.uuid)}
                       className="h-7 w-7 sm:h-8 sm:w-8 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500 dark:border-gray-600 dark:hover:bg-gray-700"
                       title="Eliminar"
                     >

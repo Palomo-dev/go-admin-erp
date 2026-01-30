@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   AlertCircle, 
+  ArrowLeft,
   Calendar, 
   CreditCard, 
   Download, 
@@ -17,6 +18,7 @@ import {
   Users,
   Wallet
 } from 'lucide-react';
+import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/utils/Utils';
 
@@ -227,17 +229,27 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-            Cuentas por Pagar
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-            Gestiona pagos a proveedores y obligaciones pendientes
-          </p>
+        <div className="flex items-center gap-3">
+          <Link href="/app/finanzas">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+            <Wallet className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Cuentas por Pagar
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">
+              Finanzas / Cuentas por Pagar
+            </p>
+          </div>
         </div>
         
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">

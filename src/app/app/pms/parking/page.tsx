@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { ParkingHeader, SessionsList, NewEntryDialog, ExitDialog, type EntryData } from '@/components/pms/parking';
+import { ParkingHeader, SessionsList, NewEntryDialog, ExitDialog, ParkingSessionDrawer, type EntryData } from '@/components/pms/parking';
 import ParkingService, { type ParkingSession, type ParkingStats } from '@/lib/services/parkingService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Loader2 } from 'lucide-react';
@@ -21,6 +21,7 @@ export default function ParkingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showNewEntryDialog, setShowNewEntryDialog] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [showSessionDrawer, setShowSessionDrawer] = useState(false);
   const [selectedSession, setSelectedSession] = useState<ParkingSession | null>(null);
 
   useEffect(() => {
@@ -95,6 +96,11 @@ export default function ParkingPage() {
     }
   };
 
+  const handleSessionClick = (session: ParkingSession) => {
+    setSelectedSession(session);
+    setShowSessionDrawer(true);
+  };
+
   const handleExit = (session: ParkingSession) => {
     setSelectedSession(session);
     setShowExitDialog(true);
@@ -167,7 +173,11 @@ export default function ParkingPage() {
           </div>
         </div>
 
-        <SessionsList sessions={sessions} onExit={handleExit} />
+        <SessionsList 
+          sessions={sessions} 
+          onExit={handleExit} 
+          onSessionClick={handleSessionClick}
+        />
       </div>
 
       <NewEntryDialog
@@ -183,6 +193,14 @@ export default function ParkingPage() {
         session={selectedSession}
         organizationId={organization?.id}
         onConfirm={handleConfirmExit}
+      />
+
+      <ParkingSessionDrawer
+        open={showSessionDrawer}
+        onOpenChange={setShowSessionDrawer}
+        session={selectedSession}
+        organizationId={organization?.id}
+        onRegisterExit={handleExit}
       />
     </div>
   );

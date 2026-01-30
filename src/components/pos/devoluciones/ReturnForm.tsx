@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Package, CreditCard, DollarSign, MessageSquare, Calculator, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, DollarSign, MessageSquare, Calculator, AlertTriangle, Camera } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DevolucionesService } from './devolucionesService';
-import { SaleForReturn, RefundData, SaleItemForReturn } from './types';
+import { ReturnReasonsService } from './motivos/returnReasonsService';
+import { SaleForReturn, RefundData, SaleItemForReturn, ReturnReason } from './types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { toast } from 'sonner';
 
@@ -59,6 +60,23 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
   const [totalRefund, setTotalRefund] = useState(0);
+  const [returnReasons, setReturnReasons] = useState<ReturnReason[]>([]);
+  const [loadingReasons, setLoadingReasons] = useState(true);
+
+  // Cargar motivos de devolución
+  useEffect(() => {
+    const loadReasons = async () => {
+      try {
+        const reasons = await ReturnReasonsService.getActive();
+        setReturnReasons(reasons);
+      } catch (error) {
+        console.error('Error loading return reasons:', error);
+      } finally {
+        setLoadingReasons(false);
+      }
+    };
+    loadReasons();
+  }, []);
 
   useEffect(() => {
     // Inicializar items disponibles para devolución
@@ -327,18 +345,33 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                         <Select
                           value={item.reason}
                           onValueChange={(value) => handleReasonChange(item.sale_item_id, value)}
-                          disabled={!item.selected}
+                          disabled={!item.selected || loadingReasons}
                         >
-                          <SelectTrigger className="w-40 dark:bg-gray-700 dark:border-gray-600">
+                          <SelectTrigger className="w-44 dark:bg-gray-700 dark:border-gray-600">
                             <SelectValue placeholder="Seleccionar" />
                           </SelectTrigger>
                           <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                            <SelectItem value="defectuoso">Producto defectuoso</SelectItem>
-                            <SelectItem value="incorrecto">Producto incorrecto</SelectItem>
-                            <SelectItem value="dañado">Producto dañado</SelectItem>
-                            <SelectItem value="no_conforme">No conforme</SelectItem>
-                            <SelectItem value="garantia">Garantía</SelectItem>
-                            <SelectItem value="otro">Otro motivo</SelectItem>
+                            {returnReasons.length > 0 ? (
+                              returnReasons.map((reasonOption) => (
+                                <SelectItem key={reasonOption.id} value={reasonOption.code}>
+                                  <div className="flex items-center gap-2">
+                                    <span>{reasonOption.name}</span>
+                                    {reasonOption.requires_photo && (
+                                      <Camera className="h-3 w-3 text-blue-500" />
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="defectuoso">Producto defectuoso</SelectItem>
+                                <SelectItem value="incorrecto">Producto incorrecto</SelectItem>
+                                <SelectItem value="dañado">Producto dañado</SelectItem>
+                                <SelectItem value="no_conforme">No conforme</SelectItem>
+                                <SelectItem value="garantia">Garantía</SelectItem>
+                                <SelectItem value="otro">Otro motivo</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                       </TableCell>

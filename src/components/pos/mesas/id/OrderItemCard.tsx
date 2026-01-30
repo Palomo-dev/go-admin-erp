@@ -110,7 +110,7 @@ export function OrderItemCard({
           </h3>
           {item.notes && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-              📝 {item.notes}
+              📝 {typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes}
             </p>
           )}
           

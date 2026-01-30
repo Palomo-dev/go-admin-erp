@@ -148,15 +148,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Si hay integración con Stripe, aquí se manejaría el cambio de suscripción
-    // TODO: Implementar integración con Stripe para cambios de plan reales
+    // Integración con Stripe - Cambiar plan en Stripe si existe suscripción
+    let stripeResult = null;
+    if (currentSubscription?.stripe_subscription_id && newPlan.stripe_price_monthly_id) {
+      try {
+        const { changeSubscriptionPlan } = await import('@/lib/stripe/subscriptionService');
+        stripeResult = await changeSubscriptionPlan(
+          currentSubscription.stripe_subscription_id,
+          newPlanCode,
+          billingPeriod
+        );
+        
+        if (stripeResult.success) {
+          console.log('✅ Plan actualizado en Stripe:', stripeResult.subscriptionId);
+          message += ' - Stripe actualizado';
+        } else {
+          console.warn('⚠️ Error actualizando Stripe:', stripeResult.error);
+        }
+      } catch (stripeError: any) {
+        console.error('⚠️ Error en integración con Stripe:', stripeError);
+        // No lanzar error, el cambio en Supabase ya se realizó
+      }
+    }
 
     return NextResponse.json({
       success: true,
       message,
       changeType,
       subscription: subscriptionResult,
-      plan: newPlan
+      plan: newPlan,
+      stripeUpdated: stripeResult?.success || false
     });
 
   } catch (error: any) {

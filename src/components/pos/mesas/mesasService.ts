@@ -210,6 +210,102 @@ export class MesasService {
   }
 
   /**
+   * Abrir sesión de mesa (crear nueva sesión y cambiar estado a ocupada)
+   */
+  static async abrirSesion(
+    mesaId: string,
+    options: { serverId?: string; customers?: number } = {}
+  ): Promise<TableSession> {
+    const organizationId = getOrganizationId();
+    const branchId = getCurrentBranchId();
+
+    if (!branchId) {
+      throw new Error('No se pudo obtener el branch_id');
+    }
+
+    try {
+      // 1. Verificar que la mesa no tenga sesión activa
+      const { data: existingSession } = await supabase
+        .from('table_sessions')
+        .select('id')
+        .eq('restaurant_table_id', mesaId)
+        .in('status', ['active', 'bill_requested'])
+        .single();
+
+      if (existingSession) {
+        throw new Error('Esta mesa ya tiene una sesión activa');
+      }
+
+      // 2. Obtener usuario actual si no se especifica server_id
+      let serverId = options.serverId;
+      if (!serverId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        serverId = user?.id;
+      }
+
+      if (!serverId) {
+        throw new Error('No se pudo determinar el mesero');
+      }
+
+      // 3. Crear sesión
+      const { data: session, error: sessionError } = await supabase
+        .from('table_sessions')
+        .insert({
+          organization_id: organizationId,
+          restaurant_table_id: mesaId,
+          server_id: serverId,
+          customers: options.customers || 2,
+          status: 'active',
+          opened_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // 4. Actualizar estado de la mesa a ocupada
+      await supabase
+        .from('restaurant_tables')
+        .update({
+          state: 'occupied',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', mesaId);
+
+      return session;
+    } catch (error) {
+      console.error('Error abriendo sesión:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cambiar mesero de sesión
+   */
+  static async cambiarMesero(
+    sessionId: string,
+    serverId: string
+  ): Promise<TableSession> {
+    try {
+      const { data, error } = await supabase
+        .from('table_sessions')
+        .update({
+          server_id: serverId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error cambiando mesero:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Cambiar estado de mesa
    */
   static async cambiarEstadoMesa(

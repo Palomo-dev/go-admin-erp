@@ -30,6 +30,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { CheckoutReservation } from '@/lib/services/checkoutService';
 import { formatCurrency } from '@/utils/Utils';
+import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 
 interface CheckoutDialogProps {
   open: boolean;
@@ -43,6 +44,7 @@ export interface CheckoutDialogData {
   notes: string;
   generateInvoice: boolean;
   generateReceipt: boolean;
+  sendToFactus: boolean;
 }
 
 export function CheckoutDialog({
@@ -54,6 +56,7 @@ export function CheckoutDialog({
   const [notes, setNotes] = useState('');
   const [generateInvoice, setGenerateInvoice] = useState(false);
   const [generateReceipt, setGenerateReceipt] = useState(false);
+  const [sendToFactus, setSendToFactus] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Validación de fechas
@@ -119,6 +122,7 @@ export function CheckoutDialog({
       setNotes('');
       setGenerateInvoice(false);
       setGenerateReceipt(false);
+      setSendToFactus(false);
       setIsSubmitting(false);
     }
   }, [open]);
@@ -133,6 +137,7 @@ export function CheckoutDialog({
         notes,
         generateInvoice,
         generateReceipt,
+        sendToFactus: generateInvoice && sendToFactus,
       });
       onOpenChange(false);
     } catch (error) {
@@ -405,6 +410,17 @@ export function CheckoutDialog({
                   Generar Recibo de Pago
                 </Label>
               </div>
+              {generateInvoice && (
+                <div className="ml-6 mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <ElectronicInvoiceToggle
+                    checked={sendToFactus}
+                    onCheckedChange={setSendToFactus}
+                    showLabel={true}
+                    showTooltip={true}
+                    size="md"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { usePipeline } from "./hooks/usePipeline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import CreateOpportunityModal from "./modals/CreateOpportunityModal";
 import CustomerHistoryModal from "./modals/CustomerHistoryModal";
 import CustomerStats from "./components/CustomerStats";
 import CustomersTable from "./components/CustomersTable";
+import ClientsPagination from "./components/ClientsPagination";
 
 interface ClientsViewProps {
   pipelineId: string;
@@ -24,6 +25,10 @@ interface ClientsViewProps {
  * para mejorar la mantenibilidad y organización del código.
  */
 const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
+  // Estados de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  
   // Utilizar el hook personalizado para toda la lógica de pipeline
   const {
     // Estado
@@ -64,6 +69,19 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
     createNewOpportunity,
     handleSort
   } = usePipeline(pipelineId);
+  
+  // Calcular paginación
+  const totalPages = Math.ceil(filteredCustomers.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedCustomers = useMemo(() => {
+    return filteredCustomers.slice(startIndex, endIndex);
+  }, [filteredCustomers, startIndex, endIndex]);
+  
+  // Resetear página cuando cambia el pageSize o la búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [pageSize, searchQuery]);
 
   // Ya tenemos acceso al estado de error desde el hook
 
@@ -127,7 +145,7 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
 
       {/* Tabla de clientes */}
       <CustomersTable 
-        customers={filteredCustomers}
+        customers={paginatedCustomers}
         sortField={sortField}
         sortDirection={sortDirection}
         onSort={handleSort}
@@ -136,6 +154,20 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
         onCreateOpportunity={handleCreateOpportunity}
         onViewHistory={handleViewHistory}
       />
+      
+      {/* Paginación */}
+      {filteredCustomers.length > 0 && (
+        <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <ClientsPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredCustomers.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
+      )}
 
       {/* Modal de detalles del cliente */}
       <CustomerDetailsModal 

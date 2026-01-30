@@ -22,6 +22,7 @@ import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { Product, ProductToAdd } from './types';
 import { POSService } from '@/lib/services/posService';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
 
 interface Category {
   id: number;
@@ -48,6 +49,10 @@ export function AddProductDialog({
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<Map<number, ProductToAdd>>(new Map());
+  
+  // Estado para selector de variantes
+  const [showVariantDialog, setShowVariantDialog] = useState(false);
+  const [selectedParentProduct, setSelectedParentProduct] = useState<any>(null);
 
   // Cargar productos reales de la base de datos
   useEffect(() => {
@@ -114,9 +119,28 @@ export function AddProductDialog({
 
   const filteredProducts = products;
 
+  // Agregar producto al carrito (manejar variantes)
+  const handleProductClick = (product: any) => {
+    // Si el producto tiene variantes, abrir el selector
+    if (product.has_variants && product.variant_count > 0) {
+      setSelectedParentProduct(product);
+      setShowVariantDialog(true);
+    } else {
+      // Producto simple, agregar directamente
+      addToCart(product);
+    }
+  };
+
+  // Manejar selección de variante desde el diálogo
+  const handleVariantSelect = (variant: any) => {
+    addToCart(variant);
+    setShowVariantDialog(false);
+    setSelectedParentProduct(null);
+  };
+
   // Agregar producto al carrito
-  const addToCart = (product: Product) => {
-    const unitPrice = (product as any).price || 0;
+  const addToCart = (product: any) => {
+    const unitPrice = product.price || 0;
     if (unitPrice === 0) {
       alert('Este producto no tiene precio configurado');
       return;
@@ -300,20 +324,23 @@ export function AddProductDialog({
                 </div>
               ) : (
                 <div className="grid grid-cols-4 gap-3">
-                  {filteredProducts.map((product) => {
+                  {filteredProducts.map((product: any) => {
                     const productImage = getProductImage(product);
-                    const price = (product as any).price || 0;
+                    const price = product.price || 0;
                     const inCart = cart.has(product.id);
+                    const hasVariants = product.has_variants && product.variant_count > 0;
 
                     return (
                       <button
                         key={product.id}
                         type="button"
-                        onClick={() => addToCart(product)}
+                        onClick={() => handleProductClick(product)}
                         className={`relative group rounded-xl border-2 transition-all hover:shadow-lg ${
                           inCart
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
-                            : 'border-gray-200 bg-white hover:border-blue-300'
+                            : hasVariants
+                              ? 'border-purple-200 bg-white hover:border-purple-400'
+                              : 'border-gray-200 bg-white hover:border-blue-300'
                         }`}
                       >
                         {/* Imagen */}
@@ -331,6 +358,12 @@ export function AddProductDialog({
                               <Package className="h-12 w-12 text-gray-300" />
                             </div>
                           )}
+                          {/* Badge de variantes */}
+                          {hasVariants && (
+                            <div className="absolute top-2 left-2 bg-purple-600 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                              {product.variant_count} var
+                            </div>
+                          )}
                           {inCart && (
                             <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
                               {cart.get(product.id)?.quantity}
@@ -344,10 +377,10 @@ export function AddProductDialog({
                             {product.name}
                           </h3>
                           <div className="flex items-center justify-between mt-1">
-                            <span className="text-lg font-bold text-blue-600">
-                              {formatCurrency(price)}
+                            <span className={`text-lg font-bold ${hasVariants ? 'text-purple-600' : 'text-blue-600'}`}>
+                              {hasVariants ? 'Desde' : ''} {formatCurrency(price || 0)}
                             </span>
-                            <Plus className="h-5 w-5 text-blue-600 group-hover:scale-110 transition-transform" />
+                            <Plus className={`h-5 w-5 ${hasVariants ? 'text-purple-600' : 'text-blue-600'} group-hover:scale-110 transition-transform`} />
                           </div>
                         </div>
                       </button>
@@ -493,6 +526,16 @@ export function AddProductDialog({
           </div>
         </div>
       </DialogContent>
+      
+      {/* Selector de variantes */}
+      {selectedParentProduct && (
+        <VariantSelectorDialog
+          open={showVariantDialog}
+          onOpenChange={setShowVariantDialog}
+          product={selectedParentProduct}
+          onSelectVariant={handleVariantSelect}
+        />
+      )}
     </Dialog>
   );
 }

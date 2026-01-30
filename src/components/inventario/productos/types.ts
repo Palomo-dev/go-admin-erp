@@ -4,6 +4,7 @@
 
 export interface Producto {
   id: number | string; // Puede ser string para casos temporales como "duplicate"
+  uuid?: string; // UUID para URLs amigables
   organization_id: number;
   sku: string;
   name: string;

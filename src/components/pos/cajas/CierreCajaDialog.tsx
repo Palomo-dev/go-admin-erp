@@ -17,10 +17,16 @@ import { toast } from 'sonner';
 interface CierreCajaDialogProps {
   session: CashSession;
   onSessionClosed: (session: CashSession) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CierreCajaDialog({ session, onSessionClosed }: CierreCajaDialogProps) {
-  const [open, setOpen] = useState(false);
+export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpen, onOpenChange }: CierreCajaDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Usar estado controlado si se proporciona, sino usar estado interno
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [loading, setLoading] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [summary, setSummary] = useState<CashSummary | null>(null);

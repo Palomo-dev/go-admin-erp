@@ -8,7 +8,10 @@ import type {
   CloseCashSessionData,
   CashMovementData,
   CashSessionReport,
-  CashSessionFilter
+  CashSessionFilter,
+  CashCount,
+  CreateCashCountData,
+  CreateCashMovementData
 } from './types';
 
 export class CajasService {
@@ -236,7 +239,7 @@ export class CajasService {
   }
 
   /**
-   * Obtiene una sesión por ID
+   * Obtiene una sesión por ID numérico
    */
   static async getSessionById(sessionId: number): Promise<CashSession> {
     try {
@@ -251,6 +254,26 @@ export class CajasService {
       return data;
     } catch (error) {
       console.error('Error getting session by ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene una sesión por UUID
+   */
+  static async getSessionByUuid(uuid: string): Promise<CashSession> {
+    try {
+      const { data, error } = await supabase
+        .from('cash_sessions')
+        .select('*')
+        .eq('uuid', uuid)
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error('Error getting session by UUID:', error);
       throw error;
     }
   }
@@ -326,6 +349,247 @@ export class CajasService {
       };
     } catch (error) {
       console.error('Error generating session report:', error);
+      throw error;
+    }
+  }
+
+  // ===============================
+  // ARQUEOS DE CAJA
+  // ===============================
+
+  /**
+   * Obtiene los arqueos de una sesión de caja
+   */
+  static async getSessionCounts(sessionId: number): Promise<CashCount[]> {
+    try {
+      const { data, error } = await supabase
+        .from('cash_counts')
+        .select('*')
+        .eq('cash_session_id', sessionId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      return data || [];
+    } catch (error) {
+      console.error('Error getting session counts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Crea un arqueo de caja
+   */
+  static async createCashCount(sessionId: number, data: CreateCashCountData): Promise<CashCount> {
+    try {
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      // Obtener monto esperado
+      const summary = await this.getCashSummary(sessionId);
+
+      const { data: count, error } = await supabase
+        .from('cash_counts')
+        .insert({
+          organization_id: this.organizationId,
+          cash_session_id: sessionId,
+          count_type: data.count_type,
+          counted_amount: data.counted_amount,
+          expected_amount: data.expected_amount || summary.expected_amount,
+          difference: data.counted_amount - (data.expected_amount || summary.expected_amount),
+          denominations: data.denominations,
+          counted_by: userId,
+          notes: data.notes
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('Arqueo registrado:', count.id);
+      return count;
+    } catch (error) {
+      console.error('Error creating cash count:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Registra un movimiento en una sesión específica
+   */
+  static async addMovementToSession(sessionId: number, data: CreateCashMovementData): Promise<CashMovement> {
+    try {
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      const { data: movement, error } = await supabase
+        .from('cash_movements')
+        .insert({
+          organization_id: this.organizationId,
+          cash_session_id: sessionId,
+          type: data.type,
+          concept: data.concept,
+          amount: data.amount,
+          user_id: userId,
+          notes: data.notes
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('Movimiento registrado en sesión:', movement.id);
+      return movement;
+    } catch (error) {
+      console.error('Error adding movement to session:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene detalle completo de una sesión con movimientos y arqueos (por ID numérico)
+   */
+  static async getSessionDetail(sessionId: number): Promise<{
+    session: CashSession;
+    movements: CashMovement[];
+    counts: CashCount[];
+    summary: CashSummary;
+  }> {
+    try {
+      const [session, movements, counts, summary] = await Promise.all([
+        this.getSessionById(sessionId),
+        this.getSessionMovements(sessionId),
+        this.getSessionCounts(sessionId),
+        this.getCashSummary(sessionId)
+      ]);
+
+      return { session, movements, counts, summary };
+    } catch (error) {
+      console.error('Error getting session detail:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene detalle completo de una sesión por UUID
+   */
+  static async getSessionDetailByUuid(uuid: string): Promise<{
+    session: CashSession;
+    movements: CashMovement[];
+    counts: CashCount[];
+    summary: CashSummary;
+  }> {
+    try {
+      const session = await this.getSessionByUuid(uuid);
+      const [movements, counts, summary] = await Promise.all([
+        this.getSessionMovements(session.id),
+        this.getSessionCounts(session.id),
+        this.getCashSummary(session.id)
+      ]);
+
+      return { session, movements, counts, summary };
+    } catch (error) {
+      console.error('Error getting session detail by UUID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene resumen de caja por UUID
+   */
+  static async getCashSummaryByUuid(uuid: string): Promise<CashSummary> {
+    const session = await this.getSessionByUuid(uuid);
+    return this.getCashSummary(session.id);
+  }
+
+  /**
+   * Crea arqueo por UUID de sesión
+   */
+  static async createCashCountByUuid(uuid: string, data: CreateCashCountData): Promise<CashCount> {
+    const session = await this.getSessionByUuid(uuid);
+    return this.createCashCount(session.id, data);
+  }
+
+  /**
+   * Registra movimiento por UUID de sesión
+   */
+  static async addMovementToSessionByUuid(uuid: string, data: CreateCashMovementData): Promise<CashMovement> {
+    const session = await this.getSessionByUuid(uuid);
+    return this.addMovementToSession(session.id, data);
+  }
+
+  /**
+   * Obtiene ventas por UUID de sesión
+   */
+  static async getSessionSalesByUuid(uuid: string): Promise<any[]> {
+    const session = await this.getSessionByUuid(uuid);
+    return this.getSessionSales(session.id);
+  }
+
+  /**
+   * Obtiene pagos por método por UUID de sesión
+   */
+  static async getSessionPaymentsByMethodByUuid(uuid: string): Promise<Record<string, number>> {
+    const session = await this.getSessionByUuid(uuid);
+    return this.getSessionPaymentsByMethod(session.id);
+  }
+
+  /**
+   * Obtiene las ventas de una sesión de caja
+   */
+  static async getSessionSales(sessionId: number): Promise<any[]> {
+    try {
+      const session = await this.getSessionById(sessionId);
+
+      const { data, error } = await supabase
+        .from('sales')
+        .select('id, total, status, payment_status, created_at, customer_id')
+        .eq('organization_id', this.organizationId)
+        .eq('branch_id', this.branchId)
+        .gte('created_at', session.opened_at)
+        .lte('created_at', session.closed_at || new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data || [];
+    } catch (error) {
+      console.error('Error getting session sales:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene los pagos de una sesión de caja agrupados por método
+   */
+  static async getSessionPaymentsByMethod(sessionId: number): Promise<Record<string, number>> {
+    try {
+      const session = await this.getSessionById(sessionId);
+
+      const { data, error } = await supabase
+        .from('payments')
+        .select('method, amount')
+        .eq('organization_id', this.organizationId)
+        .eq('branch_id', this.branchId)
+        .eq('status', 'completed')
+        .gte('created_at', session.opened_at)
+        .lte('created_at', session.closed_at || new Date().toISOString());
+
+      if (error) throw error;
+
+      const paymentsByMethod: Record<string, number> = {};
+      (data || []).forEach(p => {
+        const method = p.method || 'other';
+        paymentsByMethod[method] = (paymentsByMethod[method] || 0) + Number(p.amount);
+      });
+
+      return paymentsByMethod;
+    } catch (error) {
+      console.error('Error getting session payments by method:', error);
       throw error;
     }
   }

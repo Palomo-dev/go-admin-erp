@@ -1,0 +1,1 @@
+export { SlipsListTable } from './SlipsListTable';

@@ -37,6 +37,7 @@ type StockItem = {
   avg_cost: number
   qty_reserved?: number
   lot_id?: number | null
+  min_level?: number
 }
 
 export default function Inventario({ form }: InventarioProps) {
@@ -132,7 +133,8 @@ export default function Inventario({ form }: InventarioProps) {
       qty_on_hand: 0,
       avg_cost: form.getValues('cost') || 0,
       qty_reserved: 0,
-      lot_id: null
+      lot_id: null,
+      min_level: 0
     }
     
     const nuevosItems = [...stockItems, nuevoItem]
@@ -261,28 +263,51 @@ export default function Inventario({ form }: InventarioProps) {
                     
                     <div>
                       <FormLabel>Costo Unitario</FormLabel>
-                      <div className="flex items-center space-x-2">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.avg_cost}
-                          onChange={(e) => 
-                            actualizarStockItem(
-                              index, 
-                              'avg_cost', 
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => eliminarStockItem(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={item.avg_cost}
+                        onChange={(e) => 
+                          actualizarStockItem(
+                            index, 
+                            'avg_cost', 
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Fila adicional para stock mínimo */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div>
+                      <FormLabel>Stock Mínimo</FormLabel>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={item.min_level || 0}
+                        onChange={(e) => 
+                          actualizarStockItem(
+                            index, 
+                            'min_level', 
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Alerta cuando el stock llegue a este nivel
+                      </p>
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                        onClick={() => eliminarStockItem(index)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" /> Eliminar
+                      </Button>
                     </div>
                   </div>
                 </CardContent>

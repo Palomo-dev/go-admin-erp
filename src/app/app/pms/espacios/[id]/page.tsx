@@ -28,12 +28,14 @@ import {
   SpaceReservations,
   SpaceHousekeeping,
   SpaceMaintenance,
+  SpaceBlocks,
   QuickReservationDrawer,
   AddConsumptionDialog,
 } from '@/components/pms/espacios/id';
 import { SpaceDialog } from '@/components/pms/espacios';
 import SpacesService, { type Space, type SpaceType } from '@/lib/services/spacesService';
 import SpaceConsumptionService from '@/lib/services/spaceConsumptionService';
+import reservationBlocksService, { ReservationBlock } from '@/lib/services/reservationBlocksService';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { RefreshCw } from 'lucide-react';
@@ -51,6 +53,7 @@ export default function SpaceDetailPage() {
   const [reservations, setReservations] = useState<any[]>([]);
   const [housekeepingTasks, setHousekeepingTasks] = useState<any[]>([]);
   const [maintenanceOrders, setMaintenanceOrders] = useState<any[]>([]);
+  const [blocks, setBlocks] = useState<ReservationBlock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Dialogs
@@ -94,6 +97,20 @@ export default function SpaceDetailPage() {
       setReservations(reservationsData);
       setHousekeepingTasks(housekeepingData);
       setMaintenanceOrders(maintenanceData);
+
+      // Cargar bloqueos del espacio
+      if (spaceData && organization?.id) {
+        try {
+          const blocksData = await reservationBlocksService.getBlocks(organization.id, {
+            spaceId: spaceId,
+            includeExpired: false,
+          });
+          setBlocks(blocksData);
+        } catch (blockError) {
+          console.error('Error cargando bloqueos:', blockError);
+          setBlocks([]);
+        }
+      }
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast({
@@ -402,6 +419,7 @@ export default function SpaceDetailPage() {
 
           {/* Columna Lateral */}
           <div className="space-y-6">
+            <SpaceBlocks blocks={blocks} isLoading={isLoading} />
             <SpaceHousekeeping 
               tasks={housekeepingTasks} 
               onUpdateStatus={handleUpdateHousekeepingStatus}

@@ -1044,6 +1044,179 @@ export class FacturasCompraService {
   }
 
   /**
+   * Recepciona el inventario de una factura de compra
+   * - Crea movimientos de stock (direction='in') por cada item con product_id
+   * - Actualiza stock_levels sumando las cantidades
+   * - Cambia el status de la factura a 'received'
+   */
+  static async recepcionarInventario(facturaId: string): Promise<{ 
+    success: boolean; 
+    itemsRecepcionados: number;
+    mensaje: string;
+  }> {
+    try {
+      const organizationId = getOrganizationId();
+      
+      // 1. Obtener la factura con sus items
+      const { data: factura, error: fetchError } = await supabase
+        .from('invoice_purchase')
+        .select(`
+          id,
+          status,
+          branch_id,
+          organization_id,
+          number_ext,
+          items:invoice_items(
+            id,
+            product_id,
+            description,
+            qty,
+            unit_price
+          )
+        `)
+        .eq('id', facturaId)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (fetchError) {
+        throw new Error(`Error obteniendo factura: ${fetchError.message}`);
+      }
+
+      if (!factura) {
+        throw new Error('Factura no encontrada');
+      }
+
+      // 2. Validar que la factura pueda ser recepcionada
+      if (factura.status === 'received') {
+        return {
+          success: false,
+          itemsRecepcionados: 0,
+          mensaje: 'Esta factura ya fue recepcionada anteriormente'
+        };
+      }
+
+      if (factura.status === 'void') {
+        return {
+          success: false,
+          itemsRecepcionados: 0,
+          mensaje: 'No se puede recepcionar una factura anulada'
+        };
+      }
+
+      if (!factura.branch_id) {
+        throw new Error('La factura no tiene sucursal asignada');
+      }
+
+      const items = factura.items || [];
+      const itemsConProducto = items.filter((item: any) => item.product_id);
+
+      if (itemsConProducto.length === 0) {
+        // Cambiar estado aunque no haya items con producto
+        await supabase
+          .from('invoice_purchase')
+          .update({ status: 'received', updated_at: new Date().toISOString() })
+          .eq('id', facturaId);
+
+        return {
+          success: true,
+          itemsRecepcionados: 0,
+          mensaje: 'Factura marcada como recibida (sin productos para inventario)'
+        };
+      }
+
+      // 3. Procesar cada item con producto
+      const userId = await getCurrentUserId();
+      let itemsRecepcionados = 0;
+
+      for (const item of itemsConProducto) {
+        try {
+          // Verificar si existe stock_level para este producto y sucursal
+          const { data: stockExistente, error: stockCheckError } = await supabase
+            .from('stock_levels')
+            .select('id, qty_on_hand, avg_cost')
+            .eq('product_id', item.product_id)
+            .eq('branch_id', factura.branch_id)
+            .maybeSingle();
+
+          if (stockCheckError) {
+            console.error(`Error verificando stock para producto ${item.product_id}:`, stockCheckError);
+            continue;
+          }
+
+          const cantidadAnterior = stockExistente?.qty_on_hand || 0;
+          const costoAnterior = stockExistente?.avg_cost || 0;
+          const nuevaCantidad = cantidadAnterior + item.qty;
+          
+          // Calcular nuevo costo promedio ponderado
+          const nuevoCostoPromedio = cantidadAnterior > 0 
+            ? ((costoAnterior * cantidadAnterior) + (item.unit_price * item.qty)) / nuevaCantidad
+            : item.unit_price;
+
+          if (stockExistente) {
+            // Actualizar stock existente
+            await supabase
+              .from('stock_levels')
+              .update({
+                qty_on_hand: nuevaCantidad,
+                avg_cost: nuevoCostoPromedio,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', stockExistente.id);
+          } else {
+            // Crear nuevo registro de stock
+            await supabase
+              .from('stock_levels')
+              .insert({
+                product_id: item.product_id,
+                branch_id: factura.branch_id,
+                qty_on_hand: item.qty,
+                qty_reserved: 0,
+                avg_cost: item.unit_price,
+                min_level: 0
+              });
+          }
+
+          // Crear movimiento de inventario
+          await supabase
+            .from('stock_movements')
+            .insert({
+              organization_id: organizationId,
+              branch_id: factura.branch_id,
+              product_id: item.product_id,
+              direction: 'in',
+              qty: item.qty,
+              unit_cost: item.unit_price,
+              source: 'purchase',
+              source_id: facturaId,
+              note: `Recepción factura ${factura.number_ext}`,
+              updated_by: userId
+            });
+
+          itemsRecepcionados++;
+        } catch (itemError) {
+          console.error(`Error procesando item ${item.product_id}:`, itemError);
+        }
+      }
+
+      // 4. Actualizar estado de la factura a 'received'
+      await supabase
+        .from('invoice_purchase')
+        .update({ status: 'received', updated_at: new Date().toISOString() })
+        .eq('id', facturaId);
+
+      return {
+        success: true,
+        itemsRecepcionados,
+        mensaje: `Inventario recepcionado: ${itemsRecepcionados} producto(s) actualizados`
+      };
+
+    } catch (error: any) {
+      console.error('Error en recepcionarInventario:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Elimina una factura (solo si está en estado draft)
    */
   static async eliminarFactura(id: string): Promise<void> {

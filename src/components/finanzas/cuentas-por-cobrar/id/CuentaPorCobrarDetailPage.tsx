@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, Calendar, Clock, DollarSign, User, MapPin, Phone, Mail, CreditCard, FileText, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, DollarSign, User, MapPin, Phone, Mail, CreditCard, AlertCircle, Receipt, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CuentaPorCobrarDetailService } from './service';
@@ -14,6 +13,7 @@ import { CuentaPorCobrarDetalle, AgingInfo, AccountActions } from './types';
 import { AccountStatusBadge } from './AccountStatusBadge';
 import { PaymentHistoryCard } from './PaymentHistoryCard';
 import { AccountActionsCard } from './AccountActionsCard';
+import { InstallmentsCard } from './InstallmentsCard';
 import { formatCurrency } from '@/utils/Utils';
 
 interface CuentaPorCobrarDetailPageProps {
@@ -62,6 +62,53 @@ export function CuentaPorCobrarDetailPage({ accountId }: CuentaPorCobrarDetailPa
 
   const handleBack = () => {
     router.push('/app/finanzas/cuentas-por-cobrar');
+  };
+
+  const handleViewInvoice = () => {
+    if (account?.invoice_id) {
+      router.push(`/app/finanzas/facturas-venta/${account.invoice_id}`);
+    }
+  };
+
+  const handleExportStatement = () => {
+    if (!account) return;
+    
+    try {
+      const content = `
+ESTADO DE CUENTA POR COBRAR
+===========================
+
+Cliente: ${account.customer_name}
+NIT: ${account.customer_nit || 'N/A'}
+
+Factura: ${account.invoice_number || 'N/A'}
+Fecha de Vencimiento: ${account.due_date ? new Date(account.due_date).toLocaleDateString('es-CO') : 'N/A'}
+
+Monto Original: ${formatCurrency(account.amount)}
+Total Cobrado: ${formatCurrency(account.amount - account.balance)}
+Balance Pendiente: ${formatCurrency(account.balance)}
+
+Estado: ${account.status}
+Días de Atraso: ${account.days_overdue > 0 ? account.days_overdue : 0}
+
+Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
+      `.trim();
+      
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `estado_cuenta_${account.customer_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success('Estado de cuenta exportado');
+    } catch (error) {
+      console.error('Error exportando:', error);
+      toast.error('Error al exportar el estado de cuenta');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -130,16 +177,19 @@ export function CuentaPorCobrarDetailPage({ accountId }: CuentaPorCobrarDetailPa
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={handleBack}
             className="hover:bg-gray-100 dark:hover:bg-gray-800"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+            <Receipt className="h-6 w-6 text-blue-600" />
+          </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Cuenta por Cobrar
@@ -149,10 +199,41 @@ export function CuentaPorCobrarDetailPage({ accountId }: CuentaPorCobrarDetailPa
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <AccountStatusBadge status={account.status} />
+          {accountActions?.canApplyPayment && (
+            <Button
+              variant="default"
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => document.getElementById('btn-registrar-cobro')?.click()}
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Registrar Cobro
+            </Button>
+          )}
+          {accountActions?.canMarkAsPaid && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-green-600 text-green-600 hover:bg-green-50 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-900/20"
+              onClick={() => document.getElementById('btn-marcar-cobrada')?.click()}
+            >
+              Marcar como Cobrada
+            </Button>
+          )}
           <Button
             variant="outline"
+            size="sm"
+            onClick={handleExportStatement}
+            className="dark:border-gray-600 dark:hover:bg-gray-800"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Exportar Estado
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
             className="dark:border-gray-600 dark:hover:bg-gray-800"
@@ -280,7 +361,39 @@ export function CuentaPorCobrarDetailPage({ accountId }: CuentaPorCobrarDetailPa
 
             <Separator className="dark:bg-gray-700" />
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            {/* Invoice Info */}
+            {account.invoice_number && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Factura de Venta
+                </h4>
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {account.invoice_number}
+                      </p>
+                      {account.invoice_date && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {formatDateShort(account.invoice_date)}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleViewInvoice}
+                      className="dark:border-gray-600"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Ver Factura
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 text-sm pt-2">
               <div>
                 <p className="text-gray-500 dark:text-gray-400">Fecha de Creación</p>
                 <p className="font-medium text-gray-900 dark:text-white">
@@ -314,6 +427,16 @@ export function CuentaPorCobrarDetailPage({ accountId }: CuentaPorCobrarDetailPa
             onUpdate={handleRefresh}
           />
         )}
+      </div>
+
+      {/* Plan de Cuotas */}
+      <div className="mt-8">
+        <InstallmentsCard
+          accountId={account.id}
+          totalAmount={account.balance}
+          accountStatus={account.status}
+          onUpdate={handleRefresh}
+        />
       </div>
 
       {/* Payment History */}

@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
         ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
         : undefined,
       paymentMethodId: body.paymentMethodId,
+      existingCustomerId: body.existingCustomerId, // Customer creado en el paso de método de pago
     }
 
     // Crear suscripción

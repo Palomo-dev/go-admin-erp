@@ -203,7 +203,7 @@ export default function TiposEspacioPage() {
   const hasFilters = searchTerm !== '' || categoryFilter !== 'all' || statusFilter !== 'all';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <SpaceTypesHeader
         onRefresh={loadData}
@@ -216,28 +216,22 @@ export default function TiposEspacioPage() {
 
       {/* Stats */}
       {!isLoading && spaceTypes.length > 0 && (
-        <div className="container mx-auto px-6 py-6">
-          <SpaceTypesStats stats={stats} />
-        </div>
+        <SpaceTypesStats stats={stats} />
       )}
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-6 py-4">
-          <SpaceTypesFilters
-            searchTerm={searchTerm}
-            categoryFilter={categoryFilter}
-            statusFilter={statusFilter}
-            categories={categories}
-            onSearchChange={setSearchTerm}
-            onCategoryChange={setCategoryFilter}
-            onStatusChange={setStatusFilter}
-          />
-        </div>
-      </div>
+      <SpaceTypesFilters
+        searchTerm={searchTerm}
+        categoryFilter={categoryFilter}
+        statusFilter={statusFilter}
+        categories={categories}
+        onSearchChange={setSearchTerm}
+        onCategoryChange={setCategoryFilter}
+        onStatusChange={setStatusFilter}
+      />
 
       {/* Content */}
-      <div className="container mx-auto px-6 py-6">
+      <div>
         {isLoading ? (
           <SpaceTypesLoadingState />
         ) : filteredSpaceTypes.length === 0 ? (

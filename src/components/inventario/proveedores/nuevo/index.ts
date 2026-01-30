@@ -1,0 +1,1 @@
+export { NuevoProveedorForm } from './NuevoProveedorForm';

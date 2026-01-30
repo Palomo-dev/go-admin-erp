@@ -33,6 +33,7 @@ const productoSchema = z.object({
   category_id: z.number().optional(),
   unit_code: z.string().min(1, { message: 'La unidad es requerida' }),
   supplier_id: z.number().optional(),
+  tax_id: z.string().optional(), // UUID del impuesto
   
   // Precios y costos
   cost: z.number().min(0).optional(),
@@ -46,7 +47,8 @@ const productoSchema = z.object({
       branch_id: z.number(),
       qty_on_hand: z.number().min(0),
       avg_cost: z.number(),
-      lot_id: z.number().optional()
+      lot_id: z.number().optional(),
+      min_level: z.number().min(0).optional() // Stock mínimo
     })
   ).optional(),
 });
@@ -63,14 +65,16 @@ interface StockItem {
 type ProductoFormData = z.infer<typeof productoSchema>;
 
 interface FormularioEdicionProductoProps {
-  productoId: number;
+  productoUuid: string;
 }
 
-export default function FormularioEdicionProducto({ productoId }: FormularioEdicionProductoProps) {
+export default function FormularioEdicionProducto({ productoUuid }: FormularioEdicionProductoProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  // ID numérico del producto (se obtiene al cargar por UUID)
+  const [productoId, setProductoId] = useState<number | undefined>(undefined);
   
   // Referencias a componentes hijos para acceder a sus datos
   const imagenesRef = useRef<any>(null);
@@ -92,6 +96,7 @@ export default function FormularioEdicionProducto({ productoId }: FormularioEdic
       category_id: undefined,
       unit_code: '',
       supplier_id: undefined,
+      tax_id: '',
       cost: 0,
       price: 0,
       track_stock: true,
@@ -115,16 +120,19 @@ export default function FormularioEdicionProducto({ productoId }: FormularioEdic
           return;
         }
         
-        // 1. Obtener datos del producto
+        // 1. Obtener datos del producto por UUID
         const { data: producto, error } = await supabase
           .from('products')
           .select('*')
-          .eq('id', productoId)
+          .eq('uuid', productoUuid)
           .eq('organization_id', organization_id)
           .single();
           
         if (error) throw error;
         if (!producto) throw new Error('No se encontró el producto');
+        
+        // Guardar el ID numérico para operaciones posteriores
+        setProductoId(producto.id);
         
         // 2. Cargar stock actual del producto
         const { data: stockData, error: stockError } = await supabase
@@ -139,7 +147,7 @@ export default function FormularioEdicionProducto({ productoId }: FormularioEdic
             avg_cost,
             branches:branch_id(id, name)
           `)
-          .eq('product_id', productoId);
+          .eq('product_id', producto.id);
           
         if (stockError) throw stockError;
         
@@ -186,7 +194,7 @@ export default function FormularioEdicionProducto({ productoId }: FormularioEdic
     };
     
     cargarProducto();
-  }, [productoId, organization_id, form, toast, router]);
+  }, [productoUuid, organization_id, form, toast, router]);
 
   // Función para actualizar el producto
   // Función principal de guardado que se ejecuta desde el botón manual
@@ -530,11 +538,10 @@ export default function FormularioEdicionProducto({ productoId }: FormularioEdic
         description: "Producto actualizado correctamente",
       });
       
-      // Redireccionar a los detalles del producto después de un breve retraso
-      // para que el usuario pueda ver la confirmación
+      // Redireccionar a los detalles del producto usando UUID
       setTimeout(() => {
-        router.push(`/app/inventario/productos/${productoId}`);
-      }, 1500); // Incrementado para dar tiempo a ver la confirmación
+        router.push(`/app/inventario/productos/${productoUuid}`);
+      }, 1500);
       
     } catch (error: any) {
       console.error('Error al actualizar el producto:', error);

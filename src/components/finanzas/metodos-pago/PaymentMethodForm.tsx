@@ -29,7 +29,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, Globe, MapPin } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 import PaymentMethodGatewayConfig from "@/components/finanzas/metodos-pago/PaymentMethodGatewayConfig";
 import AccountMappingForm from "@/components/finanzas/metodos-pago/AccountMappingForm";
@@ -59,6 +61,12 @@ const formSchema = z.object({
   requires_reference: z.boolean().default(false),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres").optional(),
   code: z.string().min(2, "El código debe tener al menos 2 caracteres").optional(),
+  // Campos de Website
+  show_on_website: z.boolean().default(true),
+  website_display_order: z.number().default(0),
+  website_display_name: z.string().optional(),
+  website_description: z.string().optional(),
+  website_icon: z.string().optional(),
 }).passthrough(); // Permitir propiedades adicionales
 
 // Definir el tipo FormValues para el formulario
@@ -69,6 +77,12 @@ interface FormValues {
   gateway?: string;
   name?: string;
   code?: string;
+  // Campos de Website
+  show_on_website?: boolean;
+  website_display_order?: number;
+  website_display_name?: string;
+  website_description?: string;
+  website_icon?: string;
   [key: string]: any;
 }
 
@@ -98,8 +112,21 @@ export default function PaymentMethodForm({
       requires_reference: selectedMethod?.payment_method?.requires_reference ?? false,
       name: "",
       code: "",
+      // Campos de Website
+      show_on_website: selectedMethod?.show_on_website ?? true,
+      website_display_order: selectedMethod?.website_display_order ?? 0,
+      website_display_name: selectedMethod?.website_display_name || "",
+      website_description: selectedMethod?.website_description || "",
+      website_icon: selectedMethod?.website_icon || "",
     } as FormValues,
   });
+
+  // Estado para verificar si hay un método seleccionado (para habilitar tabs)
+  const currentMethodCode = form.watch("payment_method_code");
+  const hasMethodSelected = !!currentMethodCode || isNewMethod || selectedMethod !== null;
+  
+  // Obtener el método seleccionado actual para mostrar sus países
+  const currentMethod = globalMethods.find(m => m.code === currentMethodCode);
 
   // Cargar datos del método seleccionado
   useEffect(() => {
@@ -109,6 +136,12 @@ export default function PaymentMethodForm({
         is_active: selectedMethod.is_active,
         gateway: selectedMethod.settings?.gateway || "",
         requires_reference: selectedMethod.payment_method?.requires_reference || false,
+        // Campos de Website
+        show_on_website: selectedMethod.show_on_website ?? true,
+        website_display_order: selectedMethod.website_display_order ?? 0,
+        website_display_name: selectedMethod.website_display_name || "",
+        website_description: selectedMethod.website_description || "",
+        website_icon: selectedMethod.website_icon || "",
       });
 
       // Cargar configuración de gateway y mapeo de cuentas
@@ -275,6 +308,12 @@ export default function PaymentMethodForm({
             .update({
               is_active: values.is_active,
               settings,
+              // Campos de Website
+              show_on_website: values.show_on_website ?? true,
+              website_display_order: values.website_display_order ?? 0,
+              website_display_name: values.website_display_name || null,
+              website_description: values.website_description || null,
+              website_icon: values.website_icon || null,
               updated_at: new Date().toISOString(),
             })
             .eq("id", existingOrgMethod.id)
@@ -299,6 +338,12 @@ export default function PaymentMethodForm({
               payment_method_code: values.payment_method_code,
               is_active: values.is_active,
               settings,
+              // Campos de Website
+              show_on_website: values.show_on_website ?? true,
+              website_display_order: values.website_display_order ?? 0,
+              website_display_name: values.website_display_name || null,
+              website_description: values.website_description || null,
+              website_icon: values.website_icon || null,
             })
             .select();
             
@@ -319,6 +364,12 @@ export default function PaymentMethodForm({
           .update({
             is_active: values.is_active,
             settings,
+            // Campos de Website
+            show_on_website: values.show_on_website ?? true,
+            website_display_order: values.website_display_order ?? 0,
+            website_display_name: values.website_display_name || null,
+            website_description: values.website_description || null,
+            website_icon: values.website_icon || null,
             updated_at: new Date().toISOString(),
           })
           .eq("id", selectedMethod.id)
@@ -468,27 +519,71 @@ export default function PaymentMethodForm({
           />
         )}
         
+        {/* Mostrar países del método de pago seleccionado */}
+        {currentMethod && currentMethod.countries && currentMethod.countries.length > 0 && (
+          <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <MapPin className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-blue-700 dark:text-blue-300">Disponible en:</span>
+              {currentMethod.countries.map((c: any) => (
+                <Badge 
+                  key={c.country_code}
+                  variant="outline"
+                  className={`text-xs ${
+                    c.is_recommended 
+                      ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700' 
+                      : 'bg-white dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'
+                  }`}
+                >
+                  {c.country?.name || c.country_code}
+                  {c.is_recommended && ' ★'}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Mensaje si no hay método seleccionado */}
+        {!hasMethodSelected && !isNewMethod && (
+          <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+              Selecciona un método de pago para configurar las opciones adicionales.
+            </AlertDescription>
+          </Alert>
+        )}
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4 sm:mt-6">
-          <TabsList className="grid grid-cols-3 gap-2 p-2 mb-4 sm:mb-6 bg-gray-100 dark:bg-gray-800/80 rounded-lg h-auto">
+          <TabsList className="grid grid-cols-4 gap-2 p-2 mb-4 sm:mb-6 bg-gray-100 dark:bg-gray-800/80 rounded-lg h-auto">
             <TabsTrigger 
               value="general"
-              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md"
+              disabled={!hasMethodSelected}
+              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               General
             </TabsTrigger>
             <TabsTrigger 
               value="gateway"
-              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md"
+              disabled={!hasMethodSelected}
+              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="hidden sm:inline">Integración de Pago</span>
               <span className="sm:hidden">Gateway</span>
             </TabsTrigger>
             <TabsTrigger 
               value="accounting"
-              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md"
+              disabled={!hasMethodSelected}
+              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Contabilidad
+            </TabsTrigger>
+            <TabsTrigger 
+              value="website"
+              disabled={!hasMethodSelected}
+              className="text-xs sm:text-sm px-2 py-2.5 sm:px-4 sm:py-2 font-medium text-gray-700 dark:text-gray-300 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Globe className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+              <span className="hidden sm:inline">Website</span>
             </TabsTrigger>
           </TabsList>
           
@@ -594,6 +689,129 @@ export default function PaymentMethodForm({
               initialMapping={accountMapping}
               onSave={handleSaveAccountMapping}
             />
+          </TabsContent>
+          
+          <TabsContent value="website">
+            <div className="space-y-4">
+              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <Globe className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
+                  Configura cómo se mostrará este método de pago en tu sitio web público.
+                </AlertDescription>
+              </Alert>
+              
+              <FormField
+                control={form.control}
+                name="show_on_website"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg border dark:border-gray-700 p-3 sm:p-4 space-y-2 sm:space-y-0">
+                    <div className="space-y-0.5 flex-1">
+                      <FormLabel className="text-sm sm:text-base dark:text-gray-200">Mostrar en Website</FormLabel>
+                      <FormDescription className="text-xs dark:text-gray-400">
+                        Habilitar este método de pago para clientes en el sitio web
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="data-[state=checked]:bg-blue-600"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="website_display_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm dark:text-gray-200">Nombre para mostrar</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Ej: Pago con Tarjeta" 
+                          {...field}
+                          value={field.value || ''}
+                          className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs dark:text-gray-400">
+                        Nombre personalizado que verán los clientes
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="website_display_order"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm dark:text-gray-200">Orden de visualización</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number"
+                          min="0"
+                          placeholder="0" 
+                          {...field}
+                          value={field.value || 0}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs dark:text-gray-400">
+                        Menor número = mayor prioridad
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="website_icon"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm dark:text-gray-200">Icono (opcional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Ej: credit-card, banknote, wallet" 
+                        {...field}
+                        value={field.value || ''}
+                        className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs dark:text-gray-400">
+                      Nombre del icono de Lucide o URL de imagen
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="website_description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm dark:text-gray-200">Instrucciones para el cliente</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Ej: Realiza tu pago de forma segura con tarjeta de crédito o débito..." 
+                        {...field}
+                        value={field.value || ''}
+                        rows={3}
+                        className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm resize-none"
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs dark:text-gray-400">
+                      Descripción o instrucciones que verá el cliente al seleccionar este método
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+            </div>
           </TabsContent>
         </Tabs>
         

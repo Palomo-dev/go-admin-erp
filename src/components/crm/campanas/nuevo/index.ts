@@ -1,0 +1,1 @@
+export { CampanaNuevaPage } from './CampanaNuevaPage';

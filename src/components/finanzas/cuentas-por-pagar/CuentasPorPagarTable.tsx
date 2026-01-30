@@ -227,9 +227,12 @@ export function CuentasPorPagarTable({
                     <TableCell className="py-2 sm:py-3">
                       <div className="flex items-start gap-2 sm:gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm sm:text-base font-medium text-gray-900 dark:text-white truncate">
+                          <button
+                            onClick={() => router.push(`/app/finanzas/cuentas-por-pagar/${cuenta.id}`)}
+                            className="text-sm sm:text-base font-medium text-blue-600 dark:text-blue-400 hover:underline truncate cursor-pointer text-left"
+                          >
                             {cuenta.supplier?.name || 'Sin nombre'}
-                          </div>
+                          </button>
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                             {cuenta.supplier?.nit && (
                               <span>NIT: {cuenta.supplier.nit}</span>
@@ -326,6 +329,11 @@ export function CuentasPorPagarTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 sm:w-56 dark:bg-gray-800 dark:border-gray-700">
+                          <DropdownMenuItem onClick={() => router.push(`/app/finanzas/cuentas-por-pagar/${cuenta.id}`)} className="text-xs sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700">
+                            <Eye className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span>Ver Detalle</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="dark:bg-gray-700" />
                           <DropdownMenuItem onClick={() => onRegistrarPago(cuenta)} className="text-xs sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700">
                             <CreditCard className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             <span>Registrar Pago</span>
@@ -341,7 +349,7 @@ export function CuentasPorPagarTable({
                           </DropdownMenuItem>
                           {cuenta.invoice_purchase && (
                             <DropdownMenuItem onClick={() => verFactura(cuenta.invoice_purchase?.id || '')} className="text-xs sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700">
-                              <Eye className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <FileText className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                               <span>Ver Factura</span>
                             </DropdownMenuItem>
                           )}

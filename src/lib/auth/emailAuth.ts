@@ -288,13 +288,16 @@ async function getUserOrganizations(userId: string): Promise<Organization[]> {
         name,
         type_id,
         status,
-        plan_id,
         organization_types(
           name
         ),
-        plans(
-          id,
-          name
+        subscriptions(
+          plan_id,
+          status,
+          plans(
+            id,
+            name
+          )
         )
       )
     `)
@@ -306,17 +309,23 @@ async function getUserOrganizations(userId: string): Promise<Organization[]> {
     throw new Error('Error al obtener las organizaciones del usuario');
   }
 
-  return (ownedOrgs || []).map((member: any) => ({
-    id: member.organizations?.id || member.organization_id,
-    name: member.organizations?.name || 'Unknown',
-    type_id: { name: member.organizations?.organization_types?.name || 'Unknown' },
-    role_id: member.role_id,
-    plan_id: {
-      id: member.organizations?.plans?.id || 0,
-      name: member.organizations?.plans?.name || 'Unknown'
-    },
-    status: member.organizations?.status || 'active'
-  }));
+  return (ownedOrgs || []).map((member: any) => {
+    // Obtener la suscripción activa
+    const subscriptions = member.organizations?.subscriptions || [];
+    const activeSub = subscriptions.find((s: any) => s.status === 'active') || subscriptions[0];
+    
+    return {
+      id: member.organizations?.id || member.organization_id,
+      name: member.organizations?.name || 'Unknown',
+      type_id: { name: member.organizations?.organization_types?.name || 'Unknown' },
+      role_id: member.role_id,
+      plan_id: {
+        id: activeSub?.plans?.id || activeSub?.plan_id || 0,
+        name: activeSub?.plans?.name || 'Free'
+      },
+      status: member.organizations?.status || 'active'
+    };
+  });
 }
 
 // Función para reenviar email de verificación manualmente

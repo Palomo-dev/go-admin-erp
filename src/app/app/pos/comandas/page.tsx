@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/pos/comandas/EmptyState';
 import { TicketsGrid } from '@/components/pos/comandas/TicketsGrid';
 import { ComandasPagination } from '@/components/pos/comandas/ComandasPagination';
 import { Card } from '@/components/ui/card';
-import KitchenService, { type KitchenTicket, type ZoneFilter, type StatusFilter } from '@/lib/services/kitchenService';
+import KitchenService, { type KitchenTicket, type KitchenTicketItem, type ZoneFilter, type StatusFilter } from '@/lib/services/kitchenService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 
 export default function ComandasPage() {
@@ -115,6 +115,37 @@ export default function ComandasPage() {
     return labels[status] || status;
   };
 
+  // Cambiar estado de item individual
+  const handleItemStatusChange = async (itemId: number, status: KitchenTicketItem['status']) => {
+    try {
+      await KitchenService.updateItemStatus(itemId, status);
+      
+      toast({
+        title: 'Item actualizado',
+        description: `Item marcado como ${getItemStatusLabel(status)}`,
+      });
+      
+      // Los cambios se reflejarán automáticamente por Realtime
+    } catch (error) {
+      console.error('Error actualizando estado del item:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el estado del item',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getItemStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      pending: 'Pendiente',
+      preparing: 'En Preparación',
+      ready: 'Listo',
+      delivered: 'Entregado',
+    };
+    return labels[status] || status;
+  };
+
   // Los tickets ya vienen filtrados del servicio, solo agrupar por estado
   const ticketsByStatus = {
     new: tickets.filter((t) => t.status === 'new'),
@@ -179,6 +210,7 @@ export default function ComandasPage() {
                 ready: paginatedTicketsByStatus.ready,
               }}
               onStatusChange={handleStatusChange}
+              onItemStatusChange={handleItemStatusChange}
             />
 
             {/* Paginación */}

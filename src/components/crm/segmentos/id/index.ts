@@ -1,0 +1,1 @@
+export { SegmentoDetallePage } from './SegmentoDetallePage';

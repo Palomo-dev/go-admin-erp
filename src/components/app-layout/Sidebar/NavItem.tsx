@@ -1,7 +1,7 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, FileText, Settings, Users, LogOut, Plus, List, Home, User, CreditCard, BarChart2 } from 'lucide-react';
 import { NavItemComponentProps } from '../types';
 
@@ -41,12 +41,23 @@ const getSubmenuIcon = (name: string) => {
 };
 
 // Componente para elemento de navegación con posible submenú
-export const NavItem = ({ item, collapsed, onNavigate }: NavItemComponentProps) => {
+const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps) => {
   // Estados separados para móvil y desktop
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopOpen, setIsDesktopOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+  
+  // Prefetch de rutas al hacer hover para carga más rápida
+  const handlePrefetch = useCallback((href: string) => {
+    router.prefetch(href);
+  }, [router]);
+  
+  // Handler optimizado para navegación con feedback inmediato
+  const handleNavigation = useCallback((e?: React.MouseEvent) => {
+    onNavigate?.();
+  }, [onNavigate]);
   
   // Ya no abrimos automáticamente el submenú cuando la sección está activa
   // Solo se abrirá cuando el usuario haga clic explícitamente
@@ -120,7 +131,9 @@ export const NavItem = ({ item, collapsed, onNavigate }: NavItemComponentProps) 
                   <Link
                     key={subIdx}
                     href={subItem.href}
-                    onClick={onNavigate}
+                    prefetch={true}
+                    onClick={handleNavigation}
+                    onMouseEnter={() => handlePrefetch(subItem.href)}
                     className={`
                       flex items-center px-3 py-1.5 text-sm rounded-md min-h-[40px]
                       ${pathname === subItem.href
@@ -129,7 +142,7 @@ export const NavItem = ({ item, collapsed, onNavigate }: NavItemComponentProps) 
                     `}
                   >
                     <span className="mr-2.5 text-gray-500 dark:text-gray-400">
-                      {getSubmenuIcon(subItem.name)}
+                      {subItem.icon || getSubmenuIcon(subItem.name)}
                     </span>
                     <span className="truncate">{subItem.name}</span>
                   </Link>
@@ -197,7 +210,9 @@ export const NavItem = ({ item, collapsed, onNavigate }: NavItemComponentProps) 
                   <DropdownMenuItem key={subIdx} asChild>
                     <Link 
                       href={subItem.href}
-                      onClick={onNavigate}
+                      prefetch={true}
+                      onClick={handleNavigation}
+                      onMouseEnter={() => handlePrefetch(subItem.href)}
                       className={`
                         flex items-center px-3 py-2 text-sm w-full cursor-default
                         ${pathname === subItem.href 
@@ -206,7 +221,7 @@ export const NavItem = ({ item, collapsed, onNavigate }: NavItemComponentProps) 
                       `}
                     >
                       <span className="mr-2.5 text-gray-500 dark:text-gray-400">
-                        {getSubmenuIcon(subItem.name)}
+                        {subItem.icon || getSubmenuIcon(subItem.name)}
                       </span>
                       <span className="truncate">{subItem.name}</span>
                     </Link>
@@ -220,7 +235,9 @@ export const NavItem = ({ item, collapsed, onNavigate }: NavItemComponentProps) 
         // Si no tiene submenú, simplemente renderiza un enlace
         <Link
           href={item.href}
-          onClick={onNavigate}
+          prefetch={true}
+          onClick={handleNavigation}
+          onMouseEnter={() => handlePrefetch(item.href)}
           className={`
             flex items-center ${collapsed ? 'lg:justify-center' : ''} px-3 py-2 rounded-md text-sm font-medium min-h-[44px]
             ${isActive 
@@ -260,3 +277,6 @@ export const NavItem = ({ item, collapsed, onNavigate }: NavItemComponentProps) 
     </TooltipProvider>
   );
 }
+
+// Exportar con memo para evitar re-renders innecesarios
+export const NavItem = memo(NavItemComponent);

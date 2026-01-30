@@ -41,7 +41,7 @@ function SelectOrganizationContent() {
         return;
       }
 
-      // Obtener organizaciones del usuario
+      // Obtener organizaciones del usuario con plan via subscriptions
       const { data: memberData, error: memberError } = await supabase
         .from('organization_members')
         .select(`
@@ -52,7 +52,11 @@ function SelectOrganizationContent() {
             status,
             logo_url,
             organization_types(name),
-            plans(name)
+            subscriptions(
+              plan_id,
+              status,
+              plans(name)
+            )
           )
         `)
         .eq('user_id', session.user.id)
@@ -70,14 +74,21 @@ function SelectOrganizationContent() {
       }
 
       // Transformar datos para la UI
-      const orgs: Organization[] = memberData.map((member: any) => ({
-        id: member.organizations.id,
-        name: member.organizations.name,
-        type_name: member.organizations.organization_types?.name || 'Organización',
-        plan_name: member.organizations.plans?.name || 'Free',
-        status: member.organizations.status,
-        logo_url: member.organizations.logo_url
-      }));
+      const orgs: Organization[] = memberData.map((member: any) => {
+        // Obtener la suscripción activa (puede haber varias, tomamos la última activa)
+        const subscriptions = member.organizations.subscriptions || [];
+        const activeSub = subscriptions.find((s: any) => s.status === 'active') || subscriptions[0];
+        const planName = activeSub?.plans?.name || 'Free';
+        
+        return {
+          id: member.organizations.id,
+          name: member.organizations.name,
+          type_name: member.organizations.organization_types?.name || 'Organización',
+          plan_name: planName,
+          status: member.organizations.status,
+          logo_url: member.organizations.logo_url
+        };
+      });
 
       setOrganizations(orgs);
       

@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import { CheckIcon, XMarkIcon, CreditCardIcon, CalendarIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, XMarkIcon, CreditCardIcon, CalendarIcon, BuildingOfficeIcon, DocumentTextIcon, NoSymbolIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { StarIcon, ArrowUpIcon } from '@heroicons/react/24/solid';
 import ChangePlanModal from './ChangePlanModal';
+import CancelSubscriptionModal from '@/components/subscription/CancelSubscriptionModal';
 
 interface Plan {
   id: number;
@@ -37,6 +38,10 @@ interface Subscription {
   amount: number;
   created_at: string;
   plans: Plan;
+  stripe_subscription_id?: string;
+  stripe_customer_id?: string;
+  cancel_at_period_end?: boolean;
+  canceled_at?: string;
 }
 
 interface OrganizationModule {
@@ -70,6 +75,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   const [changingBilling, setChangingBilling] = useState(false);
   const [showPlanComparison, setShowPlanComparison] = useState(false);
   const [branchCount, setBranchCount] = useState(0);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [reactivating, setReactivating] = useState(false);
 
   useEffect(() => {
     if (orgId) {
@@ -165,6 +172,62 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   const handlePlanChanged = () => {
     setShowChangePlanModal(false);
     loadPlanData();
+  };
+
+  const handleCanceled = () => {
+    setShowCancelModal(false);
+    loadPlanData();
+  };
+
+  const handleReactivate = async () => {
+    try {
+      setReactivating(true);
+      setError(null);
+
+      const response = await fetch('/api/subscriptions/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: orgId,
+          action: 'reactivate'
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al reactivar la suscripción');
+      }
+
+      alert('Suscripción reactivada exitosamente');
+      loadPlanData();
+    } catch (err: any) {
+      console.error('Error reactivating subscription:', err);
+      setError(err.message);
+    } finally {
+      setReactivating(false);
+    }
+  };
+
+  const handleOpenBillingPortal = async () => {
+    try {
+      const response = await fetch('/api/subscriptions/billing-portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: orgId }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.url) {
+        window.open(data.url, '_blank');
+      } else {
+        throw new Error(data.error || 'Error abriendo portal de facturación');
+      }
+    } catch (err: any) {
+      console.error('Error opening billing portal:', err);
+      setError(err.message);
+    }
   };
 
   const handleBillingCycleChange = async (newBillingPeriod: 'monthly' | 'yearly') => {
@@ -402,6 +465,49 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     </div>
                   );
                 })()}
+
+                {/* Botones adicionales de gestión */}
+                {currentPlan?.code !== 'free' && (
+                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-200">
+                    {subscription?.stripe_customer_id && (
+                      <button
+                        onClick={handleOpenBillingPortal}
+                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                      >
+                        <DocumentTextIcon className="w-4 h-4 mr-1" />
+                        Portal de Facturación
+                      </button>
+                    )}
+                    {subscription?.cancel_at_period_end ? (
+                      <button
+                        onClick={handleReactivate}
+                        disabled={reactivating}
+                        className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50"
+                      >
+                        <ArrowPathIcon className="w-4 h-4 mr-1" />
+                        {reactivating ? 'Reactivando...' : 'Reactivar Suscripción'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowCancelModal(true)}
+                        className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100"
+                      >
+                        <NoSymbolIcon className="w-4 h-4 mr-1" />
+                        Cancelar Suscripción
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Aviso de cancelación pendiente */}
+                {subscription?.cancel_at_period_end && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ Tu suscripción se cancelará al final del período actual. 
+                      Puedes reactivarla antes de esa fecha.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -691,6 +797,18 @@ export default function PlanTab({ orgId }: PlanTabProps) {
           organizationName={organizationName}
           currentPlanId={currentPlan?.code || 'free'}
           onPlanChanged={handlePlanChanged}
+        />
+      )}
+
+      {/* Modal de cancelación de suscripción */}
+      {showCancelModal && subscription && (
+        <CancelSubscriptionModal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          organizationId={orgId}
+          organizationName={organizationName}
+          currentPeriodEnd={subscription.current_period_end}
+          onCanceled={handleCanceled}
         />
       )}
     </div>

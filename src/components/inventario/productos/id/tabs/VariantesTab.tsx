@@ -46,17 +46,18 @@ interface VariantesTabProps {
   producto: any;
 }
 
-// Interfaz para variantes
+// Interfaz para variantes (productos hijos en tabla products)
 interface Variante {
-  id?: number;
-  product_id: number;
+  id: number;
+  parent_product_id: number;
   sku: string;
   name: string;
-  price: number;
-  cost: number;
-  stock_quantity: number;
+  price?: number;
+  cost?: number;
+  stock?: number;
   barcode?: string;
-  attributes?: any;
+  variant_data?: any;
+  status?: string;
 }
 
 /**
@@ -74,54 +75,91 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   
-  // Modelo para nueva variante
-  const emptyVariante: Variante = {
-    product_id: producto.id,
-    sku: `${producto.sku}-V${variantes.length + 1}`,
-    name: `${producto.name} - Variante ${variantes.length + 1}`,
-    price: producto.price || 0,
-    cost: producto.cost || 0,
-    stock_quantity: 0,
-    attributes: {},
-  };
-  
   // Cargar variantes al montar el componente
+  // Las variantes son productos hijos en tabla products con parent_product_id
   useEffect(() => {
     const fetchVariantes = async () => {
       try {
         setLoading(true);
         
+        // Si el producto tiene variantes pre-cargadas (children), usarlas
+        if (producto.children && producto.children.length > 0) {
+          const mappedVariants = producto.children.map((child: any) => ({
+            id: child.id,
+            parent_product_id: producto.id,
+            sku: child.sku,
+            name: child.name,
+            price: child.price || child.product_prices?.[0]?.price || 0,
+            cost: child.cost || child.product_costs?.[0]?.cost || 0,
+            stock: child.stock || child.stock_levels?.reduce((sum: number, sl: any) => sum + (sl.qty_on_hand || 0), 0) || 0,
+            barcode: child.barcode,
+            variant_data: child.variant_data,
+            status: child.status || 'active',
+          }));
+          setVariantes(mappedVariants);
+          setLoading(false);
+          return;
+        }
+
+        // Si no hay children pre-cargados, consultar la base de datos
         const { data, error } = await supabase
-          .from('product_variants')
-          .select('*, product_variant_attributes(*)')
-          .eq('product_id', producto.id)
+          .from('products')
+          .select(`
+            id, sku, name, barcode, status, variant_data,
+            product_prices(price, effective_from, effective_to),
+            product_costs(cost, effective_from, effective_to),
+            stock_levels(qty_on_hand, branch_id)
+          `)
+          .eq('parent_product_id', producto.id)
           .order('created_at');
         
         if (error) throw error;
         
-        setVariantes(data || []);
+        // Mapear los datos a la interfaz Variante
+        const mappedVariants: Variante[] = (data || []).map((child: any) => {
+          const currentPrice = child.product_prices?.[0]?.price || 0;
+          const currentCost = child.product_costs?.[0]?.cost || 0;
+          const totalStock = child.stock_levels?.reduce((sum: number, sl: any) => sum + (sl.qty_on_hand || 0), 0) || 0;
+          
+          return {
+            id: child.id,
+            parent_product_id: producto.id,
+            sku: child.sku,
+            name: child.name,
+            price: currentPrice,
+            cost: currentCost,
+            stock: totalStock,
+            barcode: child.barcode,
+            variant_data: child.variant_data,
+            status: child.status,
+          };
+        });
+        
+        setVariantes(mappedVariants);
       } catch (error) {
         console.error('Error al cargar variantes:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No se pudieron cargar las variantes del producto",
-        });
+        // No mostrar toast si simplemente no hay variantes
       } finally {
         setLoading(false);
       }
     };
     
     fetchVariantes();
-  }, [producto.id]);
+  }, [producto.id, producto.children]);
   
   // Abrir diálogo para crear variante
   const handleNewVariante = () => {
-    setEditingVariante({
-      ...emptyVariante,
+    const newVariante: Variante = {
+      id: 0, // Temporal, se asignará al crear
+      parent_product_id: producto.id,
       sku: `${producto.sku}-V${variantes.length + 1}`,
       name: `${producto.name} - Variante ${variantes.length + 1}`,
-    });
+      price: producto.price || 0,
+      cost: producto.cost || 0,
+      stock: 0,
+      status: 'active',
+    };
+    setEditingVariante(newVariante);
     setDialogMode('create');
     setIsDialogOpen(true);
   };
@@ -141,41 +179,75 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
       setLoading(true);
       
       if (dialogMode === 'create') {
-        // Crear nueva variante
+        // Crear nueva variante como producto hijo en tabla products
         const { data, error } = await supabase
-          .from('product_variants')
+          .from('products')
           .insert({
-            ...editingVariante,
             organization_id: organization?.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            sku: editingVariante.sku,
+            name: editingVariante.name,
+            barcode: editingVariante.barcode,
+            parent_product_id: producto.id,
+            is_parent: false,
+            category_id: producto.category_id,
+            unit_code: producto.unit_code,
+            status: 'active',
+            variant_data: editingVariante.variant_data,
           })
           .select()
           .single();
         
         if (error) throw error;
         
-        setVariantes([...variantes, data]);
+        // Crear precio inicial si hay precio definido
+        if (editingVariante.price && editingVariante.price > 0) {
+          await supabase.from('product_prices').insert({
+            product_id: data.id,
+            price: editingVariante.price,
+            effective_from: new Date().toISOString(),
+          });
+        }
+        
+        // Crear costo inicial si hay costo definido
+        if (editingVariante.cost && editingVariante.cost > 0) {
+          await supabase.from('product_costs').insert({
+            product_id: data.id,
+            cost: editingVariante.cost,
+            effective_from: new Date().toISOString(),
+          });
+        }
+
+        const newVariante: Variante = {
+          id: data.id,
+          parent_product_id: producto.id,
+          sku: data.sku,
+          name: data.name,
+          price: editingVariante.price,
+          cost: editingVariante.cost,
+          stock: 0,
+          barcode: data.barcode,
+          variant_data: data.variant_data,
+          status: data.status,
+        };
+        
+        setVariantes([...variantes, newVariante]);
         
         toast({
           title: "Variante creada",
           description: "La variante se ha creado correctamente",
         });
       } else {
-        // Actualizar variante existente
+        // Actualizar variante existente en tabla products
         const { error } = await supabase
-          .from('product_variants')
+          .from('products')
           .update({
             sku: editingVariante.sku,
             name: editingVariante.name,
-            price: editingVariante.price,
-            cost: editingVariante.cost,
-            stock_quantity: editingVariante.stock_quantity,
             barcode: editingVariante.barcode,
+            variant_data: editingVariante.variant_data,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', editingVariante.id)
-          .eq('product_id', producto.id);
+          .eq('id', editingVariante.id);
         
         if (error) throw error;
         
@@ -208,11 +280,12 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
     try {
       setLoading(true);
       
+      // Eliminar de tabla products (producto hijo)
       const { error } = await supabase
-        .from('product_variants')
+        .from('products')
         .delete()
         .eq('id', id)
-        .eq('product_id', producto.id);
+        .eq('parent_product_id', producto.id);
       
       if (error) throw error;
       
@@ -298,9 +371,9 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                 <TableRow key={variante.id}>
                   <TableCell className="font-mono">{variante.sku}</TableCell>
                   <TableCell>{variante.name}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(variante.price)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(variante.cost)}</TableCell>
-                  <TableCell className="text-center">{variante.stock_quantity || 0}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(variante.price || 0)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(variante.cost || 0)}</TableCell>
+                  <TableCell className="text-center">{variante.stock || 0}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -420,10 +493,14 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
               <Input
                 id="stock"
                 type="number"
-                value={editingVariante?.stock_quantity || 0}
-                onChange={(e) => handleVarianteChange('stock_quantity', parseInt(e.target.value, 10))}
+                value={editingVariante?.stock || 0}
+                onChange={(e) => handleVarianteChange('stock', parseInt(e.target.value, 10))}
                 className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                disabled={dialogMode === 'edit'}
               />
+              {dialogMode === 'edit' && (
+                <p className="text-xs text-gray-500">El stock se gestiona desde movimientos de inventario</p>
+              )}
             </div>
             
             <div className="space-y-2">

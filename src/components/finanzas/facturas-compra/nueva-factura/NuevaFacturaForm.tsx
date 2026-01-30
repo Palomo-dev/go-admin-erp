@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { FacturasCompraService } from '../FacturasCompraService';
@@ -39,7 +39,13 @@ export function NuevaFacturaForm({
   esEdicion = false 
 }: NuevaFacturaFormProps = {}) {
   const router = useRouter();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(false);
+  
+  // Detectar si estamos en inventario o finanzas
+  const basePath = pathname.includes('/inventario/') 
+    ? '/app/inventario/facturas-compra' 
+    : '/app/finanzas/facturas-compra';
   const [proveedores, setProveedores] = useState<SupplierBase[]>([]);
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
   const [monedas, setMonedas] = useState<OrganizationCurrency[]>([]);
@@ -354,7 +360,7 @@ export function NuevaFacturaForm({
         };
         
         const factura = await FacturasCompraService.crearFactura(facturaConTotales);
-        router.push(`/app/finanzas/facturas-compra/${factura.id}`);
+        router.push(`${basePath}/${factura.id}`);
       }
     } catch (error) {
       console.error(esEdicion ? 'Error actualizando factura:' : 'Error creando factura:', error);
@@ -366,7 +372,7 @@ export function NuevaFacturaForm({
 
   const handleCancel = () => {
     if (confirm('¿Está seguro de que desea cancelar? Se perderán todos los cambios.')) {
-      router.push('/app/finanzas/facturas-compra');
+      router.push(basePath);
     }
   };
 

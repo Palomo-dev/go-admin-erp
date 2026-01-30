@@ -1,0 +1,1 @@
+export { LoansTable } from './LoansTable';

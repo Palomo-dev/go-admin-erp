@@ -1,6 +1,53 @@
 import { Sale, SaleItem, Customer, Payment } from '../../components/pos/types';
 import { formatCurrency } from '@/utils/Utils';
 
+// Interfaz para datos del negocio/organización
+export interface BusinessInfo {
+  name: string;
+  legalName?: string;
+  nit?: string;
+  taxId?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+}
+
+// Interfaz para datos de la sucursal
+export interface BranchInfo {
+  name?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+}
+
+// Interfaz para datos del cajero/vendedor
+export interface CashierInfo {
+  name: string;
+  email?: string;
+}
+
+// Traducción de métodos de pago a español
+const PAYMENT_METHOD_NAMES: Record<string, string> = {
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  credit_card: 'Tarjeta de Crédito',
+  debit_card: 'Tarjeta Débito',
+  transfer: 'Transferencia',
+  nequi: 'Nequi',
+  daviplata: 'Daviplata',
+  pse: 'PSE',
+  payu: 'PayU',
+  mp: 'Mercado Pago',
+  credit: 'Crédito',
+  check: 'Cheque',
+  other: 'Otro'
+};
+
+const translatePaymentMethod = (method: string): string => {
+  return PAYMENT_METHOD_NAMES[method?.toLowerCase()] || method || 'Efectivo';
+};
+
 export class PrintService {
   /**
    * Generar HTML del ticket para impresión
@@ -10,9 +57,20 @@ export class PrintService {
     saleItems: SaleItem[],
     customer?: Customer,
     payments: Payment[] = [],
-    businessName: string = 'Mi Empresa',
-    businessAddress: string = 'Dirección de la empresa'
+    business?: BusinessInfo,
+    cashier?: CashierInfo,
+    branch?: BranchInfo
   ): string {
+    const businessName = business?.name || 'Mi Empresa';
+    const businessAddress = business?.address || '';
+    // Nombre del cliente: priorizar full_name, luego first_name + last_name
+    const customerName = customer ? 
+      (customer.full_name || 
+       [(customer as any).first_name, (customer as any).last_name].filter(Boolean).join(' ') ||
+       customer.email ||
+       'Cliente') : null;
+    // Documento del cliente
+    const customerDoc = customer?.doc_number || (customer as any)?.identification_number || null;
     const now = new Date();
     const dateStr = now.toLocaleDateString();
     const timeStr = now.toLocaleTimeString();
@@ -137,22 +195,31 @@ export class PrintService {
 <body>
     <div class="header">
         <div class="business-name">${businessName}</div>
-        <div class="business-address">${businessAddress}</div>
+        ${business?.legalName ? `<div class="business-legal">${business.legalName}</div>` : ''}
+        ${business?.nit ? `<div class="business-nit"><strong>NIT:</strong> ${business.nit}</div>` : ''}
+        ${business?.taxId && !business?.nit ? `<div class="business-nit"><strong>ID Fiscal:</strong> ${business.taxId}</div>` : ''}
+        ${businessAddress ? `<div class="business-address">${businessAddress}</div>` : ''}
+        ${business?.city ? `<div class="business-address">${business.city}</div>` : ''}
+        ${business?.phone ? `<div class="business-address">Tel: ${business.phone}</div>` : ''}
+        ${branch?.name ? `<div class="business-address" style="margin-top: 5px; font-weight: bold;">Sucursal: ${branch.name}</div>` : ''}
+        ${branch?.address ? `<div class="business-address">${branch.address}</div>` : ''}
+        ${branch?.city ? `<div class="business-address">${branch.city}</div>` : ''}
+        ${branch?.phone ? `<div class="business-address">Tel Sucursal: ${branch.phone}</div>` : ''}
     </div>
 
     <div class="sale-info">
         <div><strong>Ticket:</strong> ${sale.id}</div>
         <div><strong>Fecha:</strong> ${dateStr}</div>
         <div><strong>Hora:</strong> ${timeStr}</div>
-        <div><strong>Cajero:</strong> Sistema POS</div>
+        <div><strong>Cajero:</strong> ${cashier?.name || 'Sistema POS'}</div>
     </div>
 
-    ${customer ? `
+    ${customerName ? `
     <div class="customer-info">
-        <div><strong>Cliente:</strong> ${customer.full_name}</div>
-        ${customer.doc_number ? `<div><strong>Documento:</strong> ${customer.doc_number}</div>` : ''}
-        ${customer.phone ? `<div><strong>Teléfono:</strong> ${customer.phone}</div>` : ''}
-        ${customer.email ? `<div><strong>Email:</strong> ${customer.email}</div>` : ''}
+        <div><strong>Cliente:</strong> ${customerName}</div>
+        ${customerDoc ? `<div><strong>Documento:</strong> ${customerDoc}</div>` : ''}
+        ${customer?.phone ? `<div><strong>Teléfono:</strong> ${customer.phone}</div>` : ''}
+        ${customer?.email ? `<div><strong>Email:</strong> ${customer.email}</div>` : ''}
     </div>
     ` : ''}
 
@@ -161,10 +228,37 @@ export class PrintService {
         <span>TOTAL</span>
     </div>
 
-    ${saleItems.map(item => `
+    ${saleItems.map(item => {
+      // Obtener nombre del producto de múltiples fuentes posibles
+      let productName = 'Producto';
+      
+      // Parsear notes si es string
+      let notesObj: any = {};
+      try {
+        notesObj = typeof item.notes === 'string' ? JSON.parse(item.notes || '{}') : (item.notes || {});
+      } catch { notesObj = {}; }
+      
+      // Prioridad 1: product_name directo
+      if ((item as any).product_name && (item as any).product_name !== 'Producto') {
+        productName = (item as any).product_name;
+      }
+      // Prioridad 2: product.name
+      else if ((item as any).product?.name && (item as any).product?.name !== 'Producto') {
+        productName = (item as any).product.name;
+      }
+      // Prioridad 3: products.name (relación de Supabase)
+      else if ((item as any).products?.name) {
+        productName = (item as any).products.name;
+      }
+      // Prioridad 4: notes.product_name (parseado)
+      else if (notesObj?.product_name && notesObj?.product_name !== 'Producto') {
+        productName = notesObj.product_name;
+      }
+      
+      return `
     <div class="item">
         <div class="item-line">
-            <span class="item-name">${item.notes?.product_name || 'Producto'}</span>
+            <span class="item-name">${productName}</span>
             <span>${formatCurrency(item.total)}</span>
         </div>
         <div class="item-details">
@@ -173,7 +267,8 @@ export class PrintService {
             ${item.discount_amount && item.discount_amount > 0 ? ` (Desc: ${formatCurrency(item.discount_amount)})` : ''}
         </div>
     </div>
-    `).join('')}
+    `;
+    }).join('')}
 
     <div class="totals">
         <div class="total-line">
@@ -203,7 +298,7 @@ export class PrintService {
         <div style="font-weight: bold; margin-bottom: 5px;">PAGOS:</div>
         ${payments.map(payment => `
         <div class="payment-line">
-            <span>${payment.method || 'cash'}:</span>
+            <span>${translatePaymentMethod(payment.method)}:</span>
             <span>${formatCurrency(payment.amount)}</span>
         </div>
         `).join('')}
@@ -233,16 +328,18 @@ export class PrintService {
     saleItems: SaleItem[],
     customer?: Customer,
     payments: Payment[] = [],
-    businessName?: string,
-    businessAddress?: string
+    business?: BusinessInfo,
+    cashier?: CashierInfo,
+    branch?: BranchInfo
   ): void {
     const html = this.generateTicketHTML(
       sale, 
       saleItems, 
       customer, 
       payments, 
-      businessName, 
-      businessAddress
+      business, 
+      cashier,
+      branch
     );
 
     const printWindow = window.open('', '_blank', 'width=300,height=600');
@@ -250,10 +347,17 @@ export class PrintService {
       printWindow.document.write(html);
       printWindow.document.close();
       
-      printWindow.onload = () => {
-        printWindow.print();
-        setTimeout(() => printWindow.close(), 1000);
-      };
+      // Usar setTimeout para evitar problemas con callbacks obsoletos
+      setTimeout(() => {
+        try {
+          if (printWindow && !printWindow.closed) {
+            printWindow.focus();
+            printWindow.print();
+          }
+        } catch (e) {
+          console.warn('Error al imprimir:', e);
+        }
+      }, 500);
     }
   }
 
@@ -265,16 +369,18 @@ export class PrintService {
     saleItems: SaleItem[],
     customer?: Customer,
     payments: Payment[] = [],
-    businessName?: string,
-    businessAddress?: string
+    business?: BusinessInfo,
+    cashier?: CashierInfo,
+    branch?: BranchInfo
   ): void {
     const html = this.generateTicketHTML(
       sale, 
       saleItems, 
       customer, 
       payments, 
-      businessName, 
-      businessAddress
+      business, 
+      cashier,
+      branch
     );
 
     const blob = new Blob([html], { type: 'text/html' });
@@ -321,14 +427,15 @@ export class PrintService {
     saleItems: SaleItem[],
     customer?: Customer,
     payments: Payment[] = [],
-    businessName?: string,
-    businessAddress?: string
+    business?: BusinessInfo,
+    cashier?: CashierInfo,
+    branch?: BranchInfo
   ): void {
     if (this.canPrint()) {
-      this.printTicket(sale, saleItems, customer, payments, businessName, businessAddress);
+      this.printTicket(sale, saleItems, customer, payments, business, cashier, branch);
     } else {
       // Fallback: descargar como HTML
-      this.downloadTicket(sale, saleItems, customer, payments, businessName, businessAddress);
+      this.downloadTicket(sale, saleItems, customer, payments, business, cashier, branch);
       alert('La impresión directa no está disponible. El ticket se descargará como archivo HTML.');
     }
   }

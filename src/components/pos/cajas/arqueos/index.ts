@@ -1,0 +1,1 @@
+export { NuevoArqueoPage } from './NuevoArqueoPage';

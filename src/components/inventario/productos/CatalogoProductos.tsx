@@ -379,11 +379,24 @@ const CatalogoProductos: React.FC = () => {
   };
 
   const handleEditar = (producto: Producto) => {
-    // Redireccionar a la página de edición del producto
-    router.push(`/app/inventario/productos/${producto.id}/editar`);
+    // Usar UUID si está disponible, de lo contrario usar ID
+    const productUuid = producto.uuid || producto.id;
+    router.push(`/app/inventario/productos/${productUuid}/editar`);
   };
 
-  const handleDuplicar = async (producto: Producto) => {
+  const handleDuplicar = (producto: Producto) => {
+    // Usar UUID si está disponible, de lo contrario usar ID
+    const productUuid = producto.uuid || producto.id;
+    router.push(`/app/inventario/productos/${productUuid}/duplicar`);
+  };
+
+  const handleImportar = () => {
+    // Redireccionar a la página de importar
+    router.push('/app/inventario/productos/importar');
+  };
+
+  // Mantener la función anterior por compatibilidad (no usada actualmente)
+  const handleDuplicarLegacy = async (producto: Producto) => {
     try {
       // Obtener datos completos del producto original
       const { data: originalProductData, error } = await supabase
@@ -448,9 +461,11 @@ const CatalogoProductos: React.FC = () => {
   };
 
   const handleVer = async (producto: Producto) => {
+    // Usar UUID si está disponible, de lo contrario usar ID
+    const productUuid = producto.uuid || producto.id;
+    
     try {
       // Antes de redireccionar, asegurarse de que tenemos todos los datos del producto
-      // Esto es útil cuando implementamos la vista detallada que necesitará datos completos
       const { data: productData, error } = await supabase
         .from('products')
         .select(`
@@ -474,18 +489,18 @@ const CatalogoProductos: React.FC = () => {
         
       if (error) throw error;
       
-      // Almacenamos los datos completos del producto en localStorage para recuperarlos en la página de detalles
+      // Almacenamos los datos completos del producto en sessionStorage
       if (productData) {
-        sessionStorage.setItem(`product_${producto.id}_data`, JSON.stringify(productData));
+        sessionStorage.setItem(`product_${productUuid}_data`, JSON.stringify(productData));
         console.log('Datos completos del producto guardados en sessionStorage');
       }
       
-      // Redireccionar a la página de detalle del producto
-      router.push(`/app/inventario/productos/${producto.id}`);
+      // Redireccionar a la página de detalle usando UUID
+      router.push(`/app/inventario/productos/${productUuid}`);
     } catch (error) {
       console.error('Error al obtener datos detallados del producto:', error);
-      // Redireccionar de todos modos, la página de detalles deberá manejar la carga
-      router.push(`/app/inventario/productos/${producto.id}`);
+      // Redireccionar de todos modos usando UUID
+      router.push(`/app/inventario/productos/${productUuid}`);
     }
   };
 
@@ -580,7 +595,16 @@ const CatalogoProductos: React.FC = () => {
   return (
     <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5">
       {/* Header con título y botón de nuevo */}
-      <ProductosPageHeader onCrearClick={handleCrear} />
+      <ProductosPageHeader 
+        onCrearClick={handleCrear} 
+        onImportarClick={handleImportar}
+        onRefreshClick={() => {
+          setLoading(true);
+          window.location.reload();
+        }}
+        isRefreshing={loading}
+        totalProducts={productos.length}
+      />
       
       {/* Filtros de búsqueda */}
       <FiltrosProductosComponent 

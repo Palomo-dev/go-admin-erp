@@ -1,16 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { PageHeader } from './PageHeader';
 import { FacturasCompraTable, FiltrosFacturasCompra } from './FacturasCompraTable';
 import { FacturasCompraFiltros } from './FacturasCompraFiltros';
 import { FacturasProximasVencer } from './FacturasProximasVencer';
-import { Card } from '@/components/ui/card';
-
-// Utilizamos la interfaz FiltrosFacturasCompra importada desde FacturasCompraTable
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export function FacturasCompraPage() {
-  // Estado para gestionar los filtros
+  const pathname = usePathname();
+  const isInventario = pathname.includes('/inventario/');
+  const backPath = isInventario ? '/app/inventario' : '/app/finanzas';
+
   const [filtrosActuales, setFiltrosActuales] = useState<FiltrosFacturasCompra>({
     busqueda: '',
     estado: 'todos',
@@ -19,24 +23,71 @@ export function FacturasCompraPage() {
     fechaHasta: ''
   });
 
-  // Función que recibe los filtros actualizados del componente FacturasCompraFiltros
-  const manejarCambioFiltros = (filtros: FiltrosFacturasCompra) => {
+  // Callback memoizado para mejor rendimiento
+  const manejarCambioFiltros = useCallback((filtros: FiltrosFacturasCompra) => {
     setFiltrosActuales(filtros);
-  };
+  }, []);
+
+  // Memoizar filtros para evitar re-renders innecesarios
+  const filtrosMemo = useMemo(() => filtrosActuales, [
+    filtrosActuales.busqueda,
+    filtrosActuales.estado,
+    filtrosActuales.proveedor,
+    filtrosActuales.fechaDesde,
+    filtrosActuales.fechaHasta
+  ]);
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 space-y-4 sm:space-y-6 max-w-7xl">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <PageHeader />
       
-      {/* Widget de facturas próximas a vencer */}
-      <div className="grid gap-4 sm:gap-6">
-        <FacturasProximasVencer diasLimite={15} />
-      </div>
+      {/* Stats Cards */}
+      <FacturasProximasVencer diasLimite={15} />
 
-      {/* Lista de facturas de compra */}
-      <Card className="p-3 sm:p-4 md:p-6 dark:bg-gray-800/50 dark:border-gray-700 bg-white border-gray-200">
-        <FacturasCompraFiltros onFiltrosChange={manejarCambioFiltros} />
-        <FacturasCompraTable filtros={filtrosActuales} />
+      {/* Filtros */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="pt-4">
+          <FacturasCompraFiltros onFiltrosChange={manejarCambioFiltros} />
+        </CardContent>
+      </Card>
+
+      {/* Tabla */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="pt-4">
+          <FacturasCompraTable filtros={filtrosMemo} />
+        </CardContent>
+      </Card>
+
+      {/* Navegación Rápida */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap gap-3">
+            <Link href={backPath}>
+              <Button variant="outline" size="sm">
+                ← Volver a {isInventario ? 'Inventario' : 'Finanzas'}
+              </Button>
+            </Link>
+            {isInventario ? (
+              <>
+                <Link href="/app/inventario/productos">
+                  <Button variant="outline" size="sm">Productos</Button>
+                </Link>
+                <Link href="/app/inventario/categorias">
+                  <Button variant="outline" size="sm">Categorías</Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/app/finanzas/cuentas-por-pagar">
+                  <Button variant="outline" size="sm">Cuentas por Pagar</Button>
+                </Link>
+                <Link href="/app/finanzas/proveedores">
+                  <Button variant="outline" size="sm">Proveedores</Button>
+                </Link>
+              </>
+            )}
+          </div>
+        </CardContent>
       </Card>
     </div>
   );

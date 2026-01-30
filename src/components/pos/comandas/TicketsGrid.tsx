@@ -3,7 +3,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { TicketCard } from './TicketCard';
-import type { KitchenTicket } from '@/lib/services/kitchenService';
+import type { KitchenTicket, KitchenTicketItem } from '@/lib/services/kitchenService';
 
 interface TicketsGridProps {
   tickets: {
@@ -12,9 +12,10 @@ interface TicketsGridProps {
     ready: KitchenTicket[];
   };
   onStatusChange: (ticketId: number, status: KitchenTicket['status']) => void;
+  onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status']) => void;
 }
 
-export function TicketsGrid({ tickets, onStatusChange }: TicketsGridProps) {
+export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange }: TicketsGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {/* Nuevos */}
@@ -33,6 +34,7 @@ export function TicketsGrid({ tickets, onStatusChange }: TicketsGridProps) {
               key={ticket.id}
               ticket={ticket}
               onStatusChange={onStatusChange}
+              onItemStatusChange={onItemStatusChange}
             />
           ))}
         </>
@@ -54,6 +56,7 @@ export function TicketsGrid({ tickets, onStatusChange }: TicketsGridProps) {
               key={ticket.id}
               ticket={ticket}
               onStatusChange={onStatusChange}
+              onItemStatusChange={onItemStatusChange}
             />
           ))}
         </>
@@ -75,6 +78,7 @@ export function TicketsGrid({ tickets, onStatusChange }: TicketsGridProps) {
               key={ticket.id}
               ticket={ticket}
               onStatusChange={onStatusChange}
+              onItemStatusChange={onItemStatusChange}
             />
           ))}
         </>

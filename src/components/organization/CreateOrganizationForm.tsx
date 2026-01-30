@@ -62,6 +62,62 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [subdomainManuallyEdited, setSubdomainManuallyEdited] = useState(false);
+
+  // Función para generar subdominio a partir del nombre (replica lógica del trigger)
+  const generateSubdomain = (name: string): string => {
+    if (!name.trim()) return '';
+    
+    // Remover acentos y caracteres especiales
+    let subdomain = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '') // Solo letras y números
+      .replace(/\s+/g, ''); // Remover espacios
+    
+    // Asegurar longitud mínima
+    if (subdomain.length < 3) {
+      subdomain = subdomain + 'org';
+    }
+    
+    // Limitar longitud máxima
+    if (subdomain.length > 30) {
+      subdomain = subdomain.substring(0, 30);
+    }
+    
+    return subdomain;
+  };
+
+  // Verificar disponibilidad del subdominio
+  const checkSubdomainAvailability = async (subdomain: string) => {
+    if (!subdomain || subdomain.length < 3) {
+      setSubdomainStatus('idle');
+      return;
+    }
+    
+    setSubdomainStatus('checking');
+    
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('subdomain', subdomain)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error verificando subdominio:', error);
+        setSubdomainStatus('idle');
+        return;
+      }
+      
+      setSubdomainStatus(data ? 'taken' : 'available');
+    } catch (err) {
+      console.error('Error verificando subdominio:', err);
+      setSubdomainStatus('idle');
+    }
+  };
 
   useEffect(() => {
     if (defaultEmail) {
@@ -71,6 +127,25 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       }));
     }
   }, [defaultEmail]);
+
+  // Auto-generar subdominio cuando cambia el nombre (solo si no fue editado manualmente)
+  useEffect(() => {
+    if (!subdomainManuallyEdited && formData.name) {
+      const suggestedSubdomain = generateSubdomain(formData.name);
+      setFormData(prev => ({ ...prev, subdomain: suggestedSubdomain }));
+    }
+  }, [formData.name, subdomainManuallyEdited]);
+
+  // Verificar disponibilidad del subdominio con debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (formData.subdomain) {
+        checkSubdomainAvailability(formData.subdomain);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [formData.subdomain]);
 
   useEffect(() => {
     fetchOrganizationTypes();
@@ -125,6 +200,16 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       // En modo signup, el taxId es opcional ya que se puede completar después
       if (!isSignupMode && !formData.taxId.trim()) {
         errors.taxId = 'El NIT/RUT es requerido';
+      }
+    }
+    
+    if (currentStep === 2) {
+      // Validar subdominio
+      if (formData.subdomain && subdomainStatus === 'taken') {
+        errors.subdomain = 'El subdominio ya está en uso';
+      }
+      if (formData.subdomain && formData.subdomain.length < 3) {
+        errors.subdomain = 'El subdominio debe tener al menos 3 caracteres';
       }
     }
     
@@ -670,12 +755,83 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             {renderFormField('postalCode', 'Código Postal', 'text', false, 'col-span-1')}
           </div>
           
-          {/* Información adicional */}
-          <div className="grid grid-cols-2 gap-6">
-            {renderFormField('subdomain', 'Subdominio', 'text', false, 'col-span-1')}
+          {/* Subdominio con preview y validación */}
+          <div className="col-span-2">
+            <label htmlFor="subdomain" className="block text-sm font-medium text-gray-700 mb-1">
+              Subdominio de tu sitio web
+            </label>
+            <div className="mt-1 flex rounded-lg shadow-sm">
+              <input
+                type="text"
+                id="subdomain"
+                name="subdomain"
+                value={formData.subdomain}
+                onChange={(e) => {
+                  const value = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  setFormData({ ...formData, subdomain: value });
+                  setSubdomainManuallyEdited(true);
+                }}
+                placeholder="miempresa"
+                className={`block w-full rounded-l-lg border px-4 py-3 sm:text-sm ${
+                  subdomainStatus === 'taken' 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                    : subdomainStatus === 'available'
+                    ? 'border-green-300 focus:border-green-500 focus:ring-green-500'
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                }`}
+              />
+              <span className="inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
+                .goadmin.app
+              </span>
+            </div>
+            
+            {/* Estado de disponibilidad */}
+            <div className="mt-2 flex items-center">
+              {subdomainStatus === 'checking' && (
+                <div className="flex items-center text-sm text-gray-500">
+                  <svg className="animate-spin h-4 w-4 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Verificando disponibilidad...
+                </div>
+              )}
+              {subdomainStatus === 'available' && formData.subdomain && (
+                <div className="flex items-center text-sm text-green-600">
+                  <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  ¡Disponible! Tu sitio será: <span className="font-medium ml-1">{formData.subdomain}.goadmin.app</span>
+                </div>
+              )}
+              {subdomainStatus === 'taken' && (
+                <div className="flex items-center text-sm text-red-600">
+                  <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Este subdominio ya está en uso. Intenta con otro.
+                </div>
+              )}
+            </div>
+            
+            <p className="mt-1 text-xs text-gray-500">
+              Este será el enlace de tu sitio web público. Solo letras y números, sin espacios ni caracteres especiales.
+              {subdomainManuallyEdited && (
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setSubdomainManuallyEdited(false);
+                    setFormData(prev => ({ ...prev, subdomain: generateSubdomain(prev.name) }));
+                  }}
+                  className="ml-2 text-blue-600 hover:text-blue-800 underline"
+                >
+                  Restaurar sugerencia
+                </button>
+              )}
+            </p>
           </div>
           
-          {renderFormField('website', 'Sitio Web', 'url')}
+          {renderFormField('website', 'Sitio Web Externo (opcional)', 'url')}
         </div>
       </div>
     </div>
@@ -713,7 +869,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         <button
           type="button"
           onClick={step === 1 ? nextStep : handleSubmit}
-          disabled={loading}
+          disabled={loading || (step === 2 && (subdomainStatus === 'checking' || subdomainStatus === 'taken'))}
           className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-6 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all"
         >
           {loading ? (
@@ -724,6 +880,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               </svg>
               Siguiente...
             </>
+          ) : subdomainStatus === 'checking' && step === 2 ? (
+            'Verificando...'
           ) : (
             'Siguiente'
           )}

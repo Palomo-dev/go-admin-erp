@@ -12,6 +12,7 @@ import {
   ReservationsFilters,
   ReservationsTable,
   ReservationsPagination,
+  ReservationsBulkActions,
 } from '@/components/pms/reservas';
 import { CheckinDialog, type CheckinData } from '@/components/pms/checkin';
 import { CheckoutDialog, type CheckoutDialogData } from '@/components/pms/checkout';
@@ -70,6 +71,23 @@ export default function ReservasPage() {
   // Estado para diálogo completo de check-out
   const [selectedCheckoutReservation, setSelectedCheckoutReservation] = useState<CheckoutReservation | null>(null);
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
+
+  // Estado para selección múltiple
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+
+  // Estado para diálogo de confirmación de acciones masivas
+  const [bulkDialogState, setBulkDialogState] = useState<{
+    isOpen: boolean;
+    type: 'confirm' | 'cancel' | null;
+    title: string;
+    description: string;
+  }>({
+    isOpen: false,
+    type: null,
+    title: '',
+    description: '',
+  });
 
   // Cargar datos al inicio
   useEffect(() => {
@@ -155,6 +173,98 @@ export default function ReservasPage() {
 
   const handleEdit = (id: string) => {
     router.push(`/app/pms/reservas/${id}/editar`);
+  };
+
+  // Funciones de selección múltiple
+  const getSelectedReservations = () => {
+    return filteredReservations.filter((r) => selectedIds.has(r.id));
+  };
+
+  const canConfirmSelected = () => {
+    const selected = getSelectedReservations();
+    return selected.some((r) => r.status === 'tentative');
+  };
+
+  const canCancelSelected = () => {
+    const selected = getSelectedReservations();
+    return selected.some((r) => ['tentative', 'confirmed'].includes(r.status));
+  };
+
+  const handleBulkConfirm = () => {
+    const count = getSelectedReservations().filter((r) => r.status === 'tentative').length;
+    setBulkDialogState({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Confirmar Reservas',
+      description: `¿Estás seguro de confirmar ${count} reserva${count !== 1 ? 's' : ''} seleccionada${count !== 1 ? 's' : ''}?`,
+    });
+  };
+
+  const handleBulkCancel = () => {
+    const count = getSelectedReservations().filter((r) => ['tentative', 'confirmed'].includes(r.status)).length;
+    setBulkDialogState({
+      isOpen: true,
+      type: 'cancel',
+      title: 'Cancelar Reservas',
+      description: `¿Estás seguro de cancelar ${count} reserva${count !== 1 ? 's' : ''} seleccionada${count !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`,
+    });
+  };
+
+  const handleBulkExport = () => {
+    const selected = getSelectedReservations();
+    ReservationListService.exportToCSV(selected);
+    toast({
+      title: 'Exportado',
+      description: `${selected.length} reserva${selected.length !== 1 ? 's' : ''} exportada${selected.length !== 1 ? 's' : ''} correctamente`,
+    });
+  };
+
+  const confirmBulkAction = async () => {
+    setIsProcessingBulk(true);
+    try {
+      if (bulkDialogState.type === 'confirm') {
+        const idsToConfirm = getSelectedReservations()
+          .filter((r) => r.status === 'tentative')
+          .map((r) => r.id);
+        
+        const result = await ReservationListService.confirmMultipleReservations(idsToConfirm);
+        
+        toast({
+          title: 'Reservas Confirmadas',
+          description: `${result.success} reserva${result.success !== 1 ? 's' : ''} confirmada${result.success !== 1 ? 's' : ''} correctamente${result.failed > 0 ? `. ${result.failed} fallaron.` : ''}`,
+        });
+      } else if (bulkDialogState.type === 'cancel') {
+        const idsToCancel = getSelectedReservations()
+          .filter((r) => ['tentative', 'confirmed'].includes(r.status))
+          .map((r) => r.id);
+        
+        const result = await ReservationListService.cancelMultipleReservations(idsToCancel);
+        
+        toast({
+          title: 'Reservas Canceladas',
+          description: `${result.success} reserva${result.success !== 1 ? 's' : ''} cancelada${result.success !== 1 ? 's' : ''} correctamente${result.failed > 0 ? `. ${result.failed} fallaron.` : ''}`,
+        });
+      }
+
+      // Limpiar selección y recargar datos
+      setSelectedIds(new Set());
+      await loadData();
+    } catch (error: any) {
+      console.error('Error en acción masiva:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo completar la acción',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessingBulk(false);
+      setBulkDialogState({
+        isOpen: false,
+        type: null,
+        title: '',
+        description: '',
+      });
+    }
   };
 
   const handleCheckIn = async (id: string) => {
@@ -433,8 +543,8 @@ export default function ReservasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-6 py-6 space-y-6">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <ReservationsHeader
           stats={stats}
           onNewReservation={handleNewReservation}
@@ -454,8 +564,31 @@ export default function ReservasPage() {
           </div>
         ) : (
           <>
+            {/* Barra de acciones masivas */}
+            <ReservationsBulkActions
+              selectedCount={selectedIds.size}
+              totalCount={paginatedReservations.length}
+              allSelected={paginatedReservations.length > 0 && paginatedReservations.every((r) => selectedIds.has(r.id))}
+              onSelectAll={() => {
+                if (paginatedReservations.every((r) => selectedIds.has(r.id))) {
+                  setSelectedIds(new Set());
+                } else {
+                  setSelectedIds(new Set(paginatedReservations.map((r) => r.id)));
+                }
+              }}
+              onClearSelection={() => setSelectedIds(new Set())}
+              onConfirm={handleBulkConfirm}
+              onCancel={handleBulkCancel}
+              onExport={handleBulkExport}
+              isProcessing={isProcessingBulk}
+              canConfirm={canConfirmSelected()}
+              canCancel={canCancelSelected()}
+            />
+
             <ReservationsTable
               reservations={paginatedReservations}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
               onView={handleView}
               onEdit={handleEdit}
               onCheckIn={handleCheckIn}
@@ -480,7 +613,7 @@ export default function ReservasPage() {
         )}
       </div>
 
-      {/* Diálogo de confirmación para cancel */}
+      {/* Diálogo de confirmación para cancel individual */}
       <AlertDialog open={dialogState.isOpen} onOpenChange={(open) => {
         if (!open) {
           setDialogState({
@@ -501,6 +634,35 @@ export default function ReservasPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmAction}>
               Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de confirmación para acciones masivas */}
+      <AlertDialog open={bulkDialogState.isOpen} onOpenChange={(open) => {
+        if (!open) {
+          setBulkDialogState({
+            isOpen: false,
+            type: null,
+            title: '',
+            description: '',
+          });
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{bulkDialogState.title}</AlertDialogTitle>
+            <AlertDialogDescription>{bulkDialogState.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessingBulk}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBulkAction}
+              disabled={isProcessingBulk}
+              className={bulkDialogState.type === 'cancel' ? 'bg-red-600 hover:bg-red-700' : ''}
+            >
+              {isProcessingBulk ? 'Procesando...' : 'Confirmar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

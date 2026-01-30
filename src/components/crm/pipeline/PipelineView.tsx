@@ -14,8 +14,9 @@ import ForecastView from "./ForecastView";
 import TableView from "./TableView";
 import ClientsView from "./ClientsView";
 import AutomationsView from "./AutomationsView";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import { Loader2 } from "lucide-react";
 import { formatCurrency } from "@/utils/Utils";
+import { useOrganization } from "@/lib/hooks/useOrganization";
 
 // Interfaces para los tipos de datos
 interface Customer {
@@ -293,54 +294,21 @@ const NewOpportunityForm = ({
 
 export default function PipelineView() {
   const [currentPipelineId, setCurrentPipelineId] = useState<string>("");
-  const [isNewOpportunityDialogOpen, setIsNewOpportunityDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [organizationId, setOrganizationId] = useState<number | null>(null);
-
-  // Obtener el ID de la organización del localStorage con múltiples opciones de clave
-  useEffect(() => {
-    // Lista de posibles claves donde podría estar almacenado el ID de la organización
-    const possibleKeys = [
-      "currentOrganizationId",
-      "organizationId", 
-      "selectedOrganizationId",
-      "orgId",
-      "organization_id"
-    ];
-    
-    // Buscar en localStorage
-    for (const key of possibleKeys) {
-      const orgId = localStorage.getItem(key);
-      if (orgId) {
-        // Organización encontrada en localStorage
-        setOrganizationId(Number(orgId));
-        return;
-      }
-    }
-    
-    // Si no está en localStorage, buscar en sessionStorage
-    for (const key of possibleKeys) {
-      const orgId = sessionStorage.getItem(key);
-      if (orgId) {
-        // Organización encontrada en sessionStorage
-        setOrganizationId(Number(orgId));
-        return;
-      }
-    }
-    
-    // Si no se encuentra, usar un valor predeterminado para desarrollo
-    if (process.env.NODE_ENV !== 'production') {
-      // Usando ID de organización predeterminado para desarrollo
-      setOrganizationId(2); // Valor predeterminado para desarrollo
-    } else {
-      // No se pudo encontrar el ID de organización en el almacenamiento local
-    }
-  }, []);
+  
+  // Usar el hook useOrganization para obtener la organización
+  const { organization, isLoading: orgLoading } = useOrganization();
+  const organizationId = organization?.id || null;
 
   // Cargar el pipeline predeterminado cuando tenemos el ID de la organización
   useEffect(() => {
     const loadDefaultPipeline = async () => {
-      if (!organizationId) return;
+      // Esperar a que termine de cargar la organización
+      if (orgLoading) return;
+      if (!organizationId) {
+        setLoading(false);
+        return;
+      }
 
       setLoading(true);
       
@@ -382,20 +350,16 @@ export default function PipelineView() {
     };
 
     loadDefaultPipeline();
-  }, [organizationId]);
+  }, [organizationId, orgLoading]);
 
   const handlePipelineChange = (pipelineId: string) => {
     setCurrentPipelineId(pipelineId);
   };
 
-  const openNewOpportunityDialog = () => {
-    setIsNewOpportunityDialogOpen(true);
-  };
-
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-gray-50 dark:bg-gray-900 gap-3">
-        <LoadingSpinner size="lg" />
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
         <span className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando pipeline...</span>
       </div>
     );
@@ -406,17 +370,18 @@ export default function PipelineView() {
       <PipelineHeader 
         currentPipelineId={currentPipelineId}
         onPipelineChange={handlePipelineChange}
-        onNewOpportunity={openNewOpportunityDialog}
       />
       
-      <Tabs defaultValue="kanban" className="w-full px-3 sm:px-4">
-        <TabsList className="mb-4 flex-wrap gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 h-auto p-2">
-          <TabsTrigger value="kanban" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">Kanban</TabsTrigger>
-          <TabsTrigger value="table" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">Tabla</TabsTrigger>
-          <TabsTrigger value="forecast" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">Pronóstico</TabsTrigger>
-          <TabsTrigger value="clients" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300">Clientes</TabsTrigger>
-          <TabsTrigger value="automation" className="text-xs sm:text-sm min-h-[36px] sm:min-h-[40px] px-3 sm:px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-700 dark:text-gray-300 hidden sm:inline-flex">Automatización</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="kanban" className="w-full px-3 sm:px-4 pt-4">
+        <div className="flex justify-center mb-4">
+          <TabsList className="inline-flex gap-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 h-auto p-1 rounded-lg">
+            <TabsTrigger value="kanban" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Kanban</TabsTrigger>
+            <TabsTrigger value="table" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Tabla</TabsTrigger>
+            <TabsTrigger value="forecast" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Pronóstico</TabsTrigger>
+            <TabsTrigger value="clients" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Clientes</TabsTrigger>
+            <TabsTrigger value="automation" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all hidden sm:inline-flex">Automatización</TabsTrigger>
+          </TabsList>
+        </div>
         
         <TabsContent value="kanban" className="mt-0">
           {currentPipelineId && (
@@ -464,30 +429,6 @@ export default function PipelineView() {
           )}
         </TabsContent>
       </Tabs>
-      
-      <Dialog open={isNewOpportunityDialogOpen} onOpenChange={setIsNewOpportunityDialogOpen}>
-        <DialogContent className="sm:max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-          {/* El DialogHeader, DialogTitle y DialogDescription están dentro del componente NewOpportunityForm */}
-          {currentPipelineId && organizationId && (
-            <NewOpportunityForm 
-              onClose={() => setIsNewOpportunityDialogOpen(false)} 
-              pipelineId={currentPipelineId}
-              organizationId={organizationId}
-              onSuccess={() => {
-                // Recargar datos cuando se crea una nueva oportunidad
-                // Oportunidad creada con éxito
-                // Forzar recarga de datos en las vistas actuales
-                const currentTab = document.querySelector('[data-state="active"]')?.getAttribute('data-value');
-                if (currentTab === "kanban") {
-                  // Refresh kanban view
-                  const event = new CustomEvent('refresh-pipeline-data');
-                  window.dispatchEvent(event);
-                }
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -36,9 +36,10 @@ interface ParkingRate {
   id: string;
   vehicle_type: string;
   rate_name: string;
-  unit: 'minute' | 'hour' | 'day';
+  unit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
   price: number;
   grace_period_min?: number;
+  space_type_id?: string;
 }
 
 export function ExitDialog({
@@ -86,19 +87,41 @@ export function ExitDialog({
       if (!organizationId || !session || !open) return;
 
       try {
-        const { data, error } = await supabase
-          .from('parking_rates')
-          .select('*')
-          .eq('organization_id', organizationId)
-          .eq('vehicle_type', session.vehicle_type)
-          .order('price', { ascending: true });
+        let ratesData: ParkingRate[] = [];
 
-        if (error) throw error;
-        setRates(data || []);
+        // Primero intentar buscar por space_type_id si está disponible
+        if (session.space_type_id) {
+          const { data: spaceTypeRates, error: spaceTypeError } = await supabase
+            .from('parking_rates')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .eq('space_type_id', session.space_type_id)
+            .order('price', { ascending: true });
+
+          if (!spaceTypeError && spaceTypeRates && spaceTypeRates.length > 0) {
+            ratesData = spaceTypeRates;
+          }
+        }
+
+        // Si no hay tarifas por space_type_id, buscar por vehicle_type
+        if (ratesData.length === 0) {
+          const { data, error } = await supabase
+            .from('parking_rates')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .eq('vehicle_type', session.vehicle_type)
+            .order('price', { ascending: true });
+
+          if (!error && data) {
+            ratesData = data;
+          }
+        }
+
+        setRates(ratesData);
         
         // Seleccionar automáticamente la primera tarifa
-        if (data && data.length > 0) {
-          setSelectedRateId(data[0].id);
+        if (ratesData.length > 0) {
+          setSelectedRateId(ratesData[0].id);
         }
       } catch (error) {
         console.error('Error cargando tarifas:', error);
@@ -149,7 +172,20 @@ export function ExitDialog({
               amount = Math.ceil(chargeableMinutes / 60) * selectedRate.price;
               break;
             case 'day':
-              amount = Math.ceil(chargeableMinutes / (60 * 24)) * selectedRate.price;
+              // Por día/noche: mínimo 1 día
+              amount = Math.max(1, Math.ceil(chargeableMinutes / (60 * 24))) * selectedRate.price;
+              break;
+            case 'week':
+              // Por semana: mínimo 1 semana
+              amount = Math.max(1, Math.ceil(chargeableMinutes / (60 * 24 * 7))) * selectedRate.price;
+              break;
+            case 'month':
+              // Por mes: aproximado 30 días, mínimo 1 mes
+              amount = Math.max(1, Math.ceil(chargeableMinutes / (60 * 24 * 30))) * selectedRate.price;
+              break;
+            case 'year':
+              // Por año: aproximado 365 días, mínimo 1 año
+              amount = Math.max(1, Math.ceil(chargeableMinutes / (60 * 24 * 365))) * selectedRate.price;
               break;
           }
 
@@ -270,12 +306,22 @@ export function ExitDialog({
                     <SelectValue placeholder="Seleccionar tarifa" />
                   </SelectTrigger>
                   <SelectContent>
-                    {rates.map((rate) => (
-                      <SelectItem key={rate.id} value={rate.id}>
-                        {rate.rate_name} - ${rate.price}/{rate.unit === 'minute' ? 'min' : rate.unit === 'hour' ? 'hora' : 'día'}
-                        {rate.grace_period_min && ` (${rate.grace_period_min}min gratis)`}
-                      </SelectItem>
-                    ))}
+                    {rates.map((rate) => {
+                      const unitLabels: Record<string, string> = {
+                        minute: 'min',
+                        hour: 'hora',
+                        day: 'día',
+                        week: 'semana',
+                        month: 'mes',
+                        year: 'año'
+                      };
+                      return (
+                        <SelectItem key={rate.id} value={rate.id}>
+                          {rate.rate_name} - ${rate.price.toLocaleString()}/{unitLabels[rate.unit] || rate.unit}
+                          {rate.grace_period_min && ` (${rate.grace_period_min}min gratis)`}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 {selectedRate && (

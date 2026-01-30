@@ -806,4 +806,94 @@ export class CuentasPorPagarService {
       throw error;
     }
   }
+
+  // Obtener cuentas bancarias de la organización
+  static async obtenerCuentasBancarias(): Promise<any[]> {
+    try {
+      const organizationId = getOrganizationId();
+      if (!organizationId) throw new Error('Organization ID no disponible');
+
+      const { data, error } = await supabase
+        .from('bank_accounts')
+        .select('id, name, bank_name, account_number, account_type, currency, balance, is_active')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .order('bank_name', { ascending: true });
+
+      if (error) {
+        console.error('Error al obtener cuentas bancarias:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error en obtenerCuentasBancarias:', error);
+      return [];
+    }
+  }
+
+  // Obtener cuotas de una cuenta por pagar
+  static async obtenerCuotas(accountId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('ap_installments')
+        .select('*')
+        .eq('account_payable_id', accountId)
+        .order('installment_number', { ascending: true });
+
+      if (error) {
+        console.error('Error al obtener cuotas:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error en obtenerCuotas:', error);
+      return [];
+    }
+  }
+
+  // Crear cuotas para una cuenta por pagar
+  static async crearCuotas(
+    accountId: string, 
+    totalAmount: number, 
+    numberOfInstallments: number,
+    startDate: Date
+  ): Promise<void> {
+    try {
+      const installmentAmount = Math.round((totalAmount / numberOfInstallments) * 100) / 100;
+      const installments = [];
+
+      for (let i = 1; i <= numberOfInstallments; i++) {
+        const dueDate = new Date(startDate);
+        dueDate.setMonth(dueDate.getMonth() + (i - 1));
+
+        const amount = i === numberOfInstallments 
+          ? totalAmount - (installmentAmount * (numberOfInstallments - 1))
+          : installmentAmount;
+
+        installments.push({
+          account_payable_id: accountId,
+          installment_number: i,
+          due_date: dueDate.toISOString().split('T')[0],
+          amount: amount,
+          balance: amount,
+          status: 'pending',
+          paid_amount: 0
+        });
+      }
+
+      const { error } = await supabase
+        .from('ap_installments')
+        .insert(installments);
+
+      if (error) {
+        console.error('Error al crear cuotas:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error en crearCuotas:', error);
+      throw error;
+    }
+  }
 }

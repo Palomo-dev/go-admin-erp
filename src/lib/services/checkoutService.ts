@@ -46,6 +46,7 @@ export interface CheckoutStats {
 
 export interface CheckoutData {
   reservationId: string;
+  userId?: string;
   notes?: string;
   generateInvoice: boolean;
   generateReceipt: boolean;
@@ -251,18 +252,29 @@ class CheckoutService {
    * Realizar checkout de una reserva
    */
   async performCheckout(data: CheckoutData): Promise<void> {
-    const { reservationId, notes, generateInvoice, generateReceipt } = data;
+    const { reservationId, userId, notes, generateInvoice, generateReceipt } = data;
 
-    // Actualizar estado de la reserva a "checked_out"
+    // Obtener metadata actual de la reserva
+    const { data: currentReservation } = await supabase
+      .from('reservations')
+      .select('metadata')
+      .eq('id', reservationId)
+      .single();
+
+    // Actualizar estado de la reserva con campos de auditoría
     const { error: reservationError } = await supabase
       .from('reservations')
       .update({
         status: 'checked_out',
-        metadata: {
-          checkout_notes: notes || '',
-          checkout_date: new Date().toISOString(),
-        },
         updated_at: new Date().toISOString(),
+        // Campos de auditoría
+        actual_checkout_at: new Date().toISOString(),
+        checkout_by: userId || null,
+        checkout_notes: notes || null,
+        // Preservar metadata existente
+        metadata: {
+          ...(currentReservation?.metadata || {}),
+        },
       })
       .eq('id', reservationId);
 

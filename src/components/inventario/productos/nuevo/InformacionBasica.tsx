@@ -27,8 +27,12 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
   const [categorias, setCategorias] = useState<any[]>([])
   const [unidades, setUnidades] = useState<any[]>([])
   const [proveedores, setProveedores] = useState<any[]>([])
+  const [impuestos, setImpuestos] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
+  
+  // Estado para proveedores seleccionados (múltiples)
+  const [proveedoresSeleccionados, setProveedoresSeleccionados] = useState<any[]>([])
   
   // Estados para validación de SKU y código de barras
   const [skuExistente, setSkuExistente] = useState(false)
@@ -155,6 +159,24 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
             .order('name')
           
           setProveedores(proveedoresData || [])
+        }
+
+        // Cargar impuestos de la organización
+        if (organization_id) {
+          const { data: impuestosData } = await supabase
+            .from('organization_taxes')
+            .select('id, name, rate, is_default')
+            .eq('organization_id', organization_id)
+            .eq('is_active', true)
+            .order('name')
+          
+          setImpuestos(impuestosData || [])
+          
+          // Si hay un impuesto por defecto, seleccionarlo automáticamente
+          const impuestoDefault = impuestosData?.find((i: any) => i.is_default)
+          if (impuestoDefault && !form.getValues('tax_id')) {
+            form.setValue('tax_id', impuestoDefault.id)
+          }
         }
       } catch (error: any) {
         console.error('Error al cargar datos:', error)
@@ -369,7 +391,7 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
           name="supplier_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Proveedor</FormLabel>
+              <FormLabel>Proveedor Principal</FormLabel>
               <Select 
                 disabled={isLoading}
                 onValueChange={(value) => field.onChange(parseInt(value))}
@@ -388,6 +410,45 @@ export default function InformacionBasica({ form }: InformacionBasicaProps) {
                   ))}
                 </SelectContent>
               </Select>
+              <FormDescription>
+                Proveedor preferido para reorden automático
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {/* Selector de Impuesto */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="tax_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Impuesto</FormLabel>
+              <Select 
+                disabled={isLoading}
+                onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                value={field.value?.toString() || "none"}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar impuesto" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Sin impuesto</SelectItem>
+                  {impuestos.map((impuesto) => (
+                    <SelectItem key={impuesto.id} value={impuesto.id.toString()}>
+                      {impuesto.name} ({impuesto.rate}%)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Impuesto aplicable al producto
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

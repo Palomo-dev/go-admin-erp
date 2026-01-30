@@ -18,12 +18,22 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ArrowUpDown,
   MoreHorizontal,
   Mail,
   Phone,
+  User,
 } from "lucide-react";
+
+// Función para obtener las iniciales del nombre
+const getInitials = (name: string): string => {
+  if (!name) return "??";
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 interface CustomersTableProps {
   customers: Customer[];
@@ -99,37 +109,55 @@ export default function CustomersTable({
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <TableCell className="p-2 sm:p-3">
-                  <div className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">{customer.full_name}</div>
-                  {/* Mostrar contacto en móvil */}
-                  <div className="sm:hidden mt-1 space-y-0.5">
-                    {customer.email && (
-                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">{customer.email}</div>
-                    )}
-                    {customer.phone && (
-                      <div className="text-xs text-gray-600 dark:text-gray-400">{customer.phone}</div>
-                    )}
-                  </div>
-                  {customer.latest_opportunity && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Última: {customer.latest_opportunity.name.substring(0, 15)}
-                      {customer.latest_opportunity.name.length > 15 ? "..." : ""}
-                      <span
-                        className={`ml-2 px-1.5 py-0.5 text-[10px] rounded-sm font-medium ${
-                          customer.latest_opportunity.status === "won"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                            : customer.latest_opportunity.status === "lost"
-                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                        }`}
-                      >
-                        {customer.latest_opportunity.status === "won"
-                          ? "Ganada"
-                          : customer.latest_opportunity.status === "lost"
-                          ? "Perdida"
-                          : "Activa"}
-                      </span>
+                  <div className="flex items-center gap-3">
+                    {/* Avatar del cliente */}
+                    <Avatar className="h-10 w-10 flex-shrink-0 border-2 border-gray-200 dark:border-gray-700">
+                      <AvatarImage 
+                        src={customer.avatar_url} 
+                        alt={customer.full_name}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-sm font-medium">
+                        {getInitials(customer.full_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm truncate">
+                        {customer.full_name}
+                      </div>
+                      {/* Mostrar contacto en móvil */}
+                      <div className="sm:hidden mt-1 space-y-0.5">
+                        {customer.email && (
+                          <div className="text-xs text-gray-600 dark:text-gray-400 truncate">{customer.email}</div>
+                        )}
+                        {customer.phone && (
+                          <div className="text-xs text-gray-600 dark:text-gray-400">{customer.phone}</div>
+                        )}
+                      </div>
+                      {customer.latest_opportunity && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          Última: {customer.latest_opportunity.name.substring(0, 15)}
+                          {customer.latest_opportunity.name.length > 15 ? "..." : ""}
+                          <span
+                            className={`ml-2 px-1.5 py-0.5 text-[10px] rounded-sm font-medium ${
+                              customer.latest_opportunity.status === "won"
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                : customer.latest_opportunity.status === "lost"
+                                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                            }`}
+                          >
+                            {customer.latest_opportunity.status === "won"
+                              ? "Ganada"
+                              : customer.latest_opportunity.status === "lost"
+                              ? "Perdida"
+                              : "Activa"}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell p-2 sm:p-3">
                   <div className="flex flex-col gap-1">

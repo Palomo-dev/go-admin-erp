@@ -1,0 +1,1 @@
+export { QRDisplayScreen } from './QRDisplayScreen';

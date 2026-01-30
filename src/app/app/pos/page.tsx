@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Users, Package, Settings, RefreshCw, Clock } from 'lucide-react';
+import Link from 'next/link';
+import { ShoppingCart, Users, Package, Settings, RefreshCw, Clock, Plus, Receipt, Wallet, RotateCcw, ChefHat, BarChart3, LockOpen, Lock, DollarSign, TrendingUp, AlertCircle, Tag, Ticket, LayoutGrid, Banknote, Percent } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,9 +14,10 @@ import { CartTabs } from '@/components/pos/CartTabs';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { POSService } from '@/lib/services/posService';
 import { PrintService } from '@/lib/services/printService';
-import { useOrganization, getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
+import { useOrganization, getCurrentBranchIdWithFallback, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { Product, Customer, Cart, Sale } from '@/components/pos/types';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, cn } from '@/utils/Utils';
+import { VentasService, DailySummary, CashSession } from '@/components/pos/ventas';
 
 export default function POSPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -26,13 +28,29 @@ export default function POSPage() {
   const [checkoutCart, setCheckoutCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
+  const [cashSession, setCashSession] = useState<CashSession | null>(null);
 
   // Cargar datos iniciales
   useEffect(() => {
     if (organization?.id) {
       initializePOS();
+      loadDashboardData();
     }
   }, [organization]);
+
+  const loadDashboardData = async () => {
+    try {
+      const [summary, session] = await Promise.all([
+        VentasService.getDailySummary(),
+        VentasService.getCurrentCashSession()
+      ]);
+      setDailySummary(summary);
+      setCashSession(session);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    }
+  };
 
   const initializePOS = async () => {
     setIsLoading(true);
@@ -223,7 +241,7 @@ export default function POSPage() {
   return (
     <div className="min-h-screen h-screen dark:bg-gray-950 light:bg-gray-50 p-2 sm:p-4">
       <div className="w-full h-full flex flex-col space-y-2 sm:space-y-3">
-        {/* Header - Responsive */}
+        {/* Header - Responsive con estado de caja y accesos rápidos */}
         <Card className="dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200 shadow-sm">
           <CardHeader className="p-3 sm:p-4 md:pb-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -244,7 +262,27 @@ export default function POSPage() {
               
               {/* Info y Badges - Responsive */}
               <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4">
-                {/* Hora - Oculta en móvil pequeño */}
+                {/* Estado de Caja */}
+                <div className={cn(
+                  "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
+                  cashSession 
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                )}>
+                  {cashSession ? (
+                    <>
+                      <LockOpen className="h-3 w-3" />
+                      <span className="hidden sm:inline">Caja Abierta</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-3 w-3" />
+                      <span className="hidden sm:inline">Caja Cerrada</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Hora */}
                 <div className="hidden xs:flex items-center space-x-1.5 sm:space-x-2">
                   <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 dark:text-gray-400 light:text-gray-500 shrink-0" />
                   <span className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600 whitespace-nowrap">
@@ -268,6 +306,58 @@ export default function POSPage() {
                     <span className="hidden xs:inline">{carts.filter(c => c.status === 'hold').length} En Espera</span>
                     <span className="inline xs:hidden">{carts.filter(c => c.status === 'hold').length}E</span>
                   </Badge>
+                </div>
+
+                {/* Accesos rápidos */}
+                <div className="hidden md:flex items-center gap-2">
+                  <Link href="/app/pos/ventas">
+                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
+                      <Receipt className="h-4 w-4 mr-1" />
+                      Ventas
+                    </Button>
+                  </Link>
+                  <Link href="/app/pos/cajas">
+                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
+                      <Wallet className="h-4 w-4 mr-1" />
+                      Caja
+                    </Button>
+                  </Link>
+                  <Link href="/app/pos/mesas">
+                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
+                      <LayoutGrid className="h-4 w-4 mr-1" />
+                      Mesas
+                    </Button>
+                  </Link>
+                  <Link href="/app/pos/comandas">
+                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
+                      <ChefHat className="h-4 w-4 mr-1" />
+                      Cocina
+                    </Button>
+                  </Link>
+                  <Link href="/app/pos/propinas">
+                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
+                      <Banknote className="h-4 w-4 mr-1" />
+                      Propinas
+                    </Button>
+                  </Link>
+                  <Link href="/app/pos/cargos-servicio">
+                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
+                      <Percent className="h-4 w-4 mr-1" />
+                      Cargos
+                    </Button>
+                  </Link>
+                  <Link href="/app/pos/reportes">
+                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
+                      <BarChart3 className="h-4 w-4 mr-1" />
+                      Reportes
+                    </Button>
+                  </Link>
+                  <Link href="/app/pos/configuracion">
+                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
+                      <Settings className="h-4 w-4 mr-1" />
+                      Config
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>

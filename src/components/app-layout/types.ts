@@ -5,6 +5,7 @@ import { ReactNode } from 'react';
 export interface SubNavItem {
   name: string;
   href: string;
+  icon?: ReactNode;
 }
 
 export interface NavItemProps {
@@ -79,4 +80,18 @@ export interface UserMenuProps {
 export interface ThemeToggleProps {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+}
+
+// Tipos para el sistema Multi-Column Layout con SubMenu
+export interface SubMenuPanelProps {
+  activeModule: NavItemProps | null;
+  collapsed: boolean;
+  onNavigate?: () => void;
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+export interface ActiveModuleState {
+  module: NavItemProps | null;
+  isOpen: boolean;
 }

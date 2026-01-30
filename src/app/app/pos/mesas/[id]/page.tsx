@@ -47,6 +47,7 @@ import { PedidosService } from '@/components/pos/mesas/id/pedidosService';
 import { MesasService } from '@/components/pos/mesas/mesasService';
 import { PrintService } from '@/lib/services/printService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { branchService } from '@/lib/services/branchService';
 import type {
   TableSessionWithDetails,
   ProductToAdd,
@@ -60,8 +61,9 @@ export default function MesaDetallePage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { organization } = useOrganization();
+  const { organization, branch_id } = useOrganization();
   const tableId = params.id as string; // UUID
+  const [currentBranch, setCurrentBranch] = useState<any>(null);
 
   const [session, setSession] = useState<TableSessionWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +89,21 @@ export default function MesaDetallePage() {
   useEffect(() => {
     cargarDatos();
   }, [tableId]);
+
+  // Cargar información de la sucursal
+  useEffect(() => {
+    const loadBranch = async () => {
+      if (branch_id) {
+        try {
+          const branchData = await branchService.getBranchById(branch_id);
+          setCurrentBranch(branchData);
+        } catch (error) {
+          console.error('Error cargando sucursal:', error);
+        }
+      }
+    };
+    loadBranch();
+  }, [branch_id]);
 
   // Cargar nombre de mesa (con o sin sesión)
   useEffect(() => {
@@ -545,26 +562,34 @@ export default function MesaDetallePage() {
     // Solo incluir items NO pagados
     const unpaidItems = (session.sale_items || []).filter(item => !(item as any).paid_at);
     
-    const items = unpaidItems.map((item) => ({
-      id: item.id,
-      cart_id: session.sale_id!,
-      product_id: item.product_id || 0,
-      quantity: Number(item.quantity),
-      unit_price: Number(item.unit_price),
-      total: Number(item.total),
-      tax_amount: Number(item.tax_amount || 0),
-      tax_rate: 0,
-      discount_amount: Number(item.discount_amount || 0),
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      product: {
-        id: item.product_id || 0,
-        name: (item.notes as any)?.product_name || 'Producto',
-        sku: '',
-        status: 'active',
-        organization_id: session.organization_id,
-      } as any,
-    }));
+    const items = unpaidItems.map((item) => {
+      // Obtener nombre del producto de múltiples fuentes
+      const productData = (item as any).product;
+      // notes puede ser string o objeto JSON
+      const notesObj = typeof item.notes === 'string' ? JSON.parse(item.notes || '{}') : (item.notes || {});
+      const productName = productData?.name || notesObj?.product_name || 'Producto';
+      
+      return {
+        id: item.id,
+        cart_id: session.sale_id!,
+        product_id: item.product_id || 0,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+        total: Number(item.total),
+        tax_amount: Number(item.tax_amount || 0),
+        tax_rate: 0,
+        discount_amount: Number(item.discount_amount || 0),
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        product: {
+          id: item.product_id || productData?.id || 0,
+          name: productName,
+          sku: productData?.sku || '',
+          status: 'active',
+          organization_id: session.organization_id,
+        } as any,
+      };
+    });
 
     const subtotal = items.reduce((sum, item) => sum + item.total, 0);
     const taxTotal = items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
@@ -640,7 +665,7 @@ export default function MesaDetallePage() {
           discount: 0,
           tax: Number(splitItem.item.tax_amount) || 0,
           total: (Number(splitItem.item.unit_price) * splitItem.quantity),
-          note: splitItem.item.notes || undefined,
+          note: typeof splitItem.item.notes === 'object' ? (splitItem.item.notes as any)?.extra : splitItem.item.notes,
           name: splitItem.item.product?.name || 'Producto',
           sku: splitItem.item.product?.sku || '',
           product: splitItem.item.product || { 
@@ -845,17 +870,6 @@ export default function MesaDetallePage() {
             .in('id', itemIds);
         }
         
-        // Imprimir ticket del split actual
-        const splitItems = currentSplit.items.map(si => si.item);
-        PrintService.smartPrint(
-          sale,
-          splitItems as any,
-          selectedCustomer,
-          [],
-          organization?.name || 'Mi Empresa',
-          'Dirección de la sucursal'
-        );
-
         // Marcar split como pagado
         const newPaidIds = [...paidSplitIds, currentSplit.id];
         setPaidSplitIds(newPaidIds);
@@ -917,17 +931,6 @@ export default function MesaDetallePage() {
       } else {
         // Pago único sin división
         await MesasService.liberarMesa(tableId);
-        
-        // Imprimir ticket
-        const saleItems = session?.sale_items || [];
-        PrintService.smartPrint(
-          sale,
-          saleItems as any,
-          selectedCustomer,
-          [],
-          organization?.name || 'Mi Empresa',
-          'Dirección de la sucursal'
-        );
 
         toast({
           title: 'Venta completada',
@@ -1566,6 +1569,26 @@ export default function MesaDetallePage() {
           open={showCheckout}
           onOpenChange={setShowCheckout}
           onCheckoutComplete={handleCheckoutComplete}
+          organization={organization ? {
+            name: organization.name,
+            legal_name: (organization as any).legal_name,
+            nit: (organization as any).nit,
+            tax_id: (organization as any).tax_id,
+            address: (organization as any).address,
+            city: (organization as any).city,
+            phone: (organization as any).phone,
+            email: (organization as any).email
+          } : undefined}
+          currentUser={(organization as any)?.user ? {
+            name: [(organization as any).user.first_name, (organization as any).user.last_name].filter(Boolean).join(' ') || (organization as any).user.email,
+            email: (organization as any).user.email
+          } : undefined}
+          branch={currentBranch ? {
+            name: currentBranch.name,
+            address: currentBranch.address,
+            city: currentBranch.city,
+            phone: currentBranch.phone
+          } : undefined}
         />
       )}
 

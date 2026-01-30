@@ -8,9 +8,10 @@
  * import { NavSection, NavItem, SidebarNavigation } from '@/components/app-layout/Sidebar';
  */
 
-export * from './NavItem';
-export * from './NavSection';
-export * from './SidebarNavigation';
+export { NavItem } from './NavItem';
+export { NavSection } from './NavSection';
+export { SidebarNavigation } from './SidebarNavigation';
+export { SubMenuPanel } from './SubMenuPanel';
 
 // Exportación por defecto para casos donde se requiera un solo componente principal
 export { SidebarNavigation as default } from './SidebarNavigation';

@@ -1,0 +1,1 @@
+export { ProveedorDetalle } from './ProveedorDetalle';

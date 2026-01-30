@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/lib/hooks/useSession";
 import { supabase } from "@/lib/supabase/config";
 import { useOrganization } from "@/lib/hooks/useOrganization";
@@ -8,6 +8,10 @@ import ClientesTable from "@/components/clientes/ClientesTable";
 import ClientesFilter from "@/components/clientes/ClientesFilter";
 import ClientesActions from "@/components/clientes/ClientesActions";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Users, DollarSign, ShoppingCart, AlertTriangle, RefreshCw, Trash2, Tag, Download, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Customer {
   id: string;
@@ -48,6 +52,14 @@ export default function ClientesPage() {
   const [balanceFilter, setBalanceFilter] = useState<string | null>(null); // 'all', 'pending', 'paid'
   const [sortOrder, setSortOrder] = useState<string | null>(null);
   
+  // Selección masiva
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+  
+  // Ref para controlar que solo se cargue una vez
+  const hasLoadedRef = useRef(false);
+  const loadedOrgIdRef = useRef<number | null>(null);
+  
   // Usamos el hook de sesión y organización
   const { session } = useSession();
   const organizationData = useOrganization();
@@ -60,7 +72,9 @@ export default function ClientesPage() {
       // Si la sesión o la organización aún está cargando, esperamos
       if (sessionLoading || organizationData.isLoading) {
         // Mantenemos el estado de carga pero no mostramos mensajes de error durante la carga
-        setIsLoading(true);
+        if (!hasLoadedRef.current) {
+          setIsLoading(true);
+        }
         setError("");
         return;
       }
@@ -87,9 +101,20 @@ export default function ClientesPage() {
       
       // Si tenemos organización, procedemos a cargar los clientes
       if (organizationData.organization?.id) {
-        console.log("Organización encontrada:", organizationData.organization.id);
-        setOrganizationId(organizationData.organization.id);
-        await loadCustomers(organizationData.organization.id);
+        const orgId = organizationData.organization.id;
+        
+        // Solo cargar si no se ha cargado antes o si cambió la organización
+        if (!hasLoadedRef.current || loadedOrgIdRef.current !== orgId) {
+          console.log("Organización encontrada, cargando clientes:", orgId);
+          setOrganizationId(orgId);
+          loadedOrgIdRef.current = orgId;
+          await loadCustomers(orgId);
+          hasLoadedRef.current = true;
+        } else {
+          // Ya se cargó antes, solo actualizar el estado
+          setOrganizationId(orgId);
+          setIsLoading(false);
+        }
       } else {
         setError('No se encontró información de la organización');
         setIsLoading(false);
@@ -97,7 +122,7 @@ export default function ClientesPage() {
     }
     
     loadOrganizationData();
-  }, [session, sessionLoading, organizationData]);
+  }, [session, sessionLoading, organizationData.isLoading, organizationData.error, organizationData.organization?.id]);
 
 
   // Función para cargar clientes con paginación y última fecha de compra
@@ -402,137 +427,376 @@ export default function ClientesPage() {
     document.body.removeChild(link);
   };
 
-  return (
-    <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-      {/* Título principal */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Clientes</h1>
-      </div>
+  // Funciones de acciones masivas
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    
+    if (!confirm(`¿Estás seguro de eliminar ${selectedIds.length} cliente(s)? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+    
+    setIsBulkLoading(true);
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .in('id', selectedIds);
       
-      {/* Estado de carga inicial */}
-      {isLoading && !error && !organizationId && (
-        <div className="flex flex-col items-center justify-center h-64 space-y-3">
-          <LoadingSpinner />
-          <span className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando datos...</span>
+      if (error) throw error;
+      
+      toast.success(`${selectedIds.length} cliente(s) eliminado(s) correctamente`);
+      setSelectedIds([]);
+      if (organizationId) await loadCustomers(organizationId);
+    } catch (err: any) {
+      console.error('Error eliminando clientes:', err);
+      toast.error(err.message || 'Error al eliminar clientes');
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const handleBulkExport = () => {
+    if (selectedIds.length === 0) return;
+    
+    const selectedCustomers = filteredCustomers.filter(c => selectedIds.includes(c.id));
+    
+    const csvContent = [
+      ["ID", "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento", "Ciudad", "Roles", "Etiquetas", "Saldo CxC", "Última Compra"].join(","),
+      ...selectedCustomers.map(customer => [
+        customer.id,
+        customer.full_name,
+        customer.email || "",
+        customer.phone || "",
+        customer.doc_type || "",
+        customer.doc_number || "",
+        customer.city || "",
+        (customer.roles || []).join(";"),
+        (customer.tags || []).join(";"),
+        customer.balance || 0,
+        customer.last_purchase_date || ""
+      ].join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `clientes_seleccionados_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success(`${selectedIds.length} cliente(s) exportado(s)`);
+  };
+
+  const handleBulkAddTag = async () => {
+    if (selectedIds.length === 0) return;
+    
+    const newTag = prompt('Ingresa la etiqueta a agregar:');
+    if (!newTag || !newTag.trim()) return;
+    
+    setIsBulkLoading(true);
+    try {
+      for (const customerId of selectedIds) {
+        const customer = customers.find(c => c.id === customerId);
+        const currentTags = customer?.tags || [];
+        if (!currentTags.includes(newTag.trim())) {
+          await supabase
+            .from('customers')
+            .update({ tags: [...currentTags, newTag.trim()] })
+            .eq('id', customerId);
+        }
+      }
+      
+      toast.success(`Etiqueta "${newTag.trim()}" agregada a ${selectedIds.length} cliente(s)`);
+      setSelectedIds([]);
+      if (organizationId) await loadCustomers(organizationId);
+    } catch (err: any) {
+      console.error('Error agregando etiqueta:', err);
+      toast.error(err.message || 'Error al agregar etiqueta');
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setPage(0);
+  };
+
+  // Calcular estadísticas
+  const stats = {
+    totalClientes: count,
+    clientesConSaldo: customers.filter(c => (c.balance || 0) > 0).length,
+    totalCuentasPorCobrar: customers.reduce((sum, c) => sum + (c.balance || 0), 0),
+    clientesVencidos: customers.filter(c => (c.days_overdue || 0) > 0 || c.ar_status === 'overdue').length,
+  };
+
+  // Función para formatear moneda
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  if (isLoading && !organizationId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando clientes...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            Gestión de Clientes
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Administra tu cartera de clientes
+          </p>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => organizationId && loadCustomers(organizationId)}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <ClientesActions 
+            onExportCSV={handleExportCSV}
+            selectedCustomers={[]} 
+          />
+        </div>
+      </div>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg relative mb-4 sm:mb-6">
-          <strong className="font-bold text-sm sm:text-base">Error:</strong>
-          <span className="block sm:inline text-sm sm:text-base"> {error}</span>
-          <button
-            className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-4 py-2 rounded-md mt-3 text-sm font-medium transition-colors min-h-[40px]"
-            onClick={() => {
-              // Simplificamos la lógica del botón de reintentar
-              setError("");
-              setIsLoading(true);
-              
-              // Verificamos si tenemos los datos necesarios para cargar clientes
-              if (organizationData.organization?.id) {
-                loadCustomers(organizationData.organization.id)
-                  .catch(err => {
-                    setError(err.message || "Error desconocido");
-                    setIsLoading(false);
-                  });
-              } else {
-                // Si no hay organización, simplemente refrescamos la página
-                // para reiniciar todo el proceso de carga
-                window.location.reload();
-              }
-            }}
-          >
-            Reintentar
-          </button>
-        </div>
+        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <div>
+                <p className="font-medium text-red-700 dark:text-red-300">Error</p>
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto border-red-300 text-red-700 hover:bg-red-100"
+                onClick={() => {
+                  setError("");
+                  setIsLoading(true);
+                  if (organizationData.organization?.id) {
+                    loadCustomers(organizationData.organization.id)
+                      .catch(err => {
+                        setError(err.message || "Error desconocido");
+                        setIsLoading(false);
+                      });
+                  } else {
+                    window.location.reload();
+                  }
+                }}
+              >
+                Reintentar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
-      
-      {/* Contenido principal - siempre visible si no hay error o carga inicial */}
-      {!isLoading || (isLoading && organizationId) ? (
-        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-          {/* Eliminamos el indicador de actualización pequeño, ya lo manejamos en otro lugar */}
-          
-          {/* Header con título y acciones principales */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-            <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Listado de Clientes
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Gestión centralizada de clientes
-              </p>
-            </div>
-            
-            {/* Acciones masivas - siempre visibles */}
-            <ClientesActions 
-              onExportCSV={handleExportCSV}
-              selectedCustomers={[]} 
-            />
-          </div>
 
-          {/* Filtros y ordenamiento - siempre visibles */}
-          <div className="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/30">
-            <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">🔍 Filtros y opciones de visualización</p>
-            <ClientesFilter 
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              roleFilter={roleFilter}
-              onRoleFilterChange={setRoleFilter}
-              tagFilter={tagFilter}
-              onTagFilterChange={setTagFilter}
-              cityFilter={cityFilter}
-              onCityFilterChange={setCityFilter}
-              balanceFilter={balanceFilter}
-              onBalanceFilterChange={setBalanceFilter}
-              sortOrder={sortOrder}
-              onSortOrderChange={setSortOrder}
-              customers={customers}
-            />
-          </div>
-
-          {/* Tabla, mensaje de carga o mensaje de no datos */}
-          {isLoading && organizationId ? (
-            <div className="flex flex-col items-center justify-center h-64 space-y-3">
-              <LoadingSpinner />
-              <span className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando datos...</span>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Total Clientes</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.totalClientes}</p>
+              </div>
             </div>
-          ) : customers.length > 0 ? (
+          </CardContent>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
+                <DollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Con Saldo</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.clientesConSaldo}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <ShoppingCart className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Cuentas x Cobrar</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(stats.totalCuentasPorCobrar)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Cuentas Vencidas</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.clientesVencidos}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Barra de acciones masivas */}
+      {selectedIds.length > 0 && (
+        <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+          <CardContent className="py-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  {selectedIds.length} cliente(s) seleccionado(s)
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedIds([])}
+                  className="h-7 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:text-blue-400"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpiar
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkExport}
+                  disabled={isBulkLoading}
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Exportar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkAddTag}
+                  disabled={isBulkLoading}
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
+                >
+                  <Tag className="h-4 w-4 mr-1" />
+                  Agregar etiqueta
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkLoading}
+                  className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Eliminar
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Filtros */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="pt-4">
+          <ClientesFilter 
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            roleFilter={roleFilter}
+            onRoleFilterChange={setRoleFilter}
+            tagFilter={tagFilter}
+            onTagFilterChange={setTagFilter}
+            cityFilter={cityFilter}
+            onCityFilterChange={setCityFilter}
+            balanceFilter={balanceFilter}
+            onBalanceFilterChange={setBalanceFilter}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
+            customers={customers}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Tabla */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="p-0">
+          {customers.length > 0 ? (
             <ClientesTable 
               customers={filteredCustomers}
               page={page}
               pageSize={pageSize}
               count={count}
               onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              isLoading={isLoading && !!organizationId}
             />
+          ) : isLoading ? (
+            <div className="flex flex-col items-center justify-center h-64 space-y-3">
+              <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+              <span className="text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
+            </div>
           ) : (
-            <div className="mt-4 p-4 sm:p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/30 text-center">
-              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-4">No se encontraron clientes en esta organización.</p>
-              <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-                <button
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-md flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium min-h-[44px]"
+            <div className="p-8 text-center">
+              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-400 mb-4">No se encontraron clientes</p>
+              <div className="flex justify-center gap-3">
+                <Button
+                  variant="outline"
                   onClick={() => organizationId && loadCustomers(organizationId)}
                   disabled={isLoading}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Recargar datos
-                </button>
-                <a 
-                  href="/app/clientes/new" 
-                  className="px-4 py-2.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-md flex items-center justify-center transition-colors text-sm font-medium min-h-[44px]"
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Recargar
+                </Button>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => window.location.href = '/app/clientes/new'}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Crear nuevo cliente
-                </a>
+                  Crear cliente
+                </Button>
               </div>
             </div>
           )}
-        </div>
-      ) : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }

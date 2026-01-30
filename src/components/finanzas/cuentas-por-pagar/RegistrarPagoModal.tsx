@@ -28,7 +28,8 @@ import {
   Building2,
   AlertCircle,
   CheckCircle,
-  Loader2
+  Loader2,
+  Landmark
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -63,14 +64,17 @@ export function RegistrarPagoModal({
   // Estados de carga y datos
   const [loading, setLoading] = useState(false);
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [loadingMetodos, setLoadingMetodos] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedBankAccount, setSelectedBankAccount] = useState<string>('');
 
   const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
       cargarMetodosPago();
+      cargarCuentasBancarias();
       resetForm();
     }
   }, [isOpen, cuenta]);
@@ -85,6 +89,16 @@ export function RegistrarPagoModal({
       notes: ''
     });
     setErrors({});
+    setSelectedBankAccount('');
+  };
+
+  const cargarCuentasBancarias = async () => {
+    try {
+      const accounts = await CuentasPorPagarService.obtenerCuentasBancarias();
+      setBankAccounts(accounts);
+    } catch (error) {
+      console.error('Error cargando cuentas bancarias:', error);
+    }
   };
 
   const cargarMetodosPago = async () => {
@@ -398,6 +412,44 @@ export function RegistrarPagoModal({
               </p>
             )}
           </div>
+
+          {/* Cuenta Bancaria */}
+          {bankAccounts.length > 0 && (
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                <Landmark className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                <span>Cuenta Bancaria (Opcional)</span>
+              </Label>
+              <Select 
+                value={selectedBankAccount} 
+                onValueChange={setSelectedBankAccount}
+              >
+                <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                  <SelectValue placeholder="Seleccionar cuenta bancaria" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                  <SelectItem value="none" className="text-xs sm:text-sm dark:text-gray-300">
+                    Sin especificar
+                  </SelectItem>
+                  {bankAccounts.map((account) => (
+                    <SelectItem 
+                      key={account.id} 
+                      value={account.id.toString()}
+                      className="text-xs sm:text-sm dark:text-gray-300"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{account.bank_name} - {account.name}</span>
+                        <span className="text-gray-500">({account.currency})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Seleccione la cuenta bancaria desde donde se realizará el pago
+              </p>
+            </div>
+          )}
 
           {/* Referencia */}
           <div className="space-y-1.5 sm:space-y-2">

@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Interfaces para el componente
 interface CuentaPorCobrar {
@@ -21,6 +24,9 @@ interface CuentasTabProps {
   organizationId: number;
 }
 
+// Opciones de tamaño de página
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+
 export default function CuentasTab({ clienteId, organizationId }: CuentasTabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +36,36 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
     totalVencido: 0,
     totalPendiente: 0
   });
+  
+  // Estados de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  
+  // Calcular datos paginados
+  const totalItems = cuentas.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  
+  const paginatedCuentas = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return cuentas.slice(startIndex, endIndex);
+  }, [cuentas, currentPage, pageSize]);
+  
+  // Resetear página cuando cambia el tamaño
+  const handlePageSizeChange = (newSize: string) => {
+    setPageSize(Number(newSize));
+    setCurrentPage(1);
+  };
+  
+  // Funciones de navegación
+  const goToFirstPage = () => setCurrentPage(1);
+  const goToLastPage = () => setCurrentPage(totalPages);
+  const goToPrevPage = () => setCurrentPage(prev => Math.max(1, prev - 1));
+  const goToNextPage = () => setCurrentPage(prev => Math.min(totalPages, prev + 1));
+  
+  // Calcular rango de elementos mostrados
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
 
   // Cargar datos de cuentas por cobrar
   useEffect(() => {
@@ -247,7 +283,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {cuentas.map(cuenta => (
+              {paginatedCuentas.map(cuenta => (
                 <tr key={cuenta.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/70">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {cuenta.sale_id || '-'}
@@ -271,6 +307,91 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
             </tbody>
           </table>
         </div>
+        
+        {/* Paginación */}
+        {totalItems > 0 && (
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Información y selector de tamaño */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Mostrar</span>
+                  <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                    <SelectTrigger className="w-[70px] h-8 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map(size => (
+                        <SelectItem key={size} value={size.toString()}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">por página</span>
+                </div>
+                
+                <div className="hidden sm:block h-4 w-px bg-gray-300 dark:bg-gray-600" />
+                
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  <span className="font-medium">{startItem}</span> - <span className="font-medium">{endItem}</span> de <span className="font-medium">{totalItems}</span> cuentas
+                </span>
+              </div>
+              
+              {/* Controles de navegación */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-gray-200 dark:border-gray-700"
+                  onClick={goToFirstPage}
+                  disabled={currentPage === 1}
+                  title="Primera página"
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-gray-200 dark:border-gray-700"
+                  onClick={goToPrevPage}
+                  disabled={currentPage === 1}
+                  title="Página anterior"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                
+                {/* Indicador de página */}
+                <div className="flex items-center gap-1 px-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">
+                    Página <span className="font-semibold text-blue-600 dark:text-blue-400">{currentPage}</span> de <span className="font-medium">{totalPages}</span>
+                  </span>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-gray-200 dark:border-gray-700"
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                  title="Página siguiente"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-gray-200 dark:border-gray-700"
+                  onClick={goToLastPage}
+                  disabled={currentPage === totalPages}
+                  title="Última página"
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

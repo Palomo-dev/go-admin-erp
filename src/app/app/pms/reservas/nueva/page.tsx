@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,8 +16,10 @@ import {
   StepConfirm,
 } from '@/components/pms/reservas/nueva';
 import ReservationsService, { type Customer } from '@/lib/services/reservationsService';
+import RatesService from '@/lib/services/ratesService';
 import SpaceCategoriesService from '@/lib/services/spaceCategoriesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { supabase } from '@/lib/supabase/config';
 
 const STEPS = [
   { id: 1, name: 'Cliente' },
@@ -30,16 +32,23 @@ const STEPS = [
 
 export default function NuevaReservaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { organization } = useOrganization();
 
+  // Parámetros de URL (desde el calendario)
+  const urlSpaceId = searchParams.get('space_id');
+  const urlCheckin = searchParams.get('checkin');
+  const urlCheckout = searchParams.get('checkout');
+
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [preselectedSpaceData, setPreselectedSpaceData] = useState<any>(null);
 
   // Datos del wizard
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [checkin, setCheckin] = useState('');
-  const [checkout, setCheckout] = useState('');
+  const [checkin, setCheckin] = useState(urlCheckin || '');
+  const [checkout, setCheckout] = useState(urlCheckout || '');
   const [occupantCount, setOccupantCount] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
@@ -51,6 +60,10 @@ export default function NuevaReservaPage() {
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [notes, setNotes] = useState('');
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [dynamicPricing, setDynamicPricing] = useState<{
+    dailyRate: number;
+    rateSource: 'tarifa' | 'base_rate';
+  } | null>(null);
 
   // Cargar categorías y métodos de pago al inicio
   useEffect(() => {
@@ -58,12 +71,65 @@ export default function NuevaReservaPage() {
     loadPaymentMethods();
   }, []);
 
+  // Cargar datos del espacio preseleccionado desde URL
+  useEffect(() => {
+    const loadPreselectedSpace = async () => {
+      if (!urlSpaceId || !organization) return;
+
+      try {
+        const { data: spaceData, error } = await supabase
+          .from('spaces')
+          .select(`
+            id,
+            label,
+            status,
+            space_types (
+              id,
+              name,
+              base_rate,
+              space_categories (
+                code
+              )
+            )
+          `)
+          .eq('id', urlSpaceId)
+          .single();
+
+        if (error) throw error;
+
+        if (spaceData) {
+          setPreselectedSpaceData(spaceData);
+          // Pre-seleccionar la categoría del espacio
+          const spaceType = spaceData.space_types as any;
+          const categoryCode = spaceType?.space_categories?.code;
+          if (categoryCode) {
+            setSelectedCategory(categoryCode);
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando espacio preseleccionado:', error);
+      }
+    };
+
+    loadPreselectedSpace();
+  }, [urlSpaceId, organization]);
+
   // Cargar espacios cuando cambian las fechas o categoría
   useEffect(() => {
     if (checkin && checkout && selectedCategory && organization) {
       loadAvailableSpaces();
     }
   }, [checkin, checkout, selectedCategory, organization]);
+
+  // Pre-seleccionar el espacio de la URL cuando los espacios disponibles se cargan
+  useEffect(() => {
+    if (urlSpaceId && availableSpaces.length > 0 && selectedSpaces.length === 0) {
+      const spaceExists = availableSpaces.find(s => s.id === urlSpaceId);
+      if (spaceExists) {
+        setSelectedSpaces([urlSpaceId]);
+      }
+    }
+  }, [urlSpaceId, availableSpaces]);
 
   const loadCategories = async () => {
     try {
@@ -159,15 +225,61 @@ export default function NuevaReservaPage() {
     return ReservationsService.calculateNights(checkin, checkout);
   };
 
+  // Cargar tarifa dinámica cuando cambian espacios o fechas
+  useEffect(() => {
+    const loadDynamicPricing = async () => {
+      if (!organization || !checkin || !checkout || selectedSpaces.length === 0) {
+        setDynamicPricing(null);
+        return;
+      }
+
+      const selectedSpacesData = availableSpaces.filter((s) =>
+        selectedSpaces.includes(s.id)
+      );
+      
+      if (selectedSpacesData.length === 0) return;
+
+      try {
+        // Usar el tipo del primer espacio seleccionado para obtener la tarifa
+        const firstSpace = selectedSpacesData[0];
+        const spaceTypeId = firstSpace.space_type_id || firstSpace.space_types?.id;
+        
+        if (spaceTypeId) {
+          const rateInfo = await RatesService.getRateForDate(
+            organization.id,
+            spaceTypeId,
+            checkin
+          );
+          setDynamicPricing({
+            dailyRate: rateInfo.price,
+            rateSource: rateInfo.isFromRates ? 'tarifa' : 'base_rate',
+          });
+        }
+      } catch (error) {
+        console.error('Error cargando tarifa dinámica:', error);
+      }
+    };
+
+    loadDynamicPricing();
+  }, [organization, checkin, checkout, selectedSpaces, availableSpaces]);
+
   const calculateTotalEstimated = () => {
     const nights = calculateNights();
     const selectedSpacesData = availableSpaces.filter((s) =>
       selectedSpaces.includes(s.id)
     );
-    const roomsTotal = selectedSpacesData.reduce(
-      (sum, space) => sum + (space.space_types?.base_rate || 0) * nights,
-      0
-    );
+    
+    // Usar tarifa dinámica si está disponible, sino usar base_rate
+    let roomsTotal = 0;
+    if (dynamicPricing) {
+      roomsTotal = dynamicPricing.dailyRate * nights * selectedSpacesData.length;
+    } else {
+      roomsTotal = selectedSpacesData.reduce(
+        (sum, space) => sum + (space.space_types?.base_rate || 0) * nights,
+        0
+      );
+    }
+    
     const extrasTotal = extras.reduce(
       (sum, extra) => sum + extra.price * extra.quantity,
       0

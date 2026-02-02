@@ -27,10 +27,11 @@ interface AbonadosListProps {
   onCancel: (pass: ParkingPass) => void;
 }
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   active: { label: 'Activo', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
   expired: { label: 'Vencido', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
   cancelled: { label: 'Cancelado', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
+  suspended: { label: 'Suspendido', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
 };
 
 export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
@@ -78,6 +79,11 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
         const daysRemaining = getDaysRemaining(pass.end_date);
         const isExpiringSoon = pass.status === 'active' && daysRemaining <= 7 && daysRemaining > 0;
 
+        // Obtener placas de vehículos
+        const vehiclePlates = pass.vehicles?.map(v => v.vehicle?.plate).filter(Boolean) || [];
+        const primaryPlate = pass.vehicles?.find(v => v.is_primary)?.vehicle?.plate;
+        const displayPlate = primaryPlate || vehiclePlates[0] || 'Sin vehículo';
+
         return (
           <Card key={pass.id} className="p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-3">
@@ -86,9 +92,16 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
                   <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">
-                    {pass.vehicle_plate}
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      {displayPlate}
+                    </p>
+                    {vehiclePlates.length > 1 && (
+                      <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
+                        +{vehiclePlates.length - 1}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {pass.pass_type?.name || pass.plan_name}
                   </p>
@@ -106,7 +119,7 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
                     <Edit className="h-4 w-4 mr-2" />
                     Editar
                   </DropdownMenuItem>
-                  {pass.status === 'active' && (
+                  {(pass.status === 'active' || pass.status === 'suspended') && (
                     <DropdownMenuItem 
                       onClick={() => onCancel(pass)}
                       className="text-red-600"

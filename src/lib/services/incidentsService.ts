@@ -482,6 +482,212 @@ class IncidentsService {
 
     return stats;
   }
+
+  /**
+   * Obtiene eventos/bitácora de un incidente
+   */
+  async getIncidentEvents(incidentId: string): Promise<TransportEvent[]> {
+    const { data, error } = await supabase
+      .from('transport_events')
+      .select('*')
+      .eq('reference_type', 'incident')
+      .eq('reference_id', incidentId)
+      .order('event_time', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  /**
+   * Agrega un evento/entrada a la bitácora del incidente
+   */
+  async addIncidentEvent(
+    incidentId: string,
+    eventData: {
+      event_type: string;
+      description?: string;
+      actor_type: string;
+      actor_id?: string;
+      latitude?: number;
+      longitude?: number;
+      location_text?: string;
+      payload?: Record<string, unknown>;
+    }
+  ): Promise<TransportEvent> {
+    const { data, error } = await supabase
+      .from('transport_events')
+      .insert({
+        reference_type: 'incident',
+        reference_id: incidentId,
+        event_type: eventData.event_type,
+        event_time: new Date().toISOString(),
+        description: eventData.description,
+        actor_type: eventData.actor_type,
+        actor_id: eventData.actor_id,
+        latitude: eventData.latitude,
+        longitude: eventData.longitude,
+        location_text: eventData.location_text,
+        payload: eventData.payload || {},
+        source: 'internal',
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Agrega un adjunto al incidente
+   */
+  async addAttachment(
+    incidentId: string,
+    attachment: { name: string; url: string; type: string }
+  ): Promise<TransportIncident> {
+    const incident = await this.getIncidentById(incidentId);
+    if (!incident) throw new Error('Incidente no encontrado');
+
+    const currentAttachments = incident.attachments || [];
+    const updatedAttachments = [...currentAttachments, attachment];
+
+    const { data, error } = await supabase
+      .from('transport_incidents')
+      .update({
+        attachments: updatedAttachments,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', incidentId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Elimina un adjunto del incidente
+   */
+  async removeAttachment(incidentId: string, attachmentUrl: string): Promise<TransportIncident> {
+    const incident = await this.getIncidentById(incidentId);
+    if (!incident) throw new Error('Incidente no encontrado');
+
+    const updatedAttachments = (incident.attachments || []).filter(a => a.url !== attachmentUrl);
+
+    const { data, error } = await supabase
+      .from('transport_incidents')
+      .update({
+        attachments: updatedAttachments,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', incidentId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Obtiene el viaje relacionado al incidente
+   */
+  async getRelatedTrip(tripId: string): Promise<{
+    id: string;
+    trip_code: string;
+    departure_datetime: string;
+    arrival_datetime?: string;
+    origin?: string;
+    destination?: string;
+    status: string;
+  } | null> {
+    const { data, error } = await supabase
+      .from('trips')
+      .select('id, trip_code, departure_datetime, arrival_datetime, origin, destination, status')
+      .eq('id', tripId)
+      .single();
+
+    if (error) return null;
+    return data;
+  }
+
+  /**
+   * Obtiene el envío relacionado al incidente
+   */
+  async getRelatedShipment(shipmentId: string): Promise<{
+    id: string;
+    tracking_number: string;
+    status: string;
+    origin_address?: string;
+    destination_address?: string;
+    created_at: string;
+  } | null> {
+    const { data, error } = await supabase
+      .from('shipments')
+      .select('id, tracking_number, status, origin_address, destination_address, created_at')
+      .eq('id', shipmentId)
+      .single();
+
+    if (error) return null;
+    return data;
+  }
+
+  /**
+   * Cierra un incidente y dispara notificación
+   */
+  async closeIncident(
+    incidentId: string,
+    closureData: {
+      resolution_summary?: string;
+      root_cause?: string;
+      corrective_actions?: string;
+      notify?: boolean;
+      organizationId?: number;
+    }
+  ): Promise<TransportIncident> {
+    // Cambiar estado a cerrado
+    const incident = await this.changeStatus(incidentId, 'closed', closureData);
+
+    // Si se requiere notificación
+    if (closureData.notify && closureData.organizationId && incident.assigned_to) {
+      try {
+        await supabase.from('notifications').insert({
+          organization_id: closureData.organizationId,
+          user_id: incident.assigned_to,
+          type: 'incident_closed',
+          title: 'Incidente cerrado',
+          message: `El incidente "${incident.title}" ha sido cerrado.`,
+          data: { incident_id: incidentId },
+          is_read: false,
+          created_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error('Error creando notificación:', e);
+      }
+    }
+
+    return incident;
+  }
+}
+
+// Interface para eventos de transporte
+export interface TransportEvent {
+  id: string;
+  reference_type: string;
+  reference_id: string;
+  event_type: string;
+  event_time: string;
+  stop_id?: string;
+  latitude?: number;
+  longitude?: number;
+  location_text?: string;
+  actor_type: string;
+  actor_id?: string;
+  description?: string;
+  payload?: Record<string, unknown>;
+  created_at: string;
+  sequence?: number;
+  external_event_id?: string;
+  source?: string;
 }
 
 export const incidentsService = new IncidentsService();

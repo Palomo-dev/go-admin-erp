@@ -144,7 +144,7 @@ export function ActividadForm({
                 <Calendar
                   mode="single"
                   selected={occurredAt}
-                  onSelect={(date) => date && setOccurredAt(date)}
+                  onSelect={(date: Date | undefined) => date && setOccurredAt(date)}
                   locale={es}
                   initialFocus
                 />

@@ -47,11 +47,17 @@ import {
   Wallet, 
   Banknote, 
   Building2,
-  GripVertical 
+  GripVertical,
+  Zap,
+  Settings
 } from "lucide-react";
+import Link from "next/link";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 
 // Componente SortableRow para filas arrastrables
+// Métodos que requieren integración con pasarela
+const GATEWAY_METHODS = ['payu', 'stripe', 'mp', 'mercadopago', 'wompi', 'conekta', 'paypal'];
+
 interface SortableRowProps {
   method: OrganizationPaymentMethod;
   getPaymentIcon: (code: string) => React.ReactNode;
@@ -93,36 +99,50 @@ function SortableRow({
   };
 
   const getIntegrationBadge = (code: string, gateway?: string) => {
+    const lowerCode = code.toLowerCase();
+    const requiresGateway = GATEWAY_METHODS.includes(lowerCode);
+    
+    // Si tiene gateway configurado, mostrar badge con estado conectado
     if (gateway) {
       return (
-        <Badge variant="outline" className="text-xs dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">
-          {gateway}
-        </Badge>
+        <Link 
+          href={`/app/integraciones/conexiones/nueva?provider=${lowerCode}&return=/app/finanzas/metodos-pago`}
+          className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
+        >
+          <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
+            {gateway}
+          </Badge>
+          <Settings className="h-3 w-3 text-gray-400" />
+        </Link>
       );
     }
     
-    const lowerCode = code.toLowerCase();
+    // Si requiere gateway pero no está configurado, mostrar botón para conectar
+    if (requiresGateway) {
+      return (
+        <Link 
+          href={`/app/integraciones/conexiones/nueva?provider=${lowerCode}&return=/app/finanzas/metodos-pago`}
+          className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
+        >
+          <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800">
+            <Zap className="h-3 w-3 mr-1" />
+            Conectar
+          </Badge>
+        </Link>
+      );
+    }
     
+    // Métodos nativos que no requieren integración externa
     if (lowerCode === 'nequi') {
       return <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800">Bancolombia</Badge>;
     } else if (lowerCode === 'daviplata') {
       return <Badge variant="outline" className="text-xs bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800">Davivienda</Badge>;
     } else if (lowerCode === 'pse') {
       return <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">ACH Colombia</Badge>;
-    } else if (lowerCode === 'payu') {
-      return <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">PayU Latam</Badge>;
-    } else if (lowerCode === 'mp') {
-      return <Badge variant="outline" className="text-xs bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800">Mercado Pago</Badge>;
     } else if (lowerCode === 'oxxo') {
       return <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800">OXXO Pay</Badge>;
     } else if (lowerCode === 'spei') {
       return <Badge variant="outline" className="text-xs bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800">Banxico SPEI</Badge>;
-    } else if (lowerCode === 'conekta') {
-      return <Badge variant="outline" className="text-xs bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800">Conekta</Badge>;
-    } else if (lowerCode === 'stripe') {
-      return <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800">Stripe</Badge>;
-    } else if (lowerCode === 'paypal') {
-      return <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">PayPal</Badge>;
     } else if (['cash', 'card', 'transfer', 'check', 'credit'].includes(lowerCode)) {
       return <Badge variant="secondary" className="text-xs dark:bg-gray-700 dark:text-gray-300">Nativo</Badge>;
     }
@@ -246,6 +266,20 @@ function SortableRow({
               <Edit className="mr-2 h-4 w-4" />
               Editar
             </DropdownMenuItem>
+            {GATEWAY_METHODS.includes(method.payment_method_code.toLowerCase()) && (
+              <>
+                <DropdownMenuSeparator className="dark:bg-gray-700" />
+                <DropdownMenuItem asChild>
+                  <Link 
+                    href={`/app/integraciones/conexiones/nueva?provider=${method.payment_method_code.toLowerCase()}&return=/app/finanzas/metodos-pago`}
+                    className="dark:text-gray-300 dark:focus:bg-gray-700 dark:focus:text-gray-100 cursor-pointer"
+                  >
+                    <Zap className="mr-2 h-4 w-4 text-blue-500" />
+                    Configurar Integración
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>

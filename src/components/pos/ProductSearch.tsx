@@ -356,14 +356,14 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
         <CardContent className="p-2 sm:p-3 md:p-4 flex-1 overflow-auto">
           {loading ? (
             <div className={cn(
-              "grid gap-4",
-              gridSize === 'large' ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+              "grid gap-2 sm:gap-4",
+              gridSize === 'large' ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
             )}>
               {[...Array(12)].map((_, i) => (
                 <Card key={i} className="overflow-hidden">
                   <div className={cn(
                     "bg-gray-100 dark:bg-gray-800 flex items-center justify-center",
-                    gridSize === 'large' ? "h-48" : "h-32"
+                    gridSize === 'large' ? "h-28 sm:h-36 md:h-48" : "h-24 sm:h-32"
                   )}>
                     <Skeleton className={cn(
                       "rounded",
@@ -414,7 +414,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
             <>
               <div className={cn(
                 "grid gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6",
-                gridSize === 'large' ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+                gridSize === 'large' ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
               )}>
                 {productsData.data.map((product: any) => (
                   <Card 
@@ -425,9 +425,9 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                     {/* Imagen del producto */}
                     <div className={cn(
                       "relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center overflow-hidden",
-                      gridSize === 'large' ? "h-48" : "h-32"
+                      gridSize === 'large' ? "h-28 sm:h-36 md:h-48" : "h-24 sm:h-32"
                     )}>
-                      {product.image ? (
+                      {product.image && product.image.startsWith('http') ? (
                         <Image
                           src={product.image}
                           alt={product.name}

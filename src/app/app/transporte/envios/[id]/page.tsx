@@ -189,7 +189,7 @@ export default function ShipmentDetailPage() {
   const handleRegisterCOD = async () => {
     if (!shipment || !organizationId) return;
     try {
-      await shipmentsService.registerCODPayment(shipmentId, organizationId, shipment.total_cost);
+      await shipmentsService.registerCODPayment(shipmentId, organizationId!, shipment.total_cost);
       toast({ title: 'Pago COD registrado' });
       loadData();
     } catch (error) {
@@ -221,14 +221,14 @@ export default function ShipmentDetailPage() {
     );
   }
 
-  const status = STATUS_CONFIG[shipment.status] || STATUS_CONFIG.pending;
+  const status = STATUS_CONFIG[shipment.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
   const paymentStatusConfig: Record<string, { label: string; color: string }> = {
     pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
     paid: { label: 'Pagado', color: 'bg-green-100 text-green-800' },
     cod: { label: 'Contra Entrega', color: 'bg-blue-100 text-blue-800' },
     cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800' },
   };
-  const paymentStatus = paymentStatusConfig[shipment.payment_status] || paymentStatusConfig.pending;
+  const paymentStatus = paymentStatusConfig[shipment.payment_status as keyof typeof paymentStatusConfig] || paymentStatusConfig.pending;
 
   return (
     <div className="p-6 space-y-6">
@@ -526,3 +526,4 @@ export default function ShipmentDetailPage() {
     </div>
   );
 }
+

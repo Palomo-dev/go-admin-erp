@@ -302,8 +302,8 @@ export default function HorariosPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas las sedes</SelectItem>
-                    {branches.map((branch) => (
-                      <SelectItem key={branch.id} value={branch.id.toString()}>
+                    {branches.filter(b => b.id).map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id!.toString()}>
                         {branch.name}
                       </SelectItem>
                     ))}

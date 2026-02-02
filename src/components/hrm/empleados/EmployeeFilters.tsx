@@ -287,7 +287,7 @@ export function EmployeeFiltersComponent({
                 <Calendar
                   mode="single"
                   selected={filters.hireDateFrom ? new Date(filters.hireDateFrom) : undefined}
-                  onSelect={(date) =>
+                  onSelect={(date: Date | undefined) =>
                     onFiltersChange({
                       ...filters,
                       hireDateFrom: date ? format(date, 'yyyy-MM-dd') : '',
@@ -318,7 +318,7 @@ export function EmployeeFiltersComponent({
                 <Calendar
                   mode="single"
                   selected={filters.hireDateTo ? new Date(filters.hireDateTo) : undefined}
-                  onSelect={(date) =>
+                  onSelect={(date: Date | undefined) =>
                     onFiltersChange({
                       ...filters,
                       hireDateTo: date ? format(date, 'yyyy-MM-dd') : '',

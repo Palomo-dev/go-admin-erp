@@ -92,7 +92,7 @@ export function TripPassengersList({
       ticket.passenger_name?.toLowerCase().includes(search) ||
       ticket.passenger_doc?.toLowerCase().includes(search) ||
       ticket.seat_number?.toLowerCase().includes(search) ||
-      ticket.customers?.name?.toLowerCase().includes(search)
+      ticket.customers?.full_name?.toLowerCase().includes(search)
     );
   });
 

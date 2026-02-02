@@ -21,6 +21,7 @@ import {
   LockClosedIcon,
   KeyIcon
 } from '@heroicons/react/24/outline';
+import { Dumbbell, ParkingCircle } from 'lucide-react';
 
 interface Module {
   name: string;
@@ -126,6 +127,22 @@ const modules: Module[] = [
     icon: TruckIcon,
     description: 'Logística y envíos',
     color: 'from-blue-600 to-blue-700',
+    category: 'business'
+  },
+  {
+    name: 'Parqueadero',
+    path: '/app/parking',
+    icon: ParkingCircle,
+    description: 'Gestión de parqueadero',
+    color: 'from-slate-500 to-slate-600',
+    category: 'business'
+  },
+  {
+    name: 'Gimnasio',
+    path: '/app/gym',
+    icon: Dumbbell,
+    description: 'Gestión de gimnasio',
+    color: 'from-rose-500 to-rose-600',
     category: 'business'
   },
   {

@@ -76,6 +76,8 @@ export interface ShipmentWithDetails {
 
 export interface ShipmentFilters {
   status?: string;
+  payment_status?: string;
+  tripId?: string;
   dateFrom?: string;
   dateTo?: string;
   search?: string;

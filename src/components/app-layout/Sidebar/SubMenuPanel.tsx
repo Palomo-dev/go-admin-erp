@@ -64,7 +64,13 @@ import {
   LogIn,
   CalendarCheck,
   Ticket,
-  Search
+  Search,
+  LayoutGrid,
+  Link2,
+  Send,
+  GitMerge,
+  Upload,
+  History,
 } from 'lucide-react';
 
 // Mapa de iconos mejorado para los submenús
@@ -154,6 +160,11 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Promociones': <Percent size={16} />,
     'Cuentas por Cobrar': <DollarSign size={16} />,
     
+    // Calendario Unificado
+    'Vista General': <CalendarDays size={16} />,
+    'Recurrencias': <GitMerge size={16} />,
+    'Importar': <Upload size={16} />,
+    
     // PMS
     'Calendario': <CalendarDays size={16} />,
     'Reservas': <BookOpen size={16} />,
@@ -170,9 +181,9 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Origenes': <Globe size={16} />,
     'Parquedero': <ParkingCircle size={16} />,
     
-    // Parking
+    // Parking (los iconos vienen del subItem.icon, esto es fallback)
     'Operación': <ParkingCircle size={16} />,
-    'Abonados': <CreditCard size={16} />,
+    'Mapa': <LayoutGrid size={16} />,
     
     // Chat
     'Canales': <MessageSquare size={16} />,
@@ -214,9 +225,21 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Envíos': <Package size={16} />,
     'Tarifas Envío': <DollarSign size={16} />,
     'Tracking': <Search size={16} />,
-    'Etiquetas': <Tag size={16} />,
+    'Etiquetas Envío': <Tag size={16} />,
     'Manifiestos': <ClipboardList size={16} />,
     'Incidentes': <Shield size={16} />,
+    
+    // Integraciones
+    'Conexiones': <Link2 size={16} />,
+    'Eventos': <Activity size={16} />,
+    'Jobs': <Briefcase size={16} />,
+    'Mapeos': <GitMerge size={16} />,
+    'API Keys': <Key size={16} />,
+    'Webhooks': <Send size={16} />,
+    
+    // Timeline
+    'Timeline': <History size={16} />,
+    'Exportaciones': <FileText size={16} />,
   };
 
   return iconMap[name] || <FileText size={16} />;
@@ -246,11 +269,11 @@ const SubMenuPanelComponent = ({
   }
 
   // Función para determinar si un item está activo
-  // Dashboard/Panel solo se marca como activo si la ruta es exactamente igual
+  // Dashboard/Panel/Vista General solo se marca como activo si la ruta es exactamente igual
   const isItemActive = (itemHref: string, itemName: string): boolean => {
-    const isDashboardItem = itemName === 'Dashboard' || itemName === 'Panel HRM' || itemName === 'POS';
+    const isExactMatchItem = itemName === 'Dashboard' || itemName === 'Panel HRM' || itemName === 'POS' || itemName === 'Vista General';
     
-    if (isDashboardItem) {
+    if (isExactMatchItem) {
       // Solo activo si la ruta es exactamente igual
       return pathname === itemHref;
     }

@@ -16,6 +16,19 @@ import {
 } from '@/components/ui/dropdown-menu';
 import MessageBubble from './MessageBubble';
 import ChatInput from './ChatInput';
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+=======
+import FullScreenChatDialog from './FullScreenChatDialog';
+import { ChatSidePanel, ChatPanelType } from './ChatSidePanel';
+import CustomerProfilePanel from './CustomerProfilePanel';
+import SearchPanel from './SearchPanel';
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
 import { supabase } from '@/lib/supabase/config';
 import { Conversation } from '@/lib/services/conversationsService';
 
@@ -50,6 +63,15 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+=======
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  
+  // Estados para los nuevos componentes
+  const [showFullScreen, setShowFullScreen] = useState(false);
+  const [activePanel, setActivePanel] = useState<ChatPanelType>(null);
+  
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -215,10 +237,35 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
     }
   };
 
+  const getPanelTitle = () => {
+    switch (activePanel) {
+      case 'profile':
+        return 'Perfil del Cliente';
+      case 'search':
+        return 'Buscar en Conversación';
+      default:
+        return '';
+    }
+  };
+
   return (
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
     <div className="h-full flex flex-col bg-white dark:bg-gray-900">
       {/* Header */}
       <div className="border-b dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 flex items-center justify-between">
+=======
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+    <div className="h-full flex bg-white dark:bg-gray-900">
+      {/* Área principal del chat */}
+      <div className="flex-1 flex flex-col min-w-0">
+      {/* Header - sticky para que siempre sea visible */}
+      <div className="sticky top-0 z-20 border-b dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 flex items-center justify-between flex-shrink-0">
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {/* Botón toggle sidebar (desktop) */}
           {onToggleSidebar && (
@@ -304,8 +351,25 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
                 <Maximize2 className="h-4 w-4 mr-2" />
                 Abrir vista completa
               </DropdownMenuItem>
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
               <DropdownMenuItem>Ver perfil del cliente</DropdownMenuItem>
               <DropdownMenuItem>Buscar en conversación</DropdownMenuItem>
+=======
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+              <DropdownMenuItem onClick={() => setActivePanel(activePanel === 'profile' ? null : 'profile')}>
+                <User className="h-4 w-4 mr-2" />
+                Ver perfil del cliente
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setActivePanel(activePanel === 'search' ? null : 'search')}>
+                <Search className="h-4 w-4 mr-2" />
+                Buscar en conversación
+              </DropdownMenuItem>
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-red-600">
                 Cerrar conversación
@@ -366,6 +430,52 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
         }
         organizationId={organizationId}
       />
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+=======
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+      </div>
+
+      {/* Panel lateral (perfil/búsqueda) */}
+      <ChatSidePanel
+        isOpen={!!activePanel}
+        onClose={() => setActivePanel(null)}
+        activePanel={activePanel}
+        title={getPanelTitle()}
+      >
+        {activePanel === 'profile' && (
+          <CustomerProfilePanel
+            conversation={conversation}
+            organizationId={organizationId}
+          />
+        )}
+        {activePanel === 'search' && (
+          <SearchPanel
+            conversation={conversation}
+            onScrollToMessage={handleScrollToMessage}
+          />
+        )}
+      </ChatSidePanel>
+
+      {/* Dialog de vista completa */}
+      <FullScreenChatDialog
+        open={showFullScreen}
+        onOpenChange={setShowFullScreen}
+        conversation={conversation}
+        onSendMessage={onSendMessage}
+        organizationId={organizationId}
+      />
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+<<<<<<< C:/Users/USUARIO/CascadeProjects/go-admin-erp/src/components/chat/inbox/ChatView.tsx
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
+=======
+>>>>>>> C:/Users/USUARIO/.windsurf/worktrees/go-admin-erp/go-admin-erp-7192b2c7/src/components/chat/inbox/ChatView.tsx
     </div>
   );
 }

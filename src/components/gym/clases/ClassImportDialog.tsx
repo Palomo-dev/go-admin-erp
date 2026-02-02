@@ -386,8 +386,8 @@ CrossFit Intenso,crossfit,2025-02-01,18:00,19:00,12,Box CrossFit,Carlos López,P
                     <SelectValue placeholder="Seleccionar sede" />
                   </SelectTrigger>
                   <SelectContent>
-                    {branches.map(branch => (
-                      <SelectItem key={branch.id} value={branch.id.toString()}>
+                    {branches.filter(b => b.id).map(branch => (
+                      <SelectItem key={branch.id} value={branch.id!.toString()}>
                         {branch.name}
                       </SelectItem>
                     ))}

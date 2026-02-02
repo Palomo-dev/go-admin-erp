@@ -28,7 +28,7 @@ interface Trip {
   trip_date: string;
   scheduled_departure?: string;
   available_seats?: number;
-  transport_routes?: { name: string } | { name: string }[];
+  transport_routes?: { name: string };
 }
 
 interface Stop {
@@ -86,7 +86,17 @@ export default function BoletosPage() {
 
       setTickets(ticketsData);
       setStats(statsData);
-      setTrips(tripsData);
+      // Mapear trips para compatibilidad de tipos
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedTrips: Trip[] = (tripsData as any[]).map((t) => ({
+        id: t.id,
+        trip_code: t.trip_code,
+        trip_date: t.trip_date,
+        scheduled_departure: t.scheduled_departure,
+        available_seats: t.available_seats,
+        transport_routes: Array.isArray(t.transport_routes) ? t.transport_routes[0] : t.transport_routes,
+      }));
+      setTrips(mappedTrips);
       setStops(stopsData);
     } catch (error) {
       console.error('Error loading tickets:', error);

@@ -96,7 +96,7 @@ export function AddEventDialog({
         stop_id: formData.stop_id || undefined,
         description: formData.description || undefined,
         location_text: formData.location_text || undefined,
-        source: 'manual',
+        source: 'internal' as const,
       });
 
       onSuccess();

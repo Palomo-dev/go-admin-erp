@@ -50,7 +50,7 @@ export interface ActiveSession {
 
 export interface ExpiringPass {
   id: string;
-  vehicle_plate: string;
+  vehicles: Array<{ plate: string; is_primary: boolean }>;
   customer_name: string;
   plan_name: string;
   end_date: string;
@@ -222,10 +222,13 @@ class ParkingDashboardService {
         .from('parking_passes')
         .select(`
           id,
-          vehicle_plate,
           plan_name,
           end_date,
-          customers(full_name)
+          customers(full_name),
+          vehicles:parking_pass_vehicles(
+            is_primary,
+            vehicle:parking_vehicles(plate)
+          )
         `)
         .eq('organization_id', organizationId)
         .eq('status', 'active')
@@ -235,13 +238,15 @@ class ParkingDashboardService {
 
       if (error) {
         console.error('Error en query parking_passes:', error);
-        // Retornar array vacío en lugar de lanzar error para no bloquear el dashboard
         return [];
       }
 
       return (data || []).map(pass => ({
         id: pass.id,
-        vehicle_plate: pass.vehicle_plate,
+        vehicles: ((pass as any).vehicles || []).map((v: any) => ({
+          plate: v.vehicle?.plate || '',
+          is_primary: v.is_primary,
+        })),
         customer_name: (pass.customers as any)?.full_name || 'Sin nombre',
         plan_name: pass.plan_name,
         end_date: pass.end_date,
@@ -249,7 +254,6 @@ class ParkingDashboardService {
       }));
     } catch (error) {
       console.error('Error obteniendo pases por vencer:', error);
-      // Retornar array vacío para no bloquear el dashboard
       return [];
     }
   }

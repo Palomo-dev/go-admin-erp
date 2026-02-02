@@ -330,7 +330,7 @@ export default function EditarTurnoPage() {
                       <Calendar
                         mode="single"
                         selected={formData.work_date ? new Date(formData.work_date) : undefined}
-                        onSelect={(date) =>
+                        onSelect={(date: Date | undefined) =>
                           setFormData({
                             ...formData,
                             work_date: date ? format(date, 'yyyy-MM-dd') : '',

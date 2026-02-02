@@ -169,11 +169,11 @@ export function DeliveryTrackingCard({
         {/* Número de tracking */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Tracking:</span>
-          <span className="font-mono font-medium">{shipment.tracking_number}</span>
+          <span className="font-mono font-medium">{shipment.tracking_number as string}</span>
         </div>
 
-        {/* Vehículo y conductor asignados */}
-        {(shipment.metadata as Record<string, unknown>)?.vehicle_id && (
+        {/* Vehiculo y conductor asignados */}
+        {Boolean((shipment.metadata as Record<string, unknown>)?.vehicle_id) && (
           <>
             <Separator />
             <div className="space-y-2">

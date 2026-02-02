@@ -69,6 +69,8 @@ export interface AppHeaderProps {
   handleSignOut: () => Promise<void>;
   loading: boolean;
   setSidebarOpen?: (open: boolean) => void;
+  aiAssistantOpen?: boolean;
+  onToggleAIAssistant?: () => void;
 }
 
 export interface UserMenuProps {

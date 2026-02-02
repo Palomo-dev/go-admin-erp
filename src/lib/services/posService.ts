@@ -20,6 +20,15 @@ import {
   HoldWithDebtResult
 } from '../../components/pos/types';
 
+// Función para obtener URL de imagen desde storage path usando el cliente de supabase
+const getStorageImageUrl = (storagePath: string): string => {
+  if (!storagePath) return '';
+  const { data } = supabase.storage
+    .from('organization_images')
+    .getPublicUrl(storagePath);
+  return data?.publicUrl || '';
+};
+
 export class POSService {
   private static organizationId = getOrganizationId();
   private static branchId: number | null = null;
@@ -106,9 +115,7 @@ export class POSService {
       return data?.map((product: any) => ({
         ...product,
         category: product.categories,
-        image: productImages[product.id] ? 
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImages[product.id]}` :
-          null
+        image: productImages[product.id] ? getStorageImageUrl(productImages[product.id]) : null
       })) || [];
     } catch (error) {
       console.error('Error searching products:', error);
@@ -223,8 +230,7 @@ export class POSService {
         variant_count: variantCountMap[product.id] || 0,
         // Mantener compatibilidad con código que use 'image'
         image: productImagesMap[product.id]?.[0]?.storage_path ? 
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImagesMap[product.id][0].storage_path}` :
-          null
+          getStorageImageUrl(productImagesMap[product.id][0].storage_path) : null
       })) || [];
 
       return {
@@ -280,8 +286,7 @@ export class POSService {
         price: variant.product_prices?.[0]?.price || null,
         product_images: variantImagesMap[variant.id] || [],
         image: variantImagesMap[variant.id]?.[0]?.storage_path ? 
-          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${variantImagesMap[variant.id][0].storage_path}` :
-          null
+          getStorageImageUrl(variantImagesMap[variant.id][0].storage_path) : null
       })) || [];
     } catch (error) {
       console.error('Error getting product variants:', error);

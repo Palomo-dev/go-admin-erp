@@ -19,9 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, Plus, X, Car } from 'lucide-react';
 import ParkingService, { type ParkingPass, type ParkingPassType } from '@/lib/services/parkingService';
 import { addDays, format } from 'date-fns';
+
+interface VehicleInput {
+  plate: string;
+  brand: string;
+  model: string;
+  color: string;
+  vehicle_type: string;
+  is_primary: boolean;
+}
 
 interface PassDialogProps {
   open: boolean;
@@ -39,6 +48,15 @@ interface Customer {
   phone?: string;
 }
 
+const emptyVehicle: VehicleInput = {
+  plate: '',
+  brand: '',
+  model: '',
+  color: '',
+  vehicle_type: 'car',
+  is_primary: false,
+};
+
 export function PassDialog({ 
   open, 
   onOpenChange, 
@@ -48,7 +66,7 @@ export function PassDialog({
   onSave 
 }: PassDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [vehiclePlate, setVehiclePlate] = useState('');
+  const [vehicles, setVehicles] = useState<VehicleInput[]>([{ ...emptyVehicle, is_primary: true }]);
   const [selectedPassTypeId, setSelectedPassTypeId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -65,7 +83,17 @@ export function PassDialog({
   useEffect(() => {
     if (open) {
       if (pass) {
-        setVehiclePlate(pass.vehicle_plate);
+        // Cargar vehículos existentes
+        const existingVehicles = pass.vehicles?.map(v => ({
+          plate: v.vehicle?.plate || '',
+          brand: v.vehicle?.brand || '',
+          model: v.vehicle?.model || '',
+          color: v.vehicle?.color || '',
+          vehicle_type: v.vehicle?.vehicle_type || 'car',
+          is_primary: v.is_primary,
+        })) || [{ ...emptyVehicle, is_primary: true }];
+        
+        setVehicles(existingVehicles.length > 0 ? existingVehicles : [{ ...emptyVehicle, is_primary: true }]);
         setSelectedPassTypeId(pass.pass_type_id || '');
         setStartDate(pass.start_date);
         setEndDate(pass.end_date);
@@ -76,7 +104,7 @@ export function PassDialog({
       } else {
         // Default values for new pass
         const today = new Date();
-        setVehiclePlate('');
+        setVehicles([{ ...emptyVehicle, is_primary: true }]);
         setSelectedPassTypeId('');
         setStartDate(format(today, 'yyyy-MM-dd'));
         setEndDate(format(addDays(today, 30), 'yyyy-MM-dd'));
@@ -114,36 +142,68 @@ export function PassDialog({
     }
   };
 
+  // Funciones para gestionar vehículos
+  const addVehicle = () => {
+    setVehicles([...vehicles, { ...emptyVehicle }]);
+  };
+
+  const removeVehicle = (index: number) => {
+    if (vehicles.length > 1) {
+      const newVehicles = vehicles.filter((_, i) => i !== index);
+      // Si eliminamos el primario, hacer primario al primero
+      if (vehicles[index].is_primary && newVehicles.length > 0) {
+        newVehicles[0].is_primary = true;
+      }
+      setVehicles(newVehicles);
+    }
+  };
+
+  const updateVehicle = (index: number, field: keyof VehicleInput, value: string | boolean) => {
+    const newVehicles = [...vehicles];
+    if (field === 'is_primary' && value === true) {
+      // Solo uno puede ser primario
+      newVehicles.forEach((v, i) => {
+        v.is_primary = i === index;
+      });
+    } else {
+      (newVehicles[index] as any)[field] = value;
+    }
+    setVehicles(newVehicles);
+  };
+
+  const hasValidVehicles = vehicles.some(v => v.plate.trim() !== '');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedCustomer || !vehiclePlate.trim() || !selectedPassTypeId) {
+    if (!selectedCustomer || !hasValidVehicles || !selectedPassTypeId) {
       return;
     }
 
     const passType = passTypes.find(pt => pt.id === selectedPassTypeId);
+    const validVehicles = vehicles.filter(v => v.plate.trim() !== '');
 
     setIsSubmitting(true);
     try {
       if (isEditMode && pass) {
         await ParkingService.updatePass(pass.id, {
-          vehicle_plate: vehiclePlate.toUpperCase().trim(),
           pass_type_id: selectedPassTypeId,
           start_date: startDate,
           end_date: endDate,
           price: parseFloat(price),
           plan_name: passType?.name || '',
+          vehicles: validVehicles,
         });
       } else {
         await ParkingService.createPass({
           organization_id: organizationId,
           customer_id: selectedCustomer.id,
-          vehicle_plate: vehiclePlate.toUpperCase().trim(),
           pass_type_id: selectedPassTypeId,
           start_date: startDate,
           end_date: endDate,
           price: parseFloat(price),
           plan_name: passType?.name || '',
+          vehicles: validVehicles,
         });
       }
       onSave();
@@ -240,17 +300,109 @@ export function PassDialog({
             )}
           </div>
 
-          {/* Placa */}
-          <div className="space-y-2">
-            <Label htmlFor="vehicle_plate">Placa del Vehículo *</Label>
-            <Input
-              id="vehicle_plate"
-              placeholder="ABC123"
-              value={vehiclePlate}
-              onChange={(e) => setVehiclePlate(e.target.value)}
-              className="uppercase"
-              required
-            />
+          {/* Vehículos */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Vehículos *</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addVehicle}
+                className="h-7 text-xs"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Agregar
+              </Button>
+            </div>
+            
+            <div className="space-y-3 max-h-48 overflow-y-auto">
+              {vehicles.map((vehicle, index) => (
+                <div 
+                  key={index} 
+                  className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Car className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium">Vehículo {index + 1}</span>
+                      {vehicle.is_primary && (
+                        <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                    {vehicles.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeVehicle(index)}
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Placa *"
+                      value={vehicle.plate}
+                      onChange={(e) => updateVehicle(index, 'plate', e.target.value.toUpperCase())}
+                      className="uppercase text-sm"
+                    />
+                    <Select 
+                      value={vehicle.vehicle_type} 
+                      onValueChange={(val) => updateVehicle(index, 'vehicle_type', val)}
+                    >
+                      <SelectTrigger className="text-sm">
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="car">Carro</SelectItem>
+                        <SelectItem value="motorcycle">Moto</SelectItem>
+                        <SelectItem value="truck">Camioneta</SelectItem>
+                        <SelectItem value="other">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input
+                      placeholder="Marca"
+                      value={vehicle.brand}
+                      onChange={(e) => updateVehicle(index, 'brand', e.target.value)}
+                      className="text-sm"
+                    />
+                    <Input
+                      placeholder="Modelo"
+                      value={vehicle.model}
+                      onChange={(e) => updateVehicle(index, 'model', e.target.value)}
+                      className="text-sm"
+                    />
+                    <Input
+                      placeholder="Color"
+                      value={vehicle.color}
+                      onChange={(e) => updateVehicle(index, 'color', e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  {!vehicle.is_primary && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      onClick={() => updateVehicle(index, 'is_primary', true)}
+                      className="h-6 p-0 text-xs text-blue-600"
+                    >
+                      Marcar como principal
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Tipo de Plan */}
@@ -319,7 +471,7 @@ export function PassDialog({
             </Button>
             <Button 
               type="submit" 
-              disabled={isSubmitting || !selectedCustomer || !vehiclePlate.trim() || !selectedPassTypeId}
+              disabled={isSubmitting || !selectedCustomer || !hasValidVehicles || !selectedPassTypeId}
             >
               {isSubmitting ? (
                 <>

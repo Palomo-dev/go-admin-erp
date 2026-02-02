@@ -13,6 +13,15 @@ import {
   PaginatedSaleResponse 
 } from './types';
 
+// Función helper para obtener URL pública de imagen
+const getStorageImageUrl = (storagePath: string): string => {
+  if (!storagePath) return '';
+  const { data } = supabase.storage
+    .from('organization_images')
+    .getPublicUrl(storagePath);
+  return data?.publicUrl || '';
+};
+
 export class DevolucionesService {
   private static getOrganizationId(): number {
     const org = obtenerOrganizacionActiva();
@@ -239,9 +248,7 @@ export class DevolucionesService {
               id: product.id,
               name: product.name,
               sku: product.sku,
-              image: productImages[product.id] ? 
-                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImages[product.id]}` :
-                null
+              image: productImages[product.id] ? getStorageImageUrl(productImages[product.id]) : null
             } : {
               id: 0,
               name: 'Producto no encontrado',
@@ -448,9 +455,7 @@ export class DevolucionesService {
               id: product.id,
               name: product.name,
               sku: product.sku,
-              image: productImages[product.id] ? 
-                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImages[product.id]}` :
-                null
+              image: productImages[product.id] ? getStorageImageUrl(productImages[product.id]) : null
             } : {
               id: 0,
               name: 'Producto no encontrado',

@@ -58,7 +58,20 @@ import {
   Plus,
   Calculator,
   Zap,
-  TrendingDown
+  TrendingDown,
+  Dumbbell,
+  LogIn,
+  CalendarCheck,
+  Ticket,
+  Search,
+  Bus,
+  ListChecks,
+  LayoutGrid,
+  Link2,
+  Send,
+  GitMerge,
+  Upload,
+  History,
 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
@@ -67,9 +80,11 @@ import { getUserData } from '@/lib/services/userService';
 import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { SubMenuPanel } from './Sidebar/SubMenuPanel';
+import AIAssistantPanel from './Header/AIAssistantPanel';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { usePathname } from 'next/navigation';
 import { NavItemProps } from './types';
+import type { AssistantContext } from '@/lib/services/aiAssistantService';
 
 // Importaciones estándar para evitar ChunkLoadError
 import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
@@ -233,6 +248,17 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     ]
   },
   { 
+    name: "Calendario", 
+    href: "/app/calendario", 
+    icon: <CalendarDays size={18} />,
+    submenu: [
+      { name: "Vista General", href: "/app/calendario", icon: <CalendarDays size={16} /> },
+      { name: "Recurrencias", href: "/app/calendario/recurrencias", icon: <GitMerge size={16} /> },
+      { name: "Importar", href: "/app/calendario/importar", icon: <Upload size={16} /> },
+      { name: "Configuración", href: "/app/calendario/configuracion", icon: <Settings size={16} /> },
+    ]
+  },
+  { 
     name: "Organización", 
     href: "/app/organizacion", 
     icon: <Building2 size={18} />,
@@ -257,18 +283,37 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
   { 
     name: "Gimnasio", 
     href: "/app/gym", 
-    icon: <Activity size={18} />,
+    icon: <Dumbbell size={18} />,
     submenu: [
       { name: "Dashboard", href: "/app/gym", icon: <Home size={16} /> },
-      { name: "Check-in", href: "/app/gym/checkin", icon: <UserCheck size={16} /> },
+      { name: "Check-in", href: "/app/gym/checkin", icon: <LogIn size={16} /> },
       { name: "Membresías", href: "/app/gym/membresias", icon: <Users size={16} /> },
       { name: "Planes", href: "/app/gym/planes", icon: <CreditCard size={16} /> },
       { name: "Clases", href: "/app/gym/clases", icon: <Calendar size={16} /> },
       { name: "Horarios", href: "/app/gym/horarios", icon: <Clock size={16} /> },
-      { name: "Reservaciones", href: "/app/gym/reservaciones", icon: <CalendarDays size={16} /> },
+      { name: "Reservaciones", href: "/app/gym/reservaciones", icon: <CalendarCheck size={16} /> },
       { name: "Instructores", href: "/app/gym/instructores", icon: <User size={16} /> },
       { name: "Reportes", href: "/app/gym/reportes", icon: <BarChart3 size={16} /> },
       { name: "Configuración", href: "/app/gym/ajustes", icon: <Settings size={16} /> }
+    ]
+  },
+  { 
+    name: "Parqueadero", 
+    href: "/app/parking", 
+    icon: <ParkingCircle size={18} />,
+    submenu: [
+      { name: "Dashboard", href: "/app/parking", icon: <Home size={16} /> },
+      { name: "Operación", href: "/app/parking/operacion", icon: <ParkingCircle size={16} /> },
+      { name: "Sesiones", href: "/app/parking/sesiones", icon: <Clock size={16} /> },
+      { name: "Abonados", href: "/app/parking/abonados", icon: <Users size={16} /> },
+      { name: "Planes", href: "/app/parking/planes", icon: <ListChecks size={16} /> },
+      { name: "Pagos", href: "/app/parking/pagos", icon: <Wallet size={16} /> },
+      { name: "Tarifas", href: "/app/parking/tarifas", icon: <Receipt size={16} /> },
+      { name: "Espacios", href: "/app/parking/espacios", icon: <LayoutGrid size={16} /> },
+      { name: "Zonas", href: "/app/parking/zonas", icon: <MapPin size={16} /> },
+      { name: "Mapa", href: "/app/parking/mapa", icon: <LayoutGrid size={16} /> },
+      { name: "Reportes", href: "/app/parking/reportes", icon: <BarChart3 size={16} /> },
+      { name: "Configuración", href: "/app/parking/configuracion", icon: <Settings size={16} /> },
     ]
   },
   { 
@@ -293,6 +338,31 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Etiquetas", href: "/app/transporte/etiquetas", icon: <Tag size={16} /> },
       { name: "Manifiestos", href: "/app/transporte/manifiestos", icon: <ClipboardList size={16} /> },
       { name: "Incidentes", href: "/app/transporte/incidentes", icon: <Shield size={16} /> },
+    ]
+  },
+  { 
+    name: "Integraciones", 
+    href: "/app/integraciones", 
+    icon: <Link2 size={18} />,
+    submenu: [
+      { name: "Dashboard", href: "/app/integraciones", icon: <Home size={16} /> },
+      { name: "Conexiones", href: "/app/integraciones/conexiones", icon: <Link2 size={16} /> },
+      { name: "Eventos", href: "/app/integraciones/eventos", icon: <Activity size={16} /> },
+      { name: "Jobs", href: "/app/integraciones/jobs", icon: <Briefcase size={16} /> },
+      { name: "Mapeos", href: "/app/integraciones/mapeos", icon: <GitMerge size={16} /> },
+      { name: "API Keys", href: "/app/integraciones/api-keys", icon: <Key size={16} /> },
+      { name: "Webhooks", href: "/app/integraciones/webhooks-salientes", icon: <Send size={16} /> },
+      { name: "Configuración", href: "/app/integraciones/configuracion", icon: <Settings size={16} /> },
+    ]
+  },
+  { 
+    name: "Timeline", 
+    href: "/app/timeline", 
+    icon: <History size={18} />,
+    submenu: [
+      { name: "Vista General", href: "/app/timeline", icon: <History size={16} /> },
+      { name: "Exportaciones", href: "/app/timeline/exportaciones", icon: <FileText size={16} /> },
+      { name: "Configuración", href: "/app/timeline/configuracion", icon: <Settings size={16} /> },
     ]
   },
 ];
@@ -373,6 +443,9 @@ export const AppLayout = ({
   
   // Estado para controlar el panel de submenú Multi-Column
   const [subMenuPanelOpen, setSubMenuPanelOpen] = useState(true);
+  
+  // Estado para controlar el panel del Asistente de IA
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   
   // Referencia al módulo anterior para detectar cambios (useRef para evitar re-renders)
   const previousModuleHrefRef = useRef<string | null>(null);
@@ -900,6 +973,8 @@ export const AppLayout = ({
           handleSignOut={handleSignOut}
           loading={loading}
           setSidebarOpen={setSidebarOpen}
+          aiAssistantOpen={aiAssistantOpen}
+          onToggleAIAssistant={() => setAiAssistantOpen(!aiAssistantOpen)}
         />
         
         {/* Contenido principal con scroll */}
@@ -909,6 +984,30 @@ export const AppLayout = ({
           </div>
         </div>
       </div>
+      
+      {/* Panel del Asistente de IA - al lado derecho */}
+      <AIAssistantPanel 
+        isOpen={aiAssistantOpen}
+        onToggle={() => setAiAssistantOpen(!aiAssistantOpen)}
+        context={{
+          organizationId: orgId ? parseInt(orgId) : 0,
+          organizationName: orgName,
+          userName: userData?.name || userData?.email?.split('@')[0] || 'Usuario',
+          userRole: userData?.role || 'Empleado',
+        } as AssistantContext}
+      />
+      
+      {/* Botón flotante para abrir el panel de IA cuando está cerrado */}
+      {!aiAssistantOpen && (
+        <button
+          onClick={() => setAiAssistantOpen(true)}
+          className="hidden lg:flex items-center justify-center h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white rounded-l-lg shadow-lg transition-all duration-200 fixed right-0 top-1/2 -translate-y-1/2 z-40"
+          aria-label="Abrir GO Assistant"
+          title="GO Assistant"
+        >
+          <Bot size={20} />
+        </button>
+      )}
       
       {/* Notificación de límites de módulos */}
       <ModuleLimitNotification 

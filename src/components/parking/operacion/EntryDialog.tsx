@@ -81,7 +81,7 @@ export function EntryDialog({
       await onSubmit({
         vehicle_plate: vehiclePlate.toUpperCase().trim(),
         vehicle_type: vehicleType,
-        parking_space_id: selectedSpace || undefined,
+        parking_space_id: selectedSpace && selectedSpace !== 'none' ? selectedSpace : undefined,
         notes: notes.trim() || undefined,
       });
       onOpenChange(false);
@@ -157,7 +157,7 @@ export function EntryDialog({
                 <SelectValue placeholder="Seleccionar espacio" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Sin asignar</SelectItem>
+                <SelectItem value="none">Sin asignar</SelectItem>
                 {filteredSpaces.map((space) => (
                   <SelectItem key={space.id} value={space.id}>
                     {space.label} {space.zone && `(${space.zone})`}

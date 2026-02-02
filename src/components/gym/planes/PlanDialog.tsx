@@ -69,7 +69,7 @@ export function PlanDialog({ open, onOpenChange, plan, onSave }: PlanDialogProps
         frequency: plan.frequency || 'monthly',
         is_active: plan.is_active
       });
-      setAccessRules(plan.access_rules as AccessRules || null);
+      setAccessRules((plan.access_rules as unknown) as AccessRules || null);
       
       const preset = DURATION_PRESETS.find(p => p.value === plan.duration_days);
       if (preset) {
@@ -112,7 +112,7 @@ export function PlanDialog({ open, onOpenChange, plan, onSave }: PlanDialogProps
       setIsSaving(true);
       await onSave({
         ...formData,
-        access_rules: accessRules
+        access_rules: accessRules as unknown as Record<string, unknown> | undefined
       });
       onOpenChange(false);
     } catch (error) {

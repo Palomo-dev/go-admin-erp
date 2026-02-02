@@ -48,11 +48,13 @@ interface ParkingSessionDrawerProps {
 const statusLabels: Record<string, string> = {
   open: 'Activa',
   closed: 'Completada',
+  cancelled: 'Cancelada',
 };
 
 const statusColors: Record<string, string> = {
   open: 'bg-green-500',
   closed: 'bg-gray-500',
+  cancelled: 'bg-red-500',
 };
 
 export function ParkingSessionDrawer({

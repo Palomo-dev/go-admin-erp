@@ -202,7 +202,7 @@ Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <AccountStatusBadge status={account.status} />
-          {accountActions?.canApplyPayment && (
+          {accountActions?.canRegisterPayment && (
             <Button
               variant="default"
               size="sm"

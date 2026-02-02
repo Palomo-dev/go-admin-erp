@@ -142,7 +142,7 @@ export function PlanCard({ plan, onEdit, onDuplicate, onToggleStatus }: PlanCard
             <TooltipProvider>
               <div className="flex items-center gap-2 flex-wrap">
                 {(() => {
-                  const rules = plan.access_rules as AccessRules;
+                  const rules = plan.access_rules as unknown as AccessRules;
                   const badges = [];
                   
                   if (rules.all_branches === false && rules.allowed_branches?.length > 0) {

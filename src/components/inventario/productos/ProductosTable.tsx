@@ -106,27 +106,23 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       
       console.log('Received product images data:', data);
       
-      // Crear un mapa de productId -> storage_path directamente
+      // Crear un mapa de productId -> URL pública
       const imageMap: Record<string | number, string> = {};
       if (data && data.length > 0) {
-        console.log('Processing', data.length, 'product images');
-        
         data.forEach((img: ProductImage) => {
-          if (!img.storage_path) {
-            console.warn(`Missing storage_path for image ID ${img.id}, product ID ${img.product_id}`);
-            return;
+          if (!img.storage_path) return;
+          
+          // Generar URL pública usando supabase.storage
+          const { data: urlData } = supabase.storage
+            .from('organization_images')
+            .getPublicUrl(img.storage_path);
+          
+          if (urlData?.publicUrl) {
+            imageMap[img.product_id] = urlData.publicUrl;
           }
-          
-          // Usar storage_path directamente sin generar URL pública
-          imageMap[img.product_id] = img.storage_path;
-          
-          console.log(`Stored storage_path for product ${img.product_id}:`, img.storage_path);
         });
-      } else {
-        console.log('No product images found for these products');
       }
       
-      console.log('Final image map:', imageMap);
       setProductImages(imageMap);
     };
     
@@ -236,7 +232,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                   <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-md overflow-hidden border dark:border-gray-600 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                     {productImages[String(producto.id)] ? (
                       <img
-                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${productImages[String(producto.id)]}`}
+                        src={productImages[String(producto.id)]}
                         alt={producto.name}
                         className="h-full w-full object-cover"
                         onError={(e) => {

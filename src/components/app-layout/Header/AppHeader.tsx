@@ -1,7 +1,7 @@
 'use client';
 
 import { AppHeaderProps } from '../types';
-import { Moon, Sun, Menu } from 'lucide-react';
+import { Moon, Sun, Menu, Bot } from 'lucide-react';
 import UserMenu from '../ProfileDropdownMenu';
 import BranchSelectorWrapper from './BranchSelectorWrapper';
 import GlobalSearch from './GlobalSearch';
@@ -14,7 +14,9 @@ export const AppHeader = ({
   orgId,
   handleSignOut,
   loading,
-  setSidebarOpen
+  setSidebarOpen,
+  aiAssistantOpen,
+  onToggleAIAssistant
 }: AppHeaderProps) => {
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
@@ -41,6 +43,20 @@ export const AppHeader = ({
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Branch Selector en el lado derecho */}
           <BranchSelectorWrapper orgId={orgId} />
+          
+          {/* Botón de Asistente IA */}
+          <button
+            onClick={onToggleAIAssistant}
+            className={`p-2.5 rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
+              aiAssistantOpen 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50'
+            }`}
+            aria-label="Asistente IA"
+            title="GO Assistant - Asistente de IA"
+          >
+            <Bot size={20} />
+          </button>
           
           {/* Botón para cambiar tema */}
           <button

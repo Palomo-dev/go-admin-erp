@@ -25,7 +25,7 @@ import {
 interface Trip {
   id: string;
   trip_code: string;
-  transport_routes?: { name: string } | { name: string }[];
+  transport_routes?: { name: string };
 }
 
 interface Stop {
@@ -72,7 +72,7 @@ export default function EnviosPage() {
       const [shipmentsData, statsData, tripsData, stopsData] = await Promise.all([
         shipmentsService.getShipments(organizationId, {
           status: statusFilter !== 'all' ? statusFilter : undefined,
-          paymentStatus: paymentFilter !== 'all' ? paymentFilter : undefined,
+          payment_status: paymentFilter !== 'all' ? paymentFilter : undefined,
           tripId: tripFilter !== 'all' ? tripFilter : undefined,
           search: searchTerm || undefined,
         }),
@@ -82,8 +82,23 @@ export default function EnviosPage() {
       ]);
 
       setShipments(shipmentsData);
-      setStats(statsData);
-      setTrips(tripsData);
+      setStats({
+        total: statsData.total || 0,
+        pending: statsData.pending || 0,
+        received: statsData.pickedUp || 0,
+        inTransit: statsData.inTransit || 0,
+        delivered: statsData.delivered || 0,
+        cancelled: statsData.cancelled || 0,
+        revenue: statsData.revenue || 0,
+      });
+      // Mapear trips para asegurar compatibilidad de tipos
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedTrips: Trip[] = (tripsData as any[]).map((t) => ({
+        id: t.id,
+        trip_code: t.trip_code,
+        transport_routes: Array.isArray(t.transport_routes) ? t.transport_routes[0] : t.transport_routes,
+      }));
+      setTrips(mappedTrips);
       setStops(stopsData);
     } catch (error) {
       console.error('Error loading shipments:', error);

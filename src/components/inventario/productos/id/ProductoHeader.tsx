@@ -39,8 +39,19 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
   console.log('Producto:', producto);
   // Obtener imágenes del producto
   const images = producto.product_images || [];
-  // Get the storage_path instead of image_url
-  const mainImage = images.length > 0 ? images[selectedImage]?.storage_path : null;
+  
+  // Función para obtener URL pública de imagen
+  const getImageUrl = (storagePath: string): string => {
+    if (!storagePath) return '';
+    const { data } = supabase.storage
+      .from('organization_images')
+      .getPublicUrl(storagePath);
+    return data?.publicUrl || '';
+  };
+  
+  const mainImageUrl = images.length > 0 && images[selectedImage]?.storage_path 
+    ? getImageUrl(images[selectedImage].storage_path) 
+    : null;
 
   // Obtener stock total (similar a StockTab)
   useEffect(() => {
@@ -120,9 +131,9 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
         {/* Mini galería */}
         <div className="w-full md:w-1/4">
           <div className="relative aspect-square w-full overflow-hidden rounded-lg border bg-gray-100 dark:bg-gray-800">
-            {mainImage ? (
+            {mainImageUrl ? (
               <img 
-                src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${mainImage}`} 
+                src={mainImageUrl} 
                 alt={producto.name} 
                 className="h-full w-full object-contain"
                 onError={(e) => {
@@ -166,7 +177,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                   onClick={() => setSelectedImage(index)}
                 >
                   <img 
-                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/organization_images/${image.storage_path}`} 
+                    src={getImageUrl(image.storage_path)} 
                     alt={`Imagen ${index + 1}`} 
                     className="h-full w-full object-cover"
                     onError={(e) => {

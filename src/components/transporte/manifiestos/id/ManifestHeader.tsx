@@ -120,7 +120,7 @@ export function ManifestHeader({
               {manifest.driver_credentials?.employments && (
                 <span className="flex items-center gap-1">
                   <User className="h-4 w-4" />
-                  {manifest.driver_credentials.employments.full_name}
+                  {(manifest.driver_credentials.employments as { full_name?: string })?.full_name || 'Sin nombre'}
                 </span>
               )}
               {manifest.transport_routes && (

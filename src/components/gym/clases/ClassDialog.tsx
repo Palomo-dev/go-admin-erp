@@ -199,7 +199,7 @@ export function ClassDialog({
         room: '',
         difficulty_level: 'all_levels',
         equipment_needed: '',
-        branch_id: branches.length === 1 ? branches[0].id.toString() : '',
+        branch_id: branches.length === 1 && branches[0]?.id ? branches[0].id.toString() : '',
         instructor_id: '',
       });
       setRecurrence(DEFAULT_RECURRENCE);
@@ -336,8 +336,8 @@ export function ClassDialog({
                           <SelectValue placeholder="Seleccionar sede" />
                         </SelectTrigger>
                         <SelectContent>
-                          {branches.map((branch) => (
-                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                          {branches.filter(b => b.id).map((branch) => (
+                            <SelectItem key={branch.id} value={branch.id!.toString()}>
                               {branch.name}
                             </SelectItem>
                           ))}

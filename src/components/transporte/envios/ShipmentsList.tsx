@@ -120,8 +120,8 @@ export function ShipmentsList({
         </TableHeader>
         <TableBody>
           {shipments.map((shipment) => {
-            const status = STATUS_CONFIG[shipment.status] || STATUS_CONFIG.pending;
-            const payment = PAYMENT_CONFIG[shipment.payment_status] || PAYMENT_CONFIG.pending;
+            const status = STATUS_CONFIG[shipment.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
+            const payment = PAYMENT_CONFIG[shipment.payment_status as keyof typeof PAYMENT_CONFIG] || PAYMENT_CONFIG.pending;
 
             return (
               <TableRow

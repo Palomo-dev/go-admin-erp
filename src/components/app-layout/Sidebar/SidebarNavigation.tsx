@@ -77,7 +77,15 @@ import {
   LogIn,
   CalendarCheck,
   Ticket,
-  Search
+  Search,
+  LayoutGrid,
+  Banknote as BanknoteIcon,
+  ListChecks,
+  Link2,
+  Send,
+  GitMerge,
+  Upload,
+  History,
 } from 'lucide-react';
 import ProfileDropdownMenu from '../ProfileDropdownMenu';
 import { NavItem } from './NavItem';
@@ -299,16 +307,22 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Parking", 
+          name: "Parqueadero", 
           href: "/app/parking", 
           icon: <ParkingCircle size={18} />,
           submenu: [
             { name: "Dashboard", href: "/app/parking", icon: <Home size={16} /> },
             { name: "Operación", href: "/app/parking/operacion", icon: <ParkingCircle size={16} /> },
-            { name: "Abonados", href: "/app/parking/abonados", icon: <CreditCard size={16} /> },
-            { name: "Tarifas", href: "/app/parking/tarifas", icon: <DollarSign size={16} /> },
-            { name: "Espacios", href: "/app/parking/espacios", icon: <MapPin size={16} /> },
+            { name: "Sesiones", href: "/app/parking/sesiones", icon: <Clock size={16} /> },
+            { name: "Abonados", href: "/app/parking/abonados", icon: <Users size={16} /> },
+            { name: "Planes", href: "/app/parking/planes", icon: <ListChecks size={16} /> },
+            { name: "Pagos", href: "/app/parking/pagos", icon: <Wallet size={16} /> },
+            { name: "Tarifas", href: "/app/parking/tarifas", icon: <Receipt size={16} /> },
+            { name: "Espacios", href: "/app/parking/espacios", icon: <LayoutGrid size={16} /> },
+            { name: "Zonas", href: "/app/parking/zonas", icon: <MapPin size={16} /> },
+            { name: "Mapa", href: "/app/parking/mapa", icon: <LayoutGrid size={16} /> },
             { name: "Reportes", href: "/app/parking/reportes", icon: <BarChart3 size={16} /> },
+            { name: "Configuración", href: "/app/parking/configuracion", icon: <Settings size={16} /> },
           ]
         }
       ]
@@ -316,7 +330,17 @@ const SidebarNavigationComponent = ({
     {
       title: "Organización",
       items: [
-        /*{ name: "Calendario", href: "/app/calendario", icon: <Calendar size={18} /> },*/
+        { 
+          name: "Calendario", 
+          href: "/app/calendario", 
+          icon: <CalendarDays size={18} />,
+          submenu: [
+            { name: "Vista General", href: "/app/calendario", icon: <CalendarDays size={16} /> },
+            { name: "Recurrencias", href: "/app/calendario/recurrencias", icon: <GitMerge size={16} /> },
+            { name: "Importar", href: "/app/calendario/importar", icon: <Upload size={16} /> },
+            { name: "Configuración", href: "/app/calendario/configuracion", icon: <Settings size={16} /> },
+          ]
+        },
         { name: "Clientes", href: "/app/clientes", icon: <Users size={18} /> },
         { 
           name: "Organización", 
@@ -345,13 +369,37 @@ const SidebarNavigationComponent = ({
         { name: "Transporte", href: "/app/transporte", icon: <Bus size={18} /> }*/
       ]
     },
-     /*{
+    {
       title: "Sistema",
       items: [
         { name: "Notificaciones", href: "/app/notificaciones", icon: <Bell size={18} /> },
-        { name: "Integraciones", href: "/app/integraciones", icon: <Settings size={18} /> }
+        { 
+          name: "Integraciones", 
+          href: "/app/integraciones", 
+          icon: <Link2 size={18} />,
+          submenu: [
+            { name: "Dashboard", href: "/app/integraciones", icon: <Home size={16} /> },
+            { name: "Conexiones", href: "/app/integraciones/conexiones", icon: <Link2 size={16} /> },
+            { name: "Eventos", href: "/app/integraciones/eventos", icon: <Activity size={16} /> },
+            { name: "Jobs", href: "/app/integraciones/jobs", icon: <Briefcase size={16} /> },
+            { name: "Mapeos", href: "/app/integraciones/mapeos", icon: <GitMerge size={16} /> },
+            { name: "API Keys", href: "/app/integraciones/api-keys", icon: <Key size={16} /> },
+            { name: "Webhooks", href: "/app/integraciones/webhooks-salientes", icon: <Send size={16} /> },
+            { name: "Configuración", href: "/app/integraciones/configuracion", icon: <Settings size={16} /> }
+          ]
+        },
+        { 
+          name: "Timeline", 
+          href: "/app/timeline", 
+          icon: <History size={18} />,
+          submenu: [
+            { name: "Vista General", href: "/app/timeline", icon: <History size={16} /> },
+            { name: "Exportaciones", href: "/app/timeline/exportaciones", icon: <FileText size={16} /> },
+            { name: "Configuración", href: "/app/timeline/configuracion", icon: <Settings size={16} /> }
+          ]
+        }
       ]
-    }*/
+    }
   ], []);
   
   return (

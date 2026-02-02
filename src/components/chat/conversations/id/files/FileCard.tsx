@@ -40,6 +40,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ConversationFile } from '@/lib/services/conversationFilesService';
 import { formatDate } from '@/utils/Utils';
+import { supabase } from '@/lib/supabase/config';
+
+// Función helper para obtener URL pública de archivo
+const getFilePublicUrl = (bucket: string, path: string): string => {
+  if (!bucket || !path) return '';
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data?.publicUrl || '';
+};
 
 interface FileCardProps {
   file: ConversationFile;
@@ -147,7 +155,7 @@ export default function FileCard({
               {isImage ? (
                 <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
                   <img
-                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${file.storage_bucket}/${file.storage_path}`}
+                    src={getFilePublicUrl(file.storage_bucket, file.storage_path)}
                     alt={file.file_name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -216,7 +224,7 @@ export default function FileCard({
                     <Copy className="h-4 w-4 mr-2" />
                     Copiar enlace
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => window.open(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${file.storage_bucket}/${file.storage_path}`, '_blank')}>
+                  <DropdownMenuItem onClick={() => window.open(getFilePublicUrl(file.storage_bucket, file.storage_path), '_blank')}>
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Abrir en nueva pestaña
                   </DropdownMenuItem>

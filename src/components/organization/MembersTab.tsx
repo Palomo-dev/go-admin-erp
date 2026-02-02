@@ -131,6 +131,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       const { data, error } = await supabase
         .from('roles')
         .select('id, name')
+        .neq('id', 1) // Excluir Super Admin
         .order('name');
 
       if (error) throw error;

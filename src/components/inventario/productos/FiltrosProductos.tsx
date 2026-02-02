@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { FiltrosProductos as FiltrosProductosType, Categoria } from './types';
 import { supabase } from '@/lib/supabase/config';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { debounce } from '@/utils/Utils';
 
 interface FiltrosProductosProps {
@@ -27,67 +28,23 @@ interface FiltrosProductosProps {
  */
 const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersChange }) => {
   const { theme } = useTheme();
+  const { organization } = useOrganization();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [busquedaLocal, setBusquedaLocal] = useState<string>(filters.busqueda);
   
   // Cargar categorías desde Supabase
   useEffect(() => {
     const fetchCategorias = async () => {
+      if (!organization?.id) {
+        console.log('Esperando organization_id...');
+        return;
+      }
+
       try {
-        // Obtener el ID de organización del almacenamiento local
-        let organizationId = null;
-        
-        if (typeof window !== 'undefined') {
-          // Obtener directamente el currentOrganizationId guardado durante la autenticación
-          const orgId = localStorage.getItem('currentOrganizationId');
-          if (orgId) {
-            organizationId = parseInt(orgId, 10);
-          }
-          
-          // Si no existe en localStorage, buscar en sessionStorage
-          if (!organizationId) {
-            const sessionOrgId = sessionStorage.getItem('currentOrganizationId');
-            if (sessionOrgId) {
-              organizationId = parseInt(sessionOrgId, 10);
-            }
-          }
-          
-          // Si aún no hay ID, buscar en el formato anterior (selectedOrganization)
-          if (!organizationId) {
-            // Intentar formato anterior (compatibilidad)
-            const storedOrg = localStorage.getItem('selectedOrganization');
-            if (storedOrg) {
-              try {
-                const parsedOrg = JSON.parse(storedOrg);
-                organizationId = parsedOrg.id || parsedOrg.organization_id;
-              } catch (e) {
-                console.error('Error al parsear organización del localStorage:', e);
-              }
-            }
-
-            // Verificar en sessionStorage con formato anterior
-            if (!organizationId) {
-              const sessionOrg = sessionStorage.getItem('selectedOrganization');
-              if (sessionOrg) {
-                try {
-                  const parsedOrg = JSON.parse(sessionOrg);
-                  organizationId = parsedOrg.id || parsedOrg.organization_id;
-                } catch (e) {
-                  console.error('Error al parsear organización del sessionStorage:', e);
-                }
-              }
-            }
-          }
-        }
-
-        if (!organizationId) {
-          throw new Error('No se encontró el ID de la organización');
-        }
-
         const { data, error } = await supabase
           .from('categories')
           .select('*')
-          .eq('organization_id', organizationId)
+          .eq('organization_id', organization.id)
           .order('name');
           
         if (error) throw error;
@@ -99,7 +56,7 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
     };
 
     fetchCategorias();
-  }, []);
+  }, [organization?.id]);
 
   // Función debounce para la búsqueda
   const debouncedSearch = React.useCallback(

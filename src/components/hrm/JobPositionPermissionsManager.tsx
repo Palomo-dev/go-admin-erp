@@ -1,16 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { usePermissions, useRoles } from '@/hooks/useRoles';
-import { Permission, RoleWithPermissions } from '@/lib/services/roleService';
-import { ModulePermissions } from '@/lib/services/permissionService';
+import { useState, useEffect, useMemo } from 'react';
+import { usePermissions } from '@/hooks/useRoles';
+import { jobPositionPermissionsService } from '@/lib/services/jobPositionPermissionsService';
 import { 
-  Check, 
   X, 
   Search, 
-  Filter, 
   ChevronDown, 
-  ChevronRight,
+  ChevronRight, 
   Shield,
   Save,
   RotateCcw,
@@ -19,89 +16,152 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-interface PermissionsMatrixProps {
-  role: RoleWithPermissions;
-  organizationId: number;
+interface JobPositionPermissionsManagerProps {
+  jobPositionId: string;
+  jobPositionName: string;
   onClose: () => void;
   onPermissionsUpdated?: () => void;
 }
 
-export default function PermissionsMatrix({ 
-  role, 
-  organizationId, 
-  onClose, 
-  onPermissionsUpdated 
-}: PermissionsMatrixProps) {
-  const { permissions: modulePermissions, loading: permissionsLoading } = usePermissions();
-  const { setRolePermissions, getRolePermissions } = useRoles(organizationId);
+interface ModulePermissions {
+  module: string;
+  moduleName: string;
+  permissions: Array<{
+    id: number;
+    code: string;
+    name: string;
+    description: string;
+  }>;
+}
 
-  const [currentPermissions, setCurrentPermissions] = useState<number[]>([]);
+export default function JobPositionPermissionsManager({
+  jobPositionId,
+  jobPositionName,
+  onClose,
+  onPermissionsUpdated
+}: JobPositionPermissionsManagerProps) {
+  const { permissions: allPermissions, loading: permissionsLoading } = usePermissions(1);
+  
   const [selectedPermissions, setSelectedPermissions] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [currentPermissions, setCurrentPermissions] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [showOnlySelected, setShowOnlySelected] = useState(false);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Cargar permisos actuales del rol
-  useEffect(() => {
-    const loadCurrentPermissions = async () => {
-      try {
-        setLoading(true);
-        const rolePermissions = await getRolePermissions(role.id);
-        const permissionIds = rolePermissions.map(p => p.id);
-        setCurrentPermissions(permissionIds);
-        setSelectedPermissions([...permissionIds]);
-      } catch (error) {
-        console.error('Error loading role permissions:', error);
-        toast.error('Error al cargar permisos del rol');
-      } finally {
-        setLoading(false);
-      }
+  // Función auxiliar para obtener nombre del módulo
+  const getModuleName = (module: string): string => {
+    const names: Record<string, string> = {
+      'hr': 'Recursos Humanos',
+      'finance': 'Finanzas',
+      'inventory': 'Inventario',
+      'pos': 'Punto de Venta',
+      'crm': 'CRM',
+      'pms': 'PMS',
+      'admin': 'Administración',
+      'reports': 'Reportes',
+      'calendar': 'Calendario',
+      'transport': 'Transporte',
+      'notifications': 'Notificaciones',
+      'integrations': 'Integraciones',
+      'branches': 'Sucursales',
+      'organizations': 'Organizaciones',
+      'users': 'Usuarios',
+      'roles': 'Roles',
+      'other': 'Otros'
     };
+    return names[module] || module;
+  };
 
-    loadCurrentPermissions();
-  }, [role.id, getRolePermissions]);
-
-  // Expandir todos los módulos por defecto
+  // Cargar permisos actuales del cargo
   useEffect(() => {
-    if (modulePermissions.length > 0) {
-      setExpandedModules(new Set(modulePermissions.map(m => m.module)));
+    loadCurrentPermissions();
+  }, [jobPositionId]);
+
+  const loadCurrentPermissions = async () => {
+    try {
+      setLoading(true);
+      const permissions = await jobPositionPermissionsService.getJobPositionPermissions(jobPositionId);
+      setCurrentPermissions(permissions);
+      setSelectedPermissions([...permissions]);
+    } catch (error) {
+      console.error('Error loading permissions:', error);
+      toast.error('Error al cargar permisos');
+    } finally {
+      setLoading(false);
     }
-  }, [modulePermissions]);
+  };
 
-  // Filtrar módulos y permisos según búsqueda
-  const filteredModules = modulePermissions.filter(module => {
-    if (!searchTerm) return true;
-    
-    const moduleMatches = module.moduleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         module.module.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const permissionMatches = module.permissions.some(permission =>
-      permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      permission.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (permission.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+  // Agrupar permisos por módulo
+  const modulePermissions = useMemo(() => {
+    if (!allPermissions || allPermissions.length === 0) return [];
+
+    const modules = new Map<string, ModulePermissions>();
+
+    allPermissions.forEach(permission => {
+      const module = permission.module || 'other';
+      
+      if (!modules.has(module)) {
+        modules.set(module, {
+          module,
+          moduleName: getModuleName(module),
+          permissions: []
+        });
+      }
+
+      modules.get(module)!.permissions.push(permission);
+    });
+
+    return Array.from(modules.values()).sort((a, b) => 
+      a.moduleName.localeCompare(b.moduleName)
     );
-    
-    return moduleMatches || permissionMatches;
-  }).map(module => ({
-    ...module,
-    permissions: showOnlySelected 
-      ? module.permissions.filter(p => selectedPermissions.includes(p.id))
-      : module.permissions.filter(permission => {
-          if (!searchTerm) return true;
-          return permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                 permission.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                 (permission.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-        })
-  })).filter(module => module.permissions.length > 0);
+  }, [allPermissions]);
 
-  const toggleModule = (moduleCode: string) => {
+  // Filtrar módulos según búsqueda y filtro
+  const filteredModules = useMemo(() => {
+    let filtered = modulePermissions;
+
+    // Filtrar por término de búsqueda
+    if (searchTerm) {
+      filtered = filtered
+        .map(module => ({
+          ...module,
+          permissions: module.permissions.filter(p =>
+            p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        }))
+        .filter(module => module.permissions.length > 0);
+    }
+
+    // Filtrar solo seleccionados
+    if (showOnlySelected) {
+      filtered = filtered
+        .map(module => ({
+          ...module,
+          permissions: module.permissions.filter(p => selectedPermissions.includes(p.id))
+        }))
+        .filter(module => module.permissions.length > 0);
+    }
+
+    return filtered;
+  }, [modulePermissions, searchTerm, showOnlySelected, selectedPermissions]);
+
+  // Expandir módulos al buscar
+  useEffect(() => {
+    if (searchTerm) {
+      setExpandedModules(new Set(filteredModules.map(m => m.module)));
+    }
+  }, [searchTerm, filteredModules]);
+
+  const toggleModule = (module: string) => {
     const newExpanded = new Set(expandedModules);
-    if (newExpanded.has(moduleCode)) {
-      newExpanded.delete(moduleCode);
+    if (newExpanded.has(module)) {
+      newExpanded.delete(module);
     } else {
-      newExpanded.add(moduleCode);
+      newExpanded.add(module);
     }
     setExpandedModules(newExpanded);
   };
@@ -116,23 +176,16 @@ export default function PermissionsMatrix({
     });
   };
 
-  const toggleAllModulePermissions = (module: ModulePermissions) => {
+  const toggleModulePermissions = (module: ModulePermissions) => {
     const modulePermissionIds = module.permissions.map(p => p.id);
     const allSelected = modulePermissionIds.every(id => selectedPermissions.includes(id));
-    
+
     if (allSelected) {
-      // Deseleccionar todos los permisos del módulo
       setSelectedPermissions(prev => prev.filter(id => !modulePermissionIds.includes(id)));
     } else {
-      // Seleccionar todos los permisos del módulo
       setSelectedPermissions(prev => {
-        const newSelected = [...prev];
-        modulePermissionIds.forEach(id => {
-          if (!newSelected.includes(id)) {
-            newSelected.push(id);
-          }
-        });
-        return newSelected;
+        const newSet = new Set([...prev, ...modulePermissionIds]);
+        return Array.from(newSet);
       });
     }
   };
@@ -153,18 +206,13 @@ export default function PermissionsMatrix({
   const savePermissions = async () => {
     try {
       setSaving(true);
-      const success = await setRolePermissions(role.id, selectedPermissions);
-      
-      if (success) {
-        setCurrentPermissions([...selectedPermissions]);
-        toast.success('Permisos actualizados correctamente');
-        // NO llamar onPermissionsUpdated para evitar reload
-        // La UI ya está actualizada con el estado local
-      }
+      await jobPositionPermissionsService.setJobPositionPermissions(jobPositionId, selectedPermissions);
+      setCurrentPermissions([...selectedPermissions]);
+      toast.success('Permisos actualizados correctamente');
+      onPermissionsUpdated?.();
     } catch (error) {
       console.error('Error saving permissions:', error);
       toast.error('Error al guardar permisos');
-      // Revertir cambios en caso de error
       setSelectedPermissions([...currentPermissions]);
     } finally {
       setSaving(false);
@@ -202,10 +250,10 @@ export default function PermissionsMatrix({
           <div className="flex items-center justify-between pb-4 border-b border-gray-200">
             <div>
               <h3 className="text-xl font-semibold text-gray-900">
-                Gestionar Permisos - {role.name}
+                Gestionar Permisos - {jobPositionName}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Selecciona los permisos que tendrá este rol
+                Los empleados con este cargo tendrán estos permisos
               </p>
             </div>
             <button
@@ -303,15 +351,17 @@ export default function PermissionsMatrix({
                 {filteredModules.map((module) => {
                   const stats = getModuleStats(module);
                   const isExpanded = expandedModules.has(module.module);
+                  const allSelected = stats.selected === stats.total;
+                  const someSelected = stats.selected > 0 && stats.selected < stats.total;
                   
                   return (
                     <div key={module.module} className="border border-gray-200 rounded-lg">
                       {/* Header del módulo */}
-                      <div 
-                        className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
-                        onClick={() => toggleModule(module.module)}
-                      >
-                        <div className="flex items-center space-x-3">
+                      <div className="flex items-center justify-between p-4 bg-gray-50">
+                        <div 
+                          className="flex items-center space-x-3 flex-1 cursor-pointer"
+                          onClick={() => toggleModule(module.module)}
+                        >
                           {isExpanded ? (
                             <ChevronDown className="h-5 w-5 text-gray-500" />
                           ) : (
@@ -325,61 +375,46 @@ export default function PermissionsMatrix({
                           </span>
                         </div>
                         
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleAllModulePermissions(module);
-                            }}
-                            className="text-sm text-indigo-600 hover:text-indigo-800"
-                          >
-                            {stats.selected === stats.total ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                          </button>
-                        </div>
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = someSelected;
+                          }}
+                          onChange={() => toggleModulePermissions(module)}
+                          className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                        />
                       </div>
 
-                      {/* Lista de permisos */}
+                      {/* Permisos del módulo */}
                       {isExpanded && (
-                        <div className="p-4 space-y-2">
-                          {module.permissions.map((permission) => {
-                            const isSelected = selectedPermissions.includes(permission.id);
-                            
-                            return (
-                              <div
+                        <div className="p-4 bg-white">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {module.permissions.map((permission) => (
+                              <label
                                 key={permission.id}
-                                className={`flex items-center justify-between p-3 rounded-md border cursor-pointer transition-colors ${
-                                  isSelected
-                                    ? 'bg-indigo-50 border-indigo-200'
-                                    : 'bg-white border-gray-200 hover:bg-gray-50'
-                                }`}
-                                onClick={() => togglePermission(permission.id)}
+                                className="flex items-start p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer"
                               >
-                                <div className="flex items-center space-x-3">
-                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                    isSelected
-                                      ? 'bg-indigo-600 border-indigo-600'
-                                      : 'border-gray-300'
-                                  }`}>
-                                    {isSelected && <Check className="h-3 w-3 text-white" />}
-                                  </div>
-                                  
-                                  <div>
-                                    <h5 className="font-medium text-gray-900">
-                                      {permission.name}
-                                    </h5>
-                                    <p className="text-sm text-gray-500">
-                                      {permission.code}
-                                    </p>
-                                    {permission.description && (
-                                      <p className="text-xs text-gray-400 mt-1">
-                                        {permission.description}
-                                      </p>
-                                    )}
-                                  </div>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPermissions.includes(permission.id)}
+                                  onChange={() => togglePermission(permission.id)}
+                                  className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                />
+                                <div className="ml-3 flex-1">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {permission.name}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {permission.description}
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-1 font-mono">
+                                    {permission.code}
+                                  </p>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              </label>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -389,7 +424,7 @@ export default function PermissionsMatrix({
             )}
           </div>
 
-          {/* Footer con acciones */}
+          {/* Footer con botones */}
           <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <div className="text-sm text-gray-600">
               {selectedPermissions.length} permisos seleccionados

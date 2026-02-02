@@ -14,11 +14,8 @@ interface Permission {
   name: string;
   code: string;
   description?: string;
-  module_code: string;
-  modules?: {
-    name: string;
-    code: string;
-  };
+  module: string;
+  category?: string;
 }
 
 interface Module {
@@ -45,11 +42,8 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
       setLoading(true);
       const { data, error } = await supabase
         .from('permissions')
-        .select(`
-          *,
-          modules(name, code)
-        `)
-        .order('module_code')
+        .select('*')
+        .order('module')
         .order('name');
 
       if (error) throw error;
@@ -65,13 +59,21 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
   const loadModules = async () => {
     try {
       const { data, error } = await supabase
-        .from('modules')
-        .select('code, name')
-        .eq('is_active', true)
-        .order('name');
+        .from('permissions')
+        .select('module')
+        .order('module');
 
       if (error) throw error;
-      setModules(data || []);
+      
+      // Obtener módulos únicos
+      const uniqueModules = Array.from(
+        new Set((data || []).map(p => p.module).filter(Boolean))
+      ).map(module => ({
+        code: module,
+        name: module
+      }));
+      
+      setModules(uniqueModules);
     } catch (error) {
       console.error('Error loading modules:', error);
     }
@@ -81,11 +83,11 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
     const matchesSearch = permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          permission.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          permission.code.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesModule = selectedModule === 'all' || permission.module_code === selectedModule;
+    const matchesModule = selectedModule === 'all' || permission.module === selectedModule;
     return matchesSearch && matchesModule;
   });
 
-  const handleCreatePermission = async (permissionData: Omit<Permission, 'id' | 'modules'>) => {
+  const handleCreatePermission = async (permissionData: Omit<Permission, 'id'>) => {
     try {
       const { error } = await supabase
         .from('permissions')

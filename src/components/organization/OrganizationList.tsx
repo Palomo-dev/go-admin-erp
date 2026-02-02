@@ -96,14 +96,27 @@ export default function OrganizationList({ showActions = false, onDelete, filter
       if (!session) throw new Error('No se encontró sesión de usuario');
     
       // Get user's profile to know their current organization
-      const { data: profileData, error: profileError } = await supabase
-        .from('organization_members')
-        .select('organization_id, role_id')
-        .eq('user_id', session.user.id)
-        .eq('organization_id', localStorage.getItem('currentOrganizationId'))
-        .single();
+      const currentOrgId = localStorage.getItem('currentOrganizationId');
+      
+      let profileData = null;
+      let profileError = null;
+      
+      if (currentOrgId && currentOrgId !== 'null') {
+        const result = await supabase
+          .from('organization_members')
+          .select('organization_id, role_id')
+          .eq('user_id', session.user.id)
+          .eq('organization_id', parseInt(currentOrgId))
+          .single();
+        
+        profileData = result.data;
+        profileError = result.error;
+      }
     
-      if (profileError) throw profileError;
+      // No lanzar error si no se encuentra el perfil, solo usar valores por defecto
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.warn('Error fetching profile:', profileError);
+      }
       
       const profile = profileData || { organization_id: null, role_id: null };
 

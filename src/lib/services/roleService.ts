@@ -5,7 +5,6 @@ export interface Role {
   name: string;
   description?: string;
   is_system: boolean;
-  organization_id?: number;
   created_at?: string;
 }
 
@@ -42,9 +41,8 @@ export const roleService = {
       .select(`
         *,
         role_permissions(permission_id),
-        organization_members(id)
+        organization_members!organization_members_role_id_fkey(id)
       `)
-      .or(`organization_id.eq.${organizationId},id.in.(2,3,4,5,22)`)
       .neq('id', 1) // Excluir Super Admin
       .order('is_system', { ascending: false })
       .order('name', { ascending: true });
@@ -83,7 +81,7 @@ export const roleService = {
     if (data) {
       return {
         ...data,
-        permissions: data.role_permissions?.map(rp => rp.permissions).filter(Boolean) || []
+        permissions: data.role_permissions?.map((rp: any) => rp.permissions).filter(Boolean) || []
       };
     }
     
@@ -97,7 +95,8 @@ export const roleService = {
     const { data, error } = await supabase
       .from('roles')
       .insert({
-        ...roleData,
+        name: roleData.name,
+        description: roleData.description,
         is_system: false
       })
       .select()
@@ -183,8 +182,7 @@ export const roleService = {
     // Crear el nuevo rol
     const newRole = await this.createRole({
       name: newName,
-      description: `Copia de ${originalRole.name}`,
-      organization_id: organizationId
+      description: `Copia de ${originalRole.name}`
     });
 
     // Copiar los permisos si existen
@@ -238,7 +236,7 @@ export const roleService = {
     
     if (error) throw error;
     
-    return (data || []).map(rp => rp.permissions).filter(Boolean);
+    return (data || []).map((rp: any) => rp.permissions).filter(Boolean);
   },
 
   /**
@@ -297,7 +295,7 @@ export const roleService = {
     if (memberData?.is_super_admin) return true;
     
     // Verificar permisos específicos
-    const hasPermission = data.roles?.role_permissions?.some(rp => 
+    const hasPermission = (data as any).roles?.role_permissions?.some((rp: any) => 
       rp.permissions?.code === permissionCode
     ) || false;
     
@@ -336,7 +334,11 @@ export const roleService = {
     }
     
     // Obtener permisos específicos del rol
-    const permissions = data.roles?.role_permissions?.map(rp => rp.permissions).filter(Boolean) || [];
+    const rolesData = data.roles || [];
+    const permissions = rolesData
+      .flatMap((role: any) => role.role_permissions || [])
+      .map((rp: any) => rp.permissions)
+      .filter(Boolean);
     return permissions;
   }
 };

@@ -1,346 +1,259 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { UseFormReturn } from 'react-hook-form'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/config'
-import { getCurrentBranchId } from '@/lib/hooks/useOrganization'
-import { PlusCircle, Trash2, AlertCircle, Loader2 } from 'lucide-react'
-
-import {
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormDescription,
-  FormMessage,
-} from '@/components/ui/form'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select'
+import { useOrganization } from '@/lib/hooks/useOrganization'
+import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Warehouse, Plus, Trash2, Loader2 } from 'lucide-react'
 
 interface InventarioProps {
-  form: UseFormReturn<any>
+  formData: any
+  updateFormData: (field: string, value: any) => void
+  hasVariants?: boolean
 }
 
-type StockItem = {
-  branch_id: number | null
-  qty_on_hand: number
-  avg_cost: number
-  qty_reserved?: number
-  lot_id?: number | null
-  min_level?: number
+interface Branch {
+  id: number
+  name: string
 }
 
-export default function Inventario({ form }: InventarioProps) {
-  const [sucursales, setSucursales] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string>('')
-  const [stockItems, setStockItems] = useState<StockItem[]>([])
+export default function Inventario({ formData, updateFormData, hasVariants = false }: InventarioProps) {
+  const { organization } = useOrganization()
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true)
 
-  // Sincronizar el estado local con los datos del formulario cuando ya existen
   useEffect(() => {
-    const stockInicial = form.getValues('stock_inicial');
-    if (stockInicial && Array.isArray(stockInicial) && stockInicial.length > 0) {
-      console.log("Stock inicial detectado en el formulario:", stockInicial);
-      setStockItems(stockInicial);
+    if (organization?.id) {
+      loadBranches()
     }
-  }, [form]);
+  }, [organization?.id])
 
-  // Obtener la organización activa del localStorage o usar ID 2 como respaldo
-  const getOrganizacionActiva = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        const orgData = localStorage.getItem('organizacionActiva')
-        return orgData ? JSON.parse(orgData) : { id: 2 } // Usar ID 2 como valor por defecto
-      } catch (err) {
-        console.error('Error al obtener organización del localStorage:', err)
-        return { id: 2 } // Valor de respaldo si hay error
-      }
+  const loadBranches = async () => {
+    if (!organization?.id) return
+
+    setIsLoadingBranches(true)
+    try {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('id, name')
+        .eq('organization_id', organization.id)
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) throw error
+      if (data) setBranches(data)
+    } catch (error) {
+      console.error('Error cargando sucursales:', error)
+    } finally {
+      setIsLoadingBranches(false)
     }
-    return { id: 2 } // Valor de respaldo para SSR
   }
 
-  const organizacion = getOrganizacionActiva()
-  const organization_id = organizacion?.id
-
-  useEffect(() => {
-    const cargarSucursales = async () => {
-      setIsLoading(true)
-      setError('')
-      try {
-        if (organization_id) {
-          let { data, error } = await supabase
-            .from('branches')
-            .select('id, name')
-            .eq('organization_id', organization_id)
-            .eq('is_active', true)
-            .order('name')
-          
-          if (error) throw error;
-          
-          if (!data || data.length === 0) {
-            const respuesta = await supabase
-              .from('branches')
-              .select('id, name')
-              .eq('organization_id', 2)
-              .eq('is_active', true)
-              .order('name')
-            
-            data = respuesta.data || []
-          }
-          
-          setSucursales(data || [])
-        } else {
-          const { data } = await supabase
-            .from('branches')
-            .select('id, name')
-            .eq('organization_id', 2)
-            .eq('is_active', true)
-            .order('name')
-          
-          setSucursales(data || [])
-        }
-      } catch (error: any) {
-        console.error('Error al cargar sucursales:', error)
-        setError(error?.message || 'Error al cargar sucursales. Por favor, intenta de nuevo.')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    cargarSucursales()
-  }, [organization_id])
-
-  // Gestión del stock inicial
-  const agregarStockItem = () => {
-    // Obtener la sucursal actual del usuario
-    const currentBranchId = getCurrentBranchId();
-    
-    // Si no hay sucursal actual, usar la primera sucursal disponible como fallback
-    const defaultBranchId = currentBranchId || (sucursales.length > 0 ? sucursales[0].id : null);
-    
-    const nuevoItem: StockItem = {
-      branch_id: defaultBranchId,
+  const addStockEntry = () => {
+    const newStock = {
+      branch_id: branches[0]?.id || 0,
       qty_on_hand: 0,
-      avg_cost: form.getValues('cost') || 0,
-      qty_reserved: 0,
-      lot_id: null,
-      min_level: 0
+      min_level: 0,
+      avg_cost: formData.cost || 0
     }
-    
-    const nuevosItems = [...stockItems, nuevoItem]
-    setStockItems(nuevosItems)
-    form.setValue('stock_inicial', nuevosItems)
+    updateFormData('stock_inicial', [...formData.stock_inicial, newStock])
   }
 
-  const eliminarStockItem = (index: number) => {
-    const nuevosItems = stockItems.filter((_, i) => i !== index)
-    setStockItems(nuevosItems)
-    form.setValue('stock_inicial', nuevosItems)
+  const removeStockEntry = (index: number) => {
+    const newStock = formData.stock_inicial.filter((_: any, i: number) => i !== index)
+    updateFormData('stock_inicial', newStock)
   }
 
-  const actualizarStockItem = (index: number, campo: string, valor: any) => {
-    const nuevosItems = [...stockItems]
-    nuevosItems[index][campo as keyof StockItem] = valor
-    setStockItems(nuevosItems)
-    form.setValue('stock_inicial', nuevosItems)
+  const updateStockEntry = (index: number, field: string, value: any) => {
+    const newStock = [...formData.stock_inicial]
+    newStock[index] = { ...newStock[index], [field]: value }
+    updateFormData('stock_inicial', newStock)
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Control de Inventario</h3>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+            <Warehouse className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Inventario Inicial
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Stock inicial por sucursal
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          onClick={addStockEntry}
+          disabled={isLoadingBranches || branches.length === 0}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+          size="sm"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Agregar Sucursal
+        </Button>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      {/* Mensaje cuando hay variantes */}
+      {hasVariants && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="p-1.5 bg-amber-100 dark:bg-amber-900/20 rounded">
+              <Warehouse className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                Producto con Variantes
+              </h4>
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                Este producto tiene variantes activas. El stock se gestiona <strong>individualmente para cada variante</strong> en la sección de Variantes.
+                El producto padre no tiene stock propio, el stock total será la suma de todas las variantes.
+              </p>
+            </div>
+          </div>
+        </div>
       )}
-      
-      <FormField
-        control={form.control}
-        name="status"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Estado</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar estado" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="active">Activo</SelectItem>
-                <SelectItem value="inactive">Inactivo</SelectItem>
-                <SelectItem value="discontinued">Discontinuado</SelectItem>
-                <SelectItem value="deleted">Eliminado</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      
-      {/* Stock inicial */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-base font-medium">Stock Inicial por Sucursal</h4>
+
+      {isLoadingBranches ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        </div>
+      ) : hasVariants ? (
+        <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+          <Warehouse className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-500 dark:text-gray-400 mb-2 font-medium">
+            Stock gestionado por variantes
+          </p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            El inventario de este producto se gestiona en cada variante individual.
+            Ve a la sección "Variantes del Producto" para configurar el stock.
+          </p>
+        </div>
+      ) : branches.length === 0 ? (
+        <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p className="text-gray-500 dark:text-gray-400">
+            No hay sucursales disponibles. Crea una sucursal primero.
+          </p>
+        </div>
+      ) : formData.stock_inicial.length === 0 ? (
+        <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            No hay stock inicial configurado
+          </p>
           <Button
             type="button"
+            onClick={addStockEntry}
             variant="outline"
             size="sm"
-            onClick={agregarStockItem}
-            disabled={sucursales.length === 0 || isLoading}
           >
-            <PlusCircle className="mr-2 h-4 w-4" /> Agregar Sucursal
+            <Plus className="h-4 w-4 mr-2" />
+            Agregar Stock Inicial
           </Button>
         </div>
-        
-        {stockItems.length > 0 ? (
-          <div className="space-y-4">
-            {stockItems.map((item, index) => (
-              <Card key={index} className="overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <FormLabel>Sucursal</FormLabel>
-                      <Select
-                        disabled={isLoading || sucursales.length === 0}
-                        value={String(item.branch_id || '')}
-                        onValueChange={(value) => {
-                          actualizarStockItem(index, 'branch_id', parseInt(value))
-                        }}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Selecciona sucursal" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sucursales.length > 0 ? (
-                            sucursales
-                              .filter((suc: any) => {
-                                return String(item.branch_id) === String(suc.id) || 
-                                  !stockItems.some((si, i) => i !== index && String(si.branch_id) === String(suc.id));
-                              })
-                              .map((suc: any) => (
-                                <SelectItem key={suc.id} value={String(suc.id)}>
-                                  {suc.name}
-                                </SelectItem>
-                              ))
-                          ) : (
-                            <div className="p-2 text-sm text-center text-muted-foreground">
-                              No hay sucursales disponibles
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <FormLabel>Cantidad</FormLabel>
-                      <Input
-                        type="number"
-                        value={item.qty_on_hand}
-                        onChange={(e) => 
-                          actualizarStockItem(
-                            index, 
-                            'qty_on_hand', 
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                      />
-                    </div>
-                    
-                    <div>
-                      <FormLabel>Costo Unitario</FormLabel>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.avg_cost}
-                        onChange={(e) => 
-                          actualizarStockItem(
-                            index, 
-                            'avg_cost', 
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Fila adicional para stock mínimo */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <div>
-                      <FormLabel>Stock Mínimo</FormLabel>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={item.min_level || 0}
-                        onChange={(e) => 
-                          actualizarStockItem(
-                            index, 
-                            'min_level', 
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Alerta cuando el stock llegue a este nivel
-                      </p>
-                    </div>
-                    <div className="flex items-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                        onClick={() => eliminarStockItem(index)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" /> Eliminar
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="mt-2">
-            <CardContent className="p-4 text-center text-muted-foreground">
-              No hay stock inicial agregado.
-              {sucursales.length > 0 ? (
-                <div className="mt-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={agregarStockItem}
+      ) : (
+        <div className="space-y-4">
+          {formData.stock_inicial.map((stock: any, index: number) => (
+            <div
+              key={index}
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Sucursal */}
+                <div className="space-y-2">
+                  <Label className="text-gray-700 dark:text-gray-300">
+                    Sucursal <span className="text-red-500">*</span>
+                  </Label>
+                  <select
+                    value={stock.branch_id}
+                    onChange={(e) => updateStockEntry(index, 'branch_id', parseInt(e.target.value))}
+                    className="w-full h-10 px-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
-                    <PlusCircle className="mr-2 h-4 w-4" /> Agregar Sucursal
-                  </Button>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ) : isLoading ? (
-                <div className="mt-2 flex justify-center">
-                  <Skeleton className="h-8 w-32" />
+
+                {/* Cantidad Inicial */}
+                <div className="space-y-2">
+                  <Label className="text-gray-700 dark:text-gray-300">
+                    Cantidad Inicial
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={stock.qty_on_hand}
+                    onChange={(e) => updateStockEntry(index, 'qty_on_hand', parseFloat(e.target.value) || 0)}
+                    className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                  />
                 </div>
-              ) : (
-                <div className="mt-2 text-sm">
-                  No hay sucursales disponibles.
+
+                {/* Stock Mínimo */}
+                <div className="space-y-2">
+                  <Label className="text-gray-700 dark:text-gray-300">
+                    Stock Mínimo
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={stock.min_level}
+                    onChange={(e) => updateStockEntry(index, 'min_level', parseFloat(e.target.value) || 0)}
+                    className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                  />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+
+                {/* Costo Promedio */}
+                <div className="space-y-2">
+                  <Label className="text-gray-700 dark:text-gray-300">
+                    Costo Promedio
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
+                        $
+                      </span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={stock.avg_cost}
+                        onChange={(e) => updateStockEntry(index, 'avg_cost', parseFloat(e.target.value) || 0)}
+                        className="pl-7 border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeStockEntry(index)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Información adicional */}
+      <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg">
+        <p className="text-sm text-purple-800 dark:text-purple-300">
+          <strong>Nota:</strong> El stock inicial se registrará como un movimiento de entrada tipo "ajuste". 
+          El costo promedio se utilizará para calcular el valor del inventario.
+        </p>
       </div>
     </div>
   )

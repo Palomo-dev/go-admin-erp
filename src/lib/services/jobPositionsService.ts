@@ -197,8 +197,7 @@ class JobPositionsService {
         hire_date,
         status
       `)
-      .eq('position_id', positionId)
-      .eq('organization_id', this.organizationId);
+      .eq('position_id', positionId);
 
     if (error) {
       console.error('Error fetching position employees:', error);

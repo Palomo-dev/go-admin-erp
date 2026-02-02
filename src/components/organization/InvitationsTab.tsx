@@ -95,6 +95,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       const { data, error } = await supabase
         .from('roles')
         .select('id, name')
+        .neq('id', 1) // Excluir Super Admin
         .order('name');
 
       if (error) throw error;
@@ -327,8 +328,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       
       // Get organization name safely
       const orgName = Array.isArray(inviteData.organizations) 
-        ? inviteData.organizations[0]?.name 
-        : inviteData.organizations?.name || 'la organización';
+        ? (inviteData.organizations[0] as any)?.name 
+        : (inviteData.organizations as any)?.name || 'la organización';
       
       // Resend invitation email using Supabase Auth
       try {

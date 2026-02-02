@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Producto, FiltrosProductos, StockSucursal } from './types';
 import { supabase } from '@/lib/supabase/config';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Button } from "@/components/ui/button";
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -37,6 +38,8 @@ const CatalogoProductos: React.FC = () => {
   const { theme } = useTheme();
   // Router para navegación
   const router = useRouter();
+  // Obtener organización y sucursal del hook
+  const { organization, branch_id } = useOrganization();
   
   // Estados para gestionar la interfaz y los datos
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
@@ -57,72 +60,17 @@ const CatalogoProductos: React.FC = () => {
   // Cargar productos desde Supabase con una sola consulta eficiente
   useEffect(() => {
     const fetchProductos = async () => {
+      if (!organization?.id) {
+        console.log('Esperando organization_id...');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         
-        // Obtener el ID de organización del almacenamiento local
-        let organizationId = null;
-        let branchId = null;
-        
-        if (typeof window !== 'undefined') {
-          // Obtener directamente el currentOrganizationId guardado durante la autenticación
-          const orgId = localStorage.getItem('currentOrganizationId');
-          if (orgId) {
-            organizationId = parseInt(orgId, 10);
-          }
-          
-          // Obtener el ID de la sucursal activa
-          const activeBranch = localStorage.getItem('currentBranchId');
-          if (activeBranch) {
-            branchId = parseInt(activeBranch, 10);
-          }
-          
-          // Si no existe en localStorage, buscar en sessionStorage
-          if (!organizationId) {
-            const sessionOrgId = sessionStorage.getItem('currentOrganizationId');
-            if (sessionOrgId) {
-              organizationId = parseInt(sessionOrgId, 10);
-            }
-          }
-          
-          if (!branchId) {
-            const sessionBranchId = sessionStorage.getItem('currentBranchId');
-            if (sessionBranchId) {
-              branchId = parseInt(sessionBranchId, 10);
-            }
-          }
-          
-          // Si aún no hay ID, buscar en el formato anterior (selectedOrganization)
-          if (!organizationId) {
-            // Intentar formato anterior (compatibilidad)
-            const storedOrg = localStorage.getItem('selectedOrganization');
-            if (storedOrg) {
-              try {
-                const parsedOrg = JSON.parse(storedOrg);
-                organizationId = parsedOrg.id || parsedOrg.organization_id;
-              } catch (e) {
-                console.error('Error al parsear organización del localStorage:', e);
-              }
-            }
-
-            // Verificar en sessionStorage con formato anterior
-            if (!organizationId) {
-              const sessionOrg = sessionStorage.getItem('selectedOrganization');
-              if (sessionOrg) {
-                try {
-                  const parsedOrg = JSON.parse(sessionOrg);
-                  organizationId = parsedOrg.id || parsedOrg.organization_id;
-                } catch (e) {
-                  console.error('Error al parsear organización del sessionStorage:', e);
-                }
-              }
-            }
-          }
-        }
-
-        if (!organizationId) {
-          throw new Error('No se encontró el ID de la organización');
-        }
+        const organizationId = organization.id;
+        const branchId = branch_id;
 
         // Obtener solo productos principales (no variantes)
         let mainProductsQuery = supabase
@@ -296,7 +244,7 @@ const CatalogoProductos: React.FC = () => {
     };
 
     fetchProductos();
-  }, [filters]);
+  }, [organization?.id, branch_id, filters]);
 
   // Función para obtener información de stock por sucursal para un producto específico
   const fetchStockPorSucursal = async (productId: number) => {

@@ -1,458 +1,329 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { UseFormReturn } from 'react-hook-form'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/config'
-import { AlertCircle, Loader2 } from 'lucide-react'
-
-import {
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormDescription,
-  FormMessage,
-} from '@/components/ui/form'
+import { useOrganization } from '@/lib/hooks/useOrganization'
+import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Package, Sparkles, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface InformacionBasicaProps {
-  form: UseFormReturn<any>
+  formData: any
+  updateFormData: (field: string, value: any) => void
 }
 
-export default function InformacionBasica({ form }: InformacionBasicaProps) {
-  const [categorias, setCategorias] = useState<any[]>([])
-  const [unidades, setUnidades] = useState<any[]>([])
-  const [proveedores, setProveedores] = useState<any[]>([])
-  const [impuestos, setImpuestos] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string>('')
-  
-  // Estado para proveedores seleccionados (múltiples)
-  const [proveedoresSeleccionados, setProveedoresSeleccionados] = useState<any[]>([])
-  
-  // Estados para validación de SKU y código de barras
-  const [skuExistente, setSkuExistente] = useState(false)
-  const [validandoSku, setValidandoSku] = useState(false)
-  const [barcodeExistente, setBarcodeExistente] = useState(false)
-  const [validandoBarcode, setValidandoBarcode] = useState(false)
+interface Category {
+  id: number
+  name: string
+}
 
-  // Obtener la organización activa del localStorage o usar ID 2 como respaldo
-  const getOrganizacionActiva = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        const orgData = localStorage.getItem('organizacionActiva')
-        return orgData ? JSON.parse(orgData) : { id: 2 } // Usar ID 2 como valor por defecto
-      } catch (err) {
-        console.error('Error al obtener organización del localStorage:', err)
-        return { id: 2 } // Valor de respaldo si hay error
-      }
+interface Supplier {
+  id: number
+  name: string
+}
+
+interface Tax {
+  id: string
+  name: string
+  rate: number
+}
+
+export default function InformacionBasica({ formData, updateFormData }: InformacionBasicaProps) {
+  const { organization } = useOrganization()
+  const [categories, setCategories] = useState<Category[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [taxes, setTaxes] = useState<Tax[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [isImprovingDescription, setIsImprovingDescription] = useState(false)
+
+  useEffect(() => {
+    if (organization?.id) {
+      loadData()
     }
-    return { id: 2 } // Valor de respaldo para SSR
+  }, [organization?.id])
+
+  const loadData = async () => {
+    if (!organization?.id) return
+
+    setIsLoadingData(true)
+    try {
+      // Cargar categorías
+      const { data: categoriesData } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('organization_id', organization.id)
+        .order('name')
+
+      if (categoriesData) setCategories(categoriesData)
+
+      // Cargar proveedores
+      const { data: suppliersData } = await supabase
+        .from('suppliers')
+        .select('id, name')
+        .eq('organization_id', organization.id)
+        .order('name')
+
+      if (suppliersData) setSuppliers(suppliersData)
+
+      // Cargar impuestos
+      const { data: taxesData } = await supabase
+        .from('organization_taxes')
+        .select('id, name, rate')
+        .eq('organization_id', organization.id)
+        .eq('is_active', true)
+        .order('name')
+
+      if (taxesData) setTaxes(taxesData)
+    } catch (error) {
+      console.error('Error cargando datos:', error)
+    } finally {
+      setIsLoadingData(false)
+    }
   }
 
-  const organizacion = getOrganizacionActiva()
-  const organization_id = organizacion?.id
-
-  // Función para validar si un SKU ya existe en la base de datos
-  const validarSkuExistente = async (sku: string) => {
-    if (!sku || sku.trim() === '') {
-      setSkuExistente(false);
-      return;
+  const handleImproveDescription = async () => {
+    if (!formData.name.trim()) {
+      return
     }
-    
-    setValidandoSku(true);
-    
+
+    setIsImprovingDescription(true)
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id')
-        .filter('sku', 'eq', sku.toString())
-        .filter('organization_id', 'eq', organization_id)
-        .maybeSingle();
-        
-      setSkuExistente(!!data);
-    } catch (error) {
-      console.error('Error al validar SKU:', error);
-    } finally {
-      setValidandoSku(false);
-    }
-  };
-  
-  // Función para validar si un código de barras ya existe en la base de datos
-  // Modify your validarBarcodeExistente function:
-  const validarBarcodeExistente = async (barcode: string) => {
-    if (!barcode || barcode.trim() === '') {
-      setBarcodeExistente(false);
-      return;
-    }
-    
-    setValidandoBarcode(true);
-    
-    try {
-      // Explicitly use string comparison and include organization_id 
-      const { data, error } = await supabase
-        .from('products')
-        .select('id')
-        .filter('barcode', 'eq', barcode.toString())
-        .filter('organization_id', 'eq', organization_id)
-        .maybeSingle();
-        
-      setBarcodeExistente(!!data);
-    } catch (error) {
-      console.error('Error al validar código de barras:', error);
-    } finally {
-      setValidandoBarcode(false);
-    }
-  };
+      const response = await fetch('/api/ai-assistant/improve-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: formData.description || formData.name,
+          context: `Producto: ${formData.name}`,
+          type: 'product_description'
+        })
+      })
 
-  // Efecto para cargar los datos iniciales
-  useEffect(() => {
-    const cargarDatos = async () => {
-      setIsLoading(true)
-      setError('')
-      try {
-        // Cargar categorías
-        if (organization_id) {
-          // Eliminado console.log para reducir ruido
-          const { data: categoriasData, error: categoriasError } = await supabase
-            .from('categories')
-            .select('id, name')
-            .eq('organization_id', organization_id)
-            .order('name')
-          
-          if (categoriasError) {
-            console.error('Error al cargar categorías:', categoriasError)
-            throw new Error('Error al cargar categorías: ' + categoriasError.message)
-          }
-          
-          // Eliminado console.log para reducir ruido
-          setCategorias(categoriasData || [])
-        } else {
-          // Eliminado console.log para reducir ruido
-          const { data: categoriasData } = await supabase
-            .from('categories')
-            .select('id, name')
-            .eq('organization_id', 2)
-            .order('name')
-          
-          setCategorias(categoriasData || [])
-        }
-
-        // Cargar unidades
-        const { data: unidadesData } = await supabase
-          .from('units')
-          .select('code, name')
-          .order('name')
-        
-        setUnidades(unidadesData || [])
-
-        // Cargar proveedores
-        if (organization_id) {
-          const { data: proveedoresData } = await supabase
-            .from('suppliers')
-            .select('id, name')
-            .eq('organization_id', organization_id)
-            .order('name')
-          
-          setProveedores(proveedoresData || [])
-        }
-
-        // Cargar impuestos de la organización
-        if (organization_id) {
-          const { data: impuestosData } = await supabase
-            .from('organization_taxes')
-            .select('id, name, rate, is_default')
-            .eq('organization_id', organization_id)
-            .eq('is_active', true)
-            .order('name')
-          
-          setImpuestos(impuestosData || [])
-          
-          // Si hay un impuesto por defecto, seleccionarlo automáticamente
-          const impuestoDefault = impuestosData?.find((i: any) => i.is_default)
-          if (impuestoDefault && !form.getValues('tax_id')) {
-            form.setValue('tax_id', impuestoDefault.id)
-          }
-        }
-      } catch (error: any) {
-        console.error('Error al cargar datos:', error)
-        setError(error?.message || 'Error al cargar los datos. Por favor, intenta de nuevo.')
-      } finally {
-        setIsLoading(false)
+      if (response.ok) {
+        const data = await response.json()
+        updateFormData('description', data.improvedText)
       }
+    } catch (error) {
+      console.error('Error mejorando descripción:', error)
+    } finally {
+      setIsImprovingDescription(false)
     }
-
-    cargarDatos()
-  }, [organization_id])
+  }
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Información Básica</h3>
-      
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="sku"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Código SKU</FormLabel>
-              <div className="relative">
-                <FormControl>
-                  <Input 
-                    placeholder="SKU001" 
-                    {...field} 
-                    className={skuExistente ? "border-red-500 pr-10" : ""}
-                    onChange={(e) => {
-                      field.onChange(e);
-                      validarSkuExistente(e.target.value);
-                    }}
-                  />
-                </FormControl>
-                {validandoSku && (
-                  <div className="absolute right-3 top-2.5">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-              {skuExistente ? (
-                <div className="text-sm font-medium text-destructive mt-1 flex items-center">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  Este SKU ya está en uso. Por favor, elige otro.
-                </div>
-              ) : (
-                <FormDescription>
-                  Código único para identificar el producto
-                </FormDescription>
-              )}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="barcode"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Código de Barras</FormLabel>
-              <div className="relative">
-                <FormControl>
-                  <Input 
-                    placeholder="7891234567890" 
-                    {...field} 
-                    className={barcodeExistente ? "border-red-500 pr-10" : ""}
-                    onChange={(e) => {
-                      field.onChange(e);
-                      // Solo validar si hay contenido (es opcional)
-                      if (e.target.value.trim()) {
-                        validarBarcodeExistente(e.target.value);
-                      } else {
-                        setBarcodeExistente(false);
-                      }
-                    }}
-                  />
-                </FormControl>
-                {validandoBarcode && (
-                  <div className="absolute right-3 top-2.5">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-              {barcodeExistente ? (
-                <div className="text-sm font-medium text-destructive mt-1 flex items-center">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  Este código de barras ya está en uso. Por favor, elige otro.
-                </div>
-              ) : (
-                <FormDescription>
-                  Código de barras (opcional)
-                </FormDescription>
-              )}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+          <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Información Básica
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Datos principales del producto
+          </p>
+        </div>
       </div>
 
-      <FormField
-        control={form.control}
-        name="name"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Nombre del Producto</FormLabel>
-            <FormControl>
-              <Input placeholder="Nombre del producto" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* SKU */}
+        <div className="space-y-2">
+          <Label htmlFor="sku" className="text-gray-700 dark:text-gray-300">
+            SKU / Código <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="sku"
+            value={formData.sku}
+            onChange={(e) => updateFormData('sku', e.target.value.toUpperCase())}
+            placeholder="Ej: PROD-001"
+            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+            required
+          />
+        </div>
 
-      <FormField
-        control={form.control}
-        name="description"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Descripción</FormLabel>
-            <FormControl>
-              <Textarea 
-                placeholder="Descripción detallada del producto" 
-                className="resize-none" 
-                rows={3}
-                {...field} 
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        {/* Código de Barras */}
+        <div className="space-y-2">
+          <Label htmlFor="barcode" className="text-gray-700 dark:text-gray-300">
+            Código de Barras
+          </Label>
+          <Input
+            id="barcode"
+            value={formData.barcode}
+            onChange={(e) => updateFormData('barcode', e.target.value)}
+            placeholder="Ej: 7501234567890"
+            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+          />
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <FormField
-          control={form.control}
-          name="category_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Categoría</FormLabel>
-              <Select 
-                disabled={isLoading} 
-                onValueChange={(value) => field.onChange(parseInt(value))}
-                value={field.value?.toString() || ""}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {categorias.length > 0 ? (
-                    categorias.map((categoria) => (
-                      <SelectItem key={categoria.id} value={categoria.id.toString()}>
-                        {categoria.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-sm text-center text-muted-foreground">
-                      No hay categorías disponibles
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
+        {/* Nombre */}
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="name" className="text-gray-700 dark:text-gray-300">
+            Nombre del Producto <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => updateFormData('name', e.target.value)}
+            placeholder="Ej: Camiseta Polo Azul"
+            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+            required
+          />
+        </div>
+
+        {/* Descripción */}
+        <div className="space-y-2 md:col-span-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="description" className="text-gray-700 dark:text-gray-300">
+              Descripción
+            </Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleImproveDescription}
+              disabled={isImprovingDescription || !formData.name.trim()}
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+            >
+              {isImprovingDescription ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Mejorando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  Mejorar con IA
+                </>
+              )}
+            </Button>
+          </div>
+          <Textarea
+            id="description"
+            value={formData.description}
+            onChange={(e) => updateFormData('description', e.target.value)}
+            placeholder="Descripción detallada del producto..."
+            rows={4}
+            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 resize-none"
+          />
+        </div>
+
+        {/* Categoría */}
+        <div className="space-y-2">
+          <Label htmlFor="category" className="text-gray-700 dark:text-gray-300">
+            Categoría
+          </Label>
+          {isLoadingData ? (
+            <div className="flex items-center justify-center h-10 border border-gray-300 dark:border-gray-700 rounded-md">
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <Select
+              value={formData.category_id?.toString() || 'none'}
+              onValueChange={(value) => updateFormData('category_id', value === 'none' ? null : parseInt(value))}
+            >
+              <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
+                <SelectValue placeholder="Seleccionar categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin categoría</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id.toString()}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
-        />
+        </div>
 
-        <FormField
-          control={form.control}
-          name="unit_code"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Unidad</FormLabel>
-              <FormControl>
-                {isLoading ? (
-                  <Skeleton className="h-10 w-full" />
-                ) : (
-                  <Select 
-                    disabled={unidades.length === 0} 
-                    value={field.value} 
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona una unidad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {unidades.map(unidad => (
-                        <SelectItem key={unidad.code} value={unidad.code}>
-                          {unidad.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Unidad de Medida */}
+        <div className="space-y-2">
+          <Label htmlFor="unit_code" className="text-gray-700 dark:text-gray-300">
+            Unidad de Medida
+          </Label>
+          <Select
+            value={formData.unit_code}
+            onValueChange={(value) => updateFormData('unit_code', value)}
+          >
+            <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="UND">Unidad</SelectItem>
+              <SelectItem value="KG">Kilogramo</SelectItem>
+              <SelectItem value="GR">Gramo</SelectItem>
+              <SelectItem value="LT">Litro</SelectItem>
+              <SelectItem value="ML">Mililitro</SelectItem>
+              <SelectItem value="MT">Metro</SelectItem>
+              <SelectItem value="CM">Centímetro</SelectItem>
+              <SelectItem value="M2">Metro Cuadrado</SelectItem>
+              <SelectItem value="M3">Metro Cúbico</SelectItem>
+              <SelectItem value="PAQ">Paquete</SelectItem>
+              <SelectItem value="CAJ">Caja</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <FormField
-          control={form.control}
-          name="supplier_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Proveedor Principal</FormLabel>
-              <Select 
-                disabled={isLoading}
-                onValueChange={(value) => field.onChange(parseInt(value))}
-                value={field.value?.toString() || ""}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {proveedores.map((proveedor) => (
-                    <SelectItem key={proveedor.id} value={proveedor.id.toString()}>
-                      {proveedor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                Proveedor preferido para reorden automático
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+        {/* Impuesto */}
+        <div className="space-y-2">
+          <Label htmlFor="tax" className="text-gray-700 dark:text-gray-300">
+            Impuesto
+          </Label>
+          {isLoadingData ? (
+            <div className="flex items-center justify-center h-10 border border-gray-300 dark:border-gray-700 rounded-md">
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <Select
+              value={formData.tax_id || 'none'}
+              onValueChange={(value) => updateFormData('tax_id', value === 'none' ? null : value)}
+            >
+              <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
+                <SelectValue placeholder="Seleccionar impuesto" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin impuesto</SelectItem>
+                {taxes.map((tax) => (
+                  <SelectItem key={tax.id} value={tax.id}>
+                    {tax.name} ({tax.rate}%)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
-        />
-      </div>
+        </div>
 
-      {/* Selector de Impuesto */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="tax_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Impuesto</FormLabel>
-              <Select 
-                disabled={isLoading}
-                onValueChange={(value) => field.onChange(value === "none" ? null : value)}
-                value={field.value?.toString() || "none"}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar impuesto" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">Sin impuesto</SelectItem>
-                  {impuestos.map((impuesto) => (
-                    <SelectItem key={impuesto.id} value={impuesto.id.toString()}>
-                      {impuesto.name} ({impuesto.rate}%)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                Impuesto aplicable al producto
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+        {/* Proveedor Principal */}
+        <div className="space-y-2">
+          <Label htmlFor="supplier" className="text-gray-700 dark:text-gray-300">
+            Proveedor Principal
+          </Label>
+          {isLoadingData ? (
+            <div className="flex items-center justify-center h-10 border border-gray-300 dark:border-gray-700 rounded-md">
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <Select
+              value={formData.supplier_id?.toString() || 'none'}
+              onValueChange={(value) => updateFormData('supplier_id', value === 'none' ? null : parseInt(value))}
+            >
+              <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
+                <SelectValue placeholder="Seleccionar proveedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin proveedor</SelectItem>
+                {suppliers.map((supplier) => (
+                  <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                    {supplier.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
-        />
+        </div>
       </div>
     </div>
   )

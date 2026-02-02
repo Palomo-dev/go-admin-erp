@@ -10,6 +10,7 @@ import {
   JobPositionSalary,
   JobPositionEmployees,
 } from '@/components/hrm/cargos/detail';
+import JobPositionPermissionsManager from '@/components/hrm/JobPositionPermissionsManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowLeft, AlertTriangle, Calendar, Clock } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Calendar, Clock, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CargoDetailPage() {
@@ -39,6 +40,7 @@ export default function CargoDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPermissionsDialog, setShowPermissionsDialog] = useState(false);
 
   // Servicio
   const getService = useCallback(() => {
@@ -226,11 +228,35 @@ export default function CargoDetailPage() {
       {/* Contenido Principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna Principal - Empleados */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <JobPositionEmployees
             employees={employees}
             positionId={position.id}
           />
+          
+          {/* Permisos del Cargo */}
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <Shield className="h-5 w-5 text-indigo-600" />
+                  Permisos del Cargo
+                </span>
+                <Button
+                  onClick={() => setShowPermissionsDialog(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  Gestionar Permisos
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Los empleados con este cargo tendrán acceso a los permisos configurados aquí.
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Columna Lateral */}
@@ -272,6 +298,16 @@ export default function CargoDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Diálogo de Permisos */}
+      {showPermissionsDialog && position && (
+        <JobPositionPermissionsManager
+          jobPositionId={position.id}
+          jobPositionName={position.name}
+          onClose={() => setShowPermissionsDialog(false)}
+          onPermissionsUpdated={loadData}
+        />
+      )}
 
       {/* Diálogo de Eliminación */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

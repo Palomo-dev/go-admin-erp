@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { roleService, Role, RoleWithPermissions, Permission } from '@/lib/services/roleService';
 import { permissionService, ModulePermissions } from '@/lib/services/permissionService';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'react-hot-toast';
 import { usePageVisibility } from './usePageVisibility';
 
@@ -303,19 +304,35 @@ export const useUserPermissions = (userId: string, organizationId: number): UseU
   const [accessibleModules, setAccessibleModules] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Cargar permisos del usuario
+  // Cargar permisos del usuario usando la función SQL get_user_permissions
   const loadUserPermissions = useCallback(async () => {
     if (!userId || !organizationId) return;
 
     try {
       setLoading(true);
       
-      const [permissions, modules] = await Promise.all([
-        permissionService.getUserPermissions(userId, organizationId),
-        permissionService.getUserAccessibleModules(userId, organizationId)
-      ]);
-      
+      // Usar la función SQL que resuelve permisos de todas las capas
+      const { data, error } = await supabase.rpc('get_user_permissions', {
+        p_user_id: userId,
+        p_organization_id: organizationId
+      });
+
+      if (error) throw error;
+
+      // Convertir resultado a formato Permission[]
+      const permissions: Permission[] = (data || []).map((p: any) => ({
+        id: 0, // No necesitamos el ID real
+        code: p.permission_code,
+        name: p.permission_name,
+        module: p.module,
+        category: p.category,
+        description: ''
+      }));
+
       setUserPermissions(permissions);
+      
+      // Extraer módulos únicos
+      const modules = Array.from(new Set(permissions.map(p => p.module)));
       setAccessibleModules(modules);
     } catch (err) {
       console.error('Error loading user permissions:', err);

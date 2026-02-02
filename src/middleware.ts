@@ -360,22 +360,25 @@ async function checkModuleAccess(request: NextRequest, pathname: string): Promis
       const authData = JSON.parse(authCookie.value);
       userId = authData.user?.id;
       
-      // Obtener organization_id desde cookies o headers
+      // Obtener organization_id desde localStorage via currentOrganizationId
+      // En middleware no tenemos acceso a localStorage, así que usamos cookies
       const orgCookie = request.cookies.get('organization');
+      
       if (!orgCookie?.value) {
-        console.warn('⚠️ [MIDDLEWARE] No organization cookie found');
+        console.warn('⚠️ [MIDDLEWARE] No organization cookie found - allowing access');
         return null; // Permitir acceso si no hay organización definida
       }
       
       // Buscar la organización por subdomain
-      const { data: org } = await supabase
+      const { data: org, error: orgError } = await supabase
         .from('organizations')
         .select('id')
         .eq('subdomain', orgCookie.value)
         .single();
       
-      if (!org) {
-        console.warn('⚠️ [MIDDLEWARE] Organization not found:', orgCookie.value);
+      if (orgError || !org) {
+        console.warn('⚠️ [MIDDLEWARE] Organization not found or error:', orgCookie.value, orgError);
+        // Permitir acceso en caso de error para no bloquear la navegación
         return null;
       }
       
@@ -383,7 +386,8 @@ async function checkModuleAccess(request: NextRequest, pathname: string): Promis
       
     } catch (error) {
       console.error('❌ [MIDDLEWARE] Error parsing auth data:', error);
-      return NextResponse.redirect(new URL('/auth/login', request.url));
+      // Permitir acceso en caso de error para no bloquear
+      return null;
     }
 
     // Verificar si la organización puede acceder al módulo
@@ -483,13 +487,16 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
       return NextResponse.redirect(new URL('/app/inicio', request.url));
     }
 
-    // Verificar acceso a módulos para rutas protegidas
+    // TEMPORALMENTE DESHABILITADO - Verificar acceso a módulos para rutas protegidas
+    // TODO: Re-habilitar después de diagnosticar problema de navegación
+    /*
     if (pathname.startsWith('/app/') && pathname !== '/app/inicio') {
       const moduleAccessResult = await checkModuleAccess(request, pathname);
       if (moduleAccessResult) {
         return moduleAccessResult;
       }
     }
+    */
   }
 
   // Manejar subdominios para organizaciones

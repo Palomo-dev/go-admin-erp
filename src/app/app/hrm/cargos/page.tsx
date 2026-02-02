@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useUserPermissions } from '@/hooks/useRoles';
+import { supabase } from '@/lib/supabase/config';
 import JobPositionsService from '@/lib/services/jobPositionsService';
 import type { JobPosition } from '@/lib/services/jobPositionsService';
 import DepartmentsService from '@/lib/services/departmentsService';
@@ -29,6 +31,7 @@ import {
   RefreshCw,
   Briefcase,
   Upload,
+  ShieldAlert,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -41,6 +44,29 @@ export default function CargosPage() {
   const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  
+  // Obtener usuario actual
+  const [userId, setUserId] = useState<string>('');
+  
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) setUserId(session.user.id);
+    };
+    getUser();
+  }, []);
+  
+  // Hook de permisos
+  const { 
+    hasPermission, 
+    loading: permissionsLoading 
+  } = useUserPermissions(userId, organization?.id || 0);
+  
+  // Verificar permisos específicos
+  const canView = hasPermission('hr.positions.view');
+  const canCreate = hasPermission('hr.positions.create');
+  const canEdit = hasPermission('hr.positions.edit');
+  const canDelete = hasPermission('hr.positions.delete');
 
   // Estados
   const [positions, setPositions] = useState<JobPosition[]>([]);
@@ -196,10 +222,33 @@ export default function CargosPage() {
     withEmployees: positions.filter((p) => (p.employees_count || 0) > 0).length,
   };
 
-  if (orgLoading) {
+  if (orgLoading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  // Verificar permiso de visualización
+  if (!canView) {
+    return (
+      <div className="p-6">
+        <Card className="bg-white dark:bg-gray-800 border-yellow-500 border-l-4">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <ShieldAlert className="h-8 w-8 text-yellow-500 flex-shrink-0" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Acceso Restringido
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  No tienes permisos para ver esta página. Contacta a un administrador para solicitar acceso.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -227,19 +276,23 @@ export default function CargosPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Importar
-          </Button>
-          <Link href="/app/hrm/cargos/nuevo">
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Cargo
-            </Button>
-          </Link>
+          {canCreate && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Importar
+              </Button>
+              <Link href="/app/hrm/cargos/nuevo">
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuevo Cargo
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
@@ -306,10 +359,10 @@ export default function CargosPage() {
             <JobPositionTable
               positions={positions}
               onView={handleView}
-              onEdit={handleEdit}
-              onDuplicate={handleDuplicate}
-              onToggleActive={handleToggleActive}
-              onDelete={handleDeleteClick}
+              onEdit={canEdit ? handleEdit : undefined}
+              onDuplicate={canCreate ? handleDuplicate : undefined}
+              onToggleActive={canEdit ? handleToggleActive : undefined}
+              onDelete={canDelete ? handleDeleteClick : undefined}
             />
           )}
         </CardContent>

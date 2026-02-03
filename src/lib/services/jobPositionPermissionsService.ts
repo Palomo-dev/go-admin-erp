@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/config';
 
 export interface JobPositionPermission {
   id: string;

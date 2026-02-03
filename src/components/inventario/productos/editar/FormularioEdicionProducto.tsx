@@ -16,7 +16,7 @@ import { Loader2 } from 'lucide-react'
 
 // Importar los mismos componentes que se usan en el formulario de creación
 import InformacionBasica from '../nuevo/InformacionBasica'
-import PrecionyCostos from '../nuevo/PrecioysCostos'
+import PrecionyCostos from '../nuevo/PreciosYCostos'
 import Inventario from '../nuevo/Inventario'
 import Imagenes from '../nuevo/Imagenes'
 import Variantes from '../nuevo/Variantes'

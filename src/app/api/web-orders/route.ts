@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+function getSupabaseClient(): SupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
 
 interface WebOrderItemInput {
   product_id?: number;
@@ -45,6 +51,7 @@ interface CreateWebOrderRequest {
 }
 
 async function generateOrderNumber(organizationId: number): Promise<string> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase.rpc('generate_web_order_number', { 
     org_id: organizationId 
   });
@@ -82,6 +89,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Obtener cliente Supabase
+    const supabase = getSupabaseClient();
 
     // Generar número de pedido
     const orderNumber = await generateOrderNumber(body.organization_id);
@@ -218,6 +228,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const supabase = getSupabaseClient();
     let query = supabase
       .from('web_orders')
       .select(`

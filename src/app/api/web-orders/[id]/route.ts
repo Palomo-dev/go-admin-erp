@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+function getSupabaseClient(): SupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
 
 type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected';
 
@@ -24,6 +30,7 @@ export async function GET(
 ) {
   try {
     const orderId = params.id;
+    const supabase = getSupabaseClient();
 
     const { data, error } = await supabase
       .from('web_orders')
@@ -123,6 +130,7 @@ export async function PATCH(
       );
     }
 
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('web_orders')
       .update(updateData)
@@ -167,6 +175,7 @@ export async function DELETE(
 ) {
   try {
     const orderId = params.id;
+    const supabase = getSupabaseClient();
 
     // Primero verificar que el pedido existe y su estado permite eliminación
     const { data: existingOrder, error: fetchError } = await supabase

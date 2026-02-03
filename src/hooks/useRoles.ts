@@ -311,8 +311,8 @@ export const useUserPermissions = (userId: string, organizationId: number): UseU
     try {
       setLoading(true);
       
-      // Usar la función SQL que resuelve permisos de todas las capas
-      const { data, error } = await supabase.rpc('get_user_permissions', {
+      // Usar la función SQL que resuelve permisos ROL + CARGO con precedencia
+      const { data, error } = await supabase.rpc('get_user_permissions_with_precedence', {
         p_user_id: userId,
         p_organization_id: organizationId
       });
@@ -324,9 +324,9 @@ export const useUserPermissions = (userId: string, organizationId: number): UseU
         id: 0, // No necesitamos el ID real
         code: p.permission_code,
         name: p.permission_name,
-        module: p.module,
-        category: p.category,
-        description: ''
+        module: p.permission_module,
+        category: p.permission_category,
+        description: p.permission_description || ''
       }));
 
       setUserPermissions(permissions);

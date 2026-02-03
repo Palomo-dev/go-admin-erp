@@ -90,30 +90,28 @@ export const permissionService = {
 
   /**
    * Verificar si un usuario tiene un permiso específico
+   * Usa la función RPC check_user_permission que combina ROL + CARGO con precedencia del cargo
    */
   async checkUserPermission(
     userId: string, 
     organizationId: number, 
     permissionCode: string
   ): Promise<UserPermissionCheck> {
-    const { data, error } = await supabase
+    // Obtener datos del miembro
+    const { data: memberData, error: memberError } = await supabase
       .from('organization_members')
       .select(`
         is_super_admin,
         role_id,
-        roles!inner(
-          name,
-          role_permissions!inner(
-            permissions!inner(code)
-          )
-        )
+        job_position_id,
+        roles(name)
       `)
       .eq('user_id', userId)
       .eq('organization_id', organizationId)
       .eq('is_active', true)
       .single();
     
-    if (error || !data) {
+    if (memberError || !memberData) {
       return {
         hasPermission: false,
         isSuperAdmin: false
@@ -121,52 +119,71 @@ export const permissionService = {
     }
 
     // Si es super admin, tiene todos los permisos
-    if (data.is_super_admin) {
+    if (memberData.is_super_admin) {
       return {
         hasPermission: true,
         isSuperAdmin: true,
-        roleId: data.role_id,
-        roleName: data.roles?.name
+        roleId: memberData.role_id,
+        roleName: (memberData.roles as any)?.name
       };
     }
 
-    // Verificar permisos específicos del rol
-    const hasPermission = data.roles?.role_permissions?.some(rp => 
-      rp.permissions?.code === permissionCode
-    ) || false;
+    // Usar RPC check_user_permission que combina ROL + CARGO con precedencia
+    const { data: hasPermission, error: rpcError } = await supabase
+      .rpc('check_user_permission', {
+        p_user_id: userId,
+        p_organization_id: organizationId,
+        p_permission_code: permissionCode
+      });
+
+    if (rpcError) {
+      console.warn('Error en RPC check_user_permission:', rpcError);
+      // Fallback: verificar solo en rol
+      const { data: rolePerms } = await supabase
+        .from('role_permissions')
+        .select('permissions!inner(code)')
+        .eq('role_id', memberData.role_id)
+        .eq('allowed', true);
+      
+      const fallbackHasPermission = rolePerms?.some((rp: any) => 
+        rp.permissions?.code === permissionCode
+      ) || false;
+
+      return {
+        hasPermission: fallbackHasPermission,
+        isSuperAdmin: false,
+        roleId: memberData.role_id,
+        roleName: (memberData.roles as any)?.name
+      };
+    }
 
     return {
-      hasPermission,
+      hasPermission: hasPermission || false,
       isSuperAdmin: false,
-      roleId: data.role_id,
-      roleName: data.roles?.name
+      roleId: memberData.role_id,
+      roleName: (memberData.roles as any)?.name
     };
   },
 
   /**
    * Verificar múltiples permisos de un usuario
+   * Usa la función RPC get_user_permission_codes que combina ROL + CARGO con precedencia
    */
   async checkMultiplePermissions(
     userId: string,
     organizationId: number,
     permissionCodes: string[]
   ): Promise<{[permissionCode: string]: boolean}> {
-    const { data, error } = await supabase
+    // Verificar si es super admin
+    const { data: memberData, error: memberError } = await supabase
       .from('organization_members')
-      .select(`
-        is_super_admin,
-        roles!inner(
-          role_permissions!inner(
-            permissions!inner(code)
-          )
-        )
-      `)
+      .select('is_super_admin')
       .eq('user_id', userId)
       .eq('organization_id', organizationId)
       .eq('is_active', true)
       .single();
     
-    if (error || !data) {
+    if (memberError || !memberData) {
       return permissionCodes.reduce((acc, code) => {
         acc[code] = false;
         return acc;
@@ -174,52 +191,79 @@ export const permissionService = {
     }
 
     // Si es super admin, tiene todos los permisos
-    if (data.is_super_admin) {
+    if (memberData.is_super_admin) {
       return permissionCodes.reduce((acc, code) => {
         acc[code] = true;
         return acc;
       }, {} as {[key: string]: boolean});
     }
 
-    // Obtener permisos del rol
-    const userPermissions = data.roles?.role_permissions?.map(rp => rp.permissions?.code).filter(Boolean) || [];
+    // Usar RPC para obtener permisos combinados ROL + CARGO
+    const { data: userPermissions, error: rpcError } = await supabase
+      .rpc('get_user_permission_codes', {
+        p_user_id: userId,
+        p_organization_id: organizationId
+      });
+
+    if (rpcError) {
+      console.warn('Error en RPC get_user_permission_codes:', rpcError);
+      return permissionCodes.reduce((acc, code) => {
+        acc[code] = false;
+        return acc;
+      }, {} as {[key: string]: boolean});
+    }
+
+    const permissionList = userPermissions || [];
 
     // Verificar cada permiso solicitado
     return permissionCodes.reduce((acc, code) => {
-      acc[code] = userPermissions.includes(code);
+      acc[code] = permissionList.includes(code);
       return acc;
     }, {} as {[key: string]: boolean});
   },
 
   /**
    * Obtener todos los permisos de un usuario
+   * Usa la función RPC get_user_permissions_with_precedence que combina ROL + CARGO
    */
   async getUserPermissions(userId: string, organizationId: number): Promise<Permission[]> {
-    const { data, error } = await supabase
+    // Verificar si es super admin
+    const { data: memberData, error: memberError } = await supabase
       .from('organization_members')
-      .select(`
-        is_super_admin,
-        roles!inner(
-          role_permissions!inner(
-            permissions!inner(*)
-          )
-        )
-      `)
+      .select('is_super_admin')
       .eq('user_id', userId)
       .eq('organization_id', organizationId)
       .eq('is_active', true)
       .single();
     
-    if (error || !data) return [];
+    if (memberError || !memberData) return [];
 
     // Si es super admin, obtener todos los permisos
-    if (data.is_super_admin) {
+    if (memberData.is_super_admin) {
       return await this.getAllPermissions();
     }
 
-    // Obtener permisos específicos del rol
-    const permissions = data.roles?.role_permissions?.map(rp => rp.permissions).filter(Boolean) || [];
-    return permissions;
+    // Usar RPC para obtener permisos combinados ROL + CARGO con precedencia
+    const { data: permissions, error: rpcError } = await supabase
+      .rpc('get_user_permissions_with_precedence', {
+        p_user_id: userId,
+        p_organization_id: organizationId
+      });
+
+    if (rpcError) {
+      console.warn('Error en RPC get_user_permissions_with_precedence:', rpcError);
+      return [];
+    }
+
+    // Mapear resultado de RPC a formato Permission
+    return (permissions || []).map((p: any) => ({
+      id: 0, // No tenemos el ID en el resultado de RPC, pero no es necesario para validación
+      code: p.permission_code,
+      name: p.permission_name || p.permission_code,
+      module: p.permission_module || '',
+      category: p.permission_category,
+      description: p.permission_description
+    }));
   },
 
   /**
@@ -314,12 +358,12 @@ export const permissionService = {
     if (rpError) throw rpError;
 
     const permissionUsage: {[permissionId: number]: {permission: Permission; count: number}} = {};
-    (rolePermissions || []).forEach(rp => {
+    (rolePermissions || []).forEach((rp: any) => {
       if (rp.permissions) {
         const id = rp.permission_id;
         if (!permissionUsage[id]) {
           permissionUsage[id] = {
-            permission: rp.permissions,
+            permission: rp.permissions as Permission,
             count: 0
           };
         }

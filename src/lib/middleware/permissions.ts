@@ -6,6 +6,7 @@ export interface UserPermissionContext {
   organizationId: number;
   isSuperAdmin: boolean;
   roleId: number;
+  jobPositionId?: string;
   permissions: string[];
   moduleAccess: string[];
 }
@@ -36,12 +37,8 @@ export async function getUserPermissionContext(
       .from('organization_members')
       .select(`
         role_id,
-        is_super_admin,
-        roles(
-          role_permissions(
-            permissions(code)
-          )
-        )
+        job_position_id,
+        is_super_admin
       `)
       .eq('user_id', userId)
       .eq('organization_id', orgId)
@@ -50,9 +47,27 @@ export async function getUserPermissionContext(
 
     if (error || !member) return null;
 
-    // Extraer permisos del rol
-    const memberRoles = member.roles as any;
-    const permissions = memberRoles?.role_permissions?.map((rp: any) => rp.permissions?.code).filter(Boolean) || [];
+    // Usar la función RPC que combina ROL + CARGO con precedencia del cargo
+    const { data: permissionCodes, error: rpcError } = await supabase
+      .rpc('get_user_permission_codes', {
+        p_user_id: userId,
+        p_organization_id: orgId
+      });
+
+    // Si falla la RPC, fallback a solo rol
+    let permissions: string[] = [];
+    if (rpcError) {
+      console.warn('Error en RPC get_user_permission_codes, usando fallback:', rpcError);
+      // Fallback: obtener solo permisos del rol
+      const { data: rolePerms } = await supabase
+        .from('role_permissions')
+        .select('permissions(code)')
+        .eq('role_id', member.role_id)
+        .eq('allowed', true);
+      permissions = rolePerms?.map((rp: any) => rp.permissions?.code).filter(Boolean) || [];
+    } else {
+      permissions = permissionCodes || [];
+    }
 
     // Obtener módulos activos para la organización
     const { data: orgModules } = await supabase
@@ -68,6 +83,7 @@ export async function getUserPermissionContext(
       organizationId: orgId!,
       isSuperAdmin: member.is_super_admin,
       roleId: member.role_id,
+      jobPositionId: member.job_position_id || undefined,
       permissions,
       moduleAccess
     };

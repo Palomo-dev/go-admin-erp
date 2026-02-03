@@ -40,7 +40,8 @@ export default function JobPositionPermissionsManager({
   onClose,
   onPermissionsUpdated
 }: JobPositionPermissionsManagerProps) {
-  const { permissions: allPermissions, loading: permissionsLoading } = usePermissions(1);
+  // usePermissions() retorna ModulePermissions[] (ya agrupados por módulo)
+  const { permissions: modulePermissionsData, loading: permissionsLoading } = usePermissions();
   
   const [selectedPermissions, setSelectedPermissions] = useState<number[]>([]);
   const [currentPermissions, setCurrentPermissions] = useState<number[]>([]);
@@ -69,6 +70,9 @@ export default function JobPositionPermissionsManager({
       'organizations': 'Organizaciones',
       'users': 'Usuarios',
       'roles': 'Roles',
+      'catalog': 'Catálogo',
+      'operations': 'Operaciones',
+      'sales': 'Ventas',
       'other': 'Otros'
     };
     return names[module] || module;
@@ -93,30 +97,24 @@ export default function JobPositionPermissionsManager({
     }
   };
 
-  // Agrupar permisos por módulo
-  const modulePermissions = useMemo(() => {
-    if (!allPermissions || allPermissions.length === 0) return [];
+  // Los permisos ya vienen agrupados por módulo desde el hook
+  // Solo necesitamos agregar nombres localizados y ordenar
+  const modulePermissions = useMemo((): ModulePermissions[] => {
+    if (!modulePermissionsData || modulePermissionsData.length === 0) return [];
 
-    const modules = new Map<string, ModulePermissions>();
-
-    allPermissions.forEach(permission => {
-      const module = permission.module || 'other';
-      
-      if (!modules.has(module)) {
-        modules.set(module, {
-          module,
-          moduleName: getModuleName(module),
-          permissions: []
-        });
-      }
-
-      modules.get(module)!.permissions.push(permission);
-    });
-
-    return Array.from(modules.values()).sort((a, b) => 
-      a.moduleName.localeCompare(b.moduleName)
-    );
-  }, [allPermissions]);
+    return modulePermissionsData
+      .map(mod => ({
+        module: mod.module,
+        moduleName: mod.moduleName || getModuleName(mod.module),
+        permissions: mod.permissions.map(p => ({
+          id: p.id,
+          code: p.code,
+          name: p.name,
+          description: p.description || ''
+        }))
+      }))
+      .sort((a, b) => a.moduleName.localeCompare(b.moduleName));
+  }, [modulePermissionsData]);
 
   // Filtrar módulos según búsqueda y filtro
   const filteredModules = useMemo(() => {

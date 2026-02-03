@@ -501,7 +501,7 @@ export default function ReportesSucursalesPage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Sucursales con alta utilización (>80%)</span>
+                    <span className="text-sm">Sucursales con alta utilización (&gt;80%)</span>
                     <span className="font-bold">
                       {reportData.branches.filter(b => b.utilization > 80).length}
                     </span>

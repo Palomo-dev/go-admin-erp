@@ -1,89 +1,105 @@
-'use client';
+'use client'
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Shield, Users, Settings, Lock } from 'lucide-react';
-import { usePermissionContext } from '@/hooks/usePermissionContext';
-import { PERMISSIONS, MODULES } from '@/lib/middleware/permissions';
-import PermissionGuard from '@/components/auth/PermissionGuard';
+import { useState } from 'react'
+import { useOrganization } from '@/lib/hooks/useOrganization'
+import RolesManagement from '@/components/admin/RolesManagement'
+import RoleAssignment from '@/components/admin/RoleAssignment'
+import PermissionsManagement from '@/components/admin/PermissionsManagement'
+import RoleAnalytics from '@/components/admin/RoleAnalytics'
+import { Shield, Users, Key, BarChart3, Loader2 } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-export default function AdminPage() {
-  const router = useRouter();
-  const { context, loading } = usePermissionContext();
+export default function RolesAdminPage() {
+  const { organization, isLoading } = useOrganization()
+  const [activeTab, setActiveTab] = useState('roles')
 
-  // Redirigir a la página de roles por defecto
-  useEffect(() => {
-    if (!loading && context) {
-      router.push('/app/roles/roles');
-    }
-  }, [loading, context, router]);
-
-  if (loading || !context) {
+  if (isLoading || !organization) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 dark:text-blue-400 mx-auto" />
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Cargando...</p>
         </div>
       </div>
-    );
+    )
   }
 
-  // Esta página normalmente redirigirá, pero mostramos contenido por si acaso
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <PermissionGuard
-          permissions={[PERMISSIONS.ROLES_MANAGE, PERMISSIONS.USER_MANAGEMENT, PERMISSIONS.ADMIN_FULL_ACCESS]}
-          requireAll={false}
-          moduleCode={MODULES.ADMIN}
-          organizationId={context.organizationId}
-        >
-          <div className="text-center">
-            <Shield className="mx-auto h-16 w-16 text-indigo-600" />
-            <h1 className="mt-4 text-3xl font-bold text-gray-900">Administración del Sistema</h1>
-            <p className="mt-2 text-lg text-gray-600">
-              Gestión de roles, permisos y configuración del sistema
-            </p>
-            
-            <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              <div 
-                onClick={() => router.push('/app/roles/roles')}
-                className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-              >
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
-                    <Lock className="h-6 w-6 text-indigo-600" />
-                  </div>
-                  <div className="ml-5">
-                    <h3 className="text-lg font-medium text-gray-900">Roles y Permisos</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Gestiona roles y asigna permisos a usuarios
-                    </p>
-                  </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-white" />
                 </div>
-              </div>
-              
-              <div 
-                onClick={() => router.push('/app/roles/configuracion')}
-                className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-              >
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
-                    <Settings className="h-6 w-6 text-indigo-600" />
-                  </div>
-                  <div className="ml-5">
-                    <h3 className="text-lg font-medium text-gray-900">Configuración</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Ajustes generales del sistema
-                    </p>
-                  </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Administración de Roles
+                  </h1>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Gestión de roles y permisos
+                  </p>
                 </div>
               </div>
             </div>
           </div>
-        </PermissionGuard>
+        </div>
+      </div>
+
+      {/* Contenido con Tabs */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <TabsTrigger 
+              value="roles"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              Gestión de Roles
+            </TabsTrigger>
+            <TabsTrigger 
+              value="assignments"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Asignación
+            </TabsTrigger>
+            <TabsTrigger 
+              value="permissions"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+            >
+              <Key className="h-4 w-4 mr-2" />
+              Permisos
+            </TabsTrigger>
+            <TabsTrigger 
+              value="analytics"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analíticas
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="roles" className="space-y-4">
+            <RolesManagement organizationId={organization.id} />
+          </TabsContent>
+
+          <TabsContent value="assignments" className="space-y-4">
+            <RoleAssignment organizationId={organization.id} />
+          </TabsContent>
+
+          <TabsContent value="permissions" className="space-y-4">
+            <PermissionsManagement organizationId={organization.id} />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4">
+            <RoleAnalytics organizationId={organization.id} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
-  );
+  )
 }

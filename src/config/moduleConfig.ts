@@ -94,7 +94,7 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
   'roles': [
     { name: 'Roles', path: '/app/roles', icon: Shield },
     { name: 'Configuración', path: '/app/roles/configuracion', icon: Settings },
-    { name: 'Roles', path: '/app/roles/roles', icon: Shield }
+    { name: 'Gestión de Roles', path: '/app/roles', icon: Shield }
   ],
   'clientes': [
     { name: 'Clientes', path: '/app/clientes', icon: Users },

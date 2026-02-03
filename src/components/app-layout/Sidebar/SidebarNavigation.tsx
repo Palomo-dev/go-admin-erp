@@ -360,7 +360,7 @@ const SidebarNavigationComponent = ({
           href: "/app/admin", 
           icon: <Settings size={18} />,
           submenu: [
-            { name: "Roles y Permisos", href: "/app/roles/roles", icon: <Shield size={16} /> },
+            { name: "Roles y Permisos", href: "/app/roles", icon: <Shield size={16} /> },
             { name: "Configuración", href: "/app/roles/configuracion", icon: <Settings size={16} /> }
           ]
         },

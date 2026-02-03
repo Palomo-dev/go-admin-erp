@@ -1,9 +1,18 @@
 import OpenAI from 'openai';
 import { AIActionType } from './aiActionsService';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('Missing OPENAI_API_KEY environment variable');
+    }
+    openaiClient = new OpenAI({ apiKey });
+  }
+  return openaiClient;
+}
 
 export interface AssistantMessage {
   id: string;
@@ -200,6 +209,7 @@ class AIAssistantService {
         { role: 'user', content: message },
       ];
 
+      const openai = getOpenAIClient();
       const response = await openai.chat.completions.create({
         model: this.model,
         messages,

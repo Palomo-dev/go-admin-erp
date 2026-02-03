@@ -20,8 +20,8 @@ import PrecionyCostos from '../nuevo/PreciosYCostos'
 import Inventario from '../nuevo/Inventario'
 import Imagenes from '../nuevo/Imagenes'
 import Variantes from '../nuevo/Variantes'
-import Notas, { NotasRef } from '../nuevo/Notas'
-import Etiquetas, { EtiquetasRef } from '../nuevo/Etiquetas'
+import Notas from '../nuevo/Notas'
+import Etiquetas from '../nuevo/Etiquetas'
 
 // Esquema de validación con Zod (mismo que en FormularioProducto)
 const productoSchema = z.object({
@@ -76,12 +76,6 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
   // ID numérico del producto (se obtiene al cargar por UUID)
   const [productoId, setProductoId] = useState<number | undefined>(undefined);
   
-  // Referencias a componentes hijos para acceder a sus datos
-  const imagenesRef = useRef<any>(null);
-  const variantesRef = useRef<any>(null);
-  const notasRef = useRef<NotasRef>(null);
-  const etiquetasRef = useRef<EtiquetasRef>(null);
-  
   // Obtener el ID de la organización activa
   const organization_id = getOrganizationId();
   
@@ -104,6 +98,12 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       stock_inicial: []
     }
   });
+
+  // Adaptador para convertir react-hook-form a formData/updateFormData
+  const formData = form.watch();
+  const updateFormData = (field: string, value: any) => {
+    form.setValue(field as any, value);
+  };
 
   // Cargar datos del producto existente
   useEffect(() => {
@@ -253,233 +253,11 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       
       console.log("Datos principales del producto actualizados correctamente");
       
-      // 2. Actualizar imágenes si es necesario
-      if (imagenesRef.current) {
-        console.log("Iniciando guardado de imágenes para producto ID:", productoId);
-        try {
-          // Obtener organización_id desde referencia
-          const org_id = organization_id;
-          console.log("Usando organization_id:", org_id, "para guardar imágenes");
-          
-          // Validar que tengamos un ID de producto válido
-          if (!productoId || isNaN(productoId) || productoId <= 0) {
-            throw new Error(`ID de producto inválido para guardar imágenes: ${productoId}`);
-          }
-          
-          // Intentar guardar las imágenes
-          const { success, error: imgError } = await imagenesRef.current.guardarImagenesEnBD(productoId);
-          
-          if (!success) {
-            console.error('Error al actualizar imágenes:', imgError);
-            // No lanzamos excepción para permitir que se guarde el resto del producto
-            toast({
-              title: "Advertencia",
-              description: `Se guardó el producto pero hubo problemas con las imágenes: ${imgError?.message || 'Error desconocido'}`,
-              variant: "default",
-            });
-          } else {
-            console.log("Imágenes guardadas correctamente");
-          }
-        } catch (imgError: any) {
-          console.error('Error al actualizar imágenes:', imgError);
-          // No lanzamos excepción para permitir que se guarde el resto del producto
-          toast({
-            title: "Advertencia",
-            description: `Se guardó el producto pero hubo problemas con las imágenes: ${imgError?.message || 'Error desconocido'}`,
-            variant: "default",
-          });
-        }
-      }
+      // 2. Imágenes se manejan a través de formData (no requiere ref)
       
-      // 3. Actualizar variantes si es necesario
-      if (variantesRef.current) {
-        try {
-          const variantes = variantesRef.current.getVariantes() || [];
-          
-          // Obtener las variantes existentes para poder compararlas
-          const { data: variantesExistentes } = await supabase
-            .from('product_variants')
-            .select('id, sku')
-            .eq('product_id', productoId);
-          
-          // Crear un mapa de las variantes existentes por ID para facilitar la búsqueda
-          const mapaVariantesExistentes: Map<string, any> = new Map();
-          if (variantesExistentes) {
-            variantesExistentes.forEach((v: { id: string, sku: string }) => {
-              mapaVariantesExistentes.set(v.id, v);
-            });
-          }
-          
-          // Dividir las variantes en nuevas y existentes
-          const variantesNuevas = variantes.filter((v: any) => !v.id);
-          const variantesParaActualizar = variantes.filter((v: any) => v.id);
-          
-          // Identificar las variantes que deben eliminarse (las que existen en BD pero no en el formulario)
-          const idsExistentes = new Set(variantesParaActualizar.map((v: any) => v.id));
-          const idsParaEliminar: string[] = [];
-          mapaVariantesExistentes.forEach((v: any, id: string) => {
-            if (!idsExistentes.has(id)) {
-              idsParaEliminar.push(id);
-            }
-          });
-          
-          // 1. Eliminar variantes que ya no existen
-          if (idsParaEliminar.length > 0) {
-            // Primero eliminar los atributos de las variantes
-            await supabase
-              .from('product_variant_attributes')
-              .delete()
-              .in('variant_id', idsParaEliminar);
-            
-            // Eliminar los registros de stock de las variantes
-            await supabase
-              .from('stock_levels')
-              .delete()
-              .in('variant_id', idsParaEliminar);
-            
-            // Por último, eliminar las variantes
-            const { error: deleteError } = await supabase
-              .from('product_variants')
-              .delete()
-              .in('id', idsParaEliminar);
-              
-            if (deleteError) throw deleteError;
-          }
-          
-          // 2. Actualizar variantes existentes
-          for (const variante of variantesParaActualizar) {
-            // Actualizar la variante principal
-            const { error: updateError } = await supabase
-              .from('product_variants')
-              .update({
-                sku: variante.sku,
-                price: variante.price,
-                cost: variante.cost
-              })
-              .eq('id', variante.id);
-              
-            if (updateError) throw updateError;
-            
-            // Actualizamos el stock si es necesario
-            if (variante.stock_por_sucursal && variante.stock_por_sucursal.length > 0) {
-              for (const stock of variante.stock_por_sucursal) {
-                // Verificar si existe el registro de stock
-                const { data: stockExistente } = await supabase
-                  .from('stock_levels')
-                  .select('id')
-                  .eq('variant_id', variante.id)
-                  .eq('branch_id', stock.branch_id)
-                  .maybeSingle();
-                  
-                if (stockExistente) {
-                  // Actualizar stock existente
-                  await supabase
-                    .from('stock_levels')
-                    .update({
-                      qty_on_hand: stock.qty_on_hand,
-                      avg_cost: stock.avg_cost || 0
-                    })
-                    .eq('id', stockExistente.id);
-                } else {
-                  // Crear nuevo registro de stock
-                  await supabase
-                    .from('stock_levels')
-                    .insert({
-                      variant_id: variante.id,
-                      product_id: productoId,
-                      branch_id: stock.branch_id,
-                      qty_on_hand: stock.qty_on_hand,
-                      avg_cost: stock.avg_cost || 0
-                    });
-                }
-              }
-            }
-          }
-          
-          // 3. Insertar nuevas variantes
-          if (variantesNuevas.length > 0) {
-            for (const variante of variantesNuevas) {
-              // Insertar la variante principal
-              const { data: nuevaVariante, error: insertError } = await supabase
-                .from('product_variants')
-                .insert({
-                  product_id: productoId,
-                  sku: variante.sku,
-                  price: variante.price,
-                  cost: variante.cost
-                })
-                .select()
-                .single();
-                
-              if (insertError || !nuevaVariante) throw insertError || new Error('No se pudo crear la variante');
-              
-              // Insertar los atributos de la variante
-              if (variante.attributes && variante.attributes.length > 0) {
-                const atributos = variante.attributes.map((attr: { type_id: string, value_id: string }) => ({
-                  variant_id: nuevaVariante.id,
-                  variant_type_id: attr.type_id,
-                  variant_value_id: attr.value_id
-                }));
-                
-                const { error: attrError } = await supabase
-                  .from('product_variant_attributes')
-                  .insert(atributos);
-                  
-                if (attrError) throw attrError;
-              }
-              
-              // Insertar el stock inicial
-              if (variante.stock_quantity > 0) {
-                // Si hay stock, creamos registros de stock para la sucursal principal
-                const { error: stockError } = await supabase
-                  .from('stock_levels')
-                  .insert({
-                    variant_id: nuevaVariante.id,
-                    product_id: productoId,
-                    branch_id: data.stock_inicial && data.stock_inicial[0] ? data.stock_inicial[0].branch_id : null,
-                    qty_on_hand: variante.stock_quantity,
-                    avg_cost: variante.cost
-                  });
-                  
-                if (stockError) throw stockError;
-              }
-            }
-          }
-          
-          console.log('Variantes actualizadas correctamente:', {
-            actualizadas: variantesParaActualizar.length,
-            nuevas: variantesNuevas.length,
-            eliminadas: idsParaEliminar.length
-          });
-        } catch (varError: any) {
-          console.error('Error al actualizar variantes:', varError);
-          throw new Error(`Error al actualizar variantes: ${varError.message || 'Error desconocido'}`);
-        }
-      }
+      // 3. Variantes, notas y etiquetas se manejan a través de formData (no requiere refs)
       
-      // 3. Guardar las notas del producto
-      if (notasRef.current) {
-        try {
-          const { success, error } = await notasRef.current.guardarNotasEnBD(productoId);
-          if (!success) throw error;
-        } catch (notasError: any) {
-          console.error('Error al guardar notas del producto:', notasError);
-          throw new Error(`Error al guardar notas: ${notasError.message || 'Error desconocido'}`);
-        }
-      }
-      
-      // 4. Guardar las etiquetas del producto
-      if (etiquetasRef.current) {
-        try {
-          const { success, error } = await etiquetasRef.current.guardarEtiquetasEnBD(productoId);
-          if (!success) throw error;
-        } catch (tagsError: any) {
-          console.error('Error al guardar etiquetas del producto:', tagsError);
-          throw new Error(`Error al guardar etiquetas: ${tagsError.message || 'Error desconocido'}`);
-        }
-      }
-      
-      // 5. Actualizar el stock del producto principal (sin variantes)
+      // 4. Actualizar el stock del producto principal (sin variantes)
       if (data.stock_inicial && Array.isArray(data.stock_inicial) && data.stock_inicial.length > 0) {
         console.log('Actualizando stock del producto...', data.stock_inicial);
         
@@ -568,32 +346,15 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           <Form {...form}>
             <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-4">
               <div className="grid gap-4">
-                <InformacionBasica form={form} />
-                <PrecionyCostos form={form} />
-                <Inventario form={form} />
-                <Imagenes ref={imagenesRef} productoId={productoId} />
-                <Variantes 
-                  ref={variantesRef} 
-                  defaultCost={Number(form.watch('cost') || 0)} 
-                  defaultPrice={Number(form.watch('price') || 0)}
-                  defaultSku={form.watch('sku')}
-                  stockInicial={form.watch('stock_inicial')?.map(item => ({
-                    branch_id: item.branch_id,
-                    qty_on_hand: item.qty_on_hand,
-                    avg_cost: item.avg_cost || 0
-                  }))}
-                  productoId={productoId}
-                />
+                <InformacionBasica formData={formData} updateFormData={updateFormData} />
+                <PrecionyCostos formData={formData} updateFormData={updateFormData} />
+                <Inventario formData={formData} updateFormData={updateFormData} />
+                <Imagenes formData={formData} updateFormData={updateFormData} />
+                <Variantes formData={formData} updateFormData={updateFormData} />
                 
-                <Notas 
-                  ref={notasRef}
-                  productoId={productoId}
-                />
+                <Notas formData={formData} updateFormData={updateFormData} />
 
-                <Etiquetas
-                  ref={etiquetasRef}
-                  productoId={productoId}
-                />
+                <Etiquetas formData={formData} updateFormData={updateFormData} />
                 
                 {/* Indicador de carga durante el guardado */}
                 {isLoading && (

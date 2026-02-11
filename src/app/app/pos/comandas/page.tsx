@@ -69,13 +69,17 @@ export default function ComandasPage() {
     const unsubscribe = KitchenService.subscribeToKitchenTickets(
       organization.id,
       async () => {
-        // Recargar con los filtros actuales cuando hay cambios en tiempo real
-        const data = await KitchenService.getKitchenTickets({
-          organizationId: organization.id,
-          status: statusFilter,
-          zone: zoneFilter,
-        });
-        setTickets(data);
+        // Recargar silenciosamente (sin setIsLoading) cuando hay cambios en tiempo real
+        try {
+          const data = await KitchenService.getKitchenTickets({
+            organizationId: organization.id,
+            status: statusFilter,
+            zone: zoneFilter,
+          });
+          setTickets(data);
+        } catch (err) {
+          console.error('Error recargando tickets por realtime:', err);
+        }
       }
     );
 
@@ -84,8 +88,15 @@ export default function ComandasPage() {
     };
   }, [organization?.id, statusFilter, zoneFilter]);
 
-  // Cambiar estado de ticket
+  // Cambiar estado de ticket (con actualización optimista)
   const handleStatusChange = async (ticketId: number, status: KitchenTicket['status']) => {
+    const previousTickets = [...tickets];
+    
+    // Actualización optimista
+    setTickets(prev => prev.map(ticket =>
+      ticket.id === ticketId ? { ...ticket, status } : ticket
+    ));
+
     try {
       await KitchenService.updateTicketStatus(ticketId, status);
       
@@ -93,10 +104,9 @@ export default function ComandasPage() {
         title: 'Estado actualizado',
         description: `Ticket #${ticketId} marcado como ${getStatusLabel(status)}`,
       });
-      
-      // Los cambios se reflejarán automáticamente por Realtime
     } catch (error) {
-      console.error('Error actualizando estado:', error);
+      console.error('Error actualizando estado:', JSON.stringify(error));
+      setTickets(previousTickets);
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el estado',
@@ -115,19 +125,63 @@ export default function ComandasPage() {
     return labels[status] || status;
   };
 
-  // Cambiar estado de item individual
-  const handleItemStatusChange = async (itemId: number, status: KitchenTicketItem['status']) => {
+  // Cambiar estado de item individual (con actualización optimista)
+  const handleItemStatusChange = async (itemId: number, status: KitchenTicketItem['status'], productName?: string) => {
+    // Guardar estado anterior para revertir en caso de error
+    const previousTickets = [...tickets];
+    
+    // Actualización optimista: actualizar UI inmediatamente
+    setTickets(prev => prev.map(ticket => ({
+      ...ticket,
+      kitchen_ticket_items: ticket.kitchen_ticket_items?.map(item =>
+        item.id === itemId ? { ...item, status } : item
+      ),
+    })));
+
     try {
       await KitchenService.updateItemStatus(itemId, status);
       
+      const name = productName || 'Producto';
       toast({
-        title: 'Item actualizado',
-        description: `Item marcado como ${getItemStatusLabel(status)}`,
+        title: `${name} actualizado`,
+        description: `${name} marcado como ${getItemStatusLabel(status)}`,
       });
-      
-      // Los cambios se reflejarán automáticamente por Realtime
+
+      // Auto-promover estado del ticket si todos los items tienen el mismo estado
+      const parentTicket = previousTickets.find(t =>
+        t.kitchen_ticket_items?.some(i => i.id === itemId)
+      );
+      if (parentTicket?.kitchen_ticket_items) {
+        // Simular el nuevo estado de items (el item actualizado + los demás)
+        const updatedItems = parentTicket.kitchen_ticket_items.map(i =>
+          i.id === itemId ? { ...i, status } : i
+        );
+        const allInProgress = updatedItems.every(i => i.status === 'in_progress' || i.status === 'ready' || i.status === 'delivered');
+        const allReady = updatedItems.every(i => i.status === 'ready' || i.status === 'delivered');
+
+        let newTicketStatus: KitchenTicket['status'] | null = null;
+        if (allReady && parentTicket.status !== 'ready') {
+          newTicketStatus = 'ready';
+        } else if (allInProgress && !allReady && parentTicket.status === 'new') {
+          newTicketStatus = 'preparing';
+        }
+
+        if (newTicketStatus) {
+          // Actualización optimista del ticket
+          setTickets(prev => prev.map(t =>
+            t.id === parentTicket.id ? { ...t, status: newTicketStatus! } : t
+          ));
+          await KitchenService.updateTicketStatus(parentTicket.id, newTicketStatus);
+          toast({
+            title: 'Comanda actualizada',
+            description: `Ticket #${parentTicket.id} pasó a ${getStatusLabel(newTicketStatus)}`,
+          });
+        }
+      }
     } catch (error) {
-      console.error('Error actualizando estado del item:', error);
+      console.error('Error actualizando estado del item:', JSON.stringify(error));
+      // Revertir al estado anterior si falla
+      setTickets(previousTickets);
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el estado del item',
@@ -139,7 +193,7 @@ export default function ComandasPage() {
   const getItemStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       pending: 'Pendiente',
-      preparing: 'En Preparación',
+      in_progress: 'En Preparación',
       ready: 'Listo',
       delivered: 'Entregado',
     };

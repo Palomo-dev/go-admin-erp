@@ -369,7 +369,6 @@ export class POSService {
       const insertData = {
         organization_id: this.organizationId,
         branch_id: await this.getBranchId(),
-        full_name: customerData.full_name,
         first_name: customerData.full_name?.split(' ')[0] || '',
         last_name: customerData.full_name?.split(' ').slice(1).join(' ') || '',
         email: customerData.email,
@@ -378,8 +377,9 @@ export class POSService {
         identification_type: customerData.doc_type,
         identification_number: customerData.doc_number,
         address: customerData.address,
-        city: customerData.city,
-        roles: customerData.roles || ['customer'],
+        roles: customerData.roles || ['cliente', 'huesped'],
+        fiscal_responsibilities: ['R-99-PN'],
+        fiscal_municipality_id: customerData.municipality_id || 'aa4b6637-0060-41bb-9459-bc95f9789e08',
         tags: customerData.tags || [],
         preferences: customerData.preferences || {},
         metadata: {

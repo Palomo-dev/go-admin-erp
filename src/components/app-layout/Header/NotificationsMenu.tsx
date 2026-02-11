@@ -1,22 +1,27 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Clock, Inbox } from 'lucide-react';
+import { Bell, Clock, Inbox, Mail, Smartphone, MessageSquare, User, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
 import { useTaskReminders } from '@/lib/hooks/useTaskReminders';
 import { TaskReminders } from './TaskReminders';
 import { useRouter } from 'next/navigation';
+import { NotificationDetailSheet } from '@/components/notificaciones/NotificationDetailSheet';
 
 interface Notification {
   id: string;
   organization_id: number;
   recipient_user_id?: string;
   channel: string;
+  recipient_email?: string | null;
+  recipient_phone?: string | null;
   payload: {
-    type: string;
-    title: string;
-    content: string;
-    [key: string]: any; // Para cualquier campo adicional en payload
+    type?: string;
+    title?: string;
+    content?: string;
+    [key: string]: any;
   };
   status: string;
   read_at: string | null;
@@ -33,6 +38,11 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeTab, setActiveTab] = useState<'notifications' | 'tasks'>('notifications');
+  const [notifSubTab, setNotifSubTab] = useState<'mine' | 'all'>('mine');
+  const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
+  const [allUnreadCount, setAllUnreadCount] = useState(0);
+  const [myUnreadCount, setMyUnreadCount] = useState(0);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const notificationMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   
@@ -61,25 +71,51 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
       
       setLoading(true);
       try {
-        // Consultar notificaciones de la organización actual para el usuario
-        const { data, error } = await supabase
+        // 1. Mis notificaciones (dirigidas al usuario)
+        const { data: myData, error: myError } = await supabase
           .from('notifications')
           .select('*')
           .eq('organization_id', organizationId)
+          .neq('status', 'deleted')
           .eq('recipient_user_id', userId)
-          .in('channel', ['app', 'all']) // Solo notificaciones para la app
           .order('created_at', { ascending: false })
-          .limit(5);
-        
-        if (error) throw error;
-        
-        // Actualizar estado con las notificaciones
-        if (data) {
-          setNotifications(data as Notification[]);
-          // Calcular notificaciones no leídas
-          const unread = data.filter((n: Notification) => n.read_at === null).length;
-          setUnreadCount(unread);
-        }
+          .limit(15);
+
+        if (myError) throw myError;
+
+        // 2. Todas las notificaciones de la org
+        const { data: allData, error: allError } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .neq('status', 'deleted')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (allError) throw allError;
+
+        // 3. Conteos de no leídas
+        const { count: myUnread } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organizationId)
+          .neq('status', 'deleted')
+          .eq('recipient_user_id', userId)
+          .is('read_at', null);
+
+        const { count: totalUnread } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organizationId)
+          .neq('status', 'deleted')
+          .is('read_at', null);
+
+        // Actualizar estados
+        setNotifications((myData || []) as Notification[]);
+        setAllNotifications((allData || []) as Notification[]);
+        setMyUnreadCount(myUnread ?? 0);
+        setAllUnreadCount(totalUnread ?? 0);
+        setUnreadCount((myUnread ?? 0) + (totalUnread ?? 0));
       } catch (error) {
         console.error('Error al cargar notificaciones:', error);
       } finally {
@@ -90,7 +126,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
     if (organizationId && userId) {
       fetchNotifications();
       
-      // Suscripción a cambios en notificaciones
+      // Suscripción a cambios en notificaciones de la organización
       const notificationsSubscription = supabase
         .channel('notifications-changes')
         .on('postgres_changes', 
@@ -98,7 +134,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
             event: '*', 
             schema: 'public', 
             table: 'notifications', 
-            filter: `organization_id=eq.${organizationId} AND recipient_user_id=eq.${userId}` 
+            filter: `organization_id=eq.${organizationId}` 
           },
           () => fetchNotifications()
         )
@@ -123,6 +159,35 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Abrir panel de detalle
+  const handleNotificationClick = async (notification: Notification) => {
+    const now = new Date().toISOString();
+    const wasUnread = !notification.read_at;
+
+    // Mostrar la notificación con read_at actualizado inmediatamente
+    setSelectedNotification({ ...notification, read_at: notification.read_at || now });
+
+    // Marcar como leída en BD y actualizar listas
+    if (wasUnread) {
+      try {
+        const { error } = await supabase
+          .from('notifications')
+          .update({ read_at: now })
+          .eq('id', notification.id);
+
+        if (!error) {
+          setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read_at: now } : n));
+          setAllNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read_at: now } : n));
+          setMyUnreadCount(prev => Math.max(0, prev - 1));
+          setAllUnreadCount(prev => Math.max(0, prev - 1));
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+      } catch (err) {
+        console.error('Error al marcar como leída:', err);
+      }
+    }
+  };
 
   // Marcar notificación como leída
   const markAsRead = async (id: string) => {
@@ -214,27 +279,74 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
               </button>
             </div>
             
+            {/* Sub-tabs: Mías / Todas (solo visible en tab Notificaciones) */}
+            {activeTab === 'notifications' && (
+              <div className="flex gap-1 mt-2 bg-gray-50 dark:bg-gray-750 rounded-md p-0.5">
+                <button
+                  onClick={() => setNotifSubTab('mine')}
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    notifSubTab === 'mine'
+                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <User className="h-3 w-3" />
+                  Mías
+                  {myUnreadCount > 0 && (
+                    <span className="bg-blue-500 text-white rounded-full px-1.5 py-0 text-[10px] font-bold">{myUnreadCount}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setNotifSubTab('all')}
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    notifSubTab === 'all'
+                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <Users className="h-3 w-3" />
+                  Todas
+                  {allUnreadCount > 0 && (
+                    <span className="bg-gray-500 text-white rounded-full px-1.5 py-0 text-[10px] font-bold">{allUnreadCount}</span>
+                  )}
+                </button>
+              </div>
+            )}
+
             {/* Botón marcar todo como leído - solo para notificaciones */}
-            {activeTab === 'notifications' && notifications.length > 0 && unreadCount > 0 && (
+            {activeTab === 'notifications' && (notifSubTab === 'mine' ? notifications : allNotifications).length > 0 && (notifSubTab === 'mine' ? myUnreadCount : allUnreadCount) > 0 && (
               <div className="mt-3 flex justify-end">
                 <button 
                   onClick={async (e) => {
                     e.stopPropagation();
                     try {
-                      // Marcar todas las notificaciones como leídas
                       const now = new Date().toISOString();
                       if (userId && organizationId) {
-                        const { error } = await supabase
+                        let query = supabase
                           .from('notifications')
                           .update({ read_at: now })
                           .eq('organization_id', organizationId)
-                          .eq('recipient_user_id', userId)
+                          .neq('status', 'deleted')
                           .is('read_at', null);
-                          
+
+                        // Si estamos en "Mías", solo marcar las del usuario
+                        if (notifSubTab === 'mine') {
+                          query = query.eq('recipient_user_id', userId);
+                        }
+
+                        const { error } = await query;
                         if (error) throw error;
                         
                         // Actualizar estado local
-                        setNotifications(notifications.map(n => ({ ...n, read_at: now })));
+                        if (notifSubTab === 'mine') {
+                          setNotifications(notifications.map(n => ({ ...n, read_at: now })));
+                          setMyUnreadCount(0);
+                        } else {
+                          setAllNotifications(allNotifications.map(n => ({ ...n, read_at: now })));
+                          setNotifications(notifications.map(n => ({ ...n, read_at: now })));
+                          setAllUnreadCount(0);
+                          setMyUnreadCount(0);
+                        }
                         setUnreadCount(0);
                       }
                     } catch (error) {
@@ -253,50 +365,65 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
           <div className="flex-1 overflow-y-auto overscroll-contain">
             {activeTab === 'notifications' ? (
               // Contenido de notificaciones
-              loading ? (
-                <div className="p-6 sm:p-4 text-center text-base sm:text-sm text-gray-500 dark:text-gray-400">
-                  Cargando...
-                </div>
-              ) : notifications.length > 0 ? (
-                notifications.map(notification => (
-                  <div 
-                    key={notification.id} 
-                    className={`px-4 py-4 sm:py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 cursor-pointer transition-colors ${
-                      !notification.read_at ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                    }`}
-                    onClick={() => markAsRead(notification.id)}
-                  >
-                    <div className="flex justify-between items-start gap-3">
-                      <p className="text-base sm:text-sm font-medium text-gray-900 dark:text-gray-100 flex-1">{notification.payload.title}</p>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                        {new Date(notification.created_at).toLocaleString('es', {
-                          day: '2-digit',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-sm sm:text-xs mt-2 sm:mt-1 text-gray-600 dark:text-gray-300 line-clamp-2">
-                      {notification.payload.content}
-                    </p>
-                    {!notification.read_at && (
-                      <div className="mt-2 sm:mt-1 flex justify-end">
-                        <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+              (() => {
+                const displayNotifs = notifSubTab === 'mine' ? notifications : allNotifications;
+                return loading ? (
+                  <div className="p-6 sm:p-4 text-center text-base sm:text-sm text-gray-500 dark:text-gray-400">
+                    Cargando...
+                  </div>
+                ) : displayNotifs.length > 0 ? (
+                  displayNotifs.map(notification => {
+                  const title = notification.payload?.title || notification.payload?.type || 'Notificación';
+                  const content = notification.payload?.content || notification.recipient_email || '';
+                  const ChannelIcon = notification.channel === 'email' ? Mail : notification.channel === 'sms' ? Smartphone : notification.channel === 'whatsapp' ? MessageSquare : Bell;
+
+                  return (
+                    <div 
+                      key={notification.id} 
+                      className={`px-4 py-4 sm:py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 cursor-pointer transition-colors ${
+                        !notification.read_at ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                      }`}
+                      onClick={() => handleNotificationClick(notification)}
+                    >
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <ChannelIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <p className="text-base sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{title}</p>
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                          {new Date(notification.created_at).toLocaleString('es', {
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
                       </div>
-                    )}
+                      {content && (
+                        <p className="text-sm sm:text-xs mt-2 sm:mt-1 text-gray-600 dark:text-gray-300 line-clamp-2 pl-6">
+                          {content}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between mt-1 pl-6">
+                        <span className="text-xs text-gray-400 capitalize">{notification.channel}</span>
+                        {!notification.read_at && (
+                          <span className="inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+                ) : (
+                  <div className="p-8 sm:p-4 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 sm:w-12 sm:h-12 rounded-full bg-gray-100 dark:bg-gray-700 mb-3 sm:mb-2">
+                      <Inbox className="h-8 w-8 sm:h-6 sm:w-6 text-gray-400" />
+                    </div>
+                    <p className="text-base sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
+                      {notifSubTab === 'mine' ? 'No tienes notificaciones' : 'No hay notificaciones'}
+                    </p>
                   </div>
-                ))
-              ) : (
-                <div className="p-8 sm:p-4 text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 sm:w-12 sm:h-12 rounded-full bg-gray-100 dark:bg-gray-700 mb-3 sm:mb-2">
-                    <Inbox className="h-8 w-8 sm:h-6 sm:w-6 text-gray-400" />
-                  </div>
-                  <p className="text-base sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
-                    No hay notificaciones
-                  </p>
-                </div>
-              )
+                );
+              })()
             ) : (
               // Contenido de recordatorios de tareas
               <TaskReminders
@@ -332,6 +459,13 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
           </div>
         </div>
       )}
+      {/* Sheet de detalle de notificación */}
+      <NotificationDetailSheet
+        notification={selectedNotification}
+        open={!!selectedNotification}
+        onOpenChange={(open) => { if (!open) setSelectedNotification(null); }}
+        onNavigate={(url) => { setSelectedNotification(null); setNotificationsOpen(false); router.push(url); }}
+      />
     </div>
   );
 };

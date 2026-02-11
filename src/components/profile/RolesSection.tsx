@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { UserCheck, Building, ExternalLink } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 interface Role {
@@ -31,6 +32,7 @@ interface RolesSectionProps {
 
 export default function RolesSection({ user, roles = [] }: RolesSectionProps) {
   const [groupedRoles, setGroupedRoles] = useState<{[key: string]: Role[]}>({});
+  const [orgLogos, setOrgLogos] = useState<Record<string, string>>({});
   
   useEffect(() => {
     // Agrupar roles por organización para mostrarlos de forma organizada
@@ -45,6 +47,23 @@ export default function RolesSection({ user, roles = [] }: RolesSectionProps) {
       }, {});
       
       setGroupedRoles(grouped);
+
+      // Cargar logos de organizaciones
+      const logos: Record<string, string> = {};
+      const orgsProcessed = new Set<string>();
+      for (const role of roles) {
+        const org = role.organization;
+        if (org && !orgsProcessed.has(org.id) && org.logo_url) {
+          orgsProcessed.add(org.id);
+          if (org.logo_url.startsWith('http')) {
+            logos[org.id] = org.logo_url;
+          } else {
+            const { data } = supabase.storage.from('organizations').getPublicUrl(org.logo_url);
+            if (data?.publicUrl) logos[org.id] = data.publicUrl;
+          }
+        }
+      }
+      setOrgLogos(logos);
     }
   }, [roles]);
 
@@ -71,12 +90,15 @@ export default function RolesSection({ user, roles = [] }: RolesSectionProps) {
                 className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50"
               >
                 <div className="flex items-center mb-4">
-                  {organization?.logo_url ? (
-                    <img 
-                      src={organization.logo_url} 
-                      alt={organization.name} 
-                      className="w-8 h-8 rounded-md mr-3 object-cover border border-gray-200 dark:border-gray-700" 
-                    />
+                  {organization?.id && orgLogos[organization.id] ? (
+                    <div className="w-8 h-8 rounded-md mr-3 relative overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <Image
+                        src={orgLogos[organization.id]}
+                        alt={organization.name || 'Logo'}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
                   ) : (
                     <div className="w-8 h-8 rounded-md mr-3 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                       <Building className="w-5 h-5 text-gray-500 dark:text-gray-400" />
@@ -93,7 +115,7 @@ export default function RolesSection({ user, roles = [] }: RolesSectionProps) {
                   {organization?.slug && (
                     <Link 
                       href={`/org/${organization.slug}`}
-                      className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </Link>

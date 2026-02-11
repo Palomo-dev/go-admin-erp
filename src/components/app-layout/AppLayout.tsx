@@ -72,6 +72,11 @@ import {
   GitMerge,
   Upload,
   History,
+  Palette,
+  Bell,
+  FileBarChart,
+  Wrench,
+  CalendarClock,
 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
@@ -88,8 +93,9 @@ import type { AssistantContext } from '@/lib/services/aiAssistantService';
 
 // Importaciones estándar para evitar ChunkLoadError
 import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
-import { ModuleProvider } from '@/lib/context/ModuleContext';
+import { ModuleProvider, useModuleContext } from '@/lib/context/ModuleContext';
 import { NavigationProgress } from './NavigationProgress';
+import { moduleManagementService } from '@/lib/services/moduleManagementService';
 
 // Función helper para obtener URL del logo
 const getOrganizationLogoUrl = (logoPath: string) => {
@@ -198,6 +204,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Ventas", href: "/app/pos/ventas", icon: <Receipt size={16} /> },
       { name: "Cajas", href: "/app/pos/cajas", icon: <Wallet size={16} /> },
       { name: "Mesas", href: "/app/pos/mesas", icon: <Table2 size={16} /> },
+      { name: "Reservas Mesas", href: "/app/pos/reservas-mesas", icon: <CalendarClock size={16} /> },
       { name: "Comandas", href: "/app/pos/comandas", icon: <ClipboardList size={16} /> },
       { name: "Devoluciones", href: "/app/pos/devoluciones", icon: <Undo2 size={16} /> },
       { name: "Propinas", href: "/app/pos/propinas", icon: <Gift size={16} /> },
@@ -222,6 +229,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Llegadas (Check-in)", href: "/app/pms/checkin", icon: <Key size={16} /> },
       { name: "Salidas (Check-out)", href: "/app/pms/checkout", icon: <LogOutIcon size={16} /> },
       { name: "Espacios", href: "/app/pms/espacios", icon: <BedDouble size={16} /> },
+      { name: "Servicios", href: "/app/pms/servicios", icon: <Settings size={16} /> },
       { name: "Tipos de Espacio", href: "/app/pms/tipos-espacio", icon: <Layers size={16} /> },
       { name: "Categorías", href: "/app/pms/categorias", icon: <FolderOpen size={16} /> },
       { name: "Tarifas", href: "/app/pms/tarifas", icon: <DollarSign size={16} /> },
@@ -263,11 +271,14 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     href: "/app/organizacion", 
     icon: <Building2 size={18} />,
     submenu: [
+      { name: "Información", href: "/app/organizacion/informacion", icon: <Building2 size={16} /> },
+      { name: "Branding", href: "/app/organizacion/branding", icon: <Palette size={16} /> },
+      { name: "Dominios", href: "/app/organizacion/dominios", icon: <Globe size={16} /> },
       { name: "Miembros", href: "/app/organizacion/miembros", icon: <Users size={16} /> },
       { name: "Invitaciones", href: "/app/organizacion/invitaciones", icon: <Plus size={16} /> },
-      { name: "Información", href: "/app/organizacion/informacion", icon: <Building2 size={16} /> },
-      { name: "Mi Plan", href: "/app/organizacion/plan", icon: <CreditCard size={16} /> },
       { name: "Sucursales", href: "/app/organizacion/sucursales", icon: <MapPin size={16} /> },
+      { name: "Módulos", href: "/app/organizacion/modulos", icon: <Package size={16} /> },
+      { name: "Mi Plan", href: "/app/organizacion/plan", icon: <CreditCard size={16} /> },
       { name: "Mis Organizaciones", href: "/app/organizacion/mis-organizaciones", icon: <Building2 size={16} /> }
     ]
   },
@@ -341,6 +352,21 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     ]
   },
   { 
+    name: "Notificaciones", 
+    href: "/app/notificaciones", 
+    icon: <Bell size={18} />,
+    submenu: [
+      { name: "Dashboard", href: "/app/notificaciones", icon: <Home size={16} /> },
+      { name: "Bandeja", href: "/app/notificaciones/bandeja", icon: <Inbox size={16} /> },
+      { name: "Alertas", href: "/app/notificaciones/alertas", icon: <Bell size={16} /> },
+      { name: "Reglas", href: "/app/notificaciones/reglas", icon: <Shield size={16} /> },
+      { name: "Canales", href: "/app/notificaciones/canales", icon: <Send size={16} /> },
+      { name: "Plantillas", href: "/app/notificaciones/plantillas", icon: <FileText size={16} /> },
+      { name: "Logs de Envío", href: "/app/notificaciones/logs", icon: <Activity size={16} /> },
+      { name: "Preferencias", href: "/app/notificaciones/preferencias", icon: <Settings size={16} /> },
+    ]
+  },
+  { 
     name: "Integraciones", 
     href: "/app/integraciones", 
     icon: <Link2 size={18} />,
@@ -363,6 +389,22 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Vista General", href: "/app/timeline", icon: <History size={16} /> },
       { name: "Exportaciones", href: "/app/timeline/exportaciones", icon: <FileText size={16} /> },
       { name: "Configuración", href: "/app/timeline/configuracion", icon: <Settings size={16} /> },
+    ]
+  },
+  { 
+    name: "Reportes", 
+    href: "/app/reportes", 
+    icon: <FileBarChart size={18} />,
+    submenu: [
+      { name: "Dashboard", href: "/app/reportes", icon: <Home size={16} /> },
+      { name: "Ventas", href: "/app/reportes/ventas", icon: <ShoppingCart size={16} /> },
+      { name: "Inventario", href: "/app/reportes/inventario", icon: <Package size={16} /> },
+      { name: "Finanzas", href: "/app/reportes/finanzas", icon: <DollarSign size={16} /> },
+      { name: "Hotelería", href: "/app/reportes/pms", icon: <BedDouble size={16} /> },
+      { name: "HRM", href: "/app/reportes/hrm", icon: <UserCog size={16} /> },
+      { name: "Auditoría", href: "/app/reportes/auditoria", icon: <Shield size={16} /> },
+      { name: "Personalizado", href: "/app/reportes/personalizados", icon: <Wrench size={16} /> },
+      { name: "Programados", href: "/app/reportes/programados", icon: <Clock size={16} /> },
     ]
   },
 ];
@@ -466,6 +508,36 @@ export const AppLayout = ({
   
   // Estado para almacenar el ID de la organización
   const [orgId, setOrgId] = useState<string | null>(null);
+  
+  // Estado para módulos activos de la organización (controla visibilidad del sidebar)
+  const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
+
+  // Cargar módulos activos cuando cambia la organización
+  const loadActiveModuleCodes = useCallback(async (organizationId: string) => {
+    try {
+      const modules = await moduleManagementService.getActiveModules(parseInt(organizationId));
+      setActiveModuleCodes(modules.map(m => m.code));
+    } catch (error) {
+      console.error('Error cargando módulos activos:', error);
+      // En caso de error, no filtrar (mostrar todo)
+      setActiveModuleCodes(undefined);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (orgId) {
+      loadActiveModuleCodes(orgId);
+    }
+  }, [orgId, loadActiveModuleCodes]);
+
+  // Escuchar evento personalizado para refrescar módulos cuando se activan/desactivan
+  useEffect(() => {
+    const handleModulesRefresh = () => {
+      if (orgId) loadActiveModuleCodes(orgId);
+    };
+    window.addEventListener('modules-updated', handleModulesRefresh);
+    return () => window.removeEventListener('modules-updated', handleModulesRefresh);
+  }, [orgId, loadActiveModuleCodes]);
   
 
   // Función para cargar cache
@@ -698,21 +770,36 @@ export const AppLayout = ({
     loadUserProfileOptimized();
     
     // Configurar canal de suscripción para cambios en el perfil
-    const profileSubscription = supabase
-      .channel('public:profiles')
-      .on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${supabase.auth.getSession().then(res => res.data.session?.user.id)}` },
-        () => {
-          // Actualizar al detectar cambios
-          setProfileRefresh(prev => prev + 1);
+    const setupProfileSubscription = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
+        
+        if (!userId) {
+          console.warn('No user ID available for profile subscription');
+          return;
         }
-      )
-      .subscribe();
-      
-    return () => {
-      // Limpiar suscripción
-      supabase.removeChannel(profileSubscription);
+        
+        const subscription = supabase
+          .channel('public:profiles')
+          .on('postgres_changes', 
+            { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+            () => {
+              // Actualizar al detectar cambios
+              setProfileRefresh(prev => prev + 1);
+            }
+          )
+          .subscribe();
+        
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Error setting up profile subscription:', error);
+      }
     };
+    
+    setupProfileSubscription();
   }, [loadUserProfileOptimized, profileRefresh]);
   
   // Inicializar tema desde localStorage o preferencia del sistema
@@ -934,6 +1021,7 @@ export const AppLayout = ({
               orgName={orgName}
               collapsed={sidebarCollapsed}
               onNavigate={() => setSidebarOpen(false)}
+              activeModuleCodes={activeModuleCodes}
             />
           </div>
         </div>

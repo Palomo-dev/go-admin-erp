@@ -237,7 +237,7 @@ export const refreshSessionToken = async () => {
 /**
  * Limpia la caché de sesión, útil al cerrar sesión
  */
-export const clearSessionCache = () => {
+export const clearSessionCache = async () => {
   cachedSession = null;
   lastSessionCheck = 0;
   lastHealthCheck = 0;
@@ -252,6 +252,17 @@ export const clearSessionCache = () => {
   localStorage.removeItem('sb-session-cache');
   sessionStorage.removeItem('sb-refreshing-token');
   sessionStorage.removeItem('last-activity-time');
+  
+  // Cerrar sesión de Supabase para invalidar tokens en el servidor
+  try {
+    await supabase.auth.signOut();
+    console.log('🔐 Sesión de Supabase cerrada correctamente');
+  } catch (error) {
+    console.error('Error al cerrar sesión de Supabase:', error);
+  }
+  
+  // Limpiar cookies de autenticación
+  clearCorruptedTokens();
 };
 
 /**

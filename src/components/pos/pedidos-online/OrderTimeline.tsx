@@ -7,7 +7,8 @@ import {
   Package, 
   Truck, 
   XCircle,
-  Circle
+  Circle,
+  CalendarClock
 } from 'lucide-react';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 
@@ -58,6 +59,14 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
         isCompleted: true,
         isCurrent: order.status === 'pending',
       },
+      ...(order.is_scheduled && order.scheduled_at ? [{
+        key: 'scheduled',
+        label: `Programado para`,
+        icon: <CalendarClock className="h-4 w-4" />,
+        timestamp: order.scheduled_at,
+        isCompleted: true,
+        isCurrent: false,
+      }] : []),
       {
         key: 'confirmed',
         label: 'Confirmado',

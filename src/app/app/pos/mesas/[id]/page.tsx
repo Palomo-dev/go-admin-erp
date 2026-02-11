@@ -381,7 +381,7 @@ export default function MesaDetallePage() {
     }
 
     try {
-      const cuenta = await PedidosService.generarPreCuenta(session.id);
+      const cuenta = await PedidosService.generarPreCuenta(tableId);
       setPreCuenta(cuenta);
       setShowPreCuenta(true);
     } catch (error) {
@@ -909,6 +909,25 @@ export default function MesaDetallePage() {
 
           // Todos los splits pagados y sin items pendientes, liberar mesa
           setTimeout(async () => {
+            // Marcar tickets de cocina como entregados para que salgan de comandas
+            if (session?.id) {
+              const { supabase } = await import('@/lib/supabase/config');
+              const { data: ticketIds } = await supabase
+                .from('kitchen_tickets')
+                .select('id')
+                .eq('table_session_id', session.id);
+              if (ticketIds && ticketIds.length > 0) {
+                await supabase
+                  .from('kitchen_tickets')
+                  .update({ status: 'delivered', updated_at: new Date().toISOString() })
+                  .eq('table_session_id', session.id);
+                await supabase
+                  .from('kitchen_ticket_items')
+                  .update({ status: 'delivered', updated_at: new Date().toISOString() })
+                  .in('kitchen_ticket_id', ticketIds.map((t: any) => t.id));
+              }
+            }
+
             await MesasService.liberarMesa(tableId);
             
             toast({
@@ -930,6 +949,25 @@ export default function MesaDetallePage() {
         }
       } else {
         // Pago único sin división
+        // Marcar tickets de cocina como entregados para que salgan de comandas
+        if (session?.id) {
+          const { supabase } = await import('@/lib/supabase/config');
+          const { data: ticketIds } = await supabase
+            .from('kitchen_tickets')
+            .select('id')
+            .eq('table_session_id', session.id);
+          if (ticketIds && ticketIds.length > 0) {
+            await supabase
+              .from('kitchen_tickets')
+              .update({ status: 'delivered', updated_at: new Date().toISOString() })
+              .eq('table_session_id', session.id);
+            await supabase
+              .from('kitchen_ticket_items')
+              .update({ status: 'delivered', updated_at: new Date().toISOString() })
+              .in('kitchen_ticket_id', ticketIds.map((t: any) => t.id));
+          }
+        }
+
         await MesasService.liberarMesa(tableId);
 
         toast({
@@ -1537,10 +1575,28 @@ export default function MesaDetallePage() {
         preCuenta={preCuenta}
         tableName={session?.restaurant_tables?.name || mesaNombre}
         onPrint={() => {
-          toast({
-            title: 'Imprimiendo',
-            description: 'Función de impresión en desarrollo',
-          });
+          if (!preCuenta) return;
+          const businessInfo = organization ? {
+            name: organization.name || '',
+            nit: (organization as any).tax_id || '',
+            phone: (organization as any).phone || '',
+            address: (organization as any).address || '',
+          } : undefined;
+          const branchInfo = currentBranch ? {
+            name: currentBranch.name || '',
+            address: currentBranch.address || '',
+            phone: currentBranch.phone || '',
+          } : undefined;
+          PrintService.printPreCuenta(
+            session?.restaurant_tables?.name || mesaNombre,
+            preCuenta.items,
+            preCuenta.subtotal,
+            preCuenta.tax_total,
+            preCuenta.discount_total,
+            preCuenta.total,
+            businessInfo,
+            branchInfo,
+          );
         }}
         onGenerateBill={handleSolicitarCuenta}
         onSplitBill={() => {

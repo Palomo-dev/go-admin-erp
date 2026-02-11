@@ -399,6 +399,101 @@ export class PrintService {
   }
 
   /**
+   * Imprimir pre-cuenta de mesa (ticket sin pago)
+   */
+  static printPreCuenta(
+    tableName: string,
+    items: Array<{ product?: { name?: string }; quantity: number; unit_price: number; total: number; tax_amount?: number; discount_amount?: number; notes?: any }>,
+    subtotal: number,
+    taxTotal: number,
+    discountTotal: number,
+    total: number,
+    business?: BusinessInfo,
+    branch?: BranchInfo,
+  ): void {
+    const dateStr = new Date().toLocaleDateString('es-CO');
+    const timeStr = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    const businessName = business?.name || 'Restaurante';
+    const businessAddress = business?.address || '';
+
+    const itemsHTML = items.map(item => {
+      const name = item.product?.name || 'Producto';
+      return `
+        <div class="item">
+          <div class="item-line">
+            <span class="item-name">${name}</span>
+            <span>${formatCurrency(item.total)}</span>
+          </div>
+          <div class="item-details">
+            ${item.quantity} × ${formatCurrency(item.unit_price)}
+          </div>
+        </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Pre-Cuenta - ${tableName}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Courier New',monospace;width:280px;margin:0 auto;padding:10px;font-size:12px}
+  .header{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}
+  .business-name{font-size:16px;font-weight:bold}
+  .business-address{font-size:10px;color:#555}
+  .pre-cuenta-title{text-align:center;font-size:14px;font-weight:bold;margin:8px 0;padding:6px;border:2px dashed #000;letter-spacing:1px}
+  .mesa-info{text-align:center;margin-bottom:8px;font-size:13px;font-weight:bold}
+  .items-header{display:flex;justify-content:space-between;font-weight:bold;border-bottom:1px solid #000;padding:4px 0;margin-bottom:4px;font-size:11px}
+  .item{padding:3px 0;border-bottom:1px dotted #ccc}
+  .item-line{display:flex;justify-content:space-between}
+  .item-name{flex:1;margin-right:8px;font-size:11px}
+  .item-details{font-size:10px;color:#666;margin-top:1px}
+  .totals{border-top:1px dashed #000;margin-top:8px;padding-top:8px}
+  .total-line{display:flex;justify-content:space-between;padding:2px 0}
+  .total-final{font-size:16px;font-weight:bold;border-top:2px solid #000;margin-top:4px;padding-top:6px}
+  .footer{text-align:center;border-top:1px dashed #000;margin-top:10px;padding-top:8px;font-size:10px;color:#666}
+  @media print{body{width:100%}@page{size:80mm auto;margin:0}}
+</style></head><body>
+  <div class="header">
+    <div class="business-name">${businessName}</div>
+    ${business?.nit ? `<div class="business-address"><strong>NIT:</strong> ${business.nit}</div>` : ''}
+    ${businessAddress ? `<div class="business-address">${businessAddress}</div>` : ''}
+    ${business?.phone ? `<div class="business-address">Tel: ${business.phone}</div>` : ''}
+    ${branch?.name ? `<div class="business-address" style="margin-top:4px;font-weight:bold">Sucursal: ${branch.name}</div>` : ''}
+    ${branch?.address ? `<div class="business-address">${branch.address}</div>` : ''}
+  </div>
+  <div class="pre-cuenta-title">*** PRE-CUENTA ***</div>
+  <div class="mesa-info">${tableName}</div>
+  <div style="text-align:center;font-size:11px;margin-bottom:8px">${dateStr} - ${timeStr}</div>
+  <div class="items-header"><span>PRODUCTO</span><span>TOTAL</span></div>
+  ${itemsHTML}
+  <div class="totals">
+    <div class="total-line"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
+    ${discountTotal > 0 ? `<div class="total-line"><span>Descuento:</span><span>-${formatCurrency(discountTotal)}</span></div>` : ''}
+    ${taxTotal > 0 ? `<div class="total-line"><span>Impuestos:</span><span>${formatCurrency(taxTotal)}</span></div>` : ''}
+    <div class="total-line total-final"><span>TOTAL:</span><span>${formatCurrency(total)}</span></div>
+  </div>
+  <div class="footer">
+    <div style="font-weight:bold">*** NO ES FACTURA ***</div>
+    <div>Este documento es solo informativo</div>
+    <div style="margin-top:4px">¡Gracias por su preferencia!</div>
+  </div>
+</body></html>`;
+
+    const printWindow = window.open('', '_blank', 'width=300,height=600');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      setTimeout(() => {
+        try {
+          if (printWindow && !printWindow.closed) {
+            printWindow.focus();
+            printWindow.print();
+          }
+        } catch (e) {
+          console.warn('Error al imprimir pre-cuenta:', e);
+        }
+      }, 500);
+    }
+  }
+
+  /**
    * Configurar impresora térmica (stub para futuras implementaciones)
    */
   static configureThermalPrinter(config: {

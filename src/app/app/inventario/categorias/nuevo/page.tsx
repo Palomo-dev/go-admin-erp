@@ -1,8 +1,13 @@
 'use client';
 
 import React from 'react';
-import { NuevaCategoriaForm } from '@/components/inventario/categorias/nuevo/NuevaCategoriaForm';
+import { useSearchParams } from 'next/navigation';
+import { CategoryForm } from '@/components/inventario/categorias';
 
 export default function NuevaCategoriaPage() {
-  return <NuevaCategoriaForm />;
+  const searchParams = useSearchParams();
+  const parentParam = searchParams.get('parent');
+  const defaultParentId = parentParam ? parseInt(parentParam) : null;
+
+  return <CategoryForm defaultParentId={defaultParentId} />;
 }

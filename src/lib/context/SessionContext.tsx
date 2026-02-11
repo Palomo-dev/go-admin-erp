@@ -251,21 +251,11 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const handleLogout = async () => {
     try {
       setState(prev => ({ ...prev, loading: true }));
-      // Clear session cache
-      clearSessionCache();
       
-      // Redirect to session expired page
-      router.push('/auth/session-expired');
+      // Clear session cache and sign out from Supabase
+      await clearSessionCache();
       
-      // Dispatch session expiration event
-      const sessionExpiredEvent = new CustomEvent('session:expired', {
-        detail: { reason: 'inactivity' }
-      });
-      window.dispatchEvent(sessionExpiredEvent);
-      
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
+      // Update state immediately
       setState(prev => ({ 
         ...prev, 
         loading: false,
@@ -273,6 +263,27 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showRenewalPopup: false,
         countdown: COUNTDOWN_DURATION,
       }));
+      
+      // Dispatch session expiration event
+      const sessionExpiredEvent = new CustomEvent('session:expired', {
+        detail: { reason: 'logout' }
+      });
+      window.dispatchEvent(sessionExpiredEvent);
+      
+      // Redirect to login page
+      router.push('/auth/login');
+      
+    } catch (err) {
+      console.error('Logout error:', err);
+      setState(prev => ({ 
+        ...prev, 
+        loading: false,
+        session: null,
+        showRenewalPopup: false,
+        countdown: COUNTDOWN_DURATION,
+      }));
+      // Still redirect to login even on error
+      router.push('/auth/login');
     }
   };
   

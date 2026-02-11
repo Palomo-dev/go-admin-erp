@@ -4,7 +4,7 @@ import { useState, useEffect, memo, useRef } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
 import { Organization, organizationService } from '@/lib/services/organizationService';
 import { supabase } from '@/lib/supabase/config';
-import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { guardarOrganizacionActiva, obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { getOrganizationLogoUrl } from '@/lib/supabase/imageUtils';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -53,35 +53,49 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
       const orgData = await organizationService.getUserOrganizations(uid);
       setOrganizations(orgData);
       
-      // Obtener organización de localStorage o configurar predeterminada
-      let savedOrgId: string | null = null;
+      // Obtener organización guardada — intentar ambas claves de localStorage
+      let resolvedOrg: Organization | null = null;
       
       try {
-        savedOrgId = localStorage.getItem('currentOrganizationId');
+        // 1. Intentar clave primaria
+        const savedOrgId = localStorage.getItem('currentOrganizationId');
+        if (savedOrgId) {
+          resolvedOrg = orgData.find(org => org.id === parseInt(savedOrgId)) || null;
+        }
+        
+        // 2. Fallback: clave del hook useOrganization
+        if (!resolvedOrg) {
+          const savedOrg = obtenerOrganizacionActiva();
+          if (savedOrg?.id) {
+            resolvedOrg = orgData.find(org => org.id === savedOrg.id) || null;
+          }
+        }
       } catch (error) {
         console.error('Error al acceder a localStorage:', error);
       }
       
-      if (savedOrgId && orgData.some(org => org.id === parseInt(savedOrgId!))) {
-        const org = orgData.find(org => org.id === parseInt(savedOrgId!)) || null;
-        setSelectedOrg(org);
-      } else if (orgData.length > 0) {
-        // Definir organización por defecto
-        setSelectedOrg(orgData[0]);
-        
-        // Guardar en localStorage
+      if (resolvedOrg) {
+        setSelectedOrg(resolvedOrg);
+        // Sincronizar ambas claves para evitar desincronización
         try {
-          if (orgData[0]?.id) {
-            localStorage.setItem('currentOrganizationId', orgData[0].id.toString());
-            guardarOrganizacionActiva({
-              id: orgData[0].id,
-              name: orgData[0].name,
-              logo_url: orgData[0].logo_url
-            });
-          }
-        } catch (error) {
-          console.error('Error al guardar en localStorage:', error);
-        }
+          localStorage.setItem('currentOrganizationId', resolvedOrg.id.toString());
+          guardarOrganizacionActiva({
+            id: resolvedOrg.id,
+            name: resolvedOrg.name,
+            logo_url: resolvedOrg.logo_url
+          });
+        } catch { /* silencioso */ }
+      } else if (orgData.length > 0) {
+        // Solo defaultear a orgData[0] si NO hay nada guardado
+        setSelectedOrg(orgData[0]);
+        try {
+          localStorage.setItem('currentOrganizationId', orgData[0].id.toString());
+          guardarOrganizacionActiva({
+            id: orgData[0].id,
+            name: orgData[0].name,
+            logo_url: orgData[0].logo_url
+          });
+        } catch { /* silencioso */ }
       }
     } catch (error) {
       console.error('Error al obtener organizaciones:', error);

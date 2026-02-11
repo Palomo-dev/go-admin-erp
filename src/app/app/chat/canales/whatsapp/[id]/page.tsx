@@ -191,6 +191,9 @@ export default function WhatsAppChannelPage() {
           onValidate={handleValidateWebhook}
           isSaving={isSaving}
           isValidating={isValidating}
+          organizationId={organization?.id}
+          channelId={channelId}
+          onEmbeddedSignupComplete={loadData}
         />
         <WhatsAppWebhookCard
           channelId={channelId}

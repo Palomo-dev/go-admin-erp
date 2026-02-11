@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import OpenAIService from '@/lib/services/openaiService';
+import { consumeAICredits } from '@/lib/services/aiCreditsService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,15 +16,43 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { message, conversationId, organizationId } = body;
 
-    if (!message) {
+    if (!message || !organizationId) {
       return NextResponse.json(
-        { error: 'message es requerido' },
+        { error: 'message y organizationId son requeridos' },
         { status: 400 }
       );
     }
 
+    // Verificar créditos de IA
+    const { data: aiSettings } = await supabase
+      .from('ai_settings')
+      .select('credits_remaining, is_active')
+      .eq('organization_id', organizationId)
+      .single();
+
+    if (!aiSettings?.is_active) {
+      return NextResponse.json({
+        success: false,
+        error: 'IA no está activa para esta organización',
+      }, { status: 400 });
+    }
+
+    if (aiSettings.credits_remaining !== null && aiSettings.credits_remaining < 1) {
+      return NextResponse.json({
+        success: false,
+        error: 'No hay créditos de IA suficientes',
+        credits_remaining: aiSettings.credits_remaining,
+      }, { status: 400 });
+    }
+
     const openaiService = new OpenAIService();
     const result = await openaiService.classifyIntent(message);
+
+    // Descontar créditos de IA (1 crédito por clasificación)
+    const creditsConsumed = await consumeAICredits(organizationId, 1);
+    if (!creditsConsumed) {
+      console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
+    }
 
     if (conversationId && organizationId && result.suggestedTags.length > 0) {
       const { data: existingTags } = await supabase

@@ -3,6 +3,7 @@
 import React from 'react';
 import { SpaceCard } from './SpaceCard';
 import type { Space } from '@/lib/services/spacesService';
+import type { SpaceServiceView } from '@/lib/services/spaceServicesService';
 
 interface EspaciosGridProps {
   spaces: Space[];
@@ -10,6 +11,7 @@ interface EspaciosGridProps {
   onSelect: (id: string, selected: boolean) => void;
   onEdit: (space: Space) => void;
   onDelete: (space: Space) => void;
+  spaceServicesMap?: Record<string, SpaceServiceView[]>;
 }
 
 export function EspaciosGrid({
@@ -18,6 +20,7 @@ export function EspaciosGrid({
   onSelect,
   onEdit,
   onDelete,
+  spaceServicesMap = {},
 }: EspaciosGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -29,6 +32,7 @@ export function EspaciosGrid({
           onSelect={onSelect}
           onEdit={onEdit}
           onDelete={onDelete}
+          services={spaceServicesMap[space.id] || []}
         />
       ))}
     </div>

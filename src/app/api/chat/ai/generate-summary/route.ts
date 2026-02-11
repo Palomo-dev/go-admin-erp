@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import OpenAIService from '@/lib/services/openaiService';
+import { consumeAICredits } from '@/lib/services/aiCreditsService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,6 +76,12 @@ export async function POST(request: NextRequest) {
     };
 
     const summaryResult = await openaiService.generateConversationSummary(context);
+
+    // Descontar créditos de IA (1 crédito por resumen)
+    const creditsConsumed = await consumeAICredits(organizationId, 1);
+    if (!creditsConsumed) {
+      console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
+    }
 
     const { data: summaryRecord, error: summaryError } = await supabase
       .from('conversation_summaries')

@@ -1,22 +1,38 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
+import { CheckCircleIcon, XCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlanSkeleton } from '@/components/organization/OrganizationSkeletons';
 
 // Dynamic import for the PlanTab component
 const PlanTab = dynamic(() => import('../../../../components/organization/PlanTab'), {
-  loading: () => <div className="text-center py-10">
-    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-    <p className="mt-2">Cargando...</p>
-  </div>
+  loading: () => <PlanSkeleton />
 });
 
 export default function PlanPage() {
+  const searchParams = useSearchParams();
   const [orgData, setOrgData] = useState<any>(null);
   const [userRole, setUserRole] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Detectar parámetros de checkout
+  useEffect(() => {
+    const checkout = searchParams.get('checkout');
+    if (checkout === 'success') {
+      setSuccessMessage('¡Pago completado exitosamente! Tu plan ha sido actualizado.');
+      // Limpiar URL sin recargar
+      window.history.replaceState({}, '', '/app/organizacion/plan');
+    } else if (checkout === 'canceled') {
+      setErrorMessage('El pago fue cancelado. Tu plan no ha sido modificado.');
+      window.history.replaceState({}, '', '/app/organizacion/plan');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchOrgData = async () => {
@@ -31,8 +47,13 @@ export default function PlanPage() {
           return;
         }
         
-        // Get user ID
-        const userId = session.user.id;
+        // Get user ID with optional chaining
+        const userId = session?.user?.id;
+        if (!userId) {
+          console.error('No user ID found in session');
+          setLoading(false);
+          return;
+        }
         const currentOrgId = localStorage.getItem('currentOrganizationId');
         
         // Get user's organization and role from organization_members
@@ -92,9 +113,14 @@ export default function PlanPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <div className="text-center py-10">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-          <p className="mt-2">Cargando datos de la organización...</p>
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold text-gray-900">Mi Plan</h1>
+            <p className="mt-2 text-gray-600">Gestiona tu plan de suscripción y módulos disponibles</p>
+          </div>
+          <div className="mt-8">
+            <PlanSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -141,16 +167,43 @@ export default function PlanPage() {
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
+        {/* Mensaje de éxito */}
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3" />
+                <p className="text-sm font-medium text-green-800">{successMessage}</p>
+              </div>
+              <button onClick={() => setSuccessMessage(null)} className="text-green-500 hover:text-green-700">
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Mensaje de error/cancelación */}
+        {errorMessage && (
+          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <XCircleIcon className="h-5 w-5 text-yellow-500 mr-3" />
+                <p className="text-sm font-medium text-yellow-800">{errorMessage}</p>
+              </div>
+              <button onClick={() => setErrorMessage(null)} className="text-yellow-500 hover:text-yellow-700">
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="mb-8 flex justify-between items-center">
           <h1 className="text-2xl font-semibold text-gray-900">Mi Plan</h1>
         </div>
         <p className="mt-2 text-gray-600">Gestiona tu plan de suscripción y módulos disponibles</p>
         
         <div className="mt-8">
-          <Suspense fallback={<div className="text-center py-10">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-2">Cargando plan...</p>
-          </div>}>
+          <Suspense fallback={<PlanSkeleton />}>
             <PlanTab orgId={orgData} />
           </Suspense>
         </div>

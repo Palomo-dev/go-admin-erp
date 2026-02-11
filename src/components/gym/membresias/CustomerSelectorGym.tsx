@@ -1,18 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, UserPlus, Search, Phone, Mail, X, MapPin, CreditCard } from 'lucide-react';
+import { User, UserPlus, Search, Phone, Mail, X, MapPin, CreditCard, Building2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { supabase } from '@/lib/supabase/config';
+import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 
 export interface CustomerGym {
   id: string;
@@ -22,9 +24,8 @@ export interface CustomerGym {
   email?: string;
   phone?: string;
   identification_number?: string;
-  doc_type?: string;
+  identification_type?: string;
   address?: string;
-  city?: string;
 }
 
 interface CustomerSelectorGymProps {
@@ -34,6 +35,7 @@ interface CustomerSelectorGymProps {
 }
 
 export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, className }: CustomerSelectorGymProps) {
+  const { organization } = useOrganization();
   const [searchTerm, setSearchTerm] = useState('');
   const [customers, setCustomers] = useState<CustomerGym[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,11 +46,27 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
     last_name: '',
     email: '',
     phone: '',
-    doc_type: 'CC',
+    identification_type: 'CC',
     identification_number: '',
-    address: '',
-    city: ''
+    address: ''
   });
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(['cliente', 'huesped']);
+  const [selectedFiscal, setSelectedFiscal] = useState<string[]>(['R-99-PN']);
+  const [municipalityId, setMunicipalityId] = useState('aa4b6637-0060-41bb-9459-bc95f9789e08');
+  const [customerRoles, setCustomerRoles] = useState<{code: string; label: string}[]>([]);
+  const [fiscalOptions, setFiscalOptions] = useState<{code: string; description: string}[]>([]);
+
+  useEffect(() => {
+    async function loadCatalogs() {
+      const [rolesRes, fiscalRes] = await Promise.all([
+        supabase.from('customer_roles').select('code, label').order('sort_order'),
+        supabase.from('dian_fiscal_responsibilities').select('code, description').order('sort_order'),
+      ]);
+      if (rolesRes.data) setCustomerRoles(rolesRes.data);
+      if (fiscalRes.data) setFiscalOptions(fiscalRes.data);
+    }
+    loadCatalogs();
+  }, []);
 
   const searchCustomers = async (term: string) => {
     if (!term.trim()) {
@@ -92,13 +110,17 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
       const { data, error } = await supabase
         .from('customers')
         .insert({
+          organization_id: organization?.id,
           first_name: newCustomer.first_name,
           last_name: newCustomer.last_name,
           email: newCustomer.email || null,
           phone: newCustomer.phone || null,
+          identification_type: newCustomer.identification_type,
           identification_number: newCustomer.identification_number || null,
           address: newCustomer.address || null,
-          city: newCustomer.city || null,
+          roles: selectedRoles,
+          fiscal_responsibilities: selectedFiscal,
+          fiscal_municipality_id: municipalityId,
         })
         .select()
         .single();
@@ -112,11 +134,13 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
         last_name: '',
         email: '',
         phone: '',
-        doc_type: 'CC',
+        identification_type: 'CC',
         identification_number: '',
-        address: '',
-        city: ''
+        address: ''
       });
+      setSelectedRoles(['cliente', 'huesped']);
+      setSelectedFiscal(['R-99-PN']);
+      setMunicipalityId('aa4b6637-0060-41bb-9459-bc95f9789e08');
     } catch (error) {
       console.error('Error creando cliente:', error);
       alert('Error al crear el cliente');
@@ -366,21 +390,18 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="doc_type">Tipo Doc.</Label>
-                <Select
-                  value={newCustomer.doc_type}
-                  onValueChange={(value) => setNewCustomer({ ...newCustomer, doc_type: value })}
+                <Label htmlFor="identification_type">Tipo Doc.</Label>
+                <select
+                  id="identification_type"
+                  value={newCustomer.identification_type}
+                  onChange={(e) => setNewCustomer({ ...newCustomer, identification_type: e.target.value })}
+                  className="h-10 w-full rounded-md border dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border-gray-300 text-gray-900 px-3 py-2 text-sm"
                 >
-                  <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700">
-                    <SelectValue placeholder="Tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CC">Cédula</SelectItem>
-                    <SelectItem value="CE">Cédula Extranjería</SelectItem>
-                    <SelectItem value="NIT">NIT</SelectItem>
-                    <SelectItem value="PAS">Pasaporte</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="CC">Cédula</option>
+                  <option value="CE">Cédula Extranjería</option>
+                  <option value="NIT">NIT</option>
+                  <option value="PAS">Pasaporte</option>
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="identification_number">Número Doc.</Label>
@@ -418,6 +439,65 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
               </div>
             </div>
           </div>
+
+          {/* Roles del Cliente */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Roles del Cliente
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {customerRoles.map((role) => (
+                <div
+                  key={role.code}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all text-sm ${
+                    selectedRoles.includes(role.code)
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                  }`}
+                  onClick={() => setSelectedRoles(prev =>
+                    prev.includes(role.code) ? prev.filter(r => r !== role.code) : [...prev, role.code]
+                  )}
+                >
+                  <Checkbox checked={selectedRoles.includes(role.code)} className="pointer-events-none h-3.5 w-3.5" />
+                  <span>{role.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Responsabilidad Fiscal DIAN */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Responsabilidad Fiscal (DIAN)
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {fiscalOptions.map((fiscal) => (
+                <div
+                  key={fiscal.code}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${
+                    selectedFiscal.includes(fiscal.code)
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                  }`}
+                  onClick={() => setSelectedFiscal(prev =>
+                    prev.includes(fiscal.code) ? prev.filter(f => f !== fiscal.code) : [...prev, fiscal.code]
+                  )}
+                >
+                  <Checkbox checked={selectedFiscal.includes(fiscal.code)} className="pointer-events-none h-3.5 w-3.5" />
+                  <span className="font-medium">{fiscal.code}</span>
+                  <span className="text-gray-500 dark:text-gray-400">- {fiscal.description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Municipio */}
+          <MunicipalitySearch
+            value={municipalityId}
+            onChange={setMunicipalityId}
+          />
 
           <DialogFooter className="border-t dark:border-gray-800 border-gray-200 pt-4 mt-4">
             <div className="flex gap-3 w-full sm:w-auto">

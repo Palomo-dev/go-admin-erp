@@ -14,6 +14,7 @@ export interface SaleItem {
   updated_at: string;
   // Relaciones
   product?: Product;
+  kitchen_ticket_items?: Pick<KitchenTicketItem, 'id' | 'status'>[];
 }
 
 export interface ProductImage {

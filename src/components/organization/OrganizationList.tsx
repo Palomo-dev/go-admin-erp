@@ -2,6 +2,7 @@
 
 import { useState, useEffect, ReactElement, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { OrganizationListSkeleton } from './OrganizationSkeletons';
 import ChangePlanModal from './ChangePlanModal';
 
 type ProfileData = {
@@ -120,7 +121,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
       
       const profile = profileData || { organization_id: null, role_id: null };
 
-      // Get organizations where user is owner
+      // Get organizations where user is owner with plan via subscriptions
       let query = supabase
         .from('organizations')
         .select(`
@@ -128,7 +129,11 @@ export default function OrganizationList({ showActions = false, onDelete, filter
           name,
           type_id,
           organization_types!fk_organizations_organization_type(name),
-          plans!organizations_plan_id_fkey(id, name),
+          subscriptions(
+            plan_id,
+            status,
+            plans(id, name)
+          ),
           status
         `)
         .eq('owner_user_id', session.user.id);
@@ -149,10 +154,15 @@ export default function OrganizationList({ showActions = false, onDelete, filter
           ? String(org.organization_types.name) || 'Unknown'
           : 'Unknown';
         
-        // Safely extract plan name
+        // Safely extract plan name from subscriptions (like select-organization does)
         let planName = 'Free';
-        if (org.plans && Array.isArray(org.plans) && org.plans.length > 0) {
-          planName = String(org.plans[0].name) || 'Free';
+        const subscriptions = (org as any).subscriptions || [];
+        if (Array.isArray(subscriptions) && subscriptions.length > 0) {
+          // Find active subscription first, otherwise take the first one
+          const activeSub = subscriptions.find((s: any) => s.status === 'active') || subscriptions[0];
+          if (activeSub?.plans?.name) {
+            planName = String(activeSub.plans.name);
+          }
         }
         
         return {
@@ -236,11 +246,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <OrganizationListSkeleton />;
   }
 
   if (error) {

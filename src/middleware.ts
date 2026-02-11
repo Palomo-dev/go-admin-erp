@@ -144,6 +144,8 @@ function shouldSkipRoute(pathname: string): boolean {
     '/favicon.ico',
     '/public/',
     '/api/test',
+    '/api/stripe/',  // <-- Excluir APIs de Stripe
+    '/api/sessions/', // <-- Excluir APIs de sesiones
     '/auth/v1/',
     '/.well-known/',
     '/robots.txt',
@@ -301,10 +303,10 @@ const routeToModuleMap: Record<string, string> = {
   '/app/organizacion': 'organizations',
   '/app/branding': 'branding',
   '/app/sucursales': 'branches',
-  '/app/pos': 'pos_retail',
+  '/app/pos': 'pos',
   '/app/inventario': 'inventory',
   '/app/pms': 'pms_hotel',
-  '/app/pms/parking': 'parking',
+  '/app/parking': 'parking',
   '/app/crm': 'crm',
   '/app/hrm': 'hrm',
   '/app/finanzas': 'finance',
@@ -313,7 +315,9 @@ const routeToModuleMap: Record<string, string> = {
   '/app/integraciones': 'integrations',
   '/app/transporte': 'transport',
   '/app/calendario': 'calendar',
-  '/app/timeline': 'operations'
+  '/app/timeline': 'operations',
+  '/app/chat': 'chat',
+  '/app/gym': 'gym',
 };
 
 /**
@@ -487,16 +491,17 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
       return NextResponse.redirect(new URL('/app/inicio', request.url));
     }
 
-    // TEMPORALMENTE DESHABILITADO - Verificar acceso a módulos para rutas protegidas
-    // TODO: Re-habilitar después de diagnosticar problema de navegación
-    /*
-    if (pathname.startsWith('/app/') && pathname !== '/app/inicio') {
+    // Verificar acceso a módulos para rutas protegidas
+    // Excluir rutas core que siempre deben ser accesibles
+    const coreRoutes = ['/app/inicio', '/app/clientes', '/app/organizacion', '/app/roles', '/app/plan'];
+    const isCorePath = coreRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
+    
+    if (pathname.startsWith('/app/') && !isCorePath) {
       const moduleAccessResult = await checkModuleAccess(request, pathname);
       if (moduleAccessResult) {
         return moduleAccessResult;
       }
     }
-    */
   }
 
   // Manejar subdominios para organizaciones
@@ -547,7 +552,9 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public (public files)
      * - api/test (test endpoints - no auth required)
+     * - api/stripe (Stripe API endpoints - handle their own auth)
+     * - api/sessions (Session API endpoints - handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api/test).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions).*)',
   ],
 };

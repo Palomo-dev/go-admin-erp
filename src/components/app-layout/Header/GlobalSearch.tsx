@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, Users, Building2, Building, Briefcase, FileText, Package, User, Tags, ShoppingBag } from 'lucide-react';
+import { Search, Users, Building2, Building, Briefcase, FileText, Package, User, Tags, ShoppingBag, Receipt, ShoppingCart, CalendarDays, BedDouble, Dumbbell, Car } from 'lucide-react';
 // Volvemos a la importación correcta para App Router
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
@@ -102,15 +102,6 @@ const GlobalSearch = () => {
               url: `/app/sucursales/${branch.id}`
             })),
 
-            // Usuarios
-            ...(data.usuarios || []).map(user => ({
-              id: user.id,
-              name: `${user.first_name} ${user.last_name}`,
-              description: user.email,
-              type: 'user' as const,
-              url: `/app/usuarios/${user.id}`
-            })),
-
             // Clientes - Mejoramos la construcción del nombre y añadimos avatar_url
             ...(data.clientes || []).map(cliente => {
               // Usamos el nombre completo si está disponible, de lo contrario combinamos first_name y last_name
@@ -149,7 +140,61 @@ const GlobalSearch = () => {
               name: categoria.name,
               description: categoria.slug,
               type: 'category' as const,
-              url: `/app/inventario/categorias/${categoria.id}`
+              url: `/app/inventario/categorias/${categoria.uuid}`
+            })),
+
+            // Facturas de venta
+            ...(data.facturas || []).map((f: any) => ({
+              id: f.id,
+              name: `Factura ${f.number || 'S/N'}`,
+              description: `${f.customers?.full_name || ''} - $${Number(f.total || 0).toLocaleString()} - ${f.status || ''}`,
+              type: 'invoice' as const,
+              url: `/app/finanzas/facturas-venta/${f.id}`
+            })),
+
+            // Pedidos online
+            ...(data.pedidosOnline || []).map((p: any) => ({
+              id: p.id,
+              name: `Pedido ${p.order_number || ''}`,
+              description: `${p.customer_name || ''} - $${Number(p.total || 0).toLocaleString()} - ${p.status || ''}`,
+              type: 'web_order' as const,
+              url: `/app/pos/pedidos-online/${p.id}`
+            })),
+
+            // Reservas
+            ...(data.reservas || []).map((r: any) => ({
+              id: r.id,
+              name: `Reserva ${r.spaces?.label || ''}`,
+              description: `${r.customers?.full_name || ''} - ${r.checkin || ''} → ${r.checkout || ''} - ${r.status || ''}`,
+              type: 'reservation' as const,
+              url: `/app/pms/reservas/${r.id}`
+            })),
+
+            // Espacios
+            ...(data.espacios || []).map((e: any) => ({
+              id: e.id,
+              name: e.label || 'Sin nombre',
+              description: `${e.space_types?.name || ''} ${e.floor_zone ? '- ' + e.floor_zone : ''} - ${e.status || ''}`,
+              type: 'space' as const,
+              url: `/app/pms/espacios/${e.id}`
+            })),
+
+            // Membresías
+            ...(data.membresias || []).map((m: any) => ({
+              id: m.id,
+              name: `${m.membership_plans?.name || 'Membresía'} - ${m.customers?.full_name || ''}`,
+              description: `${m.status || ''} - ${m.start_date ? new Date(m.start_date).toLocaleDateString() : ''} → ${m.end_date ? new Date(m.end_date).toLocaleDateString() : ''}`,
+              type: 'membership' as const,
+              url: `/app/gym/membresias/${m.id}`
+            })),
+
+            // Vehículos de parqueadero
+            ...(data.vehiculosParking || []).map((v: any) => ({
+              id: v.id,
+              name: `${v.plate || 'Sin placa'}`,
+              description: `${v.brand || ''} ${v.model || ''} ${v.color ? '- ' + v.color : ''} (${v.vehicle_type || ''})`,
+              type: 'parking_vehicle' as const,
+              url: `/app/pms/parking`
             }))
           ];
 
@@ -331,13 +376,6 @@ const GlobalSearch = () => {
           />
 
           <SearchResultGroup 
-            heading="Usuarios" 
-            resultType="user" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
-
-          <SearchResultGroup 
             heading="Clientes" 
             resultType="customer" 
             results={results} 
@@ -361,6 +399,48 @@ const GlobalSearch = () => {
           <SearchResultGroup 
             heading="Categorías" 
             resultType="category" 
+            results={results} 
+            onSelect={handleSelect} 
+          />
+
+          <SearchResultGroup 
+            heading="Facturas" 
+            resultType="invoice" 
+            results={results} 
+            onSelect={handleSelect} 
+          />
+
+          <SearchResultGroup 
+            heading="Pedidos Online" 
+            resultType="web_order" 
+            results={results} 
+            onSelect={handleSelect} 
+          />
+
+          <SearchResultGroup 
+            heading="Reservas" 
+            resultType="reservation" 
+            results={results} 
+            onSelect={handleSelect} 
+          />
+
+          <SearchResultGroup 
+            heading="Espacios" 
+            resultType="space" 
+            results={results} 
+            onSelect={handleSelect} 
+          />
+
+          <SearchResultGroup 
+            heading="Membresías" 
+            resultType="membership" 
+            results={results} 
+            onSelect={handleSelect} 
+          />
+
+          <SearchResultGroup 
+            heading="Parqueadero" 
+            resultType="parking_vehicle" 
             results={results} 
             onSelect={handleSelect} 
           />

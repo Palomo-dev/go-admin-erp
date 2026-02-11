@@ -30,6 +30,7 @@ export default function ChangePlanModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
 
   const handleSelectPlan = (planId: string) => {
     setSelectedPlan(planId);
@@ -47,7 +48,9 @@ export default function ChangePlanModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (selectedPlan === currentPlanId) {
+    const planCode = selectedPlan.replace('-yearly', '');
+    
+    if (planCode === currentPlanId.replace('-yearly', '')) {
       setError('Ya tienes este plan seleccionado.');
       return;
     }
@@ -57,15 +60,16 @@ export default function ChangePlanModal({
       setError(null);
       setSuccess(null);
       
-      // Call the plan change API
-      const response = await fetch('/api/subscriptions/change-plan', {
+      
+      // Para planes de pago, crear Stripe Checkout Session
+      const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           organizationId,
-          newPlanCode: selectedPlan.replace('-yearly', ''),
+          planCode,
           billingPeriod,
         }),
       });
@@ -73,21 +77,19 @@ export default function ChangePlanModal({
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.error || 'Error al cambiar el plan');
+        throw new Error(result.error || 'Error al crear sesión de pago');
       }
       
-      setSuccess(`Plan actualizado correctamente. ${result.message || ''}`);
-      
-      // Notify parent component that plan was changed
-      setTimeout(() => {
-        onPlanChanged();
-        onClose();
-      }, 1500);
+      // Redirigir a Stripe Checkout
+      if (result.url) {
+        window.location.href = result.url;
+      } else {
+        throw new Error('No se recibió URL de checkout');
+      }
       
     } catch (err: any) {
       console.error('Error al cambiar el plan:', err);
       setError(err.message || 'Ha ocurrido un error al cambiar el plan.');
-    } finally {
       setLoading(false);
     }
   };
@@ -170,6 +172,7 @@ export default function ChangePlanModal({
                       billingPeriod={billingPeriod}
                       onChangeBillingPeriod={handleChangeBillingPeriod}
                     />
+                    
                     
                     <div className="mt-8 flex justify-end space-x-4">
                       <button

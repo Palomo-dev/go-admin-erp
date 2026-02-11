@@ -6,6 +6,7 @@ import UserMenu from '../ProfileDropdownMenu';
 import BranchSelectorWrapper from './BranchSelectorWrapper';
 import GlobalSearch from './GlobalSearch';
 import { NotificationsMenu } from './NotificationsMenu';
+import { TrialBanner } from './TrialBanner';
 
 export const AppHeader = ({
   theme,
@@ -84,6 +85,7 @@ export const AppHeader = ({
           />
         </div>
       </div>
+      <TrialBanner orgId={orgId} />
     </div>
   );
 };

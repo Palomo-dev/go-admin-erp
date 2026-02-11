@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { consumeAICredits } from '@/lib/services/aiCreditsService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +61,12 @@ Style: Clean white background, professional e-commerce product photography, high
     }
 
     console.log('Imagen generada exitosamente');
+
+    // Descontar créditos de IA (5 créditos por generación de imagen DALL-E 3)
+    const creditsConsumed = await consumeAICredits(organizationId, 5);
+    if (!creditsConsumed) {
+      console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
+    }
 
     // Intentar subir a Storage (opcional)
     try {

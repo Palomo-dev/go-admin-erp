@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, Users, Package, Settings, RefreshCw, Clock, Plus, Receipt, Wallet, RotateCcw, ChefHat, BarChart3, LockOpen, Lock, DollarSign, TrendingUp, AlertCircle, Tag, Ticket, LayoutGrid, Banknote, Percent } from 'lucide-react';
+import { ShoppingCart, Users, Package, Settings, RefreshCw, Clock, Plus, Receipt, Wallet, RotateCcw, ChefHat, BarChart3, LockOpen, Lock, DollarSign, TrendingUp, AlertCircle, Tag, Ticket, LayoutGrid, Banknote, Percent, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,7 @@ export default function POSPage() {
   const [checkoutCart, setCheckoutCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
 
@@ -366,16 +367,38 @@ export default function POSPage() {
 
         {/* Contenido principal - Layout Responsive */}
         <div className="flex-1 flex flex-col lg:grid lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 overflow-hidden">
-          {/* Columna izquierda: Catálogo de productos - BALANCE EN MÓVIL */}
-          <div className="lg:col-span-3 h-[45vh] sm:h-[50vh] md:h-[55vh] lg:h-full overflow-hidden">
+
+          {/* === MÓVIL: Vista Productos (pantalla completa) === */}
+          <div className={cn(
+            'lg:col-span-3 lg:h-full overflow-hidden',
+            mobileView === 'products' ? 'flex-1' : 'hidden lg:block',
+          )}>
             <ProductSearch 
-              onProductSelect={handleProductSelect}
+              onProductSelect={(product) => {
+                handleProductSelect(product);
+              }}
             />
           </div>
 
-          {/* Columna derecha: Cliente y Carritos - VISIBLE EN MÓVIL */}
-          <div className="lg:col-span-1 flex flex-col space-y-2 overflow-y-auto lg:overflow-hidden flex-1 lg:h-full pb-4 lg:pb-0 min-h-0">
-            {/* Selector de cliente - Compacto */}
+          {/* === MÓVIL: Vista Carrito (pantalla completa) / DESKTOP: Sidebar scrollable === */}
+          <div className={cn(
+            'lg:col-span-1 flex flex-col space-y-2 overflow-y-auto lg:h-full pb-20 lg:pb-2 min-h-0',
+            mobileView === 'cart' ? 'flex-1' : 'hidden lg:flex',
+          )}>
+            {/* Botón volver a productos - solo móvil */}
+            <div className="lg:hidden shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileView('products')}
+                className="text-xs dark:text-gray-400 dark:hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Seguir comprando
+              </Button>
+            </div>
+
+            {/* Selector de cliente */}
             <Card className="dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200 shadow-sm shrink-0">
               <CardHeader className="p-2 sm:p-3 pb-1.5 sm:pb-2">
                 <CardTitle className="flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm dark:text-white light:text-gray-900">
@@ -391,32 +414,55 @@ export default function POSPage() {
               </CardContent>
             </Card>
 
-            {/* Pestañas de carritos y vista - VISIBLE COMPLETO EN MÓVIL */}
-            <div className="flex flex-col space-y-2 shrink-0">
+            {/* Pestañas de carritos */}
+            <div className="shrink-0">
+              <CartTabs
+                carts={carts}
+                activeCartId={activeCartId}
+                onCartSelect={setActiveCartId}
+                onNewCart={createNewCart}
+                onRemoveCart={removeCart}
+              />
+            </div>
+
+            {/* Vista del carrito activo */}
+            {activeCart && (
               <div className="shrink-0">
-                <CartTabs
-                  carts={carts}
-                  activeCartId={activeCartId}
-                  onCartSelect={setActiveCartId}
-                  onNewCart={createNewCart}
-                  onRemoveCart={removeCart}
+                <CartView
+                  cart={activeCart}
+                  onCartUpdate={handleCartUpdate}
+                  onCheckout={handleCheckout}
+                  onHold={handleHoldCart}
                 />
               </div>
-
-              {/* Vista del carrito activo - TODO VISIBLE EN MÓVIL */}
-              {activeCart && (
-                <div className="shrink-0">
-                  <CartView
-                    cart={activeCart}
-                    onCartUpdate={handleCartUpdate}
-                    onCheckout={handleCheckout}
-                    onHold={handleHoldCart}
-                  />
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
+
+        {/* === BOTÓN FLOTANTE CARRITO - Solo móvil === */}
+        {mobileView === 'products' && (
+          <button
+            onClick={() => setMobileView('cart')}
+            className={cn(
+              'lg:hidden fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-xl text-white font-semibold text-sm transition-all active:scale-95',
+              activeCart && activeCart.items.length > 0
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-gray-600 hover:bg-gray-700',
+            )}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {activeCart && activeCart.items.length > 0 ? (
+              <>
+                <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                  {activeCart.items.reduce((sum, i) => sum + i.quantity, 0)}
+                </span>
+                <span>{formatCurrency(activeCart.total)}</span>
+              </>
+            ) : (
+              <span>Carrito</span>
+            )}
+          </button>
+        )}
 
         {/* Dialog de checkout */}
         {checkoutCart && (

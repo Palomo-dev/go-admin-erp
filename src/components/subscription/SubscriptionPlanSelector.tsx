@@ -176,7 +176,7 @@ export default function SubscriptionPlanSelector({
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900">{plan.name}</h3>
                   <div className="flex items-baseline gap-1">
                     <span className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
-                      ${plan.price}
+                      {plan.price ? `$${plan.price}` : 'Personalizado'}
                     </span>
                     <span className="text-xs sm:text-sm font-medium text-gray-500">
                       {billingPeriod === 'monthly' ? '/mes' : '/año'}
@@ -220,107 +220,112 @@ export default function SubscriptionPlanSelector({
   );
 }
 
-// Default plans
+// Default plans (fallback si no se cargan de BD)
 const defaultPlans: SubscriptionPlan[] = [
   {
-    id: 'free',
-    name: 'Gratis',
-    description: 'Para pequeños negocios que están comenzando',
-    price: 0,
+    id: 'pro',
+    name: 'Plan Pro',
+    description: 'Para emprendedores y pequeños negocios',
+    price: 20,
     billingPeriod: 'monthly',
     features: [
-      '1 usuario',
+      '3 usuarios',
       '1 sucursal',
-      'Funciones básicas',
+      '8 módulos',
+      '500 créditos IA',
       'Soporte por email',
     ],
+    trialDays: 15,
   },
   {
-    id: 'basic',
-    name: 'Básico',
-    description: 'Para negocios en crecimiento',
-    price: 29,
+    id: 'business',
+    name: 'Plan Business',
+    description: 'Para negocios en crecimiento con múltiples sucursales',
+    price: 49,
     billingPeriod: 'monthly',
     features: [
-      '5 usuarios',
-      '2 sucursales',
-      'Todas las funciones básicas',
-      'Reportes básicos',
+      '10 usuarios',
+      '5 sucursales',
+      '13 módulos',
+      '2000 créditos IA',
       'Soporte prioritario',
     ],
-    trialDays: 14,
+    isPopular: true,
+    trialDays: 30,
   },
   {
-    id: 'pro',
-    name: 'Profesional',
-    description: 'Para negocios establecidos',
-    price: 79,
+    id: 'ultimate',
+    name: 'Plan Ultimate',
+    description: 'Para grandes empresas con todas las funcionalidades',
+    price: 199,
     billingPeriod: 'monthly',
     features: [
-      'Usuarios ilimitados',
-      'Sucursales ilimitadas',
-      'Todas las funciones',
-      'Reportes avanzados',
-      'API access',
+      '30 usuarios',
+      '15 sucursales',
+      'Todos los módulos',
+      '10000 créditos IA',
       'Soporte 24/7',
     ],
-    isPopular: true,
-    trialDays: 14,
+    trialDays: 30,
   },
   // Yearly plans
   {
-    id: 'free-yearly',
-    name: 'Gratis',
-    description: 'Para pequeños negocios que están comenzando',
-    price: 0,
-    billingPeriod: 'yearly',
-    features: [
-      '1 usuario',
-      '1 sucursal',
-      'Funciones básicas',
-      'Soporte por email',
-    ],
-  },
-  {
-    id: 'basic-yearly',
-    name: 'Básico',
-    description: 'Para negocios en crecimiento',
-    price: 279,
-    billingPeriod: 'yearly',
-    features: [
-      '5 usuarios',
-      '2 sucursales',
-      'Todas las funciones básicas',
-      'Reportes básicos',
-      'Soporte prioritario',
-    ],
-    trialDays: 14,
-  },
-  {
     id: 'pro-yearly',
-    name: 'Profesional',
-    description: 'Para negocios establecidos',
-    price: 759,
+    name: 'Plan Pro (Anual)',
+    description: 'Para emprendedores y pequeños negocios',
+    price: 199,
     billingPeriod: 'yearly',
     features: [
-      'Usuarios ilimitados',
-      'Sucursales ilimitadas',
-      'Todas las funciones',
-      'Reportes avanzados',
-      'API access',
-      'Soporte 24/7',
+      '3 usuarios',
+      '1 sucursal',
+      '8 módulos',
+      '500 créditos IA',
+      'Soporte por email',
+      'Descuento anual',
+    ],
+    trialDays: 15,
+  },
+  {
+    id: 'business-yearly',
+    name: 'Plan Business (Anual)',
+    description: 'Para negocios en crecimiento con múltiples sucursales',
+    price: 490,
+    billingPeriod: 'yearly',
+    features: [
+      '10 usuarios',
+      '5 sucursales',
+      '13 módulos',
+      '2000 créditos IA',
+      'Soporte prioritario',
+      'Descuento anual',
     ],
     isPopular: true,
-    trialDays: 14,
+    trialDays: 30,
+  },
+  {
+    id: 'ultimate-yearly',
+    name: 'Plan Ultimate (Anual)',
+    description: 'Para grandes empresas con todas las funcionalidades',
+    price: 1990,
+    billingPeriod: 'yearly',
+    features: [
+      '30 usuarios',
+      '15 sucursales',
+      'Todos los módulos',
+      '10000 créditos IA',
+      'Soporte 24/7',
+      'Descuento anual',
+    ],
+    trialDays: 30,
   },
 ];
 
 // Helper functions
 function getDescriptionForPlan(planCode: string): string {
   const descriptions: Record<string, string> = {
-    free: 'Para pequeños negocios que están comenzando',
-    pro: 'Para negocios en crecimiento con necesidades avanzadas',
-    enterprise: 'Para grandes empresas con requisitos personalizados'
+    pro: 'Para emprendedores y pequeños negocios',
+    business: 'Para negocios en crecimiento con múltiples sucursales',
+    ultimate: 'Para grandes empresas con todas las funcionalidades'
   };
   return descriptions[planCode] || 'Plan personalizado para tu negocio';
 }

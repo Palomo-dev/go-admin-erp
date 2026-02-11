@@ -12,7 +12,7 @@ interface TicketsGridProps {
     ready: KitchenTicket[];
   };
   onStatusChange: (ticketId: number, status: KitchenTicket['status']) => void;
-  onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status']) => void;
+  onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status'], productName?: string) => void;
 }
 
 export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange }: TicketsGridProps) {

@@ -67,6 +67,7 @@ export interface WebOrder {
   cancelled_at?: string;
   cancelled_by?: string;
   cancellation_reason?: string;
+  coupon_code?: string;
   created_at: string;
   updated_at: string;
   // Relaciones
@@ -120,6 +121,7 @@ export interface WebOrderFilters {
   date_to?: string;
   search?: string;
   branch_id?: number;
+  is_scheduled?: boolean;
 }
 
 class WebOrdersService {
@@ -181,6 +183,10 @@ class WebOrdersService {
 
       if (filters?.search) {
         query = query.or(`order_number.ilike.%${filters.search}%,customer_name.ilike.%${filters.search}%,customer_phone.ilike.%${filters.search}%`);
+      }
+
+      if (filters?.is_scheduled !== undefined) {
+        query = query.eq('is_scheduled', filters.is_scheduled);
       }
 
       const { data, error } = await query;

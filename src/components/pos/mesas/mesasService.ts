@@ -181,6 +181,29 @@ export class MesasService {
   }
 
   /**
+   * Actualizar posiciones de múltiples mesas (batch)
+   */
+  static async actualizarPosiciones(
+    batch: { id: string; position_x: number; position_y: number }[]
+  ): Promise<void> {
+    try {
+      const now = new Date().toISOString();
+      const promises = batch.map(({ id, position_x, position_y }) =>
+        supabase
+          .from('restaurant_tables')
+          .update({ position_x, position_y, updated_at: now })
+          .eq('id', id)
+      );
+      const results = await Promise.all(promises);
+      const firstError = results.find((r) => r.error);
+      if (firstError?.error) throw firstError.error;
+    } catch (error) {
+      console.error('Error actualizando posiciones:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Eliminar mesa (solo si no tiene sesión activa)
    */
   static async eliminarMesa(id: string): Promise<void> {

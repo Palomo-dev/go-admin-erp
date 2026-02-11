@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Plus, CreditCard } from 'lucide-react';
+import { Plus, CreditCard, Globe, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { IntegrationConnection, IntegrationProvider } from '@/lib/services/integrationsService';
@@ -21,6 +21,8 @@ interface ProviderCardProps {
   config: ProviderConfig;
   connections: IntegrationConnection[];
   branches: Array<{ id: number; name: string }>;
+  isAvailableInCountry?: boolean;
+  organizationCountryCode?: string;
   onConnect: (provider: IntegrationProvider) => void;
   onConfigure: (connection: IntegrationConnection) => void;
   onToggleStatus: (connection: IntegrationConnection) => void;
@@ -35,6 +37,8 @@ export function ProviderCard({
   config,
   connections,
   branches,
+  isAvailableInCountry = true,
+  organizationCountryCode,
   onConnect,
   onConfigure,
   onToggleStatus,
@@ -58,8 +62,18 @@ export function ProviderCard({
         relative rounded-xl border-2 transition-all duration-200 overflow-hidden
         ${config.bgColor} ${config.borderColor} 
         hover:shadow-lg
+        ${!isAvailableInCountry ? 'opacity-60' : ''}
       `}
     >
+      {/* Indicador de no disponible en el país */}
+      {!isAvailableInCountry && organizationCountryCode && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-3 py-1.5 flex items-center gap-1.5">
+          <Globe className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span className="text-xs text-amber-700 dark:text-amber-400">
+            No disponible en {organizationCountryCode}
+          </span>
+        </div>
+      )}
       {/* Header del proveedor */}
       <div className="p-4 pb-3">
         <div className="flex items-start gap-3">
@@ -104,9 +118,13 @@ export function ProviderCard({
             >
               {hasErrors ? 'Error' : connectedCount > 0 ? `${connectedCount} activa${connectedCount > 1 ? 's' : ''}` : 'Pausado'}
             </Badge>
-          ) : (
+          ) : isAvailableInCountry ? (
             <Badge variant="outline" className="text-gray-500 dark:text-gray-400 text-xs shrink-0">
               Disponible
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 text-xs shrink-0">
+              Otro país
             </Badge>
           )}
         </div>

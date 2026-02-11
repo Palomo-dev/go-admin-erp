@@ -63,6 +63,7 @@ import {
   Dumbbell,
   LogIn,
   CalendarCheck,
+  CalendarClock,
   Ticket,
   Search,
   LayoutGrid,
@@ -71,6 +72,11 @@ import {
   GitMerge,
   Upload,
   History,
+  Palette,
+  Wrench,
+  FileBarChart,
+  UserCog,
+  Bell as BellIcon,
 } from 'lucide-react';
 
 // Mapa de iconos mejorado para los submenús
@@ -158,6 +164,7 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Cargos Servicio': <Percent size={16} />,
     'Cupones': <Gift size={16} />,
     'Promociones': <Percent size={16} />,
+    'Reservas Mesas': <CalendarClock size={16} />,
     'Cuentas por Cobrar': <DollarSign size={16} />,
     
     // Calendario Unificado
@@ -173,6 +180,7 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Llegadas (Check-in)': <Key size={16} />,
     'Salidas (Check-out)': <LogOutIcon size={16} />,
     'Espacios': <BedDouble size={16} />,
+    'Servicios': <Settings size={16} />,
     'Tipos de Espacio': <Layers size={16} />,
     'Tarifas': <DollarSign size={16} />,
     'Limpieza': <Sparkles size={16} />,
@@ -197,6 +205,9 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Invitaciones': <Plus size={16} />,
     'Información': <Building2 size={16} />,
     'Mi Plan': <CreditCard size={16} />,
+    'Módulos': <Package size={16} />,
+    'Dominios': <Globe size={16} />,
+    'Branding': <Palette size={16} />,
     'Sucursales': <MapPin size={16} />,
     'Mis Organizaciones': <Building2 size={16} />,
     
@@ -229,6 +240,14 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Manifiestos': <ClipboardList size={16} />,
     'Incidentes': <Shield size={16} />,
     
+    // Notificaciones
+    'Alertas': <Shield size={16} />,
+    'Reglas': <Shield size={16} />,
+    'Canales de Envío': <MessageSquare size={16} />,
+    'Plantillas': <FileText size={16} />,
+    'Logs de Envío': <Activity size={16} />,
+    'Preferencias': <Settings size={16} />,
+    
     // Integraciones
     'Conexiones': <Link2 size={16} />,
     'Eventos': <Activity size={16} />,
@@ -240,6 +259,12 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     // Timeline
     'Timeline': <History size={16} />,
     'Exportaciones': <FileText size={16} />,
+    
+    // Reportes
+    'Hotelería': <BedDouble size={16} />,
+    'HRM': <UserCog size={16} />,
+    'Personalizado': <Wrench size={16} />,
+    'Programados': <Clock size={16} />,
   };
 
   return iconMap[name] || <FileText size={16} />;

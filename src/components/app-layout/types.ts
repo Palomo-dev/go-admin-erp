@@ -59,6 +59,7 @@ export interface SidebarNavigationProps {
   orgName?: string | null;
   collapsed?: boolean;
   onNavigate?: () => void;
+  activeModuleCodes?: string[];
 }
 
 export interface AppHeaderProps {

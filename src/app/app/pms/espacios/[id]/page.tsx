@@ -31,11 +31,13 @@ import {
   SpaceBlocks,
   QuickReservationDrawer,
   AddConsumptionDialog,
+  SpaceImageGallery,
 } from '@/components/pms/espacios/id';
 import { SpaceDialog } from '@/components/pms/espacios';
 import SpacesService, { type Space, type SpaceType } from '@/lib/services/spacesService';
 import SpaceConsumptionService from '@/lib/services/spaceConsumptionService';
 import reservationBlocksService, { ReservationBlock } from '@/lib/services/reservationBlocksService';
+import spaceImageService, { SpaceImage } from '@/lib/services/spaceImageService';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { RefreshCw } from 'lucide-react';
@@ -54,7 +56,10 @@ export default function SpaceDetailPage() {
   const [housekeepingTasks, setHousekeepingTasks] = useState<any[]>([]);
   const [maintenanceOrders, setMaintenanceOrders] = useState<any[]>([]);
   const [blocks, setBlocks] = useState<ReservationBlock[]>([]);
+  const [spaceImages, setSpaceImages] = useState<SpaceImage[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [servicesRefreshKey, setServicesRefreshKey] = useState(0);
 
   // Dialogs
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -78,18 +83,24 @@ export default function SpaceDetailPage() {
     try {
       setIsLoading(true);
       
+      // Obtener userId para galería de imágenes
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+
       const [
         spaceData,
         typesData,
         reservationsData,
         housekeepingData,
         maintenanceData,
+        imagesData,
       ] = await Promise.all([
         SpacesService.getSpace(spaceId),
         SpacesService.getSpaceTypes(organization!.id),
         SpacesService.getSpaceReservations(spaceId),
         SpacesService.getSpaceHousekeepingTasks(spaceId),
         SpacesService.getSpaceMaintenanceOrders(spaceId),
+        spaceImageService.getImages(spaceId),
       ]);
 
       setSpace(spaceData);
@@ -97,6 +108,7 @@ export default function SpaceDetailPage() {
       setReservations(reservationsData);
       setHousekeepingTasks(housekeepingData);
       setMaintenanceOrders(maintenanceData);
+      setSpaceImages(imagesData);
 
       // Cargar bloqueos del espacio
       if (spaceData && organization?.id) {
@@ -127,6 +139,20 @@ export default function SpaceDetailPage() {
     setShowEditDialog(true);
   };
 
+  const refreshAfterEdit = async () => {
+    try {
+      const [spaceData, imagesData] = await Promise.all([
+        SpacesService.getSpace(spaceId),
+        spaceImageService.getImages(spaceId),
+      ]);
+      setSpace(spaceData);
+      setSpaceImages(imagesData);
+      setServicesRefreshKey((k) => k + 1);
+    } catch (error) {
+      console.error('Error refrescando datos:', error);
+    }
+  };
+
   const handleSave = async (data: any) => {
     try {
       await SpacesService.updateSpace(spaceId, data);
@@ -134,7 +160,6 @@ export default function SpaceDetailPage() {
         title: 'Éxito',
         description: 'Espacio actualizado correctamente',
       });
-      loadData();
     } catch (error) {
       console.error('Error actualizando espacio:', error);
       toast({
@@ -413,7 +438,15 @@ export default function SpaceDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Columna Principal */}
           <div className="lg:col-span-2 space-y-6">
-            <SpaceBasicInfo space={space} />
+            <SpaceImageGallery
+              images={spaceImages}
+              isLoading={isLoading}
+              spaceId={spaceId}
+              organizationId={organization!.id}
+              userId={currentUserId}
+              onImagesChange={refreshAfterEdit}
+            />
+            <SpaceBasicInfo space={space} servicesRefreshTrigger={servicesRefreshKey} />
             <SpaceReservations reservations={reservations} />
           </div>
 
@@ -435,10 +468,15 @@ export default function SpaceDetailPage() {
       {/* Dialogs */}
       <SpaceDialog
         open={showEditDialog}
-        onOpenChange={setShowEditDialog}
+        onOpenChange={(open) => {
+          setShowEditDialog(open);
+          if (!open) refreshAfterEdit();
+        }}
         space={space}
         spaceTypes={spaceTypes}
         onSave={handleSave}
+        organizationId={organization?.id}
+        userId={currentUserId}
       />
 
       {/* Dialog de Limpieza */}

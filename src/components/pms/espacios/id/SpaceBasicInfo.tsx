@@ -4,12 +4,14 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Users, DollarSign, Maximize, Tag } from 'lucide-react';
 import type { Space } from '@/lib/services/spacesService';
+import { SpaceServicesBadges } from './SpaceServicesBadges';
 
 interface SpaceBasicInfoProps {
   space: Space;
+  servicesRefreshTrigger?: number;
 }
 
-export function SpaceBasicInfo({ space }: SpaceBasicInfoProps) {
+export function SpaceBasicInfo({ space, servicesRefreshTrigger = 0 }: SpaceBasicInfoProps) {
   const amenities = space.space_types?.amenities || {};
   const amenitiesList = Object.entries(amenities).filter(([_, value]) => value);
 
@@ -18,6 +20,14 @@ export function SpaceBasicInfo({ space }: SpaceBasicInfoProps) {
       <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">
         Información Básica
       </h2>
+
+      {/* Descripción */}
+      {space.description && (
+        <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Descripción</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300">{space.description}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Tipo */}
@@ -97,6 +107,11 @@ export function SpaceBasicInfo({ space }: SpaceBasicInfoProps) {
           </div>
         </div>
       )}
+
+      {/* Servicios del espacio */}
+      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <SpaceServicesBadges spaceId={space.id} refreshTrigger={servicesRefreshTrigger} />
+      </div>
 
       {/* Notas de Mantenimiento */}
       {space.maintenance_notes && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
-import { Loader2 as LoadingSpinner } from 'lucide-react';
+import { Loader2 as LoadingSpinner, X, Camera } from 'lucide-react';
+import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 
 // Para utilidades como cn
 const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
@@ -30,10 +31,13 @@ interface FormData {
   lastName: string;
   documentType: string;
   documentNumber: string;
+  dv: string;
+  companyName: string;
+  tradeName: string;
   email: string;
   phone: string;
   address: string;
-  city: string;
+  municipalityId: string;
   tags: string;
   notes: string;
 }
@@ -50,7 +54,6 @@ interface ClientData {
   identification_type?: string;
   identification_number?: string;
   address?: string;
-  city?: string;
   roles?: string[];
   tags?: string[];
   notes?: string;
@@ -68,15 +71,6 @@ const documentTypes = [
   { value: 'other', label: 'Otro' }
 ];
 
-// Opciones para roles de cliente
-const customerRoles = [
-  { value: 'cliente', label: 'Cliente', description: 'Cliente regular del negocio' },
-  { value: 'huesped', label: 'Huésped', description: 'Para negocios de hospedaje' },
-  { value: 'pasajero', label: 'Pasajero', description: 'Para servicios de transporte' },
-  { value: 'proveedor', label: 'Proveedor', description: 'Proveedor de servicios/productos' },
-  { value: 'empleado', label: 'Empleado', description: 'Personal interno' }
-];
-
 // Componente principal
 export default function EditClientForm({ clientId, organizationId, branchId }: EditClientFormProps) {
   const router = useRouter();
@@ -87,10 +81,13 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
     lastName: '',
     documentType: '',
     documentNumber: '',
+    dv: '',
+    companyName: '',
+    tradeName: '',
     email: '',
     phone: '',
     address: '',
-    city: '',
+    municipalityId: '',
     tags: '',
     notes: ''
   });
@@ -98,12 +95,36 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
   // Estados originales para comparación y auditoría
   const [originalData, setOriginalData] = useState<ClientData | null>(null);
   
+  // Estados para municipios
+  const [municipalities, setMunicipalities] = useState<{id: string; code: string; name: string; state_name: string}[]>([]);
+  const [municipalitySearch, setMunicipalitySearch] = useState('');
+  const [showMunicipalityDropdown, setShowMunicipalityDropdown] = useState(false);
+  
   // Estados adicionales
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [customerRoles, setCustomerRoles] = useState<{code: string; label: string; description: string; is_default: boolean}[]>([]);
+  const [selectedFiscal, setSelectedFiscal] = useState<string[]>([]);
+  const [fiscalOptions, setFiscalOptions] = useState<{code: string; description: string}[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingSubmit, setLoadingSubmit] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
   
+  // Cargar catálogos de roles y responsabilidades fiscales
+  useEffect(() => {
+    async function loadCatalogs() {
+      const [rolesRes, fiscalRes] = await Promise.all([
+        supabase.from('customer_roles').select('code, label, description, is_default').order('sort_order'),
+        supabase.from('dian_fiscal_responsibilities').select('code, description').order('sort_order'),
+      ]);
+      if (rolesRes.data) setCustomerRoles(rolesRes.data);
+      if (fiscalRes.data) setFiscalOptions(fiscalRes.data);
+    }
+    loadCatalogs();
+  }, []);
+
   // Cargar datos del cliente
   useEffect(() => {
     const fetchClientData = async () => {
@@ -129,16 +150,31 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
           lastName: clientData.last_name || '',
           documentType: clientData.identification_type || '',
           documentNumber: clientData.identification_number || '',
+          dv: clientData.dv != null ? String(clientData.dv) : '',
+          companyName: clientData.company_name || '',
+          tradeName: clientData.trade_name || '',
           email: clientData.email || '',
           phone: clientData.phone || '',
           address: clientData.address || '',
-          city: clientData.city || '',
+          municipalityId: clientData.fiscal_municipality_id || '',
           tags: clientData.tags ? clientData.tags.join(', ') : '',
           notes: clientData.notes || ''
         });
         
-        // Cargar roles
+        // Si tiene municipio, cargar su nombre para el search
+        if (clientData.fiscal_municipality_id) {
+          const { data: muni } = await supabase
+            .from('municipalities')
+            .select('name, state_name')
+            .eq('id', clientData.fiscal_municipality_id)
+            .single();
+          if (muni) setMunicipalitySearch(`${muni.name} - ${muni.state_name}`);
+        }
+        
+        // Cargar avatar y roles
+        setAvatarUrl(clientData.avatar_url || null);
         setSelectedRoles(clientData.roles || []);
+        setSelectedFiscal(clientData.fiscal_responsibilities || []);
         
       } catch (err: any) {
         console.error('Error al cargar datos del cliente:', err);
@@ -158,6 +194,27 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
     }
   }, [clientId]);
   
+  // Buscar municipios cuando el usuario escribe
+  useEffect(() => {
+    if (municipalitySearch.length < 2) {
+      setMunicipalities([]);
+      return;
+    }
+    
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('municipalities')
+        .select('id, code, name, state_name')
+        .ilike('name', `%${municipalitySearch}%`)
+        .order('name')
+        .limit(15);
+      
+      if (data) setMunicipalities(data);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [municipalitySearch]);
+
   // Manejar cambios en los inputs de texto
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -194,8 +251,11 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
     if (formData.email !== originalData.email) changedFields.push('email');
     if (formData.phone !== originalData.phone) changedFields.push('phone');
     if (formData.address !== originalData.address) changedFields.push('address');
-    if (formData.city !== originalData.city) changedFields.push('city');
     if (formData.notes !== originalData.notes) changedFields.push('notes');
+    if (formData.dv !== (originalData.dv != null ? String(originalData.dv) : '')) changedFields.push('dv');
+    if (formData.companyName !== (originalData.company_name || '')) changedFields.push('company_name');
+    if (formData.tradeName !== (originalData.trade_name || '')) changedFields.push('trade_name');
+    if (formData.municipalityId !== (originalData.fiscal_municipality_id || '')) changedFields.push('fiscal_municipality_id');
     
     // Comparar tags (convertidos a array vs array original)
     const newTags = formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
@@ -205,6 +265,11 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
     // Comparar roles
     if (JSON.stringify(selectedRoles.sort()) !== JSON.stringify((originalData.roles || []).sort())) {
       changedFields.push('roles');
+    }
+    
+    // Comparar fiscal responsibilities
+    if (JSON.stringify(selectedFiscal.sort()) !== JSON.stringify((originalData.fiscal_responsibilities || []).sort())) {
+      changedFields.push('fiscal_responsibilities');
     }
     
     return changedFields;
@@ -265,15 +330,18 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
       const updatedData = {
         first_name: formData.firstName,
         last_name: formData.lastName,
-        full_name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email || null,
         phone: formData.phone || null,
         identification_type: formData.documentType || null,
         identification_number: formData.documentNumber || null,
+        dv: formData.dv ? parseInt(formData.dv, 10) : null,
+        company_name: formData.companyName || null,
+        trade_name: formData.tradeName || null,
         address: formData.address || null,
-        city: formData.city || null,
+        fiscal_municipality_id: formData.municipalityId || null,
         notes: formData.notes || null,
         roles: selectedRoles,
+        fiscal_responsibilities: selectedFiscal,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
         updated_at: new Date().toISOString()
       };
@@ -342,6 +410,64 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
               <CardTitle className="text-xl">Información Personal</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Avatar upload */}
+              <div className="flex items-center gap-4 pb-4 border-b">
+                <div className="relative group cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                  <UserAvatar
+                    name={`${formData.firstName} ${formData.lastName}`.trim()}
+                    avatarUrl={avatarUrl}
+                    size="lg"
+                    className="w-20 h-20"
+                  />
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {uploadingAvatar ? (
+                      <LoadingSpinner className="h-5 w-5 text-white animate-spin" />
+                    ) : (
+                      <Camera className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.type.startsWith('image/')) {
+                        toast({ title: 'Error', description: 'Solo se permiten imágenes', variant: 'destructive' });
+                        return;
+                      }
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast({ title: 'Error', description: 'La imagen no debe superar 5MB', variant: 'destructive' });
+                        return;
+                      }
+                      setUploadingAvatar(true);
+                      try {
+                        const ext = file.name.split('.').pop();
+                        const filePath = `customers/${clientId}/avatar.${ext}`;
+                        const { error: upErr } = await supabase.storage.from('profiles').upload(filePath, file, { upsert: true });
+                        if (upErr) throw upErr;
+                        const { data: { publicUrl } } = supabase.storage.from('profiles').getPublicUrl(filePath);
+                        const newUrl = `${publicUrl}?t=${Date.now()}`;
+                        await supabase.from('customers').update({ avatar_url: newUrl }).eq('id', clientId);
+                        setAvatarUrl(newUrl);
+                        toast({ title: 'Avatar actualizado' });
+                      } catch (err: any) {
+                        toast({ title: 'Error', description: err.message, variant: 'destructive' });
+                      } finally {
+                        setUploadingAvatar(false);
+                        if (avatarInputRef.current) avatarInputRef.current.value = '';
+                      }
+                    }}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Foto del cliente</p>
+                  <p className="text-xs text-gray-500">Haz clic en la imagen para cambiarla (máx. 5MB)</p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Nombre *</Label>
@@ -370,7 +496,7 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="documentType">Tipo de Documento</Label>
                   <Select
@@ -401,24 +527,83 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
                     className="w-full"
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dv">DV</Label>
+                  <Input 
+                    id="dv" 
+                    name="dv" 
+                    value={formData.dv}
+                    onChange={handleChange}
+                    placeholder="Ej: 3"
+                    maxLength={1}
+                    className="w-20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Razón Social</Label>
+                  <Input 
+                    id="companyName" 
+                    name="companyName" 
+                    value={formData.companyName}
+                    onChange={handleChange}
+                    placeholder="Ej: Empresa S.A.S."
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="tradeName">Nombre Comercial</Label>
+                  <Input 
+                    id="tradeName" 
+                    name="tradeName" 
+                    value={formData.tradeName}
+                    onChange={handleChange}
+                    placeholder="Ej: Mi Negocio"
+                    className="w-full"
+                  />
+                </div>
               </div>
               
               <div className="space-y-4">
                 <Label>Roles del Cliente</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {customerRoles.map((role) => (
-                    <div key={role.value} className="flex items-center space-x-2">
+                    <div key={role.code} className="flex items-center space-x-2">
                       <Checkbox 
-                        id={`role-${role.value}`} 
-                        checked={selectedRoles.includes(role.value)}
-                        onCheckedChange={(checked: boolean) => handleRoleToggle(role.value, checked)}
+                        checked={selectedRoles.includes(role.code)}
+                        onCheckedChange={(checked) => handleRoleToggle(role.code, !!checked)}
                       />
-                      <Label 
-                        htmlFor={`role-${role.value}`} 
-                        className="cursor-pointer"
-                      >
+                      <span className="cursor-pointer text-sm">
                         {role.label}
-                      </Label>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label>Responsabilidad Fiscal (DIAN)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {fiscalOptions.map((fiscal) => (
+                    <div key={fiscal.code} className="flex items-center space-x-2">
+                      <Checkbox 
+                        checked={selectedFiscal.includes(fiscal.code)}
+                        onCheckedChange={(checked) => {
+                          setSelectedFiscal(prev => 
+                            checked
+                              ? [...prev, fiscal.code]
+                              : prev.filter(f => f !== fiscal.code)
+                          );
+                        }}
+                      />
+                      <span className="cursor-pointer text-sm">
+                        <span className="font-medium">{fiscal.code}</span>
+                        <span className="text-gray-500 ml-1">- {fiscal.description}</span>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -474,18 +659,56 @@ export default function EditClientForm({ clientId, organizationId, branchId }: E
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="city">Ciudad</Label>
+              <div className="space-y-2 relative">
+                  <Label htmlFor="municipalitySearch">Municipio</Label>
                   <Input 
-                    id="city" 
-                    name="city" 
-                    value={formData.city}
-                    onChange={handleChange}
-                    placeholder="Ciudad"
+                    id="municipalitySearch"
+                    value={municipalitySearch}
+                    onChange={(e) => {
+                      setMunicipalitySearch(e.target.value);
+                      setShowMunicipalityDropdown(true);
+                      if (!e.target.value) {
+                        setFormData(prev => ({ ...prev, municipalityId: '' }));
+                      }
+                    }}
+                    onFocus={() => municipalitySearch.length >= 2 && setShowMunicipalityDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowMunicipalityDropdown(false), 200)}
+                    placeholder="Buscar municipio..."
                     className="w-full"
+                    autoComplete="off"
                   />
-                </div>
+                  {formData.municipalityId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, municipalityId: '' }));
+                        setMunicipalitySearch('');
+                      }}
+                      className="absolute right-2 top-[38px] text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                  {showMunicipalityDropdown && municipalities.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {municipalities.map((muni) => (
+                        <button
+                          key={muni.id}
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, municipalityId: muni.id }));
+                            setMunicipalitySearch(`${muni.name} - ${muni.state_name}`);
+                            setShowMunicipalityDropdown(false);
+                          }}
+                        >
+                          <span className="font-medium">{muni.name}</span>
+                          <span className="text-gray-500 dark:text-gray-400 ml-1 text-xs">({muni.code}) - {muni.state_name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
               </div>
             </CardContent>
           </Card>

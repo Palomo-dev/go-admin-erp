@@ -62,6 +62,8 @@ export function DeviceSessions() {
   const [revokeLoading, setRevokeLoading] = useState(false)
   const [renameLoading, setRenameLoading] = useState(false)
   const [trustLoading, setTrustLoading] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 5
   
   // Generar device fingerprint simple (debe coincidir con organizationAuth.ts)
   const generateDeviceFingerprint = async (): Promise<string> => {
@@ -357,8 +359,25 @@ export function DeviceSessions() {
       
       <CardContent>
         {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-full p-2 bg-gray-100 dark:bg-gray-700">
+                    <div className="h-5 w-5 bg-gray-200 dark:bg-gray-600 rounded animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+                    <div className="h-3 w-32 bg-gray-100 dark:bg-gray-700/50 rounded animate-pulse mb-1" />
+                    <div className="h-3 w-48 bg-gray-100 dark:bg-gray-700/50 rounded animate-pulse" />
+                  </div>
+                </div>
+                <div className="flex mt-3 md:mt-0 gap-2">
+                  <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-4">
@@ -371,7 +390,12 @@ export function DeviceSessions() {
                 </AlertDescription>
               </Alert>
             ) : (
-              sessions.map((session) => (
+              (() => {
+                const totalPages = Math.ceil(sessions.length / pageSize)
+                const startIdx = (currentPage - 1) * pageSize
+                const paginatedSessions = sessions.slice(startIdx, startIdx + pageSize)
+                return paginatedSessions;
+              })().map((session) => (
                 <div 
                   key={session.id} 
                   className={`flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg
@@ -454,6 +478,44 @@ export function DeviceSessions() {
               ))
             )}
             
+            {/* Paginación */}
+            {sessions.length > pageSize && (
+              <div className="flex items-center justify-between pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando {Math.min((currentPage - 1) * pageSize + 1, sessions.length)} a {Math.min(currentPage * pageSize, sessions.length)} de {sessions.length} dispositivos
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                  >
+                    Anterior
+                  </Button>
+                  {[...Array(Math.ceil(sessions.length / pageSize))].map((_, i) => (
+                    <Button
+                      key={i}
+                      variant={currentPage === i + 1 ? 'default' : 'outline'}
+                      size="sm"
+                      className="w-8 h-8 p-0"
+                      onClick={() => setCurrentPage(i + 1)}
+                    >
+                      {i + 1}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === Math.ceil(sessions.length / pageSize)}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {sessions.length > 1 && (
               <Alert className="bg-amber-50 border-amber-200 text-amber-800 mt-6">
                 <Info className="h-4 w-4 text-amber-800" />

@@ -13,24 +13,98 @@ interface IconSelectorProps {
   onChange: (iconName: string) => void
   label?: string
   className?: string
+  color?: string
 }
 
 const COMMON_ICONS = [
-  'Package', 'ShoppingCart', 'Laptop', 'Shirt', 'Utensils', 'Home', 'Wrench', 'Book',
-  'Heart', 'Car', 'Smartphone', 'Watch', 'Headphones', 'Camera', 'Gamepad', 'Music',
-  'Truck', 'Factory', 'Store', 'Building', 'Globe', 'Boxes', 'Warehouse', 'Layers',
-  'Tag', 'Tags', 'Barcode', 'QrCode', 'Percent', 'DollarSign', 'CreditCard', 'Wallet',
-  'Users', 'User', 'UserPlus', 'UserCheck', 'Shield', 'Lock', 'Key', 'Settings',
-  'Star', 'Award', 'Trophy', 'Target', 'TrendingUp', 'Activity', 'BarChart', 'PieChart',
-  'Calendar', 'Clock', 'Bell', 'Mail', 'Phone', 'MapPin', 'Navigation', 'Compass',
-  'File', 'Folder', 'FileText', 'Image', 'Video', 'Download', 'Upload', 'Share'
+  // Productos y comercio
+  'Package', 'ShoppingCart', 'ShoppingBag', 'ShoppingBasket', 'Gift', 'PackageOpen', 'PackageCheck',
+  'Boxes', 'Box', 'Archive', 'Warehouse', 'Store', 'Storefront',
+  // Tecnología
+  'Laptop', 'Monitor', 'Smartphone', 'Tablet', 'Watch', 'Tv', 'Speaker',
+  'Headphones', 'Camera', 'Gamepad', 'Cpu', 'HardDrive', 'Wifi', 'Bluetooth', 'Battery',
+  'Printer', 'Mouse', 'Keyboard', 'Usb',
+  // Ropa y moda
+  'Shirt', 'Gem', 'Crown', 'Glasses', 'Footprints', 'Scissors',
+  // Alimentos y hogar
+  'Utensils', 'Coffee', 'Wine', 'Beer', 'CupSoda', 'Soup', 'Pizza', 'Apple', 'Beef',
+  'Cake', 'IceCream', 'Cookie', 'Egg', 'Milk', 'Salad', 'Sandwich', 'Cherry', 'Grape', 'Banana', 'Citrus',
+  'Home', 'Sofa', 'Lamp', 'Bath', 'Bed', 'AirVent', 'Refrigerator', 'WashingMachine',
+  // Herramientas
+  'Wrench', 'Hammer', 'Drill', 'Paintbrush', 'Ruler', 'Pipette', 'Pencil', 'PenTool', 'Eraser',
+  // Educación y libros
+  'Book', 'BookOpen', 'Library', 'GraduationCap', 'School', 'Notebook', 'BookMarked', 'FileText',
+  // Salud y bienestar
+  'Heart', 'HeartPulse', 'Stethoscope', 'Pill', 'Syringe', 'Thermometer', 'Baby', 'Accessibility',
+  'Dumbbell', 'Bike', 'PersonStanding',
+  // Transporte
+  'Car', 'Bus', 'Truck', 'Plane', 'Ship', 'Rocket', 'Train', 'Bike', 'Fuel',
+  // Industria y construcción
+  'Factory', 'Building', 'Building2', 'Landmark', 'Construction', 'HardHat', 'Crane', 'BrickWall',
+  // Internet y redes
+  'Globe', 'Globe2', 'Earth', 'Cloud', 'CloudDownload', 'CloudUpload', 'Server', 'Database', 'Network',
+  'Link', 'Rss', 'Radio', 'Podcast', 'Signal', 'Antenna',
+  // Etiquetas y precios
+  'Tag', 'Tags', 'Barcode', 'QrCode', 'Percent', 'DollarSign', 'Euro', 'Coins', 'Banknote',
+  'CreditCard', 'Wallet', 'Receipt', 'Calculator', 'PiggyBank', 'CircleDollarSign', 'BadgeDollarSign',
+  // Personas
+  'Users', 'User', 'UserPlus', 'UserCheck', 'UserX', 'UserCog', 'UsersRound',
+  'Contact', 'BadgeCheck', 'Fingerprint', 'HandMetal', 'ThumbsUp', 'ThumbsDown',
+  // Seguridad
+  'Shield', 'ShieldCheck', 'ShieldAlert', 'Lock', 'Unlock', 'Key', 'KeyRound', 'Eye', 'EyeOff',
+  // Configuración
+  'Settings', 'Cog', 'SlidersHorizontal', 'SlidersVertical', 'ToggleLeft', 'ToggleRight', 'Gauge',
+  // Logros y premios
+  'Star', 'Award', 'Trophy', 'Medal', 'Crown', 'Gem', 'Diamond', 'Sparkles', 'Flame', 'Zap',
+  // Gráficos y datos
+  'Target', 'TrendingUp', 'TrendingDown', 'Activity', 'BarChart', 'BarChart2', 'BarChart3',
+  'PieChart', 'LineChart', 'AreaChart', 'Gauge',
+  // Tiempo y calendario
+  'Calendar', 'CalendarDays', 'CalendarCheck', 'CalendarClock', 'Clock', 'Timer', 'Hourglass', 'Alarm',
+  // Comunicación
+  'Bell', 'BellRing', 'Mail', 'MailOpen', 'MessageSquare', 'MessageCircle', 'Send',
+  'Phone', 'PhoneCall', 'Video', 'Mic', 'Volume2', 'Megaphone',
+  // Ubicación
+  'MapPin', 'Map', 'Navigation', 'Compass', 'Locate', 'Route', 'Signpost', 'Mountain', 'Trees',
+  // Archivos
+  'File', 'FileText', 'FileCheck', 'FileSpreadsheet', 'FileImage', 'FileVideo', 'FileAudio',
+  'Folder', 'FolderOpen', 'FolderTree', 'ClipboardList', 'ClipboardCheck',
+  // Medios
+  'Image', 'Images', 'Film', 'Clapperboard', 'Palette', 'Brush', 'PaintBucket',
+  // Acciones
+  'Download', 'Upload', 'Share', 'Share2', 'ExternalLink', 'Copy', 'Clipboard',
+  'Trash2', 'Edit', 'Edit3', 'Save', 'Plus', 'Minus', 'Check', 'X',
+  // Flechas y dirección
+  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUpRight', 'ArrowDownRight',
+  'ChevronUp', 'ChevronDown', 'ChevronLeft', 'ChevronRight', 'ChevronsUp', 'ChevronsDown',
+  'RefreshCw', 'RotateCw', 'Repeat', 'Shuffle', 'Move', 'Maximize', 'Minimize',
+  // Naturaleza y clima
+  'Sun', 'Moon', 'CloudSun', 'CloudRain', 'Snowflake', 'Wind', 'Rainbow', 'Umbrella',
+  'Leaf', 'TreePine', 'Flower', 'Sprout', 'Bug', 'Fish', 'Bird', 'Cat', 'Dog', 'Rabbit',
+  // Formas y objetos
+  'Circle', 'Square', 'Triangle', 'Hexagon', 'Pentagon', 'Octagon',
+  'Hash', 'AtSign', 'Code', 'Terminal', 'Binary', 'Braces', 'Brackets',
+  // Decoración y misc
+  'Sparkle', 'PartyPopper', 'Confetti', 'Flag', 'Bookmark', 'Pin', 'Paperclip',
+  'Lightbulb', 'Flashlight', 'Candle', 'Wand2', 'Magic',
+  'Music', 'Music2', 'Disc', 'Headset',
+  'Layers', 'Layout', 'Grid', 'List', 'AlignJustify', 'Columns',
+  // Emojis y expresiones
+  'Smile', 'Frown', 'Meh', 'Laugh', 'Heart', 'HeartHandshake',
+  'HandHeart', 'Handshake', 'Hand', 'Pointer',
+  // Viajes y turismo
+  'Luggage', 'Tent', 'Anchor', 'Sailboat', 'MountainSnow', 'Palmtree',
+  'Hotel', 'Bed', 'Utensils', 'Martini',
+  // Ciencia y educación
+  'Atom', 'Beaker', 'Microscope', 'Telescope', 'Dna', 'Brain', 'FlaskConical',
 ]
 
-export default function IconSelector({ value, onChange, label = 'Icono', className = '' }: IconSelectorProps) {
+export default function IconSelector({ value, onChange, label = 'Icono', className = '', color }: IconSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const filteredIcons = COMMON_ICONS.filter(icon =>
+  const uniqueIcons = [...new Set(COMMON_ICONS)]
+  const filteredIcons = uniqueIcons.filter(icon =>
     icon.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -39,10 +113,10 @@ export default function IconSelector({ value, onChange, label = 'Icono', classNa
     setIsOpen(false)
   }
 
-  const renderIcon = (iconName: string, size: number = 20) => {
+  const renderIcon = (iconName: string, size: number = 20, iconColor?: string) => {
     const IconComponent = (LucideIcons as any)[iconName]
     if (!IconComponent) return null
-    return <IconComponent size={size} />
+    return <IconComponent size={size} style={iconColor ? { color: iconColor } : undefined} />
   }
 
   return (
@@ -59,7 +133,14 @@ export default function IconSelector({ value, onChange, label = 'Icono', classNa
       >
         {value ? (
           <div className="flex items-center gap-2">
-            {renderIcon(value)}
+            <div
+              className="flex items-center justify-center w-7 h-7 rounded-lg"
+              style={{
+                backgroundColor: color ? `${color}20` : undefined,
+              }}
+            >
+              {renderIcon(value, 18, color)}
+            </div>
             <span>{value}</span>
           </div>
         ) : (

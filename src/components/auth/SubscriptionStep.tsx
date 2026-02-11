@@ -26,10 +26,11 @@ export default function SubscriptionStep({
   onBack,
   loading = false,
 }: SubscriptionStepProps) {
-  const [selectedPlan, setSelectedPlan] = useState(formData.subscriptionPlan || 'free');
+  const [selectedPlan, setSelectedPlan] = useState(formData.subscriptionPlan || 'pro');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>(
     formData.billingPeriod || 'monthly'
   );
+  
 
   const handleSelectPlan = (planId: string) => {
     setSelectedPlan(planId);

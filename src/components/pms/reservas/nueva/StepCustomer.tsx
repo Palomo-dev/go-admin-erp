@@ -6,8 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, User, Mail, Phone, IdCard } from 'lucide-react';
+import { Search, Plus, User, Mail, Phone, IdCard, CreditCard, Building2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { supabase } from '@/lib/supabase/config';
 import type { Customer } from '@/lib/services/reservationsService';
+import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
 
 interface StepCustomerProps {
   selectedCustomer: Customer | null;
@@ -33,9 +36,26 @@ export function StepCustomer({
     last_name: '',
     email: '',
     phone: '',
-    document_type: 'CC',
-    document_number: '',
+    identification_type: 'CC',
+    identification_number: '',
   });
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(['cliente', 'huesped']);
+  const [selectedFiscal, setSelectedFiscal] = useState<string[]>(['R-99-PN']);
+  const [municipalityId, setMunicipalityId] = useState('aa4b6637-0060-41bb-9459-bc95f9789e08');
+  const [customerRoles, setCustomerRoles] = useState<{code: string; label: string}[]>([]);
+  const [fiscalOptions, setFiscalOptions] = useState<{code: string; description: string}[]>([]);
+
+  useEffect(() => {
+    async function loadCatalogs() {
+      const [rolesRes, fiscalRes] = await Promise.all([
+        supabase.from('customer_roles').select('code, label').order('sort_order'),
+        supabase.from('dian_fiscal_responsibilities').select('code, description').order('sort_order'),
+      ]);
+      if (rolesRes.data) setCustomerRoles(rolesRes.data);
+      if (fiscalRes.data) setFiscalOptions(fiscalRes.data);
+    }
+    loadCatalogs();
+  }, []);
 
   // Búsqueda automática con debounce
   useEffect(() => {
@@ -67,9 +87,22 @@ export function StepCustomer({
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const customer = await onCreate(newCustomerData);
+      const customer = await onCreate({
+        first_name: newCustomerData.first_name,
+        last_name: newCustomerData.last_name,
+        email: newCustomerData.email || null,
+        phone: newCustomerData.phone || null,
+        identification_type: newCustomerData.identification_type,
+        identification_number: newCustomerData.identification_number || null,
+        roles: selectedRoles,
+        fiscal_responsibilities: selectedFiscal,
+        fiscal_municipality_id: municipalityId,
+      } as any);
       onCustomerSelect(customer);
       setShowNewForm(false);
+      setSelectedRoles(['cliente', 'huesped']);
+      setSelectedFiscal(['R-99-PN']);
+      setMunicipalityId('aa4b6637-0060-41bb-9459-bc95f9789e08');
     } catch (error) {
       console.error('Error creando cliente:', error);
     }
@@ -263,26 +296,89 @@ export function StepCustomer({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="document_type">Tipo Doc.</Label>
-                <Input
-                  id="document_type"
-                  value={newCustomerData.document_type}
+                <Label htmlFor="identification_type">Tipo Doc.</Label>
+                <select
+                  id="identification_type"
+                  value={newCustomerData.identification_type}
                   onChange={(e) =>
-                    setNewCustomerData({ ...newCustomerData, document_type: e.target.value })
+                    setNewCustomerData({ ...newCustomerData, identification_type: e.target.value })
                   }
-                />
+                  className="h-10 w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                >
+                  <option value="CC">Cédula</option>
+                  <option value="CE">Cédula Extranjería</option>
+                  <option value="NIT">NIT</option>
+                  <option value="PAS">Pasaporte</option>
+                </select>
               </div>
               <div>
-                <Label htmlFor="document_number">Número Doc.</Label>
+                <Label htmlFor="identification_number">Número Doc.</Label>
                 <Input
-                  id="document_number"
-                  value={newCustomerData.document_number}
+                  id="identification_number"
+                  value={newCustomerData.identification_number}
                   onChange={(e) =>
-                    setNewCustomerData({ ...newCustomerData, document_number: e.target.value })
+                    setNewCustomerData({ ...newCustomerData, identification_number: e.target.value })
                   }
                 />
               </div>
             </div>
+
+            {/* Roles del Cliente */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-1">
+                <User className="h-3.5 w-3.5" /> Roles
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {customerRoles.map((role) => (
+                  <div
+                    key={role.code}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border cursor-pointer transition-all text-xs ${
+                      selectedRoles.includes(role.code)
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+                    }`}
+                    onClick={() => setSelectedRoles(prev =>
+                      prev.includes(role.code) ? prev.filter(r => r !== role.code) : [...prev, role.code]
+                    )}
+                  >
+                    <Checkbox checked={selectedRoles.includes(role.code)} className="pointer-events-none h-3 w-3" />
+                    <span>{role.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Resp. Fiscal */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-1">
+                <CreditCard className="h-3.5 w-3.5" /> Resp. Fiscal
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {fiscalOptions.map((fiscal) => (
+                  <div
+                    key={fiscal.code}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border cursor-pointer transition-all text-xs ${
+                      selectedFiscal.includes(fiscal.code)
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+                    }`}
+                    onClick={() => setSelectedFiscal(prev =>
+                      prev.includes(fiscal.code) ? prev.filter(f => f !== fiscal.code) : [...prev, fiscal.code]
+                    )}
+                  >
+                    <Checkbox checked={selectedFiscal.includes(fiscal.code)} className="pointer-events-none h-3 w-3" />
+                    <span>{fiscal.code}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Municipio */}
+            <MunicipalitySearch
+              value={municipalityId}
+              onChange={setMunicipalityId}
+              compact
+            />
 
             <div className="flex gap-2 pt-2">
               <Button

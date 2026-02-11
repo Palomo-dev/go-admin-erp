@@ -30,7 +30,7 @@ export interface KitchenTicketItem {
   sale_item_id: string;
   station: 'hot_kitchen' | 'cold_kitchen' | 'bar' | null;
   notes: string | null;
-  status: 'pending' | 'preparing' | 'ready' | 'delivered';
+  status: 'pending' | 'in_progress' | 'ready' | 'delivered';
   created_at: string;
   updated_at: string;
   preparation_time: number | null;
@@ -205,10 +205,9 @@ class KitchenService {
           table: 'kitchen_tickets',
           filter: `organization_id=eq.${organizationId}`
         },
-        async () => {
-          // Recargar todos los tickets cuando hay cambios
-          const tickets = await this.getKitchenTickets({ organizationId });
-          onTicketsChange(tickets);
+        () => {
+          // Notificar al consumidor para que recargue con sus propios filtros
+          onTicketsChange([]);
         }
       )
       .on(
@@ -219,10 +218,9 @@ class KitchenService {
           table: 'kitchen_ticket_items',
           filter: `organization_id=eq.${organizationId}`
         },
-        async () => {
-          // Recargar todos los tickets cuando hay cambios en items
-          const tickets = await this.getKitchenTickets({ organizationId });
-          onTicketsChange(tickets);
+        () => {
+          // Notificar al consumidor para que recargue con sus propios filtros
+          onTicketsChange([]);
         }
       )
       .subscribe();

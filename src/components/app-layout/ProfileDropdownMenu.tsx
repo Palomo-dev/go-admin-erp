@@ -9,6 +9,8 @@ import Image from 'next/image';
 import { ChevronDown, User, Settings, Bell, ChevronRight } from 'lucide-react';
 import { UserData } from './types';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
+import { supabase } from '@/lib/supabase/config';
+import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 interface ProfileDropdownMenuProps {
   userData: UserData | null;
@@ -23,19 +25,40 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [planName, setPlanName] = useState<string | null>(null);
   
   // Detectar si estamos en móvil y si el componente está montado
   useEffect(() => {
     setMounted(true);
-    
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024); // lg breakpoint
-    };
-    
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Cargar plan de suscripción (se recarga si cambia la org en storage)
+  useEffect(() => {
+    const loadPlan = async () => {
+      try {
+        const org = obtenerOrganizacionActiva();
+        if (!org?.id || org.id === 0) { setPlanName(null); return; }
+        const { data } = await supabase
+          .from('subscriptions')
+          .select('plans(name)')
+          .eq('organization_id', org.id)
+          .in('status', ['active', 'trialing'])
+          .limit(1)
+          .single();
+        setPlanName((data as any)?.plans?.name || null);
+      } catch { setPlanName(null); }
+    };
+    loadPlan();
+    // Escuchar cambios de org desde otra pestaña o window.location.reload
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'organizacionActiva' || e.key === 'currentOrganizationId') loadPlan();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
   
   // Renderizar modal usando Portal para que aparezca fuera del contexto del sidebar
@@ -113,10 +136,10 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                   {userData?.email && (
                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1">{userData.email}</p>
                   )}
-                  {orgName && (
-                    <div className="flex items-center mt-2 text-sm text-gray-600 dark:text-gray-400">
-                      <Building2 size={16} className="mr-1.5" />
-                      <span className="truncate">{orgName}</span>
+                  {planName && (
+                    <div className="flex items-center mt-2 text-sm text-blue-600 dark:text-blue-400 font-medium">
+                      <CreditCard size={16} className="mr-1.5" />
+                      <span className="truncate">{planName}</span>
                     </div>
                   )}
                 </div>
@@ -153,7 +176,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               </Link>
               
               <Link 
-                href="/app/configuraciones"
+                href="/app/organizacion/informacion"
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between w-full px-4 py-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 rounded-lg transition-colors min-h-[56px]"
               >
@@ -280,12 +303,15 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
                       {userData?.name || 'Usuario'}
                     </p>
-                    <div className="flex flex-col space-y-1 text-xs text-gray-500 dark:text-gray-300">
+                    <div className="flex flex-col space-y-0.5 text-xs text-gray-500 dark:text-gray-300">
                       {userData?.role && (
                         <p className="truncate">{userData.role}</p>
                       )}
                       {userData?.email && (
                         <p className="truncate">{userData.email}</p>
+                      )}
+                      {planName && (
+                        <p className="truncate text-blue-600 dark:text-blue-400 font-medium mt-0.5">{planName}</p>
                       )}
                     </div>
                   </div>
@@ -302,21 +328,13 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                       {userData?.email && (
                         <div className="text-xs text-gray-300 truncate">{userData.email}</div>
                       )}
-                      {orgName && (
-                        <div className="text-xs text-gray-300 mt-1 flex items-center">
-                          <Building2 size={12} className="mr-1" />
-                          <span className="truncate">{orgName}</span>
+                      {planName && (
+                        <div className="text-xs text-blue-300 mt-1 flex items-center">
+                          <CreditCard size={12} className="mr-1" />
+                          <span className="truncate">{planName}</span>
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-                
-                {/* Organización (visible cuando no está contraído) */}
-                {!collapsed && orgName && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                    <Building2 size={12} className="mr-1" />
-                    <span className="truncate">{orgName}</span>
                   </div>
                 )}
               </div>
@@ -453,7 +471,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
         </DropdownMenuItem>
         
         <DropdownMenuItem asChild>
-          <Link href="/app/configuraciones" className="flex items-center text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-full">
+          <Link href="/app/organizacion/informacion" className="flex items-center text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-full">
             <Settings size={14} className="mr-2" />
             Configuraciones
           </Link>

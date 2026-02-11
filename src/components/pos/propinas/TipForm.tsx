@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, X, Banknote, CreditCard, ArrowRightLeft } from 'lucide-react';
+import { Save, X, Banknote, CreditCard, ArrowRightLeft, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -122,6 +122,7 @@ export function TipForm({
       case 'cash': return <Banknote className="h-5 w-5" />;
       case 'card': return <CreditCard className="h-5 w-5" />;
       case 'transfer': return <ArrowRightLeft className="h-5 w-5" />;
+      case 'online': return <Globe className="h-5 w-5" />;
     }
   };
 
@@ -191,7 +192,7 @@ export function TipForm({
           {/* Tipo */}
           <div className="space-y-2">
             <Label className="dark:text-gray-200">Tipo de Propina</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {(Object.entries(TIP_TYPE_LABELS) as [TipType, string][]).map(([type, label]) => (
                 <button
                   key={type}

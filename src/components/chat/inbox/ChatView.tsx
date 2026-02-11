@@ -350,11 +350,11 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
   };
 
   return (
-    <div className="h-full flex bg-white dark:bg-gray-900">
+    <div className="h-full flex bg-white dark:bg-gray-900 overflow-hidden">
       {/* Área principal del chat */}
-      <div className="flex-1 flex flex-col min-w-0">
-      {/* Header - sticky para que siempre sea visible */}
-      <div className="sticky top-0 z-20 border-b dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 flex items-center justify-between flex-shrink-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+      {/* Header - fijo arriba */}
+      <div className="border-b dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {/* Botón toggle sidebar (desktop) */}
           {onToggleSidebar && (

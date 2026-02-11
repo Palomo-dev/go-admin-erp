@@ -45,11 +45,18 @@ export function PreCuentaDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            Pre-Cuenta - {tableName}
+          <DialogTitle className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 shrink-0">
+              <Receipt className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <span>Pre-Cuenta - {tableName}</span>
+              <p className="text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
+                {preCuenta.items.length} productos
+              </p>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -61,21 +68,21 @@ export function PreCuentaDialog({
             </h3>
             {preCuenta.items.map((item) => (
               <Card key={item.id} className="p-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900 dark:text-gray-100">
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
                       {item.product?.name || 'Producto'}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {item.quantity} × {formatCurrency(Number(item.unit_price))}
                     </p>
                     {item.notes && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 truncate">
                         📝 {typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes}
                       </p>
                     )}
                   </div>
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">
+                  <p className="font-semibold text-gray-900 dark:text-gray-100 shrink-0 text-right">
                     {formatCurrency(Number(item.total))}
                   </p>
                 </div>
@@ -149,32 +156,30 @@ export function PreCuentaDialog({
           )}
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <div className="flex gap-2 flex-1">
+        <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-between pt-4">
+          <div className="flex flex-wrap gap-2">
             {onPrint && (
-              <Button variant="outline" onClick={onPrint}>
-                <Printer className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={onPrint}>
+                <Printer className="h-4 w-4 mr-1.5" />
                 Imprimir
               </Button>
             )}
             {onSplitBill && customers > 1 && (
-              <Button variant="outline" onClick={onSplitBill}>
-                <Split className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={onSplitBill}>
+                <Split className="h-4 w-4 mr-1.5" />
                 Dividir Cuenta
               </Button>
             )}
-          </div>
-          <div className="flex gap-2">
-            {onGenerateBill && (
-              <Button onClick={() => onGenerateBill(sendToFactus)}>
-                <Receipt className="h-4 w-4 mr-2" />
-                Procesar Pago
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
               Cerrar
             </Button>
           </div>
+          {onGenerateBill && (
+            <Button onClick={() => onGenerateBill(sendToFactus)} className="w-full sm:w-auto">
+              <Receipt className="h-4 w-4 mr-1.5" />
+              Procesar Pago
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -11,6 +11,7 @@
 
 import { stripe } from './server'
 import { createClient } from '@supabase/supabase-js'
+import { getEnterprisePricing } from '@/lib/services/pricingService'
 
 export interface CreateSubscriptionData {
   organizationId: number
@@ -21,11 +22,19 @@ export interface CreateSubscriptionData {
   customerName?: string
   paymentMethodId?: string // Requerido si useTrial = false
   existingCustomerId?: string // Customer ID creado en el paso de método de pago
+  enterpriseConfig?: {
+    modulesCount: number
+    branchesCount: number
+    usersCount: number
+    aiCredits: number  // Cantidad de créditos IA a comprar
+    selectedModules: string[]
+  }
 }
 
 export interface SubscriptionResult {
   success: boolean
   subscriptionId?: string
+  customerId?: string // ID del customer de Stripe
   clientSecret?: string // Para confirmar pago si useTrial = false
   trialEnd?: Date
   error?: string
@@ -38,8 +47,13 @@ export async function createSubscription(
   data: CreateSubscriptionData
 ): Promise<SubscriptionResult> {
   try {
+    console.log('🔍 DEBUG createSubscription - Iniciando con datos:', data);
+    
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    console.log('🔍 DEBUG createSubscription - SUPABASE_URL:', supabaseUrl ? 'OK' : 'MISSING');
+    console.log('🔍 DEBUG createSubscription - ServiceKey:', supabaseServiceKey ? 'OK' : 'MISSING');
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -49,31 +63,102 @@ export async function createSubscription(
     })
 
     // Obtener información del plan de la base de datos
+    console.log('🔍 DEBUG createSubscription - Buscando plan:', data.planCode);
     const { data: plan, error: planError } = await supabase
       .from('plans')
       .select('stripe_product_id, stripe_price_monthly_id, stripe_price_yearly_id, trial_days')
       .eq('code', data.planCode)
       .single()
 
+    console.log('🔍 DEBUG createSubscription - Plan encontrado:', plan);
+    console.log('🔍 DEBUG createSubscription - Error en plan:', planError);
+
     if (planError || !plan) {
-      throw new Error('Plan no encontrado en base de datos')
+      console.error('❌ Plan no encontrado:', planError);
+      throw new Error('Plan no encontrado en base de datos: ' + data.planCode)
     }
 
-    // Verificar que el plan tenga los IDs de Stripe configurados
-    if (!plan.stripe_product_id) {
-      throw new Error(`Plan ${data.planCode} no tiene producto de Stripe configurado`)
+    let priceId: string
+    let calculatedPrice: number | undefined
+
+    // Si es Enterprise con configuración, crear precio dinámico
+    if (data.planCode === 'enterprise' && data.enterpriseConfig) {
+      console.log('🔍 DEBUG createSubscription - Creando precio dinámico Enterprise:', data.enterpriseConfig);
+      
+      // Obtener precios desde la base de datos
+      const pricing = await getEnterprisePricing();
+      
+      const additionalModules = Math.max(0, data.enterpriseConfig.modulesCount - 6);
+      const modulesPrice = additionalModules * pricing.moduleUnitPrice;
+      const branchesPrice = data.enterpriseConfig.branchesCount * pricing.branchUnitPrice;
+      const usersPrice = data.enterpriseConfig.usersCount * pricing.userUnitPrice;
+      const aiCreditsPrice = (data.enterpriseConfig.aiCredits || 0) * (pricing.aiCreditUnitPrice / 100); // Convertir centavos a dólares
+      
+      // Calcular precio mensual base
+      const monthlyPrice = pricing.basePrice + modulesPrice + branchesPrice + usersPrice + aiCreditsPrice;
+      
+      // Aplicar descuento anual (2 meses gratis = precio mensual × 10)
+      const isYearly = data.billingPeriod === 'yearly';
+      calculatedPrice = isYearly ? Math.round(monthlyPrice * 10) : Math.round(monthlyPrice);
+      
+      console.log(`💰 Cotización Enterprise (${data.billingPeriod}):
+        - Base: $${pricing.basePrice}
+        - Módulos (${additionalModules} × $${pricing.moduleUnitPrice}): $${modulesPrice}
+        - Sucursales (${data.enterpriseConfig.branchesCount} × $${pricing.branchUnitPrice}): $${branchesPrice}
+        - Usuarios (${data.enterpriseConfig.usersCount} × $${pricing.userUnitPrice}): $${usersPrice}
+        - Créditos IA (${data.enterpriseConfig.aiCredits || 0} × $${(pricing.aiCreditUnitPrice/100).toFixed(2)}): $${aiCreditsPrice.toFixed(2)}
+        - Mensual: $${monthlyPrice}/mes
+        - ${isYearly ? 'Anual (descuento 2 meses): $' + calculatedPrice + '/año' : 'Total: $' + calculatedPrice + '/mes'}`);
+      
+      // Crear producto en Stripe
+      const product = await stripe.products.create({
+        name: `Enterprise ${isYearly ? 'Anual' : 'Mensual'} - Org ${data.organizationId}`,
+        description: `${data.enterpriseConfig.modulesCount} módulos, ${data.enterpriseConfig.branchesCount} sucursales, ${data.enterpriseConfig.usersCount} usuarios, ${data.enterpriseConfig.aiCredits || 0} créditos IA`,
+        metadata: {
+          organization_id: String(data.organizationId),
+          modules_count: String(data.enterpriseConfig.modulesCount),
+          branches_count: String(data.enterpriseConfig.branchesCount),
+          users_count: String(data.enterpriseConfig.usersCount),
+          ai_credits: String(data.enterpriseConfig.aiCredits || 0),
+          billing_period: data.billingPeriod,
+          is_dynamic: 'true',
+        },
+      })
+      
+      // Crear precio
+      const stripePrice = await stripe.prices.create({
+        product: product.id,
+        unit_amount: Math.round(calculatedPrice * 100),
+        currency: 'usd',
+        recurring: { 
+          interval: isYearly ? 'year' : 'month',
+          interval_count: 1 
+        },
+      })
+      
+      priceId = stripePrice.id
+      console.log('✅ Precio dinámico creado:', priceId, '- Precio:', calculatedPrice, '- Período:', data.billingPeriod);
+    } else {
+      // Usar precio fijo del plan
+      if (!plan.stripe_product_id) {
+        throw new Error(`Plan ${data.planCode} no tiene producto de Stripe configurado`)
+      }
+
+      priceId = data.billingPeriod === 'monthly' 
+        ? plan.stripe_price_monthly_id 
+        : plan.stripe_price_yearly_id
+
+      if (!priceId) {
+        throw new Error(`Plan ${data.planCode} no tiene precio ${data.billingPeriod} configurado en Stripe`)
+      }
     }
 
-    const priceId = data.billingPeriod === 'monthly' 
-      ? plan.stripe_price_monthly_id 
-      : plan.stripe_price_yearly_id
-
-    if (!priceId) {
-      throw new Error(`Plan ${data.planCode} no tiene precio ${data.billingPeriod} configurado en Stripe`)
-    }
+    console.log('🔍 DEBUG createSubscription - priceId:', priceId);
 
     // 1. Crear o obtener customer en Stripe
     let customerId: string
+    
+    console.log('🔍 DEBUG createSubscription - customerEmail:', data.customerEmail);
     
     // Si ya existe un customer ID (del paso de método de pago), usarlo
     if (data.existingCustomerId) {
@@ -90,6 +175,7 @@ export async function createSubscription(
       })
     } else {
       // Buscar si ya existe un customer con este email
+      console.log('🔍 DEBUG createSubscription - Buscando customer existente...');
       const existingCustomers = await stripe.customers.list({
         email: data.customerEmail,
         limit: 1,
@@ -99,6 +185,7 @@ export async function createSubscription(
         customerId = existingCustomers.data[0].id
         console.log('✅ Customer existente encontrado:', customerId)
       } else {
+        console.log('🔍 DEBUG createSubscription - Creando nuevo customer...');
         const customer = await stripe.customers.create({
           email: data.customerEmail,
           name: data.customerName,
@@ -145,11 +232,23 @@ export async function createSubscription(
         trialEnd: new Date(subscription.trial_end! * 1000),
         currentPeriodStart: new Date(subscription.current_period_start * 1000),
         currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        metadata: data.enterpriseConfig ? {
+          custom_config: {
+            modules_count: data.enterpriseConfig.modulesCount,
+            branches_count: data.enterpriseConfig.branchesCount,
+            users_count: data.enterpriseConfig.usersCount,
+            ai_credits: data.enterpriseConfig.aiCredits || 0,
+            selected_modules: data.enterpriseConfig.selectedModules,
+            billing_period: data.billingPeriod,
+          },
+          is_enterprise_custom: true,
+        } : {},
       })
 
       return {
         success: true,
         subscriptionId: subscription.id,
+        customerId: customerId,
         trialEnd: new Date(subscription.trial_end! * 1000),
       }
     } else {
@@ -196,6 +295,15 @@ export async function createSubscription(
         status: subscription.status,
         currentPeriodStart: new Date(subscription.current_period_start * 1000),
         currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        metadata: data.enterpriseConfig ? {
+          custom_config: {
+            modules_count: data.enterpriseConfig.modulesCount,
+            branches_count: data.enterpriseConfig.branchesCount,
+            users_count: data.enterpriseConfig.usersCount,
+            selected_modules: data.enterpriseConfig.selectedModules,
+          },
+          is_enterprise_custom: true,
+        } : {},
       })
 
       // Obtener client secret si requiere acción adicional
@@ -205,6 +313,7 @@ export async function createSubscription(
       return {
         success: true,
         subscriptionId: subscription.id,
+        customerId: customerId,
         clientSecret: paymentIntent?.client_secret,
       }
     }
@@ -231,32 +340,115 @@ async function saveSubscriptionToDatabase(
     trialEnd?: Date
     currentPeriodStart: Date
     currentPeriodEnd: Date
+    metadata?: any // <-- Agregar metadata opcional
   }
 ) {
-  const { error } = await supabase
-    .from('subscriptions')
-    .upsert({
-      organization_id: data.organizationId,
-      stripe_subscription_id: data.stripeSubscriptionId,
-      stripe_customer_id: data.stripeCustomerId,
-      plan_code: data.planCode,
-      status: data.status,
-      trial_end: data.trialEnd?.toISOString(),
-      current_period_start: data.currentPeriodStart.toISOString(),
-      current_period_end: data.currentPeriodEnd.toISOString(),
-      cancel_at_period_end: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }, {
-      onConflict: 'stripe_subscription_id',
-    })
+  console.log('🔍 DEBUG saveSubscriptionToDatabase - Iniciando para orgId:', data.organizationId);
 
-  if (error) {
-    console.error('❌ Error guardando suscripción en BD:', error)
-    throw new Error('Error guardando suscripción en base de datos')
+  // Crear cliente con service role key explícitamente para ignorar RLS
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseServiceKey) {
+    console.error('❌ SUPABASE_SERVICE_ROLE_KEY no está configurado');
+    throw new Error('Service role key no configurado');
+  }
+  
+  const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  // Obtener el plan_id a partir del plan_code
+  console.log('🔍 DEBUG saveSubscriptionToDatabase - Buscando plan_id para planCode:', data.planCode);
+  const { data: planData, error: planError } = await serviceClient
+    .from('plans')
+    .select('id')
+    .eq('code', data.planCode)
+    .single();
+
+  if (planError || !planData) {
+    console.error('❌ Error obteniendo plan_id:', planError);
+    throw new Error('No se pudo obtener el plan_id para el plan_code: ' + data.planCode);
   }
 
-  console.log('✅ Suscripción guardada en BD')
+  const planId = planData.id;
+  console.log('🔍 DEBUG saveSubscriptionToDatabase - plan_id obtenido:', planId);
+
+  // Primero intentar actualizar la suscripción existente por organization_id
+  const { data: existingSubs, error: queryError } = await serviceClient
+    .from('subscriptions')
+    .select('id, stripe_customer_id, stripe_subscription_id')
+    .eq('organization_id', data.organizationId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (queryError) {
+    console.error('❌ Error consultando suscripción existente:', queryError);
+    throw new Error('Error consultando suscripción existente');
+  }
+
+  const existingSub = existingSubs?.[0];
+  console.log('🔍 DEBUG saveSubscriptionToDatabase - Suscripción existente:', existingSub);
+
+  if (existingSub) {
+    // Actualizar suscripción existente
+    console.log('🔍 DEBUG saveSubscriptionToDatabase - Actualizando suscripción existente:', existingSub.id);
+    const { data: updateData, error } = await serviceClient
+      .from('subscriptions')
+      .update({
+        stripe_subscription_id: data.stripeSubscriptionId,
+        stripe_customer_id: data.stripeCustomerId,
+        plan_id: planId,
+        status: data.status,
+        trial_end: data.trialEnd?.toISOString(),
+        current_period_start: data.currentPeriodStart.toISOString(),
+        current_period_end: data.currentPeriodEnd.toISOString(),
+        cancel_at_period_end: false,
+        metadata: data.metadata || {}, // <-- Guardar metadata
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existingSub.id)
+      .select();
+
+    if (error) {
+      console.error('❌ Error actualizando suscripción en BD:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      throw new Error('Error actualizando suscripción en base de datos: ' + (error.message || JSON.stringify(error)));
+    }
+    console.log('✅ Suscripción actualizada en BD:', updateData);
+  } else {
+    // Crear nueva suscripción
+    console.log('🔍 DEBUG saveSubscriptionToDatabase - Creando nueva suscripción');
+    const { data: insertData, error } = await serviceClient
+      .from('subscriptions')
+      .insert({
+        organization_id: data.organizationId,
+        stripe_subscription_id: data.stripeSubscriptionId,
+        stripe_customer_id: data.stripeCustomerId,
+        plan_id: planId,
+        status: data.status,
+        trial_end: data.trialEnd?.toISOString(),
+        current_period_start: data.currentPeriodStart.toISOString(),
+        current_period_end: data.currentPeriodEnd.toISOString(),
+        cancel_at_period_end: false,
+        metadata: data.metadata || {}, // <-- Guardar metadata
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select();
+
+    if (error) {
+      console.error('❌ Error creando suscripción en BD:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      throw new Error('Error creando suscripción en base de datos: ' + (error.message || JSON.stringify(error)));
+    }
+    console.log('✅ Nueva suscripción creada en BD:', insertData);
+  }
+
+  console.log('✅ Suscripción guardada en BD completado');
 }
 
 /**
@@ -492,10 +684,15 @@ export async function reactivateSubscription(subscriptionId: string) {
  */
 export async function getCustomerPaymentMethods(customerId: string) {
   try {
+    console.log('🔍 DEBUG getCustomerPaymentMethods - customerId:', customerId);
+    
     const paymentMethods = await stripe.paymentMethods.list({
       customer: customerId,
       type: 'card',
     })
+    
+    console.log('🔍 DEBUG getCustomerPaymentMethods - Stripe response:', paymentMethods.data.length, 'métodos encontrados');
+    console.log('🔍 DEBUG getCustomerPaymentMethods - Data:', paymentMethods.data);
 
     return {
       success: true,

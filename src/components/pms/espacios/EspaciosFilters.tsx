@@ -10,18 +10,22 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { SpaceStatus, SpaceType } from '@/lib/services/spacesService';
+import type { OrgServiceView } from '@/lib/services/spaceServicesService';
 
 interface EspaciosFiltersProps {
   searchTerm: string;
   statusFilter: SpaceStatus | 'all';
   zoneFilter: string;
   typeFilter: string;
+  serviceFilter?: string;
   floorZones: string[];
   spaceTypes: SpaceType[];
+  orgServices?: OrgServiceView[];
   onSearchChange: (value: string) => void;
   onStatusChange: (value: SpaceStatus | 'all') => void;
   onZoneChange: (value: string) => void;
   onTypeChange: (value: string) => void;
+  onServiceChange?: (value: string) => void;
 }
 
 export function EspaciosFilters({
@@ -29,12 +33,15 @@ export function EspaciosFilters({
   statusFilter,
   zoneFilter,
   typeFilter,
+  serviceFilter = 'all',
   floorZones,
   spaceTypes,
+  orgServices = [],
   onSearchChange,
   onStatusChange,
   onZoneChange,
   onTypeChange,
+  onServiceChange,
 }: EspaciosFiltersProps) {
   return (
     <div className="flex flex-wrap gap-3">
@@ -86,6 +93,27 @@ export function EspaciosFilters({
                 {type.name}
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {orgServices.length > 0 && onServiceChange && (
+        <Select value={serviceFilter} onValueChange={onServiceChange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Servicio" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los servicios</SelectItem>
+            {orgServices
+              .filter((s) => s.is_active && (s.org_service_id || s.service_id))
+              .map((svc) => {
+                const val = svc.org_service_id || svc.service_id || svc.name;
+                return (
+                  <SelectItem key={val} value={val}>
+                    {svc.name}
+                  </SelectItem>
+                );
+              })}
           </SelectContent>
         </Select>
       )}

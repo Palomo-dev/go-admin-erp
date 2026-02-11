@@ -11,7 +11,7 @@ import type { KitchenTicket, KitchenTicketItem } from '@/lib/services/kitchenSer
 interface TicketCardProps {
   ticket: KitchenTicket;
   onStatusChange: (ticketId: number, status: KitchenTicket['status']) => void;
-  onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status']) => void;
+  onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status'], productName?: string) => void;
 }
 
 const getStatusInfo = (status: KitchenTicket['status']) => {
@@ -66,7 +66,7 @@ const getItemStatusInfo = (status: string | undefined) => {
   switch (status) {
     case 'pending':
       return { label: 'Pendiente', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-50 dark:bg-yellow-900/20' };
-    case 'preparing':
+    case 'in_progress':
       return { label: 'Preparando', color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-900/20' };
     case 'ready':
       return { label: 'Listo', color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-900/20' };
@@ -78,6 +78,7 @@ const getItemStatusInfo = (status: string | undefined) => {
 };
 
 export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: TicketCardProps) {
+  const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const statusInfo = getStatusInfo(ticket.status);
   const StatusIcon = statusInfo.icon;
   
@@ -149,13 +150,24 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: Ticke
           const itemStatusInfo = getItemStatusInfo(item.status);
           const isItemReady = item.status === 'ready' || item.status === 'delivered';
           
-          const handleItemClick = () => {
-            if (!onItemStatusChange) return;
-            // Ciclar entre estados: pending -> preparing -> ready
-            const nextStatus = item.status === 'pending' ? 'preparing' : 
-                              item.status === 'preparing' ? 'ready' : 
+          const handleItemClick = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (!onItemStatusChange || updatingItems.has(item.id)) return;
+            // Marcar como actualizando para evitar doble-click
+            setUpdatingItems(prev => new Set(prev).add(item.id));
+            // Ciclar entre estados: pending -> in_progress -> ready
+            const nextStatus = item.status === 'pending' ? 'in_progress' : 
+                              item.status === 'in_progress' ? 'ready' : 
                               item.status === 'ready' ? 'pending' : 'pending';
-            onItemStatusChange(item.id, nextStatus as KitchenTicketItem['status']);
+            onItemStatusChange(item.id, nextStatus as KitchenTicketItem['status'], product?.name);
+            // Liberar después de 1.5s
+            setTimeout(() => {
+              setUpdatingItems(prev => {
+                const next = new Set(prev);
+                next.delete(item.id);
+                return next;
+              });
+            }, 1500);
           };
           
           return (
@@ -166,7 +178,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: Ticke
                   ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
                   : 'bg-gray-50 dark:bg-gray-800/50 border-transparent hover:border-blue-300 dark:hover:border-blue-700'
               } ${onItemStatusChange ? 'cursor-pointer' : ''}`}
-              onClick={onItemStatusChange ? handleItemClick : undefined}
+              onClick={onItemStatusChange ? (e) => handleItemClick(e) : undefined}
             >
               <div className="flex items-start gap-3 flex-1">
                 {/* Indicador de estado del item */}
@@ -175,7 +187,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: Ticke
                     <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center">
                       <Check className="h-3 w-3 text-white" />
                     </div>
-                  ) : item.status === 'preparing' ? (
+                  ) : item.status === 'in_progress' ? (
                     <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center animate-pulse">
                       <ChefHat className="h-3 w-3 text-white" />
                     </div>

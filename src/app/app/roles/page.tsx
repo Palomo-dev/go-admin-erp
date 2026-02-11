@@ -6,7 +6,8 @@ import RolesManagement from '@/components/admin/RolesManagement'
 import RoleAssignment from '@/components/admin/RoleAssignment'
 import PermissionsManagement from '@/components/admin/PermissionsManagement'
 import RoleAnalytics from '@/components/admin/RoleAnalytics'
-import { Shield, Users, Key, BarChart3, Loader2 } from 'lucide-react'
+import JobPositionsManagement from '@/components/admin/JobPositionsManagement'
+import { Shield, Users, Key, BarChart3, Loader2, Briefcase } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function RolesAdminPage() {
@@ -27,38 +28,34 @@ export default function RolesAdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Administración de Roles
-                  </h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Gestión de roles y permisos
-                  </p>
-                </div>
-              </div>
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <Shield className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                Administración de Roles
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Gestión de roles y permisos
+              </p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Contenido con Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <TabsList className="grid w-full grid-cols-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
             <TabsTrigger 
               value="roles"
               className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <Shield className="h-4 w-4 mr-2" />
-              Gestión de Roles
+              Roles
             </TabsTrigger>
             <TabsTrigger 
               value="assignments"
@@ -73,6 +70,13 @@ export default function RolesAdminPage() {
             >
               <Key className="h-4 w-4 mr-2" />
               Permisos
+            </TabsTrigger>
+            <TabsTrigger 
+              value="positions"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+            >
+              <Briefcase className="h-4 w-4 mr-2" />
+              Cargos
             </TabsTrigger>
             <TabsTrigger 
               value="analytics"
@@ -93,6 +97,10 @@ export default function RolesAdminPage() {
 
           <TabsContent value="permissions" className="space-y-4">
             <PermissionsManagement organizationId={organization.id} />
+          </TabsContent>
+
+          <TabsContent value="positions" className="space-y-4">
+            <JobPositionsManagement organizationId={organization.id} />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-4">

@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Edit2, Check, X, Package } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Trash2, Edit2, Check, X, Package, ChefHat, Clock, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { SaleItem } from './types';
@@ -27,14 +28,23 @@ export function OrderItemCard({
   const [editQuantity, setEditQuantity] = useState(item.quantity);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // DEBUG: Ver estructura del item
-  console.log('🔍 OrderItemCard - Item recibido:', {
-    id: item.id,
-    product: item.product,
-    product_name: item.product?.name,
-    has_images: !!item.product?.product_images,
-    images_count: item.product?.product_images?.length
-  });
+  // Obtener estado de cocina del item (usar el más reciente)
+  const getKitchenStatus = () => {
+    const kitchenItems = item.kitchen_ticket_items;
+    if (!kitchenItems || kitchenItems.length === 0) return null;
+    // Tomar el estado del último kitchen_ticket_item (más reciente)
+    const latest = kitchenItems[kitchenItems.length - 1];
+    return latest.status;
+  };
+
+  const kitchenStatus = getKitchenStatus();
+
+  const kitchenStatusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+    pending: { label: 'Pendiente en cocina', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock },
+    in_progress: { label: 'En preparación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: ChefHat },
+    ready: { label: '¡Listo para servir!', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 animate-pulse', icon: CheckCircle },
+    delivered: { label: 'Entregado', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', icon: Check },
+  };
 
   const handleSaveQuantity = async () => {
     if (editQuantity === item.quantity || editQuantity < 1) {
@@ -108,6 +118,12 @@ export function OrderItemCard({
           <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
             {item.product?.name || 'Producto'}
           </h3>
+          {kitchenStatus && kitchenStatusConfig[kitchenStatus] && (
+            <Badge className={`${kitchenStatusConfig[kitchenStatus].color} text-xs mt-1 inline-flex items-center gap-1`}>
+              {React.createElement(kitchenStatusConfig[kitchenStatus].icon, { className: 'h-3 w-3' })}
+              {kitchenStatusConfig[kitchenStatus].label}
+            </Badge>
+          )}
           {item.notes && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
               📝 {typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes}

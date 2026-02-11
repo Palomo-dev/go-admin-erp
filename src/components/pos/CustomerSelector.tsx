@@ -8,13 +8,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { POSService } from '@/lib/services/posService';
+import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Customer, CustomerFilter } from './types';
 import { supabase } from '@/lib/supabase/config';
 
@@ -46,6 +48,7 @@ interface CustomerSelectorProps {
 }
 
 export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSelect, className, open, onOpenChange }: CustomerSelectorProps) {
+  const { organization } = useOrganization();
   const [searchTerm, setSearchTerm] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [occupiedSpaces, setOccupiedSpaces] = useState<OccupiedSpace[]>([]);
@@ -53,15 +56,32 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showCustomerList, setShowCustomerList] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
-    full_name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
-    doc_type: 'CC',
-    doc_number: '',
+    identification_type: 'CC',
+    identification_number: '',
     address: '',
-    city: '',
     country: 'Colombia'
   });
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(['cliente', 'huesped']);
+  const [selectedFiscal, setSelectedFiscal] = useState<string[]>(['R-99-PN']);
+  const [municipalityId, setMunicipalityId] = useState('aa4b6637-0060-41bb-9459-bc95f9789e08');
+  const [customerRoles, setCustomerRoles] = useState<{code: string; label: string}[]>([]);
+  const [fiscalOptions, setFiscalOptions] = useState<{code: string; description: string}[]>([]);
+
+  useEffect(() => {
+    async function loadCatalogs() {
+      const [rolesRes, fiscalRes] = await Promise.all([
+        supabase.from('customer_roles').select('code, label').order('sort_order'),
+        supabase.from('dian_fiscal_responsibilities').select('code, description').order('sort_order'),
+      ]);
+      if (rolesRes.data) setCustomerRoles(rolesRes.data);
+      if (fiscalRes.data) setFiscalOptions(fiscalRes.data);
+    }
+    loadCatalogs();
+  }, []);
 
   // Buscar clientes Y espacios ocupados
   const searchCustomers = async (term: string) => {
@@ -165,25 +185,48 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
   // Crear nuevo cliente
   const handleCreateCustomer = async () => {
-    if (!newCustomer.full_name.trim()) {
-      alert('El nombre completo es requerido');
+    if (!newCustomer.first_name.trim()) {
+      alert('El nombre es requerido');
       return;
     }
 
     try {
-      const customer = await POSService.createCustomer(newCustomer);
-      onCustomerSelect(customer);
+      const { data, error } = await supabase
+        .from('customers')
+        .insert({
+          organization_id: organization?.id,
+          first_name: newCustomer.first_name,
+          last_name: newCustomer.last_name,
+          email: newCustomer.email || null,
+          phone: newCustomer.phone || null,
+          identification_type: newCustomer.identification_type,
+          identification_number: newCustomer.identification_number || null,
+          address: newCustomer.address || null,
+          roles: selectedRoles,
+          fiscal_responsibilities: selectedFiscal,
+          fiscal_municipality_id: municipalityId,
+          metadata: { country: newCustomer.country },
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      onCustomerSelect(data);
       setShowCreateDialog(false);
       setNewCustomer({
-        full_name: '',
+        first_name: '',
+        last_name: '',
         email: '',
         phone: '',
-        doc_type: 'CC',
-        doc_number: '',
+        identification_type: 'CC',
+        identification_number: '',
         address: '',
-        city: '',
         country: 'Colombia'
       });
+      setSelectedRoles(['cliente', 'huesped']);
+      setSelectedFiscal(['R-99-PN']);
+      setMunicipalityId('aa4b6637-0060-41bb-9459-bc95f9789e08');
     } catch (error) {
       console.error('Error creating customer:', error);
       alert('Error al crear el cliente');
@@ -213,7 +256,6 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
       doc_type: 'CC',
       doc_number: '',
       address: '',
-      city: '',
       country: 'Colombia',
       roles: [],
       tags: [],
@@ -276,12 +318,6 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                       </div>
                     )}
                     
-                    {selectedCustomer.city && (
-                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 light:text-gray-600">
-                        <MapPin className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{selectedCustomer.city}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -523,47 +559,58 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
               </h3>
               
               <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="full_name" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
-                    Nombre Completo *
-                  </Label>
-                  <Input
-                    id="full_name"
-                    value={newCustomer.full_name}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, full_name: e.target.value })}
-                    placeholder="Ingrese el nombre completo"
-                    className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                      Nombre *
+                    </Label>
+                    <Input
+                      id="first_name"
+                      value={newCustomer.first_name}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, first_name: e.target.value })}
+                      placeholder="Nombre"
+                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                      Apellido
+                    </Label>
+                    <Input
+                      id="last_name"
+                      value={newCustomer.last_name}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, last_name: e.target.value })}
+                      placeholder="Apellido"
+                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="doc_type" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                    <Label htmlFor="identification_type" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
                       Tipo Documento
                     </Label>
-                    <Select
-                      value={newCustomer.doc_type}
-                      onValueChange={(value) => setNewCustomer({ ...newCustomer, doc_type: value })}
+                    <select
+                      id="identification_type"
+                      value={newCustomer.identification_type}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, identification_type: e.target.value })}
+                      className="h-10 w-full rounded-md border dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        <SelectValue placeholder="Seleccione tipo" />
-                      </SelectTrigger>
-                      <SelectContent className="dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200">
-                        <SelectItem value="CC">Cédula de Ciudadanía</SelectItem>
-                        <SelectItem value="CE">Cédula de Extranjería</SelectItem>
-                        <SelectItem value="NIT">NIT</SelectItem>
-                        <SelectItem value="PAS">Pasaporte</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <option value="CC">Cédula de Ciudadanía</option>
+                      <option value="CE">Cédula de Extranjería</option>
+                      <option value="NIT">NIT</option>
+                      <option value="PAS">Pasaporte</option>
+                    </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="doc_number" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                    <Label htmlFor="identification_number" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
                       Número de Documento
                     </Label>
                     <Input
-                      id="doc_number"
-                      value={newCustomer.doc_number}
-                      onChange={(e) => setNewCustomer({ ...newCustomer, doc_number: e.target.value })}
+                      id="identification_number"
+                      value={newCustomer.identification_number}
+                      onChange={(e) => setNewCustomer({ ...newCustomer, identification_number: e.target.value })}
                       placeholder="Número documento"
                       className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -636,18 +683,6 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="city" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
-                      Ciudad
-                    </Label>
-                    <Input
-                      id="city"
-                      value={newCustomer.city}
-                      onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })}
-                      placeholder="Ciudad"
-                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="country" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
                       País
                     </Label>
@@ -662,6 +697,65 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                 </div>
               </div>
             </div>
+
+            {/* Roles del Cliente */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium dark:text-gray-300 light:text-gray-700 flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Roles del Cliente
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {customerRoles.map((role) => (
+                  <div
+                    key={role.code}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all text-sm ${
+                      selectedRoles.includes(role.code)
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedRoles(prev =>
+                      prev.includes(role.code) ? prev.filter(r => r !== role.code) : [...prev, role.code]
+                    )}
+                  >
+                    <Checkbox checked={selectedRoles.includes(role.code)} className="pointer-events-none h-3.5 w-3.5" />
+                    <span>{role.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Responsabilidad Fiscal DIAN */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium dark:text-gray-300 light:text-gray-700 flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Responsabilidad Fiscal (DIAN)
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {fiscalOptions.map((fiscal) => (
+                  <div
+                    key={fiscal.code}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${
+                      selectedFiscal.includes(fiscal.code)
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedFiscal(prev =>
+                      prev.includes(fiscal.code) ? prev.filter(f => f !== fiscal.code) : [...prev, fiscal.code]
+                    )}
+                  >
+                    <Checkbox checked={selectedFiscal.includes(fiscal.code)} className="pointer-events-none h-3.5 w-3.5" />
+                    <span className="font-medium">{fiscal.code}</span>
+                    <span className="text-gray-500 dark:text-gray-400">- {fiscal.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Municipio */}
+            <MunicipalitySearch
+              value={municipalityId}
+              onChange={setMunicipalityId}
+            />
           </div>
 
           <DialogFooter className="border-t dark:border-gray-800 light:border-gray-200 pt-6 mt-6">

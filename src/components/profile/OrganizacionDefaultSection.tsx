@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { Building, CheckCircle2 } from 'lucide-react';
+import Image from 'next/image';
 import toast from 'react-hot-toast';
 
 interface Organization {
@@ -28,6 +29,25 @@ export default function OrganizacionDefaultSection({
 }: OrganizacionDefaultSectionProps) {
   const [loading, setLoading] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<string>(profile?.last_org_id || '');
+  const [orgLogos, setOrgLogos] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const loadLogos = async () => {
+      const logos: Record<string, string> = {};
+      for (const org of organizations) {
+        if (org.logo_url) {
+          if (org.logo_url.startsWith('http')) {
+            logos[org.id] = org.logo_url;
+          } else {
+            const { data } = supabase.storage.from('organizations').getPublicUrl(org.logo_url);
+            if (data?.publicUrl) logos[org.id] = data.publicUrl;
+          }
+        }
+      }
+      setOrgLogos(logos);
+    };
+    if (organizations.length > 0) loadLogos();
+  }, [organizations]);
 
   const handleUpdateDefaultOrg = async (orgId: string) => {
     if (!user) {
@@ -87,18 +107,21 @@ export default function OrganizacionDefaultSection({
                 onClick={() => !loading && handleUpdateDefaultOrg(org.id)}
                 className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                   isSelected 
-                    ? 'border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/10' 
+                    ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/10' 
                     : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/80'
                 }`}
               >
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
-                    {org.logo_url ? (
-                      <img 
-                        src={org.logo_url} 
-                        alt={org.name} 
-                        className="w-10 h-10 rounded-md mr-4 object-cover border border-gray-200 dark:border-gray-700" 
-                      />
+                    {orgLogos[org.id] ? (
+                      <div className="w-10 h-10 rounded-md mr-4 relative overflow-hidden border border-gray-200 dark:border-gray-700">
+                        <Image
+                          src={orgLogos[org.id]}
+                          alt={org.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
                     ) : (
                       <div className="w-10 h-10 rounded-md mr-4 bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                         <Building className="w-5 h-5 text-gray-500 dark:text-gray-400" />
@@ -115,7 +138,7 @@ export default function OrganizacionDefaultSection({
                   </div>
                   
                   {isSelected && (
-                    <CheckCircle2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    <CheckCircle2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                   )}
                 </div>
               </div>

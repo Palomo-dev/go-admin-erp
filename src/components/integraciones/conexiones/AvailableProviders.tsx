@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   CreditCard,
   ShoppingBag,
@@ -18,6 +18,8 @@ import {
   Pause,
   XCircle,
   Server,
+  Globe,
+  MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { IntegrationConnection, IntegrationProvider } from '@/lib/services/integrationsService';
+import { IntegrationConnection, IntegrationConnector, IntegrationProvider } from '@/lib/services/integrationsService';
 import { ProviderCard } from './ProviderCard';
 
 interface ProviderConfig {
@@ -230,10 +232,20 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode; co
   },
 };
 
+// Mapeo ISO3 → ISO2 para los 10 países soportados
+const ISO3_TO_ISO2: Record<string, string> = {
+  COL: 'CO', MEX: 'MX', ARG: 'AR', BRA: 'BR', CHL: 'CL',
+  PER: 'PE', URY: 'UY', ECU: 'EC', PAN: 'PA', CRI: 'CR',
+  USA: 'US', ESP: 'ES', GTM: 'GT', HND: 'HN', SLV: 'SV',
+  DOM: 'DO', BOL: 'BO', PRY: 'PY', NIC: 'NI', VEN: 'VE',
+};
+
 interface AvailableProvidersProps {
   providers: IntegrationProvider[];
+  connectors: IntegrationConnector[];
   connections: IntegrationConnection[];
   branches: Array<{ id: number; name: string }>;
+  organizationCountryCode?: string;
   onConnect: (provider: IntegrationProvider) => void;
   onConfigure: (connection: IntegrationConnection) => void;
   onToggleStatus: (connection: IntegrationConnection) => void;
@@ -245,8 +257,10 @@ interface AvailableProvidersProps {
 
 export function AvailableProviders({ 
   providers, 
+  connectors,
   connections,
   branches,
+  organizationCountryCode,
   onConnect,
   onConfigure,
   onToggleStatus,
@@ -259,6 +273,22 @@ export function AvailableProviders({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [environmentFilter, setEnvironmentFilter] = useState<string | null>(null);
+  const [countryFilter, setCountryFilter] = useState<'all' | 'my_country' | 'other'>('all');
+
+  // Convertir ISO3 de la org a ISO2 para comparar con supported_countries
+  const orgCountryIso2 = organizationCountryCode
+    ? ISO3_TO_ISO2[organizationCountryCode.toUpperCase()] || organizationCountryCode
+    : undefined;
+
+  // Determinar si un proveedor tiene conectores disponibles en el país de la org
+  const isProviderAvailableInCountry = useCallback((providerId: string): boolean => {
+    if (!orgCountryIso2) return true;
+    const providerConnectors = connectors.filter(c => c.provider_id === providerId);
+    if (providerConnectors.length === 0) return true; // Sin conectores = global
+    return providerConnectors.some(c =>
+      c.supported_countries.length === 0 || c.supported_countries.includes(orgCountryIso2)
+    );
+  }, [connectors, orgCountryIso2]);
 
   // Obtener conexiones por proveedor - usando connector.provider.id
   const getProviderConnectionsFiltered = (providerId: string) => {
@@ -331,6 +361,13 @@ export function AvailableProviders({
       const matchesSearch = provider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         provider.code.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = !selectedCategory || provider.category === selectedCategory;
+
+      // Filtro por país
+      if (countryFilter !== 'all' && orgCountryIso2) {
+        const available = isProviderAvailableInCountry(provider.id);
+        if (countryFilter === 'my_country' && !available) return false;
+        if (countryFilter === 'other' && available) return false;
+      }
       
       // Si hay filtros de conexión, solo mostrar proveedores con conexiones que coincidan
       if (statusFilter || environmentFilter) {
@@ -347,17 +384,30 @@ export function AvailableProviders({
       
       return matchesSearch && matchesCategory;
     });
-  }, [providers, searchTerm, selectedCategory, statusFilter, environmentFilter, connections]);
+  }, [providers, searchTerm, selectedCategory, statusFilter, environmentFilter, connections, countryFilter, orgCountryIso2, isProviderAvailableInCountry]);
 
-  // Agrupar por categoría
+  // Agrupar por categoría y ordenar (disponibles en tu país primero)
   const groupedProviders = useMemo(() => {
-    return filteredProviders.reduce((acc, provider) => {
+    const grouped = filteredProviders.reduce((acc, provider) => {
       const category = provider.category || 'other';
       if (!acc[category]) acc[category] = [];
       acc[category].push(provider);
       return acc;
     }, {} as Record<string, IntegrationProvider[]>);
-  }, [filteredProviders]);
+
+    // Ordenar dentro de cada categoría: disponibles primero
+    if (orgCountryIso2) {
+      for (const category of Object.keys(grouped)) {
+        grouped[category].sort((a, b) => {
+          const aAvail = isProviderAvailableInCountry(a.id) ? 0 : 1;
+          const bAvail = isProviderAvailableInCountry(b.id) ? 0 : 1;
+          return aAvail - bAvail;
+        });
+      }
+    }
+
+    return grouped;
+  }, [filteredProviders, orgCountryIso2, isProviderAvailableInCountry]);
 
   // Limpiar filtros
   const clearFilters = () => {
@@ -365,9 +415,10 @@ export function AvailableProviders({
     setEnvironmentFilter(null);
     setSearchTerm('');
     setSelectedCategory(null);
+    setCountryFilter('all');
   };
 
-  const hasActiveFilters = statusFilter || environmentFilter || searchTerm || selectedCategory;
+  const hasActiveFilters = statusFilter || environmentFilter || searchTerm || selectedCategory || countryFilter !== 'all';
 
   return (
     <div className="p-4 space-y-6">
@@ -455,63 +506,92 @@ export function AvailableProviders({
             );
           })}
         </div>
+
         </div>
 
-        {/* Filtros de conexión */}
-        {connections.length > 0 && (
-          <div className="flex gap-2 flex-wrap items-center">
-            <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? null : v)}>
-              <SelectTrigger className="w-[150px] h-9">
+        {/* Filtros: País, Estado, Ambiente */}
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* Filtro por país */}
+          <Select value={countryFilter} onValueChange={(v) => setCountryFilter(v as 'all' | 'my_country' | 'other')}>
+            <SelectTrigger className="w-[180px] h-9">
+              <div className="flex items-center gap-2">
+                <Globe className="h-3.5 w-3.5 text-gray-400" />
+                <SelectValue placeholder="País" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los países</SelectItem>
+              <SelectItem value="my_country">
                 <div className="flex items-center gap-2">
-                  <Filter className="h-3.5 w-3.5 text-gray-400" />
-                  <SelectValue placeholder="Estado" />
+                  <MapPin className="h-3.5 w-3.5 text-green-500" />
+                  <span>Mi país{orgCountryIso2 ? ` (${orgCountryIso2})` : ''}</span>
                 </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="connected">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                    <span>Conectado</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="paused">
-                  <div className="flex items-center gap-2">
-                    <Pause className="h-3.5 w-3.5 text-yellow-500" />
-                    <span>Pausado</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="error">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-                    <span>Error</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={environmentFilter || 'all'} onValueChange={(v) => setEnvironmentFilter(v === 'all' ? null : v)}>
-              <SelectTrigger className="w-[150px] h-9">
+              </SelectItem>
+              <SelectItem value="other">
                 <div className="flex items-center gap-2">
-                  <Server className="h-3.5 w-3.5 text-gray-400" />
-                  <SelectValue placeholder="Ambiente" />
+                  <Globe className="h-3.5 w-3.5 text-amber-500" />
+                  <span>Otros países</span>
                 </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="production">Producción</SelectItem>
-                <SelectItem value="sandbox">Sandbox</SelectItem>
-              </SelectContent>
-            </Select>
+              </SelectItem>
+            </SelectContent>
+          </Select>
 
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
-                <XCircle className="h-4 w-4 mr-1" />
-                Limpiar
-              </Button>
-            )}
-          </div>
-        )}
+          {/* Filtro por estado */}
+          {connections.length > 0 && (
+            <>
+              <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? null : v)}>
+                <SelectTrigger className="w-[170px] h-9">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-gray-400" />
+                    <SelectValue placeholder="Estado" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="connected">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                      <span>Conectado</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="paused">
+                    <div className="flex items-center gap-2">
+                      <Pause className="h-3.5 w-3.5 text-yellow-500" />
+                      <span>Pausado</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="error">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                      <span>Error</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={environmentFilter || 'all'} onValueChange={(v) => setEnvironmentFilter(v === 'all' ? null : v)}>
+                <SelectTrigger className="w-[150px] h-9">
+                  <div className="flex items-center gap-2">
+                    <Server className="h-3.5 w-3.5 text-gray-400" />
+                    <SelectValue placeholder="Ambiente" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="production">Producción</SelectItem>
+                  <SelectItem value="sandbox">Sandbox</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
+              <XCircle className="h-4 w-4 mr-1" />
+              Limpiar
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Grid de proveedores */}
@@ -532,6 +612,8 @@ export function AvailableProviders({
               const config = getConfig(provider);
               const providerConnections = getProviderConnectionsFiltered(provider.id);
 
+              const availableInCountry = isProviderAvailableInCountry(provider.id);
+
               return (
                 <ProviderCard
                   key={provider.id}
@@ -539,6 +621,8 @@ export function AvailableProviders({
                   config={config}
                   connections={providerConnections}
                   branches={branches}
+                  isAvailableInCountry={availableInCountry}
+                  organizationCountryCode={orgCountryIso2}
                   onConnect={onConnect}
                   onConfigure={onConfigure}
                   onToggleStatus={onToggleStatus}

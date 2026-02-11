@@ -14,6 +14,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
 import type { Space } from '@/lib/services/spacesService';
+import type { SpaceServiceView } from '@/lib/services/spaceServicesService';
+import { Wifi, Tv, Lock, Car, Bath, Flame, Wind, Phone, Laptop, Waves, Dumbbell, Coffee, PawPrint, Circle } from 'lucide-react';
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  wifi: Wifi, tv: Tv, lock: Lock, car: Car, bath: Bath, flame: Flame,
+  wind: Wind, phone: Phone, laptop: Laptop, waves: Waves, dumbbell: Dumbbell,
+  coffee: Coffee, 'paw-print': PawPrint,
+};
 
 interface SpaceCardProps {
   space: Space;
@@ -21,6 +29,7 @@ interface SpaceCardProps {
   onSelect: (id: string, selected: boolean) => void;
   onEdit: (space: Space) => void;
   onDelete: (space: Space) => void;
+  services?: SpaceServiceView[];
 }
 
 const getStatusInfo = (status: string) => {
@@ -63,7 +72,7 @@ const getStatusInfo = (status: string) => {
   }
 };
 
-export function SpaceCard({ space, selected, onSelect, onEdit, onDelete }: SpaceCardProps) {
+export function SpaceCard({ space, selected, onSelect, onEdit, onDelete, services = [] }: SpaceCardProps) {
   const router = useRouter();
   const statusInfo = getStatusInfo(space.status);
 
@@ -171,6 +180,26 @@ export function SpaceCard({ space, selected, onSelect, onEdit, onDelete }: Space
                 </div>
               )}
             </div>
+
+            {services.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {services.slice(0, 5).map((svc) => {
+                  const IconComp = (svc.icon && ICON_MAP[svc.icon]) || Circle;
+                  return (
+                    <span
+                      key={svc.space_service_id}
+                      title={svc.name}
+                      className="p-1 rounded bg-gray-100 dark:bg-gray-700"
+                    >
+                      <IconComp className="h-3 w-3 text-gray-500 dark:text-gray-400" />
+                    </span>
+                  );
+                })}
+                {services.length > 5 && (
+                  <span className="text-[10px] text-gray-400">+{services.length - 5}</span>
+                )}
+              </div>
+            )}
 
             {space.maintenance_notes && space.maintenance_notes.trim() !== '' && (
               <p className="text-sm text-orange-600 dark:text-orange-400 italic">

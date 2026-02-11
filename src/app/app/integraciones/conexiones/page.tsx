@@ -311,8 +311,10 @@ export default function ConexionesPage() {
         ) : (
           <AvailableProviders
             providers={providers}
+            connectors={connectors}
             connections={connections}
             branches={branches}
+            organizationCountryCode={organization?.country_code ?? undefined}
             onConnect={handleConnectProvider}
             onConfigure={(conn) => router.push(`/app/integraciones/conexiones/nueva?mode=edit&id=${conn.id}`)}
             onToggleStatus={handleToggleStatus}

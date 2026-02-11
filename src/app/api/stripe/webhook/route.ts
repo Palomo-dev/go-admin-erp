@@ -109,6 +109,17 @@ export async function POST(request: NextRequest) {
         break
       }
 
+      // Checkout Session completada (nuevo upgrade de plan)
+      case 'checkout.session.completed': {
+        const checkoutSession = event.data.object as any
+        console.log('🎉 Checkout Session completada:', checkoutSession.id)
+        
+        if (checkoutSession.mode === 'subscription') {
+          await handleCheckoutSessionCompleted(checkoutSession)
+        }
+        break
+      }
+
       // Eventos de suscripciones
       case 'customer.subscription.created': {
         const subscription = event.data.object as Stripe.Subscription
@@ -182,6 +193,146 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Manejar checkout session completada
+ * Actualiza la suscripción en Supabase y el plan de la organización
+ */
+async function handleCheckoutSessionCompleted(checkoutSession: any) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+
+    const organizationId = parseInt(checkoutSession.metadata?.organizationId || '0')
+    const planCode = checkoutSession.metadata?.planCode
+    const billingPeriod = checkoutSession.metadata?.billingPeriod
+    const subscriptionId = checkoutSession.subscription
+    const customerId = checkoutSession.customer
+
+    if (!organizationId || !planCode) {
+      console.error('❌ Checkout session sin metadata necesaria:', checkoutSession.id)
+      return
+    }
+
+    console.log(`📦 Procesando upgrade para org ${organizationId} a plan ${planCode}`)
+
+    // Obtener el plan de la base de datos
+    const { data: plan, error: planError } = await supabase
+      .from('plans')
+      .select('id, code, name, max_modules, max_branches')
+      .eq('code', planCode)
+      .single()
+
+    if (planError || !plan) {
+      console.error('❌ Plan no encontrado:', planCode)
+      return
+    }
+
+    // Obtener detalles de la suscripción de Stripe
+    const { stripe } = await import('@/lib/stripe/server')
+    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId) as any
+
+    // Buscar suscripción existente de la organización
+    const { data: existingSub } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .single()
+
+    // Crear o actualizar suscripción
+    const subscriptionData = {
+      organization_id: organizationId,
+      plan_id: plan.id,
+      stripe_subscription_id: subscriptionId,
+      stripe_customer_id: customerId,
+      status: stripeSubscription.status,
+      billing_period: billingPeriod,
+      current_period_start: new Date(stripeSubscription.current_period_start * 1000).toISOString(),
+      current_period_end: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
+      trial_start: stripeSubscription.trial_start ? new Date(stripeSubscription.trial_start * 1000).toISOString() : null,
+      trial_end: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000).toISOString() : null,
+      cancel_at_period_end: false,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (existingSub) {
+      // Actualizar suscripción existente
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update(subscriptionData)
+        .eq('id', existingSub.id)
+
+      if (updateError) {
+        console.error('❌ Error actualizando suscripción:', updateError)
+      } else {
+        console.log('✅ Suscripción actualizada en BD')
+      }
+    } else {
+      // Crear nueva suscripción
+      const { error: insertError } = await supabase
+        .from('subscriptions')
+        .insert({
+          ...subscriptionData,
+          created_at: new Date().toISOString(),
+        })
+
+      if (insertError) {
+        console.error('❌ Error creando suscripción:', insertError)
+      } else {
+        console.log('✅ Nueva suscripción creada en BD')
+      }
+    }
+
+    // Actualizar plan_id en la organización
+    const { error: orgError } = await supabase
+      .from('organizations')
+      .update({
+        plan_id: plan.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', organizationId)
+
+    if (orgError) {
+      console.error('❌ Error actualizando organización:', orgError)
+    } else {
+      console.log('✅ Organización actualizada con nuevo plan')
+    }
+
+    // Activar módulos core para la organización si no existen
+    const { data: coreModules } = await supabase
+      .from('modules')
+      .select('code')
+      .eq('is_core', true)
+
+    if (coreModules) {
+      for (const module of coreModules) {
+        await supabase
+          .from('organization_modules')
+          .upsert({
+            organization_id: organizationId,
+            module_code: module.code,
+            is_active: true,
+            enabled_at: new Date().toISOString(),
+          }, {
+            onConflict: 'organization_id,module_code'
+          })
+      }
+      console.log('✅ Módulos core activados')
+    }
+
+    console.log(`🎉 Upgrade completado: Org ${organizationId} ahora tiene ${plan.name}`)
+
+  } catch (error: any) {
+    console.error('❌ Error en handleCheckoutSessionCompleted:', error)
+  }
+}
+
+/**
  * Actualizar suscripción en base de datos
  */
 async function updateSubscriptionInDatabase(
@@ -224,29 +375,79 @@ async function updateSubscriptionInDatabase(
         console.log('✅ Suscripción marcada como cancelada en BD')
       }
     } else {
-      // Actualizar o crear suscripción
-      const { error } = await supabase
+      // Obtener plan_id basado en planCode del metadata
+      const planCode = subscription.metadata?.planCode
+      let planId: number | null = null
+      
+      if (planCode) {
+        const { data: planData } = await supabase
+          .from('plans')
+          .select('id')
+          .eq('code', planCode)
+          .single()
+        
+        planId = planData?.id || null
+      }
+
+      // Buscar suscripción existente por organization_id o stripe_subscription_id
+      const { data: existingSub } = await supabase
         .from('subscriptions')
-        .upsert({
-          organization_id: organizationId,
-          stripe_subscription_id: subscription.id,
-          stripe_customer_id: subscription.customer as string,
-          plan_code: subscription.metadata?.planCode || '',
-          status: subscription.status,
-          trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-          current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-          current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-          cancel_at_period_end: subscription.cancel_at_period_end,
-          cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'stripe_subscription_id',
-        })
+        .select('id')
+        .or(`organization_id.eq.${organizationId},stripe_subscription_id.eq.${subscription.id}`)
+        .limit(1)
+        .single()
+
+      const subscriptionData = {
+        organization_id: organizationId,
+        stripe_subscription_id: subscription.id,
+        stripe_customer_id: subscription.customer as string,
+        plan_id: planId,
+        status: subscription.status,
+        trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+        current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
+        updated_at: new Date().toISOString(),
+      }
+
+      let error
+      if (existingSub) {
+        // Actualizar suscripción existente
+        const result = await supabase
+          .from('subscriptions')
+          .update(subscriptionData)
+          .eq('id', existingSub.id)
+        error = result.error
+      } else {
+        // Crear nueva suscripción
+        const result = await supabase
+          .from('subscriptions')
+          .insert({
+            ...subscriptionData,
+            created_at: new Date().toISOString(),
+          })
+        error = result.error
+      }
 
       if (error) {
         console.error('❌ Error actualizando suscripción en BD:', error)
       } else {
         console.log('✅ Suscripción actualizada en BD')
+      }
+
+      // También actualizar plan_id en la organización si tenemos planId
+      if (planId) {
+        const { error: orgError } = await supabase
+          .from('organizations')
+          .update({ plan_id: planId, updated_at: new Date().toISOString() })
+          .eq('id', organizationId)
+        
+        if (orgError) {
+          console.error('❌ Error actualizando organización:', orgError)
+        } else {
+          console.log('✅ Organización actualizada con plan_id:', planId)
+        }
       }
     }
   } catch (error: any) {

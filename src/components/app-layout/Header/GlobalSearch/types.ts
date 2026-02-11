@@ -9,7 +9,12 @@ export type SearchResultType =
   | 'product'
   | 'supplier'
   | 'category'
-  | 'invoice';
+  | 'invoice'
+  | 'web_order'
+  | 'reservation'
+  | 'space'
+  | 'membership'
+  | 'parking_vehicle';
 
 export type SearchResult = {
   id: string | number;
@@ -26,11 +31,16 @@ export type SearchResult = {
 export interface SearchDataResult {
   organizaciones: any[];
   sucursales: any[];
-  usuarios: any[];
   productos: any[];
   proveedores: any[];
   categorias: any[];
   clientes: any[];
+  facturas: any[];
+  pedidosOnline: any[];
+  reservas: any[];
+  espacios: any[];
+  membresias: any[];
+  vehiculosParking: any[];
 }
 
 // Páginas predefinidas del sistema
@@ -38,9 +48,14 @@ export const PAGINAS_PREDEFINIDAS = [
   { id: 'inicio', name: 'Inicio', type: 'page', url: '/app' },
   { id: 'clientes', name: 'Clientes', type: 'page', url: '/app/clientes' },
   { id: 'organizacion', name: 'Organización', type: 'page', url: '/app/organizacion' },
-  { id: 'usuarios', name: 'Usuarios', type: 'page', url: '/app/usuarios' },
   { id: 'finanzas', name: 'Finanzas', type: 'page', url: '/app/finanzas' },
+  { id: 'facturas-venta', name: 'Facturas de Venta', type: 'page', url: '/app/finanzas/facturas-venta' },
   { id: 'inventario', name: 'Inventario', type: 'page', url: '/app/inventario' },
+  { id: 'pedidos-online', name: 'Pedidos Online', type: 'page', url: '/app/pos/pedidos-online' },
+  { id: 'reservas', name: 'Reservas', type: 'page', url: '/app/pms/reservas' },
+  { id: 'espacios', name: 'Espacios', type: 'page', url: '/app/pms/espacios' },
+  { id: 'membresias', name: 'Membresías', type: 'page', url: '/app/gym/membresias' },
+  { id: 'parking', name: 'Parqueadero', type: 'page', url: '/app/pms/parking' },
   { id: 'reportes', name: 'Reportes', type: 'page', url: '/app/reportes' },
   { id: 'calendario', name: 'Calendario', type: 'page', url: '/app/calendario' },
   { id: 'notificaciones', name: 'Notificaciones', type: 'page', url: '/app/notificaciones' },

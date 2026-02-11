@@ -1,6 +1,6 @@
 'use client';
 
-import { User, Banknote, CreditCard, ArrowRightLeft, CheckCircle, Clock } from 'lucide-react';
+import { User, Banknote, CreditCard, ArrowRightLeft, Globe, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -129,6 +129,15 @@ export function ServerSummary({ summaries, loading }: ServerSummaryProps) {
                     </span>
                     <span>{formatCurrency(summary.transfer_tips)}</span>
                   </div>
+                  {summary.online_tips > 0 && (
+                    <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
+                      <span className="flex items-center gap-1">
+                        <Globe className="h-3 w-3 text-cyan-500" />
+                        Online
+                      </span>
+                      <span>{formatCurrency(summary.online_tips)}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Por estado */}

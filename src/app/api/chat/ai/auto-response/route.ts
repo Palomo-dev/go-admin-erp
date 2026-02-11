@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAIService from '@/lib/services/openaiService';
+import { consumeAICredits } from '@/lib/services/aiCreditsService';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -69,6 +70,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         reason: 'IA no está activa para esta organización',
+      });
+    }
+
+    // Verificar si hay créditos de IA suficientes (mínimo 1 crédito)
+    if (aiSettings.credits_remaining !== null && aiSettings.credits_remaining < 1) {
+      return NextResponse.json({
+        success: false,
+        reason: 'No hay créditos de IA suficientes',
+        credits_remaining: aiSettings.credits_remaining,
       });
     }
 
@@ -166,6 +176,12 @@ export async function POST(request: NextRequest) {
       total_cost: cost,
       completed_at: new Date().toISOString(),
     });
+
+    // Descontar créditos de IA (1 crédito por respuesta)
+    const creditsConsumed = await consumeAICredits(organizationId, 1);
+    if (!creditsConsumed) {
+      console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
+    }
 
     // Actualizar last_message_at de la conversación
     await supabase

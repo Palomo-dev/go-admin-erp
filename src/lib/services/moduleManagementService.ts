@@ -122,6 +122,18 @@ export const moduleManagementService = {
       throw new Error('No se pudo obtener el plan actual de la organización');
     }
 
+    // Obtener metadata de la suscripción para límites personalizados (Enterprise)
+    const { data: subscriptionData } = await supabaseClient
+      .from('subscriptions')
+      .select('metadata')
+      .eq('organization_id', organizationId)
+      .single();
+
+    // Extraer límites personalizados de la metadata si existen
+    const customConfig = subscriptionData?.metadata?.custom_config;
+    const customMaxModules = customConfig?.total_available_modules || customConfig?.modules_count;
+    const customMaxBranches = customConfig?.branches_count;
+
     const plan: Plan = {
       id: planInfo.plan_id,
       code: planInfo.plan_code,
@@ -129,8 +141,9 @@ export const moduleManagementService = {
       price_usd_month: planInfo.price_usd_month,
       price_usd_year: planInfo.price_usd_year,
       trial_days: planInfo.trial_days,
-      max_modules: planInfo.max_modules,
-      max_branches: planInfo.max_branches,
+      // Usar límite personalizado si existe, sino el del plan base
+      max_modules: customMaxModules || planInfo.max_modules,
+      max_branches: customMaxBranches || planInfo.max_branches,
       features: planInfo.features,
       is_active: true
     };

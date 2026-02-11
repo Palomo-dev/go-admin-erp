@@ -21,7 +21,8 @@ interface Customer {
   phone?: string;
   doc_type?: string;
   doc_number?: string;
-  city?: string;
+  fiscal_municipality_id?: string;
+  municipality_name?: string;
   roles?: string[];
   tags?: string[];
   is_active?: boolean;
@@ -157,7 +158,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Cliente</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden sm:table-cell">Contacto</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden md:table-cell">Documento</th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden xl:table-cell">Ciudad</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden xl:table-cell">Municipio</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden lg:table-cell">Etiquetas</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Cuentas por Cobrar</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden md:table-cell">Ventas</th>
@@ -245,10 +246,12 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       )}
                     </td>
                     <td className="px-3 sm:px-4 py-3 hidden xl:table-cell">
-                      {customer.city ? (
-                        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                          {customer.city}
-                        </span>
+                      {customer.municipality_name ? (
+                        <div className="flex flex-col">
+                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                            {customer.municipality_name}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
                           --

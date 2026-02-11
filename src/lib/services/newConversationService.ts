@@ -155,10 +155,11 @@ class NewConversationService {
         organization_id: this.organizationId,
         first_name: data.first_name,
         last_name: data.last_name || null,
-        full_name: fullName,
         email: data.email || null,
         phone: data.phone || null,
-        roles: ['customer'],
+        roles: ['cliente', 'huesped'],
+        fiscal_responsibilities: ['R-99-PN'],
+        fiscal_municipality_id: 'aa4b6637-0060-41bb-9459-bc95f9789e08',
         tags: [],
         metadata: {},
         preferences: {}

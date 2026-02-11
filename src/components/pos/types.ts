@@ -42,7 +42,7 @@ export interface Customer {
   doc_type?: string;
   doc_number?: string;
   address?: string;
-  city?: string;
+  fiscal_municipality_id?: string;
   country?: string;
   avatar_url?: string | null;
   roles: string[];

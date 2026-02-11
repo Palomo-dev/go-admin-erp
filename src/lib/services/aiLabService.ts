@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { checkAICredits, estimateCredits, consumeAICredits } from './aiCreditsService';
 
 export interface KnowledgeFragment {
   id: string;
@@ -235,6 +236,28 @@ class AILabService {
     settings: LabSettings,
     fragments: RetrievedFragment[]
   ): Promise<LabTestResult> {
+    // Validar créditos de IA
+    const creditsCheck = await checkAICredits(this.organizationId);
+    if (!creditsCheck.allowed) {
+      return {
+        query,
+        fragments,
+        response: `⚠️ ${creditsCheck.error || 'Créditos de IA insuficientes'}`,
+        metrics: {
+          totalFragments: fragments.length,
+          retrievedFragments: fragments.length,
+          processingTimeMs: 0,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          estimatedCost: 0,
+          confidenceScore: 0
+        },
+        timestamp: new Date().toISOString(),
+        settings
+      };
+    }
+
     const startTime = Date.now();
 
     const fragmentsContext = fragments
@@ -254,6 +277,11 @@ class AILabService {
 
     const result = await response.json();
     const processingTimeMs = Date.now() - startTime;
+
+    // Consumir créditos basado en tokens usados
+    const totalTokens = result.usage?.totalTokens || 0;
+    const estimatedCredits = estimateCredits(totalTokens);
+    await consumeAICredits(this.organizationId, estimatedCredits);
 
     const metrics: LabMetrics = {
       totalFragments: fragments.length,

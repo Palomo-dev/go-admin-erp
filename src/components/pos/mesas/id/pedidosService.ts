@@ -66,7 +66,8 @@ export class PedidosService {
                 is_primary,
                 display_order
               )
-            )
+            ),
+            kitchen_ticket_items(id, status)
           `)
           .in('sale_id', saleIds)
           .order('created_at', { ascending: true });
@@ -414,9 +415,9 @@ export class PedidosService {
   /**
    * Generar pre-cuenta
    */
-  static async generarPreCuenta(sessionId: string): Promise<PreCuenta> {
+  static async generarPreCuenta(tableId: string): Promise<PreCuenta> {
     try {
-      const detalles = await this.obtenerDetalleMesa(sessionId);
+      const detalles = await this.obtenerDetalleMesa(tableId);
       
       if (!detalles || !detalles.sale_items) {
         throw new Error('No hay items en la orden');

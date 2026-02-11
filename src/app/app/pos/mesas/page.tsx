@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash } from 'lucide-react';
+import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash, List, Map } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -42,6 +42,7 @@ import { CombinarMesasDialog } from '@/components/pos/mesas/CombinarMesasDialog'
 import { MoverPedidoDialog } from '@/components/pos/mesas/MoverPedidoDialog';
 import { MesasPagination } from '@/components/pos/mesas/MesasPagination';
 import { MesasService } from '@/components/pos/mesas/mesasService';
+import { MesasFloorMap } from '@/components/pos/mesas/MesasFloorMap';
 import type { TableWithSession, MesaFormData, RestaurantTable } from '@/components/pos/mesas/types';
 
 export default function MesasPage() {
@@ -74,6 +75,7 @@ export default function MesasPage() {
   // Modo de combinación rápida
   const [modoCombinar, setModoCombinar] = useState(false);
   const [mesasParaCombinar, setMesasParaCombinar] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -379,6 +381,16 @@ export default function MesasPage() {
     }
   };
 
+  const handleSavePositions = async (batch: { id: string; position_x: number; position_y: number }[]) => {
+    try {
+      await MesasService.actualizarPosiciones(batch);
+      await cargarDatos();
+      toast({ title: 'Posiciones guardadas', description: 'El plano se actualizó correctamente' });
+    } catch {
+      toast({ title: 'Error', description: 'No se pudieron guardar las posiciones', variant: 'destructive' });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -410,6 +422,27 @@ export default function MesasPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Toggle Lista / Mapa */}
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className={viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}
+            >
+              <List className="h-4 w-4 mr-1" />
+              Lista
+            </Button>
+            <Button
+              variant={viewMode === 'map' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('map')}
+              className={viewMode === 'map' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}
+            >
+              <Map className="h-4 w-4 mr-1" />
+              Mapa
+            </Button>
+          </div>
           <Button variant="outline" size="icon" onClick={cargarDatos}>
             <RefreshCw className="h-4 w-4" />
           </Button>
@@ -484,6 +517,18 @@ export default function MesasPage() {
         </Card>
       </div>
 
+      {/* === VISTA MAPA === */}
+      {viewMode === 'map' && (
+        <MesasFloorMap
+          mesas={mesasFiltradas}
+          onSavePositions={handleSavePositions}
+          onMesaClick={(mesa) => handleMesaClick(mesa)}
+        />
+      )}
+
+      {/* === VISTA LISTA === */}
+      {viewMode === 'list' && (
+      <>
       {/* Acciones rápidas */}
       <Card className="p-4">
         <div className="flex flex-wrap gap-2 items-center justify-between">
@@ -686,6 +731,8 @@ export default function MesasPage() {
             />
           </Card>
         )}
+      </>
+      )}
       </>
       )}
 

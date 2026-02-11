@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User } from 'lucide-react';
+import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -411,17 +411,64 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     setServerId('');
   };
 
-  const quickAmountButtons = [
-    { label: '10k', value: 10000 },
-    { label: '20k', value: 20000 },
-    { label: '50k', value: 50000 },
-    { label: '100k', value: 100000 },
-    { label: 'Exacto', value: cart.total }
-  ];
+  // Generar botones de monto rápido dinámicos según el total a pagar
+  const generateQuickAmounts = (amount: number): { label: string; value: number }[] => {
+    if (amount <= 0) return [{ label: 'Exacto', value: 0 }];
+
+    const buttons: { label: string; value: number }[] = [];
+    const seen = new Set<number>();
+
+    // Determinar la magnitud para redondeos inteligentes
+    const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(amount, 1))));
+    const roundUp = (val: number, step: number) => Math.ceil(val / step) * step;
+
+    // 1. Monto exacto
+    buttons.push({ label: 'Exacto', value: Math.round(amount) });
+    seen.add(Math.round(amount));
+
+    // 2. Redondeo al millar superior más cercano
+    const roundSteps = magnitude >= 100000 ? [100000, 50000] 
+                     : magnitude >= 10000 ? [10000, 5000] 
+                     : magnitude >= 1000 ? [1000, 500] 
+                     : [100, 50];
+
+    for (const step of roundSteps) {
+      const rounded = roundUp(amount, step);
+      if (!seen.has(rounded) && rounded > amount) {
+        buttons.push({ label: formatQuickLabel(rounded), value: rounded });
+        seen.add(rounded);
+      }
+    }
+
+    // 3. Agregar múltiplos útiles por encima del monto
+    const baseStep = roundSteps[0];
+    for (let mult = 2; mult <= 4; mult++) {
+      const val = roundUp(amount, baseStep) + baseStep * (mult - 1);
+      if (!seen.has(val) && buttons.length < 6) {
+        buttons.push({ label: formatQuickLabel(val), value: val });
+        seen.add(val);
+      }
+    }
+
+    // Ordenar: Exacto primero, luego ascendente
+    return buttons.sort((a, b) => {
+      if (a.label === 'Exacto') return -1;
+      if (b.label === 'Exacto') return 1;
+      return a.value - b.value;
+    }).slice(0, 6);
+  };
+
+  const formatQuickLabel = (value: number): string => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
+    return value.toString();
+  };
+
+  const quickAmountButtons = generateQuickAmounts(cartTotal);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200 p-4 sm:p-6">
+      <DialogContent className="max-w-[95vw] sm:max-w-3xl lg:max-w-5xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200 p-5 sm:p-8">
         {showReceipt && completedSale ? (
           /* Vista de recibo - RESPONSIVE */
           <div className="space-y-3 sm:space-y-4 text-center">
@@ -478,22 +525,32 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         ) : (
           /* Vista de checkout - RESPONSIVE */
           <>
-            <DialogHeader className="pb-3 sm:pb-4">
-              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg dark:text-white light:text-gray-900">
-                <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span>Procesar Pago</span>
+            <DialogHeader className="pb-4 sm:pb-6">
+              <DialogTitle className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 shrink-0">
+                  <CreditCard className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <span className="text-lg sm:text-xl font-bold dark:text-white light:text-gray-900">Procesar Pago</span>
+                  <p className="text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
+                    {cart.items.length} productos · Total: {formatCurrency(cart.total)}
+                  </p>
+                </div>
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-3 sm:space-y-4 md:space-y-6">
+            <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-4 lg:space-y-0">
+              {/* COLUMNA IZQUIERDA: Resumen + Totales */}
+              <div className="space-y-3">
               {/* Resumen del carrito - RESPONSIVE */}
               <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-gray-50 light:border-gray-200">
-                <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
-                  <CardTitle className="text-xs sm:text-sm dark:text-white light:text-gray-900">
+                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
+                  <CardTitle className="text-sm sm:text-base dark:text-white light:text-gray-900 flex items-center gap-2">
+                    <ShoppingCart className="h-4 w-4 text-blue-500" />
                     Resumen de Venta
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-3 sm:p-4 space-y-1.5 sm:space-y-2 max-h-[30vh] overflow-y-auto">
+                <CardContent className="p-3 sm:p-4 space-y-1.5 sm:space-y-2 max-h-[25vh] lg:max-h-[35vh] overflow-y-auto">
                   {cart.items.map((item) => (
                     <div key={item.id} className="flex justify-between items-start gap-2 text-xs sm:text-sm">
                       <div className="flex-1 min-w-0">
@@ -546,21 +603,77 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 </CardContent>
               </Card>
 
+              {/* Resumen de totales finales - COLUMNA IZQUIERDA */}
+              <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200 border-2 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-4 sm:p-5 space-y-2.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="dark:text-gray-400 light:text-gray-600">Subtotal:</span>
+                    <div className="text-right">
+                      <span className="dark:text-white light:text-gray-900">
+                        {formatCurrency(calculatedTotals.subtotal)}
+                      </span>
+                      {taxIncluded && (
+                        <div className="text-xs dark:text-gray-500 light:text-gray-500">(base imponible)</div>
+                      )}
+                    </div>
+                  </div>
+                  {calculatedTotals.totalTaxAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="dark:text-gray-400 light:text-gray-600">Impuestos:</span>
+                      <span className="dark:text-blue-400 light:text-blue-600">{formatCurrency(calculatedTotals.totalTaxAmount)}</span>
+                    </div>
+                  )}
+                  {tipAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="dark:text-gray-400 light:text-gray-600">Propina:</span>
+                      <span className="dark:text-green-400 light:text-green-600">{formatCurrency(tipAmount)}</span>
+                    </div>
+                  )}
+                  <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+                  <div className="flex justify-between text-base font-semibold">
+                    <span className="dark:text-gray-300 light:text-gray-700">Total a pagar:</span>
+                    <span className="dark:text-white light:text-gray-900">{formatCurrency(cartTotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="dark:text-gray-400 light:text-gray-600">Total pagado:</span>
+                    <span className={totalPaid >= cartTotal ? 'dark:text-green-400 light:text-green-600' : 'dark:text-yellow-400 light:text-yellow-600'}>
+                      {formatCurrency(totalPaid)}
+                    </span>
+                  </div>
+                  {remaining > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="dark:text-gray-400 light:text-gray-600">Falta:</span>
+                      <span className="dark:text-red-400 light:text-red-600">{formatCurrency(remaining)}</span>
+                    </div>
+                  )}
+                  {change > 0 && (
+                    <div className="flex justify-between text-lg font-semibold">
+                      <span className="dark:text-white light:text-gray-900">Cambio:</span>
+                      <span className="dark:text-blue-400 light:text-blue-600">{formatCurrency(change)}</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              </div>
+
+              {/* COLUMNA DERECHA: Métodos de pago + Propina */}
+              <div className="space-y-3">
               {/* Métodos de pago - RESPONSIVE */}
               <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
-                <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
                   <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-xs sm:text-sm dark:text-white light:text-gray-900">
+                    <CardTitle className="text-sm sm:text-base dark:text-white light:text-gray-900 flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-purple-500" />
                       Métodos de Pago
                     </CardTitle>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={addPayment}
-                      className="h-7 sm:h-8 px-2 sm:px-3 text-xs dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-50 light:text-gray-700"
+                      className="h-8 sm:h-9 px-3 text-xs dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-50 light:text-gray-700"
                     >
-                      <span className="hidden xs:inline">Agregar</span>
-                      <span className="inline xs:hidden">+</span>
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Agregar
                     </Button>
                   </div>
                 </CardHeader>
@@ -568,7 +681,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                   {payments.map((payment, index) => (
                     <div key={payment.id} className="space-y-2 sm:space-y-3 p-2 sm:p-3 border rounded-lg dark:border-gray-700 dark:bg-gray-900/30 light:border-gray-200 light:bg-gray-50/50">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs sm:text-sm dark:text-gray-200 light:text-gray-900 font-medium">
+                        <Label className="text-xs sm:text-sm dark:text-gray-200 light:text-gray-900 font-medium flex items-center gap-1.5">
+                          <DollarSign className="h-3.5 w-3.5 text-green-500" />
                           Pago {index + 1}
                         </Label>
                         {payments.length > 1 && (
@@ -578,6 +692,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                             onClick={() => removePayment(payment.id)}
                             className="h-7 px-2 text-xs dark:text-red-400 dark:hover:bg-red-500/20 light:text-red-600 light:hover:bg-red-50"
                           >
+                            <Trash2 className="h-3.5 w-3.5 mr-1" />
                             Eliminar
                           </Button>
                         )}
@@ -646,14 +761,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
                   {/* Toggle impuestos incluidos */}
                   <div className="pt-2 pb-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
                       <input
                         type="checkbox"
                         checked={taxIncluded}
                         onChange={(e) => setTaxIncluded(e.target.checked)}
-                        className="h-3 w-3"
+                        className="h-4 w-4 rounded"
                       />
-                      <span className="text-xs dark:text-gray-300 light:text-gray-700">
+                      <Percent className="h-3.5 w-3.5 text-blue-500" />
+                      <span className="text-xs sm:text-sm dark:text-gray-300 light:text-gray-700">
                         Impuestos incluidos en precios
                       </span>
                     </label>
@@ -740,94 +856,34 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                     )}
                   </div>
 
-                  {/* Resumen de pagos con impuestos */}
-                  <div className="pt-4 space-y-2">
-                    {/* Subtotal */}
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 light:text-gray-600">Subtotal:</span>
-                      <div className="text-right">
-                        <span className="dark:text-white light:text-gray-900">
-                          {formatCurrency(calculatedTotals.subtotal)}
-                        </span>
-                        {taxIncluded && (
-                          <div className="text-xs dark:text-gray-500 light:text-gray-500">
-                            (base imponible)
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Impuestos */}
-                    {calculatedTotals.totalTaxAmount > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="dark:text-gray-400 light:text-gray-600">Impuestos:</span>
-                        <span className="dark:text-blue-400 light:text-blue-600">
-                          {formatCurrency(calculatedTotals.totalTaxAmount)}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Separador */}
-                    <Separator className="dark:bg-gray-700 light:bg-gray-200" />
-
-                    {/* Total a pagar */}
-                    <div className="flex justify-between text-base font-semibold">
-                      <span className="dark:text-gray-300 light:text-gray-700">Total a pagar:</span>
-                      <span className="dark:text-white light:text-gray-900">
-                        {formatCurrency(cartTotal)}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-400 light:text-gray-600">Total pagado:</span>
-                      <span className={totalPaid >= cartTotal ? 'dark:text-green-400 light:text-green-600' : 'dark:text-yellow-400 light:text-yellow-600'}>
-                        {formatCurrency(totalPaid)}
-                      </span>
-                    </div>
-                    {remaining > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="dark:text-gray-400 light:text-gray-600">Falta:</span>
-                        <span className="dark:text-red-400 light:text-red-600">
-                          {formatCurrency(remaining)}
-                        </span>
-                      </div>
-                    )}
-                    {change > 0 && (
-                      <div className="flex justify-between text-lg font-semibold">
-                        <span className="dark:text-white light:text-gray-900">Cambio:</span>
-                        <span className="dark:text-blue-400 light:text-blue-600">
-                          {formatCurrency(change)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
                 </CardContent>
               </Card>
+              </div>
             </div>
 
-            <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-3 pt-4">
+            <DialogFooter className="flex-col sm:flex-row gap-3 sm:gap-4 pt-5 border-t dark:border-gray-700 light:border-gray-200">
               <Button
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isProcessing}
-                className="w-full sm:w-auto h-10 sm:h-11 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-50 light:text-gray-700 text-sm sm:text-base"
+                className="w-full sm:w-auto h-11 sm:h-12 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-50 light:text-gray-700 text-sm sm:text-base"
               >
+                <X className="h-4 w-4 mr-2" />
                 Cancelar
               </Button>
               <Button
                 onClick={handleCheckout}
                 disabled={!canComplete || isProcessing}
                 className={`
-                  w-full sm:w-auto h-10 sm:h-11 text-sm sm:text-base font-semibold shadow-lg
+                  w-full sm:flex-1 h-11 sm:h-12 text-sm sm:text-base font-bold shadow-lg
                   ${canComplete
-                    ? 'dark:bg-green-600 dark:hover:bg-green-700 light:bg-green-600 light:hover:bg-green-700'
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
                     : 'dark:bg-gray-700 dark:text-gray-400 light:bg-gray-400 light:text-gray-200'
                   }
                 `}
               >
-                <Calculator className="h-4 w-4 mr-2" />
-                <span className="hidden xs:inline">{isProcessing ? 'Procesando...' : canComplete ? 'Completar Venta' : 'Falta dinero'}</span>
-                <span className="inline xs:hidden">{isProcessing ? 'Procesando...' : canComplete ? 'Completar' : 'Falta $'}</span>
+                <CheckCircle className="h-5 w-5 mr-2" />
+                {isProcessing ? 'Procesando...' : canComplete ? `Completar Venta · ${formatCurrency(cartTotal)}` : 'Falta dinero'}
               </Button>
             </DialogFooter>
           </>

@@ -9,26 +9,22 @@
 import Stripe from 'stripe'
 
 // Verificar que la clave secreta esté configurada
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error(
-    '❌ STRIPE_SECRET_KEY no está configurada. ' +
-    'Por favor, agrega STRIPE_SECRET_KEY a tus variables de entorno.'
-  )
-}
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
 /**
  * Cliente de Stripe singleton
  * Configurado con la versión de API más reciente
+ * Nota: Si STRIPE_SECRET_KEY no está configurada, stripe será null
  */
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-09-30.clover', // Versión requerida por stripe@19.1.0
+export const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {
+  apiVersion: '2024-11-20.acacia', // Versión estable de la API
   typescript: true,
   appInfo: {
     name: 'GO Admin ERP',
     version: '1.0.0',
     url: 'https://app.goadmin.io',
   },
-})
+}) : null;
 
 /**
  * Validar firma del webhook de Stripe

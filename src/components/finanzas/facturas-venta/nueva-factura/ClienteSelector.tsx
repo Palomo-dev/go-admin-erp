@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, User, CreditCard, Building2 } from 'lucide-react';
+import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
 import { 
   Dialog, 
   DialogContent, 
@@ -45,16 +47,30 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
   const [isOpen, setIsOpen] = useState(false);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [nuevoCliente, setNuevoCliente] = useState<{
-    full_name: string;
-    email: string;
-    phone: string;
-  }>({
-    full_name: '',
+  const [nuevoCliente, setNuevoCliente] = useState({
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
   });
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(['cliente', 'huesped']);
+  const [selectedFiscal, setSelectedFiscal] = useState<string[]>(['R-99-PN']);
+  const [municipalityId, setMunicipalityId] = useState('aa4b6637-0060-41bb-9459-bc95f9789e08');
+  const [customerRoles, setCustomerRoles] = useState<{code: string; label: string}[]>([]);
+  const [fiscalOptions, setFiscalOptions] = useState<{code: string; description: string}[]>([]);
   const organizationId = getOrganizationId();
+
+  useEffect(() => {
+    async function loadCatalogs() {
+      const [rolesRes, fiscalRes] = await Promise.all([
+        supabase.from('customer_roles').select('code, label').order('sort_order'),
+        supabase.from('dian_fiscal_responsibilities').select('code, description').order('sort_order'),
+      ]);
+      if (rolesRes.data) setCustomerRoles(rolesRes.data);
+      if (fiscalRes.data) setFiscalOptions(fiscalRes.data);
+    }
+    loadCatalogs();
+  }, []);
   
   // Cargar clientes al iniciar
   useEffect(() => {
@@ -202,7 +218,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
 
   // Función para guardar un nuevo cliente
   const handleGuardarCliente = async () => {
-    if (!nuevoCliente.full_name.trim()) {
+    if (!nuevoCliente.first_name.trim()) {
       toast({
         title: "Error",
         description: "El nombre del cliente es obligatorio.",
@@ -214,14 +230,18 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
     try {
       setIsLoading(true);
       
-      const nuevoClienteData = {
-        ...nuevoCliente,
-        organization_id: organizationId
-      };
-      
       const { data, error } = await supabase
         .from('customers')
-        .insert(nuevoClienteData)
+        .insert({
+          first_name: nuevoCliente.first_name,
+          last_name: nuevoCliente.last_name,
+          email: nuevoCliente.email || null,
+          phone: nuevoCliente.phone || null,
+          organization_id: organizationId,
+          roles: selectedRoles,
+          fiscal_responsibilities: selectedFiscal,
+          fiscal_municipality_id: municipalityId,
+        })
         .select()
         .single();
         
@@ -239,10 +259,14 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       // Cerrar modal y resetear form
       setIsOpen(false);
       setNuevoCliente({
-        full_name: '',
+        first_name: '',
+        last_name: '',
         email: '',
         phone: '',
       });
+      setSelectedRoles(['cliente', 'huesped']);
+      setSelectedFiscal(['R-99-PN']);
+      setMunicipalityId('aa4b6637-0060-41bb-9459-bc95f9789e08');
       
     } catch (error) {
       console.error('Error al crear cliente:', error);
@@ -349,23 +373,31 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
             </DialogHeader>
             
             <div className="space-y-3 sm:space-y-4 py-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="full_name" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Nombre completo
-                </Label>
-                <Input
-                  id="full_name"
-                  value={nuevoCliente.full_name}
-                  onChange={(e) => setNuevoCliente({...nuevoCliente, full_name: e.target.value})}
-                  placeholder="Nombre y apellido"
-                  className="
-                    text-sm
-                    bg-white dark:bg-gray-900
-                    border-gray-300 dark:border-gray-600
-                    text-gray-900 dark:text-gray-100
-                    placeholder:text-gray-500 dark:placeholder:text-gray-400
-                  "
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="first_name" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Nombre *
+                  </Label>
+                  <Input
+                    id="first_name"
+                    value={nuevoCliente.first_name}
+                    onChange={(e) => setNuevoCliente({...nuevoCliente, first_name: e.target.value})}
+                    placeholder="Nombre"
+                    className="text-sm bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="last_name" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Apellido
+                  </Label>
+                  <Input
+                    id="last_name"
+                    value={nuevoCliente.last_name}
+                    onChange={(e) => setNuevoCliente({...nuevoCliente, last_name: e.target.value})}
+                    placeholder="Apellido"
+                    className="text-sm bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
               </div>
               
               <div className="space-y-1.5">
@@ -407,6 +439,63 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
                 />
               </div>
             </div>
+
+            {/* Roles del Cliente */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                <User className="h-3.5 w-3.5" /> Roles
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {customerRoles.map((role) => (
+                  <div
+                    key={role.code}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border cursor-pointer transition-all text-xs ${
+                      selectedRoles.includes(role.code)
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+                    }`}
+                    onClick={() => setSelectedRoles(prev =>
+                      prev.includes(role.code) ? prev.filter(r => r !== role.code) : [...prev, role.code]
+                    )}
+                  >
+                    <Checkbox checked={selectedRoles.includes(role.code)} className="pointer-events-none h-3 w-3" />
+                    <span>{role.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Resp. Fiscal */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                <CreditCard className="h-3.5 w-3.5" /> Resp. Fiscal
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {fiscalOptions.map((fiscal) => (
+                  <div
+                    key={fiscal.code}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border cursor-pointer transition-all text-xs ${
+                      selectedFiscal.includes(fiscal.code)
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+                    }`}
+                    onClick={() => setSelectedFiscal(prev =>
+                      prev.includes(fiscal.code) ? prev.filter(f => f !== fiscal.code) : [...prev, fiscal.code]
+                    )}
+                  >
+                    <Checkbox checked={selectedFiscal.includes(fiscal.code)} className="pointer-events-none h-3 w-3" />
+                    <span>{fiscal.code}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Municipio */}
+            <MunicipalitySearch
+              value={municipalityId}
+              onChange={setMunicipalityId}
+              compact
+            />
             
             <DialogFooter>
               <Button

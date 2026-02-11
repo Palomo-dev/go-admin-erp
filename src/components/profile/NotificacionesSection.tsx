@@ -1,42 +1,56 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase/config';
 import { Bell, Moon, Clock, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-interface NotificationPreferences {
-  id: string;
-  user_id: string;
-  email_enabled: boolean;
-  push_enabled: boolean;
-  whatsapp_enabled: boolean;
-  do_not_disturb_start?: string;
-  do_not_disturb_end?: string;
-  do_not_disturb_enabled: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { PreferenciasService } from '@/components/notificaciones/preferencias/PreferenciasService';
+import type { UserNotificationPreference } from '@/components/notificaciones/preferencias/types';
 
 interface NotificacionesSectionProps {
   user: User | null;
-  preferences: NotificationPreferences | null;
-  onPreferencesUpdated: (preferences: NotificationPreferences) => void;
+  preferences?: any;
+  onPreferencesUpdated?: (preferences: any) => void;
 }
 
 export default function NotificacionesSection({ 
   user, 
-  preferences, 
-  onPreferencesUpdated 
 }: NotificacionesSectionProps) {
   const [loading, setLoading] = useState(false);
-  const [emailEnabled, setEmailEnabled] = useState(preferences?.email_enabled ?? true);
-  const [pushEnabled, setPushEnabled] = useState(preferences?.push_enabled ?? true);
-  const [whatsappEnabled, setWhatsappEnabled] = useState(preferences?.whatsapp_enabled ?? false);
-  const [dndEnabled, setDndEnabled] = useState(preferences?.do_not_disturb_enabled ?? false);
-  const [dndStart, setDndStart] = useState(preferences?.do_not_disturb_start ?? '22:00');
-  const [dndEnd, setDndEnd] = useState(preferences?.do_not_disturb_end ?? '08:00');
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [dndEnabled, setDndEnabled] = useState(false);
+  const [dndStart, setDndStart] = useState('22:00');
+  const [dndEnd, setDndEnd] = useState('08:00');
+
+  // Cargar preferencias reales desde la tabla user_notification_preferences
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      setInitialLoading(true);
+      try {
+        const prefs = await PreferenciasService.ensureAllChannels(user.id);
+        const find = (ch: string) => prefs.find(p => p.channel === ch);
+        setEmailEnabled(!find('email')?.mute);
+        setPushEnabled(!find('push')?.mute);
+        setWhatsappEnabled(!find('whatsapp')?.mute);
+        // DND: tomar del primer canal que tenga valores
+        const withDnd = prefs.find(p => p.dnd_start && p.dnd_end);
+        if (withDnd) {
+          setDndEnabled(true);
+          setDndStart(withDnd.dnd_start || '22:00');
+          setDndEnd(withDnd.dnd_end || '08:00');
+        }
+      } catch (e) {
+        console.error('Error cargando preferencias:', e);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    load();
+  }, [user?.id]);
   
   // Convierte horarios de 24 horas a formato 12 horas para mostrar
   const formatTime12h = (time24h: string) => {
@@ -58,46 +72,20 @@ export default function NotificacionesSection({
     setLoading(true);
     
     try {
-      const preferencesData = {
-        user_id: user.id,
-        email_enabled: emailEnabled,
-        push_enabled: pushEnabled,
-        whatsapp_enabled: whatsappEnabled,
-        do_not_disturb_enabled: dndEnabled,
-        do_not_disturb_start: dndStart,
-        do_not_disturb_end: dndEnd,
-        updated_at: new Date().toISOString()
-      };
-      
-      let result;
-      
-      if (preferences) {
-        // Actualizar preferencias existentes
-        const { data, error } = await supabase
-          .from('user_notification_preferences')
-          .update(preferencesData)
-          .eq('user_id', user.id)
-          .select('*')
-          .single();
-          
-        if (error) throw error;
-        result = data;
-      } else {
-        // Crear nuevas preferencias
-        const { data, error } = await supabase
-          .from('user_notification_preferences')
-          .insert({
-            ...preferencesData,
-            created_at: new Date().toISOString()
-          })
-          .select('*')
-          .single();
-          
-        if (error) throw error;
-        result = data;
-      }
-      
-      onPreferencesUpdated(result);
+      // Actualizar mute por canal
+      await Promise.all([
+        PreferenciasService.updatePreference(user.id, 'email', { mute: !emailEnabled }),
+        PreferenciasService.updatePreference(user.id, 'push', { mute: !pushEnabled }),
+        PreferenciasService.updatePreference(user.id, 'whatsapp', { mute: !whatsappEnabled }),
+      ]);
+
+      // Actualizar DND global
+      await PreferenciasService.setGlobalDND(
+        user.id,
+        dndEnabled ? dndStart : null,
+        dndEnabled ? dndEnd : null,
+      );
+
       toast.success('Preferencias de notificación actualizadas correctamente');
     } catch (error) {
       console.error('Error al guardar preferencias de notificación:', error);
@@ -123,8 +111,8 @@ export default function NotificacionesSection({
       aria-checked={checked}
       onClick={() => !disabled && onChange(!checked)}
       className={`${
-        checked ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-700'
-      } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
+        checked ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+      } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
       }`}
     >
@@ -135,6 +123,31 @@ export default function NotificacionesSection({
       />
     </button>
   );
+
+  if (initialLoading) {
+    return (
+      <div>
+        <div className="mb-6">
+          <div className="h-7 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+          <div className="h-4 w-96 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+        </div>
+        <div className="space-y-6">
+          <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4" />
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between py-3">
+                <div>
+                  <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-1" />
+                  <div className="h-3 w-56 bg-gray-100 dark:bg-gray-700/50 rounded animate-pulse" />
+                </div>
+                <div className="h-6 w-11 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -257,7 +270,7 @@ export default function NotificacionesSection({
         <div className="flex justify-end">
           <button
             onClick={handleSavePreferences}
-            className="flex items-center px-4 py-2 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700 disabled:bg-purple-400"
+            className="flex items-center px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
             disabled={loading}
           >
             {loading ? (

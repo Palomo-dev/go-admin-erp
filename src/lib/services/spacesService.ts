@@ -34,6 +34,7 @@ export interface Space {
   status: SpaceStatus;
   location_details: Record<string, any>;
   maintenance_notes: string | null;
+  description: string | null;
   metadata: Record<string, any>;
   created_at: string;
   updated_at: string;
@@ -44,12 +45,14 @@ export interface CreateSpaceData {
   branch_id: number;
   space_type_id: string;
   label: string;
+  description?: string;
   floor_zone?: string;
   status?: SpaceStatus;
 }
 
 export interface UpdateSpaceData {
   label?: string;
+  description?: string;
   floor_zone?: string;
   status?: SpaceStatus;
   maintenance_notes?: string;

@@ -10,7 +10,15 @@ import ClientesActions from "@/components/clientes/ClientesActions";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, ShoppingCart, AlertTriangle, RefreshCw, Trash2, Tag, Download, X, Loader2 } from "lucide-react";
+import { Users, DollarSign, ShoppingCart, AlertTriangle, RefreshCw, Trash2, Tag, Download, X, Loader2, Tags, UserPlus, UserMinus, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 interface Customer {
@@ -20,7 +28,8 @@ interface Customer {
   phone?: string;
   doc_type?: string;
   doc_number?: string;
-  city?: string;
+  fiscal_municipality_id?: string;
+  municipality_name?: string;
   roles?: string[];
   tags?: string[];
   is_active?: boolean;
@@ -270,6 +279,21 @@ export default function ClientesPage() {
         });
       }
       
+      // Obtener nombres de municipios para todos los clientes
+      const municipalityIds = customersData
+        .map((c: any) => c.fiscal_municipality_id)
+        .filter((id: string | null, index: number, arr: (string | null)[]) => id && arr.indexOf(id) === index);
+      const municipalityMap = new Map<string, string>();
+      if (municipalityIds.length > 0) {
+        const { data: munis } = await supabase
+          .from('municipalities')
+          .select('id, name, state_name')
+          .in('id', municipalityIds);
+        if (munis) {
+          munis.forEach((m: any) => municipalityMap.set(m.id, `${m.name} - ${m.state_name}`));
+        }
+      }
+
       // Combinar datos asegurando compatibilidad de tipos entre UUIDs y strings
       const enhancedCustomers = customersData.map(customer => {
         const customerId = customer.id.toString();
@@ -295,7 +319,8 @@ export default function ClientesPage() {
           days_overdue,
           ar_status: arStatusMap.get(customerId) || null,
           sales_count, 
-          total_sales
+          total_sales,
+          municipality_name: customer.fiscal_municipality_id ? municipalityMap.get(customer.fiscal_municipality_id) || null : null,
         };
       });
       
@@ -344,10 +369,10 @@ export default function ClientesPage() {
       );
     }
     
-    // Filtro por ciudad (ignorar "all_cities")
+    // Filtro por municipio (ignorar "all_cities")
     if (cityFilter && cityFilter !== "all_cities") {
       filtered = filtered.filter(customer => 
-        customer.city === cityFilter
+        customer.municipality_name === cityFilter
       );
     }
     
@@ -398,7 +423,7 @@ export default function ClientesPage() {
     
     const csvContent = [
       // Headers
-      ["ID", "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento", "Ciudad", "Roles", "Etiquetas", "Saldo CxC", "Última Compra"].join(","),
+      ["ID", "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento", "Municipio", "Roles", "Etiquetas", "Saldo CxC", "Última Compra"].join(","),
       // Rows
       ...filteredCustomers.map(customer => [
         customer.id,
@@ -407,7 +432,7 @@ export default function ClientesPage() {
         customer.phone || "",
         customer.doc_type || "",
         customer.doc_number || "",
-        customer.city || "",
+        customer.municipality_name || "",
         (customer.roles || []).join(";"),
         (customer.tags || []).join(";"),
         customer.balance || 0,
@@ -461,7 +486,7 @@ export default function ClientesPage() {
     const selectedCustomers = filteredCustomers.filter(c => selectedIds.includes(c.id));
     
     const csvContent = [
-      ["ID", "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento", "Ciudad", "Roles", "Etiquetas", "Saldo CxC", "Última Compra"].join(","),
+      ["ID", "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento", "Municipio", "Roles", "Etiquetas", "Saldo CxC", "Última Compra"].join(","),
       ...selectedCustomers.map(customer => [
         customer.id,
         customer.full_name,
@@ -469,7 +494,7 @@ export default function ClientesPage() {
         customer.phone || "",
         customer.doc_type || "",
         customer.doc_number || "",
-        customer.city || "",
+        customer.municipality_name || "",
         (customer.roles || []).join(";"),
         (customer.tags || []).join(";"),
         customer.balance || 0,
@@ -516,6 +541,72 @@ export default function ClientesPage() {
     } catch (err: any) {
       console.error('Error agregando etiqueta:', err);
       toast.error(err.message || 'Error al agregar etiqueta');
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const handleBulkRemoveTag = async () => {
+    if (selectedIds.length === 0) return;
+    
+    const tagToRemove = prompt('Ingresa la etiqueta a quitar:');
+    if (!tagToRemove || !tagToRemove.trim()) return;
+    
+    setIsBulkLoading(true);
+    try {
+      for (const customerId of selectedIds) {
+        const customer = customers.find(c => c.id === customerId);
+        const currentTags = customer?.tags || [];
+        if (currentTags.includes(tagToRemove.trim())) {
+          await supabase
+            .from('customers')
+            .update({ tags: currentTags.filter(t => t !== tagToRemove.trim()) })
+            .eq('id', customerId);
+        }
+      }
+      
+      toast.success(`Etiqueta "${tagToRemove.trim()}" removida de ${selectedIds.length} cliente(s)`);
+      setSelectedIds([]);
+      if (organizationId) await loadCustomers(organizationId);
+    } catch (err: any) {
+      console.error('Error removiendo etiqueta:', err);
+      toast.error(err.message || 'Error al remover etiqueta');
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const handleBulkChangeRole = async (role: string, action: 'add' | 'remove') => {
+    if (selectedIds.length === 0) return;
+    
+    setIsBulkLoading(true);
+    try {
+      for (const customerId of selectedIds) {
+        const customer = customers.find(c => c.id === customerId);
+        const currentRoles = customer?.roles || [];
+        
+        let updatedRoles: string[];
+        if (action === 'add') {
+          updatedRoles = currentRoles.includes(role) ? currentRoles : [...currentRoles, role];
+        } else {
+          updatedRoles = currentRoles.filter(r => r !== role);
+        }
+        
+        if (JSON.stringify(currentRoles) !== JSON.stringify(updatedRoles)) {
+          await supabase
+            .from('customers')
+            .update({ roles: updatedRoles })
+            .eq('id', customerId);
+        }
+      }
+      
+      const actionLabel = action === 'add' ? 'agregado' : 'removido';
+      toast.success(`Rol "${role}" ${actionLabel} en ${selectedIds.length} cliente(s)`);
+      setSelectedIds([]);
+      if (organizationId) await loadCustomers(organizationId);
+    } catch (err: any) {
+      console.error('Error cambiando roles:', err);
+      toast.error(err.message || 'Error al cambiar roles');
     } finally {
       setIsBulkLoading(false);
     }
@@ -578,7 +669,8 @@ export default function ClientesPage() {
           </Button>
           <ClientesActions 
             onExportCSV={handleExportCSV}
-            selectedCustomers={[]} 
+            selectedCustomers={selectedIds}
+            onRefresh={() => { setSelectedIds([]); organizationId && loadCustomers(organizationId); }}
           />
         </div>
       </div>
@@ -695,7 +787,8 @@ export default function ClientesPage() {
                   Limpiar
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {isBulkLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
                 <Button
                   variant="outline"
                   size="sm"
@@ -714,8 +807,49 @@ export default function ClientesPage() {
                   className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
                 >
                   <Tag className="h-4 w-4 mr-1" />
-                  Agregar etiqueta
+                  Etiquetar
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkRemoveTag}
+                  disabled={isBulkLoading}
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
+                >
+                  <Tags className="h-4 w-4 mr-1" />
+                  Quitar etiqueta
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isBulkLoading}
+                      className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
+                    >
+                      <Users className="h-4 w-4 mr-1" />
+                      Roles
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuLabel>Agregar rol</DropdownMenuLabel>
+                    {['cliente', 'huesped', 'pasajero', 'proveedor', 'empleado'].map(role => (
+                      <DropdownMenuItem key={`add-${role}`} onClick={() => handleBulkChangeRole(role, 'add')}>
+                        <UserPlus className="h-4 w-4 mr-2 text-green-600" />
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Quitar rol</DropdownMenuLabel>
+                    {['cliente', 'huesped', 'pasajero', 'proveedor', 'empleado'].map(role => (
+                      <DropdownMenuItem key={`rm-${role}`} onClick={() => handleBulkChangeRole(role, 'remove')}>
+                        <UserMinus className="h-4 w-4 mr-2 text-red-500" />
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button
                   variant="outline"
                   size="sm"

@@ -3,13 +3,11 @@
 import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
+import { OrganizationListSkeleton } from '@/components/organization/OrganizationSkeletons';
 
 // Dynamic import for the ManageOrganizationsTab component
 const ManageOrganizationsTab = dynamic(() => import('../../../../components/organization/ManageOrganizationsTab'), {
-  loading: () => <div className="text-center py-10">
-    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-    <p className="mt-2">Cargando...</p>
-  </div>
+  loading: () => <OrganizationListSkeleton />
 });
 
 export default function MisOrganizacionesPage() {
@@ -90,9 +88,14 @@ export default function MisOrganizacionesPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <div className="text-center py-10">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-          <p className="mt-2">Cargando datos del usuario...</p>
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold text-gray-900">Mis Organizaciones</h1>
+            <p className="mt-2 text-gray-600">Gestiona todas las organizaciones de las que eres propietario</p>
+          </div>
+          <div className="mt-8">
+            <OrganizationListSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -145,10 +148,7 @@ export default function MisOrganizacionesPage() {
         <p className="mt-2 text-gray-600">Gestiona todas las organizaciones de las que eres propietario</p>
         
         <div className="mt-8">
-          <Suspense fallback={<div className="text-center py-10">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-2">Cargando organizaciones...</p>
-          </div>}>
+          <Suspense fallback={<OrganizationListSkeleton />}>
             <ManageOrganizationsTab />
           </Suspense>
         </div>

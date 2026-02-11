@@ -18,8 +18,8 @@ export default function WhatsAppWebhookCard({ channelId, credentials }: WhatsApp
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const webhookUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/api/webhooks/whatsapp/${channelId}`
-    : `/api/webhooks/whatsapp/${channelId}`;
+    ? `${window.location.origin}/api/integrations/whatsapp/webhook`
+    : `/api/integrations/whatsapp/webhook`;
 
   const handleCopy = async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
@@ -88,15 +88,12 @@ export default function WhatsAppWebhookCard({ channelId, credentials }: WhatsApp
               messages
             </Badge>
             <Badge variant="outline" className="border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-300">
-              messaging_postbacks
-            </Badge>
-            <Badge variant="outline" className="border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-300">
-              message_deliveries
-            </Badge>
-            <Badge variant="outline" className="border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-300">
-              message_reads
+              message_template_status_update
             </Badge>
           </div>
+          <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+            El webhook es global. Meta identifica cada canal por el phone_number_id.
+          </p>
         </div>
 
         <Button

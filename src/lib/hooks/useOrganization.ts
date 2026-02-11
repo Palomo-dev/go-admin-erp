@@ -43,47 +43,54 @@ export function guardarOrganizacionActiva(organizacion: Organizacion): void {
  * Intenta recuperarla de múltiples fuentes para mayor resiliencia
  */
 export function obtenerOrganizacionActiva(): Organizacion {
-  // Valor predeterminado si todo falla
-  const valorPredeterminado: Organizacion = { id: 2 };
-  
   if (typeof window === 'undefined') {
-    return valorPredeterminado; // Para SSR
+    return { id: 0 }; // SSR — sin acceso a storage
   }
   
   try {
-    // Intentar recuperar del localStorage (fuente principal)
+    // 1. Fuente principal: clave JSON
     const localData = localStorage.getItem(STORAGE_KEY);
     if (localData) {
       const parsed = JSON.parse(localData);
-      return parsed;
+      if (parsed?.id) return parsed;
     }
     
-    // Intentar recuperar del sessionStorage (fuente de respaldo)
+    // 2. Respaldo: sessionStorage
     const sessionData = sessionStorage.getItem(STORAGE_KEY);
     if (sessionData) {
       const parsed = JSON.parse(sessionData);
-      console.log('Organización recuperada de sessionStorage:', parsed.id);
-      return parsed;
+      if (parsed?.id) return parsed;
     }
     
-    // Si no se encontró nada, verificar otras posibles claves (para migración)
+    // 3. Respaldo: clave simple del OrganizationSelector
+    const simpleId = localStorage.getItem('currentOrganizationId');
+    if (simpleId) {
+      const id = parseInt(simpleId, 10);
+      if (!isNaN(id) && id > 0) {
+        const org: Organizacion = { id };
+        guardarOrganizacionActiva(org);
+        return org;
+      }
+    }
+    
+    // 4. Claves alternativas (migración)
     const alternativas = ['currentOrganization', 'activeOrganization', 'organizacion'];
     for (const key of alternativas) {
       const altData = localStorage.getItem(key);
       if (altData) {
         const parsed = JSON.parse(altData);
-        console.log(`Organización recuperada de clave alternativa (${key}):`, parsed.id);
-        // Migrar a la clave estándar
-        guardarOrganizacionActiva(parsed);
-        return parsed;
+        if (parsed?.id) {
+          guardarOrganizacionActiva(parsed);
+          return parsed;
+        }
       }
     }
     
-    console.log('No se encontró organización guardada, usando predeterminada');
-    return valorPredeterminado;
+    // Sin organización guardada — devolver id:0 para que los consumidores lo manejen
+    return { id: 0 };
   } catch (error) {
     console.error('Error al recuperar organización:', error);
-    return valorPredeterminado;
+    return { id: 0 };
   }
 }
 
@@ -93,9 +100,7 @@ export function obtenerOrganizacionActiva(): Organizacion {
  */
 export function getOrganizationId(): number {
   const organizacion = obtenerOrganizacionActiva();
-  // Usando ID 2 como valor predeterminado ya que es el que existe en la base de datos
-  // y con el que se crearon las tareas
-  return organizacion?.id || 2;
+  return organizacion?.id || 0;
 }
 
 /**
@@ -197,7 +202,15 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
       return { data: null, error: new Error("Usuario no asociado a ninguna organización") };
     }
     
-    const member = memberData[0] as DbOrganizationMember;
+    // Si el usuario tiene múltiples orgs, respetar la guardada en localStorage
+    const savedOrg = obtenerOrganizacionActiva();
+    let member: DbOrganizationMember;
+    if (memberData.length > 1 && savedOrg?.id) {
+      const saved = memberData.find((m: any) => m.organization_id === savedOrg.id);
+      member = (saved || memberData[0]) as DbOrganizationMember;
+    } else {
+      member = memberData[0] as DbOrganizationMember;
+    }
     
     // Paso 2: Obtener datos de la organización
     const { data: orgData, error: orgError } = await supabase

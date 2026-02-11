@@ -22,7 +22,8 @@ import {
   Calculator,
   CheckCircle,
   X,
-  Percent
+  Percent,
+  Receipt
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { SaleItem } from './types';
@@ -146,6 +147,11 @@ export function SplitBillDialog({
       // Verificar que todos los items estén asignados
       return items.every(item => getItemAssigned(item.id) === Number(item.quantity));
     }
+    if (splitMode === 'custom') {
+      // La suma de montos debe igualar el total (tolerancia $1)
+      const sumCustom = splits.reduce((s, sp) => s + sp.total, 0);
+      return Math.abs(sumCustom - total) < 1 && splits.every(s => s.total > 0);
+    }
     return true;
   };
 
@@ -156,15 +162,19 @@ export function SplitBillDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <Split className="h-6 w-6 text-blue-600" />
-            Dividir Cuenta
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30">
+              <Split className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <span>Dividir Cuenta</span>
+              <p className="text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
+                Total a dividir: <span className="font-bold text-base text-blue-600 dark:text-blue-400">{formatCurrency(total)}</span>
+              </p>
+            </div>
           </DialogTitle>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Total a dividir: <span className="font-bold text-lg">{formatCurrency(total)}</span>
-          </p>
         </DialogHeader>
 
         <Tabs value={splitMode} onValueChange={(v) => setSplitMode(v as any)}>
@@ -189,7 +199,10 @@ export function SplitBillDialog({
               {/* Lista de Items */}
               <div className="lg:col-span-2 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-lg">Items de la cuenta</h3>
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Receipt className="h-5 w-5 text-gray-500" />
+                    Items de la cuenta
+                  </h3>
                   <Badge variant="outline">
                     {items.length} productos
                   </Badge>
@@ -265,7 +278,10 @@ export function SplitBillDialog({
 
               {/* Panel de Splits */}
               <div className="space-y-3">
-                <h3 className="font-semibold text-lg">Comensales</h3>
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-500" />
+                  Comensales
+                </h3>
                 <div className="space-y-2">
                   {splits.map((split, index) => (
                     <Card
@@ -278,11 +294,20 @@ export function SplitBillDialog({
                       onClick={() => setCurrentSplit(index)}
                     >
                       <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">{split.name}</h4>
-                          <p className="text-sm text-gray-500">
-                            {split.items.length} items
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                            currentSplit === index
+                              ? 'bg-blue-200 dark:bg-blue-800'
+                              : 'bg-gray-100 dark:bg-gray-700'
+                          }`}>
+                            <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium">{split.name}</h4>
+                            <p className="text-sm text-gray-500">
+                              {split.items.length} items
+                            </p>
+                          </div>
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-lg">
@@ -296,7 +321,8 @@ export function SplitBillDialog({
 
                 <Card className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border-green-200 dark:border-green-800">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-green-900 dark:text-green-100">
+                    <span className="font-medium text-green-900 dark:text-green-100 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4" />
                       Total asignado
                     </span>
                     <span className="font-bold text-lg text-green-900 dark:text-green-100">
@@ -353,8 +379,88 @@ export function SplitBillDialog({
 
           {/* MODO: Personalizado */}
           <TabsContent value="custom" className="space-y-4">
-            <div className="text-center py-8">
-              <p className="text-gray-500">Función en desarrollo</p>
+            <div className="text-center pt-4 pb-2">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 mb-4">
+                <Calculator className="h-8 w-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">División Personalizada</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                Ingresa el monto que pagará cada comensal
+              </p>
+            </div>
+
+            <div className="max-w-md mx-auto space-y-3">
+              {splits.map((split, index) => (
+                <Card key={split.id} className="p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <Users className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <span className="font-medium">{split.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-gray-400" />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="100"
+                        className="w-32 text-right font-bold"
+                        value={split.total || ''}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          setSplits(prev => prev.map((s, i) =>
+                            i === index ? { ...s, total: value, items: [] } : s
+                          ));
+                        }}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+
+              {/* Resumen */}
+              <Card className={`p-4 border-2 ${
+                Math.abs(splits.reduce((s, sp) => s + sp.total, 0) - total) < 1
+                  ? 'border-green-300 bg-green-50 dark:bg-green-950/20'
+                  : 'border-orange-300 bg-orange-50 dark:bg-orange-950/20'
+              }`}>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Suma asignada:</span>
+                  <span className="font-bold text-lg">
+                    {formatCurrency(splits.reduce((s, sp) => s + sp.total, 0))}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mt-1 text-sm">
+                  <span className="text-gray-500">Diferencia:</span>
+                  <span className={
+                    Math.abs(splits.reduce((s, sp) => s + sp.total, 0) - total) < 1
+                      ? 'text-green-600 font-medium'
+                      : 'text-orange-600 font-medium'
+                  }>
+                    {formatCurrency(total - splits.reduce((s, sp) => s + sp.total, 0))}
+                  </span>
+                </div>
+              </Card>
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  const remaining = splits.length;
+                  const perPerson = Math.floor(total / remaining);
+                  const lastPerson = total - perPerson * (remaining - 1);
+                  setSplits(prev => prev.map((s, i) => ({
+                    ...s,
+                    total: i === remaining - 1 ? lastPerson : perPerson,
+                    items: [],
+                  })));
+                }}
+              >
+                <Calculator className="h-4 w-4 mr-2" />
+                Distribuir equitativamente como base
+              </Button>
             </div>
           </TabsContent>
         </Tabs>

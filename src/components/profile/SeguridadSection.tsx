@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, updatePassword } from '@/lib/supabase/config';
-import { Lock, Key, RefreshCcw, Shield, AlertTriangle } from 'lucide-react';
+import { Lock, Key, RefreshCcw, Shield, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface MfaMethod {
@@ -29,6 +29,9 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,7 +219,7 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
           </div>
           <button
             onClick={() => setShowPasswordModal(true)}
-            className="px-3 py-1.5 text-sm rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50"
+            className="px-3 py-1.5 text-sm rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
           >
             Cambiar
           </button>
@@ -235,44 +238,87 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
                   <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Contraseña actual
                   </label>
-                  <input
-                    id="currentPassword"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
-                  />
+                  <div className="relative">
+                    <input
+                      id="currentPassword"
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 pr-10 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
                 
                 <div>
                   <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Nueva contraseña
                   </label>
-                  <input
-                    id="newPassword"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
-                  />
+                  <div className="relative">
+                    <input
+                      id="newPassword"
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        setPasswordError('');
+                      }}
+                      required
+                      minLength={8}
+                      className={`w-full px-3 py-2 pr-10 rounded-md border ${newPassword && newPassword.length < 8 ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">La contraseña debe tener al menos 8 caracteres</p>
+                  {newPassword && newPassword.length > 0 && newPassword.length < 8 && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">Faltan {8 - newPassword.length} caracteres</p>
+                  )}
                 </div>
                 
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Confirmar nueva contraseña
                   </label>
-                  <input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
-                  />
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        setPasswordError('');
+                      }}
+                      required
+                      minLength={8}
+                      className={`w-full px-3 py-2 pr-10 rounded-md border ${confirmPassword && newPassword !== confirmPassword ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {confirmPassword && newPassword !== confirmPassword && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">Las contraseñas no coinciden</p>
+                  )}
+                  {confirmPassword && newPassword === confirmPassword && confirmPassword.length >= 8 && (
+                    <p className="mt-1 text-xs text-green-600 dark:text-green-400">Las contraseñas coinciden</p>
+                  )}
                 </div>
                 
                 {passwordError && (
@@ -290,6 +336,9 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
                       setCurrentPassword('');
                       setNewPassword('');
                       setConfirmPassword('');
+                      setShowCurrentPassword(false);
+                      setShowNewPassword(false);
+                      setShowConfirmPassword(false);
                     }}
                     className="px-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     disabled={loading}
@@ -298,8 +347,8 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700 disabled:bg-purple-400"
-                    disabled={loading}
+                    className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
+                    disabled={loading || newPassword.length < 8 || newPassword !== confirmPassword}
                   >
                     {loading ? (
                       <span className="flex items-center">
@@ -340,7 +389,7 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
           ) : (
             <button
               onClick={enableMfa}
-              className="px-3 py-1.5 text-sm rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50"
+              className="px-3 py-1.5 text-sm rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
               disabled={loading}
             >
               Configurar
@@ -457,7 +506,7 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 bg-purple-600 rounded-md text-white"
+                className="px-4 py-2 bg-blue-600 rounded-md text-white hover:bg-blue-700"
                 disabled={loading}
               >
                 Verificar

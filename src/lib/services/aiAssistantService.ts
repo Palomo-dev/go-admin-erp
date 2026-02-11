@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { AIActionType } from './aiActionsService';
+import { checkAICredits, estimateCredits, consumeAICredits } from './aiCreditsService';
 
 let openaiClient: OpenAI | null = null;
 
@@ -198,6 +199,15 @@ class AIAssistantService {
     context: AssistantContext
   ): Promise<AssistantResponse> {
     try {
+      // Validar créditos de IA
+      const creditsCheck = await checkAICredits(context.organizationId);
+      if (!creditsCheck.allowed) {
+        return {
+          content: `⚠️ ${creditsCheck.error || 'Créditos de IA insuficientes'}`,
+          usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        };
+      }
+
       const systemPrompt = ASSISTANT_SYSTEM_PROMPT + this.buildContextPrompt(context);
 
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
@@ -219,6 +229,16 @@ class AIAssistantService {
 
       const rawContent = response.choices[0]?.message?.content || 'Lo siento, no pude procesar tu solicitud.';
       const usage = response.usage;
+      
+      // Consumir créditos basado en tokens usados
+      const estimatedCredits = estimateCredits(usage?.total_tokens || 0);
+      console.log('🤖 AI Assistant - Consuming credits:', { 
+        organizationId: context.organizationId, 
+        totalTokens: usage?.total_tokens,
+        estimatedCredits 
+      });
+      const consumed = await consumeAICredits(context.organizationId, estimatedCredits);
+      console.log('🤖 AI Assistant - Credits consumed result:', consumed);
 
       // Parsear si hay una acción propuesta
       const { content, action } = this.parseActionFromResponse(rawContent);

@@ -17,7 +17,6 @@ import OrganizacionDefaultSection from '../../../components/profile/Organizacion
 import NotificacionesSection from '../../../components/profile/NotificacionesSection';
 import RolesSection from '../../../components/profile/RolesSection';
 import EliminarCuentaSection from '../../../components/profile/EliminarCuentaSection';
-import { id } from 'date-fns/locale';
 
 // Interfaces para los tipos de datos
 interface Profile {
@@ -32,17 +31,6 @@ interface Profile {
   last_org_id?: string;
   status: string;
   created_at: string;
-}
-
-interface NotificationPreference {
-  user_id: string;
-  channel?: string;
-  mute?: boolean;
-  allowed_types?: string[];
-  dnd_start?: string;
-  dnd_end?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
 interface UserSession {
@@ -86,7 +74,6 @@ interface MfaMethod {
 export default function PerfilUsuarioPage() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreference | null>(null);
   const [userSessions, setUserSessions] = useState<UserSession[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -125,51 +112,6 @@ export default function PerfilUsuarioPage() {
           toast.error('Error al cargar datos de perfil');
         } else {
           setProfile(profileData);
-        }
-        
-        // Obtener preferencias de notificación
-        try {
-          // Usamos la nueva función RPC para obtener preferencias
-          const { data: notifData, error: notifError } = await supabase.rpc('get_user_notification_preferences', {
-            p_user_id: session.user.id,
-            p_channel: 'email'
-          });
-            
-          if (!notifError && notifData) {
-            // La función RPC ya maneja el caso donde no existe el registro,
-            // devolviendo valores predeterminados
-            setNotificationPrefs({
-              user_id: notifData.user_id,
-              channel: notifData.channel,
-              mute: notifData.mute,
-              allowed_types: notifData.allowed_types,
-              dnd_start: notifData.dnd_start,
-              dnd_end: notifData.dnd_end,
-              created_at: notifData.created_at,
-              updated_at: notifData.updated_at
-            });
-            console.log('Preferencias de notificación cargadas correctamente:', notifData);
-          } else {
-            console.error('Error al obtener preferencias de notificación:', notifError);
-            // Usar valores predeterminados como último recurso
-            setNotificationPrefs({
-              user_id: session.user.id,
-              channel: 'email',
-              mute: false,
-              allowed_types: ['all'],
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-          }
-        } catch (err) {
-          console.error('Excepción al obtener preferencias de notificación:', err);
-          // Usar valores predeterminados en caso de excepción
-          setNotificationPrefs({
-            user_id: session.user.id,
-            channel: 'email',
-            mute: false,
-            allowed_types: ['all']
-          });
         }
         
         // Obtener sesiones del usuario
@@ -317,8 +259,34 @@ export default function PerfilUsuarioPage() {
 
   if (loading) {
     return (
-      <div className="w-full flex justify-center items-center p-8 min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+      <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Skeleton sidebar */}
+          <aside className="w-full lg:w-64 shrink-0">
+            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4">
+              <div className="flex flex-col items-center mb-6 p-4">
+                <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse mb-4" />
+                <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+                <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              </div>
+              <div className="space-y-2">
+                {[...Array(7)].map((_, i) => (
+                  <div key={i} className="h-10 bg-gray-100 dark:bg-gray-700/50 rounded-md animate-pulse" />
+                ))}
+              </div>
+            </div>
+          </aside>
+          {/* Skeleton content */}
+          <main className="flex-grow bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+            <div className="h-7 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+            <div className="h-4 w-72 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-8" />
+            <div className="space-y-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-14 bg-gray-100 dark:bg-gray-700/50 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          </main>
+        </div>
       </div>
     );
   }
@@ -361,7 +329,7 @@ export default function PerfilUsuarioPage() {
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-left
                     ${
                       currentSection === section.id
-                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
                     }`}
                 >
@@ -410,48 +378,6 @@ export default function PerfilUsuarioPage() {
           {currentSection === 'notificaciones' && (
             <NotificacionesSection 
               user={user}
-              preferences={{
-                // Adaptamos los datos al formato que espera el componente
-                id: 'preferences', // ID genérico ya que no existe en la tabla
-                user_id: notificationPrefs?.user_id || (user?.id || ''),
-                email_enabled: notificationPrefs?.channel === 'email' && !notificationPrefs?.mute,
-                push_enabled: notificationPrefs?.channel === 'push' && !notificationPrefs?.mute,
-                whatsapp_enabled: notificationPrefs?.channel === 'whatsapp' && !notificationPrefs?.mute,
-                do_not_disturb_start: notificationPrefs?.dnd_start || '',
-                do_not_disturb_end: notificationPrefs?.dnd_end || '',
-                do_not_disturb_enabled: notificationPrefs?.dnd_start !== undefined && notificationPrefs?.dnd_end !== undefined,
-                created_at: notificationPrefs?.created_at || new Date().toISOString(),
-                updated_at: notificationPrefs?.updated_at || new Date().toISOString()
-              } as any}
-              onPreferencesUpdated={async (prefs: any) => {
-                try {
-                  // Determinamos el canal activo basado en las opciones seleccionadas
-                  const channel = prefs.email_enabled ? 'email' : prefs.push_enabled ? 'push' : 'whatsapp';
-                  const mute = !(prefs.email_enabled || prefs.push_enabled || prefs.whatsapp_enabled);
-                  
-                  // Guardamos usando la nueva función RPC
-                  const { data: savedPrefs, error } = await supabase.rpc('save_user_notification_preferences', {
-                    p_user_id: prefs.user_id,
-                    p_channel: channel,
-                    p_mute: mute,
-                    p_allowed_types: ['all'],
-                    p_dnd_start: prefs.do_not_disturb_enabled ? prefs.do_not_disturb_start : null,
-                    p_dnd_end: prefs.do_not_disturb_enabled ? prefs.do_not_disturb_end : null
-                  });
-                  
-                  if (error) {
-                    console.error('Error al guardar preferencias:', error);
-                    toast.error('No se pudieron guardar las preferencias de notificación');
-                  } else {
-                    console.log('Preferencias guardadas correctamente:', savedPrefs);
-                    setNotificationPrefs(savedPrefs);
-                    toast.success('Preferencias de notificación actualizadas');
-                  }
-                } catch (err) {
-                  console.error('Excepción al guardar preferencias:', err);
-                  toast.error('Error al procesar la actualización de preferencias');
-                }
-              }}
             />
           )}
           

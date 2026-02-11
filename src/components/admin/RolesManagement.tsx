@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PermissionsMatrix from './PermissionsMatrix';
+import { RolesListSkeleton } from './RolesSkeleton';
 
 interface RolesManagementProps {
   organizationId: number;
@@ -92,12 +93,7 @@ export default function RolesManagement({ organizationId }: RolesManagementProps
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        <span className="ml-2 text-gray-600">Cargando roles...</span>
-      </div>
-    );
+    return <RolesListSkeleton />;
   }
 
   if (error) {

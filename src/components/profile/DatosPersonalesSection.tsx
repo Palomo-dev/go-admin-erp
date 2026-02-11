@@ -239,7 +239,7 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
         {!editing ? (
           <button
             onClick={handleEdit}
-            className="flex items-center px-3 py-1.5 text-sm rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+            className="flex items-center px-3 py-1.5 text-sm rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
           >
             <Edit2 size={16} className="mr-1.5" />
             Editar
@@ -261,8 +261,7 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
             ) : (
               <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center relative overflow-hidden">
                 <span className="text-2xl font-bold text-gray-500 dark:text-gray-300">
-                  {profile?.full_name?.charAt(0).toUpperCase() || 
-                   profile?.first_name?.charAt(0).toUpperCase() || '?'}
+                  {profile?.first_name?.charAt(0).toUpperCase() || '?'}
                 </span>
                 {editing && (
                   <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
@@ -390,7 +389,7 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
             </button>
             <button
               type="submit"
-              className="flex items-center px-4 py-2 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700 disabled:bg-purple-400"
+              className="flex items-center px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
               disabled={loading}
             >
               {loading ? (

@@ -241,7 +241,7 @@ class ElectronicInvoicingService {
             identification_number,
             dv,
             email,
-            municipality_id,
+            fiscal_municipality_id,
             tribute_id,
             legal_organization_id
           )
@@ -267,7 +267,7 @@ class ElectronicInvoicingService {
         if (!invoice.customer.email) {
           errors.push('El cliente no tiene email');
         }
-        if (!invoice.customer.municipality_id) {
+        if (!invoice.customer.fiscal_municipality_id) {
           errors.push('El cliente no tiene municipio asignado');
         }
       }

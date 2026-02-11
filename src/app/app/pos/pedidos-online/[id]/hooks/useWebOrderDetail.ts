@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
+import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
 import type { WebOrder, WebOrderStatus } from '@/lib/services/webOrdersService';
 
 interface UseWebOrderDetailReturn {
@@ -118,20 +119,23 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   };
 
   const handleConfirmOrder = async () => {
+    if (!order) return;
     setActionLoading(true);
     try {
-      const estimatedReadyAt = new Date(Date.now() + estimatedMinutes * 60000).toISOString();
-      await updateOrderStatus('confirmed', { estimated_ready_at: estimatedReadyAt });
+      const result = await webOrderConfirmationService.confirmOrder(order, estimatedMinutes);
+      const parts = [`Venta creada · Comanda enviada a cocina · ${estimatedMinutes} min`];
+      if (result.shipmentId) parts.push('· Envío creado');
       toast({
         title: 'Pedido confirmado',
-        description: `Tiempo estimado: ${estimatedMinutes} minutos`,
+        description: parts.join(' '),
       });
       setConfirmDialogOpen(false);
       loadOrder();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error confirmando pedido:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo confirmar el pedido',
+        title: 'Error al confirmar pedido',
+        description: error?.message || 'No se pudo confirmar el pedido',
         variant: 'destructive',
       });
     } finally {
@@ -226,58 +230,22 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
 
   const handleConvertToSale = async () => {
     if (!order) return;
+
+    // Si ya tiene sale_id vinculado (creado al confirmar), ir directo a la venta
+    if (order.sale_id) {
+      router.push(`/app/pos/ventas/${order.sale_id}`);
+      return;
+    }
+
+    // Fallback: si por alguna razón no tiene sale_id, crear venta vía confirmación
     setActionLoading(true);
     try {
-      // Crear venta
-      const { data: sale, error: saleError } = await supabase
-        .from('sales')
-        .insert({
-          organization_id: order.organization_id,
-          branch_id: order.branch_id,
-          customer_id: order.customer_id,
-          total: order.total,
-          subtotal: order.subtotal,
-          tax_total: order.tax_total,
-          discount_total: order.discount_total,
-          balance: 0,
-          status: 'paid',
-          payment_status: 'paid',
-          notes: `Pedido web: ${order.order_number}`,
-        })
-        .select()
-        .single();
-
-      if (saleError) throw saleError;
-
-      // Crear items de venta
-      if (order.items && order.items.length > 0) {
-        const saleItems = order.items.map(item => ({
-          sale_id: sale.id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total: item.total,
-          tax_amount: item.tax_amount,
-          discount_amount: item.discount_amount,
-        }));
-
-        const { error: itemsError } = await supabase
-          .from('sale_items')
-          .insert(saleItems);
-
-        if (itemsError) throw itemsError;
-      }
-
-      // Vincular pedido con venta
-      await supabase
-        .from('web_orders')
-        .update({ sale_id: sale.id })
-        .eq('id', orderId);
-
+      const result = await webOrderConfirmationService.confirmOrder(order, 30);
       toast({ title: 'Venta creada exitosamente' });
-      router.push(`/app/pos/ventas/${sale.id}`);
-    } catch (error) {
-      toast({ title: 'Error al crear venta', variant: 'destructive' });
+      router.push(`/app/pos/ventas/${result.saleId}`);
+    } catch (error: any) {
+      console.error('Error convirtiendo a venta:', error);
+      toast({ title: 'Error al crear venta', description: error?.message, variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }

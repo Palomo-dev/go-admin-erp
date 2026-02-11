@@ -17,13 +17,10 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5): P
   if (!searchTerm || searchTerm.trim() === '') {
     console.log('Término de búsqueda vacío, no se realizará búsqueda');
     return {
-      organizaciones: [], 
-      sucursales: [], 
-      usuarios: [],
-      productos: [],
-      proveedores: [],
-      categorias: [],
-      clientes: []
+      organizaciones: [], sucursales: [], productos: [],
+      proveedores: [], categorias: [], clientes: [],
+      facturas: [], pedidosOnline: [], reservas: [], espacios: [],
+      membresias: [], vehiculosParking: []
     };
   }
 
@@ -45,12 +42,6 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5): P
       .from('branches')
       .select('id, name, organization_id')
       .ilike('name', `%${searchTerm}%`)
-      .limit(resultLimit);
-
-    const { data: usuarios, error: userError } = await supabase
-      .from('profiles')
-      .select('id, first_name, last_name, email')
-      .or(`first_name.ilike.%${searchTerm}%, last_name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%`)
       .limit(resultLimit);
 
     // Nuevas búsquedas
@@ -91,13 +82,69 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5): P
       .ilike('name', `%${searchTerm}%`)
       .eq('organization_id', organizationId)
       .limit(resultLimit);
-    
+
+    // Facturas de venta
+    const { data: facturas } = await supabase
+      .from('invoice_sales')
+      .select('id, number, total, status, customer_id, customers(full_name)')
+      .or(`number.ilike.%${searchTerm}%`)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(resultLimit);
+
+    // Pedidos online
+    const { data: pedidosOnline } = await supabase
+      .from('web_orders')
+      .select('id, order_number, customer_name, status, total')
+      .or(`order_number.ilike.%${searchTerm}%, customer_name.ilike.%${searchTerm}%`)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(resultLimit);
+
+    // Reservas (buscar por ID del espacio o nombre del cliente)
+    const { data: reservas } = await supabase
+      .from('reservations')
+      .select('id, status, checkin, checkout, customers(full_name), spaces(label)')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(resultLimit);
+
+    // Espacios
+    const { data: espacios } = await supabase
+      .from('spaces')
+      .select('id, label, floor_zone, status, space_types(name), branches!inner(organization_id)')
+      .ilike('label', `%${searchTerm}%`)
+      .eq('branches.organization_id', organizationId)
+      .limit(resultLimit);
+
+    // Membresías
+    const { data: membresias } = await supabase
+      .from('memberships')
+      .select('id, status, start_date, end_date, customers(full_name), membership_plans(name)')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(resultLimit);
+
+    // Vehículos de parqueadero
+    const { data: vehiculosParking } = await supabase
+      .from('parking_vehicles')
+      .select('id, plate, brand, model, vehicle_type, color')
+      .or(`plate.ilike.%${searchTerm}%, brand.ilike.%${searchTerm}%, model.ilike.%${searchTerm}%`)
+      .eq('organization_id', organizationId)
+      .limit(resultLimit);
+
     // Verificar si hay resultados de entidades relacionadas con organización
     const hayResultadosLocales = (
       (productos && productos.length > 0) ||
       (clientes && clientes.length > 0) ||
       (proveedores && proveedores.length > 0) ||
-      (categorias && categorias.length > 0)
+      (categorias && categorias.length > 0) ||
+      (facturas && facturas.length > 0) ||
+      (pedidosOnline && pedidosOnline.length > 0) ||
+      (reservas && reservas.length > 0) ||
+      (espacios && espacios.length > 0) ||
+      (membresias && membresias.length > 0) ||
+      (vehiculosParking && vehiculosParking.length > 0)
     );
     
     // Si no hay resultados locales, activar búsqueda sin filtro de organización
@@ -152,11 +199,16 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5): P
       return { 
         organizaciones: organizaciones || [], 
         sucursales: sucursales || [], 
-        usuarios: usuarios || [],
         clientes: clientesFallback || clientes || [],
         productos: productosFallback || productos || [],
         proveedores: proveedoresFallback || proveedores || [],
-        categorias: categoriasFallback || categorias || []
+        categorias: categoriasFallback || categorias || [],
+        facturas: facturas || [],
+        pedidosOnline: pedidosOnline || [],
+        reservas: reservas || [],
+        espacios: espacios || [],
+        membresias: membresias || [],
+        vehiculosParking: vehiculosParking || []
       };
     }
     
@@ -164,16 +216,20 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5): P
     const resultados = { 
       organizaciones: organizaciones || [], 
       sucursales: sucursales || [], 
-      usuarios: usuarios || [],
       productos: productos || [],
       proveedores: proveedores || [],
       categorias: categorias || [],
-      clientes: clientes || []
+      clientes: clientes || [],
+      facturas: facturas || [],
+      pedidosOnline: pedidosOnline || [],
+      reservas: reservas || [],
+      espacios: espacios || [],
+      membresias: membresias || [],
+      vehiculosParking: vehiculosParking || []
     };
     
     // Mapear claves de URL para cada tipo de entidad
     const urlMappings = {
-      users: '/usuarios',
       organizations: '/configuracion/organizaciones',
       branches: '/configuracion/sucursales',
       products: '/inventario/productos',
@@ -190,34 +246,41 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5): P
     console.log('🔄 Resultados finales:', {
       organizaciones: resultados.organizaciones.length,
       sucursales: resultados.sucursales.length,
-      usuarios: resultados.usuarios.length,
       productos: resultados.productos.length,
       proveedores: resultados.proveedores.length,
       categorias: resultados.categorias.length,
-      clientes: resultados.clientes.length
+      clientes: resultados.clientes.length,
+      facturas: resultados.facturas.length,
+      pedidosOnline: resultados.pedidosOnline.length,
+      reservas: resultados.reservas.length,
+      espacios: resultados.espacios.length,
+      membresias: resultados.membresias.length,
+      vehiculosParking: resultados.vehiculosParking.length
     });
     
     // Aplicar límites globales a todos los resultados
     return {
       organizaciones: limitarResultados(resultados.organizaciones), 
-      sucursales: limitarResultados(resultados.sucursales), 
-      usuarios: limitarResultados(resultados.usuarios),
+      sucursales: limitarResultados(resultados.sucursales),
       productos: limitarResultados(resultados.productos),
       proveedores: limitarResultados(resultados.proveedores),
       categorias: limitarResultados(resultados.categorias),
-      clientes: limitarResultados(resultados.clientes)
+      clientes: limitarResultados(resultados.clientes),
+      facturas: limitarResultados(resultados.facturas),
+      pedidosOnline: limitarResultados(resultados.pedidosOnline),
+      reservas: limitarResultados(resultados.reservas),
+      espacios: limitarResultados(resultados.espacios),
+      membresias: limitarResultados(resultados.membresias),
+      vehiculosParking: limitarResultados(resultados.vehiculosParking)
     };
   } catch (error) {
     console.error('Error al buscar datos:', error);
     // Retornar objeto vacío en caso de error
     return {
-      organizaciones: [],
-      sucursales: [],
-      usuarios: [],
-      clientes: [],
-      productos: [],
-      proveedores: [],
-      categorias: []
+      organizaciones: [], sucursales: [], clientes: [],
+      productos: [], proveedores: [], categorias: [],
+      facturas: [], pedidosOnline: [], reservas: [], espacios: [],
+      membresias: [], vehiculosParking: []
     };
   }
 };

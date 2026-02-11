@@ -1,15 +1,13 @@
 'use client';
 
 import React from 'react';
-import { EditarCategoriaForm } from '@/components/inventario/categorias/editar/EditarCategoriaForm';
+import { CategoryForm } from '@/components/inventario/categorias';
 
 interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 }
 
 export default function EditarCategoriaPage({ params }: PageProps) {
   const { id } = React.use(params);
-  return <EditarCategoriaForm categoriaId={parseInt(id)} />;
+  return <CategoryForm categoryUuid={id} />;
 }

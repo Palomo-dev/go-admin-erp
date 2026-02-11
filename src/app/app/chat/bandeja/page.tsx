@@ -306,7 +306,7 @@ export default function ChatBandejaPage() {
   };
 
   return (
-    <div className="h-screen flex overflow-hidden bg-white dark:bg-gray-900">
+    <div className="h-[calc(100vh-64px)] flex overflow-hidden bg-white dark:bg-gray-900">
       {/* Columna izquierda - Lista de conversaciones */}
       <div className={`
         ${showMobileChat ? 'hidden' : 'flex'} 

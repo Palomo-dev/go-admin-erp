@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,13 +13,12 @@ import {
   Package, 
   Palette, 
   MapPin, 
-  Car, 
   Users, 
   UserCheck, 
-  Landmark, 
+  Building2, 
   BarChart3, 
   Bell, 
-  Link as LinkIcon, 
+  Zap, 
   Bus, 
   Calendar, 
   Activity,
@@ -27,31 +26,47 @@ import {
   Lock,
   AlertCircle,
   CheckCircle,
-  Loader2
+  Loader2,
+  Shield,
+  CreditCard,
+  MessageSquare,
+  Banknote,
+  Dumbbell,
+  BedDouble,
+  ParkingCircle,
+  Briefcase,
+  Truck
 } from 'lucide-react';
 import { useActiveModules } from '@/hooks/useActiveModules';
 import { useModuleContext } from '@/lib/context/ModuleContext';
 import { moduleManagementService, type Module } from '@/lib/services/moduleManagementService';
+import { ModulesSkeleton } from '@/components/organization/OrganizationSkeletons';
 
 const moduleIcons: Record<string, React.ComponentType<any>> = {
-  'organizations': Users,
+  'organizations': Building2,
   'branding': Palette,
   'branches': MapPin,
+  'clientes': Users,
+  'subscriptions': CreditCard,
+  'roles': Shield,
+  'pos': ShoppingCart,
   'pos_retail': ShoppingCart,
   'pos_restaurant': ShoppingCart,
   'pos_gym': ShoppingCart,
   'inventory': Package,
-  'pms_hotel': Landmark,
-  'parking': Car,
+  'pms_hotel': BedDouble,
+  'parking': ParkingCircle,
   'crm': UserCheck,
-  'hrm': Users,
-  'finance': BarChart3,
+  'hrm': Briefcase,
+  'finance': Banknote,
   'reports': BarChart3,
   'notifications': Bell,
-  'integrations': LinkIcon,
-  'transport': Bus,
+  'integrations': Zap,
+  'transport': Truck,
   'calendar': Calendar,
-  'operations': Activity
+  'operations': Activity,
+  'chat': MessageSquare,
+  'gym': Dumbbell
 };
 
 export default function ModulesMarketplacePage() {
@@ -60,6 +75,12 @@ export default function ModulesMarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estado local optimista para módulos activos
+  const [optimisticActiveModules, setOptimisticActiveModules] = useState<Set<string>>(new Set());
+  const [isPending, startTransition] = useTransition();
+  // Controlar si la carga inicial ya terminó (para no mostrar loader en toggle)
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   const {
     activeModules,
@@ -67,6 +88,14 @@ export default function ModulesMarketplacePage() {
     refreshModules,
     loading: modulesLoading
   } = useActiveModules(organizationId || undefined);
+
+  // Sincronizar estado optimista con datos reales (solo en carga inicial)
+  useEffect(() => {
+    if (activeModules.length > 0 && !initialLoadComplete) {
+      setOptimisticActiveModules(new Set(activeModules.map(m => m.code)));
+      setInitialLoadComplete(true);
+    }
+  }, [activeModules, initialLoadComplete]);
 
   const moduleContext = useModuleContext();
 
@@ -102,18 +131,30 @@ export default function ModulesMarketplacePage() {
     loadAllModules();
   }, []);
 
-  const handleToggleModule = async (moduleCode: string, isActive: boolean) => {
+  const handleToggleModule = useCallback(async (moduleCode: string, isActive: boolean) => {
     if (!organizationId) return;
 
-    try {
-      setActionLoading(moduleCode);
-      setError(null);
+    // 1. ACTUALIZACIÓN OPTIMISTA INMEDIATA
+    const previousState = new Set(optimisticActiveModules);
+    
+    setOptimisticActiveModules(prev => {
+      const newSet = new Set(prev);
+      if (isActive) {
+        newSet.delete(moduleCode);
+      } else {
+        newSet.add(moduleCode);
+      }
+      return newSet;
+    });
 
+    setActionLoading(moduleCode);
+    setError(null);
+
+    try {
+      // 2. LLAMADA API EN BACKGROUND
       const response = await fetch('/api/modules', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           organizationId,
           moduleCode,
@@ -124,53 +165,65 @@ export default function ModulesMarketplacePage() {
       const result = await response.json();
 
       if (!result.success) {
+        // 3. REVERTIR SI FALLA
+        setOptimisticActiveModules(previousState);
         setError(result.message || 'Error al modificar el módulo');
         return;
       }
 
-      // Refrescar datos locales
-      await refreshModules();
-      
-      // Notificar a otros componentes (como el sidebar) que los módulos han cambiado
-      moduleContext.refreshModules();
+      // 4. Actualizar sidebar sin recargar página completa
+      startTransition(() => {
+        moduleContext.refreshModules();
+      });
+
+      // 5. Notificar a AppLayout para actualizar el sidebar
+      window.dispatchEvent(new Event('modules-updated'));
 
     } catch (err) {
+      // REVERTIR EN CASO DE ERROR
+      setOptimisticActiveModules(previousState);
       console.error('Error toggling module:', err);
       setError('Error de conexión al modificar el módulo');
     } finally {
       setActionLoading(null);
     }
-  };
+  }, [organizationId, optimisticActiveModules, moduleContext]);
 
-  const getModuleStatus = (moduleCode: string) => {
-    return activeModules.some(m => m.code === moduleCode);
-  };
+  // Usar estado optimista para verificar si módulo está activo
+  const getModuleStatus = useCallback((moduleCode: string) => {
+    return optimisticActiveModules.has(moduleCode);
+  }, [optimisticActiveModules]);
 
-  const canToggleModule = (module: Module) => {
-    if (module.is_core) return false; // Módulos core no se pueden desactivar
+  const canToggleModule = useCallback((module: Module) => {
+    if (module.is_core) return false;
     
-    const isActive = getModuleStatus(module.code);
+    const isActive = optimisticActiveModules.has(module.code);
     
-    if (isActive) return true; // Siempre se puede desactivar
+    if (isActive) return true;
     
-    // Para activar, verificar límites del plan
-    if (!organizationStatus) return false;
+    const plan = organizationStatus?.plan;
+    if (!plan) return false;
     
-    const activeCount = organizationStatus.active_modules.filter(code => {
+    // Contar módulos activos usando estado optimista
+    const activeCount = Array.from(optimisticActiveModules).filter(code => {
       const mod = allModules.find(m => m.code === code);
       return mod && !mod.is_core;
     }).length;
     
-    return activeCount < organizationStatus.plan.max_modules;
-  };
+    return activeCount < plan.max_modules;
+  }, [optimisticActiveModules, organizationStatus, allModules]);
 
-  if (loading || modulesLoading) {
+  // Solo mostrar skeleton en carga inicial, NO en toggle de módulos
+  const showInitialLoader = (loading || modulesLoading) && !initialLoadComplete;
+  
+  if (showInitialLoader) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Cargando módulos...</span>
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="space-y-4">
+          <h1 className="text-3xl font-bold">Marketplace de Módulos</h1>
+          <p className="text-gray-600">Activa y desactiva módulos según las necesidades de tu negocio</p>
         </div>
+        <ModulesSkeleton />
       </div>
     );
   }
@@ -190,10 +243,14 @@ export default function ModulesMarketplacePage() {
 
   const coreModules = allModules.filter(m => m.is_core);
   const paidModules = allModules.filter(m => !m.is_core);
-  const activeCount = organizationStatus?.active_modules.filter(code => {
+  const coreCount = coreModules.length;
+  
+  // Usar estado optimista para conteo en tiempo real
+  const additionalActiveCount = Array.from(optimisticActiveModules).filter(code => {
     const mod = allModules.find(m => m.code === code);
     return mod && !mod.is_core;
-  }).length || 0;
+  }).length;
+  const totalActiveCount = coreCount + additionalActiveCount;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -206,26 +263,26 @@ export default function ModulesMarketplacePage() {
       </div>
 
       {/* Plan Status */}
-      {organizationStatus && (
+      {organizationStatus?.plan && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-yellow-500" />
-              Plan {organizationStatus.plan.name}
+              {organizationStatus.plan.name}
             </CardTitle>
             <CardDescription>
-              Uso de módulos: {activeCount} de {organizationStatus.plan.max_modules}
+              Uso de módulos: {totalActiveCount} de {organizationStatus.plan.max_modules} ({coreCount} core + {additionalActiveCount} adicionales)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <Progress 
-                value={(activeCount / organizationStatus.plan.max_modules) * 100} 
+                value={(totalActiveCount / organizationStatus.plan.max_modules) * 100} 
                 className="h-2"
               />
               <div className="flex justify-between text-sm text-gray-500">
-                <span>{activeCount} módulos activos</span>
-                <span>{organizationStatus.plan.max_modules - activeCount} disponibles</span>
+                <span>{totalActiveCount} módulos activos ({coreCount} core)</span>
+                <span>{organizationStatus.plan.max_modules - totalActiveCount} adicionales disponibles</span>
               </div>
             </div>
           </CardContent>
@@ -352,7 +409,7 @@ export default function ModulesMarketplacePage() {
       </div>
 
       {/* Upgrade Plan CTA */}
-      {organizationStatus && activeCount >= organizationStatus.plan.max_modules && (
+      {organizationStatus?.plan && totalActiveCount >= organizationStatus.plan.max_modules && (
         <Card className="border-purple-200 bg-purple-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-800">

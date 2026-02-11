@@ -36,6 +36,8 @@ import { Badge } from '@/components/ui/badge';
 import { Layers } from 'lucide-react';
 import SpacesService, { type Space, type SpaceType, type SpaceStatus, type SpaceCategory } from '@/lib/services/spacesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { supabase } from '@/lib/supabase/config';
+import spaceServicesService, { type OrgServiceView, type SpaceServiceView } from '@/lib/services/spaceServicesService';
 
 export default function EspaciosPage() {
   const { toast } = useToast();
@@ -46,12 +48,16 @@ export default function EspaciosPage() {
   const [spaceCategories, setSpaceCategories] = useState<SpaceCategory[]>([]);
   const [floorZones, setFloorZones] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<SpaceStatus | 'all'>('all');
   const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [serviceFilter, setServiceFilter] = useState<string>('all');
+  const [orgServices, setOrgServices] = useState<OrgServiceView[]>([]);
+  const [spaceServicesMap, setSpaceServicesMap] = useState<Record<string, SpaceServiceView[]>>({});
   
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,17 +93,29 @@ export default function EspaciosPage() {
 
     try {
       setIsLoading(true);
-      const [spacesData, typesData, categoriesData, zonesData] = await Promise.all([
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+      const [spacesData, typesData, categoriesData, zonesData, orgSvcs] = await Promise.all([
         SpacesService.getSpaces({ branchId: organization.id }),
         SpacesService.getSpaceTypes(organization.id),
         SpacesService.getSpaceCategories(),
         SpacesService.getFloorZones(organization.id),
+        spaceServicesService.getOrgServices(organization.id),
       ]);
 
       setSpaces(spacesData);
       setSpaceTypes(typesData);
       setSpaceCategories(categoriesData);
       setFloorZones(zonesData);
+      setOrgServices(orgSvcs);
+
+      // Cargar mapa de servicios por espacio
+      if (spacesData.length > 0) {
+        const svcMap = await spaceServicesService.getSpaceServicesMap(
+          spacesData.map((s: Space) => s.id)
+        );
+        setSpaceServicesMap(svcMap);
+      }
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast({
@@ -118,8 +136,11 @@ export default function EspaciosPage() {
     const matchesStatus = statusFilter === 'all' || space.status === statusFilter;
     const matchesZone = zoneFilter === 'all' || space.floor_zone === zoneFilter;
     const matchesType = typeFilter === 'all' || space.space_type_id === typeFilter;
+    const matchesService = serviceFilter === 'all' || (spaceServicesMap[space.id] || []).some(
+      (svc) => svc.org_service_id === serviceFilter
+    );
 
-    return matchesSearch && matchesStatus && matchesZone && matchesType;
+    return matchesSearch && matchesStatus && matchesZone && matchesType && matchesService;
   });
 
   // Calcular paginación
@@ -131,7 +152,7 @@ export default function EspaciosPage() {
   // Resetear página cuando cambian los filtros
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, zoneFilter, typeFilter, pageSize]);
+  }, [searchTerm, statusFilter, zoneFilter, typeFilter, serviceFilter, pageSize]);
 
   // Manejar selección
   const handleSelect = (id: string, selected: boolean) => {
@@ -155,14 +176,15 @@ export default function EspaciosPage() {
   // CRUD operations
   const handleSave = async (data: any) => {
     try {
+      let result: any;
       if (editingSpace) {
-        await SpacesService.updateSpace(editingSpace.id, data);
+        result = await SpacesService.updateSpace(editingSpace.id, data);
         toast({
           title: 'Éxito',
           description: 'Espacio actualizado correctamente',
         });
       } else {
-        await SpacesService.createSpace({
+        result = await SpacesService.createSpace({
           ...data,
           branch_id: organization!.id,
         });
@@ -174,6 +196,7 @@ export default function EspaciosPage() {
       
       loadData();
       setEditingSpace(null);
+      return result;
     } catch (error) {
       console.error('Error guardando espacio:', error);
       toast({
@@ -397,12 +420,15 @@ export default function EspaciosPage() {
             statusFilter={statusFilter}
             zoneFilter={zoneFilter}
             typeFilter={typeFilter}
+            serviceFilter={serviceFilter}
             floorZones={floorZones}
             spaceTypes={spaceTypes}
+            orgServices={orgServices}
             onSearchChange={setSearchTerm}
             onStatusChange={setStatusFilter}
             onZoneChange={setZoneFilter}
             onTypeChange={setTypeFilter}
+            onServiceChange={setServiceFilter}
           />
 
           <BulkActionsBar
@@ -447,6 +473,7 @@ export default function EspaciosPage() {
                       onSelect={handleSelect}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      spaceServicesMap={spaceServicesMap}
                     />
                   </div>
                 )}
@@ -473,6 +500,7 @@ export default function EspaciosPage() {
                         onSelect={handleSelect}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        spaceServicesMap={spaceServicesMap}
                       />
                     </div>
                   );
@@ -483,6 +511,7 @@ export default function EspaciosPage() {
               <EspaciosGrid
                 spaces={paginatedSpaces}
                 selectedSpaces={selectedSpaces}
+                spaceServicesMap={spaceServicesMap}
                 onSelect={handleSelect}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
@@ -518,6 +547,8 @@ export default function EspaciosPage() {
         availableZones={floorZones}
         onSave={handleSave}
         onCreateType={() => setShowTypeDialog(true)}
+        organizationId={organization?.id}
+        userId={currentUserId}
       />
 
       <CreateSpaceTypeDialog

@@ -32,6 +32,7 @@ import {
   UserCog,
   Banknote,
   Clock,
+  Database,
   Globe,
   FileBarChart,
   Home,
@@ -86,6 +87,7 @@ import {
   GitMerge,
   Upload,
   History,
+  Palette,
 } from 'lucide-react';
 import ProfileDropdownMenu from '../ProfileDropdownMenu';
 import { NavItem } from './NavItem';
@@ -99,7 +101,8 @@ const SidebarNavigationComponent = ({
   userData, 
   orgName,
   collapsed,
-  onNavigate
+  onNavigate,
+  activeModuleCodes
 }: SidebarNavigationProps) => {
   const pathname = usePathname();
   
@@ -118,6 +121,7 @@ const SidebarNavigationComponent = ({
           name: "CRM", 
           href: "/app/crm", 
           icon: <Users size={18} />,
+          moduleCode: 'crm',
           submenu: [
             { name: "Dashboard", href: "/app/crm", icon: <Home size={16} /> },
             { name: "Bandeja", href: "/app/crm/bandeja", icon: <Inbox size={16} /> },
@@ -138,6 +142,7 @@ const SidebarNavigationComponent = ({
           name: "HRM", 
           href: "/app/hrm", 
           icon: <UserCog size={18} />,
+          moduleCode: 'hrm',
           submenu: [
             { name: "Panel HRM", href: "/app/hrm", icon: <Home size={16} /> },
             { name: "Empleados", href: "/app/hrm/empleados", icon: <Users size={16} /> },
@@ -159,6 +164,7 @@ const SidebarNavigationComponent = ({
           name: "Finanzas", 
           href: "/app/finanzas", 
           icon: <FileText size={18} />,
+          moduleCode: 'finance',
           submenu: [
             { name: "Dashboard", href: "/app/finanzas", icon: <BarChart3 size={16} /> },
             { name: "Facturas de venta", href: "/app/finanzas/facturas-venta", icon: <FileText size={16} /> },
@@ -182,6 +188,7 @@ const SidebarNavigationComponent = ({
           name: "Inventario", 
           href: "/app/inventario", 
           icon: <Package size={18} />,
+          moduleCode: 'inventory',
           submenu: [
             { name: "Dashboard", href: "/app/inventario", icon: <Home size={16} /> },
             { name: "Productos", href: "/app/inventario/productos", icon: <Package size={16} /> },
@@ -210,12 +217,14 @@ const SidebarNavigationComponent = ({
           name: "POS", 
           href: "/app/pos", 
           icon: <ShoppingCart size={18} />,
+          moduleCode: 'pos',
           submenu: [
             { name: "POS", href: "/app/pos", icon: <ShoppingCart size={16} /> },
             { name: "Pedidos Online", href: "/app/pos/pedidos-online", icon: <Globe size={16} /> },
             { name: "Ventas", href: "/app/pos/ventas", icon: <Receipt size={16} /> },
             { name: "Cajas", href: "/app/pos/cajas", icon: <Wallet size={16} /> },
             { name: "Mesas", href: "/app/pos/mesas", icon: <Table2 size={16} /> },
+            { name: "Reservas Mesas", href: "/app/pos/reservas-mesas", icon: <CalendarClock size={16} /> },
             { name: "Comandas", href: "/app/pos/comandas", icon: <ClipboardList size={16} /> },
             { name: "Devoluciones", href: "/app/pos/devoluciones", icon: <Undo2 size={16} /> },
             { name: "Propinas", href: "/app/pos/propinas", icon: <Gift size={16} /> },
@@ -231,6 +240,7 @@ const SidebarNavigationComponent = ({
           name: "PMS", 
           href: "/app/pms", 
           icon: <Building2 size={18} />,
+          moduleCode: 'pms_hotel',
           submenu: [
             { name: "Dashboard", href: "/app/pms", icon: <Home size={16} /> },
             { name: "Calendario", href: "/app/pms/calendario", icon: <CalendarDays size={16} /> },
@@ -240,6 +250,7 @@ const SidebarNavigationComponent = ({
             { name: "Llegadas (Check-in)", href: "/app/pms/checkin", icon: <Key size={16} /> },
             { name: "Salidas (Check-out)", href: "/app/pms/checkout", icon: <LogOutIcon size={16} /> },
             { name: "Espacios", href: "/app/pms/espacios", icon: <BedDouble size={16} /> },
+            { name: "Servicios", href: "/app/pms/servicios", icon: <Settings size={16} /> },
             { name: "Tipos de Espacio", href: "/app/pms/tipos-espacio", icon: <Layers size={16} /> },
             { name: "Categorías", href: "/app/pms/categorias", icon: <FolderOpen size={16} /> },
             { name: "Tarifas", href: "/app/pms/tarifas", icon: <DollarSign size={16} /> },
@@ -255,6 +266,7 @@ const SidebarNavigationComponent = ({
           name: "Chat", 
           href: "/app/chat", 
           icon: <MessageCircle size={18} />,
+          moduleCode: 'chat',
           submenu: [
             { name: "Bandeja", href: "/app/chat/bandeja", icon: <Inbox size={16} /> },
             { name: "Canales", href: "/app/chat/canales", icon: <MessageSquare size={16} /> },
@@ -269,6 +281,7 @@ const SidebarNavigationComponent = ({
           name: "Transporte", 
           href: "/app/transporte", 
           icon: <Bus size={18} />,
+          moduleCode: 'transport',
           submenu: [
             { name: "Dashboard", href: "/app/transporte", icon: <Home size={16} /> },
             { name: "Transportadoras", href: "/app/transporte/transportadoras", icon: <Truck size={16} /> },
@@ -293,6 +306,7 @@ const SidebarNavigationComponent = ({
           name: "Gimnasio", 
           href: "/app/gym", 
           icon: <Dumbbell size={18} />,
+          moduleCode: 'gym',
           submenu: [
             { name: "Dashboard", href: "/app/gym", icon: <Home size={16} /> },
             { name: "Check-in", href: "/app/gym/checkin", icon: <LogIn size={16} /> },
@@ -310,6 +324,7 @@ const SidebarNavigationComponent = ({
           name: "Parqueadero", 
           href: "/app/parking", 
           icon: <ParkingCircle size={18} />,
+          moduleCode: 'parking',
           submenu: [
             { name: "Dashboard", href: "/app/parking", icon: <Home size={16} /> },
             { name: "Operación", href: "/app/parking/operacion", icon: <ParkingCircle size={16} /> },
@@ -330,10 +345,12 @@ const SidebarNavigationComponent = ({
     {
       title: "Organización",
       items: [
+        { name: "Clientes", href: "/app/clientes", icon: <Users size={18} /> },
         { 
           name: "Calendario", 
           href: "/app/calendario", 
           icon: <CalendarDays size={18} />,
+          moduleCode: 'calendar',
           submenu: [
             { name: "Vista General", href: "/app/calendario", icon: <CalendarDays size={16} /> },
             { name: "Recurrencias", href: "/app/calendario/recurrencias", icon: <GitMerge size={16} /> },
@@ -341,42 +358,75 @@ const SidebarNavigationComponent = ({
             { name: "Configuración", href: "/app/calendario/configuracion", icon: <Settings size={16} /> },
           ]
         },
-        { name: "Clientes", href: "/app/clientes", icon: <Users size={18} /> },
         { 
-          name: "Organización", 
+          name: "Reportes", 
+          href: "/app/reportes", 
+          icon: <FileBarChart size={18} />,
+          moduleCode: 'reports',
+          submenu: [
+            { name: "Dashboard", href: "/app/reportes", icon: <Home size={16} /> },
+            { name: "Ventas", href: "/app/reportes/ventas", icon: <ShoppingCart size={16} /> },
+            { name: "Inventario", href: "/app/reportes/inventario", icon: <Package size={16} /> },
+            { name: "Finanzas", href: "/app/reportes/finanzas", icon: <DollarSign size={16} /> },
+            { name: "Hotelería", href: "/app/reportes/pms", icon: <BedDouble size={16} /> },
+            { name: "HRM", href: "/app/reportes/hrm", icon: <UserCog size={16} /> },
+            { name: "Auditoría", href: "/app/reportes/auditoria", icon: <Shield size={16} /> },
+            { name: "Personalizado", href: "/app/reportes/personalizados", icon: <Settings size={16} /> },
+            { name: "Programados", href: "/app/reportes/programados", icon: <Clock size={16} /> },
+            { name: "Ejecuciones", href: "/app/reportes/ejecuciones", icon: <Database size={16} /> },
+          ]
+        },
+        { 
+          name: "Mi Organización", 
           href: "/app/organizacion", 
           icon: <Building2 size={18} />,
           submenu: [
+            { name: "Información", href: "/app/organizacion/informacion", icon: <Building2 size={16} /> },
+            { name: "Branding", href: "/app/organizacion/branding", icon: <Palette size={16} /> },
+            { name: "Dominios", href: "/app/organizacion/dominios", icon: <Globe size={16} /> },
             { name: "Miembros", href: "/app/organizacion/miembros", icon: <Users size={16} /> },
             { name: "Invitaciones", href: "/app/organizacion/invitaciones", icon: <Plus size={16} /> },
-            { name: "Información", href: "/app/organizacion/informacion", icon: <Building2 size={16} /> },
-            { name: "Mi Plan", href: "/app/organizacion/plan", icon: <CreditCard size={16} /> },
             { name: "Sucursales", href: "/app/organizacion/sucursales", icon: <MapPin size={16} /> },
+            { name: "Módulos", href: "/app/organizacion/modulos", icon: <Package size={16} /> },
+            { name: "Mi Plan", href: "/app/organizacion/plan", icon: <CreditCard size={16} /> },
             { name: "Mis Organizaciones", href: "/app/organizacion/mis-organizaciones", icon: <Building2 size={16} /> }
           ]
         },
         { 
-          name: "Administración", 
-          href: "/app/admin", 
-          icon: <Settings size={18} />,
+          name: "Roles y Permisos", 
+          href: "/app/roles", 
+          icon: <Shield size={18} />,
           submenu: [
-            { name: "Roles y Permisos", href: "/app/roles", icon: <Shield size={16} /> },
+            { name: "Gestión de Roles", href: "/app/roles", icon: <Shield size={16} /> },
             { name: "Configuración", href: "/app/roles/configuracion", icon: <Settings size={16} /> }
           ]
         },
-       /*{{ name: "Reportes", href: "/app/reportes", icon: <BarChart3 size={18} /> },
-        { name: "Timeline", href: "/app/timeline", icon: <CalendarClock size={18} /> },
-        { name: "Transporte", href: "/app/transporte", icon: <Bus size={18} /> }*/
       ]
     },
     {
       title: "Sistema",
       items: [
-        { name: "Notificaciones", href: "/app/notificaciones", icon: <Bell size={18} /> },
+        { 
+          name: "Notificaciones", 
+          href: "/app/notificaciones", 
+          icon: <Bell size={18} />,
+          moduleCode: 'notifications',
+          submenu: [
+            { name: "Dashboard", href: "/app/notificaciones", icon: <Home size={16} /> },
+            { name: "Bandeja", href: "/app/notificaciones/bandeja", icon: <Inbox size={16} /> },
+            { name: "Alertas", href: "/app/notificaciones/alertas", icon: <Bell size={16} /> },
+            { name: "Reglas", href: "/app/notificaciones/reglas", icon: <Shield size={16} /> },
+            { name: "Canales de Envío", href: "/app/notificaciones/canales", icon: <Send size={16} /> },
+            { name: "Plantillas", href: "/app/notificaciones/plantillas", icon: <FileText size={16} /> },
+            { name: "Logs de Envío", href: "/app/notificaciones/logs", icon: <Activity size={16} /> },
+            { name: "Preferencias", href: "/app/notificaciones/preferencias", icon: <Settings size={16} /> },
+          ]
+        },
         { 
           name: "Integraciones", 
           href: "/app/integraciones", 
           icon: <Link2 size={18} />,
+          moduleCode: 'integrations',
           submenu: [
             { name: "Dashboard", href: "/app/integraciones", icon: <Home size={16} /> },
             { name: "Conexiones", href: "/app/integraciones/conexiones", icon: <Link2 size={16} /> },
@@ -389,9 +439,10 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Timeline", 
+          name: "Operaciones", 
           href: "/app/timeline", 
           icon: <History size={18} />,
+          moduleCode: 'operations',
           submenu: [
             { name: "Vista General", href: "/app/timeline", icon: <History size={16} /> },
             { name: "Exportaciones", href: "/app/timeline/exportaciones", icon: <FileText size={16} /> },
@@ -401,14 +452,30 @@ const SidebarNavigationComponent = ({
       ]
     }
   ], []);
+
+  // Filtrar items según módulos activos de la organización
+  const filteredSections = useMemo(() => {
+    if (!activeModuleCodes) return navSections;
+
+    return navSections
+      .map(section => ({
+        ...section,
+        items: section.items.filter(item => {
+          // Items sin moduleCode siempre son visibles (core / siempre visible)
+          if (!(item as any).moduleCode) return true;
+          return activeModuleCodes.includes((item as any).moduleCode);
+        })
+      }))
+      .filter(section => section.items.length > 0);
+  }, [navSections, activeModuleCodes]);
   
   return (
     <div className="flex flex-col h-full transition-all duration-300">
-      {/* Contenedor superior para las secciones de navegación - con altura limitada */}
+      {/* Contenedor scrollable - incluye nav y en móvil también los botones de acción */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
-        <div className="space-y-1 px-0 py-2 pb-32 lg:pb-4">
+        <div className="space-y-1 px-0 py-2 pb-4">
           {/* Secciones de navegación utilizando el componente NavSection */}
-          {navSections.map((section, idx) => (
+          {filteredSections.map((section, idx) => (
             <NavSection
               key={idx}
               title={section.title}
@@ -419,9 +486,29 @@ const SidebarNavigationComponent = ({
             />
           ))}
         </div>
+
+        {/* Botones de suscripción y cerrar sesión DENTRO del scroll para móvil */}
+        <div className="lg:hidden px-3 pb-6 space-y-2 border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
+          <Link 
+            href="/app/plan"
+            onClick={onNavigate}
+            className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow transition-all duration-200 border border-blue-500 min-h-[44px]"
+          >
+            <CreditCard size={18} className="mr-2" />
+            <span>Mi Suscripción</span>
+          </Link>
+          <button
+            onClick={handleSignOut}
+            disabled={loading}
+            className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 active:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+          >
+            <LogOut size={18} className="mr-2" />
+            <span>{loading ? 'Cerrando...' : 'Cerrar Sesión'}</span>
+          </button>
+        </div>
       </div>
       
-      {/* Sección de perfil con el componente UserMenu compartido - siempre visible abajo */}
+      {/* Sección de perfil - siempre visible abajo */}
       <div className="flex-shrink-0 pt-3 mt-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 pb-safe-bottom pb-4">
         <div className="px-3">
           <ProfileDropdownMenu 
@@ -434,8 +521,8 @@ const SidebarNavigationComponent = ({
           />
         </div>
         
-        {/* Botón de suscripción destacado */}
-        <div className="px-3 mt-3 space-y-2">
+        {/* Botones de suscripción y cerrar sesión solo visibles en desktop (lg+) */}
+        <div className="hidden lg:block px-3 mt-3 space-y-2">
           <TooltipProvider>
             {collapsed ? (
               <Tooltip>
@@ -446,7 +533,6 @@ const SidebarNavigationComponent = ({
                     className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow transition-all duration-200 border border-blue-500 min-h-[44px]"
                   >
                     <CreditCard size={18} />
-                    <span className="lg:hidden ml-2">Mi Suscripción</span>
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent 
@@ -480,7 +566,6 @@ const SidebarNavigationComponent = ({
                     className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 active:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
                   >
                     <LogOut size={18} />
-                    <span className="lg:hidden ml-2">{loading ? 'Cerrando...' : 'Cerrar Sesión'}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent 

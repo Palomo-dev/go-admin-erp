@@ -2,10 +2,69 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import { CheckIcon, XMarkIcon, CreditCardIcon, CalendarIcon, BuildingOfficeIcon, DocumentTextIcon, NoSymbolIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, XMarkIcon, CreditCardIcon, CalendarIcon, DocumentTextIcon, NoSymbolIcon, ArrowPathIcon, CogIcon } from '@heroicons/react/24/outline';
+import { 
+  ShoppingCart, 
+  Package, 
+  Palette, 
+  MapPin, 
+  Users, 
+  UserCheck, 
+  Building2, 
+  BarChart3, 
+  Bell, 
+  Zap, 
+  Truck, 
+  Calendar, 
+  Activity,
+  Shield,
+  CreditCard as CreditCardLucide,
+  MessageSquare,
+  Banknote,
+  Dumbbell,
+  BedDouble,
+  ParkingCircle,
+  Briefcase,
+  type LucideIcon
+} from 'lucide-react';
 import { StarIcon, ArrowUpIcon } from '@heroicons/react/24/solid';
 import ChangePlanModal from './ChangePlanModal';
+import { PlanSkeleton } from './OrganizationSkeletons';
 import CancelSubscriptionModal from '@/components/subscription/CancelSubscriptionModal';
+import PaymentMethodCard from './PaymentMethodCard';
+
+// Mapa de iconos para módulos (igual que en modulos/page.tsx)
+const moduleIcons: Record<string, LucideIcon> = {
+  'organizations': Building2,
+  'branding': Palette,
+  'branches': MapPin,
+  'clientes': Users,
+  'subscriptions': CreditCardLucide,
+  'roles': Shield,
+  'pos': ShoppingCart,
+  'pos_retail': ShoppingCart,
+  'pos_restaurant': ShoppingCart,
+  'pos_gym': ShoppingCart,
+  'inventory': Package,
+  'pms_hotel': BedDouble,
+  'parking': ParkingCircle,
+  'crm': UserCheck,
+  'hrm': Briefcase,
+  'finance': Banknote,
+  'reports': BarChart3,
+  'notifications': Bell,
+  'integrations': Zap,
+  'transport': Truck,
+  'calendar': Calendar,
+  'operations': Activity,
+  'chat': MessageSquare,
+  'gym': Dumbbell
+};
+
+// Función para obtener el icono de un módulo
+const getModuleIcon = (code: string): LucideIcon => {
+  return moduleIcons[code] || Building2;
+};
 
 interface Plan {
   id: number;
@@ -42,6 +101,27 @@ interface Subscription {
   stripe_customer_id?: string;
   cancel_at_period_end?: boolean;
   canceled_at?: string;
+  billing_period?: 'monthly' | 'yearly';
+  metadata?: {
+    custom_config?: {
+      // Soportar ambos formatos: camelCase (signup) y snake_case (API)
+      modules_count?: number;
+      modulesCount?: number;
+      total_available_modules?: number;
+      branches_count?: number;
+      branchesCount?: number;
+      users_count?: number;
+      usersCount?: number;
+      ai_credits?: number;
+      aiCredits?: number;
+      selected_modules?: string[];
+      selectedModules?: string[];
+      billing_period?: string;
+      core_modules_count?: number;
+      max_modules_limit?: number;
+    };
+    is_enterprise_custom?: boolean;
+  };
 }
 
 interface OrganizationModule {
@@ -77,7 +157,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   const [branchCount, setBranchCount] = useState(0);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [reactivating, setReactivating] = useState(false);
-
+  const [aiCredits, setAiCredits] = useState<{ remaining: number; monthly: number } | null>(null);
+  
   useEffect(() => {
     if (orgId) {
       loadPlanData();
@@ -99,21 +180,57 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       if (orgError) throw orgError;
       setOrganizationName(orgData.name);
 
-      // Obtener suscripción actual
-      const { data: subData, error: subError } = await supabase
+      // Usar la función RPC get_current_plan para obtener el plan actual (mismo método que usa el módulo de módulos)
+      const { data: planData, error: planError } = await supabase
+        .rpc('get_current_plan', { org_id: orgId });
+
+      // También obtener los datos de Stripe de la tabla subscriptions
+      const { data: stripeData, error: stripeError } = await supabase
         .from('subscriptions')
-        .select(`
-          *,
-          plans!inner(*)
-        `)
+        .select('stripe_subscription_id, stripe_customer_id, cancel_at_period_end, canceled_at, metadata, billing_period')
         .eq('organization_id', orgId)
-        .eq('status', 'active')
         .single();
 
-      if (subError && subError.code !== 'PGRST116') {
-        console.error('Error loading subscription:', subError);
-      } else if (subData) {
-        setSubscription(subData);
+
+      if (planError) {
+        console.error('Error loading plan via RPC:', planError);
+      } else if (planData && planData.length > 0) {
+        const currentPlanData = planData[0];
+        // Construir objeto de suscripción compatible con la interfaz existente
+        const subscriptionData: Subscription = {
+          id: currentPlanData.subscription_id ? 1 : 0, // ID temporal si no hay suscripción real
+          organization_id: orgId,
+          plan_id: currentPlanData.plan_id,
+          status: currentPlanData.subscription_status || 'active',
+          current_period_start: currentPlanData.current_period_start || new Date().toISOString(),
+          current_period_end: currentPlanData.current_period_end || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          trial_start: currentPlanData.trial_start,
+          trial_end: currentPlanData.trial_end,
+          amount: parseFloat(currentPlanData.price_usd_month) || 0,
+          created_at: new Date().toISOString(),
+          stripe_subscription_id: stripeData?.stripe_subscription_id || undefined,
+          stripe_customer_id: stripeData?.stripe_customer_id || undefined,
+          cancel_at_period_end: stripeData?.cancel_at_period_end || false,
+          canceled_at: stripeData?.canceled_at || undefined,
+          billing_period: stripeData?.billing_period || stripeData?.metadata?.custom_config?.billing_period || 'monthly',
+          metadata: stripeData?.metadata || undefined,
+          plans: {
+            id: currentPlanData.plan_id,
+            code: currentPlanData.plan_code,
+            name: currentPlanData.plan_name,
+            price_usd_month: parseFloat(currentPlanData.price_usd_month) || 0,
+            price_usd_year: parseFloat(currentPlanData.price_usd_year) || 0,
+            trial_days: currentPlanData.trial_days || 0,
+            max_modules: currentPlanData.max_modules || 0,
+            max_branches: currentPlanData.max_branches || 0,
+            features: currentPlanData.features || {},
+            is_active: true
+          }
+        };
+        
+        // Siempre mostrar la suscripción si get_current_plan devuelve datos
+        // La función RPC siempre devuelve un plan (free por defecto si no hay suscripción)
+        setSubscription(subscriptionData);
       }
 
       // Obtener todos los planes disponibles
@@ -124,19 +241,31 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         .order('price_usd_month', { ascending: true });
 
       if (plansError) throw plansError;
-      setAvailablePlans(plansData || []);
+      // Parsear los precios a números (vienen como strings de la DB)
+      const parsedPlans = (plansData || []).map((plan: any) => ({
+        ...plan,
+        price_usd_month: parseFloat(plan.price_usd_month) || 0,
+        price_usd_year: parseFloat(plan.price_usd_year) || 0
+      }));
+      setAvailablePlans(parsedPlans);
 
-      // Obtener módulos de la organización
+      // Obtener módulos de la organización con left join para evitar errores
       const { data: orgModulesData, error: orgModulesError } = await supabase
         .from('organization_modules')
         .select(`
           *,
-          modules!inner(*)
+          modules(*)
         `)
-        .eq('organization_id', orgId);
+        .eq('organization_id', orgId)
+        .eq('is_active', true);
 
-      if (orgModulesError) throw orgModulesError;
-      setOrganizationModules(orgModulesData || []);
+      if (orgModulesError) {
+        console.error('Error loading organization modules:', orgModulesError);
+      }
+      
+      // Filtrar solo los que tienen datos de módulo válidos
+      const validModules = (orgModulesData || []).filter((om: any) => om.modules !== null);
+      setOrganizationModules(validModules);
 
       // Obtener todos los módulos para comparar
       const { data: allModulesData, error: allModulesError } = await supabase
@@ -159,6 +288,37 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         console.error('Error loading branches:', branchError);
       } else {
         setBranchCount(branchData?.length || 0);
+      }
+
+      // Obtener créditos de IA
+      const { data: aiSettingsData, error: aiSettingsError } = await supabase
+        .from('ai_settings')
+        .select('credits_remaining')
+        .eq('organization_id', orgId)
+        .single();
+
+      // Obtener créditos mensuales: primero de metadata (Enterprise), luego de plan
+      const currentPlanId = planData?.[0]?.plan_id;
+      const planFromList = (plansData || []).find((p: any) => p.id === currentPlanId);
+      const customConfig = stripeData?.metadata?.custom_config;
+      
+      // Prioridad: 1) metadata.custom_config.ai_credits 2) plan.ai_credits_monthly 3) features.ai_credits_month
+      const aiCreditsFromMetadata = customConfig?.ai_credits || customConfig?.aiCredits;
+      const planMonthlyCredits = aiCreditsFromMetadata ?? 
+                                 planFromList?.ai_credits_monthly ?? 
+                                 planData?.[0]?.features?.ai_credits_month ?? 
+                                 10000; // Default
+
+      if (!aiSettingsError && aiSettingsData) {
+        setAiCredits({
+          remaining: aiSettingsData.credits_remaining || 0,
+          monthly: planMonthlyCredits
+        });
+      } else {
+        setAiCredits({
+          remaining: planMonthlyCredits,
+          monthly: planMonthlyCredits
+        });
       }
 
     } catch (err: any) {
@@ -295,12 +455,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Cargando información del plan...</span>
-      </div>
-    );
+    return <PlanSkeleton />;
   }
 
   if (error) {
@@ -319,12 +474,16 @@ export default function PlanTab({ orgId }: PlanTabProps) {
     );
   }
 
-  const currentPlan = subscription?.plans || availablePlans.find(p => p.code === 'free');
+  const currentPlan = subscription?.plans || availablePlans.find(p => p.code === 'pro');
   const activeModules = organizationModules.filter(om => om.is_active);
+  // Módulos core (siempre 6)
+  const coreModulesCount = allModules.filter(m => m.is_core).length || 6;
   // Módulos activos que NO son core (estos sí cuentan para los límites del plan)
-  const activePaidModules = organizationModules.filter(om => om.is_active && !om.modules.is_core);
+  const activePaidModules = organizationModules.filter(om => om.is_active && !om.modules?.is_core);
+  // Total de módulos activos incluyendo core
+  const totalActiveModules = coreModulesCount + activePaidModules.length;
   const availableModules = allModules.filter(m => 
-    !organizationModules.some(om => om.module_code === m.code)
+    !m.is_core && !organizationModules.some(om => om.module_code === m.code)
   );
 
   return (
@@ -354,22 +513,38 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   </h3>
                   <div className="flex items-center space-x-2 mt-1">
                     {(() => {
-                      // Determinar si es facturación anual o mensual basado en las fechas
-                      const periodStart = new Date(subscription.current_period_start);
-                      const periodEnd = new Date(subscription.current_period_end);
-                      const diffMonths = (periodEnd.getFullYear() - periodStart.getFullYear()) * 12 + 
-                        (periodEnd.getMonth() - periodStart.getMonth());
-                      const isYearly = diffMonths >= 11; // 11+ meses = anual
-                      const currentAmount = isYearly ? currentPlan?.price_usd_year : currentPlan?.price_usd_month;
+                      // Usar billing_period de la suscripción
+                      const isYearly = subscription.billing_period === 'yearly';
+                      
+                      // Para Enterprise, calcular precio desde metadata
+                      let currentAmount = isYearly ? currentPlan?.price_usd_year : currentPlan?.price_usd_month;
+                      
+                      if (currentPlan?.code === 'enterprise' && subscription.metadata?.custom_config) {
+                        const cfg = subscription.metadata.custom_config;
+                        // Precio base Enterprise: calculado desde config
+                        // Soportar tanto camelCase (signup) como snake_case (API)
+                        const basePrice = 199;
+                        const modulesCount = cfg.modulesCount || cfg.modules_count || 6;
+                        const branchesCount = cfg.branchesCount || cfg.branches_count || 5;
+                        const usersCount = cfg.usersCount || cfg.users_count || 10;
+                        const aiCredits = cfg.aiCredits || cfg.ai_credits || 0;
+                        
+                        const modulesPrice = Math.max(0, modulesCount - 6) * 49;
+                        const branchesPrice = branchesCount * 59;
+                        const usersPrice = usersCount * 19;
+                        const aiCreditsPrice = aiCredits * 0.01;
+                        const monthlyTotal = basePrice + modulesPrice + branchesPrice + usersPrice + aiCreditsPrice;
+                        currentAmount = isYearly ? monthlyTotal * 10 : monthlyTotal;
+                      }
                       
                       return (
                         <>
                           <p className="text-sm text-gray-500">
                             {formatPrice(currentAmount || 0)} / {isYearly ? 'año' : 'mes'}
                           </p>
-                          {isYearly && currentPlan?.price_usd_month && currentPlan?.price_usd_year && (
+                          {isYearly && (currentAmount ?? 0) > 0 && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Ahorras {formatPrice((currentPlan.price_usd_month * 12) - currentPlan.price_usd_year)} al año
+                              Ahorras 2 meses al año
                             </span>
                           )}
                         </>
@@ -467,8 +642,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 })()}
 
                 {/* Botones adicionales de gestión */}
-                {currentPlan?.code !== 'free' && (
-                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-200">
+                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-200">
                     {subscription?.stripe_customer_id && (
                       <button
                         onClick={handleOpenBillingPortal}
@@ -496,8 +670,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         Cancelar Suscripción
                       </button>
                     )}
-                  </div>
-                )}
+                </div>
 
                 {/* Aviso de cancelación pendiente */}
                 {subscription?.cancel_at_period_end && (
@@ -537,37 +710,106 @@ export default function PlanTab({ orgId }: PlanTabProps) {
             <h3 className="text-lg font-medium text-gray-900">Límites del Plan</h3>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {activePaidModules.length}
-                  <span className="text-sm text-gray-500">
-                    /{currentPlan.max_modules || '∞'}
-                  </span>
+            {(() => {
+              // Obtener límites desde metadata.custom_config (Enterprise) o plan
+              const customConfig = subscription?.metadata?.custom_config;
+              const maxModules = customConfig?.total_available_modules || customConfig?.modules_count || currentPlan.max_modules || null;
+              const maxBranches = customConfig?.branches_count || customConfig?.branchesCount || currentPlan.max_branches || null;
+              const maxStorage = currentPlan.features?.storage_gb || null;
+              const aiCreditsLimit = aiCredits?.monthly || 0;
+              const aiCreditsUsed = aiCreditsLimit - (aiCredits?.remaining || 0);
+              
+              // Calcular porcentajes
+              const modulesPercent = maxModules ? Math.min((totalActiveModules / maxModules) * 100, 100) : 0;
+              const branchesPercent = maxBranches ? Math.min((branchCount / maxBranches) * 100, 100) : 0;
+              const aiCreditsPercent = aiCreditsLimit ? Math.min((aiCreditsUsed / aiCreditsLimit) * 100, 100) : 0;
+              
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {/* Módulos */}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {totalActiveModules}
+                      <span className="text-sm text-gray-500">
+                        /{maxModules || '∞'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">Módulos activos</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      ({coreModulesCount} core + {activePaidModules.length} adicionales)
+                    </p>
+                    {maxModules && (
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${modulesPercent}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Sucursales */}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {branchCount}
+                      <span className="text-sm text-gray-500">
+                        /{maxBranches || '∞'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">Sucursales</p>
+                    {maxBranches && (
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${branchesPercent}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Almacenamiento */}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {maxStorage ? `${maxStorage} GB` : '∞'}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">Almacenamiento</p>
+                  </div>
+                  
+                  {/* Créditos IA */}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-amber-600">
+                      {aiCreditsUsed.toLocaleString()}
+                      <span className="text-sm text-gray-500">
+                        /{aiCreditsLimit.toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">Créditos IA</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      ({(aiCredits?.remaining || 0).toLocaleString()} disponibles)
+                    </p>
+                    {aiCreditsLimit > 0 && (
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-amber-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${aiCreditsPercent}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Módulos pagados activos</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  ({activeModules.length} total incluyendo core)
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {branchCount}
-                  <span className="text-sm text-gray-500">
-                    /{currentPlan.max_branches || '∞'}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Sucursales</p>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {currentPlan.features?.storage_gb || 0} GB
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Almacenamiento</p>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
+      )}
+
+      {/* Método de Pago */}
+      {subscription && (
+        <PaymentMethodCard 
+          stripeCustomerId={subscription.stripe_customer_id || null}
+          organizationId={orgId}
+          onPaymentMethodUpdated={loadPlanData}
+        />
       )}
 
       {/* Módulos Activos */}
@@ -575,31 +817,37 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">Módulos Activos</h3>
           <p className="text-sm text-gray-500">
-            Módulos disponibles en tu plan actual
+            Módulos disponibles en tu plan actual ({coreModulesCount} core + {activePaidModules.length} adicionales)
           </p>
         </div>
         <div className="p-6">
-          {activeModules.length > 0 ? (
+          {/* Módulos Core - Siempre activos */}
+          <div className="mb-6">
+            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+              <StarIcon className="w-4 h-4 text-yellow-500 mr-2" />
+              Módulos Core (incluidos en tu plan)
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activeModules.map((orgModule) => (
-                <div key={orgModule.id} className="border border-gray-200 rounded-lg p-4">
+              {allModules.filter(m => m.is_core).map((module) => (
+                <div key={module.code} className="border border-blue-200 bg-blue-50 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
-                        <BuildingOfficeIcon className="w-6 h-6 text-blue-600" />
+                        {(() => {
+                          const Icon = getModuleIcon(module.code);
+                          return <Icon className="w-6 h-6 text-blue-600" />;
+                        })()}
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-gray-900">
-                          {orgModule.modules?.name || 'Módulo sin nombre'}
+                          {module.name}
                         </h4>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {orgModule.modules?.description || 'Sin descripción'}
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                          {module.description}
                         </p>
-                        {orgModule.modules?.is_core && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-2">
-                            Módulo Core
-                          </span>
-                        )}
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-2">
+                          Core
+                        </span>
                       </div>
                     </div>
                     <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -607,13 +855,43 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <BuildingOfficeIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Sin módulos activos</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                No tienes módulos activos en este momento
-              </p>
+          </div>
+          
+          {/* Módulos Adicionales Activos */}
+          {activePaidModules.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                <ArrowUpIcon className="w-4 h-4 text-green-500 mr-2" />
+                Módulos Adicionales Activos
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activePaidModules.map((orgModule) => (
+                  <div key={orgModule.id} className="border border-green-200 bg-green-50 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0">
+                          {(() => {
+                            const Icon = getModuleIcon(orgModule.module_code);
+                            return <Icon className="w-6 h-6 text-green-600" />;
+                          })()}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">
+                            {orgModule.modules?.name || 'Módulo sin nombre'}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                            {orgModule.modules?.description || 'Sin descripción'}
+                          </p>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
+                            Activo
+                          </span>
+                        </div>
+                      </div>
+                      <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -635,7 +913,10 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
-                        <BuildingOfficeIcon className="w-6 h-6 text-gray-400" />
+                        {(() => {
+                          const Icon = getModuleIcon(module.code);
+                          return <Icon className="w-6 h-6 text-gray-400" />;
+                        })()}
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-gray-900">

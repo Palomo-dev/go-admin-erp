@@ -20,7 +20,7 @@ interface Customer {
   phone?: string;
   doc_type?: string;
   doc_number?: string;
-  city?: string;
+  municipality_name?: string;
   roles?: string[];
   tags?: string[];
   is_active?: boolean;
@@ -81,8 +81,9 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
   const uniqueCities = useMemo(() => {
     const citiesSet = new Set<string>();
     customers.forEach(customer => {
-      if (customer.city) {
-        citiesSet.add(customer.city);
+      const label = customer.municipality_name;
+      if (label) {
+        citiesSet.add(label);
       }
     });
     return Array.from(citiesSet).sort();
@@ -193,7 +194,7 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <SelectGroup>
-                <SelectItem value="all_cities" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">Todas las ciudades</SelectItem>
+                <SelectItem value="all_cities" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">Todos los municipios</SelectItem>
                 {uniqueCities.map(city => (
                   <SelectItem key={city} value={city} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                     {city}
@@ -264,7 +265,7 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
                   {searchQuery && <div>• Búsqueda: "{searchQuery}"</div>}
                   {roleFilter && <div>• Rol: {roleFilter}</div>}
                   {tagFilter && <div>• Etiqueta: {tagFilter}</div>}
-                  {cityFilter && <div>• Ciudad: {cityFilter}</div>}
+                  {cityFilter && <div>• Municipio: {cityFilter}</div>}
                   {balanceFilter && <div>• Saldo: {balanceFilter === 'pending' ? 'Con pendientes' : 'Sin pendientes'}</div>}
                   {sortOrder && <div>• Orden: {sortOrder}</div>}
                   {hasActiveFilters && <div className="mt-1 pt-1 border-t border-gray-600 dark:border-gray-400">Click para limpiar todo</div>}

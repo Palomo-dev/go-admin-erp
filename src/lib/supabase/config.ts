@@ -422,8 +422,29 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
         };
       }
     } else {
-      // Si no hay organización solicitada, tomamos la primera
-      memberData = allMemberData[0];
+      // Intentar respetar la organización que el usuario tiene seleccionada en localStorage
+      let savedOrgId: number | null = null;
+      if (typeof window !== 'undefined') {
+        try {
+          const savedIdStr = localStorage.getItem('currentOrganizationId');
+          if (savedIdStr) savedOrgId = parseInt(savedIdStr, 10);
+          if (!savedOrgId) {
+            const savedOrg = localStorage.getItem('organizacionActiva');
+            if (savedOrg) {
+              const parsed = JSON.parse(savedOrg);
+              if (parsed?.id) savedOrgId = parsed.id;
+            }
+          }
+        } catch { /* silencioso en SSR */ }
+      }
+
+      if (savedOrgId) {
+        memberData = allMemberData.find(m => m.organization_id === savedOrgId);
+      }
+      // Fallback: si no se encontró la org guardada, tomamos la primera
+      if (!memberData) {
+        memberData = allMemberData[0];
+      }
     }
     
     // Ya manejamos los errores y verificación de existencia de membresías arriba

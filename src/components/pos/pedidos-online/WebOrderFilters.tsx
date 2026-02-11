@@ -22,7 +22,8 @@ import {
   Truck,
   XCircle,
   Store,
-  Bike
+  Bike,
+  CalendarClock
 } from 'lucide-react';
 import type { WebOrderStatus, DeliveryType, PaymentStatus, OrderSource } from '@/lib/services/webOrdersService';
 
@@ -33,6 +34,7 @@ interface WebOrderFiltersProps {
     source?: OrderSource;
     payment_status?: PaymentStatus;
     search?: string;
+    is_scheduled?: boolean;
   }) => void;
   activeFilters: {
     status?: WebOrderStatus[];
@@ -40,6 +42,7 @@ interface WebOrderFiltersProps {
     source?: OrderSource;
     payment_status?: PaymentStatus;
     search?: string;
+    is_scheduled?: boolean;
   };
 }
 
@@ -92,9 +95,17 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
     onFilterChange({});
   };
 
+  const handleScheduledToggle = () => {
+    onFilterChange({
+      ...activeFilters,
+      is_scheduled: activeFilters.is_scheduled ? undefined : true,
+    });
+  };
+
   const hasActiveFilters = (activeFilters.status?.length || 0) > 0 || 
     activeFilters.delivery_type || 
-    activeFilters.search;
+    activeFilters.search ||
+    activeFilters.is_scheduled;
 
   return (
     <div className="space-y-4">
@@ -140,8 +151,18 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
         })}
       </div>
 
-      {/* Filtro por tipo de entrega */}
-      <div className="flex items-center gap-4">
+      {/* Filtro por tipo de entrega y programados */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <Button
+          variant={activeFilters.is_scheduled ? 'default' : 'outline'}
+          size="sm"
+          onClick={handleScheduledToggle}
+          className="gap-1"
+        >
+          <CalendarClock className="h-4 w-4 text-indigo-500" />
+          Programados
+        </Button>
+        <span className="text-muted-foreground">|</span>
         <span className="text-sm font-medium">Tipo de entrega:</span>
         <div className="flex gap-2">
           {DELIVERY_TYPE_OPTIONS.map((option) => {
@@ -195,6 +216,15 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
                   setSearch('');
                   onFilterChange({ ...activeFilters, search: undefined });
                 }}
+              />
+            </Badge>
+          )}
+          {activeFilters.is_scheduled && (
+            <Badge variant="secondary" className="gap-1">
+              Programados
+              <X 
+                className="h-3 w-3 cursor-pointer" 
+                onClick={handleScheduledToggle}
               />
             </Badge>
           )}

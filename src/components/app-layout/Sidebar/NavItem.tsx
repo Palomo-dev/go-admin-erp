@@ -122,9 +122,9 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
               />
             </div>
 
-            {/* Submenú desplegable para móvil */}
+            {/* Submenú desplegable para móvil con scroll */}
             <div
-              className={`overflow-hidden transition-all duration-300 ${isMobileOpen ? 'max-h-60' : 'max-h-0'}`}
+              className={`transition-all duration-300 ${isMobileOpen ? 'max-h-[40vh] overflow-y-auto' : 'max-h-0 overflow-hidden'}`}
             >
               <div className="pl-7 py-1 space-y-1">
                 {item.submenu.map((subItem, subIdx) => (

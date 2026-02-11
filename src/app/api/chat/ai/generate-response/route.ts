@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import OpenAIService from '@/lib/services/openaiService';
+import { consumeAICredits } from '@/lib/services/aiCreditsService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,6 +47,28 @@ export async function POST(request: NextRequest) {
         { error: 'Conversación no encontrada' },
         { status: 404 }
       );
+    }
+
+    // Obtener configuración de IA y verificar créditos
+    const { data: aiSettings } = await supabase
+      .from('ai_settings')
+      .select('credits_remaining, is_active')
+      .eq('organization_id', organizationId)
+      .single();
+
+    if (!aiSettings?.is_active) {
+      return NextResponse.json({
+        success: false,
+        error: 'IA no está activa para esta organización',
+      }, { status: 400 });
+    }
+
+    if (aiSettings.credits_remaining !== null && aiSettings.credits_remaining < 1) {
+      return NextResponse.json({
+        success: false,
+        error: 'No hay créditos de IA suficientes',
+        credits_remaining: aiSettings.credits_remaining,
+      }, { status: 400 });
     }
 
     const { data: messages, error: msgError } = await supabase
@@ -97,6 +120,12 @@ export async function POST(request: NextRequest) {
 
     if (jobError) {
       console.error('Error guardando ai_job:', jobError);
+    }
+
+    // Descontar créditos de IA (1 crédito por respuesta)
+    const creditsConsumed = await consumeAICredits(organizationId, 1);
+    if (!creditsConsumed) {
+      console.warn('⚠️ No se pudieron descontar créditos de IA para org:', organizationId);
     }
 
     return NextResponse.json({

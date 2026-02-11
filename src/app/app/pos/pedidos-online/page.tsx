@@ -35,6 +35,7 @@ import {
   type PaymentStatus,
   type OrderSource
 } from '@/lib/services/webOrdersService';
+import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
 
 interface LocalFilters {
   status?: WebOrderStatus[];
@@ -42,6 +43,7 @@ interface LocalFilters {
   source?: OrderSource;
   payment_status?: PaymentStatus;
   search?: string;
+  is_scheduled?: boolean;
 }
 
 export default function PedidosOnlinePage() {
@@ -146,17 +148,24 @@ export default function PedidosOnlinePage() {
     
     setActionLoading(true);
     try {
-      await webOrdersService.confirmOrder(confirmDialog.orderId, estimatedMinutes);
+      // Obtener pedido completo con items para el servicio de confirmación
+      const order = await webOrdersService.getOrderById(confirmDialog.orderId);
+      if (!order) throw new Error('Pedido no encontrado');
+
+      const result = await webOrderConfirmationService.confirmOrder(order, estimatedMinutes);
+      const parts = ['Venta creada', 'Comanda enviada a cocina', `${estimatedMinutes} min`];
+      if (result.couponRedemptionId) parts.push('Cupón redimido');
       toast({
         title: 'Pedido confirmado',
-        description: `Tiempo estimado: ${estimatedMinutes} minutos`,
+        description: parts.join(' · '),
       });
       setConfirmDialog({ open: false, orderId: null });
       loadOrders();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error confirmando pedido:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo confirmar el pedido',
+        title: 'Error al confirmar pedido',
+        description: error?.message || 'No se pudo confirmar el pedido',
         variant: 'destructive',
       });
     } finally {

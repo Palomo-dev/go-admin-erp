@@ -9,6 +9,7 @@ import {
   Banknote,
   CreditCard,
   ArrowRightLeft,
+  Globe,
   User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -114,6 +115,7 @@ export function TipsList({
       case 'cash': return <Banknote className="h-4 w-4 text-green-500" />;
       case 'card': return <CreditCard className="h-4 w-4 text-blue-500" />;
       case 'transfer': return <ArrowRightLeft className="h-4 w-4 text-purple-500" />;
+      case 'online': return <Globe className="h-4 w-4 text-cyan-500" />;
       default: return null;
     }
   };

@@ -147,6 +147,17 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // Resolver código numérico del municipio fiscal del cliente
+      let customerMunicipalityCode = 980; // Default: Bogotá
+      if (invoice.customer?.fiscal_municipality_id) {
+        const { data: muni } = await supabase
+          .from('municipalities')
+          .select('code')
+          .eq('id', invoice.customer.fiscal_municipality_id)
+          .single();
+        if (muni?.code) customerMunicipalityCode = parseInt(muni.code, 10);
+      }
+
       // Mapear datos a formato Factus
       const factusRequest: FactusInvoiceRequest = {
         document: mapDocumentType(invoice.document_type),
@@ -176,7 +187,7 @@ export async function POST(request: NextRequest) {
           phone: invoice.customer?.phone || '',
           legal_organization_id: invoice.customer?.legal_organization_id || 2,
           tribute_id: invoice.customer?.tribute_id || 21,
-          municipality_id: invoice.customer?.municipality_id || 980,
+          municipality_id: customerMunicipalityCode,
         },
         items: (items || []).map((item: any) => ({
           code_reference: item.code_reference || item.product_id?.toString() || '001',

@@ -185,7 +185,6 @@ class AIActionsService {
         ]},
         { name: 'doc_number', label: 'Número de documento', type: 'text', value: '', required: false },
         { name: 'address', label: 'Dirección', type: 'text', value: '', required: false },
-        { name: 'city', label: 'Ciudad', type: 'text', value: '', required: false },
       ],
       update_customer: [
         { name: 'customer_id', label: 'ID del cliente', type: 'text', value: '', required: true, readonly: true },
@@ -433,13 +432,16 @@ class AIActionsService {
       .from('customers')
       .insert({
         organization_id: organizationId,
-        full_name: data.full_name,
+        first_name: data.full_name?.split(' ')[0] || '',
+        last_name: data.full_name?.split(' ').slice(1).join(' ') || '',
         email: data.email || null,
         phone: data.phone || null,
-        doc_type: data.doc_type || null,
-        doc_number: data.doc_number || null,
+        identification_type: data.doc_type || null,
+        identification_number: data.doc_number || null,
         address: data.address || null,
-        city: data.city || null,
+        roles: ['cliente', 'huesped'],
+        fiscal_responsibilities: ['R-99-PN'],
+        fiscal_municipality_id: 'aa4b6637-0060-41bb-9459-bc95f9789e08',
       })
       .select()
       .single();

@@ -20,10 +20,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { Categoria } from '../types';
 
 interface EditarCategoriaFormProps {
-  categoriaId: number;
+  categoriaUuid: string;
 }
 
-export function EditarCategoriaForm({ categoriaId }: EditarCategoriaFormProps) {
+export function EditarCategoriaForm({ categoriaUuid }: EditarCategoriaFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,7 @@ export function EditarCategoriaForm({ categoriaId }: EditarCategoriaFormProps) {
 
   useEffect(() => {
     cargarDatos();
-  }, [categoriaId]);
+  }, [categoriaUuid]);
 
   const cargarDatos = async () => {
     try {
@@ -50,7 +50,7 @@ export function EditarCategoriaForm({ categoriaId }: EditarCategoriaFormProps) {
       const { data: categoria, error } = await supabase
         .from('categories')
         .select('*')
-        .eq('id', categoriaId)
+        .eq('uuid', categoriaUuid)
         .single();
 
       if (error) throw error;
@@ -67,7 +67,7 @@ export function EditarCategoriaForm({ categoriaId }: EditarCategoriaFormProps) {
         .from('categories')
         .select('*')
         .eq('organization_id', organizationId)
-        .neq('id', categoriaId) // Excluir la categoría actual
+        .neq('uuid', categoriaUuid) // Excluir la categoría actual
         .order('name');
 
       setCategorias(cats || []);
@@ -124,7 +124,7 @@ export function EditarCategoriaForm({ categoriaId }: EditarCategoriaFormProps) {
           rank: formData.rank,
           updated_at: new Date().toISOString()
         })
-        .eq('id', categoriaId);
+        .eq('uuid', categoriaUuid);
 
       if (error) throw error;
 

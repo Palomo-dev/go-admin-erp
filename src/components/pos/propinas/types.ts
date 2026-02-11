@@ -1,6 +1,6 @@
 // Tipos para el módulo de propinas
 
-export type TipType = 'cash' | 'card' | 'transfer';
+export type TipType = 'cash' | 'card' | 'transfer' | 'online';
 
 export interface Tip {
   id: string;
@@ -40,6 +40,7 @@ export interface TipSummary {
   cash_tips: number;
   card_tips: number;
   transfer_tips: number;
+  online_tips: number;
 }
 
 export interface CreateTipData {
@@ -73,5 +74,6 @@ export interface DistributionBatch {
 export const TIP_TYPE_LABELS: Record<TipType, string> = {
   cash: 'Efectivo',
   card: 'Tarjeta',
-  transfer: 'Transferencia'
+  transfer: 'Transferencia',
+  online: 'Online'
 };

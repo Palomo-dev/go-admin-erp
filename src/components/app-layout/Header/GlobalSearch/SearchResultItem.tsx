@@ -1,7 +1,7 @@
 'use client';
 
 import { CommandItem } from '@/components/ui/command';
-import { ArrowUpRight, Building, Building2, Briefcase, Layers, ShoppingBasket, ShoppingCart, Users } from 'lucide-react';
+import { ArrowUpRight, Building, Building2, Briefcase, Layers, ShoppingBasket, ShoppingCart, Users, Receipt, CalendarDays, BedDouble, Dumbbell, Car } from 'lucide-react';
 import { SearchResult } from './types';
 import { UserAvatar } from './UserAvatar';
 import { ProductImage } from './ProductImage';
@@ -34,6 +34,18 @@ export const SearchResultItem = ({ item, onSelect }: SearchResultItemProps) => {
         return <Briefcase className="mr-2 h-4 w-4" />;
       case 'category':
         return <Layers className="mr-2 h-4 w-4" />;
+      case 'invoice':
+        return <Receipt className="mr-2 h-4 w-4" />;
+      case 'web_order':
+        return <ShoppingCart className="mr-2 h-4 w-4" />;
+      case 'reservation':
+        return <CalendarDays className="mr-2 h-4 w-4" />;
+      case 'space':
+        return <BedDouble className="mr-2 h-4 w-4" />;
+      case 'membership':
+        return <Dumbbell className="mr-2 h-4 w-4" />;
+      case 'parking_vehicle':
+        return <Car className="mr-2 h-4 w-4" />;
       default:
         return <ShoppingCart className="mr-2 h-4 w-4" />;
     }

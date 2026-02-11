@@ -5,13 +5,11 @@ import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { DocumentTextIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { PlanSkeleton } from '@/components/organization/OrganizationSkeletons';
 
 // Dynamic import for the PlanTab component
 const PlanTab = dynamic(() => import('../../../components/organization/PlanTab'), {
-  loading: () => <div className="text-center py-10">
-    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-    <p className="mt-2">Cargando...</p>
-  </div>
+  loading: () => <PlanSkeleton />
 });
 
 export default function PlanPage() {
@@ -82,11 +80,8 @@ export default function PlanPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-          <p className="mt-2">Cargando información del plan...</p>
-        </div>
+      <div className="container mx-auto px-4 py-6">
+        <PlanSkeleton />
       </div>
     );
   }
@@ -146,12 +141,7 @@ export default function PlanPage() {
         </div>
       </div>
 
-      <Suspense fallback={
-        <div className="text-center py-10">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-          <p className="mt-2">Cargando plan...</p>
-        </div>
-      }>
+      <Suspense fallback={<PlanSkeleton />}>
         <PlanTab orgId={orgData.id} />
       </Suspense>
     </div>

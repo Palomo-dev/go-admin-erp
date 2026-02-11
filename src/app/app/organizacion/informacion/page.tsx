@@ -3,13 +3,11 @@
 import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
+import { OrganizationInfoSkeleton } from '@/components/organization/OrganizationSkeletons';
 
 // Dynamic import for the OrganizationInfoTab component
 const OrganizationInfoTab = dynamic(() => import('../../../../components/organization/OrganizationInfoTab'), {
-  loading: () => <div className="text-center py-10">
-    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-    <p className="mt-2">Cargando...</p>
-  </div>
+  loading: () => <OrganizationInfoSkeleton />
 });
 
 export default function InformacionPage() {
@@ -92,9 +90,14 @@ export default function InformacionPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <div className="text-center py-10">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-          <p className="mt-2">Cargando datos de la organización...</p>
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold text-gray-900">Información de la Organización</h1>
+            <p className="mt-2 text-gray-600">Gestiona la información y configuración de tu organización</p>
+          </div>
+          <div className="mt-8">
+            <OrganizationInfoSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -147,10 +150,7 @@ export default function InformacionPage() {
         <p className="mt-2 text-gray-600">Gestiona la información y configuración de tu organización</p>
         
         <div className="mt-8">
-          <Suspense fallback={<div className="text-center py-10">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-            <p className="mt-2">Cargando información...</p>
-          </div>}>
+          <Suspense fallback={<OrganizationInfoSkeleton />}>
             <OrganizationInfoTab orgData={orgData} />
           </Suspense>
         </div>

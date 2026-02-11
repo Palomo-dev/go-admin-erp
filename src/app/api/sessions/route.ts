@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 // Función para crear un cliente de Supabase Admin con la clave de servicio
 const createAdminClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
   
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error('Faltan credenciales de Supabase')
@@ -21,8 +21,12 @@ const createAdminClient = () => {
 
 // Función para crear un cliente de Supabase con la cookie de sesión
 const createClientWithSession = async () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('supabaseUrl is required. Verifica que NEXT_PUBLIC_SUPABASE_URL esté configurada en .env.local')
+  }
   
   const cookieStore = await cookies()
   

@@ -125,7 +125,8 @@ export class PropinasService {
             pending_amount: 0,
             cash_tips: 0,
             card_tips: 0,
-            transfer_tips: 0
+            transfer_tips: 0,
+            online_tips: 0
           };
         }
 
@@ -148,6 +149,9 @@ export class PropinasService {
             break;
           case 'transfer':
             summaryMap[serverId].transfer_tips += amount;
+            break;
+          case 'online':
+            summaryMap[serverId].online_tips += amount;
             break;
         }
       });
@@ -326,7 +330,7 @@ export class PropinasService {
     total: number;
     distributed: number;
     pending: number;
-    byType: { cash: number; card: number; transfer: number };
+    byType: { cash: number; card: number; transfer: number; online: number };
     count: number;
   }> {
     try {
@@ -336,7 +340,7 @@ export class PropinasService {
         total: 0,
         distributed: 0,
         pending: 0,
-        byType: { cash: 0, card: 0, transfer: 0 },
+        byType: { cash: 0, card: 0, transfer: 0, online: 0 },
         count: tips.length
       };
 
@@ -350,7 +354,9 @@ export class PropinasService {
           stats.pending += amount;
         }
 
-        stats.byType[tip.tip_type] += amount;
+        if (tip.tip_type in stats.byType) {
+          stats.byType[tip.tip_type as keyof typeof stats.byType] += amount;
+        }
       });
 
       return stats;

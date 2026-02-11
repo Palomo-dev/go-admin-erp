@@ -15,7 +15,9 @@ import {
   XCircle,
   ChefHat,
   Package,
-  Eye
+  Eye,
+  CalendarClock,
+  Coins
 } from 'lucide-react';
 import type { WebOrder, WebOrderStatus, DeliveryType } from '@/lib/services/webOrdersService';
 
@@ -93,11 +95,23 @@ export function WebOrderCard({
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-lg">{order.order_number}</span>
               {isUrgent && (
                 <Badge variant="destructive" className="text-xs">
                   ¡Urgente!
+                </Badge>
+              )}
+              {order.is_scheduled && (
+                <Badge className="text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 flex items-center gap-1">
+                  <CalendarClock className="h-3 w-3" />
+                  Programado
+                </Badge>
+              )}
+              {order.tip_amount > 0 && (
+                <Badge className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 flex items-center gap-1">
+                  <Coins className="h-3 w-3" />
+                  Propina
                 </Badge>
               )}
             </div>
@@ -105,6 +119,12 @@ export function WebOrderCard({
               <Clock className="h-3 w-3" />
               {formatDate(order.created_at)} • {getTimeSinceOrder()}
             </p>
+            {order.is_scheduled && order.scheduled_at && (
+              <p className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                <CalendarClock className="h-3 w-3" />
+                Para: {formatDate(order.scheduled_at)}
+              </p>
+            )}
           </div>
           <Badge className={`${statusConfig.color} flex items-center gap-1`}>
             {statusConfig.icon}

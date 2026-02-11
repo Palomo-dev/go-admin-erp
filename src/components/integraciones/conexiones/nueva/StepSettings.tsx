@@ -14,6 +14,7 @@ interface StepSettingsProps {
   connector: IntegrationConnector | null;
   connectionName: string;
   settings: Record<string, unknown>;
+  organizationDomain?: string;
   onNameChange: (name: string) => void;
   onSettingsChange: (settings: Record<string, unknown>) => void;
 }
@@ -23,6 +24,7 @@ export function StepSettings({
   connector,
   connectionName,
   settings,
+  organizationDomain,
   onNameChange,
   onSettingsChange,
 }: StepSettingsProps) {
@@ -120,7 +122,10 @@ export function StepSettings({
               </Label>
               <Input
                 id="webhook_url"
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/${connector?.code || 'provider'}`}
+                value={organizationDomain
+                  ? `https://${organizationDomain}/api/webhooks/${connector?.code || 'provider'}`
+                  : `${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/${connector?.code || 'provider'}`
+                }
                 readOnly
                 className="max-w-lg bg-gray-50 dark:bg-gray-800"
               />

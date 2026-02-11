@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { whatsappSyncService } from '@/lib/services/integrations/whatsapp';
 
 export interface WhatsAppChannel {
   id: string;
@@ -161,6 +162,18 @@ export default class WhatsAppChannelService {
       }
     }
 
+    // Sync: CRM → Integraciones (crear/actualizar conexión + integration_credentials)
+    try {
+      await whatsappSyncService.syncToIntegration(this.organizationId, channelId, {
+        phone_number_id: credentials.phone_number_id || '',
+        business_account_id: credentials.business_account_id || '',
+        access_token: credentials.access_token || '',
+        webhook_verify_token: credentials.webhook_verify_token || '',
+      });
+    } catch (syncError) {
+      console.warn('[WhatsApp] Sync a Integraciones falló (credenciales CRM se guardaron):', syncError);
+    }
+
     return true;
   }
 
@@ -178,23 +191,23 @@ export default class WhatsAppChannelService {
       return { valid: false, message: 'Credenciales incompletas' };
     }
 
-    // En producción, aquí se haría una llamada a la API de Meta para verificar
-    // Por ahora, simulamos la validación
-    const isValid = true;
+    // Validar credenciales contra la API de Meta via endpoint interno
+    try {
+      const response = await fetch('/api/integrations/whatsapp/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel_id: channelId }),
+      });
 
-    // Actualizar estado de validación
-    await supabase
-      .from('channel_credentials')
-      .update({
-        is_valid: isValid,
-        last_validated_at: new Date().toISOString()
-      })
-      .eq('channel_id', channelId);
-
-    return { 
-      valid: isValid, 
-      message: isValid ? 'Webhook verificado correctamente' : 'Error al verificar webhook' 
-    };
+      const result = await response.json();
+      return {
+        valid: result.valid,
+        message: result.message || (result.valid ? 'Conexión verificada correctamente' : 'Error al verificar conexión'),
+      };
+    } catch (error) {
+      console.error('Error validando credenciales WhatsApp:', error);
+      return { valid: false, message: 'Error de red al validar credenciales' };
+    }
   }
 
   async activateChannel(channelId: string): Promise<boolean> {

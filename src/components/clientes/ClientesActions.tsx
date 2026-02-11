@@ -26,11 +26,13 @@ import { supabase } from '@/lib/supabase/config';
 interface ClientesActionsProps {
   onExportCSV: () => void;
   selectedCustomers: string[];
+  onRefresh?: () => void;
 }
 
 const ClientesActions: React.FC<ClientesActionsProps> = ({
   onExportCSV,
-  selectedCustomers
+  selectedCustomers,
+  onRefresh
 }) => {
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
@@ -80,6 +82,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
         setIsTagDialogOpen(false);
         setTagName('');
         setStatusMessage(null);
+        onRefresh?.();
       }, 2000);
     } catch (error: any) {
       console.error('Error al aplicar etiqueta:', error);

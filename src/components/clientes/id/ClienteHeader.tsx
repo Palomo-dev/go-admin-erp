@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
+import { Camera, Loader2 } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
+import { supabase } from '@/lib/supabase/config';
+import { toast } from '@/components/ui/use-toast';
 
 // Interfaz para las props del componente
 interface ClienteHeaderProps {
@@ -17,6 +20,7 @@ interface ClienteHeaderProps {
     tags?: string[];
     avatar_url?: string | null;
   };
+  onAvatarUpdate?: (newUrl: string) => void;
 }
 
 // Ya no necesitamos este componente porque usaremos UserAvatar
@@ -49,8 +53,64 @@ const NivelFidelidad = ({ nivel = 'Básico' }: { nivel?: string }) => {
 };
 
 // Componente principal del encabezado del cliente
-export default function ClienteHeader({ cliente }: ClienteHeaderProps) {
+export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeaderProps) {
   const nombreCompleto = cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim();
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(cliente.avatar_url);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Error', description: 'Solo se permiten imágenes', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Error', description: 'La imagen no debe superar 5MB', variant: 'destructive' });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `customers/${cliente.id}/avatar.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profiles')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profiles')
+        .getPublicUrl(filePath);
+
+      const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ avatar_url: urlWithCacheBust })
+        .eq('id', cliente.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(urlWithCacheBust);
+      onAvatarUpdate?.(urlWithCacheBust);
+      toast({ title: 'Avatar actualizado', description: 'La foto del cliente se actualizó correctamente.' });
+    } catch (err: any) {
+      console.error('Error uploading avatar:', err);
+      toast({ title: 'Error', description: err.message || 'No se pudo subir la imagen', variant: 'destructive' });
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
   
   // Determinar el nivel de fidelidad basado en tags (si existen)
   const nivelFidelidad = cliente.tags?.includes('oro') 
@@ -64,7 +124,23 @@ export default function ClienteHeader({ cliente }: ClienteHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
       <div className="flex items-center gap-4">
-        <UserAvatar name={nombreCompleto} avatarUrl={cliente.avatar_url} size="lg" className="w-16 h-16" />
+        <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+          <UserAvatar name={nombreCompleto} avatarUrl={avatarUrl} size="lg" className="w-16 h-16" />
+          <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            {uploadingAvatar ? (
+              <Loader2 className="h-5 w-5 text-white animate-spin" />
+            ) : (
+              <Camera className="h-5 w-5 text-white" />
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarUpload}
+          />
+        </div>
         
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{nombreCompleto}</h1>

@@ -13,6 +13,15 @@ import {
   IntegrationConnector,
   IntegrationConnection,
 } from '@/lib/services/integrationsService';
+import { wompiService } from '@/lib/services/integrations/wompi';
+import { mercadopagoService } from '@/lib/services/integrations/mercadopago';
+import { payuService } from '@/lib/services/integrations/payu';
+import { stripeClientService } from '@/lib/services/integrations/stripe';
+import { paypalService } from '@/lib/services/integrations/paypal';
+import { metaMarketingService } from '@/lib/services/integrations/meta';
+import { tiktokMarketingService } from '@/lib/services/integrations/tiktok';
+import { whatsappClientService, whatsappSyncService } from '@/lib/services/integrations/whatsapp';
+import { supabase } from '@/lib/supabase/config';
 import {
   StepProviderConnector,
   StepCountryEnvironment,
@@ -99,6 +108,7 @@ export default function NuevaConexionPage() {
   const [providers, setProviders] = useState<IntegrationProvider[]>([]);
   const [connectors, setConnectors] = useState<IntegrationConnector[]>([]);
   const [branches, setBranches] = useState<Array<{ id: number; name: string }>>([]);
+  const [organizationDomain, setOrganizationDomain] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Estados de validación y guardado
@@ -112,15 +122,33 @@ export default function NuevaConexionPage() {
 
     setIsLoading(true);
     try {
-      const [providersData, connectorsData, branchesData] = await Promise.all([
+      const [providersData, connectorsData, branchesData, domainsResult] = await Promise.all([
         integrationsService.getProviders(),
         integrationsService.getConnectors(),
         integrationsService.getBranches(organizationId),
+        supabase
+          .from('organization_domains')
+          .select('host, domain_type, is_primary, is_active, status')
+          .eq('organization_id', organizationId)
+          .eq('is_active', true)
+          .eq('status', 'verified')
+          .order('is_primary', { ascending: false }),
       ]);
 
       setProviders(providersData);
       setConnectors(connectorsData);
       setBranches(branchesData);
+
+      // Dominio: priorizar custom_domain verificado, sino system_subdomain
+      if (domainsResult.data && domainsResult.data.length > 0) {
+        const customDomain = domainsResult.data.find(
+          (d) => d.domain_type === 'custom_domain' && d.is_primary
+        );
+        const subdomain = domainsResult.data.find(
+          (d) => d.domain_type === 'system_subdomain'
+        );
+        setOrganizationDomain(customDomain?.host || subdomain?.host || '');
+      }
 
       // Si viene un provider preseleccionado desde la URL, auto-seleccionarlo
       if (mode === 'create' && preselectedProviderId) {
@@ -263,14 +291,249 @@ export default function NuevaConexionPage() {
     setValidationResult(null);
 
     try {
-      // Simular validación - en producción llamaría al servicio externo
+      // Validación específica para Wompi
+      if (wizardData.provider?.code === 'wompi') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.public_key || !creds.private_key) {
+          const result = { success: false, message: 'Ingresa al menos la llave pública y privada' };
+          setValidationResult(result);
+          return result;
+        }
+
+        // Llamar al endpoint de merchant de Wompi para validar las llaves
+        const baseUrl = wizardData.environment === 'production'
+          ? 'https://production.wompi.co/v1'
+          : 'https://sandbox.wompi.co/v1';
+
+        const response = await fetch(`${baseUrl}/merchants/${creds.public_key}`);
+        if (!response.ok) {
+          const result = { success: false, message: `Llave pública inválida (HTTP ${response.status})` };
+          setValidationResult(result);
+          return result;
+        }
+
+        const data = await response.json();
+        const merchantName = data?.data?.name || 'Comercio';
+        const result = { success: true, message: `Conexión verificada: ${merchantName}` };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación específica para MercadoPago
+      if (wizardData.provider?.code === 'mercadopago') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.public_key || !creds.access_token) {
+          const result = { success: false, message: 'Ingresa al menos la Public Key y el Access Token' };
+          setValidationResult(result);
+          return result;
+        }
+
+        // Verificar Access Token consultando payment_methods
+        const response = await fetch('https://api.mercadopago.com/v1/payment_methods', {
+          headers: { Authorization: `Bearer ${creds.access_token}` },
+        });
+
+        if (!response.ok) {
+          const result = { success: false, message: `Access Token inválido (HTTP ${response.status})` };
+          setValidationResult(result);
+          return result;
+        }
+
+        const methods = await response.json();
+        const result = { success: true, message: `Conexión verificada: ${methods.length} métodos de pago disponibles` };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación específica para PayU
+      if (wizardData.provider?.code === 'payu') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.api_key || !creds.api_login) {
+          const result = { success: false, message: 'Ingresa al menos el API Key y API Login' };
+          setValidationResult(result);
+          return result;
+        }
+
+        // Verificar credenciales con comando PING
+        const pingResponse = await fetch('/api/integrations/payu/health-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: creds.api_key,
+            api_login: creds.api_login,
+            merchant_id: creds.merchant_id || '',
+            is_test: wizardData.environment !== 'production',
+          }),
+        });
+
+        const pingData = await pingResponse.json();
+        const result = {
+          success: pingData.valid === true,
+          message: pingData.message || (pingData.valid ? 'Conexión verificada con PayU' : 'Credenciales inválidas'),
+        };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación específica para Stripe
+      if (wizardData.provider?.code === 'stripe') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.secret_key) {
+          const result = { success: false, message: 'Ingresa al menos la Secret Key' };
+          setValidationResult(result);
+          return result;
+        }
+
+        // Verificar formato de llaves
+        if (creds.publishable_key && !creds.publishable_key.startsWith('pk_')) {
+          const result = { success: false, message: 'Publishable Key debe comenzar con pk_test_ o pk_live_' };
+          setValidationResult(result);
+          return result;
+        }
+
+        if (!creds.secret_key.startsWith('sk_')) {
+          const result = { success: false, message: 'Secret Key debe comenzar con sk_test_ o sk_live_' };
+          setValidationResult(result);
+          return result;
+        }
+
+        // Verificar credenciales con balance retrieve
+        const checkResponse = await fetch('/api/integrations/stripe/health-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret_key: creds.secret_key }),
+        });
+
+        const checkData = await checkResponse.json();
+        const result = {
+          success: checkData.valid === true,
+          message: checkData.message || (checkData.valid ? 'Conexión verificada con Stripe' : 'Credenciales inválidas'),
+        };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación específica para PayPal
+      if (wizardData.provider?.code === 'paypal') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.client_id || !creds.client_secret) {
+          const result = { success: false, message: 'Ingresa al menos Client ID y Client Secret' };
+          setValidationResult(result);
+          return result;
+        }
+
+        // Verificar credenciales obteniendo un OAuth token
+        const checkResponse = await fetch('/api/integrations/paypal/health-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: creds.client_id,
+            client_secret: creds.client_secret,
+            is_sandbox: wizardData.environment !== 'production',
+          }),
+        });
+
+        const checkData = await checkResponse.json();
+        const result = {
+          success: checkData.valid === true,
+          message: checkData.message || (checkData.valid ? 'Conexión verificada con PayPal' : 'Credenciales inválidas'),
+        };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación específica para Meta Marketing
+      if (wizardData.provider?.code === 'meta') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.access_token) {
+          const result = { success: false, message: 'Ingresa al menos el Access Token' };
+          setValidationResult(result);
+          return result;
+        }
+
+        const checkResponse = await fetch('/api/integrations/meta/health-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            access_token: creds.access_token,
+            app_secret: creds.app_secret || '',
+          }),
+        });
+
+        const checkData = await checkResponse.json();
+        const result = {
+          success: checkData.valid === true,
+          message: checkData.message || (checkData.valid ? 'Conexión verificada con Meta' : 'Token inválido'),
+        };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación específica para WhatsApp Business
+      if (wizardData.provider?.code === 'whatsapp') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.phone_number_id || !creds.access_token) {
+          const result = { success: false, message: 'Ingresa al menos el Phone Number ID y el Access Token' };
+          setValidationResult(result);
+          return result;
+        }
+
+        const checkResponse = await fetch('/api/integrations/whatsapp/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            // Enviar credenciales directamente para validar antes de guardar
+            phone_number_id: creds.phone_number_id,
+            access_token: creds.access_token,
+          }),
+        });
+
+        const checkData = await checkResponse.json();
+        const result = {
+          success: checkData.valid === true,
+          message: checkData.message || (checkData.valid
+            ? `Conexión verificada: ${checkData.displayName || checkData.phoneNumber || 'WhatsApp'}`
+            : 'Credenciales inválidas'),
+        };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación específica para TikTok Marketing
+      if (wizardData.provider?.code === 'tiktok') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.access_token || !creds.advertiser_id) {
+          const result = { success: false, message: 'Ingresa al menos el Access Token y Advertiser ID' };
+          setValidationResult(result);
+          return result;
+        }
+
+        const checkResponse = await fetch('/api/integrations/tiktok/health-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            access_token: creds.access_token,
+            advertiser_id: creds.advertiser_id,
+          }),
+        });
+
+        const checkData = await checkResponse.json();
+        const result = {
+          success: checkData.valid === true,
+          message: checkData.message || (checkData.valid ? 'Conexión verificada con TikTok' : 'Token o Advertiser ID inválido'),
+        };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación genérica para otros proveedores
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      
       const result = { success: true, message: 'Conexión validada correctamente' };
       setValidationResult(result);
       return result;
-    } catch {
-      const result = { success: false, message: 'Error al validar la conexión' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al validar la conexión';
+      const result = { success: false, message: msg };
       setValidationResult(result);
       return result;
     } finally {
@@ -333,16 +596,215 @@ export default function NuevaConexionPage() {
 
       // Guardar las credenciales (solo si se proporcionaron nuevas)
       if (wizardData.credentials.secret_ref && wizardData.credentials.secret_ref !== '{}') {
-        const credentialsSaved = await integrationsService.saveCredentials(
-          connectionId,
-          wizardData.credentials.credential_type,
-          wizardData.credentials.secret_ref,
-          wizardData.credentials.purpose,
-          wizardData.credentials.expires_at
-        );
+        const parsedCreds = JSON.parse(wizardData.credentials.secret_ref);
 
-        if (!credentialsSaved) {
-          console.warn('No se pudieron guardar las credenciales');
+        if (wizardData.provider?.code === 'wompi') {
+          // Wompi: guardar 4 credenciales separadas en integration_credentials
+          const wompiSaved = await wompiService.saveCredentials(connectionId, {
+            publicKey: parsedCreds.public_key || '',
+            privateKey: parsedCreds.private_key || '',
+            eventsSecret: parsedCreds.events_secret || '',
+            integritySecret: parsedCreds.integrity_secret || '',
+          });
+
+          if (!wompiSaved) {
+            console.warn('No se pudieron guardar las credenciales de Wompi');
+          }
+        } else if (wizardData.provider?.code === 'mercadopago') {
+          // MercadoPago: guardar 3 credenciales separadas en integration_credentials
+          const mpSaved = await mercadopagoService.saveCredentials(connectionId, {
+            publicKey: parsedCreds.public_key || '',
+            accessToken: parsedCreds.access_token || '',
+            webhookSecret: parsedCreds.webhook_secret || '',
+          });
+
+          if (!mpSaved) {
+            console.warn('No se pudieron guardar las credenciales de MercadoPago');
+          }
+        } else if (wizardData.provider?.code === 'payu') {
+          // PayU: guardar 4 credenciales separadas en integration_credentials
+          const payuSaved = await payuService.saveCredentials(connectionId, {
+            apiKey: parsedCreds.api_key || '',
+            apiLogin: parsedCreds.api_login || '',
+            merchantId: parsedCreds.merchant_id || '',
+            accountId: parsedCreds.account_id || '',
+          });
+
+          if (!payuSaved) {
+            console.warn('No se pudieron guardar las credenciales de PayU');
+          }
+        } else if (wizardData.provider?.code === 'stripe') {
+          // Stripe: guardar 3 credenciales separadas en integration_credentials
+          const stripeSaved = await stripeClientService.saveCredentials(connectionId, {
+            publishableKey: parsedCreds.publishable_key || '',
+            secretKey: parsedCreds.secret_key || '',
+            webhookSecret: parsedCreds.webhook_secret || '',
+          });
+
+          if (!stripeSaved) {
+            console.warn('No se pudieron guardar las credenciales de Stripe');
+          }
+        } else if (wizardData.provider?.code === 'paypal') {
+          // PayPal: guardar 3 credenciales separadas en integration_credentials
+          const paypalSaved = await paypalService.saveCredentials(connectionId, {
+            clientId: parsedCreds.client_id || '',
+            clientSecret: parsedCreds.client_secret || '',
+            webhookId: parsedCreds.webhook_id || '',
+          });
+
+          if (!paypalSaved) {
+            console.warn('No se pudieron guardar las credenciales de PayPal');
+          }
+        } else if (wizardData.provider?.code === 'meta') {
+          // Meta Marketing: guardar credenciales base primero
+          const metaSaved = await metaMarketingService.saveCredentials(connectionId, {
+            accessToken: parsedCreds.access_token || '',
+            appSecret: parsedCreds.app_secret || '',
+            businessId: parsedCreds.business_id || '',
+            pixelId: '',
+            catalogId: '',
+          });
+
+          if (!metaSaved) {
+            console.warn('No se pudieron guardar las credenciales de Meta Marketing');
+          }
+
+          // Setup automático: crear catálogo + pixel + sync productos
+          try {
+            const { data: orgData } = await supabase
+              .from('organizations')
+              .select('id, name, subdomain')
+              .eq('id', organizationId || 0)
+              .single();
+
+            const { data: domainData } = await supabase
+              .from('organization_domains')
+              .select('host')
+              .eq('organization_id', orgData?.id || 0)
+              .eq('is_primary', true)
+              .eq('is_active', true)
+              .maybeSingle();
+
+            const domain = domainData?.host || `${orgData?.subdomain || 'shop'}.goadmin.io`;
+
+            const setupResponse = await fetch('/api/integrations/meta/setup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                connection_id: connectionId,
+                access_token: parsedCreds.access_token,
+                app_secret: parsedCreds.app_secret || '',
+                business_id: parsedCreds.business_id,
+                organization_id: orgData?.id,
+                organization_name: orgData?.name || 'Mi Negocio',
+                domain,
+              }),
+            });
+
+            const setupData = await setupResponse.json();
+            if (setupData.success) {
+              console.log('Meta setup completo:', setupData.message);
+            } else {
+              console.warn('Meta setup parcial:', setupData.error);
+            }
+          } catch (setupErr) {
+            console.warn('Error en Meta setup automático (la conexión se guardó):', setupErr);
+          }
+        } else if (wizardData.provider?.code === 'tiktok') {
+          // TikTok Marketing: guardar credenciales base primero
+          const tiktokSaved = await tiktokMarketingService.saveCredentials(connectionId, {
+            accessToken: parsedCreds.access_token || '',
+            appSecret: parsedCreds.app_secret || '',
+            advertiserId: parsedCreds.advertiser_id || '',
+            pixelCode: '',
+            catalogId: '',
+          });
+
+          if (!tiktokSaved) {
+            console.warn('No se pudieron guardar las credenciales de TikTok Marketing');
+          }
+
+          // Setup automático: crear pixel + catálogo + sync productos
+          try {
+            const { data: orgData } = await supabase
+              .from('organizations')
+              .select('id, name, subdomain')
+              .eq('id', organizationId || 0)
+              .single();
+
+            const { data: domainData } = await supabase
+              .from('organization_domains')
+              .select('host')
+              .eq('organization_id', orgData?.id || 0)
+              .eq('is_primary', true)
+              .eq('is_active', true)
+              .maybeSingle();
+
+            const domain = domainData?.host || `${orgData?.subdomain || 'shop'}.goadmin.io`;
+
+            const setupResponse = await fetch('/api/integrations/tiktok/setup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                connection_id: connectionId,
+                access_token: parsedCreds.access_token,
+                app_secret: parsedCreds.app_secret || '',
+                advertiser_id: parsedCreds.advertiser_id,
+                organization_id: orgData?.id,
+                organization_name: orgData?.name || 'Mi Negocio',
+                domain,
+              }),
+            });
+
+            const setupData = await setupResponse.json();
+            if (setupData.success) {
+              console.log('TikTok setup completo:', setupData.message);
+            } else {
+              console.warn('TikTok setup parcial:', setupData.error);
+            }
+          } catch (setupErr) {
+            console.warn('Error en TikTok setup automático (la conexión se guardó):', setupErr);
+          }
+        } else if (wizardData.provider?.code === 'whatsapp') {
+          // Si vino de Embedded Signup, ya se guardó todo en el callback
+          if (parsedCreds.access_token === '__embedded_signup__') {
+            console.log('[WhatsApp] Credenciales ya guardadas vía Embedded Signup');
+          } else {
+            // WhatsApp Business: guardar 4 credenciales separadas (modo manual)
+            const whatsappSaved = await whatsappClientService.saveCredentials(connectionId, {
+              phoneNumberId: parsedCreds.phone_number_id || '',
+              businessAccountId: parsedCreds.business_account_id || '',
+              accessToken: parsedCreds.access_token || '',
+              webhookVerifyToken: parsedCreds.webhook_verify_token || '',
+            });
+
+            if (!whatsappSaved) {
+              console.warn('No se pudieron guardar las credenciales de WhatsApp');
+            }
+
+            // Sync: Integraciones → CRM (crear/actualizar canal + channel_credentials)
+            if (organizationId) {
+              await whatsappSyncService.syncToChannel(organizationId, connectionId, {
+                phone_number_id: parsedCreds.phone_number_id || '',
+                business_account_id: parsedCreds.business_account_id || '',
+                access_token: parsedCreds.access_token || '',
+                webhook_verify_token: parsedCreds.webhook_verify_token || '',
+              });
+            }
+          }
+        } else {
+          // Genérico: guardar como JSON en un solo registro
+          const credentialsSaved = await integrationsService.saveCredentials(
+            connectionId,
+            wizardData.credentials.credential_type,
+            wizardData.credentials.secret_ref,
+            wizardData.credentials.purpose,
+            wizardData.credentials.expires_at
+          );
+
+          if (!credentialsSaved) {
+            console.warn('No se pudieron guardar las credenciales');
+          }
         }
       }
 
@@ -588,6 +1050,7 @@ export default function NuevaConexionPage() {
                     connector={wizardData.connector}
                     connectionName={wizardData.connectionName}
                     settings={wizardData.settings}
+                    organizationDomain={organizationDomain}
                     onNameChange={(name) => {
                       setWizardData((prev) => ({ ...prev, connectionName: name }));
                     }}
@@ -607,6 +1070,7 @@ export default function NuevaConexionPage() {
                     onValidate={handleValidate}
                     isValidating={isValidating}
                     validationResult={validationResult}
+                    organizationId={organizationId}
                   />
                 )}
               </>
@@ -640,6 +1104,7 @@ export default function NuevaConexionPage() {
                     connector={wizardData.connector}
                     connectionName={wizardData.connectionName}
                     settings={wizardData.settings}
+                    organizationDomain={organizationDomain}
                     onNameChange={(name) => {
                       setWizardData((prev) => ({ ...prev, connectionName: name }));
                     }}
@@ -659,6 +1124,7 @@ export default function NuevaConexionPage() {
                     onValidate={handleValidate}
                     isValidating={isValidating}
                     validationResult={validationResult}
+                    organizationId={organizationId}
                   />
                 )}
               </>

@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { stripeClientService } from '@/lib/services/integrations/stripe';
 import { STRIPE_CLIENT_CREDENTIAL_PURPOSES } from '@/lib/services/integrations/stripe/stripeClientConfig';
-
-// Supabase con service role para webhooks (no hay sesión de usuario)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar conexiones activas de Stripe (integración de clientes)
-    const { data: connections } = await supabaseAdmin
+    const { data: connections } = await getSupabaseAdmin()
       .from('integration_connections')
       .select(`
         id,
@@ -55,7 +49,7 @@ export async function POST(request: NextRequest) {
         parsedEvent = event as unknown as Record<string, unknown>;
 
         // Registrar evento en integration_events
-        await supabaseAdmin.from('integration_events').insert({
+        await getSupabaseAdmin().from('integration_events').insert({
           connection_id: conn.id,
           event_type: event.type,
           payload: {

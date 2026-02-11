@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { metaMarketingService } from '@/lib/services/integrations/meta';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * POST /api/integrations/meta/product-sync
@@ -50,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar conexión activa de Meta Marketing para esta organización
-    const { data: connections } = await supabaseAdmin
+    const { data: connections } = await getSupabaseAdmin()
       .from('integration_connections')
       .select(`
         id,
@@ -81,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener dominio de la organización
-    const { data: domainData } = await supabaseAdmin
+    const { data: domainData } = await getSupabaseAdmin()
       .from('organization_domains')
       .select('host')
       .eq('organization_id', organization_id)
@@ -89,7 +84,7 @@ export async function POST(request: NextRequest) {
       .eq('is_active', true)
       .maybeSingle();
 
-    const { data: orgData } = await supabaseAdmin
+    const { data: orgData } = await getSupabaseAdmin()
       .from('organizations')
       .select('subdomain')
       .eq('id', organization_id)
@@ -99,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'delete' && product_ids && product_ids.length > 0) {
       // Eliminar productos del catálogo
-      const { data: products } = await supabaseAdmin
+      const { data: products } = await getSupabaseAdmin()
         .from('products')
         .select('sku')
         .in('id', product_ids);
@@ -145,7 +140,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Registrar evento de sync
-    await supabaseAdmin.from('integration_events').insert({
+    await getSupabaseAdmin().from('integration_events').insert({
       connection_id: metaConn.id,
       event_type: 'catalog.product_sync',
       payload: {

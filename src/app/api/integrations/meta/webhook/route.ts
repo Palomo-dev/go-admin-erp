@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { metaMarketingService } from '@/lib/services/integrations/meta';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // GET: Verificación del webhook (Facebook envía challenge)
 export async function GET(request: NextRequest) {
@@ -33,7 +28,7 @@ export async function POST(request: NextRequest) {
     const body = JSON.parse(rawBody);
 
     // Buscar conexiones activas de Meta Marketing
-    const { data: connections } = await supabaseAdmin
+    const { data: connections } = await getSupabaseAdmin()
       .from('integration_connections')
       .select(`
         id,
@@ -70,7 +65,7 @@ export async function POST(request: NextRequest) {
         for (const entry of entries) {
           const changes = entry.changes || [];
           for (const change of changes) {
-            await supabaseAdmin.from('integration_events').insert({
+            await getSupabaseAdmin().from('integration_events').insert({
               connection_id: conn.id,
               event_type: `meta.${body.object}.${change.field}`,
               payload: {

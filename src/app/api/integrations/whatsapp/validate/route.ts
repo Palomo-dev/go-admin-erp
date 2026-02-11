@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { whatsappCloudService } from '@/lib/services/integrations/whatsapp';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // POST: Validar credenciales de WhatsApp
 // Acepta: { channel_id } (post-save) O { phone_number_id, access_token } (pre-save wizard)
@@ -47,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // Si se validó por channel_id, actualizar estado en BD
     if (channel_id) {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('channel_credentials')
         .update({
           is_valid: result.valid,
@@ -57,7 +52,7 @@ export async function POST(request: NextRequest) {
         .eq('provider', 'meta');
 
       if (result.valid) {
-        await supabaseAdmin
+        await getSupabaseAdmin()
           .from('channels')
           .update({ status: 'active', updated_at: new Date().toISOString() })
           .eq('id', channel_id)

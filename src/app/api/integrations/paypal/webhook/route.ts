@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { paypalService } from '@/lib/services/integrations/paypal';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +14,7 @@ export async function POST(request: NextRequest) {
     const transmissionTime = request.headers.get('paypal-transmission-time') || '';
 
     // Buscar conexiones activas de PayPal
-    const { data: connections } = await supabaseAdmin
+    const { data: connections } = await getSupabaseAdmin()
       .from('integration_connections')
       .select(`
         id,
@@ -63,7 +58,7 @@ export async function POST(request: NextRequest) {
         verified = true;
 
         // Registrar evento en integration_events
-        await supabaseAdmin.from('integration_events').insert({
+        await getSupabaseAdmin().from('integration_events').insert({
           connection_id: conn.id,
           event_type: body.event_type || 'unknown',
           payload: {

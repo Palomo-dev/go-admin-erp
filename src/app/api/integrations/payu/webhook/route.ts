@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { payuService } from '@/lib/services/integrations/payu';
 import { PAYU_CREDENTIAL_PURPOSES } from '@/lib/services/integrations/payu/payuConfig';
-
-// Supabase con service role para webhooks (no hay sesión de usuario)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar conexión activa de PayU
-    const { data: connections } = await supabaseAdmin
+    const { data: connections } = await getSupabaseAdmin()
       .from('integration_connections')
       .select(`
         id,
@@ -66,7 +60,7 @@ export async function POST(request: NextRequest) {
         verified = true;
 
         // Registrar evento en integration_events
-        await supabaseAdmin.from('integration_events').insert({
+        await getSupabaseAdmin().from('integration_events').insert({
           connection_id: conn.id,
           event_type: `payment.${payload.state_pol === '4' ? 'approved' : payload.state_pol === '6' ? 'declined' : 'pending'}`,
           payload: {

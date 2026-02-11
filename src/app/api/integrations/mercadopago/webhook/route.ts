@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { mercadopagoService } from '@/lib/services/integrations/mercadopago';
 import { MERCADOPAGO_API_BASE } from '@/lib/services/integrations/mercadopago';
-
-// Supabase con service role para webhooks (no hay sesión de usuario)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +23,7 @@ export async function POST(request: NextRequest) {
     const paymentId = notification.data.id;
 
     // Buscar conexión activa de MercadoPago para obtener credenciales
-    const { data: connections } = await supabaseAdmin
+    const { data: connections } = await getSupabaseAdmin()
       .from('integration_connections')
       .select(`
         id,
@@ -88,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Registrar evento en integration_events
-    await supabaseAdmin.from('integration_events').insert({
+    await getSupabaseAdmin().from('integration_events').insert({
       connection_id: mpConnections[0]?.id,
       event_type: notification.action,
       payload: {

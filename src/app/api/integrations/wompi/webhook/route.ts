@@ -4,15 +4,9 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import crypto from 'crypto';
 import type { WompiWebhookEvent } from '@/lib/services/integrations/wompi/wompiTypes';
-
-// Usar service role para operaciones del webhook (no hay sesión de usuario)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar conexión activa de Wompi para esta organización
-    const { data: connections } = await supabaseAdmin
+    const { data: connections } = await getSupabaseAdmin()
       .from('integration_connections')
       .select(`
         id, environment,
@@ -63,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener secreto de eventos para verificar checksum
-    const { data: creds } = await supabaseAdmin
+    const { data: creds } = await getSupabaseAdmin()
       .from('integration_credentials')
       .select('secret_ref')
       .eq('connection_id', wompiConnection.id)
@@ -84,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Registrar evento en integration_events
-    await supabaseAdmin.from('integration_events').insert({
+    await getSupabaseAdmin().from('integration_events').insert({
       connection_id: wompiConnection.id,
       organization_id: orgId,
       source: 'webhook',
@@ -108,7 +102,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Actualizar last_activity_at de la conexión
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('integration_connections')
       .update({
         last_activity_at: new Date().toISOString(),
@@ -162,7 +156,7 @@ async function processTransactionUpdate(
   event: WompiWebhookEvent
 ) {
   // Buscar pago asociado por referencia
-  const { data: payment } = await supabaseAdmin
+  const { data: payment } = await getSupabaseAdmin()
     .from('payments')
     .select('id, status')
     .eq('reference', reference)
@@ -186,7 +180,7 @@ async function processTransactionUpdate(
   const internalStatus = statusMap[status] || 'pending';
 
   // Actualizar pago
-  await supabaseAdmin
+  await getSupabaseAdmin()
     .from('payments')
     .update({
       status: internalStatus,
@@ -203,7 +197,7 @@ async function processTransactionUpdate(
     .eq('id', payment.id);
 
   // Marcar evento como procesado
-  await supabaseAdmin
+  await getSupabaseAdmin()
     .from('integration_events')
     .update({ status: 'processed', processed_at: new Date().toISOString() })
     .eq('external_event_id', transactionId)

@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { whatsappCloudService } from '@/lib/services/integrations/whatsapp';
 import { formatPhoneE164 } from '@/lib/services/integrations/whatsapp';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // POST: Enviar mensaje via WhatsApp Cloud API
 export async function POST(request: NextRequest) {
@@ -116,7 +111,7 @@ export async function POST(request: NextRequest) {
     if (conversation_id && organization_id) {
       const externalId = result?.messages?.[0]?.id || null;
 
-      await supabaseAdmin.from('messages').insert({
+      await getSupabaseAdmin().from('messages').insert({
         conversation_id,
         organization_id,
         sender_type: 'member',
@@ -128,7 +123,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Actualizar last_message_at
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', conversation_id);

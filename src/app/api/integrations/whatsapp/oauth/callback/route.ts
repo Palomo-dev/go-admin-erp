@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 const META_APP_ID = process.env.META_APP_ID || '';
 const META_APP_SECRET = process.env.META_APP_SECRET || '';
@@ -89,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     if (!finalChannelId) {
       // Buscar canal WhatsApp existente de la org
-      const { data: existingChannel } = await supabaseAdmin
+      const { data: existingChannel } = await getSupabaseAdmin()
         .from('channels')
         .select('id')
         .eq('organization_id', organization_id)
@@ -101,7 +96,7 @@ export async function POST(request: NextRequest) {
         finalChannelId = existingChannel.id;
       } else {
         // Crear canal nuevo
-        const { data: newChannel } = await supabaseAdmin
+        const { data: newChannel } = await getSupabaseAdmin()
           .from('channels')
           .insert({
             organization_id,
@@ -125,14 +120,14 @@ export async function POST(request: NextRequest) {
       };
 
       // Upsert channel_credentials
-      const { data: existingCreds } = await supabaseAdmin
+      const { data: existingCreds } = await getSupabaseAdmin()
         .from('channel_credentials')
         .select('id')
         .eq('channel_id', finalChannelId)
         .maybeSingle();
 
       if (existingCreds) {
-        await supabaseAdmin
+        await getSupabaseAdmin()
           .from('channel_credentials')
           .update({
             credentials: credPayload,
@@ -142,7 +137,7 @@ export async function POST(request: NextRequest) {
           })
           .eq('channel_id', finalChannelId);
       } else {
-        await supabaseAdmin
+        await getSupabaseAdmin()
           .from('channel_credentials')
           .insert({
             channel_id: finalChannelId,
@@ -154,7 +149,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Activar canal
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('channels')
         .update({
           name: phoneData.verified_name || 'WhatsApp Business',
@@ -169,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     // Buscar si el canal tiene conexión vinculada
     if (finalChannelId) {
-      const { data: channelData } = await supabaseAdmin
+      const { data: channelData } = await getSupabaseAdmin()
         .from('channels')
         .select('integration_connection_id')
         .eq('id', finalChannelId)
@@ -180,7 +175,7 @@ export async function POST(request: NextRequest) {
 
     if (!connectionId) {
       // Buscar conexión existente de la org
-      const { data: existingConn } = await supabaseAdmin
+      const { data: existingConn } = await getSupabaseAdmin()
         .from('integration_connections')
         .select('id')
         .eq('organization_id', organization_id)
@@ -191,7 +186,7 @@ export async function POST(request: NextRequest) {
       if (existingConn) {
         connectionId = existingConn.id;
       } else {
-        const { data: newConn } = await supabaseAdmin
+        const { data: newConn } = await getSupabaseAdmin()
           .from('integration_connections')
           .insert({
             organization_id,
@@ -211,7 +206,7 @@ export async function POST(request: NextRequest) {
 
     // Vincular canal ↔ conexión
     if (finalChannelId && connectionId) {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('channels')
         .update({ integration_connection_id: connectionId, updated_at: new Date().toISOString() })
         .eq('id', finalChannelId);
@@ -219,19 +214,19 @@ export async function POST(request: NextRequest) {
 
     // Guardar credenciales en integration_credentials
     if (connectionId) {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('integration_credentials')
         .delete()
         .eq('connection_id', connectionId);
 
-      await supabaseAdmin.from('integration_credentials').insert([
+      await getSupabaseAdmin().from('integration_credentials').insert([
         { connection_id: connectionId, credential_type: 'phone_number_id', purpose: 'primary', secret_ref: phone_number_id, key_prefix: phone_number_id.substring(0, 8) + '...', status: 'active' },
         { connection_id: connectionId, credential_type: 'business_account_id', purpose: 'primary', secret_ref: waba_id, key_prefix: waba_id.substring(0, 8) + '...', status: 'active' },
         { connection_id: connectionId, credential_type: 'access_token', purpose: 'primary', secret_ref: accessToken, key_prefix: accessToken.substring(0, 12) + '...', status: 'active' },
         { connection_id: connectionId, credential_type: 'webhook_verify_token', purpose: 'primary', secret_ref: webhookVerifyToken, key_prefix: webhookVerifyToken.substring(0, 10) + '...', status: 'active' },
       ]);
 
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('integration_connections')
         .update({ status: 'connected', connected_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq('id', connectionId);

@@ -9,11 +9,13 @@ import { createClient } from '@supabase/supabase-js';
 const VERCEL_API_TOKEN = process.env.VERCEL_API_TOKEN;
 const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID || 'team_frIu9xHSNGKf7olF1x4Fsvfh';
 
-// Supabase admin client
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Supabase admin client (lazy init para evitar error en build time)
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 interface PurchaseRequest {
   domain: string;
@@ -164,6 +166,7 @@ export async function POST(request: NextRequest) {
     // PASO 3: Registrar en Supabase
     console.log('💾 Registrando en base de datos...');
 
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: domainRecord, error: dbError } = await supabaseAdmin
       .from('organization_domains')
       .insert({
@@ -192,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     // Registrar transacción de compra (ignorar si la tabla no existe)
     try {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('domain_purchases')
         .insert({
           organization_id: organizationId,

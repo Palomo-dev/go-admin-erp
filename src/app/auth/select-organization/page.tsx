@@ -123,6 +123,10 @@ function SelectOrganizationContent() {
         throw updateError;
       }
 
+      // Sincronizar localStorage ANTES de proceedWithLogin para evitar lectura de valor viejo
+      localStorage.setItem('currentOrganizationId', org.id.toString());
+      localStorage.setItem('currentOrganizationName', org.name);
+
       // Proceder con el login usando la función existente
       const next = searchParams.get('next') || '/app/inicio';
       await proceedWithLogin(false, session.user.email || '');

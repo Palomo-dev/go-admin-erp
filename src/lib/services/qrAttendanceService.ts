@@ -53,13 +53,15 @@ export class QRAttendanceService {
       `)
       .eq('user_id', userData.user.id)
       .eq('employments.status', 'active')
-      .single();
+      .limit(1);
 
-    if (error || !data) return null;
+    if (error || !data || data.length === 0) return null;
 
-    const employment = Array.isArray(data.employments) 
-      ? data.employments[0] 
-      : data.employments;
+    const firstMember = data[0];
+
+    const employment = Array.isArray(firstMember.employments) 
+      ? firstMember.employments[0] 
+      : firstMember.employments;
 
     if (!employment) return null;
 
@@ -70,13 +72,13 @@ export class QRAttendanceService {
 
     return {
       employment_id: employment.id,
-      employee_name: data.profiles 
-        ? `${(data.profiles as any).first_name} ${(data.profiles as any).last_name}`
+      employee_name: firstMember.profiles 
+        ? `${(firstMember.profiles as any).first_name} ${(firstMember.profiles as any).last_name}`
         : 'Sin nombre',
       employee_code: employment.employee_code,
       branch_id: employment.branch_id,
       branch_name: branchName,
-      organization_id: data.organization_id,
+      organization_id: firstMember.organization_id,
     };
   }
 

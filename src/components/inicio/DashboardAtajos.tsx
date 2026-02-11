@@ -97,8 +97,7 @@ export function DashboardAtajos({ activeModuleCodes }: DashboardAtajosProps) {
 
   return (
     <div
-      className="grid grid-cols-5 gap-3"
-      style={{ gridTemplateColumns: `repeat(${Math.min(filteredAtajos.length, 10)}, minmax(0, 1fr))` }}
+      className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3 overflow-x-auto"
     >
       {filteredAtajos.map((atajo) => {
         const Icon = atajo.icon;
@@ -106,7 +105,7 @@ export function DashboardAtajos({ activeModuleCodes }: DashboardAtajosProps) {
           <Link
             key={atajo.href}
             href={atajo.href}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all group"
+            className="flex flex-col items-center gap-1 sm:gap-1.5 p-2 sm:p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all group min-w-0"
           >
             <div className={`p-2 rounded-lg ${atajo.color} group-hover:scale-110 transition-transform`}>
               <Icon className="h-5 w-5" />

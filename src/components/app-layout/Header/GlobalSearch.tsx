@@ -29,7 +29,7 @@ import { SearchResult, SearchResultType, PAGINAS_PREDEFINIDAS, PAGINAS_INICIALES
  * Componente de búsqueda global que permite buscar organizaciones, sucursales, 
  * usuarios, clientes, productos, etc.
  */
-const GlobalSearch = () => {
+const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -284,19 +284,21 @@ const GlobalSearch = () => {
     <>
       {/* Campo de búsqueda en el header - Versión responsive */}
       <div className="flex items-center justify-center">
-        {/* Versión móvil - Solo icono */}
-        <button
-          onClick={openSearchDialog} 
-          className="md:hidden p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-          aria-label="Buscar"
-        >
-          <Search className="h-5 w-5" />
-        </button>
+        {/* Versión móvil - Solo icono (oculto si forceFullBar) */}
+        {!forceFullBar && (
+          <button
+            onClick={openSearchDialog} 
+            className="md:hidden p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+            aria-label="Buscar"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+        )}
         
-        {/* Versión escritorio - Campo completo */}
+        {/* Versión escritorio o forzada - Campo completo */}
         <div 
           onClick={openSearchDialog}
-          className="hidden md:flex items-center w-60 lg:w-96 h-10 px-3 border rounded-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 cursor-pointer focus-within:ring-1 focus-within:ring-blue-500 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm"
+          className={`${forceFullBar ? 'flex w-full' : 'hidden md:flex w-60 lg:w-96'} items-center h-10 px-3 border rounded-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 cursor-pointer focus-within:ring-1 focus-within:ring-blue-500 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm`}
         >
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           <div className="flex-grow truncate text-sm text-gray-500 dark:text-gray-400">

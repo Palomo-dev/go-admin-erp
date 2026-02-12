@@ -249,7 +249,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
                   </p>
                   {org.role && (
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {org.is_super_admin ? 'Super Admin' : org.role}
+                      {org.role}
                     </p>
                   )}
                 </div>

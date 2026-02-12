@@ -34,8 +34,8 @@ export const AppHeader = ({
           </button>
         </div>
         
-        {/* Buscador global en el centro */}
-        <div className="flex-1 flex justify-center px-2 sm:px-4">
+        {/* Buscador global en el centro - solo desktop */}
+        <div className="hidden md:flex flex-1 justify-center px-2 sm:px-4">
           <div className="w-full max-w-md">
             <GlobalSearch />
           </div>
@@ -84,6 +84,10 @@ export const AppHeader = ({
             isSidebar={false}
           />
         </div>
+      </div>
+      {/* Buscador global - solo mobile, debajo de la barra de iconos */}
+      <div className="md:hidden px-3 pb-2">
+        <GlobalSearch forceFullBar />
       </div>
       <TrialBanner orgId={orgId} />
     </div>

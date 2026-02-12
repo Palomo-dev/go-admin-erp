@@ -288,7 +288,11 @@ export function EditarProveedorForm({ supplierUuid }: EditarProveedorFormProps) 
                   </div>
                   <div>
                     <Label className="dark:text-gray-300">Condiciones de Pago</Label>
-                    <Select value={formData.payment_terms || ''} onValueChange={(v) => handleChange('payment_terms', v)}>
+                    <Select value={formData.payment_terms || ''} onValueChange={(v) => {
+                      handleChange('payment_terms', v);
+                      const daysMap: Record<string, number> = { contado: 0, credito_15: 15, credito_30: 30, credito_60: 60, credito_90: 90 };
+                      if (daysMap[v] !== undefined) handleChange('credit_days', daysMap[v]);
+                    }}>
                       <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="contado">Contado</SelectItem>

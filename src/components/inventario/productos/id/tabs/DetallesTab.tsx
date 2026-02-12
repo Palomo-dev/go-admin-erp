@@ -130,6 +130,23 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
         .eq('organization_id', organization?.id);
       
       if (error) throw error;
+
+      // Sincronizar product_suppliers
+      if (formData.supplier_id) {
+        const supplierId = typeof formData.supplier_id === 'string' ? parseInt(formData.supplier_id) : formData.supplier_id;
+        // Quitar is_preferred de otros proveedores de este producto
+        await supabase.from('product_suppliers').update({ is_preferred: false }).eq('product_id', producto.id);
+        // Upsert el proveedor seleccionado como preferido
+        const { data: existing } = await supabase.from('product_suppliers').select('id').eq('product_id', producto.id).eq('supplier_id', supplierId).maybeSingle();
+        if (existing) {
+          await supabase.from('product_suppliers').update({ is_preferred: true, cost: producto.cost || 0 }).eq('id', existing.id);
+        } else {
+          await supabase.from('product_suppliers').insert({ product_id: producto.id, supplier_id: supplierId, cost: producto.cost || 0, is_preferred: true });
+        }
+      } else {
+        // Si se quitó el proveedor, quitar is_preferred de todos
+        await supabase.from('product_suppliers').update({ is_preferred: false }).eq('product_id', producto.id);
+      }
       
       toast({
         title: "Cambios guardados",

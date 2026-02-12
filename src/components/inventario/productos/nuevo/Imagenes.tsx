@@ -3,8 +3,10 @@
 import { useState, useRef } from 'react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Image as ImageIcon, Upload, X, Star, Loader2, Sparkles } from 'lucide-react'
+import { Image as ImageIcon, Upload, X, Star, Loader2, Wand2 } from 'lucide-react'
 import Image from 'next/image'
+import { useOrganization } from '@/lib/hooks/useOrganization'
+import { useToast } from '@/components/ui/use-toast'
 
 interface ImagenesProps {
   formData: any
@@ -14,6 +16,8 @@ interface ImagenesProps {
 export default function Imagenes({ formData, updateFormData }: ImagenesProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
+  const { organization } = useOrganization()
+  const { toast } = useToast()
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -46,6 +50,7 @@ export default function Imagenes({ formData, updateFormData }: ImagenesProps) {
 
   const handleGenerateImage = async () => {
     if (!formData.name.trim()) {
+      toast({ title: 'Escribe un nombre primero', description: 'La IA necesita el nombre del producto para generar la imagen.', variant: 'destructive' })
       return
     }
 
@@ -57,20 +62,31 @@ export default function Imagenes({ formData, updateFormData }: ImagenesProps) {
         body: JSON.stringify({
           productName: formData.name,
           description: formData.description || '',
-          organizationId: 2 // Se obtendrá del contexto
+          organizationId: organization?.id || 0
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || 'Error generando imagen')
+      }
+
+      const data = await response.json()
+      if (data.imageUrl) {
+        const imgRes = await fetch(data.imageUrl)
+        const blob = await imgRes.blob()
+        const file = new File([blob], `ai-${Date.now()}.png`, { type: 'image/png' })
         const newImage = {
-          url: data.imageUrl,
+          file,
+          url: URL.createObjectURL(file),
           is_primary: formData.images.length === 0
         }
         updateFormData('images', [...formData.images, newImage])
+        toast({ title: 'Imagen generada con IA', description: 'Puedes cambiarla o agregar más imágenes.' })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generando imagen:', error)
+      toast({ title: 'Error', description: error.message || 'No se pudo generar la imagen con IA.', variant: 'destructive' })
     } finally {
       setIsGeneratingImage(false)
     }
@@ -108,7 +124,7 @@ export default function Imagenes({ formData, updateFormData }: ImagenesProps) {
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4 mr-2" />
+                <Wand2 className="h-4 w-4 mr-2" />
                 Generar con IA
               </>
             )}
@@ -149,7 +165,7 @@ export default function Imagenes({ formData, updateFormData }: ImagenesProps) {
               variant="outline"
               size="sm"
             >
-              <Sparkles className="h-4 w-4 mr-2" />
+              <Wand2 className="h-4 w-4 mr-2" />
               Generar con IA
             </Button>
             <Button
@@ -214,10 +230,9 @@ export default function Imagenes({ formData, updateFormData }: ImagenesProps) {
       )}
 
       {/* Información adicional */}
-      <div className="mt-4 p-4 bg-pink-50 dark:bg-pink-900/10 border border-pink-200 dark:border-pink-800 rounded-lg">
-        <p className="text-sm text-pink-800 dark:text-pink-300">
-          <strong>Nota:</strong> Las imágenes se almacenarán en Supabase Storage. 
-          La primera imagen o la marcada como principal será la que se muestre en las listas de productos.
+      <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
+          <strong>Nota:</strong> La primera imagen o la marcada como principal será la que se muestre en las listas de productos.
         </p>
       </div>
     </div>

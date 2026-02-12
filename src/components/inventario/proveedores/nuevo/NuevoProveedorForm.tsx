@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Loader2, Building2, User, Phone, Mail, FileText } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Building2, User, Phone, Mail, FileText, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export function NuevoProveedorForm() {
@@ -30,6 +30,35 @@ export function NuevoProveedorForm() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [generatingNotes, setGeneratingNotes] = useState(false);
+
+  const handleAINotes = async () => {
+    if (!formData.name.trim()) {
+      toast({ title: 'Escribe el nombre primero', variant: 'destructive' });
+      return;
+    }
+    setGeneratingNotes(true);
+    try {
+      const res = await fetch('/api/ai-assistant/improve-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: formData.notes || formData.name,
+          context: `Proveedor: ${formData.name}. NIT: ${formData.nit || 'N/A'}. Contacto: ${formData.contact || 'N/A'}. Tel: ${formData.phone || 'N/A'}. Email: ${formData.email || 'N/A'}`,
+          type: 'supplier_description'
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.improvedText) handleChange('notes', data.improvedText);
+        toast({ title: 'Notas generadas con IA' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'No se pudo generar las notas.', variant: 'destructive' });
+    } finally {
+      setGeneratingNotes(false);
+    }
+  };
 
   // Validar formulario
   const validate = (): boolean => {
@@ -207,9 +236,22 @@ export function NuevoProveedorForm() {
             {/* Notas */}
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
-                <CardTitle className="text-lg dark:text-white flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                  Notas Adicionales
+                <CardTitle className="text-lg dark:text-white flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    Notas Adicionales
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleAINotes}
+                    disabled={generatingNotes || !formData.name.trim()}
+                    className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20 gap-1"
+                  >
+                    {generatingNotes ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    {generatingNotes ? 'Generando...' : 'Generar con IA'}
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>

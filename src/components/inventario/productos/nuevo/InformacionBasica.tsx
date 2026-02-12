@@ -31,11 +31,17 @@ interface Tax {
   rate: number
 }
 
+interface Unit {
+  code: string
+  name: string
+}
+
 export default function InformacionBasica({ formData, updateFormData }: InformacionBasicaProps) {
   const { organization } = useOrganization()
   const [categories, setCategories] = useState<Category[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [taxes, setTaxes] = useState<Tax[]>([])
+  const [units, setUnits] = useState<Unit[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isImprovingDescription, setIsImprovingDescription] = useState(false)
 
@@ -77,6 +83,14 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
         .order('name')
 
       if (taxesData) setTaxes(taxesData)
+
+      // Cargar unidades
+      const { data: unitsData } = await supabase
+        .from('units')
+        .select('code, name')
+        .order('name')
+
+      if (unitsData) setUnits(unitsData.map(u => ({ code: u.code.trim(), name: u.name })))
     } catch (error) {
       console.error('Error cargando datos:', error)
     } finally {
@@ -244,27 +258,27 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
           <Label htmlFor="unit_code" className="text-gray-700 dark:text-gray-300">
             Unidad de Medida
           </Label>
-          <Select
-            value={formData.unit_code}
-            onValueChange={(value) => updateFormData('unit_code', value)}
-          >
-            <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="UND">Unidad</SelectItem>
-              <SelectItem value="KG">Kilogramo</SelectItem>
-              <SelectItem value="GR">Gramo</SelectItem>
-              <SelectItem value="LT">Litro</SelectItem>
-              <SelectItem value="ML">Mililitro</SelectItem>
-              <SelectItem value="MT">Metro</SelectItem>
-              <SelectItem value="CM">Centímetro</SelectItem>
-              <SelectItem value="M2">Metro Cuadrado</SelectItem>
-              <SelectItem value="M3">Metro Cúbico</SelectItem>
-              <SelectItem value="PAQ">Paquete</SelectItem>
-              <SelectItem value="CAJ">Caja</SelectItem>
-            </SelectContent>
-          </Select>
+          {isLoadingData ? (
+            <div className="flex items-center justify-center h-10 border border-gray-300 dark:border-gray-700 rounded-md">
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <Select
+              value={formData.unit_code}
+              onValueChange={(value) => updateFormData('unit_code', value)}
+            >
+              <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
+                <SelectValue placeholder="Seleccionar unidad" />
+              </SelectTrigger>
+              <SelectContent>
+                {units.map((unit) => (
+                  <SelectItem key={unit.code} value={unit.code}>
+                    {unit.name} ({unit.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Impuesto */}

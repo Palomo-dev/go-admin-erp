@@ -80,7 +80,7 @@ export default function NuevoProductoForm() {
     name: '',
     description: '',
     category_id: null,
-    unit_code: 'UND',
+    unit_code: 'UN',
     supplier_id: null,
     price: 0,
     cost: 0,

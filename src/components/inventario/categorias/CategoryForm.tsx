@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Save, Loader2, FolderTree, Search, Link2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, FolderTree, Search, Link2, Sparkles, Wand2 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
@@ -43,6 +43,8 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
 
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
+  const [generatingDesc, setGeneratingDesc] = useState(false);
+  const [generatingImg, setGeneratingImg] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState<CategoryFormData>({
     ...emptyFormData,
@@ -241,7 +243,36 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
               </div>
 
               <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Descripción</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-gray-700 dark:text-gray-300">Descripción</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      if (!formData.name.trim()) { toast({ title: 'Escribe un nombre primero', variant: 'destructive' }); return; }
+                      setGeneratingDesc(true);
+                      try {
+                        const res = await fetch('/api/ai-assistant/improve-text', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ text: formData.description || formData.name, context: `Categoría de productos: ${formData.name}`, type: 'category_description' }),
+                        });
+                        if (res.ok) {
+                          const data = await res.json();
+                          if (data.improvedText) handleDescriptionChange(data.improvedText);
+                          toast({ title: 'Descripción generada' });
+                        }
+                      } catch { toast({ title: 'Error', description: 'No se pudo generar la descripción.', variant: 'destructive' }); }
+                      finally { setGeneratingDesc(false); }
+                    }}
+                    disabled={generatingDesc || !formData.name.trim()}
+                    className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20 gap-1"
+                  >
+                    {generatingDesc ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    {generatingDesc ? 'Generando...' : 'Generar con IA'}
+                  </Button>
+                </div>
                 <Textarea
                   value={formData.description}
                   onChange={e => handleDescriptionChange(e.target.value)}
@@ -322,14 +353,47 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                 </div>
               )}
 
-              <ImageUploader
-                currentImageUrl={formData.image_url}
-                onImageUploaded={url => updateField('image_url', url)}
-                onImageRemoved={() => updateField('image_url', '')}
-                bucket="categories"
-                folder="images"
-                label="Imagen de Categoría"
-              />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-gray-700 dark:text-gray-300">Imagen de Categoría</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      if (!formData.name.trim()) { toast({ title: 'Escribe un nombre primero', variant: 'destructive' }); return; }
+                      setGeneratingImg(true);
+                      try {
+                        const res = await fetch('/api/ai-assistant/generate-image', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ productName: formData.name, description: formData.description || `Categoría: ${formData.name}`, organizationId: organization?.id || 0 }),
+                        });
+                        if (!res.ok) throw new Error('Error generando imagen');
+                        const data = await res.json();
+                        if (data.imageUrl) {
+                          updateField('image_url', data.imageUrl);
+                          toast({ title: 'Imagen generada con IA' });
+                        }
+                      } catch { toast({ title: 'Error', description: 'No se pudo generar la imagen.', variant: 'destructive' }); }
+                      finally { setGeneratingImg(false); }
+                    }}
+                    disabled={generatingImg || !formData.name.trim()}
+                    className="h-7 px-2 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20 gap-1"
+                  >
+                    {generatingImg ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                    {generatingImg ? 'Generando...' : 'Generar con IA'}
+                  </Button>
+                </div>
+                <ImageUploader
+                  currentImageUrl={formData.image_url}
+                  onImageUploaded={url => updateField('image_url', url)}
+                  onImageRemoved={() => updateField('image_url', '')}
+                  bucket="categories"
+                  folder="images"
+                  label=""
+                />
+              </div>
             </CardContent>
           </Card>
 

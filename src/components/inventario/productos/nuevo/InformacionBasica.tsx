@@ -109,8 +109,8 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: formData.description || formData.name,
-          context: `Producto: ${formData.name}`,
+          productName: formData.name,
+          currentDescription: formData.description || '',
           type: 'product_description'
         })
       })

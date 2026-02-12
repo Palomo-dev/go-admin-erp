@@ -132,13 +132,20 @@ const BranchSelector = memo(({ organizationId, className = '' }: BranchSelectorP
           setIsOpen(!isOpen);
         }}
         className={`flex items-center space-x-1 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${className}`}
-        title="Seleccionar sucursal"
+        title={selectedBranch?.name || 'Seleccionar sucursal'}
       >
-        <Building size={16} className="text-gray-700 dark:text-gray-300" />
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 max-w-[100px] truncate">
+        <Building size={16} className="text-gray-700 dark:text-gray-300 flex-shrink-0" />
+        {/* Mobile: solo iniciales */}
+        <span className="md:hidden text-xs font-bold text-gray-700 dark:text-gray-300">
+          {selectedBranch?.name
+            ? selectedBranch.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 3)
+            : '...'}
+        </span>
+        {/* Desktop: nombre completo */}
+        <span className="hidden md:inline text-xs font-medium text-gray-700 dark:text-gray-300 max-w-[120px] truncate">
           {selectedBranch?.name || 'Seleccionar sucursal'}
         </span>
-        <ChevronDown size={14} className="text-gray-500" />
+        <ChevronDown size={14} className="text-gray-500 flex-shrink-0" />
       </button>
 
       {isOpen && (

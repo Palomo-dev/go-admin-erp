@@ -55,6 +55,34 @@ Requisitos:
 - Sin emojis
 
 Responde SOLO con la descripción mejorada, sin explicaciones adicionales.`;
+    } else if (type === 'category_description') {
+      prompt = `Genera una descripción profesional y clara para una categoría de productos en un sistema de inventario.
+
+Nombre de la categoría: ${productName}
+${currentDescription ? `Descripción actual: ${currentDescription}` : ''}
+
+Requisitos:
+- Máximo 80 palabras
+- Describe qué tipo de productos incluye esta categoría
+- Lenguaje claro y profesional
+- En español
+- Sin emojis
+
+Responde SOLO con la descripción, sin explicaciones adicionales.`;
+    } else if (type === 'supplier_description') {
+      prompt = `Genera notas profesionales y útiles para un proveedor en un sistema de gestión empresarial.
+
+Nombre del proveedor: ${productName}
+${currentDescription ? `Notas actuales: ${currentDescription}` : ''}
+
+Requisitos:
+- Máximo 100 palabras
+- Incluye información útil como condiciones de pago, tiempos de entrega, especialidad
+- Lenguaje profesional y directo
+- En español
+- Sin emojis
+
+Responde SOLO con las notas, sin explicaciones adicionales.`;
     }
 
     const openai = getOpenAIClient();

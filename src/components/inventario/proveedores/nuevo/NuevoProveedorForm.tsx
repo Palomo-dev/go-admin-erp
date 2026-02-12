@@ -43,8 +43,8 @@ export function NuevoProveedorForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: formData.notes || formData.name,
-          context: `Proveedor: ${formData.name}. NIT: ${formData.nit || 'N/A'}. Contacto: ${formData.contact || 'N/A'}. Tel: ${formData.phone || 'N/A'}. Email: ${formData.email || 'N/A'}`,
+          productName: formData.name,
+          currentDescription: formData.notes || '',
           type: 'supplier_description'
         }),
       });

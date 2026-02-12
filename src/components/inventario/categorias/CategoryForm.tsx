@@ -256,7 +256,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                         const res = await fetch('/api/ai-assistant/improve-text', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ text: formData.description || formData.name, context: `Categoría de productos: ${formData.name}`, type: 'category_description' }),
+                          body: JSON.stringify({ productName: formData.name, currentDescription: formData.description || '', type: 'category_description' }),
                         });
                         if (res.ok) {
                           const data = await res.json();

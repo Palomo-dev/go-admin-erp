@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Image as ImageIcon, Upload, X, Star, Loader2, Wand2 } from 'lucide-react'
-import Image from 'next/image'
+// Se usa img nativo en vez de next/image para soportar blob URLs de previews
 import { useOrganization } from '@/lib/hooks/useOrganization'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -73,15 +73,35 @@ export default function Imagenes({ formData, updateFormData }: ImagenesProps) {
 
       const data = await response.json()
       if (data.imageUrl) {
-        const imgRes = await fetch(data.imageUrl)
-        const blob = await imgRes.blob()
-        const file = new File([blob], `ai-${Date.now()}.png`, { type: 'image/png' })
-        const newImage = {
-          file,
-          url: URL.createObjectURL(file),
-          is_primary: formData.images.length === 0
+        if (data.storagePath && !data.isTemporary) {
+          // Imagen ya guardada en Supabase Storage por la API
+          const newImage = {
+            url: data.imageUrl,
+            storagePath: data.storagePath,
+            is_primary: formData.images.length === 0
+          }
+          updateFormData('images', [...formData.images, newImage])
+        } else {
+          // URL temporal: descargar y crear File para subir después
+          try {
+            const imgRes = await fetch(data.imageUrl)
+            const blob = await imgRes.blob()
+            const file = new File([blob], `ai-${Date.now()}.png`, { type: 'image/png' })
+            const newImage = {
+              file,
+              url: URL.createObjectURL(file),
+              is_primary: formData.images.length === 0
+            }
+            updateFormData('images', [...formData.images, newImage])
+          } catch {
+            // Si falla la descarga, usar URL directa
+            const newImage = {
+              url: data.imageUrl,
+              is_primary: formData.images.length === 0
+            }
+            updateFormData('images', [...formData.images, newImage])
+          }
         }
-        updateFormData('images', [...formData.images, newImage])
         toast({ title: 'Imagen generada con IA', description: 'Puedes cambiarla o agregar más imágenes.' })
       }
     } catch (error: any) {
@@ -186,11 +206,10 @@ export default function Imagenes({ formData, updateFormData }: ImagenesProps) {
               key={index}
               className="relative group aspect-square border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
             >
-              <Image
+              <img
                 src={image.url}
                 alt={`Imagen ${index + 1}`}
-                fill
-                className="object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
               />
               
               {/* Overlay con acciones */}

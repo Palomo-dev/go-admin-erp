@@ -46,6 +46,7 @@ interface ProductFormData {
   images: Array<{
     file?: File
     url?: string
+    storagePath?: string
     is_primary: boolean
   }>
   
@@ -277,28 +278,36 @@ export default function NuevoProductoForm() {
       if (formData.images.length > 0) {
         for (let i = 0; i < formData.images.length; i++) {
           const image = formData.images[i]
-          if (image.file) {
+          let storagePath = ''
+
+          if (image.storagePath) {
+            // Imagen IA ya guardada en storage por la API
+            storagePath = image.storagePath
+          } else if (image.file) {
+            // Imagen subida por el usuario: subir a storage
             const fileExt = image.file.name.split('.').pop()
             const fileName = `${product.uuid}_${Date.now()}_${i}.${fileExt}`
-            const filePath = `products/${organization.id}/${fileName}`
+            storagePath = `products/${organization.id}/${fileName}`
 
             const { error: uploadError } = await supabase.storage
               .from('product-images')
-              .upload(filePath, image.file)
+              .upload(storagePath, image.file)
 
             if (uploadError) throw uploadError
-
-            const { error: imageError } = await supabase
-              .from('product_images')
-              .insert({
-                product_id: product.id,
-                storage_path: filePath,
-                display_order: i,
-                is_primary: image.is_primary
-              })
-
-            if (imageError) throw imageError
+          } else {
+            continue // Imagen sin file ni storagePath, saltar
           }
+
+          const { error: imageError } = await supabase
+            .from('product_images')
+            .insert({
+              product_id: product.id,
+              storage_path: storagePath,
+              display_order: i,
+              is_primary: image.is_primary
+            })
+
+          if (imageError) throw imageError
         }
       }
 

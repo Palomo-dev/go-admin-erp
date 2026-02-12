@@ -22,7 +22,7 @@ export const AppHeader = ({
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
       <div className="flex justify-between items-center px-2 sm:px-4 py-2.5 min-h-[60px]">
-        {/* Grupo izquierdo: menú + sucursal */}
+        {/* Grupo izquierdo: menú + sucursal (móvil) */}
         <div className="flex items-center gap-1 sm:gap-2">
           <button 
             onClick={() => setSidebarOpen?.(true)}
@@ -32,8 +32,10 @@ export const AppHeader = ({
           >
             <Menu size={20} />
           </button>
-          {/* Branch Selector junto al menú */}
-          <BranchSelectorWrapper orgId={orgId} />
+          {/* Branch Selector solo en móvil (izquierda) */}
+          <div className="lg:hidden">
+            <BranchSelectorWrapper orgId={orgId} />
+          </div>
         </div>
         
         {/* Buscador global en el centro - solo desktop */}
@@ -44,6 +46,10 @@ export const AppHeader = ({
         </div>
         
         <div className="flex items-center space-x-1 sm:space-x-3">
+          {/* Branch Selector solo en desktop (derecha) */}
+          <div className="hidden lg:block">
+            <BranchSelectorWrapper orgId={orgId} />
+          </div>
           {/* Botón de Asistente IA */}
           <button
             onClick={onToggleAIAssistant}

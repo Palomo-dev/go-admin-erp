@@ -275,10 +275,6 @@ export function EditarProveedorForm({ supplierUuid }: EditarProveedorFormProps) 
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="dark:text-gray-300">ID Fiscal / RUT</Label>
-                    <Input value={formData.tax_id} onChange={(e) => handleChange('tax_id', e.target.value)} placeholder="NIT o RUT" className="dark:bg-gray-900 dark:border-gray-700" />
-                  </div>
-                  <div>
                     <Label className="dark:text-gray-300">Régimen Tributario</Label>
                     <Select value={formData.tax_regime || ''} onValueChange={(v) => handleChange('tax_regime', v)}>
                       <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700"><SelectValue placeholder="Seleccionar régimen" /></SelectTrigger>

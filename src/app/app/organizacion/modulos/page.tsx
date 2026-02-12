@@ -37,6 +37,7 @@ import {
   Briefcase,
   Truck
 } from 'lucide-react';
+import Link from 'next/link';
 import { useActiveModules } from '@/hooks/useActiveModules';
 import { useModuleContext } from '@/lib/context/ModuleContext';
 import { moduleManagementService, type Module } from '@/lib/services/moduleManagementService';
@@ -421,9 +422,11 @@ export default function ModulesMarketplacePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="bg-purple-600 hover:bg-purple-700">
-              Actualizar Plan
-            </Button>
+            <Link href="/app/plan">
+              <Button className="bg-purple-600 hover:bg-purple-700">
+                Actualizar Plan
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       )}

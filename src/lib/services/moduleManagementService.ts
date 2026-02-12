@@ -314,11 +314,12 @@ export const moduleManagementService = {
         data: { module }
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error activando módulo:', error);
+      const errorMessage = error?.message || error?.details || 'Error interno al activar el módulo';
       return {
         success: false,
-        message: 'Error interno al activar el módulo'
+        message: errorMessage
       };
     }
   },

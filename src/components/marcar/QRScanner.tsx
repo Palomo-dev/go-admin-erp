@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Camera, CameraOff, SwitchCamera, Loader2 } from 'lucide-react';
+import jsQR from 'jsqr';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -98,8 +99,18 @@ export function QRScanner({ onScan, isProcessing }: QRScannerProps) {
       }
     }
 
-    // Fallback: intentar parsear como JSON (para testing sin BarcodeDetector)
-    // En producción, se necesitaría una librería como jsQR
+    // Fallback: usar jsQR para navegadores sin BarcodeDetector (iOS Safari)
+    try {
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      });
+      if (code && code.data) {
+        onScan(code.data);
+        return;
+      }
+    } catch (err) {
+      // jsQR falló silenciosamente
+    }
   }, [onScan, isProcessing]);
 
   useEffect(() => {

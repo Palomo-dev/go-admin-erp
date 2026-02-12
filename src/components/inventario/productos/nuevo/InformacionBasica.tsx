@@ -91,6 +91,18 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
         .order('name')
 
       if (unitsData) setUnits(unitsData.map(u => ({ code: u.code.trim(), name: u.name })))
+
+      // Auto-generar SKU si está vacío
+      if (!formData.sku) {
+        const { count } = await supabase
+          .from('products')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organization.id)
+
+        const nextNum = (count ?? 0) + 1
+        const autoSku = `PROD-${String(nextNum).padStart(3, '0')}`
+        updateFormData('sku', autoSku)
+      }
     } catch (error) {
       console.error('Error cargando datos:', error)
     } finally {

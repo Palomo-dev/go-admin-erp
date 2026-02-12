@@ -60,6 +60,7 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
   const addVariant = () => {
     const newVariant = {
       sku: `${formData.sku}-VAR${formData.variants.length + 1}`,
+      barcode: '',
       name: `${formData.name} - Variante ${formData.variants.length + 1}`,
       price: formData.price,
       cost: formData.cost,
@@ -233,6 +234,23 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
                               onChange={(e) => updateVariant(index, 'sku', e.target.value)}
                               className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
                             />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-gray-700 dark:text-gray-300">
+                              Código de Barras
+                            </Label>
+                            <Input
+                              value={variant.barcode || ''}
+                              onChange={(e) => updateVariant(index, 'barcode', e.target.value)}
+                              placeholder={formData.barcode ? `Hereda: ${formData.barcode}` : 'Ej: 7501234567890'}
+                              className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                            />
+                            {!variant.barcode && formData.barcode && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Usará el código del producto padre si se deja vacío
+                              </p>
+                            )}
                           </div>
 
                           <div className="space-y-2">

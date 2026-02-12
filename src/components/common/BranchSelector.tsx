@@ -149,12 +149,15 @@ const BranchSelector = memo(({ organizationId, className = '' }: BranchSelectorP
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50">
-          <div className="py-1 max-h-60 overflow-auto" role="menu" aria-orientation="vertical">
+        <div className="fixed sm:absolute left-0 right-0 sm:left-auto sm:right-0 top-[60px] sm:top-auto mt-0 sm:mt-1 w-full sm:w-64 rounded-none sm:rounded-md shadow-xl sm:shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50 max-h-[calc(100vh-60px)] sm:max-h-60 flex flex-col">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 sm:hidden">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Seleccionar Sucursal</h3>
+          </div>
+          <div className="flex-1 overflow-y-auto overscroll-contain" role="menu" aria-orientation="vertical">
             {branches.map((branch) => (
               <button
                 key={branch.id}
-                className={`block w-full text-left px-4 py-2 text-sm ${
+                className={`block w-full text-left px-4 py-3 sm:py-2 text-sm border-b border-gray-100 dark:border-gray-700 sm:border-0 ${
                   selectedBranch?.id === branch.id
                     ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -166,15 +169,18 @@ const BranchSelector = memo(({ organizationId, className = '' }: BranchSelectorP
                 }}
               >
                 <div className="flex items-center">
-                  <Building size={14} className="mr-2" />
-                  <div>
-                    <p className="font-medium">{branch.name}</p>
+                  <Building size={14} className="mr-2 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{branch.name}</p>
                     {branch.address && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                         {branch.address}
                       </p>
                     )}
                   </div>
+                  {selectedBranch?.id === branch.id && (
+                    <span className="ml-auto text-blue-600 dark:text-blue-400 text-xs font-bold flex-shrink-0">✓</span>
+                  )}
                 </div>
               </button>
             ))}

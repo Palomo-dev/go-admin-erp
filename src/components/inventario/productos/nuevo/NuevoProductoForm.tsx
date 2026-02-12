@@ -340,11 +340,13 @@ export default function NuevoProductoForm() {
       // 11. Crear variantes si existen
       if (formData.has_variants && formData.variants.length > 0) {
         for (const variant of formData.variants) {
+          const variantBarcode = variant.barcode?.trim() || formData.barcode || null
           const { data: variantProduct, error: variantError } = await supabase
             .from('products')
             .insert({
               organization_id: organization.id,
               sku: variant.sku,
+              barcode: variantBarcode,
               name: variant.name,
               parent_product_id: product.id,
               is_parent: false,

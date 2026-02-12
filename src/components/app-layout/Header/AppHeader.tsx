@@ -21,9 +21,9 @@ export const AppHeader = ({
 }: AppHeaderProps) => {
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
-      <div className="flex justify-between items-center px-3 sm:px-4 py-2.5 min-h-[60px]">
-        {/* Botón de menú hamburguesa para móvil */}
-        <div className="flex items-center">
+      <div className="flex justify-between items-center px-2 sm:px-4 py-2.5 min-h-[60px]">
+        {/* Grupo izquierdo: menú + sucursal */}
+        <div className="flex items-center gap-1 sm:gap-2">
           <button 
             onClick={() => setSidebarOpen?.(true)}
             className="lg:hidden p-2.5 rounded-md bg-blue-600 text-white shadow-md hover:bg-blue-700 active:bg-blue-800 active:scale-95 transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
@@ -32,6 +32,8 @@ export const AppHeader = ({
           >
             <Menu size={20} />
           </button>
+          {/* Branch Selector junto al menú */}
+          <BranchSelectorWrapper orgId={orgId} />
         </div>
         
         {/* Buscador global en el centro - solo desktop */}
@@ -41,10 +43,7 @@ export const AppHeader = ({
           </div>
         </div>
         
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Branch Selector en el lado derecho */}
-          <BranchSelectorWrapper orgId={orgId} />
-          
+        <div className="flex items-center space-x-1 sm:space-x-3">
           {/* Botón de Asistente IA */}
           <button
             onClick={onToggleAIAssistant}

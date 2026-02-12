@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/config'
 import { useOrganization } from '@/lib/hooks/useOrganization'
 import { Button } from '@/components/ui/button'
@@ -37,6 +37,13 @@ export default function ImageUploader({
   const [isUploading, setIsUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentImageUrl || null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Sincronizar previewUrl cuando currentImageUrl cambia externamente (ej: IA)
+  useEffect(() => {
+    if (currentImageUrl && currentImageUrl !== previewUrl) {
+      setPreviewUrl(currentImageUrl)
+    }
+  }, [currentImageUrl])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

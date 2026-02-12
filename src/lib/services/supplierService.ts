@@ -11,6 +11,26 @@ export interface Supplier {
   phone?: string;
   email?: string;
   notes?: string;
+  description?: string;
+  logo_url?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  tax_id?: string;
+  tax_regime?: string;
+  fiscal_responsibilities?: string[];
+  payment_terms?: string;
+  credit_days?: number;
+  website?: string;
+  is_active?: boolean;
+  rating?: number;
+  bank_name?: string;
+  bank_account?: string;
+  account_type?: string;
+  icon?: string;
+  color?: string;
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +43,22 @@ export interface SupplierInput {
   phone?: string;
   email?: string;
   notes?: string;
+  description?: string;
+  logo_url?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  tax_id?: string;
+  tax_regime?: string;
+  fiscal_responsibilities?: string[];
+  payment_terms?: string;
+  credit_days?: number;
+  website?: string;
+  bank_name?: string;
+  bank_account?: string;
+  account_type?: string;
 }
 
 // Estadísticas de proveedores
@@ -174,7 +210,23 @@ class SupplierService {
           contact: input.contact || null,
           phone: input.phone || null,
           email: input.email || null,
-          notes: input.notes || null
+          notes: input.notes || null,
+          description: input.description || null,
+          logo_url: input.logo_url || null,
+          address: input.address || null,
+          city: input.city || null,
+          state: input.state || null,
+          country: input.country || 'Colombia',
+          postal_code: input.postal_code || null,
+          tax_id: input.tax_id || null,
+          tax_regime: input.tax_regime || null,
+          fiscal_responsibilities: input.fiscal_responsibilities || null,
+          payment_terms: input.payment_terms || null,
+          credit_days: input.credit_days || null,
+          website: input.website || null,
+          bank_name: input.bank_name || null,
+          bank_account: input.bank_account || null,
+          account_type: input.account_type || null,
         })
         .select()
         .single();
@@ -206,6 +258,22 @@ class SupplierService {
           phone: input.phone || null,
           email: input.email || null,
           notes: input.notes || null,
+          description: input.description || null,
+          logo_url: input.logo_url || null,
+          address: input.address || null,
+          city: input.city || null,
+          state: input.state || null,
+          country: input.country || 'Colombia',
+          postal_code: input.postal_code || null,
+          tax_id: input.tax_id || null,
+          tax_regime: input.tax_regime || null,
+          fiscal_responsibilities: input.fiscal_responsibilities || null,
+          payment_terms: input.payment_terms || null,
+          credit_days: input.credit_days || null,
+          website: input.website || null,
+          bank_name: input.bank_name || null,
+          bank_account: input.bank_account || null,
+          account_type: input.account_type || null,
           updated_at: new Date().toISOString()
         })
         .eq('uuid', supplierUuid)

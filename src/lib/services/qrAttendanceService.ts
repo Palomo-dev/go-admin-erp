@@ -89,18 +89,134 @@ export class QRAttendanceService {
     qrData: string,
     geo?: { lat: number; lng: number }
   ): Promise<QRValidationResult> {
+    const supabase = createClient();
+
+    // 1. Parsear el QR
+    let payload: QRPayload;
     try {
-      const res = await fetch('/api/attendance/validate-qr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qrData, geo }),
-      });
-      const data = await res.json();
-      return data as QRValidationResult;
-    } catch (error) {
-      console.error('Error al validar QR:', error);
-      return { success: false, message: 'Error de conexión. Intenta de nuevo.' };
+      payload = JSON.parse(qrData);
+    } catch {
+      return { success: false, message: 'Código QR inválido' };
     }
+
+    if (payload.type !== 'attendance') {
+      return { success: false, message: 'Este QR no es para marcación de asistencia' };
+    }
+
+    // 2. Obtener información del empleado autenticado
+    const employeeInfo = await this.getEmployeeInfo();
+    if (!employeeInfo) {
+      return { success: false, message: 'No se encontró información del empleado. Verifica que estés autenticado.' };
+    }
+
+    // Verificar que el empleado pertenezca a la misma organización del QR
+    if (employeeInfo.organization_id !== payload.org) {
+      return { success: false, message: 'Este QR no corresponde a tu organización' };
+    }
+
+    // 3. Validar el dispositivo y token
+    const { data: device, error: deviceError } = await supabase
+      .from('time_clocks')
+      .select('*')
+      .eq('id', payload.device_id)
+      .eq('organization_id', payload.org)
+      .eq('is_active', true)
+      .single();
+
+    if (deviceError || !device) {
+      return { success: false, message: 'Dispositivo de marcación no encontrado o inactivo' };
+    }
+
+    // 4. Validar token
+    if (device.current_qr_token !== payload.token) {
+      return { success: false, message: 'Código QR no válido. Solicita un nuevo código.' };
+    }
+
+    // 5. Verificar expiración
+    if (device.qr_token_expires_at) {
+      const expiresAt = new Date(device.qr_token_expires_at);
+      if (expiresAt < new Date()) {
+        return { success: false, message: 'Código QR expirado. Solicita un nuevo código.' };
+      }
+    }
+
+    // 6. Determinar tipo de evento (check_in o check_out)
+    const today = new Date().toISOString().split('T')[0];
+    const { data: todayEvents } = await supabase
+      .from('attendance_events')
+      .select('id, event_type, event_at')
+      .eq('employment_id', employeeInfo.employment_id)
+      .gte('event_at', `${today}T00:00:00`)
+      .lte('event_at', `${today}T23:59:59`)
+      .order('event_at', { ascending: false });
+
+    const lastEvent = todayEvents?.[0];
+    let eventType: 'check_in' | 'check_out';
+
+    if (!lastEvent || lastEvent.event_type === 'check_out') {
+      eventType = 'check_in';
+    } else {
+      eventType = 'check_out';
+    }
+
+    // 7. Validar geo si es requerido
+    let geoValidated: boolean | null = null;
+    if (device.require_geo_validation && device.geo_fence) {
+      if (!geo) {
+        return { success: false, message: 'Se requiere ubicación GPS para marcar en este dispositivo' };
+      }
+      
+      const distance = this.calculateDistance(
+        geo.lat,
+        geo.lng,
+        device.geo_fence.lat,
+        device.geo_fence.lng
+      );
+      
+      geoValidated = distance <= device.geo_fence.radius;
+      
+      if (!geoValidated) {
+        return { 
+          success: false, 
+          message: `Estás fuera del rango permitido (${Math.round(distance)}m de ${device.geo_fence.radius}m)` 
+        };
+      }
+    }
+
+    // 8. Registrar el evento
+    const eventAt = new Date().toISOString();
+    const { data: newEvent, error: insertError } = await supabase
+      .from('attendance_events')
+      .insert({
+        organization_id: payload.org,
+        branch_id: device.branch_id || employeeInfo.branch_id,
+        employment_id: employeeInfo.employment_id,
+        event_type: eventType,
+        event_at: eventAt,
+        source: 'qr',
+        time_clock_id: device.id,
+        geo: geo || null,
+        geo_validated: geoValidated,
+        is_manual_entry: false,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error al registrar marcación:', insertError);
+      return { success: false, message: 'Error al registrar la marcación' };
+    }
+
+    return {
+      success: true,
+      message: eventType === 'check_in' 
+        ? '¡Entrada registrada correctamente!' 
+        : '¡Salida registrada correctamente!',
+      event_type: eventType,
+      event_id: newEvent.id,
+      employee_name: employeeInfo.employee_name,
+      event_at: eventAt,
+    };
   }
 
   /**
@@ -146,22 +262,29 @@ export class QRAttendanceService {
     token: string;
     expires_at: string;
   } | null> {
-    try {
-      const res = await fetch('/api/attendance/regenerate-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId }),
-      });
-      if (!res.ok) {
-        console.error('Error regenerando token:', res.status, await res.text());
-        return null;
-      }
-      const data = await res.json();
-      return { token: data.token, expires_at: data.expires_at };
-    } catch (error) {
-      console.error('Error de red regenerando token:', error);
-      return null;
-    }
+    const supabase = createClient();
+
+    const token = `QR-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 5);
+
+    const { data, error } = await supabase
+      .from('time_clocks')
+      .update({
+        current_qr_token: token,
+        qr_token_expires_at: expiresAt.toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', deviceId)
+      .select('current_qr_token, qr_token_expires_at')
+      .single();
+
+    if (error || !data) return null;
+
+    return {
+      token: data.current_qr_token!,
+      expires_at: data.qr_token_expires_at!,
+    };
   }
 
   /**

@@ -32,33 +32,25 @@ export function QRDisplayScreen({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
-  const [regenError, setRegenError] = useState(false);
 
   const timeLeft = expiresAt
     ? Math.max(0, Math.floor((new Date(expiresAt).getTime() - currentTime.getTime()) / 1000))
     : 0;
 
   const regenerateToken = useCallback(async () => {
-    if (isRegenerating) return;
     setIsRegenerating(true);
-    setRegenError(false);
     try {
       const result = await onRegenerateToken();
       if (result) {
         setCurrentToken(result.token);
         setExpiresAt(result.expires_at);
-        setRegenError(false);
-      } else {
-        console.error('regenerateToken devolvió null');
-        setRegenError(true);
       }
     } catch (error) {
       console.error('Error regenerando token:', error);
-      setRegenError(true);
     } finally {
       setIsRegenerating(false);
     }
-  }, [onRegenerateToken, isRegenerating]);
+  }, [onRegenerateToken]);
 
   // Actualizar reloj cada segundo
   useEffect(() => {
@@ -79,7 +71,7 @@ export function QRDisplayScreen({
     }
   }, [hasInitialized, currentToken, regenerateToken]);
 
-  // Auto-regenerar cuando expira
+  // Auto-regenerar cuando expira (solo si ya inicializó y tiene token)
   useEffect(() => {
     if (hasInitialized && timeLeft <= 0 && currentToken && !isRegenerating) {
       regenerateToken();
@@ -92,13 +84,6 @@ export function QRDisplayScreen({
       regenerateToken();
     }
   }, [hasInitialized, timeLeft, isRegenerating, regenerateToken]);
-
-  // Reintentar automáticamente cada 5s si hubo error
-  useEffect(() => {
-    if (!regenError || isRegenerating) return;
-    const timer = setTimeout(() => regenerateToken(), 5000);
-    return () => clearTimeout(timer);
-  }, [regenError, isRegenerating, regenerateToken]);
 
   // Detectar estado de conexión
   useEffect(() => {
@@ -188,17 +173,10 @@ export function QRDisplayScreen({
                 'h-16 w-16 text-white mb-4',
                 isRegenerating && 'animate-spin'
               )}
-              onClick={() => !isRegenerating && regenerateToken()}
-              style={{ cursor: 'pointer' }}
             />
             <p className="text-white text-lg">
               {isRegenerating ? 'Generando nuevo código...' : 'Código expirado'}
             </p>
-            {regenError && (
-              <p className="text-yellow-300 text-sm mt-2 text-center">
-                Error al regenerar. Reintentando...
-              </p>
-            )}
           </div>
         )}
       </div>

@@ -141,7 +141,8 @@ export class QRAttendanceService {
     }
 
     // 6. Determinar tipo de evento (check_in o check_out)
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const { data: todayEvents } = await supabase
       .from('attendance_events')
       .select('id, event_type, event_at')

@@ -413,8 +413,9 @@ export function useCalendar({
     const originalEnd = event.end_at ? new Date(event.end_at) : new Date(originalStart.getTime() + 3600000);
     const durationMs = originalEnd.getTime() - originalStart.getTime();
 
-    const newStartAt = new Date(newDate);
-    newStartAt.setHours(newHour, originalStart.getMinutes(), 0, 0);
+    // Preservar la fecha original del evento, solo cambiar la hora
+    const newStartAt = new Date(originalStart);
+    newStartAt.setHours(newHour, 0, 0, 0);
     const newEndAt = new Date(newStartAt.getTime() + durationMs);
 
     // Optimistic update - actualizar estado local inmediatamente
@@ -436,6 +437,8 @@ export function useCalendar({
 
       if (updateError) throw updateError;
 
+      // Re-sincronizar con BD
+      await fetchEvents();
       return { success: true, error: null };
     } catch (err: unknown) {
       // Revertir cambio si hay error
@@ -444,7 +447,7 @@ export function useCalendar({
       console.error('Error moving event:', err);
       return { success: false, error: errorMessage };
     }
-  }, [events]);
+  }, [events, fetchEvents]);
 
   const resizeEvent = useCallback(async (eventId: string, newStartAt: Date, newEndAt: Date) => {
     if (!eventId || eventId === 'undefined') {

@@ -451,7 +451,13 @@ export function EventModal({
                       id="start_at"
                       type={formData.all_day ? 'date' : 'datetime-local'}
                       value={formData.all_day ? formData.start_at.split('T')[0] : formData.start_at}
-                      onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        const newStartDate = new Date(newStart);
+                        const newEnd = new Date(newStartDate.getTime() + 3600000);
+                        const endStr = format(newEnd, "yyyy-MM-dd'T'HH:mm");
+                        setFormData({ ...formData, start_at: newStart, end_at: endStr });
+                      }}
                       className="dark:bg-gray-800 dark:border-gray-700"
                     />
                   </div>

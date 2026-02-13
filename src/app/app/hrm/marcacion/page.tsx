@@ -169,7 +169,10 @@ export default function MarcacionPage() {
     return () => clearInterval(interval);
   }, [loadData, selectedDate]);
 
-  if (orgLoading) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted || orgLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />

@@ -437,8 +437,6 @@ export function useCalendar({
 
       if (updateError) throw updateError;
 
-      // Re-sincronizar con BD
-      await fetchEvents();
       return { success: true, error: null };
     } catch (err: unknown) {
       // Revertir cambio si hay error
@@ -447,7 +445,7 @@ export function useCalendar({
       console.error('Error moving event:', err);
       return { success: false, error: errorMessage };
     }
-  }, [events, fetchEvents]);
+  }, [events]);
 
   const resizeEvent = useCallback(async (eventId: string, newStartAt: Date, newEndAt: Date) => {
     if (!eventId || eventId === 'undefined') {

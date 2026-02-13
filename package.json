@@ -71,6 +71,7 @@
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
     "recharts": "^3.0.2",
+    "rrule": "^2.8.1",
     "sonner": "^2.0.6",
     "stripe": "^19.1.0",
     "tailwind-merge": "^3.3.1",

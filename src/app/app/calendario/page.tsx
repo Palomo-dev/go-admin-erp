@@ -1,7 +1,14 @@
+'use client';
+
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { CalendarView } from '@/components/calendario';
+
 export default function CalendarioPage() {
+  const { organization } = useOrganization();
+
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold">Hello Calendario</h1>
+    <div className="h-[calc(100vh-60px)] overflow-hidden">
+      <CalendarView organizationId={organization?.id ?? null} />
     </div>
   );
 }

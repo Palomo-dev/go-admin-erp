@@ -141,17 +141,15 @@ export class QRAttendanceService {
     }
 
     // 6. Determinar tipo de evento (check_in o check_out)
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const { data: todayEvents } = await supabase
+    // Buscar último evento sin filtrar por fecha para soportar turnos nocturnos
+    const { data: lastEvents } = await supabase
       .from('attendance_events')
       .select('id, event_type, event_at')
       .eq('employment_id', employeeInfo.employment_id)
-      .gte('event_at', `${today}T00:00:00`)
-      .lte('event_at', `${today}T23:59:59`)
-      .order('event_at', { ascending: false });
+      .order('event_at', { ascending: false })
+      .limit(1);
 
-    const lastEvent = todayEvents?.[0];
+    const lastEvent = lastEvents?.[0];
     let eventType: 'check_in' | 'check_out';
 
     if (!lastEvent || lastEvent.event_type === 'check_out') {

@@ -8,13 +8,14 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  'https://jgmgphmzusbluqhuqihj.supabase.co';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const supabaseKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbWdwaG16dXNibHVxaHVxaWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMzQ1MjIsImV4cCI6MjA2MTYxMDUyMn0.yr5TLl2nhevIzNdPnjVkcdn049RB2t2OgqPG0HryVR4';
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(
+    'Faltan variables de entorno: NEXT_PUBLIC_SUPABASE_URL y/o NEXT_PUBLIC_SUPABASE_ANON_KEY'
+  );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {

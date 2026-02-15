@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "ws:dev": "npx tsx ws-server.ts",
+    "ws:test": "npx tsx scripts/test-conversation-relay.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",
@@ -51,6 +53,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.3.1",
     "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.503.0",
@@ -75,7 +78,9 @@
     "sonner": "^2.0.6",
     "stripe": "^19.1.0",
     "tailwind-merge": "^3.3.1",
+    "twilio": "^5.12.1",
     "uuid": "^11.1.0",
+    "ws": "^8.19.0",
     "xlsx": "^0.18.5",
     "zod": "^3.25.67"
   },
@@ -85,11 +90,13 @@
     "@types/react": "19.1.8",
     "@types/react-dom": "^19.0.0",
     "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.54.0",
     "eslint-config-next": "15.3.1",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
+    "tsx": "^4.21.0",
     "typescript": "5.8.3"
   },
   "engines": {

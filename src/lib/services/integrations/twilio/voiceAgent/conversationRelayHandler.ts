@@ -9,11 +9,17 @@
 
 import OpenAI from 'openai';
 import type WebSocket from 'ws';
-import { supabase } from '@/lib/supabase/config';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { buildVoiceAgentPrompt, type VoiceAgentContext } from './voiceAgentPrompts';
 import { VOICE_AGENT_TOOLS, executeToolCall } from './voiceAgentTools';
-import { getCommSettings } from '../twilioSubaccounts';
-import { commCreditsService } from '@/lib/services/commCreditsService';
+
+/** Cliente con service_role para bypasear RLS en el WS server */
+function getServiceSupabase(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY');
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
 
 // ─── Tipos de mensajes ConversationRelay ────────────────
 
@@ -152,15 +158,20 @@ async function handleSetup(
   }
 
   // Verificar Voice Agent habilitado y créditos
-  const hasVoice = await commCreditsService.hasVoiceAgent(orgId);
-  if (!hasVoice) {
+  const sb = getServiceSupabase();
+  const { data: commSettings } = await sb
+    .from('comm_settings')
+    .select('voice_agent_enabled, voice_minutes_remaining, voice_agent_config, is_active')
+    .eq('organization_id', orgId)
+    .single();
+
+  if (!commSettings?.voice_agent_enabled || !commSettings?.is_active) {
     sendText(ws, 'El asistente virtual no está habilitado para esta organización. Lo transferimos con un agente.');
     sendEnd(ws);
     return null;
   }
 
-  const hasCredits = await commCreditsService.hasCredits(orgId, 'voice');
-  if (!hasCredits) {
+  if (commSettings.voice_minutes_remaining !== null && commSettings.voice_minutes_remaining <= 0) {
     sendText(ws, 'No hay minutos disponibles en este momento. Por favor intente más tarde.');
     sendEnd(ws);
     return null;
@@ -182,7 +193,7 @@ async function handleSetup(
   activeSessions.set(callSid, session);
 
   // Log inicio de sesión
-  await supabase.from('comm_usage_logs').insert({
+  await sb.from('comm_usage_logs').insert({
     organization_id: orgId,
     channel: 'voice',
     credits_used: 0,
@@ -372,8 +383,9 @@ async function endSession(session: ConversationRelaySession): Promise<void> {
   const duration = Math.ceil((Date.now() - session.startedAt.getTime()) / 60000);
 
   // Descontar créditos
+  const sb = getServiceSupabase();
   if (duration > 0) {
-    await supabase.rpc('deduct_comm_credits', {
+    await sb.rpc('deduct_comm_credits', {
       p_org_id: session.orgId,
       p_channel: 'voice',
       p_amount: duration,
@@ -381,7 +393,7 @@ async function endSession(session: ConversationRelaySession): Promise<void> {
   }
 
   // Actualizar log
-  await supabase
+  await sb
     .from('comm_usage_logs')
     .update({
       status: 'completed',
@@ -418,13 +430,18 @@ function sendEnd(ws: WebSocket): void {
 // ─── Contexto del agente ────────────────────────────────
 
 async function buildAgentContext(orgId: number): Promise<VoiceAgentContext> {
-  const { data: org } = await supabase
+  const sb = getServiceSupabase();
+  const { data: org } = await sb
     .from('organizations')
     .select('name, business_type')
     .eq('id', orgId)
     .single();
 
-  const settings = await getCommSettings(orgId);
+  const { data: settings } = await sb
+    .from('comm_settings')
+    .select('voice_agent_config')
+    .eq('organization_id', orgId)
+    .single();
   const voiceConfig = (settings?.voice_agent_config || {}) as Record<string, string>;
 
   return {
@@ -441,7 +458,8 @@ async function buildAgentContext(orgId: number): Promise<VoiceAgentContext> {
 
 /** Busca org por número telefónico */
 async function findOrgByNumber(phoneNumber: string): Promise<number | null> {
-  const { data } = await supabase
+  const sb = getServiceSupabase();
+  const { data } = await sb
     .from('comm_settings')
     .select('organization_id')
     .eq('phone_number', phoneNumber)
@@ -452,7 +470,7 @@ async function findOrgByNumber(phoneNumber: string): Promise<number | null> {
 
   const masterPhone = process.env.TWILIO_PHONE_NUMBER;
   if (phoneNumber === masterPhone) {
-    const { data: orgs } = await supabase
+    const { data: orgs } = await sb
       .from('comm_settings')
       .select('organization_id')
       .eq('is_active', true)

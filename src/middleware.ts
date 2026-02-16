@@ -146,6 +146,7 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/test',
     '/api/stripe/',  // <-- Excluir APIs de Stripe
     '/api/sessions/', // <-- Excluir APIs de sesiones
+    '/api/integrations/twilio/', // <-- Excluir webhooks de Twilio (autenticación propia via firma)
     '/auth/v1/',
     '/.well-known/',
     '/robots.txt',
@@ -555,6 +556,6 @@ export const config = {
      * - api/stripe (Stripe API endpoints - handle their own auth)
      * - api/sessions (Session API endpoints - handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio).*)',
   ],
 };

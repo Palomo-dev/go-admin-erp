@@ -108,10 +108,10 @@ function buildConversationRelayTwiml(wsHost: string, orgId: number): string {
   <Connect>
     <ConversationRelay
       url="${wsHost}/conversation-relay"
-      voice="es-MX-Standard-A"
+      voice="es-MX-Wavenet-A"
       language="es-MX"
-      transcriptionProvider="google"
-      ttsProvider="google"
+      transcriptionProvider="Google"
+      ttsProvider="Google"
       welcomeGreeting="Un momento mientras lo conecto con nuestro asistente virtual."
     >
       <Parameter name="orgId" value="${orgId}" />

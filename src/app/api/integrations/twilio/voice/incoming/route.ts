@@ -7,11 +7,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import {
   validateTwilioSignature,
 } from '@/lib/services/integrations/twilio';
 import type { TwilioVoiceWebhook } from '@/lib/services/integrations/twilio';
-import { supabase } from '@/lib/supabase/config';
+
+/** Cliente con service_role para bypasear RLS en webhooks */
+function getServiceSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Faltan credenciales Supabase (service_role)');
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,6 +52,7 @@ export async function POST(request: NextRequest) {
     const orgId = await findOrgByPhoneNumber(webhook.To);
 
     // Registrar llamada entrante
+    const supabase = getServiceSupabase();
     await supabase.from('comm_usage_logs').insert({
       organization_id: orgId || 0,
       channel: 'voice',
@@ -113,7 +122,8 @@ function buildConversationRelayTwiml(wsHost: string, orgId: number): string {
 
 /** Busca organización por número telefónico */
 async function findOrgByPhoneNumber(phoneNumber: string): Promise<number | null> {
-  const { data } = await supabase
+  const sb = getServiceSupabase();
+  const { data } = await sb
     .from('comm_settings')
     .select('organization_id')
     .eq('phone_number', phoneNumber)
@@ -124,7 +134,7 @@ async function findOrgByPhoneNumber(phoneNumber: string): Promise<number | null>
 
   const masterPhone = process.env.TWILIO_PHONE_NUMBER;
   if (phoneNumber === masterPhone) {
-    const { data: orgs } = await supabase
+    const { data: orgs } = await sb
       .from('comm_settings')
       .select('organization_id')
       .eq('is_active', true)

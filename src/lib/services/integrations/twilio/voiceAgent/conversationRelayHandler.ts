@@ -37,7 +37,10 @@ interface CRSetupMessage {
 /** Mensaje con el texto transcrito del usuario */
 interface CRPromptMessage {
   type: 'prompt';
-  voiceInput: string;
+  voicePrompt?: string;
+  voiceInput?: string;
+  transcript?: string;
+  text?: string;
   lang?: string;
   last?: boolean;
 }
@@ -246,7 +249,9 @@ async function handlePrompt(
   session: ConversationRelaySession,
   message: CRPromptMessage
 ): Promise<void> {
-  const userText = message.voiceInput;
+  // Log raw message para diagnosticar campos de Twilio CR
+  console.log(`[CR] [${session.callSid}] Raw prompt:`, JSON.stringify(message));
+  const userText = message.voicePrompt || message.voiceInput || message.transcript || message.text || '';
   if (!userText.trim()) return;
 
   console.log(`[CR] [${session.callSid}] Usuario: ${userText}`);

@@ -16,6 +16,9 @@ COPY ws-server.ts ./
 # Así los imports `@/lib/supabase/config` resuelven al cliente server-safe
 COPY src/lib/supabase/ws-config.ts ./src/lib/supabase/config.ts
 
+# Cache bust: 2026-02-17T12
+ARG CACHEBUST=1
+
 # Servicios Twilio (handler + dependencias)
 COPY src/lib/services/integrations/twilio/ ./src/lib/services/integrations/twilio/
 COPY src/lib/services/commCreditsService.ts ./src/lib/services/commCreditsService.ts

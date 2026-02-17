@@ -6,7 +6,15 @@
  * para ejecutar acciones en el ERP via Supabase.
  */
 
-import { supabase } from '@/lib/supabase/config';
+import { createClient } from '@supabase/supabase-js';
+
+/** Cliente con service_role para bypasear RLS en el WS server */
+function getServiceSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY');
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+}
 
 // ─── Definiciones de herramientas para OpenAI ───────────
 
@@ -170,6 +178,7 @@ async function checkAvailability(
 ): Promise<string> {
   const { checkin, checkout, guests } = args as { checkin: string; checkout: string; guests?: number };
 
+  const supabase = getServiceSupabase();
   const { data: spaces, error } = await supabase
     .from('spaces')
     .select('id, label, status, space_types(name, max_occupancy)')
@@ -221,6 +230,7 @@ async function createReservation(
   const firstName = nameParts[0] || customer_name;
   const lastName = nameParts.slice(1).join(' ') || '';
 
+  const supabase = getServiceSupabase();
   let { data: customer } = await supabase
     .from('customers')
     .select('id')
@@ -277,6 +287,7 @@ async function lookupReservation(
     customer_phone?: string;
   };
 
+  const supabase = getServiceSupabase();
   let query = supabase
     .from('reservations')
     .select('code, checkin, checkout, status, occupant_count, customer:customers(first_name, last_name, phone)')
@@ -314,6 +325,7 @@ async function cancelReservation(
 ): Promise<string> {
   const { reservation_code } = args as { reservation_code: string };
 
+  const supabase = getServiceSupabase();
   const { data, error } = await supabase
     .from('reservations')
     .update({ status: 'cancelled' })
@@ -342,6 +354,7 @@ async function getBusinessInfo(
 ): Promise<string> {
   const { info_type } = args as { info_type: string };
 
+  const supabase = getServiceSupabase();
   const { data: org } = await supabase
     .from('organizations')
     .select('name, business_type, address, phone, email, website')
@@ -374,6 +387,7 @@ async function takeMessage(
   };
 
   // Guardar como nota/log en comm_usage_logs con metadata
+  const supabase = getServiceSupabase();
   const { error } = await supabase.from('comm_usage_logs').insert({
     organization_id: orgId,
     channel: 'voice',

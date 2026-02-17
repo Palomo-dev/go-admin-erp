@@ -8,6 +8,7 @@
  */
 
 import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import type WebSocket from 'ws';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { buildVoiceAgentPrompt, type VoiceAgentContext } from './voiceAgentPrompts';
@@ -74,6 +75,23 @@ export interface ConversationRelaySession {
 
 const activeSessions = new Map<string, ConversationRelaySession>();
 
+// ─── Helper para mapear mensajes a OpenAI ───────────────
+
+function mapToOpenAIMessages(messages: ConversationMessage[]): ChatCompletionMessageParam[] {
+  return messages.map((m): ChatCompletionMessageParam => {
+    if (m.role === 'tool') {
+      return { role: 'tool', content: m.content, tool_call_id: m.tool_call_id || '' };
+    }
+    if (m.role === 'assistant') {
+      return { role: 'assistant', content: m.content };
+    }
+    if (m.role === 'user') {
+      return { role: 'user', content: m.content };
+    }
+    return { role: 'system', content: m.content };
+  });
+}
+
 // ─── OpenAI Client ──────────────────────────────────────
 
 function getOpenAIClient(): OpenAI {
@@ -92,8 +110,10 @@ export function handleConversationRelayConnection(ws: WebSocket): void {
   let session: ConversationRelaySession | null = null;
 
   ws.on('message', async (data) => {
+    let msgType = 'unknown';
     try {
       const message: CRInboundMessage = JSON.parse(data.toString());
+      msgType = message.type;
 
       switch (message.type) {
         case 'setup':
@@ -119,7 +139,10 @@ export function handleConversationRelayConnection(ws: WebSocket): void {
           console.log('[CR] Mensaje desconocido:', message);
       }
     } catch (error) {
-      console.error('[CR] Error procesando mensaje:', error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const errStack = error instanceof Error ? error.stack : '';
+      console.error(`[CR] Error procesando mensaje (type=${msgType}):`, errMsg);
+      console.error('[CR] Stack:', errStack);
       sendText(ws, 'Disculpe, ocurrió un error. ¿Puede repetir?');
     }
   });
@@ -210,7 +233,7 @@ async function handleSetup(
   session.messages.push({ role: 'assistant', content: greeting });
   sendText(ws, greeting);
 
-  console.log(`[CR] Sesión iniciada: ${callSid} (org: ${orgId})`);
+  console.log(`[CR] Sesión iniciada: ${callSid} (org: ${orgId}, OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? 'SET' : 'MISSING'})`);
   return session;
 }
 
@@ -243,12 +266,7 @@ async function handlePrompt(
   try {
     const stream = await openai.chat.completions.create({
       model: process.env.OPENAI_CHAT_MODEL || 'gpt-4o',
-      messages: session.messages.map((m) => ({
-        role: m.role as 'system' | 'user' | 'assistant' | 'tool',
-        content: m.content,
-        ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}),
-        ...(m.name ? { name: m.name } : {}),
-      })),
+      messages: mapToOpenAIMessages(session.messages),
       tools: VOICE_AGENT_TOOLS.map((t) => ({
         type: 'function' as const,
         function: {
@@ -312,7 +330,9 @@ async function handlePrompt(
       console.log(`[CR] [${session.callSid}] Agente: ${fullResponse}`);
     }
   } catch (error) {
-    console.error('[CR] Error en OpenAI:', error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[CR] Error en OpenAI: ${errMsg}`);
+    console.error('[CR] OpenAI error full:', JSON.stringify(error, null, 2));
     sendText(ws, 'Disculpe, tuve un problema procesando su solicitud. ¿Puede repetir?');
   }
 }
@@ -352,12 +372,7 @@ async function handleToolCalls(
   try {
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_CHAT_MODEL || 'gpt-4o',
-      messages: session.messages.map((m) => ({
-        role: m.role as 'system' | 'user' | 'assistant' | 'tool',
-        content: m.content,
-        ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {}),
-        ...(m.name ? { name: m.name } : {}),
-      })),
+      messages: mapToOpenAIMessages(session.messages),
       max_tokens: 200,
       temperature: 0.7,
     });

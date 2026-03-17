@@ -293,7 +293,7 @@ export default function FullScreenChatDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-none w-screen h-screen p-0 flex flex-col gap-0 rounded-none border-0" hideCloseButton>
         {/* Header */}
-        <DialogHeader className="border-b dark:border-gray-700 px-4 py-3 flex-shrink-0">
+        <DialogHeader className="border-b dark:border-gray-700 px-3 sm:px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -309,7 +309,7 @@ export default function FullScreenChatDialog({
                   {customerName}
                 </DialogTitle>
                 <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span>{conversation.customer?.email}</span>
+                  <span className="truncate max-w-[150px] sm:max-w-none">{conversation.customer?.email}</span>
                   <Badge variant="outline" className="text-[10px]">
                     {conversation.channel?.type || 'web'}
                   </Badge>
@@ -330,7 +330,7 @@ export default function FullScreenChatDialog({
         {/* Mensajes */}
         <div
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-950 relative"
+          className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 bg-gray-50 dark:bg-gray-950 relative"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
           }}
@@ -356,7 +356,7 @@ export default function FullScreenChatDialog({
               </p>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto w-full">
               {messages.map((message, index) => {
                 const showAvatar = index === 0 || 
                   messages[index - 1]?.role !== message.role;

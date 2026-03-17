@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Plus, CreditCard, Globe, MapPin } from 'lucide-react';
+import { Plus, CreditCard, Globe, MapPin, Settings, Radio, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { IntegrationConnection, IntegrationProvider } from '@/lib/services/integrationsService';
@@ -15,6 +15,12 @@ interface ProviderConfig {
   borderColor: string;
   logoUrl?: string;
 }
+
+// Proveedores gestionados centralmente por GO Admin (no requieren credenciales del cliente)
+const MANAGED_PROVIDERS = ['twilio'];
+
+// Proveedores OTA gestionados desde el Channel Manager PMS
+const OTA_PROVIDERS = ['airbnb', 'booking', 'expedia', 'tripadvisor', 'google_vacation_rentals'];
 
 interface ProviderCardProps {
   provider: IntegrationProvider;
@@ -30,6 +36,9 @@ interface ProviderCardProps {
   onHealthCheck: (connection: IntegrationConnection) => void;
   onDuplicate: (connection: IntegrationConnection) => void;
   onDelete: (connection: IntegrationConnection) => void;
+  onConnectBookingApi?: () => void;
+  onConnectExpediaApi?: () => void;
+  onConnectTripAdvisorApi?: () => void;
 }
 
 export function ProviderCard({
@@ -46,6 +55,9 @@ export function ProviderCard({
   onHealthCheck,
   onDuplicate,
   onDelete,
+  onConnectBookingApi,
+  onConnectExpediaApi,
+  onConnectTripAdvisorApi,
 }: ProviderCardProps) {
   const hasConnections = connections.length > 0;
   const connectedCount = connections.filter(c => c.status === 'connected').length;
@@ -151,21 +163,95 @@ export function ProviderCard({
 
       {/* Botón de acción */}
       <div className="p-3 pt-2 bg-white/30 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-800">
-        <Button
-          variant={hasConnections ? "outline" : "default"}
-          size="sm"
-          className={`
-            w-full gap-2 transition-all
-            ${hasConnections 
-              ? 'border-gray-300 dark:border-gray-600' 
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }
-          `}
-          onClick={() => onConnect(provider)}
-        >
-          <Plus className="h-4 w-4" />
-          {hasConnections ? 'Nueva conexión' : 'Conectar'}
-        </Button>
+        {provider.code === 'booking' ? (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1 gap-2 bg-[#003580] hover:bg-[#00264d] text-white"
+              onClick={() => onConnectBookingApi?.()}
+            >
+              <Zap className="h-4 w-4" />
+              {hasConnections ? 'Nueva conexión API' : 'Conectar API'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950"
+              onClick={() => onConnect(provider)}
+            >
+              <Radio className="h-4 w-4" />
+              iCal
+            </Button>
+          </div>
+        ) : provider.code === 'tripadvisor' ? (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1 gap-2 bg-[#00AA6C] hover:bg-[#008F5A] text-white"
+              onClick={() => onConnectTripAdvisorApi?.()}
+            >
+              <Zap className="h-4 w-4" />
+              {hasConnections ? 'Nueva conexión API' : 'Conectar API'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950"
+              onClick={() => onConnect(provider)}
+            >
+              <Radio className="h-4 w-4" />
+              iCal
+            </Button>
+          </div>
+        ) : provider.code === 'expedia' ? (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1 gap-2 bg-[#00355F] hover:bg-[#002040] text-white"
+              onClick={() => onConnectExpediaApi?.()}
+            >
+              <Zap className="h-4 w-4" />
+              {hasConnections ? 'Nueva conexión API' : 'Conectar API'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950"
+              onClick={() => onConnect(provider)}
+            >
+              <Radio className="h-4 w-4" />
+              iCal
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant={hasConnections ? "outline" : "default"}
+            size="sm"
+            className={`
+              w-full gap-2 transition-all
+              ${OTA_PROVIDERS.includes(provider.code)
+                ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                : hasConnections 
+                  ? 'border-gray-300 dark:border-gray-600' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }
+            `}
+            onClick={() => onConnect(provider)}
+          >
+            {OTA_PROVIDERS.includes(provider.code) ? (
+              <Radio className="h-4 w-4" />
+            ) : MANAGED_PROVIDERS.includes(provider.code) ? (
+              <Settings className="h-4 w-4" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {OTA_PROVIDERS.includes(provider.code)
+              ? 'Ir a Channel Manager'
+              : MANAGED_PROVIDERS.includes(provider.code)
+                ? 'Configurar'
+                : hasConnections ? 'Nueva conexión' : 'Conectar'}
+          </Button>
+        )}
       </div>
     </div>
   );

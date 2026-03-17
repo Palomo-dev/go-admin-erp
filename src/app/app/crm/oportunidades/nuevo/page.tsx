@@ -10,7 +10,7 @@ export default function NuevaOportunidadPage() {
   const initialPipelineId = searchParams.get('pipeline') || undefined;
 
   return (
-    <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <OpportunityForm initialPipelineId={initialPipelineId} />
     </div>
   );

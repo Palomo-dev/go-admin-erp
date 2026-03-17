@@ -77,6 +77,7 @@ import {
   FileBarChart,
   Wrench,
   CalendarClock,
+  Radio,
 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
@@ -87,7 +88,7 @@ import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { SubMenuPanel } from './Sidebar/SubMenuPanel';
 import AIAssistantPanel from './Header/AIAssistantPanel';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { NavItemProps } from './types';
 import type { AssistantContext } from '@/lib/services/aiAssistantService';
 
@@ -237,6 +238,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Mantenimiento", href: "/app/pms/mantenimiento", icon: <Settings size={16} /> },
       { name: "Consumos", href: "/app/pms/folios", icon: <Receipt size={16} /> },
       { name: "Origenes", href: "/app/pms/origenes", icon: <Globe size={16} /> },
+      { name: "Channel Manager", href: "/app/pms/channel-manager", icon: <Radio size={16} /> },
       { name: "Parquedero", href: "/app/pms/parking", icon: <ParkingCircle size={16} /> },
       { name: "Configuración", href: "/app/pms/configuracion", icon: <Settings size={16} /> },
     ]
@@ -447,6 +449,7 @@ export const AppLayout = ({
 }) => {
   // Hook para obtener la ruta actual
   const pathname = usePathname();
+  const router = useRouter();
   
   // Detectar módulo activo para Multi-Column Layout
   const activeModule = useMemo(() => getActiveModule(pathname), [pathname]);
@@ -538,7 +541,30 @@ export const AppLayout = ({
     window.addEventListener('modules-updated', handleModulesRefresh);
     return () => window.removeEventListener('modules-updated', handleModulesRefresh);
   }, [orgId, loadActiveModuleCodes]);
-  
+
+  // Verificar estado de suscripción: redirigir si está cancelada
+  useEffect(() => {
+    if (!orgId) return;
+
+    const allowedPaths = ['/app/organizacion/plan', '/app/plan', '/app/organizacion'];
+    const isAllowed = allowedPaths.some(p => pathname.startsWith(p));
+    if (isAllowed) return;
+
+    const checkSubscriptionStatus = async () => {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('status')
+        .eq('organization_id', orgId)
+        .single();
+
+      if (data?.status === 'canceled') {
+        console.warn('⚠️ Suscripción cancelada — redirigiendo a plan');
+        router.replace('/app/organizacion/plan');
+      }
+    };
+
+    checkSubscriptionStatus();
+  }, [orgId, pathname, router]);
 
   // Función para cargar cache
   const loadFromCache = useCallback((): UserDataCache | null => {

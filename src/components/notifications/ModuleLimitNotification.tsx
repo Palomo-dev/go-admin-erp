@@ -51,11 +51,17 @@ export default function ModuleLimitNotification({
     return null;
   }
 
-  // Solo contar módulos pagados para el límite (excluir core)
-  const paidModulesCount = organizationStatus.paid_modules_count;
+  // Usar conteo total (incluyendo core) vs max_modules (que también incluye core)
+  const totalActiveCount = organizationStatus.active_modules_count;
   const maxModules = organizationStatus.plan.max_modules;
-  const usagePercentage = (paidModulesCount / maxModules) * 100;
+  const hasAvailableModules = organizationStatus.available_modules && organizationStatus.available_modules.length > 0;
+  const usagePercentage = maxModules > 0 ? (totalActiveCount / maxModules) * 100 : 0;
   
+  // No mostrar si todos los módulos disponibles ya están activos
+  if (!hasAvailableModules) {
+    return null;
+  }
+
   // Solo mostrar si está cerca del límite (80%) o lo ha alcanzado
   const shouldShow = usagePercentage >= 80;
   
@@ -63,7 +69,7 @@ export default function ModuleLimitNotification({
     return null;
   }
 
-  const isAtLimit = paidModulesCount >= maxModules;
+  const isAtLimit = totalActiveCount >= maxModules;
   const isNearLimit = usagePercentage >= 80 && !isAtLimit;
 
   return (
@@ -89,7 +95,7 @@ export default function ModuleLimitNotification({
                   {isAtLimit ? 'Límite de módulos alcanzado' : 'Cerca del límite de módulos'}
                 </span>
                 <Badge variant="outline" className="text-xs">
-                  {paidModulesCount}/{maxModules}
+                  {totalActiveCount}/{maxModules}
                 </Badge>
               </div>
               
@@ -103,7 +109,7 @@ export default function ModuleLimitNotification({
                   </>
                 ) : (
                   <>
-                    Estás usando {paidModulesCount} de {maxModules} módulos disponibles en tu plan{' '}
+                    Estás usando {totalActiveCount} de {maxModules} módulos disponibles en tu plan{' '}
                     <strong>{organizationStatus.plan.name}</strong>.
                   </>
                 )}
@@ -125,9 +131,9 @@ export default function ModuleLimitNotification({
                         </Badge>
                       ))}
                   </div>
-                  {organizationStatus.active_modules.length > paidModulesCount && (
+                  {organizationStatus.paid_modules_count < totalActiveCount && (
                     <div className="text-xs text-gray-500 mt-1">
-                      + {organizationStatus.active_modules.length - paidModulesCount} módulos core (no cuentan para el límite)
+                      Incluye {totalActiveCount - organizationStatus.paid_modules_count} módulos core
                     </div>
                   )}
                 </div>
@@ -181,11 +187,18 @@ export function useModuleLimitNotification(organizationId?: number) {
   const { organizationStatus, loading } = useActiveModules(organizationId);
 
   useEffect(() => {
-    if (loading || !organizationStatus) return;
+    if (loading || !organizationStatus || !organizationStatus.plan) return;
 
-    const activeCount = organizationStatus.active_modules.length;
+    // No mostrar si todos los módulos disponibles ya están activos
+    const hasAvailableModules = organizationStatus.available_modules && organizationStatus.available_modules.length > 0;
+    if (!hasAvailableModules) {
+      setShowNotification(false);
+      return;
+    }
+
+    const activeCount = organizationStatus.active_modules_count;
     const maxModules = organizationStatus.plan.max_modules;
-    const usagePercentage = (activeCount / maxModules) * 100;
+    const usagePercentage = maxModules > 0 ? (activeCount / maxModules) * 100 : 0;
 
     // Mostrar notificación si está cerca del límite
     setShowNotification(usagePercentage >= 80);

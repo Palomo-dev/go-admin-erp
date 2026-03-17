@@ -241,10 +241,10 @@ export default function PedidosOnlinePage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Pedidos Online</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold">Pedidos Online</h1>
+          <p className="text-sm text-muted-foreground">
             Gestiona los pedidos recibidos desde el sitio web
           </p>
         </div>

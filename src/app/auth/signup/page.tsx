@@ -548,12 +548,8 @@ function SignupContent() {
         try {
           await createSignupData(authData.user.id, signupData.email);
           
-          // Cerrar sesión para que el usuario inicie sesión de nuevo
-          await supabase.auth.signOut();
-          
-          // Redirigir al login con mensaje de éxito
-          router.push('/auth/login?success=signup-complete&message=' + 
-            encodeURIComponent('¡Cuenta creada exitosamente! Por favor, inicia sesión.'));
+          // Redirigir al dashboard directamente (la sesión ya está activa)
+          router.push('/app/inicio?welcome=true');
           return;
         } catch (createError: any) {
           console.error('Error creando datos de registro:', createError);

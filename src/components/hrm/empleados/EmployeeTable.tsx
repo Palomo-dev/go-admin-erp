@@ -116,12 +116,12 @@ export function EmployeeTable({
 
   if (employees.length === 0) {
     return (
-      <div className="text-center py-12">
-        <Users className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+      <div className="text-center py-8 sm:py-12">
+        <Users className="h-10 w-10 sm:h-12 sm:w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3 sm:mb-4" />
+        <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">
           No hay empleados
         </h3>
-        <p className="text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           No se encontraron empleados con los filtros aplicados
         </p>
       </div>
@@ -129,18 +129,19 @@ export function EmployeeTable({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-            <TableHead className="font-semibold">Empleado</TableHead>
-            <TableHead className="font-semibold">Código</TableHead>
-            <TableHead className="font-semibold">Cargo / Depto.</TableHead>
-            <TableHead className="font-semibold">Sede</TableHead>
-            <TableHead className="font-semibold">Contrato</TableHead>
-            <TableHead className="font-semibold text-center">Estado</TableHead>
-            <TableHead className="font-semibold text-right">Salario</TableHead>
-            <TableHead className="w-[60px]"></TableHead>
+          <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300">Empleado</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">Código</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">Cargo / Depto.</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden lg:table-cell">Sede</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden lg:table-cell">Contrato</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-center">Estado</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-right hidden md:table-cell">Salario</TableHead>
+            <TableHead className="w-10 sm:w-[60px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -153,79 +154,79 @@ export function EmployeeTable({
             return (
               <TableRow
                 key={employee.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800/30 cursor-pointer"
+                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
                 onClick={() => onView(employee.id)}
               >
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
+                <TableCell className="py-2 sm:py-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                       <AvatarImage src={employee.avatar_url || undefined} alt={employee.full_name} />
-                      <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs sm:text-sm">
                         {getInitials(employee.full_name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-gray-900 dark:text-white">
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white truncate">
                         {employee.full_name}
                       </span>
                       {employee.email && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
                           {employee.email}
                         </span>
                       )}
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <span className="font-mono text-sm text-gray-600 dark:text-gray-300">
+                <TableCell className="py-2 sm:py-3 hidden md:table-cell">
+                  <span className="font-mono text-xs sm:text-sm text-gray-600 dark:text-gray-300">
                     {employee.employee_code || '-'}
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3 hidden sm:table-cell">
                   <div className="flex flex-col">
-                    <span className="text-gray-900 dark:text-white">
+                    <span className="text-xs sm:text-sm text-gray-900 dark:text-white truncate max-w-[120px]">
                       {employee.position_name || '-'}
                     </span>
                     {employee.department_name && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">
                         {employee.department_name}
                       </span>
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
-                  <span className="text-gray-600 dark:text-gray-300">
+                <TableCell className="py-2 sm:py-3 hidden lg:table-cell">
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
                     {employee.branch_name || '-'}
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3 hidden lg:table-cell">
                   <div className="flex flex-col">
-                    <span className="text-gray-900 dark:text-white">{contractLabel}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-xs sm:text-sm text-gray-900 dark:text-white">{contractLabel}</span>
+                    <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                       Desde {formatDate(employee.hire_date)}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant="secondary" className={statusConfig.className}>
+                <TableCell className="py-2 sm:py-3 text-center">
+                  <Badge variant="secondary" className={`${statusConfig.className} text-[10px] sm:text-xs`}>
                     {statusConfig.label}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
-                  <span className="font-medium text-gray-900 dark:text-white">
+                <TableCell className="py-2 sm:py-3 text-right hidden md:table-cell">
+                  <span className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
                     {employee.base_salary
                       ? formatCurrency(employee.base_salary, employee.currency_code)
                       : '-'}
                   </span>
                 </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
+                <TableCell className="py-2 sm:py-3" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                       <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => onView(employee.id)}>
@@ -286,6 +287,7 @@ export function EmployeeTable({
           })}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

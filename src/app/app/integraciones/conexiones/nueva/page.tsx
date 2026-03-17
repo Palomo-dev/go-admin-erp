@@ -21,6 +21,7 @@ import { paypalService } from '@/lib/services/integrations/paypal';
 import { metaMarketingService } from '@/lib/services/integrations/meta';
 import { tiktokMarketingService } from '@/lib/services/integrations/tiktok';
 import { whatsappClientService, whatsappSyncService } from '@/lib/services/integrations/whatsapp';
+import { sendgridService } from '@/lib/services/integrations/sendgrid';
 import { supabase } from '@/lib/supabase/config';
 import {
   StepProviderConnector,
@@ -526,6 +527,108 @@ export default function NuevaConexionPage() {
         return result;
       }
 
+      // Validación específica para Booking.com
+      if (wizardData.provider?.code === 'booking') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.hotel_id || !creds.machine_client_id || !creds.machine_client_secret) {
+          const result = { success: false, message: 'Ingresa Hotel ID, Machine Client ID y Machine Client Secret' };
+          setValidationResult(result);
+          return result;
+        }
+
+        // Verificar credenciales con el health-check de Booking.com
+        const checkResponse = await fetch('/api/integrations/booking/health-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            hotelId: creds.hotel_id,
+            machineClientId: creds.machine_client_id,
+            machineClientSecret: creds.machine_client_secret,
+            testOnly: true,
+          }),
+        });
+
+        const checkData = await checkResponse.json();
+        const result = {
+          success: checkData.connected === true,
+          message: checkData.message || (checkData.connected
+            ? `Conexión verificada${checkData.hotelName ? `: ${checkData.hotelName}` : ''}`
+            : 'Credenciales inválidas o Hotel ID incorrecto'),
+        };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación específica para Expedia Group
+      if (wizardData.provider?.code === 'expedia') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.property_id || !creds.eqc_username || !creds.eqc_password) {
+          const result = { success: false, message: 'Ingresa Expedia Property ID, EQC Username y EQC Password' };
+          setValidationResult(result);
+          return result;
+        }
+
+        if (creds.eqc_password.length < 16) {
+          const result = { success: false, message: 'El EQC Password debe tener al menos 16 caracteres' };
+          setValidationResult(result);
+          return result;
+        }
+
+        // Validación local OK — el health-check completo se ejecuta post-guardado
+        // (requiere connectionId con credenciales persistidas en BD)
+        const result = {
+          success: true,
+          message: `Credenciales EQC válidas para propiedad ${creds.property_id}. Se verificará la conexión al guardar.`,
+        };
+        setValidationResult(result);
+        return result;
+      }
+
+      // Validación específica para SendGrid
+      if (wizardData.provider?.code === 'sendgrid') {
+        const creds = JSON.parse(wizardData.credentials.secret_ref || '{}');
+        if (!creds.api_key) {
+          const result = { success: false, message: 'Ingresa la API Key de SendGrid' };
+          setValidationResult(result);
+          return result;
+        }
+
+        if (!creds.api_key.startsWith('SG.')) {
+          const result = { success: false, message: 'La API Key debe comenzar con SG.' };
+          setValidationResult(result);
+          return result;
+        }
+
+        if (!creds.from_email) {
+          const result = { success: false, message: 'Ingresa el email del remitente verificado' };
+          setValidationResult(result);
+          return result;
+        }
+
+        // Verificar API Key consultando scopes en SendGrid
+        const checkResponse = await fetch('https://api.sendgrid.com/v3/scopes', {
+          headers: { Authorization: `Bearer ${creds.api_key}` },
+        });
+
+        if (!checkResponse.ok) {
+          const result = { success: false, message: `API Key inválida (HTTP ${checkResponse.status})` };
+          setValidationResult(result);
+          return result;
+        }
+
+        const scopesData = await checkResponse.json();
+        const scopes: string[] = scopesData?.scopes || [];
+        const hasMailSend = scopes.some((s: string) => s.includes('mail'));
+        const result = {
+          success: true,
+          message: hasMailSend
+            ? `Conexión verificada: ${scopes.length} permisos activos (Mail Send ✓)`
+            : `Conexión verificada: ${scopes.length} permisos activos (⚠️ Sin permisos de Mail Send)`,
+        };
+        setValidationResult(result);
+        return result;
+      }
+
       // Validación genérica para otros proveedores
       await new Promise((resolve) => setTimeout(resolve, 1500));
       const result = { success: true, message: 'Conexión validada correctamente' };
@@ -764,6 +867,66 @@ export default function NuevaConexionPage() {
             }
           } catch (setupErr) {
             console.warn('Error en TikTok setup automático (la conexión se guardó):', setupErr);
+          }
+        } else if (wizardData.provider?.code === 'booking') {
+          // Booking.com: guardar 3 credenciales (hotel_id, machine_client_id, machine_client_secret)
+          const bookingCreds = [
+            { credential_type: 'hotel_id', secret_ref: parsedCreds.hotel_id || '', purpose: 'primary' as const },
+            { credential_type: 'machine_client_id', secret_ref: parsedCreds.machine_client_id || '', purpose: 'primary' as const },
+            { credential_type: 'machine_client_secret', secret_ref: parsedCreds.machine_client_secret || '', purpose: 'primary' as const },
+          ];
+
+          for (const cred of bookingCreds) {
+            const saved = await integrationsService.saveCredentials(
+              connectionId,
+              cred.credential_type,
+              cred.secret_ref,
+              cred.purpose,
+            );
+            if (!saved) {
+              console.warn(`No se pudo guardar credencial Booking: ${cred.credential_type}`);
+            }
+          }
+        } else if (wizardData.provider?.code === 'expedia') {
+          // Expedia Group: guardar 3 credenciales (property_id, eqc_username, eqc_password)
+          const expediaCreds = [
+            { credential_type: 'property_id', secret_ref: parsedCreds.property_id || '', purpose: 'primary' as const },
+            { credential_type: 'eqc_username', secret_ref: parsedCreds.eqc_username || '', purpose: 'primary' as const },
+            { credential_type: 'eqc_password', secret_ref: parsedCreds.eqc_password || '', purpose: 'primary' as const },
+          ];
+
+          for (const cred of expediaCreds) {
+            const saved = await integrationsService.saveCredentials(
+              connectionId,
+              cred.credential_type,
+              cred.secret_ref,
+              cred.purpose,
+            );
+            if (!saved) {
+              console.warn(`No se pudo guardar credencial Expedia: ${cred.credential_type}`);
+            }
+          }
+        } else if (wizardData.provider?.code === 'sendgrid') {
+          // SendGrid: guardar 3 credenciales separadas en integration_credentials
+          const sgSaved = await sendgridService.saveCredentials(connectionId, {
+            apiKey: parsedCreds.api_key || '',
+            fromEmail: parsedCreds.from_email || '',
+            fromName: parsedCreds.from_name || '',
+          });
+
+          if (!sgSaved) {
+            console.warn('No se pudieron guardar las credenciales de SendGrid');
+          }
+
+          // Vincular canal email de notificaciones con esta conexión SendGrid
+          if (organizationId) {
+            try {
+              const { NotificationService } = await import('@/lib/services/notificationService');
+              await NotificationService.linkSendGridChannel(organizationId, connectionId);
+              console.log('[SendGrid] Canal email vinculado correctamente');
+            } catch (linkErr) {
+              console.warn('[SendGrid] Error vinculando canal email (la conexión se guardó):', linkErr);
+            }
           }
         } else if (wizardData.provider?.code === 'whatsapp') {
           // Si vino de Embedded Signup, ya se guardó todo en el callback

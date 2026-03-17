@@ -159,7 +159,7 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
     <div className="space-y-6">
         <>
           {/* Resumen de Stock */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <Card className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
               <CardHeader className="p-4 pb-2">
                 <CardTitle className="text-lg">Stock Total</CardTitle>

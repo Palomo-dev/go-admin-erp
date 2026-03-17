@@ -105,7 +105,7 @@ class HRMReportsService {
           organization_members!employments_organization_member_id_fkey(
             profiles(first_name, last_name)
           ),
-          departments(name),
+          departments!employments_department_id_fkey(name),
           job_positions(name)
         ),
         branches!timesheets_branch_id_fkey(name)
@@ -175,7 +175,7 @@ class HRMReportsService {
           organization_members!employments_organization_member_id_fkey(
             profiles(first_name, last_name)
           ),
-          departments(name)
+          departments!employments_department_id_fkey(name)
         ),
         leave_types(name)
       `)
@@ -240,7 +240,7 @@ class HRMReportsService {
           organization_members!employments_organization_member_id_fkey(
             profiles(first_name, last_name)
           ),
-          departments(name)
+          departments!employments_department_id_fkey(name)
         )
       `)
       .order('created_at', { ascending: false });

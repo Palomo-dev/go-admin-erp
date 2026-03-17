@@ -115,16 +115,16 @@ const navItems: QuickNavItem[] = [
 
 export function CRMQuickNav() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-3">
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2 sm:gap-3">
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
-          <div className="group p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer h-full">
+          <div className="group p-2.5 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer h-full">
             <div className="flex flex-col items-center text-center gap-2">
               <div className={`p-2 rounded-lg ${item.color}`}>
                 {item.icon}
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   {item.label}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
@@ -141,28 +141,29 @@ export function CRMQuickNav() {
 
 export function CRMQuickActions() {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
       <Link href="/app/crm/bandeja">
-        <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700">
-          <MessageSquare className="h-4 w-4 mr-2" />
-          Bandeja
-          <ArrowRight className="h-4 w-4 ml-2" />
+        <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white">
+          <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
+          <span className="hidden xs:inline">Bandeja</span>
+          <ArrowRight className="h-4 w-4 ml-1 sm:ml-2" />
         </Button>
       </Link>
       <Link href="/app/crm/oportunidades/nuevo">
-        <Button variant="outline" size="sm">
-          <DollarSign className="h-4 w-4 mr-2" />
-          Nueva Oportunidad
+        <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+          <DollarSign className="h-4 w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Nueva Oportunidad</span>
+          <span className="sm:hidden">Nueva</span>
         </Button>
       </Link>
-      <Link href="/app/crm/oportunidades">
-        <Button variant="outline" size="sm">
+      <Link href="/app/crm/oportunidades" className="hidden sm:block">
+        <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
           <Target className="h-4 w-4 mr-2" />
           Oportunidades
         </Button>
       </Link>
-      <Link href="/app/crm/pronostico">
-        <Button variant="outline" size="sm">
+      <Link href="/app/crm/pronostico" className="hidden md:block">
+        <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
           <TrendingUp className="h-4 w-4 mr-2" />
           Pronóstico
         </Button>

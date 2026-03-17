@@ -100,7 +100,7 @@ export function ComponentForm({
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="code" className="text-gray-700 dark:text-gray-300">
                 Código *
@@ -164,7 +164,7 @@ export function ComponentForm({
           </div>
 
           {/* Amount Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amount_type" className="text-gray-700 dark:text-gray-300">
                 Tipo de Monto

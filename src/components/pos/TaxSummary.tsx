@@ -202,15 +202,15 @@ export function TaxSummary({
 
   if (loading) {
     return (
-      <Card className={`dark:bg-gray-800 light:bg-white dark:border-gray-700 light:border-gray-200 ${className}`}>
+      <Card className={`dark:bg-gray-800 bg-white dark:border-gray-700 border-gray-200 ${className}`}>
         <CardHeader className="p-2 sm:p-3 pb-2">
-          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm dark:text-white light:text-gray-900">
+          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm dark:text-white text-gray-900">
             <Calculator className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>Resumen</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-2 sm:p-3">
-          <div className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600">Cargando...</div>
+          <div className="text-xs sm:text-sm dark:text-gray-400 text-gray-600">Cargando...</div>
         </CardContent>
       </Card>
     );
@@ -218,32 +218,32 @@ export function TaxSummary({
 
   if (cart.items.length === 0) {
     return (
-      <Card className={`dark:bg-gray-800 light:bg-white dark:border-gray-700 light:border-gray-200 ${className}`}>
+      <Card className={`dark:bg-gray-800 bg-white dark:border-gray-700 border-gray-200 ${className}`}>
         <CardHeader className="p-2 sm:p-3 pb-2">
-          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm dark:text-white light:text-gray-900">
+          <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm dark:text-white text-gray-900">
             <Calculator className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>Resumen</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-2 sm:p-3">
-          <div className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600">Agregue productos</div>
+          <div className="text-xs sm:text-sm dark:text-gray-400 text-gray-600">Agregue productos</div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className={`dark:bg-gray-800 light:bg-white dark:border-gray-700 light:border-gray-200 ${className}`}>
+    <Card className={`dark:bg-gray-800 bg-white dark:border-gray-700 border-gray-200 ${className}`}>
       <CardHeader className="p-2 sm:p-3 pb-2">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-1.5 text-xs sm:text-sm dark:text-white light:text-gray-900">
+          <CardTitle className="flex items-center gap-1.5 text-xs sm:text-sm dark:text-white text-gray-900">
             <Calculator className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
             <span className="truncate">Resumen</span>
           </CardTitle>
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 dark:hover:bg-gray-700 light:hover:bg-gray-100 shrink-0"
+            className="h-6 w-6 p-0 dark:hover:bg-gray-700 hover:bg-gray-100 shrink-0"
           >
             <Settings className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
           </Button>
@@ -251,7 +251,7 @@ export function TaxSummary({
         
         {/* Toggle para impuestos incluidos - RESPONSIVE */}
         <div className="flex items-center justify-between gap-2 mt-1.5 sm:mt-2">
-          <span className="text-[0.65rem] sm:text-xs dark:text-gray-400 light:text-gray-600 leading-tight">
+          <span className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600 leading-tight">
             Impuestos incluidos
           </span>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -270,13 +270,13 @@ export function TaxSummary({
         <div className="space-y-2">
           {/* Subtotal */}
           <div className="flex justify-between items-start gap-3 text-xs sm:text-sm">
-            <span className="dark:text-gray-400 light:text-gray-600 shrink-0">Subtotal:</span>
+            <span className="dark:text-gray-400 text-gray-600 shrink-0">Subtotal:</span>
             <div className="text-right">
-              <span className="dark:text-white light:text-gray-900 font-medium">
+              <span className="dark:text-white text-gray-900 font-medium">
                 {formatCurrency(subtotal)}
               </span>
               {taxIncluded && (
-                <div className="text-xs dark:text-gray-500 light:text-gray-500">
+                <div className="text-xs dark:text-gray-500 text-gray-500">
                   (inc. impuestos)
                 </div>
               )}
@@ -286,9 +286,9 @@ export function TaxSummary({
           {/* Multi-selector de impuestos de organización (cuando no hay impuestos específicos del producto) */}
           {!hasProductSpecificTaxes && organizationTaxes.length > 0 && (
             <>
-              <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+              <Separator className="dark:bg-gray-700 bg-gray-200" />
               <div className="space-y-2">
-                <div className="text-xs font-medium dark:text-gray-300 light:text-gray-700">
+                <div className="text-xs font-medium dark:text-gray-300 text-gray-700">
                   Impuestos disponibles:
                 </div>
                 <Popover open={taxSelectorOpen} onOpenChange={setTaxSelectorOpen}>
@@ -297,7 +297,7 @@ export function TaxSummary({
                       variant="outline"
                       role="combobox"
                       aria-expanded={taxSelectorOpen}
-                      className="w-full justify-between h-8 text-xs dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700 light:bg-white"
+                      className="w-full justify-between h-8 text-xs dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700 bg-white"
                     >
                       {(() => {
                         const selectedCount = Object.values(appliedTaxes).filter(Boolean).length;
@@ -336,7 +336,7 @@ export function TaxSummary({
                             className="h-3 w-3"
                           />
                           <div className="flex-1 flex items-center gap-2">
-                            <span className="text-xs dark:text-gray-300 light:text-gray-700">
+                            <span className="text-xs dark:text-gray-300 text-gray-700">
                               {tax.name} ({tax.rate}%)
                             </span>
                             {tax.is_default && (
@@ -346,7 +346,7 @@ export function TaxSummary({
                             )}
                           </div>
                           {appliedTaxes[tax.id] && (
-                            <Check className="h-3 w-3 dark:text-green-400 light:text-green-600" />
+                            <Check className="h-3 w-3 dark:text-green-400 text-green-600" />
                           )}
                         </div>
                       ))}
@@ -360,16 +360,16 @@ export function TaxSummary({
           {/* Desglose de impuestos */}
           {taxBreakdown.length > 0 && (
             <>
-              <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+              <Separator className="dark:bg-gray-700 bg-gray-200" />
               <div className="space-y-2">
-                <div className="text-xs font-medium dark:text-gray-300 light:text-gray-700">
+                <div className="text-xs font-medium dark:text-gray-300 text-gray-700">
                   Impuestos aplicados:
                 </div>
                 <div className="space-y-1">
                   {taxBreakdown.map((tax) => (
                     <div key={tax.taxId} className="flex justify-between items-start gap-2 text-xs">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1">
-                        <span className="dark:text-gray-400 light:text-gray-600 truncate" title={`${tax.name} (${tax.rate}%)`}>
+                        <span className="dark:text-gray-400 text-gray-600 truncate" title={`${tax.name} (${tax.rate}%)`}>
                           {tax.name} ({tax.rate}%)
                         </span>
                         {taxIncluded && (
@@ -378,7 +378,7 @@ export function TaxSummary({
                           </Badge>
                         )}
                       </div>
-                      <span className="dark:text-white light:text-gray-900 font-medium shrink-0">
+                      <span className="dark:text-white text-gray-900 font-medium shrink-0">
                         {formatCurrency(tax.taxAmount)}
                       </span>
                     </div>
@@ -391,10 +391,10 @@ export function TaxSummary({
           {/* Total de impuestos */}
           {totalTaxAmount > 0 && (
             <>
-              <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+              <Separator className="dark:bg-gray-700 bg-gray-200" />
               <div className="flex justify-between items-center gap-3 text-sm font-medium">
-                <span className="dark:text-gray-300 light:text-gray-700 shrink-0">Total Impuestos:</span>
-                <span className="dark:text-blue-400 light:text-blue-600">
+                <span className="dark:text-gray-300 text-gray-700 shrink-0">Total Impuestos:</span>
+                <span className="dark:text-blue-400 text-blue-600">
                   {formatCurrency(totalTaxAmount)}
                 </span>
               </div>
@@ -402,17 +402,17 @@ export function TaxSummary({
           )}
 
           {/* Total final */}
-          <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+          <Separator className="dark:bg-gray-700 bg-gray-200" />
           <div className="flex justify-between items-center gap-3 text-sm sm:text-base font-semibold">
-            <span className="dark:text-white light:text-gray-900 shrink-0">Total Final:</span>
-            <span className="dark:text-green-400 light:text-green-600">
+            <span className="dark:text-white text-gray-900 shrink-0">Total Final:</span>
+            <span className="dark:text-green-400 text-green-600">
               {formatCurrency(total)}
             </span>
           </div>
 
           {/* Información adicional */}
           {taxBreakdown.length === 0 && (
-            <div className="text-xs dark:text-gray-500 light:text-gray-500 text-center mt-2 px-2">
+            <div className="text-xs dark:text-gray-500 text-gray-500 text-center mt-2 px-2">
               No hay impuestos configurados para estos productos
             </div>
           )}

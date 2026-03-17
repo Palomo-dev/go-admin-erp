@@ -239,7 +239,7 @@ export default function ChatInput({
   }
 
   return (
-    <div className="border-t dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+    <div className="border-t dark:border-gray-700 bg-white dark:bg-gray-900 p-2 sm:p-4">
       {/* Respuestas rápidas popup */}
       {showQuickReplies && filteredReplies.length > 0 && (
         <div className="mb-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -289,7 +289,7 @@ export default function ChatInput({
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 text-gray-500 hover:text-yellow-600 dark:text-gray-400 dark:hover:text-yellow-400"
+            className="h-9 w-9 hidden sm:flex text-gray-500 hover:text-yellow-600 dark:text-gray-400 dark:hover:text-yellow-400"
             disabled={disabled}
             onClick={() => setMessage('/')}
             title="Respuestas rápidas (escribe /)"
@@ -368,7 +368,7 @@ export default function ChatInput({
       </div>
 
       {/* Hint */}
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 sm:mt-2 text-center hidden sm:block">
         Presiona Enter para enviar, Shift + Enter para nueva línea
       </p>
     </div>

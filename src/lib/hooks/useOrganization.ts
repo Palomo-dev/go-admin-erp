@@ -215,7 +215,7 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
     // Paso 2: Obtener datos de la organización
     const { data: orgData, error: orgError } = await supabase
       .from("organizations")
-      .select("id, name, created_at, country_code")
+      .select("id, name, created_at, country_code, type_id, subdomain")
       .eq("id", member.organization_id)
       .single();
 

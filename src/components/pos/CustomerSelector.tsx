@@ -281,7 +281,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
     <div className={`space-y-2 ${open ? '' : className}`}>
       {/* Cliente seleccionado */}
       {selectedCustomer ? (
-        <Card className="dark:bg-gradient-to-r dark:from-blue-900/20 dark:to-purple-900/10 dark:border-blue-500/30 light:bg-gradient-to-r light:from-blue-50 light:to-indigo-50 light:border-blue-200 border shadow-sm">
+        <Card className="dark:bg-gradient-to-r dark:from-blue-900/20 dark:to-purple-900/10 dark:border-blue-500/30 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 border shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -292,27 +292,27 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                   className="shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-base dark:text-white light:text-gray-900 truncate">
+                  <h3 className="font-semibold text-base dark:text-white text-gray-900 truncate">
                     {selectedCustomer.full_name}
                   </h3>
                   
                   <div className="mt-1 space-y-1">
                     {selectedCustomer.email && (
-                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 light:text-gray-600">
+                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
                         <Mail className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{selectedCustomer.email}</span>
                       </div>
                     )}
                     
                     {selectedCustomer.phone && (
-                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 light:text-gray-600">
+                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
                         <Phone className="h-3.5 w-3.5 shrink-0" />
                         <span>{selectedCustomer.phone}</span>
                       </div>
                     )}
                     
                     {(selectedCustomer.doc_type && selectedCustomer.doc_number) && (
-                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 light:text-gray-600">
+                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
                         <CreditCard className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{selectedCustomer.doc_type}: {selectedCustomer.doc_number}</span>
                       </div>
@@ -326,7 +326,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                 variant="ghost"
                 size="sm"
                 onClick={handleClearSelection}
-                className="dark:hover:bg-red-500/20 dark:hover:text-red-400 light:hover:bg-red-50 light:hover:text-red-600 shrink-0 h-8 w-8 p-0"
+                className="dark:hover:bg-red-500/20 dark:hover:text-red-400 hover:bg-red-50 hover:text-red-600 shrink-0 h-8 w-8 p-0"
                 title="Quitar cliente"
               >
                 <X className="h-4 w-4" />
@@ -341,67 +341,67 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="w-full justify-start text-left h-auto p-3 sm:p-4 dark:border-gray-700 dark:hover:bg-gray-800/50 dark:hover:border-blue-500/50 light:border-gray-300 light:hover:bg-blue-50 light:hover:border-blue-300 transition-all duration-200"
+                className="w-full justify-start text-left h-auto p-3 sm:p-4 dark:border-gray-700 dark:hover:bg-gray-800/50 dark:hover:border-blue-500/50 border-gray-300 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
               >
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   {/* Ícono responsive */}
-                  <div className="p-1.5 sm:p-2 rounded-full dark:bg-blue-500/20 light:bg-blue-100 shrink-0">
-                    <User className="h-4 w-4 sm:h-5 sm:w-5 dark:text-blue-400 light:text-blue-600" />
+                  <div className="p-1.5 sm:p-2 rounded-full dark:bg-blue-500/20 bg-blue-100 shrink-0">
+                    <User className="h-4 w-4 sm:h-5 sm:w-5 dark:text-blue-400 text-blue-600" />
                   </div>
                   
                   {/* Contenido de texto responsive */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium dark:text-white light:text-gray-900 text-sm sm:text-base truncate">
+                    <p className="font-medium dark:text-white text-gray-900 text-sm sm:text-base truncate">
                       Seleccionar cliente
                     </p>
-                    <p className="text-xs sm:text-sm dark:text-gray-400 light:text-gray-600 truncate hidden xs:block">
+                    <p className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 truncate hidden xs:block">
                       Buscar por nombre, email o teléfono
                     </p>
                     {/* Versión móvil más corta */}
-                    <p className="text-xs dark:text-gray-400 light:text-gray-600 truncate block xs:hidden">
+                    <p className="text-xs dark:text-gray-400 text-gray-600 truncate block xs:hidden">
                       Buscar cliente
                     </p>
                   </div>
                   
                   {/* Ícono de búsqueda responsive */}
-                  <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 dark:text-gray-400 light:text-gray-500 shrink-0" />
+                  <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 dark:text-gray-400 text-gray-500 shrink-0" />
                 </div>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-96 p-0 dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200" align="start">
+            <PopoverContent className="w-96 p-0 dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200" align="start">
               <div className="p-4 space-y-4">
                 {/* Header con campo de búsqueda */}
                 <div className="space-y-2">
-                  <h4 className="font-semibold dark:text-white light:text-gray-900">Buscar Cliente</h4>
+                  <h4 className="font-semibold dark:text-white text-gray-900">Buscar Cliente</h4>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 light:text-gray-500" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
                     <Input
                       placeholder="Nombre, email, teléfono o documento..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-300 focus:ring-2 focus:ring-blue-500"
+                      className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300 focus:ring-2 focus:ring-blue-500"
                       autoFocus
                     />
                   </div>
                 </div>
 
-                <Separator className="dark:bg-gray-800 light:bg-gray-200" />
+                <Separator className="dark:bg-gray-800 bg-gray-200" />
 
                 {/* Resultados de búsqueda */}
                 <ScrollArea className="h-64">
                   <div className="space-y-3 pr-4">
                     {isLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="flex items-center gap-2 text-sm dark:text-gray-400 light:text-gray-600">
+                        <div className="flex items-center gap-2 text-sm dark:text-gray-400 text-gray-600">
                           <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                           <span>Buscando...</span>
                         </div>
                       </div>
                     ) : occupiedSpaces.length === 0 && customers.length === 0 && searchTerm ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <User className="h-12 w-12 dark:text-gray-600 light:text-gray-400 mb-2" />
-                        <p className="text-sm font-medium dark:text-gray-400 light:text-gray-600 mb-1">No se encontraron resultados</p>
-                        <p className="text-xs dark:text-gray-500 light:text-gray-500">Intenta con otro término de búsqueda</p>
+                        <User className="h-12 w-12 dark:text-gray-600 text-gray-400 mb-2" />
+                        <p className="text-sm font-medium dark:text-gray-400 text-gray-600 mb-1">No se encontraron resultados</p>
+                        <p className="text-xs dark:text-gray-500 text-gray-500">Intenta con otro término de búsqueda</p>
                       </div>
                     ) : (
                       <>
@@ -410,14 +410,14 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 px-1">
                               <Building2 className="h-3.5 w-3.5 text-green-600" />
-                              <p className="text-xs font-semibold dark:text-gray-400 light:text-gray-600">
+                              <p className="text-xs font-semibold dark:text-gray-400 text-gray-600">
                                 ESPACIOS OCUPADOS ({occupiedSpaces.length})
                               </p>
                             </div>
                             {occupiedSpaces.map((room) => (
                               <div
                                 key={`${room.space_id}-${room.reservation_id}`}
-                                className="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-green-900/20 light:hover:bg-green-50 dark:border-green-500/30 light:border-green-200 border"
+                                className="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-green-900/20 hover:bg-green-50 dark:border-green-500/30 border-green-200 border"
                                 onClick={() => handleSelectRoom(room)}
                               >
                                 <div className="flex-shrink-0">
@@ -427,17 +427,17 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <p className="font-semibold text-sm dark:text-white light:text-gray-900">
+                                    <p className="font-semibold text-sm dark:text-white text-gray-900">
                                       {room.space_label}
                                     </p>
                                     <Badge className="bg-green-600 text-xs">Ocupada</Badge>
                                   </div>
-                                  <div className="flex items-center gap-1 text-xs dark:text-gray-400 light:text-gray-600 mb-0.5">
+                                  <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600 mb-0.5">
                                     <User className="h-3 w-3" />
                                     <span className="font-medium">{room.customer_name}</span>
                                   </div>
                                   {room.customer_email && (
-                                    <div className="flex items-center gap-1 text-xs dark:text-gray-500 light:text-gray-500">
+                                    <div className="flex items-center gap-1 text-xs dark:text-gray-500 text-gray-500">
                                       <Mail className="h-3 w-3" />
                                       <span className="truncate">{room.customer_email}</span>
                                     </div>
@@ -450,7 +450,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
                         {/* Separador si hay ambos */}
                         {occupiedSpaces.length > 0 && customers.length > 0 && searchTerm && (
-                          <Separator className="dark:bg-gray-800 light:bg-gray-200" />
+                          <Separator className="dark:bg-gray-800 bg-gray-200" />
                         )}
 
                         {/* Clientes Regulares */}
@@ -458,14 +458,14 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 px-1">
                               <User className="h-3.5 w-3.5 text-blue-600" />
-                              <p className="text-xs font-semibold dark:text-gray-400 light:text-gray-600">
+                              <p className="text-xs font-semibold dark:text-gray-400 text-gray-600">
                                 CLIENTES ({customers.length})
                               </p>
                             </div>
                             {customers.map((customer) => (
                               <div
                                 key={customer.id}
-                                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-gray-800 light:hover:bg-gray-50 dark:hover:border-blue-500/30 light:hover:border-blue-200 border border-transparent"
+                                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-gray-800 hover:bg-gray-50 dark:hover:border-blue-500/30 hover:border-blue-200 border border-transparent"
                                 onClick={() => handleSelectCustomer(customer)}
                               >
                                 <UserAvatar 
@@ -475,18 +475,18 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                                   className="shrink-0"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm dark:text-white light:text-gray-900 truncate">
+                                  <p className="font-medium text-sm dark:text-white text-gray-900 truncate">
                                     {customer.full_name}
                                   </p>
                                   <div className="flex items-center gap-2 mt-1">
                                     {customer.email && (
-                                      <div className="flex items-center gap-1 text-xs dark:text-gray-400 light:text-gray-600">
+                                      <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
                                         <Mail className="h-3 w-3" />
                                         <span className="truncate max-w-[120px]">{customer.email}</span>
                                       </div>
                                     )}
                                     {customer.phone && (
-                                      <div className="flex items-center gap-1 text-xs dark:text-gray-400 light:text-gray-600">
+                                      <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
                                         <Phone className="h-3 w-3" />
                                         <span>{customer.phone}</span>
                                       </div>
@@ -501,9 +501,9 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                         {/* Estado vacío inicial */}
                         {!searchTerm && occupiedSpaces.length === 0 && customers.length === 0 && (
                           <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <Search className="h-12 w-12 dark:text-gray-600 light:text-gray-400 mb-2" />
-                            <p className="text-sm font-medium dark:text-gray-400 light:text-gray-600 mb-1">Comienza a escribir</p>
-                            <p className="text-xs dark:text-gray-500 light:text-gray-500">Busca espacios ocupados o clientes</p>
+                            <Search className="h-12 w-12 dark:text-gray-600 text-gray-400 mb-2" />
+                            <p className="text-sm font-medium dark:text-gray-400 text-gray-600 mb-1">Comienza a escribir</p>
+                            <p className="text-xs dark:text-gray-500 text-gray-500">Busca espacios ocupados o clientes</p>
                           </div>
                         )}
                       </>
@@ -511,7 +511,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                   </div>
                 </ScrollArea>
 
-                <Separator className="dark:bg-gray-800 light:bg-gray-200" />
+                <Separator className="dark:bg-gray-800 bg-gray-200" />
 
                 {/* Botón para crear nuevo cliente */}
                 <Button
@@ -519,7 +519,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                     setShowCreateDialog(true);
                     setShowCustomerList(false);
                   }}
-                  className="w-full justify-start dark:bg-blue-600 dark:hover:bg-blue-700 light:bg-blue-600 light:hover:bg-blue-700 transition-colors"
+                  className="w-full justify-start dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 transition-colors"
                   size="lg"
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
@@ -533,17 +533,17 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
       {/* Dialog para crear cliente */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
           <DialogHeader className="pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg dark:bg-blue-600/20 light:bg-blue-100">
-                <UserPlus className="h-6 w-6 dark:text-blue-400 light:text-blue-600" />
+              <div className="p-2 rounded-lg dark:bg-blue-600/20 bg-blue-100">
+                <UserPlus className="h-6 w-6 dark:text-blue-400 text-blue-600" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-semibold dark:text-white light:text-gray-900">
+                <DialogTitle className="text-xl font-semibold dark:text-white text-gray-900">
                   Crear Nuevo Cliente
                 </DialogTitle>
-                <p className="text-sm dark:text-gray-400 light:text-gray-600 mt-1">
+                <p className="text-sm dark:text-gray-400 text-gray-600 mt-1">
                   Complete la información del cliente
                 </p>
               </div>
@@ -553,7 +553,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
           <div className="space-y-6">
             {/* Información básica */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium dark:text-gray-300 light:text-gray-700 flex items-center gap-2">
+              <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-2">
                 <User className="h-4 w-4" />
                 Información Básica
               </h3>
@@ -561,7 +561,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="first_name" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                    <Label htmlFor="first_name" className="text-sm font-medium dark:text-gray-300 text-gray-700">
                       Nombre *
                     </Label>
                     <Input
@@ -569,11 +569,11 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                       value={newCustomer.first_name}
                       onChange={(e) => setNewCustomer({ ...newCustomer, first_name: e.target.value })}
                       placeholder="Nombre"
-                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="last_name" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                    <Label htmlFor="last_name" className="text-sm font-medium dark:text-gray-300 text-gray-700">
                       Apellido
                     </Label>
                     <Input
@@ -581,21 +581,21 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                       value={newCustomer.last_name}
                       onChange={(e) => setNewCustomer({ ...newCustomer, last_name: e.target.value })}
                       placeholder="Apellido"
-                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="identification_type" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                    <Label htmlFor="identification_type" className="text-sm font-medium dark:text-gray-300 text-gray-700">
                       Tipo Documento
                     </Label>
                     <select
                       id="identification_type"
                       value={newCustomer.identification_type}
                       onChange={(e) => setNewCustomer({ ...newCustomer, identification_type: e.target.value })}
-                      className="h-10 w-full rounded-md border dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="h-10 w-full rounded-md border dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border-gray-300 text-gray-900 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="CC">Cédula de Ciudadanía</option>
                       <option value="CE">Cédula de Extranjería</option>
@@ -604,7 +604,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="identification_number" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                    <Label htmlFor="identification_number" className="text-sm font-medium dark:text-gray-300 text-gray-700">
                       Número de Documento
                     </Label>
                     <Input
@@ -612,7 +612,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                       value={newCustomer.identification_number}
                       onChange={(e) => setNewCustomer({ ...newCustomer, identification_number: e.target.value })}
                       placeholder="Número documento"
-                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -621,7 +621,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
             {/* Información de contacto */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium dark:text-gray-300 light:text-gray-700 flex items-center gap-2">
+              <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 Información de Contacto
               </h3>
@@ -629,7 +629,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium dark:text-gray-300 light:text-gray-700 flex items-center gap-1">
+                    <Label htmlFor="email" className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-1">
                       <Mail className="h-3 w-3" />
                       Email
                     </Label>
@@ -639,11 +639,11 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                       value={newCustomer.email}
                       onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
                       placeholder="correo@ejemplo.com"
-                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm font-medium dark:text-gray-300 light:text-gray-700 flex items-center gap-1">
+                    <Label htmlFor="phone" className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-1">
                       <Phone className="h-3 w-3" />
                       Teléfono
                     </Label>
@@ -652,7 +652,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                       value={newCustomer.phone}
                       onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
                       placeholder="300 123 4567"
-                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -661,14 +661,14 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
             {/* Información de ubicación */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium dark:text-gray-300 light:text-gray-700 flex items-center gap-2">
+              <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 Información de Ubicación
               </h3>
               
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label htmlFor="address" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                  <Label htmlFor="address" className="text-sm font-medium dark:text-gray-300 text-gray-700">
                     Dirección
                   </Label>
                   <Textarea
@@ -677,13 +677,13 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                     onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
                     placeholder="Dirección completa (calle, carrera, número)"
                     rows={2}
-                    className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="country" className="text-sm font-medium dark:text-gray-300 light:text-gray-700">
+                    <Label htmlFor="country" className="text-sm font-medium dark:text-gray-300 text-gray-700">
                       País
                     </Label>
                     <Input
@@ -691,7 +691,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                       value={newCustomer.country}
                       onChange={(e) => setNewCustomer({ ...newCustomer, country: e.target.value })}
                       placeholder="Colombia"
-                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white light:bg-white light:border-gray-300 light:text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="dark:bg-gray-800 dark:border-gray-700 dark:text-white bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -700,7 +700,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
             {/* Roles del Cliente */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium dark:text-gray-300 light:text-gray-700 flex items-center gap-2">
+              <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-2">
                 <User className="h-4 w-4" />
                 Roles del Cliente
               </h3>
@@ -726,7 +726,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
             {/* Responsabilidad Fiscal DIAN */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium dark:text-gray-300 light:text-gray-700 flex items-center gap-2">
+              <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
                 Responsabilidad Fiscal (DIAN)
               </h3>
@@ -758,12 +758,12 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
             />
           </div>
 
-          <DialogFooter className="border-t dark:border-gray-800 light:border-gray-200 pt-6 mt-6">
+          <DialogFooter className="border-t dark:border-gray-800 border-gray-200 pt-6 mt-6">
             <div className="flex gap-3 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={() => setShowCreateDialog(false)}
-                className="flex-1 sm:flex-none dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 light:border-gray-300 light:hover:bg-gray-50 light:text-gray-700"
+                className="flex-1 sm:flex-none dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-300 border-gray-300 hover:bg-gray-50 text-gray-700"
                 size="lg"
               >
                 <X className="h-4 w-4 mr-2" />
@@ -771,7 +771,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
               </Button>
               <Button
                 onClick={handleCreateCustomer}
-                className="flex-1 sm:flex-none dark:bg-blue-600 dark:hover:bg-blue-700 light:bg-blue-600 light:hover:bg-blue-700 shadow-lg"
+                className="flex-1 sm:flex-none dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 shadow-lg"
                 size="lg"
               >
                 <UserPlus className="h-4 w-4 mr-2" />

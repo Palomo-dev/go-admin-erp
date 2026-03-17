@@ -79,25 +79,25 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-md dark:bg-gray-800 light:bg-white">
+      <DialogContent className="max-w-md dark:bg-gray-800 bg-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2 dark:text-white light:text-gray-900">
+          <DialogTitle className="flex items-center space-x-2 dark:text-white text-gray-900">
             <Banknote className="h-5 w-5 text-green-600" />
             <span>Apertura de Caja</span>
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Card className="dark:bg-gray-700 dark:border-gray-600 light:bg-gray-50 light:border-gray-200">
+          <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm dark:text-gray-200 light:text-gray-700">
+              <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
                 Información de Apertura
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Monto inicial */}
               <div className="space-y-2">
-                <Label htmlFor="initial_amount" className="dark:text-gray-200 light:text-gray-700">
+                <Label htmlFor="initial_amount" className="dark:text-gray-200 text-gray-700">
                   Monto Inicial *
                 </Label>
                 <Input
@@ -107,10 +107,10 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
                   min="0"
                   value={formData.initial_amount}
                   onChange={(e) => handleInputChange('initial_amount', parseFloat(e.target.value) || 0)}
-                  className="dark:bg-gray-600 dark:border-gray-500 dark:text-white light:bg-white light:border-gray-300"
+                  className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
                   required
                 />
-                <p className="text-sm dark:text-gray-400 light:text-gray-500">
+                <p className="text-sm dark:text-gray-400 text-gray-500">
                   Equivale a: <span className="font-medium text-green-600">
                     {formatCurrency(formData.initial_amount)}
                   </span>
@@ -119,7 +119,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
 
               {/* Notas */}
               <div className="space-y-2">
-                <Label htmlFor="notes" className="dark:text-gray-200 light:text-gray-700">
+                <Label htmlFor="notes" className="dark:text-gray-200 text-gray-700">
                   Notas (Opcional)
                 </Label>
                 <Textarea
@@ -127,7 +127,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
                   value={formData.notes}
                   onChange={(e) => handleInputChange('notes', e.target.value)}
                   placeholder="Observaciones de apertura..."
-                  className="dark:bg-gray-600 dark:border-gray-500 dark:text-white light:bg-white light:border-gray-300"
+                  className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
                   rows={3}
                 />
               </div>

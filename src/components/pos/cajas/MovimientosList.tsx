@@ -53,9 +53,9 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
 
   if (loading) {
     return (
-      <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+      <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
         <CardHeader>
-          <CardTitle className="text-lg dark:text-white light:text-gray-900">
+          <CardTitle className="text-lg dark:text-white text-gray-900">
             Movimientos de Caja
           </CardTitle>
         </CardHeader>
@@ -70,10 +70,10 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
   }
 
   return (
-    <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+    <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg dark:text-white light:text-gray-900">
+          <CardTitle className="text-lg dark:text-white text-gray-900">
             Movimientos de Caja
           </CardTitle>
           <div className="flex space-x-4 text-sm">
@@ -81,13 +81,13 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
               <p className="text-green-600 font-medium">
                 {formatCurrency(getTotalByType('in'))}
               </p>
-              <p className="dark:text-gray-400 light:text-gray-500">Ingresos</p>
+              <p className="dark:text-gray-400 text-gray-500">Ingresos</p>
             </div>
             <div className="text-center">
               <p className="text-red-600 font-medium">
                 {formatCurrency(getTotalByType('out'))}
               </p>
-              <p className="dark:text-gray-400 light:text-gray-500">Egresos</p>
+              <p className="dark:text-gray-400 text-gray-500">Egresos</p>
             </div>
           </div>
         </div>
@@ -97,10 +97,10 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
         {movements.length === 0 ? (
           <div className="text-center py-8">
             <Clock className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <p className="dark:text-gray-400 light:text-gray-500 mb-2">
+            <p className="dark:text-gray-400 text-gray-500 mb-2">
               No hay movimientos registrados
             </p>
-            <p className="text-sm dark:text-gray-500 light:text-gray-400">
+            <p className="text-sm dark:text-gray-500 text-gray-400">
               Los ingresos y egresos aparecerán aquí
             </p>
           </div>
@@ -126,17 +126,17 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <p className="font-medium dark:text-white light:text-gray-900">
+                        <p className="font-medium dark:text-white text-gray-900">
                           {movement.concept}
                         </p>
                         <div className="flex items-center space-x-2 mt-1">
                           <Clock className="h-3 w-3 dark:text-gray-500" />
-                          <span className="text-sm dark:text-gray-400 light:text-gray-500">
+                          <span className="text-sm dark:text-gray-400 text-gray-500">
                             {formatDate(movement.created_at)}
                           </span>
                         </div>
                         {movement.notes && (
-                          <p className="text-sm dark:text-gray-400 light:text-gray-600 mt-1">
+                          <p className="text-sm dark:text-gray-400 text-gray-600 mt-1">
                             {movement.notes}
                           </p>
                         )}
@@ -160,7 +160,7 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
                 </div>
 
                 {index < movements.length - 1 && (
-                  <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+                  <Separator className="dark:bg-gray-700 bg-gray-200" />
                 )}
               </div>
             ))}

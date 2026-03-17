@@ -165,7 +165,7 @@ export function SettingsForm({
             <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-4">
               Configuración de Nómina
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label className="text-blue-700 dark:text-blue-300">Frecuencia de Pago</Label>
                 <Select

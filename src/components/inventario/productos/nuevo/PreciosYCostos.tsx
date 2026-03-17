@@ -36,7 +36,7 @@ export default function PreciosYCostos({ formData, updateFormData }: PreciosYCos
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {/* Precio de Venta */}
         <div className="space-y-2">
           <Label htmlFor="price" className="text-gray-700 dark:text-gray-300">

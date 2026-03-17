@@ -6,3 +6,4 @@ export { default as BrandingSEOTab } from './BrandingSEOTab';
 export { default as BrandingContentTab } from './BrandingContentTab';
 export { default as BrandingAdvancedTab } from './BrandingAdvancedTab';
 export { default as BrandingPublishTab } from './BrandingPublishTab';
+export { default as BrandingPagesTab } from './BrandingPagesTab';

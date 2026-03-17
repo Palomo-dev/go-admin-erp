@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/config';
-import { Clock, AlertTriangle, XCircle, X, CreditCard, ArrowRight } from 'lucide-react';
+import { Clock, AlertTriangle, XCircle, X, CreditCard, ArrowRight, Ban } from 'lucide-react';
 
 interface TrialBannerProps {
   orgId: string | null;
@@ -19,7 +19,7 @@ interface SubscriptionInfo {
   plan_name: string;
 }
 
-type BannerState = 'trial_active' | 'trial_warning' | 'trial_expired' | 'hidden';
+type BannerState = 'trial_active' | 'trial_warning' | 'trial_expired' | 'payment_past_due' | 'subscription_canceled' | 'hidden';
 
 const DISMISS_KEY = 'trial_banner_dismissed_at';
 
@@ -83,7 +83,15 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
           setDaysLeft(diffDays);
         }
       }
-      // Caso 2: Status trialing sin trial_end explícito
+      // Caso 2: Pago pendiente (past_due)
+      else if (sub.status === 'past_due') {
+        setBannerState('payment_past_due');
+      }
+      // Caso 3: Suscripción cancelada
+      else if (sub.status === 'canceled') {
+        setBannerState('subscription_canceled');
+      }
+      // Caso 4: Status trialing sin trial_end explícito
       else if (sub.status === 'trialing' && sub.current_period_end) {
         const periodEnd = new Date(sub.current_period_end);
         const diffMs = periodEnd.getTime() - now.getTime();
@@ -158,6 +166,28 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       iconColor: 'text-red-500 dark:text-red-400',
       message: `Tu período de prueba del ${planName} ha finalizado`,
       detail: 'Activa tu plan para seguir usando todas las funcionalidades.',
+      canDismiss: false,
+      showCTA: true,
+    },
+    payment_past_due: {
+      bg: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
+      text: 'text-orange-700 dark:text-orange-300',
+      subtext: 'text-orange-600 dark:text-orange-400',
+      icon: AlertTriangle,
+      iconColor: 'text-orange-500 dark:text-orange-400',
+      message: 'Tu pago falló',
+      detail: 'Actualiza tu método de pago para evitar la suspensión de tu cuenta.',
+      canDismiss: false,
+      showCTA: true,
+    },
+    subscription_canceled: {
+      bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+      text: 'text-red-700 dark:text-red-300',
+      subtext: 'text-red-600 dark:text-red-400',
+      icon: Ban,
+      iconColor: 'text-red-500 dark:text-red-400',
+      message: 'Tu suscripción ha sido cancelada',
+      detail: 'Renueva tu plan para recuperar el acceso completo a la plataforma.',
       canDismiss: false,
       showCTA: true,
     },

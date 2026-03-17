@@ -127,11 +127,11 @@ export function CRMFiltersComponent({
     datePreset !== '30days';
 
   return (
-    <div className="flex flex-wrap items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
       {/* Selector de fecha */}
       <div className="flex items-center gap-2">
         <Select value={datePreset} onValueChange={(v) => handleDatePreset(v as DatePreset)}>
-          <SelectTrigger className="w-[140px] h-9 bg-white dark:bg-gray-900">
+          <SelectTrigger className="w-[120px] sm:w-[140px] h-9 bg-white dark:bg-gray-900 dark:text-gray-200">
             <CalendarIcon className="h-4 w-4 mr-2 text-gray-500" />
             <SelectValue placeholder="Periodo" />
           </SelectTrigger>
@@ -177,7 +177,7 @@ export function CRMFiltersComponent({
                   <Calendar
                     mode="single"
                     selected={filters.dateRange.from || undefined}
-                    onSelect={(date) => {
+                    onSelect={(date: Date | undefined) => {
                       onFiltersChange({
                         ...filters,
                         dateRange: {
@@ -194,7 +194,7 @@ export function CRMFiltersComponent({
                   <Calendar
                     mode="single"
                     selected={filters.dateRange.to || undefined}
-                    onSelect={(date) => {
+                    onSelect={(date: Date | undefined) => {
                       onFiltersChange({
                         ...filters,
                         dateRange: {
@@ -212,7 +212,7 @@ export function CRMFiltersComponent({
         )}
       </div>
 
-      <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+      <div className="hidden sm:block h-6 w-px bg-gray-200 dark:bg-gray-700" />
 
       {/* Filtro de canal */}
       {channels.length > 0 && (
@@ -220,7 +220,7 @@ export function CRMFiltersComponent({
           value={filters.channelId || 'all'}
           onValueChange={handleChannelChange}
         >
-          <SelectTrigger className="w-[150px] h-9 bg-white dark:bg-gray-900">
+          <SelectTrigger className="w-[130px] sm:w-[150px] h-9 bg-white dark:bg-gray-900 dark:text-gray-200">
             <SelectValue placeholder="Canal" />
           </SelectTrigger>
           <SelectContent>
@@ -240,7 +240,7 @@ export function CRMFiltersComponent({
           value={filters.pipelineId || 'all'}
           onValueChange={handlePipelineChange}
         >
-          <SelectTrigger className="w-[150px] h-9 bg-white dark:bg-gray-900">
+          <SelectTrigger className="w-[130px] sm:w-[150px] h-9 bg-white dark:bg-gray-900 dark:text-gray-200">
             <SelectValue placeholder="Pipeline" />
           </SelectTrigger>
           <SelectContent>
@@ -260,7 +260,7 @@ export function CRMFiltersComponent({
           value={filters.agentId || 'all'}
           onValueChange={handleAgentChange}
         >
-          <SelectTrigger className="w-[150px] h-9 bg-white dark:bg-gray-900">
+          <SelectTrigger className="w-[130px] sm:w-[150px] h-9 bg-white dark:bg-gray-900 dark:text-gray-200">
             <SelectValue placeholder="Agente" />
           </SelectTrigger>
           <SelectContent>

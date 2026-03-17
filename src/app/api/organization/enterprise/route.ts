@@ -5,7 +5,7 @@ import Stripe from 'stripe';
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error('Falta STRIPE_SECRET_KEY');
-  return new Stripe(key, { apiVersion: '2024-12-18.acacia' });
+  return new Stripe(key, { apiVersion: '2025-09-30.clover' });
 }
 
 function getSupabase() {
@@ -85,7 +85,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!subscription.plans?.is_custom_enterprise) {
+    const plans = Array.isArray(subscription.plans) ? subscription.plans[0] : subscription.plans;
+    if (!plans?.is_custom_enterprise) {
       return NextResponse.json(
         { error: 'Esta organización no tiene un plan Enterprise' },
         { status: 403 }
@@ -183,7 +184,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!subscription.plans?.is_custom_enterprise) {
+    const plans = Array.isArray(subscription.plans) ? subscription.plans[0] : subscription.plans;
+    if (!plans?.is_custom_enterprise) {
       return NextResponse.json(
         { error: 'No es un plan Enterprise' },
         { status: 403 }

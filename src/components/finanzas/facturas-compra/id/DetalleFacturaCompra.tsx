@@ -375,7 +375,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         {/* Información principal */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Información básica */}

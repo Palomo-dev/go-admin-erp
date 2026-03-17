@@ -278,7 +278,7 @@ export function CuotasPage({ accountId }: CuotasPageProps) {
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
           <Skeleton className="h-10 w-64" />
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
           </div>
           <Skeleton className="h-96" />
@@ -353,7 +353,7 @@ export function CuotasPage({ accountId }: CuotasPageProps) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
         <Card className="dark:bg-gray-800/50 dark:border-gray-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">

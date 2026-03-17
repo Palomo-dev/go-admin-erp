@@ -52,7 +52,7 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Fechas de resolución */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {incident.acknowledged_at && (
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">

@@ -20,6 +20,7 @@ import integrationsService, {
   type IntegrationEvent,
   type TopProblem,
 } from '@/lib/services/integrationsService';
+import otaBridgeService, { type OtaBridgeStats } from '@/lib/services/otaBridgeService';
 
 import {
   StatsCards,
@@ -40,22 +41,25 @@ export default function IntegracionesPage() {
   const [connections, setConnections] = useState<IntegrationConnection[]>([]);
   const [events, setEvents] = useState<IntegrationEvent[]>([]);
   const [topProblems, setTopProblems] = useState<TopProblem[]>([]);
+  const [otaStats, setOtaStats] = useState<OtaBridgeStats | null>(null);
 
   const organizationId = getOrganizationId();
 
   const loadData = useCallback(async () => {
     try {
-      const [statsData, connectionsData, eventsData, problemsData] = await Promise.all([
+      const [statsData, connectionsData, eventsData, problemsData, otaStatsData] = await Promise.all([
         integrationsService.getStats(organizationId),
         integrationsService.getConnections(organizationId),
         integrationsService.getRecentEvents(organizationId, 10),
         integrationsService.getTopProblems(organizationId, 5),
+        otaBridgeService.getOtaStats(organizationId).catch(() => null),
       ]);
 
       setStats(statsData);
       setConnections(connectionsData);
       setEvents(eventsData);
       setTopProblems(problemsData);
+      setOtaStats(otaStatsData);
     } catch (error) {
       console.error('Error loading integrations data:', error);
       toast({
@@ -188,7 +192,7 @@ export default function IntegracionesPage() {
       {/* Content */}
       <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* KPIs */}
-        <StatsCards stats={stats} loading={loading} />
+        <StatsCards stats={stats} loading={loading} otaStats={otaStats} />
 
         {/* Grid principal */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

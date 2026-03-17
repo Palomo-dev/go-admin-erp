@@ -420,16 +420,16 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   };
 
   return (
-    <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+    <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
       <CardHeader>
-        <CardTitle className="text-lg flex items-center space-x-2 dark:text-white light:text-gray-900">
+        <CardTitle className="text-lg flex items-center space-x-2 dark:text-white text-gray-900">
           <FileText className="h-5 w-5 text-blue-600" />
           <span>Generar Reporte</span>
         </CardTitle>
       </CardHeader>
       
       <CardContent className="space-y-4">
-        <p className="text-sm dark:text-gray-400 light:text-gray-600">
+        <p className="text-sm dark:text-gray-400 text-gray-600">
           Genera un reporte completo de la sesión de caja con todos los movimientos, 
           resúmenes financieros y detalles para archivo o auditoría.
         </p>

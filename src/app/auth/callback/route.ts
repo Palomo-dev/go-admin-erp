@@ -4,20 +4,16 @@ import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
-  console.log('Request URL:', requestUrl);
   const code = requestUrl.searchParams.get('code');
-  const token = requestUrl.searchParams.get('token');
   const error = requestUrl.searchParams.get('error');
   const errorDescription = requestUrl.searchParams.get('error_description');
   const next = requestUrl.searchParams.get('next') || '/app/inicio';
-  
-  // Extraer redirect_to para manejar invitaciones
   const redirectTo = requestUrl.searchParams.get('redirect_to');
-  console.log('Redirect to:', redirectTo);
 
-  // Crear cliente Supabase para server-side con manejo de cookies
+  // Almacenar cookies pendientes para aplicar al redirect response
+  const pendingCookies = new Map<string, string | null>();
   const cookieStore = await cookies();
-  
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -26,18 +22,17 @@ export async function GET(request: NextRequest) {
         flowType: 'pkce',
         storage: {
           getItem: (key: string) => {
+            // Primero buscar en cookies pendientes (guardadas por exchangeCodeForSession)
+            if (pendingCookies.has(key)) {
+              return pendingCookies.get(key) ?? null;
+            }
             return cookieStore.get(key)?.value ?? null;
           },
           setItem: (key: string, value: string) => {
-            cookieStore.set(key, value, {
-              httpOnly: false,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              path: '/'
-            });
+            pendingCookies.set(key, value);
           },
           removeItem: (key: string) => {
-            cookieStore.delete(key);
+            pendingCookies.set(key, null);
           }
         },
         persistSession: true,
@@ -47,32 +42,39 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  console.log('Callback received:', {
-    code: code ? code.substring(0, 20) + '...' : null,
-    error,
-    errorDescription,
-    next
-  });
+  // Helper: crear redirect con cookies de sesión aplicadas
+  function redirectWithCookies(url: string) {
+    const response = NextResponse.redirect(new URL(url, request.url));
+    pendingCookies.forEach((value, name) => {
+      if (value !== null) {
+        response.cookies.set(name, value, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 604800
+        });
+      } else {
+        response.cookies.delete(name);
+      }
+    });
+    return response;
+  }
 
   // Manejar errores de autenticación
   if (error) {
     console.error('Auth callback error:', error, errorDescription);
-    return NextResponse.redirect(
-      new URL(`/auth/login?error=${error}&error_description=${encodeURIComponent(errorDescription || '')}`, request.url)
-    );
+    return redirectWithCookies(`/auth/login?error=${error}&error_description=${encodeURIComponent(errorDescription || '')}`);
   }
 
   // Procesar código de confirmación (tanto OAuth como confirmación de email)
   if (code) {
     try {
-      console.log('Processing code exchange (OAuth or email confirmation)...');
       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      console.log('Code exchange result:', data, exchangeError);
+      
       if (exchangeError) {
         console.error('Code exchange error:', exchangeError);
-        return NextResponse.redirect(
-          new URL('/auth/login?error=auth-failed&details=' + encodeURIComponent(exchangeError.message), request.url)
-        );
+        return redirectWithCookies('/auth/login?error=auth-failed&details=' + encodeURIComponent(exchangeError.message));
       }
       
       if (data.session && data.user) {
@@ -81,50 +83,33 @@ export async function GET(request: NextRequest) {
         
         // Para OAuth (Google login), crear o actualizar perfil
         if (user.app_metadata?.provider === 'google') {
-          console.log('Processing Google OAuth login...');
           await createOrUpdateUserProfile(supabase, user);
           
-          // Verificar si el usuario tiene una organización asignada
           const hasOrganization = await checkUserOrganization(supabase, user.id);
           
           if (hasOrganization) {
-            console.log('Google user has organization, redirecting to app...');
-            return NextResponse.redirect(new URL(next, request.url));
+            return redirectWithCookies(next);
           } else {
-            console.log('Google user has no organization, redirecting to organization creation...');
-            return NextResponse.redirect(new URL('/auth/select-organization', request.url));
+            return redirectWithCookies('/auth/select-organization');
           }
         } else {
           // Para confirmación de email, verificar si es una invitación
-          console.log('Email confirmation successful, checking for invitation...');
-          
-          // Verificar si redirect_to contiene un código de invitación
           if (redirectTo && redirectTo.includes('/auth/invite?code=')) {
-            console.log('Invitation detected in redirect_to, redirecting to invitation page...');
-            // Mantener la sesión activa para invitaciones
-            return NextResponse.redirect(new URL(redirectTo, request.url));
+            return redirectWithCookies(redirectTo);
           } else {
-            // Para signup normal, completar registro y cerrar sesión
-            console.log('Normal signup, completing registration...');
             await completeSignupAfterEmailConfirmation(supabase, user);
             await supabase.auth.signOut();
-            
-            return NextResponse.redirect(
-              new URL('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'), request.url)
-            );
+            return redirectWithCookies('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'));
           }
         }
       }
     } catch (error: any) {
       console.error('Error processing auth callback:', error);
-      return NextResponse.redirect(
-        new URL('/auth/login?error=callback-processing-failed', request.url)
-      );
+      return redirectWithCookies('/auth/login?error=callback-processing-failed');
     }
   }
 
-  // Fallback: si no hay código, redirigir al login
-  return NextResponse.redirect(new URL('/auth/login', request.url));
+  return redirectWithCookies('/auth/login');
 }
 
 // Función para crear o actualizar el perfil del usuario con datos de Google

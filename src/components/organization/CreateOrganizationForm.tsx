@@ -781,7 +781,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 }`}
               />
               <span className="inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
-                .goadmin.app
+                .goadmin.io
               </span>
             </div>
             
@@ -801,7 +801,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  ¡Disponible! Tu sitio será: <span className="font-medium ml-1">{formData.subdomain}.goadmin.app</span>
+                  ¡Disponible! Tu sitio será: <span className="font-medium ml-1">{formData.subdomain}.goadmin.io</span>
                 </div>
               )}
               {subdomainStatus === 'taken' && (

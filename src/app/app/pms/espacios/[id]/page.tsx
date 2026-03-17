@@ -41,6 +41,7 @@ import spaceImageService, { SpaceImage } from '@/lib/services/spaceImageService'
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { RefreshCw } from 'lucide-react';
+import { TripAdvisorContentPanel } from '@/components/integraciones/tripadvisor';
 
 export default function SpaceDetailPage() {
   const params = useParams();
@@ -461,6 +462,10 @@ export default function SpaceDetailPage() {
               orders={maintenanceOrders}
               onUpdateStatus={handleUpdateMaintenanceStatus}
             />
+            {/* TripAdvisor Content — solo se muestra si hay conexión activa */}
+            {organization?.id && (
+              <TripAdvisorContentPanel organizationId={organization.id} />
+            )}
           </div>
         </div>
       </div>

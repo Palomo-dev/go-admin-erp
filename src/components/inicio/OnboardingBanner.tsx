@@ -14,6 +14,7 @@ import {
   X,
   Rocket,
   ChevronRight,
+  LayoutGrid,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -31,6 +32,7 @@ const iconMap: Record<string, React.ElementType> = {
   Package,
   Percent,
   UserPlus,
+  LayoutGrid,
 };
 
 const DISMISS_KEY = 'onboarding_dismissed';

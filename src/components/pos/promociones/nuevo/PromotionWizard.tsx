@@ -501,7 +501,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
             <div className="space-y-6">
               <div>
                 <Label className="dark:text-gray-200 mb-3 block">Aplica a</Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {(Object.entries(APPLIES_TO_LABELS) as [AppliesTo, string][]).map(([type, label]) => (
                     <button
                       key={type}

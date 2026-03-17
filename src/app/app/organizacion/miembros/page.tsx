@@ -89,16 +89,12 @@ export default function MiembrosPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900">Miembros de la Organización</h1>
-            <p className="mt-2 text-gray-600">Gestiona los miembros de tu organización</p>
-          </div>
-          <div className="mt-8">
-            <MembersSkeleton />
-          </div>
+      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Miembros de la Organización</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona los miembros de tu organización</p>
         </div>
+        <MembersSkeleton />
       </div>
     );
   }
@@ -142,19 +138,17 @@ export default function MiembrosPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Miembros de la Organización</h1>
-        </div>
-        <p className="mt-2 text-gray-600">Gestiona los miembros de tu organización</p>
-        
-        <div className="mt-8">
-          <Suspense fallback={<MembersSkeleton />}>
-            <MembersTab orgId={orgData} />
-          </Suspense>
+    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Miembros de la Organización</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona los miembros de tu organización</p>
         </div>
       </div>
+      
+      <Suspense fallback={<MembersSkeleton />}>
+        <MembersTab orgId={orgData} />
+      </Suspense>
     </div>
   );
 }

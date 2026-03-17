@@ -80,7 +80,7 @@ export default function PlanPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-6">
+      <div className="p-4 sm:p-6">
         <PlanSkeleton />
       </div>
     );
@@ -113,8 +113,8 @@ export default function PlanPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="mb-6">
+    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Planes y Suscripciones</h1>

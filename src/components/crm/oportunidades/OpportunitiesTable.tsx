@@ -177,20 +177,20 @@ export function OpportunitiesTable({
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-              <TableHead className="text-gray-700 dark:text-gray-300">
+            <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">
                 <SortButton field="name">Nombre</SortButton>
               </TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300">Cliente</TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300">Etapa</TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300">
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden sm:table-cell">Cliente</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden md:table-cell">Etapa</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">
                 <SortButton field="amount">Monto</SortButton>
               </TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300">Prob.</TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300">
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden lg:table-cell">Prob.</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden lg:table-cell">
                 <SortButton field="expected_close_date">Fecha Cierre</SortButton>
               </TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300">Estado</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">Estado</TableHead>
               <TableHead className="text-gray-700 dark:text-gray-300 w-10"></TableHead>
             </TableRow>
           </TableHeader>
@@ -198,41 +198,46 @@ export function OpportunitiesTable({
             {sortedOpportunities.map((opportunity) => (
               <TableRow
                 key={opportunity.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
                 onClick={() => router.push(`/app/crm/oportunidades/${opportunity.id}`)}
               >
-                <TableCell className="font-medium text-gray-900 dark:text-white">
-                  {opportunity.name}
+                <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
+                  <div>
+                    <span className="truncate max-w-[120px] sm:max-w-none block">{opportunity.name}</span>
+                    <span className="sm:hidden text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 block">
+                      {opportunity.customer?.full_name || '-'}
+                    </span>
+                  </div>
                 </TableCell>
-                <TableCell className="text-gray-600 dark:text-gray-400">
+                <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                   {opportunity.customer?.full_name || '-'}
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
+                <TableCell className="py-2 sm:py-3 hidden md:table-cell">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div
-                      className="w-2 h-2 rounded-full"
+                      className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: opportunity.stage?.color || '#3b82f6' }}
                     />
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                       {opportunity.stage?.name || '-'}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="font-medium text-gray-900 dark:text-white">
+                <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
                   {formatCurrency(opportunity.amount || 0)}
                 </TableCell>
-                <TableCell className="text-gray-600 dark:text-gray-400">
+                <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                   {opportunity.stage?.probability
                     ? `${(opportunity.stage.probability * 100).toFixed(0)}%`
                     : '-'}
                 </TableCell>
-                <TableCell className="text-gray-600 dark:text-gray-400">
+                <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                   {opportunity.expected_close_date
                     ? format(new Date(opportunity.expected_close_date), 'dd/MM/yyyy', { locale: es })
                     : '-'}
                 </TableCell>
-                <TableCell>{getStatusBadge(opportunity.status)}</TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3">{getStatusBadge(opportunity.status)}</TableCell>
+                <TableCell className="py-2 sm:py-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" className="h-8 w-8 p-0">

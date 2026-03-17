@@ -47,9 +47,9 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
 
   if (loading) {
     return (
-      <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+      <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
         <CardHeader>
-          <CardTitle className="text-lg dark:text-white light:text-gray-900">
+          <CardTitle className="text-lg dark:text-white text-gray-900">
             Resumen de Caja
           </CardTitle>
         </CardHeader>
@@ -64,10 +64,10 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
   }
 
   return (
-    <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+    <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg dark:text-white light:text-gray-900">
+          <CardTitle className="text-lg dark:text-white text-gray-900">
             Resumen de Caja
           </CardTitle>
           <Badge 
@@ -86,22 +86,22 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
         {/* Información de la sesión */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="dark:text-gray-400 light:text-gray-600">Abierta:</span>
-            <p className="font-medium dark:text-white light:text-gray-900">
+            <span className="dark:text-gray-400 text-gray-600">Abierta:</span>
+            <p className="font-medium dark:text-white text-gray-900">
               {formatDate(session.opened_at)}
             </p>
           </div>
           {session.closed_at && (
             <div>
-              <span className="dark:text-gray-400 light:text-gray-600">Cerrada:</span>
-              <p className="font-medium dark:text-white light:text-gray-900">
+              <span className="dark:text-gray-400 text-gray-600">Cerrada:</span>
+              <p className="font-medium dark:text-white text-gray-900">
                 {formatDate(session.closed_at)}
               </p>
             </div>
           )}
         </div>
 
-        <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+        <Separator className="dark:bg-gray-700 bg-gray-200" />
 
         {summary && (
           <>
@@ -113,7 +113,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <Wallet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 light:text-gray-600">Inicial</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">Inicial</p>
                   <p className="font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrency(summary.initial_amount)}
                   </p>
@@ -126,7 +126,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 light:text-gray-600">Ventas</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">Ventas</p>
                   <p className="font-bold text-green-600 dark:text-green-400">
                     {formatCurrency(summary.sales_cash)}
                   </p>
@@ -139,7 +139,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 light:text-gray-600">Ingresos</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">Ingresos</p>
                   <p className="font-bold text-green-600 dark:text-green-400">
                     {formatCurrency(summary.cash_in)}
                   </p>
@@ -152,7 +152,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 light:text-gray-600">Egresos</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">Egresos</p>
                   <p className="font-bold text-red-600 dark:text-red-400">
                     {formatCurrency(summary.cash_out)}
                   </p>
@@ -160,12 +160,12 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
               </div>
             </div>
 
-            <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+            <Separator className="dark:bg-gray-700 bg-gray-200" />
 
             {/* Total esperado */}
             <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700">
+                <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
                   Total Esperado:
                 </span>
                 <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
@@ -177,20 +177,20 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
             {/* Si la caja está cerrada, mostrar información del arqueo */}
             {session.status === 'closed' && summary.counted_amount !== undefined && (
               <>
-                <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+                <Separator className="dark:bg-gray-700 bg-gray-200" />
                 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700">
+                    <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
                       Monto Contado:
                     </span>
-                    <span className="font-bold dark:text-white light:text-gray-900">
+                    <span className="font-bold dark:text-white text-gray-900">
                       {formatCurrency(summary.counted_amount)}
                     </span>
                   </div>
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700">
+                    <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
                       Diferencia:
                     </span>
                     <span className={`font-bold ${
@@ -220,12 +220,12 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
             {/* Notas de la sesión */}
             {session.notes && (
               <>
-                <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+                <Separator className="dark:bg-gray-700 bg-gray-200" />
                 <div>
-                  <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700 block mb-2">
+                  <span className="text-sm font-medium dark:text-gray-200 text-gray-700 block mb-2">
                     Observaciones:
                   </span>
-                  <p className="text-sm dark:text-gray-400 light:text-gray-600 bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                  <p className="text-sm dark:text-gray-400 text-gray-600 bg-gray-50 dark:bg-gray-700 p-3 rounded">
                     {session.notes}
                   </p>
                 </div>

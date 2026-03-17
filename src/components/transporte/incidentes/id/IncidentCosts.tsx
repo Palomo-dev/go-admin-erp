@@ -99,7 +99,7 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Costo Estimado */}
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">Costo Estimado</p>

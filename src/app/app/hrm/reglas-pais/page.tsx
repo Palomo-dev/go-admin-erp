@@ -97,26 +97,26 @@ export default function ReglasPaisPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link href="/app/hrm">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Globe className="h-7 w-7 text-blue-600" />
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Globe className="h-5 w-5 sm:h-7 sm:w-7 text-blue-600 dark:text-blue-400" />
               Reglas de País
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               HRM / Reglas Legales por País
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="icon" onClick={loadData}>
             <RefreshCw className="h-4 w-4" />
           </Button>
@@ -125,14 +125,14 @@ export default function ReglasPaisPage() {
 
       {/* Info Banner - Solo Lectura */}
       <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-        <CardContent className="pt-4">
-          <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-amber-600 mt-0.5" />
+        <CardContent className="p-3 sm:pt-4 sm:px-4">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium text-amber-900 dark:text-amber-100">
+              <p className="text-sm sm:text-base font-medium text-amber-900 dark:text-amber-100">
                 📋 Catálogo de Reglas Legales (Solo Lectura)
               </p>
-              <p className="text-sm text-amber-700 dark:text-amber-300">
+              <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300">
                 Estas son las reglas oficiales de nómina por país y año, mantenidas por el equipo de GO Admin.
                 Incluyen salarios mínimos, porcentajes de deducciones y multiplicadores de horas extra para 
                 cada país. Estas reglas se actualizan anualmente y son utilizadas para el cálculo automático de nómina.
@@ -144,16 +144,16 @@ export default function ReglasPaisPage() {
 
       {/* Quick Reference - Current Colombia */}
       {currentCoRules && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <CardContent className="p-3 sm:pt-4 sm:px-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">SMLV {currentCoRules.year}</p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">SMLV {currentCoRules.year}</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                     {formatCurrency(currentCoRules.minimum_wage || 0, 'COP')}
                   </p>
                 </div>
@@ -161,14 +161,14 @@ export default function ReglasPaisPage() {
             </CardContent>
           </Card>
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <CardContent className="p-3 sm:pt-4 sm:px-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Aux. Transporte</p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Aux. Transporte</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                     {formatCurrency(currentCoRules.transport_allowance || 0, 'COP')}
                   </p>
                 </div>
@@ -176,14 +176,14 @@ export default function ReglasPaisPage() {
             </CardContent>
           </Card>
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-                  <Calendar className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <CardContent className="p-3 sm:pt-4 sm:px-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-red-100 dark:bg-red-900/30 rounded-lg shrink-0">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 dark:text-red-400" />
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Salud + Pensión Emp.</p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Salud + Pensión Emp.</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
                     {(((currentCoRules.health_employee_pct || 0) + (currentCoRules.pension_employee_pct || 0)) * 100).toFixed(0)}%
                   </p>
                 </div>
@@ -191,13 +191,13 @@ export default function ReglasPaisPage() {
             </CardContent>
           </Card>
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                  <Globe className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <CardContent className="p-3 sm:pt-4 sm:px-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg shrink-0">
+                  <Globe className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">País Activo</p>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">País Activo</p>
                   <p className="text-lg font-bold text-gray-900 dark:text-white">
                     🇨🇴 Colombia
                   </p>

@@ -117,7 +117,7 @@ export function CampanasPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -127,9 +127,9 @@ export function CampanasPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Megaphone className="h-6 w-6 text-blue-600" />
+                <Megaphone className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
               </div>
               Campañas
             </h1>
@@ -150,68 +150,68 @@ export function CampanasPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <FileText className="h-5 w-5 text-blue-600" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg shrink-0">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
-                <p className="text-sm text-gray-500">Total</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                <Edit className="h-5 w-5 text-gray-600" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-gray-100 dark:bg-gray-700 rounded-lg shrink-0">
+                <Edit className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.draft}</p>
-                <p className="text-sm text-gray-500">Borradores</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Clock className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.scheduled}</p>
-                <p className="text-sm text-gray-500">Programadas</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.draft}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Borradores</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-                <Send className="h-5 w-5 text-yellow-600" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.sending}</p>
-                <p className="text-sm text-gray-500">Enviando</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.scheduled}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Programadas</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Megaphone className="h-5 w-5 text-green-600" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-yellow-100 dark:bg-yellow-900/40 rounded-lg shrink-0">
+                <Send className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.sent}</p>
-                <p className="text-sm text-gray-500">Enviadas</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.sending}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Enviando</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 col-span-2 sm:col-span-1">
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/40 rounded-lg shrink-0">
+                <Megaphone className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.sent}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Enviadas</p>
               </div>
             </div>
           </CardContent>
@@ -219,16 +219,17 @@ export function CampanasPage() {
       </div>
 
       {/* Table */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50 dark:bg-gray-900">
-              <TableHead>Campaña</TableHead>
-              <TableHead>Canal</TableHead>
-              <TableHead>Segmento</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Programada</TableHead>
-              <TableHead className="w-12"></TableHead>
+            <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">Campaña</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden sm:table-cell">Canal</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden md:table-cell">Segmento</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">Estado</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden lg:table-cell">Programada</TableHead>
+              <TableHead className="w-10 sm:w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -262,44 +263,44 @@ export function CampanasPage() {
                 return (
                   <TableRow
                     key={campaign.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-900/50 cursor-pointer"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
                     onClick={() => router.push(`/app/crm/campanas/${campaign.id}`)}
                   >
-                    <TableCell>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{campaign.name}</p>
+                    <TableCell className="py-2 sm:py-3">
+                      <p className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate max-w-[120px] sm:max-w-none">{campaign.name}</p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2 sm:py-3 hidden sm:table-cell">
                       {channelConfig ? (
-                        <div className="flex items-center gap-2">
-                          <ChannelIcon className={`h-4 w-4 ${channelConfig.color}`} />
-                          <span className="text-sm text-gray-600 dark:text-gray-400">{channelConfig.label}</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <ChannelIcon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${channelConfig.color}`} />
+                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{channelConfig.label}</span>
                         </div>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-400 dark:text-gray-500">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2 sm:py-3 hidden md:table-cell">
                       {campaign.segment ? (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{campaign.segment.name}</span>
-                          <Badge variant="outline" className="text-xs">{campaign.segment.customer_count}</Badge>
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
+                          <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{campaign.segment.name}</span>
+                          <Badge variant="outline" className="text-[10px] sm:text-xs border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400">{campaign.segment.customer_count}</Badge>
                         </div>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-400 dark:text-gray-500">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Badge className={`${statusConfig.bgColor} ${statusConfig.color}`}>
+                    <TableCell className="py-2 sm:py-3">
+                      <Badge className={`${statusConfig.bgColor} ${statusConfig.color} text-[10px] sm:text-xs`}>
                         {statusConfig.label}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <TableCell className="py-2 sm:py-3 hidden lg:table-cell">
+                      <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                         {campaign.scheduled_at ? formatDate(campaign.scheduled_at) : '—'}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2 sm:py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -336,6 +337,7 @@ export function CampanasPage() {
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
 
       {/* Delete Dialog */}

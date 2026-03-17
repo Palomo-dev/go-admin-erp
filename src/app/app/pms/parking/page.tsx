@@ -135,7 +135,7 @@ export default function ParkingPage() {
       <ParkingHeader onNewEntry={handleNewEntry} />
 
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Total Sesiones

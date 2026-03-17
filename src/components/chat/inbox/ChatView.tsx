@@ -415,16 +415,16 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-9 w-9"
+            className="h-9 w-9 hidden sm:flex"
             onClick={handleOpenFullView}
             title="Abrir vista completa"
           >
             <Maximize2 className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" className="h-9 w-9 hidden md:flex">
             <Phone className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" className="h-9 w-9 hidden md:flex">
             <Video className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </Button>
           <DropdownMenu>
@@ -460,7 +460,7 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
       {/* Mensajes */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-950 relative"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 bg-gray-50 dark:bg-gray-950 relative"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}
@@ -494,7 +494,7 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
             </div>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto w-full">
             {messages.map((message, index) => {
               const showAvatar = index === 0 || 
                 messages[index - 1]?.role !== message.role;

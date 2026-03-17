@@ -29,16 +29,16 @@ export function ForecastFilters({
   onExport,
 }: ForecastFiltersProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-      <div className="flex flex-wrap gap-3">
+    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-center justify-between">
+      <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
         {/* Pipeline */}
         <Select value={selectedPipelineId} onValueChange={onPipelineChange}>
-          <SelectTrigger className="w-48 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <SelectTrigger className="w-full sm:w-48 h-9 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
             <SelectValue placeholder="Seleccionar pipeline" />
           </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800">
+          <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             {pipelines.map((pipeline) => (
-              <SelectItem key={pipeline.id} value={pipeline.id}>
+              <SelectItem key={pipeline.id} value={pipeline.id} className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
                 {pipeline.name}
               </SelectItem>
             ))}
@@ -47,13 +47,13 @@ export function ForecastFilters({
 
         {/* Periodo */}
         <Select value={period} onValueChange={(v) => onPeriodChange(v as typeof period)}>
-          <SelectTrigger className="w-40 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <SelectTrigger className="w-full sm:w-40 h-9 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800">
-            <SelectItem value="weekly">Semanal</SelectItem>
-            <SelectItem value="monthly">Mensual</SelectItem>
-            <SelectItem value="quarterly">Trimestral</SelectItem>
+          <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <SelectItem value="weekly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Semanal</SelectItem>
+            <SelectItem value="monthly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Mensual</SelectItem>
+            <SelectItem value="quarterly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Trimestral</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -61,10 +61,11 @@ export function ForecastFilters({
       {onExport && (
         <Button
           variant="outline"
+          size="sm"
           onClick={onExport}
-          className="border-gray-200 dark:border-gray-700"
+          className="h-9 text-xs sm:text-sm border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
           Exportar
         </Button>
       )}

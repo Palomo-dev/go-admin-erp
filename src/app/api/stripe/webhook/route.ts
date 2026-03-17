@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
         console.log('❌ Pago de factura fallido:', invoice.id)
         if (invoice.subscription) {
           console.log('   Para suscripción:', invoice.subscription)
-          // Notificar al cliente que debe actualizar su método de pago
+          await notifyPaymentFailed(invoice.subscription as string, invoice.id)
         }
         break
       }
@@ -235,6 +235,10 @@ async function handleCheckoutSessionCompleted(checkoutSession: any) {
 
     // Obtener detalles de la suscripción de Stripe
     const { stripe } = await import('@/lib/stripe/server')
+    if (!stripe) {
+      console.error('❌ Stripe no está configurado')
+      return
+    }
     const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId) as any
 
     // Buscar suscripción existente de la organización
@@ -373,6 +377,8 @@ async function updateSubscriptionInDatabase(
         console.error('❌ Error actualizando suscripción cancelada:', error)
       } else {
         console.log('✅ Suscripción marcada como cancelada en BD')
+        // Desactivar módulos no-core al cancelar suscripción
+        await deactivateNonCoreModules(organizationId)
       }
     } else {
       // Obtener plan_id basado en planCode del metadata
@@ -452,6 +458,121 @@ async function updateSubscriptionInDatabase(
     }
   } catch (error: any) {
     console.error('❌ Error en updateSubscriptionInDatabase:', error)
+  }
+}
+
+/**
+ * Notificar a los administradores de la organización cuando un pago falla
+ */
+async function notifyPaymentFailed(stripeSubscriptionId: string, invoiceId: string) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
+    // Obtener organization_id desde la suscripción
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('organization_id')
+      .eq('stripe_subscription_id', stripeSubscriptionId)
+      .single()
+
+    if (!sub?.organization_id) {
+      console.warn('⚠️ No se encontró organización para suscripción:', stripeSubscriptionId)
+      return
+    }
+
+    const orgId = sub.organization_id
+
+    // Obtener admins de la organización (role_id 1 = Super Admin, 2 = Admin)
+    const { data: admins } = await supabase
+      .from('organization_members')
+      .select('user_id, profiles ( email )')
+      .eq('organization_id', orgId)
+      .eq('is_active', true)
+      .in('role_id', [1, 2])
+
+    if (!admins || admins.length === 0) {
+      console.warn('⚠️ No se encontraron admins para org:', orgId)
+      return
+    }
+
+    // Crear notificación para cada admin
+    const notifications = admins.map((admin: any) => ({
+      organization_id: orgId,
+      recipient_user_id: admin.user_id,
+      recipient_email: admin.profiles?.email || null,
+      channel: 'push',
+      payload: {
+        type: 'payment_failed',
+        title: 'Pago de suscripción fallido',
+        message: 'Tu pago no pudo ser procesado. Actualiza tu método de pago para evitar la suspensión de tu cuenta.',
+        invoice_id: invoiceId,
+        action_url: '/app/organizacion/plan',
+      },
+      status: 'pending',
+    }))
+
+    const { error } = await supabase.from('notifications').insert(notifications)
+
+    if (error) {
+      console.error('❌ Error creando notificaciones de pago fallido:', error)
+    } else {
+      console.log(`✅ ${notifications.length} notificación(es) creada(s) para pago fallido en org ${orgId}`)
+    }
+  } catch (error) {
+    console.error('❌ Error en notifyPaymentFailed:', error)
+  }
+}
+
+/**
+ * Desactivar módulos no-core cuando la suscripción se cancela
+ */
+async function deactivateNonCoreModules(organizationId: number) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
+    // Obtener módulos core para excluirlos
+    const { data: coreModules } = await supabase
+      .from('modules')
+      .select('code')
+      .eq('is_core', true)
+
+    const coreCodes = (coreModules || []).map((m: any) => m.code)
+
+    // Desactivar módulos no-core de la organización
+    const { data: deactivated, error } = await supabase
+      .from('organization_modules')
+      .update({
+        is_active: false,
+        disabled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .not('module_code', 'in', `(${coreCodes.map((c: string) => `"${c}"`).join(',')})`)
+      .select('module_code')
+
+    if (error) {
+      console.error('❌ Error desactivando módulos no-core:', error)
+    } else {
+      const count = deactivated?.length || 0
+      if (count > 0) {
+        console.log(`✅ ${count} módulo(s) no-core desactivados para org ${organizationId}:`, deactivated?.map((m: any) => m.module_code))
+      } else {
+        console.log('ℹ️ No había módulos no-core activos para desactivar en org', organizationId)
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error en deactivateNonCoreModules:', error)
   }
 }
 

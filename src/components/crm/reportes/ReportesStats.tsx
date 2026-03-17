@@ -57,14 +57,14 @@ export function ReportesStats({ stats, loading }: ReportesStatsProps) {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
         {[...Array(6)].map((_, i) => (
           <div
             key={i}
-            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 animate-pulse"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 animate-pulse"
           >
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20 mb-2" />
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16" />
+            <div className="h-3 sm:h-4 bg-gray-200 dark:bg-gray-700 rounded w-16 sm:w-20 mb-2" />
+            <div className="h-6 sm:h-8 bg-gray-200 dark:bg-gray-700 rounded w-12 sm:w-16" />
           </div>
         ))}
       </div>
@@ -72,23 +72,23 @@ export function ReportesStats({ stats, loading }: ReportesStatsProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
       {statCards.map((stat, index) => {
         const Icon = stat.icon;
         return (
           <div
             key={index}
-            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 hover:shadow-md dark:hover:shadow-gray-900/50 transition-shadow"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <div className={cn('p-1.5 rounded-lg', stat.bgColor)}>
-                <Icon className={cn('h-4 w-4', stat.color)} />
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+              <div className={cn('p-1 sm:p-1.5 rounded-lg', stat.bgColor)}>
+                <Icon className={cn('h-3.5 w-3.5 sm:h-4 sm:w-4', stat.color)} />
               </div>
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
               {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1 truncate">
               {stat.label}
             </p>
           </div>

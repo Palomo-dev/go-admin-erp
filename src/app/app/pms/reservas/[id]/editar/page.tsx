@@ -393,17 +393,17 @@ export default function EditarReservaPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-6 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={handleBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Button variant="outline" size="sm" onClick={handleBack}>
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Volver</span>
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Editar Reserva
               </h1>
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Modifica los datos de la reserva existente
               </p>
             </div>

@@ -35,8 +35,8 @@ export default function InstagramSettingsHeader({
   };
 
   return (
-    <div className="flex items-center justify-between pb-6 border-b border-gray-200 dark:border-gray-700">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-3 sm:gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -46,11 +46,11 @@ export default function InstagramSettingsHeader({
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
             <Instagram className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-base sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
               {channel.name}
               {getStatusBadge()}
             </h1>
@@ -61,7 +61,7 @@ export default function InstagramSettingsHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button
           variant="outline"
           size="sm"

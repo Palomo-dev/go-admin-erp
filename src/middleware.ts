@@ -148,6 +148,7 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/sessions/', // <-- Excluir APIs de sesiones
     '/api/integrations/twilio/', // <-- Excluir webhooks de Twilio (autenticación propia via firma)
     '/auth/v1/',
+    '/auth/callback', // <-- Excluir callback de OAuth para no interferir con PKCE
     '/.well-known/',
     '/robots.txt',
     '/sitemap.xml',
@@ -180,7 +181,6 @@ export async function middleware(request: NextRequest) {
   if (!authCookie) {
     const possibleNames = [
       `sb-${projectRef}-auth-token`,
-      `sb-${projectRef}-auth-token-code-verifier`,
       `sb-auth-token`,
       'supabase-auth-token'
     ];
@@ -485,7 +485,9 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
     if (pathname.startsWith('/auth/') && 
         pathname !== '/auth/logout' &&
         pathname !== '/auth/session-expired' &&
-        !pathname.startsWith('/auth/invite')) {
+        !pathname.startsWith('/auth/invite') &&
+        !pathname.startsWith('/auth/select-organization') &&
+        !pathname.startsWith('/auth/signup')) {
       if (shouldDebug) {
         console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde auth a /app/inicio');
       }

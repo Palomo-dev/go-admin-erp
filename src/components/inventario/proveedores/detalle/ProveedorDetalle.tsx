@@ -261,7 +261,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {supplier.bank_name && <InfoItem icon={<Landmark className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />} iconBg="bg-emerald-100 dark:bg-emerald-900/30" label="Banco" value={supplier.bank_name} />}
                   {supplier.bank_account && <InfoItem icon={<CreditCard className="h-4 w-4 text-sky-600 dark:text-sky-400" />} iconBg="bg-sky-100 dark:bg-sky-900/30" label="Número de Cuenta" value={supplier.bank_account} />}
                   {supplier.account_type && <InfoItem icon={<FileText className="h-4 w-4 text-pink-600 dark:text-pink-400" />} iconBg="bg-pink-100 dark:bg-pink-900/30" label="Tipo de Cuenta" value={accountTypeLabel(supplier.account_type)} />}

@@ -111,51 +111,51 @@ export function CustomersList() {
   }, [searchQuery, customers]);
 
   return (
-    <Card className={cn("w-full", theme === "dark" ? "border-gray-800" : "border-gray-200")}>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <Card className={cn("w-full bg-white dark:bg-gray-800", theme === "dark" ? "border-gray-700" : "border-gray-200")}>
+      <CardHeader className="p-3 sm:p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
-            <CardTitle>Clientes</CardTitle>
-            <CardDescription>Listado de clientes registrados en el sistema</CardDescription>
+            <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Clientes</CardTitle>
+            <CardDescription className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Listado de clientes registrados en el sistema</CardDescription>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500 dark:text-gray-400" />
               <Input
                 placeholder="Buscar cliente..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 w-full sm:w-64"
+                className="pl-7 sm:pl-8 w-full sm:w-64 h-8 sm:h-9 text-xs sm:text-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
-            <Button size="sm">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Nuevo
+            <Button size="sm" className="h-8 sm:h-9 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white">
+              <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Nuevo</span>
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
         {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <span className="ml-2">Cargando clientes...</span>
+          <div className="flex justify-center items-center py-6 sm:py-8">
+            <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-blue-600 dark:text-blue-400" />
+            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-red-500">
-            <p>Error: {error}</p>
+          <div className="py-6 sm:py-8 text-center text-red-500 dark:text-red-400">
+            <p className="text-sm">Error: {error}</p>
             <Button 
               variant="outline" 
-              className="mt-2" 
+              className="mt-2 text-xs sm:text-sm border-gray-300 dark:border-gray-600" 
               onClick={() => window.location.reload()}
             >
               Reintentar
             </Button>
           </div>
         ) : filteredCustomers.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
+          <div className="py-6 sm:py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
             {searchQuery ? (
-              <p>No se encontraron clientes que coincidan con "{searchQuery}"</p>
+              <p>No se encontraron clientes que coincidan con &quot;{searchQuery}&quot;</p>
             ) : (
               <p>No hay clientes registrados. ¡Agrega tu primer cliente!</p>
             )}
@@ -164,32 +164,32 @@ export function CustomersList() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Contacto</TableHead>
-                  <TableHead>Documento</TableHead>
-                  <TableHead>Etiquetas</TableHead>
+                <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                  <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">Nombre</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">Contacto</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden md:table-cell">Documento</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden sm:table-cell">Etiquetas</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id} className="cursor-pointer hover:bg-muted">
-                    <TableCell className="font-medium">{customer.full_name}</TableCell>
-                    <TableCell>
+                  <TableRow key={customer.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700/50">
+                    <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">{customer.full_name}</TableCell>
+                    <TableCell className="py-2 sm:py-3">
                       <div className="flex flex-col">
-                        {customer.email && <span className="text-sm">{customer.email}</span>}
-                        {customer.phone && <span className="text-sm text-muted-foreground">{customer.phone}</span>}
+                        {customer.email && <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px]">{customer.email}</span>}
+                        {customer.phone && <span className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400">{customer.phone}</span>}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
+                    <TableCell className="py-2 sm:py-3 hidden md:table-cell">
+                      <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                         {customer.doc_type} {customer.doc_number}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2 sm:py-3 hidden sm:table-cell">
                       <div className="flex flex-wrap gap-1">
                         {customer.tags && customer.tags.map((tag, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
+                          <Badge key={idx} variant="outline" className="text-[10px] sm:text-xs border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400">
                             {tag}
                           </Badge>
                         ))}

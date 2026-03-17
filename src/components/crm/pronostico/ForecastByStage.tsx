@@ -40,10 +40,10 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
   if (isLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
+        <CardContent className="p-4 sm:p-6">
+          <div className="animate-pulse space-y-3 sm:space-y-4">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div key={i} className="h-10 sm:h-12 bg-gray-200 dark:bg-gray-700 rounded" />
             ))}
           </div>
         </CardContent>
@@ -53,38 +53,38 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
 
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <CardHeader>
-        <CardTitle className="text-gray-900 dark:text-white">Pronóstico por Etapa</CardTitle>
+      <CardHeader className="p-3 sm:p-6">
+        <CardTitle className="text-sm sm:text-base text-gray-900 dark:text-white">Pronóstico por Etapa</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
+      <CardContent className="p-3 sm:p-6 pt-0">
+        <div className="space-y-3 sm:space-y-4">
           {stageData.map((data) => (
-            <div key={data.stage.id} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <div key={data.stage.id} className="space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                   <div
-                    className="w-3 h-3 rounded-full"
+                    className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shrink-0"
                     style={{ backgroundColor: data.stage.color }}
                   />
-                  <span className="font-medium text-gray-900 dark:text-white">
+                  <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
                     {data.stage.name}
                   </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 shrink-0">
                     ({data.count})
                   </span>
                 </div>
-                <div className="text-right">
-                  <span className="font-medium text-gray-900 dark:text-white">
+                <div className="text-right shrink-0">
+                  <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                     {formatCurrency(data.totalAmount)}
                   </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                  <span className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 ml-1 sm:ml-2">
                     × {((data.stage.probability || 0) * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>
 
               {/* Barra de progreso */}
-              <div className="relative h-8 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+              <div className="relative h-6 sm:h-8 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                 <div
                   className="absolute inset-y-0 left-0 transition-all duration-300"
                   style={{
@@ -100,8 +100,8 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
                     backgroundColor: data.stage.color,
                   }}
                 />
-                <div className="absolute inset-0 flex items-center justify-end pr-3">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div className="absolute inset-0 flex items-center justify-end pr-2 sm:pr-3">
+                  <span className="text-[10px] sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                     {formatCurrency(data.weightedAmount)}
                   </span>
                 </div>
@@ -110,14 +110,14 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
           ))}
 
           {/* Totales */}
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between text-lg font-bold">
+          <div className="pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between text-sm sm:text-lg font-bold gap-2">
               <span className="text-gray-900 dark:text-white">Total Ponderado</span>
               <span className="text-blue-600 dark:text-blue-400">
                 {formatCurrency(stageData.reduce((sum, d) => sum + d.weightedAmount, 0))}
               </span>
             </div>
-            <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <div className="flex items-center justify-between text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 mt-1 gap-2">
               <span>Valor bruto en pipeline</span>
               <span>{formatCurrency(stageData.reduce((sum, d) => sum + d.totalAmount, 0))}</span>
             </div>

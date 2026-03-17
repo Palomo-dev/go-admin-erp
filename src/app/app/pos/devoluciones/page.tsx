@@ -65,16 +65,16 @@ export default function DevolucionesPage() {
         {/* Header */}
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center space-x-4">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
                   <ArrowLeftRight className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <CardTitle className="dark:text-white light:text-gray-900">
+                  <CardTitle className="text-base sm:text-lg dark:text-white text-gray-900">
                     Devoluciones y Cambios - {organization?.name || 'Organización'}
                   </CardTitle>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                     Gestiona devoluciones, reembolsos y notas de crédito
                   </p>
                 </div>
@@ -94,7 +94,7 @@ export default function DevolucionesPage() {
                     </span>
                   </div>
                   <div className="flex items-center space-x-2 mt-1">
-                    <Badge variant="outline" className="dark:border-blue-500 dark:text-blue-400 light:border-blue-500 light:text-blue-600">
+                    <Badge variant="outline" className="dark:border-blue-500 dark:text-blue-400 border-blue-500 text-blue-600">
                       <RotateCcw className="h-3 w-3 mr-1" />
                       Sistema Activo
                     </Badge>
@@ -207,7 +207,7 @@ export default function DevolucionesPage() {
         </Card>
 
         {/* Información adicional */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">

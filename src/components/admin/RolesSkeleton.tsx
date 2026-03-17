@@ -55,7 +55,7 @@ export function AssignmentsSkeleton() {
       </div>
 
       {/* Filters Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
@@ -182,7 +182,7 @@ export function AnalyticsSkeleton() {
           <Skeleton className="h-6 w-48" />
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <div className="flex gap-2">

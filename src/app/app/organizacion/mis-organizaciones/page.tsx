@@ -87,16 +87,12 @@ export default function MisOrganizacionesPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900">Mis Organizaciones</h1>
-            <p className="mt-2 text-gray-600">Gestiona todas las organizaciones de las que eres propietario</p>
-          </div>
-          <div className="mt-8">
-            <OrganizationListSkeleton />
-          </div>
+      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Mis Organizaciones</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona todas las organizaciones de las que eres propietario</p>
         </div>
+        <OrganizationListSkeleton />
       </div>
     );
   }
@@ -140,19 +136,17 @@ export default function MisOrganizacionesPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Mis Organizaciones</h1>
-        </div>
-        <p className="mt-2 text-gray-600">Gestiona todas las organizaciones de las que eres propietario</p>
-        
-        <div className="mt-8">
-          <Suspense fallback={<OrganizationListSkeleton />}>
-            <ManageOrganizationsTab />
-          </Suspense>
+    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Mis Organizaciones</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona todas las organizaciones de las que eres propietario</p>
         </div>
       </div>
+      
+      <Suspense fallback={<OrganizationListSkeleton />}>
+        <ManageOrganizationsTab />
+      </Suspense>
     </div>
   );
 }

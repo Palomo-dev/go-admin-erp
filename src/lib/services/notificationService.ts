@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { sendgridService } from '@/lib/services/integrations/sendgrid';
 
 export interface NotificationPayload {
   customer_name?: string;
@@ -316,6 +317,220 @@ export class NotificationService {
     } catch (error) {
       console.error('Error enviando recordatorios masivos:', error);
       return { sent: 0, failed: 0 };
+    }
+  }
+
+  // ----------------------------------------------------------
+  // Envío real de email vía SendGrid
+  // ----------------------------------------------------------
+
+  /**
+   * Envía un email real usando SendGrid para una notificación.
+   * Busca la conexión SendGrid de la organización y envía el email.
+   * Actualiza el status de la notificación a 'sent' o 'failed'.
+   */
+  static async sendEmailViaSendGrid(
+    notificationId: string,
+    organizationId: number,
+    recipientEmail: string,
+    subject: string,
+    html?: string,
+    text?: string,
+    templateId?: string,
+    templateData?: Record<string, unknown>
+  ): Promise<boolean> {
+    try {
+      const { credentials } = await sendgridService.getCredentialsByOrganization(organizationId);
+
+      if (!credentials) {
+        console.warn('[Notifications] No hay conexión SendGrid activa para org:', organizationId);
+        await this.markAsFailed(notificationId, 'No hay conexión SendGrid configurada');
+        return false;
+      }
+
+      const result = await sendgridService.sendSimpleEmail(credentials, {
+        to: recipientEmail,
+        subject,
+        html,
+        text,
+        templateId,
+        templateData,
+        categories: ['go-admin-notification'],
+      });
+
+      if (result.success) {
+        await this.markAsSent(notificationId);
+        return true;
+      } else {
+        await this.markAsFailed(notificationId, result.error || `HTTP ${result.statusCode}`);
+        return false;
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('[Notifications] Error enviando email:', msg);
+      await this.markAsFailed(notificationId, msg);
+      return false;
+    }
+  }
+
+  /**
+   * Procesa y envía todas las notificaciones email pendientes de una organización.
+   * Busca notificaciones con channel='email' y status='pending', las envía vía SendGrid.
+   */
+  static async processEmailNotifications(organizationId?: number): Promise<{
+    processed: number;
+    sent: number;
+    failed: number;
+  }> {
+    try {
+      const orgId = organizationId || getOrganizationId();
+      if (!orgId) return { processed: 0, sent: 0, failed: 0 };
+
+      // Verificar que haya conexión SendGrid antes de procesar
+      const { credentials } = await sendgridService.getCredentialsByOrganization(orgId);
+      if (!credentials) {
+        console.warn('[Notifications] No hay conexión SendGrid para org:', orgId);
+        return { processed: 0, sent: 0, failed: 0 };
+      }
+
+      // Obtener notificaciones email pendientes
+      const { data: pendingEmails, error } = await supabase
+        .from('notifications')
+        .select('id, recipient_email, payload, template_id')
+        .eq('organization_id', orgId)
+        .eq('channel', 'email')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true })
+        .limit(50);
+
+      if (error || !pendingEmails || pendingEmails.length === 0) {
+        return { processed: 0, sent: 0, failed: 0 };
+      }
+
+      let sent = 0;
+      let failed = 0;
+
+      for (const notification of pendingEmails) {
+        if (!notification.recipient_email) {
+          await this.markAsFailed(notification.id, 'Sin email de destinatario');
+          failed++;
+          continue;
+        }
+
+        const payload = notification.payload as NotificationPayload;
+        const subject = this.buildSubjectFromPayload(payload);
+        const html = this.buildHtmlFromPayload(payload);
+
+        const success = await sendgridService.sendSimpleEmail(credentials, {
+          to: notification.recipient_email,
+          subject,
+          html,
+          categories: ['go-admin-notification', payload.type || 'general'],
+        });
+
+        if (success.success) {
+          await this.markAsSent(notification.id);
+          sent++;
+        } else {
+          await this.markAsFailed(notification.id, success.error || 'Error de envío');
+          failed++;
+        }
+      }
+
+      return { processed: pendingEmails.length, sent, failed };
+    } catch (error) {
+      console.error('[Notifications] Error procesando emails:', error);
+      return { processed: 0, sent: 0, failed: 0 };
+    }
+  }
+
+  /**
+   * Vincula el canal de email de una organización con una conexión de SendGrid.
+   * Actualiza notification_channels.connection_id y provider_name.
+   */
+  static async linkSendGridChannel(
+    organizationId: number,
+    connectionId: string
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('notification_channels')
+        .update({
+          connection_id: connectionId,
+          provider_name: 'SendGrid',
+          config_json: { provider: 'sendgrid', linked_at: new Date().toISOString() },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('organization_id', organizationId)
+        .eq('code', 'email');
+
+      if (error) {
+        console.error('[Notifications] Error vinculando canal SendGrid:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[Notifications] Error en linkSendGridChannel:', error);
+      return false;
+    }
+  }
+
+  // ----------------------------------------------------------
+  // Helpers internos para construir contenido de email
+  // ----------------------------------------------------------
+
+  private static buildSubjectFromPayload(payload: NotificationPayload): string {
+    switch (payload.type) {
+      case 'payment_reminder':
+        return `Recordatorio de pago - ${payload.invoice_number || 'Factura pendiente'}`;
+      case 'invoice_created':
+        return `Nueva factura ${payload.invoice_number || ''}`;
+      case 'payment_received':
+        return `Pago recibido - ${payload.invoice_number || ''}`;
+      case 'welcome':
+        return 'Bienvenido a nuestra plataforma';
+      default:
+        return 'Notificación de GO Admin';
+    }
+  }
+
+  private static buildHtmlFromPayload(payload: NotificationPayload): string {
+    const customerName = payload.customer_name || 'Estimado cliente';
+
+    switch (payload.type) {
+      case 'payment_reminder':
+        return `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Recordatorio de Pago</h2>
+            <p>Hola ${customerName},</p>
+            <p>Le recordamos que tiene un saldo pendiente:</p>
+            <ul>
+              ${payload.invoice_number ? `<li><strong>Factura:</strong> ${payload.invoice_number}</li>` : ''}
+              ${payload.balance ? `<li><strong>Saldo pendiente:</strong> $${payload.balance.toLocaleString()}</li>` : ''}
+              ${payload.due_date ? `<li><strong>Fecha de vencimiento:</strong> ${payload.due_date}</li>` : ''}
+              ${payload.days_overdue ? `<li><strong>Días vencido:</strong> ${payload.days_overdue}</li>` : ''}
+            </ul>
+            <p>Por favor, realice su pago a la brevedad posible.</p>
+            <p>Gracias por su atención.</p>
+          </div>`;
+      case 'payment_received':
+        return `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Pago Recibido</h2>
+            <p>Hola ${customerName},</p>
+            <p>Hemos recibido su pago exitosamente.</p>
+            ${payload.amount ? `<p><strong>Monto:</strong> $${payload.amount.toLocaleString()}</p>` : ''}
+            ${payload.invoice_number ? `<p><strong>Factura:</strong> ${payload.invoice_number}</p>` : ''}
+            <p>Gracias por su pago.</p>
+          </div>`;
+      default:
+        return `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Notificación</h2>
+            <p>Hola ${customerName},</p>
+            <p>${JSON.stringify(payload)}</p>
+          </div>`;
     }
   }
 }

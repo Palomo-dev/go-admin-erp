@@ -78,11 +78,12 @@ export function StepCountryEnvironment({
 }: StepCountryEnvironmentProps) {
   // Filtrar países según los soportados por el conector
   const supportedCountries = connector?.supported_countries || [];
-  const availableCountries = supportedCountries.length > 0
-    ? COUNTRIES.filter((c) => supportedCountries.includes(c.code))
-    : COUNTRIES;
+  const isGlobal = supportedCountries.some((c) => c.toUpperCase() === 'GLOBAL');
+  const availableCountries = isGlobal || supportedCountries.length === 0
+    ? COUNTRIES
+    : COUNTRIES.filter((c) => supportedCountries.includes(c.code));
 
-  const showCountryWarning = supportedCountries.length > 0 && !supportedCountries.includes(selectedCountry) && selectedCountry;
+  const showCountryWarning = !isGlobal && supportedCountries.length > 0 && !supportedCountries.includes(selectedCountry) && selectedCountry;
 
   return (
     <div className="space-y-8">
@@ -98,16 +99,23 @@ export function StepCountryEnvironment({
           </p>
         </div>
 
-        {supportedCountries.length > 0 && (
+        {isGlobal ? (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span className="text-sm text-blue-700 dark:text-blue-300">
+              Este conector está disponible en <strong>todos los países</strong>. Selecciona el país donde opera tu negocio.
+            </span>
+          </div>
+        ) : supportedCountries.length > 0 ? (
           <Badge variant="outline" className="text-xs">
             Este conector soporta: {supportedCountries.join(', ')}
           </Badge>
-        )}
+        ) : null}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {availableCountries.map((country) => {
             const isSelected = selectedCountry === country.code;
-            const isSupported = supportedCountries.length === 0 || supportedCountries.includes(country.code);
+            const isSupported = isGlobal || supportedCountries.length === 0 || supportedCountries.includes(country.code);
 
             return (
               <Card
@@ -143,11 +151,6 @@ export function StepCountryEnvironment({
           </div>
         )}
 
-        {availableCountries.length === 0 && (
-          <div className="text-center py-4 text-gray-500">
-            Este conector está disponible en todos los países
-          </div>
-        )}
       </div>
 
       {/* Selección de Ambiente */}
@@ -162,7 +165,7 @@ export function StepCountryEnvironment({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {ENVIRONMENTS.map((env) => {
             const isSelected = selectedEnvironment === env.value;
 

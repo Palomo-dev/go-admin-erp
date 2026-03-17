@@ -129,9 +129,9 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-md dark:bg-gray-800 light:bg-white">
+      <DialogContent className="max-w-md dark:bg-gray-800 bg-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2 dark:text-white light:text-gray-900">
+          <DialogTitle className="flex items-center space-x-2 dark:text-white text-gray-900">
             <Plus className="h-5 w-5 text-blue-600" />
             <span>Registrar Movimiento</span>
           </DialogTitle>
@@ -157,7 +157,7 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <TabsContent value="in" className="space-y-4 mt-0">
-              <Card className="dark:bg-gray-700 dark:border-gray-600 light:bg-green-50 light:border-green-200">
+              <Card className="dark:bg-gray-700 dark:border-gray-600 bg-green-50 border-green-200">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm text-green-600 dark:text-green-400">
                     Ingreso de Efectivo
@@ -166,7 +166,7 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
                 <CardContent className="space-y-3">
                   {/* Conceptos predefinidos */}
                   <div className="space-y-2">
-                    <Label className="dark:text-gray-200 light:text-gray-700">Concepto</Label>
+                    <Label className="dark:text-gray-200 text-gray-700">Concepto</Label>
                     <div className="grid grid-cols-1 gap-2">
                       {CONCEPTS_IN.map((concept) => (
                         <Button
@@ -196,7 +196,7 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
             </TabsContent>
 
             <TabsContent value="out" className="space-y-4 mt-0">
-              <Card className="dark:bg-gray-700 dark:border-gray-600 light:bg-red-50 light:border-red-200">
+              <Card className="dark:bg-gray-700 dark:border-gray-600 bg-red-50 border-red-200">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm text-red-600 dark:text-red-400">
                     Egreso de Efectivo
@@ -205,7 +205,7 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
                 <CardContent className="space-y-3">
                   {/* Conceptos predefinidos */}
                   <div className="space-y-2">
-                    <Label className="dark:text-gray-200 light:text-gray-700">Concepto</Label>
+                    <Label className="dark:text-gray-200 text-gray-700">Concepto</Label>
                     <div className="grid grid-cols-1 gap-2">
                       {CONCEPTS_OUT.map((concept) => (
                         <Button
@@ -236,7 +236,7 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
 
             {/* Monto - común para ambas tabs */}
             <div className="space-y-2">
-              <Label htmlFor="amount" className="dark:text-gray-200 light:text-gray-700">
+              <Label htmlFor="amount" className="dark:text-gray-200 text-gray-700">
                 Monto *
               </Label>
               <Input
@@ -246,11 +246,11 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
                 min="0.01"
                 value={formData.amount || ''}
                 onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)}
-                className="dark:bg-gray-600 dark:border-gray-500 dark:text-white light:bg-white light:border-gray-300"
+                className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
                 required
               />
               {formData.amount > 0 && (
-                <p className="text-sm dark:text-gray-400 light:text-gray-500">
+                <p className="text-sm dark:text-gray-400 text-gray-500">
                   Equivale a: <span className={`font-medium ${activeTab === 'in' ? 'text-green-600' : 'text-red-600'}`}>
                     {formatCurrency(formData.amount)}
                   </span>
@@ -260,7 +260,7 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
 
             {/* Notas */}
             <div className="space-y-2">
-              <Label htmlFor="notes" className="dark:text-gray-200 light:text-gray-700">
+              <Label htmlFor="notes" className="dark:text-gray-200 text-gray-700">
                 Observaciones (Opcional)
               </Label>
               <Textarea
@@ -268,7 +268,7 @@ export function MovimientosDialog({ onMovementAdded, disabled }: MovimientosDial
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 placeholder="Detalles adicionales..."
-                className="dark:bg-gray-600 dark:border-gray-500 dark:text-white light:bg-white light:border-gray-300"
+                className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
                 rows={2}
               />
             </div>

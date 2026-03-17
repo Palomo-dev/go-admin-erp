@@ -165,7 +165,7 @@ export function CartTabs({
                 className="flex space-x-1 w-max"
                 style={{ pointerEvents: isDragging ? 'none' : 'auto' }}
               >
-                <TabsList className="dark:bg-gray-800 light:bg-gray-100 p-1 inline-flex">
+                <TabsList className="dark:bg-gray-800 bg-gray-100 p-1 inline-flex">
                 {carts.map((cart, index) => (
                   <TabsTrigger
                     key={cart.id}
@@ -173,8 +173,8 @@ export function CartTabs({
                     className={`
                       relative group flex items-center space-x-2 px-3 py-2
                       ${cart.status === 'hold' 
-                        ? 'dark:data-[state=active]:bg-yellow-600/20 dark:data-[state=active]:text-yellow-400 light:data-[state=active]:bg-yellow-100 light:data-[state=active]:text-yellow-700'
-                        : 'dark:data-[state=active]:bg-blue-600/20 dark:data-[state=active]:text-blue-400 light:data-[state=active]:bg-blue-100 light:data-[state=active]:text-blue-700'
+                        ? 'dark:data-[state=active]:bg-yellow-600/20 dark:data-[state=active]:text-yellow-400 data-[state=active]:bg-yellow-100 data-[state=active]:text-yellow-700'
+                        : 'dark:data-[state=active]:bg-blue-600/20 dark:data-[state=active]:text-blue-400 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700'
                       }
                     `}
                   >
@@ -187,7 +187,7 @@ export function CartTabs({
                     {cart.total > 0 && (
                       <Badge 
                         variant="secondary" 
-                        className="text-xs px-1 py-0 h-5 dark:bg-gray-700 light:bg-gray-200"
+                        className="text-xs px-1 py-0 h-5 dark:bg-gray-700 bg-gray-200"
                       >
                         {formatCurrency(cart.total, 'COP').replace(/\$\s?/, '$').replace(/,\d{3}$/, 'k')}
                       </Badge>
@@ -200,8 +200,8 @@ export function CartTabs({
                         className={`
                           text-xs px-1 py-0 h-5 min-w-[20px] flex items-center justify-center
                           ${cart.status === 'hold' 
-                            ? 'dark:border-yellow-500 dark:text-yellow-400 light:border-yellow-500 light:text-yellow-600' 
-                            : 'dark:bg-blue-600 dark:text-white light:bg-blue-600 light:text-white'
+                            ? 'dark:border-yellow-500 dark:text-yellow-400 border-yellow-500 text-yellow-600' 
+                            : 'dark:bg-blue-600 dark:text-white bg-blue-600 text-white'
                           }
                         `}
                       >
@@ -214,7 +214,7 @@ export function CartTabs({
                       <div
                         role="button"
                         tabIndex={0}
-                        className="h-5 w-5 p-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity dark:hover:bg-red-500/20 dark:hover:text-red-400 light:hover:bg-red-100 light:hover:text-red-600 rounded flex items-center justify-center cursor-pointer"
+                        className="h-5 w-5 p-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity dark:hover:bg-red-500/20 dark:hover:text-red-400 hover:bg-red-100 hover:text-red-600 rounded flex items-center justify-center cursor-pointer"
                         onClick={(e) => handleRemoveCart(cart.id, e)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -239,7 +239,7 @@ export function CartTabs({
               variant="outline"
               onClick={handleNewCart}
               disabled={isCreatingCart}
-              className="ml-2 dark:border-gray-700 dark:hover:bg-gray-800 light:border-gray-300 light:hover:bg-gray-50"
+              className="ml-2 dark:border-gray-700 dark:hover:bg-gray-800 border-gray-300 hover:bg-gray-50"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -248,29 +248,29 @@ export function CartTabs({
           {/* Contenido de cada carrito */}
           {carts.map((cart) => (
             <TabsContent key={cart.id} value={cart.id} className="mt-0">
-              <Card className="dark:bg-gray-800/50 dark:border-gray-700/50 light:bg-gray-50/50 light:border-gray-200">
+              <Card className="dark:bg-gray-800/50 dark:border-gray-700/50 bg-gray-50/50 border-gray-200">
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center space-x-4">
-                      <span className="dark:text-gray-400 light:text-gray-600">
-                        Items: <span className="font-medium dark:text-white light:text-gray-900">{cart.items.length}</span>
+                      <span className="dark:text-gray-400 text-gray-600">
+                        Items: <span className="font-medium dark:text-white text-gray-900">{cart.items.length}</span>
                       </span>
                       {cart.customer && (
-                        <span className="dark:text-gray-400 light:text-gray-600">
-                          Cliente: <span className="font-medium dark:text-white light:text-gray-900">{cart.customer.full_name}</span>
+                        <span className="dark:text-gray-400 text-gray-600">
+                          Cliente: <span className="font-medium dark:text-white text-gray-900">{cart.customer.full_name}</span>
                         </span>
                       )}
                       {cart.status === 'hold' && cart.hold_reason && (
-                        <span className="dark:text-yellow-400 light:text-yellow-600 text-xs">
+                        <span className="dark:text-yellow-400 text-yellow-600 text-xs">
                           En espera: {cart.hold_reason}
                         </span>
                       )}
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold dark:text-blue-400 light:text-blue-600">
+                      <div className="font-semibold dark:text-blue-400 text-blue-600">
                         {formatCurrency(cart.total)}
                       </div>
-                      <div className="text-xs dark:text-gray-400 light:text-gray-600">
+                      <div className="text-xs dark:text-gray-400 text-gray-600">
                         {new Date(cart.updated_at).toLocaleTimeString()}
                       </div>
                     </div>
@@ -282,19 +282,19 @@ export function CartTabs({
         </Tabs>
       ) : (
         /* Mensaje cuando no hay carritos */
-        <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+        <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
           <CardContent className="p-6 text-center">
-            <ShoppingCart className="h-12 w-12 mx-auto mb-3 dark:text-gray-400 light:text-gray-500 opacity-50" />
-            <h3 className="font-medium mb-2 dark:text-white light:text-gray-900">
+            <ShoppingCart className="h-12 w-12 mx-auto mb-3 dark:text-gray-400 text-gray-500 opacity-50" />
+            <h3 className="font-medium mb-2 dark:text-white text-gray-900">
               No hay carritos activos
             </h3>
-            <p className="text-sm dark:text-gray-400 light:text-gray-600 mb-4">
+            <p className="text-sm dark:text-gray-400 text-gray-600 mb-4">
               Crea un nuevo carrito para comenzar una venta
             </p>
             <Button 
               onClick={handleNewCart}
               disabled={isCreatingCart}
-              className="dark:bg-blue-600 dark:hover:bg-blue-700 light:bg-blue-600 light:hover:bg-blue-700"
+              className="dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700"
             >
               <Plus className="h-4 w-4 mr-2" />
               Crear Carrito

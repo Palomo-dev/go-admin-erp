@@ -236,7 +236,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
   return (
     <div className="space-y-6">
       {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="text-sm text-gray-500 dark:text-gray-400">Total Deuda</div>
           <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">

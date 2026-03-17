@@ -21,14 +21,14 @@ const statsConfig = [
 export function ActividadesStats({ stats, isLoading }: ActividadesStatsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
         {statsConfig.map((item) => (
           <Card key={item.key} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="animate-pulse">
-                <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-                <div className="h-6 w-12 bg-gray-200 dark:bg-gray-700 rounded mb-1" />
-                <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-6 w-6 sm:h-8 sm:w-8 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+                <div className="h-5 sm:h-6 w-10 sm:w-12 bg-gray-200 dark:bg-gray-700 rounded mb-1" />
+                <div className="h-3 sm:h-4 w-14 sm:w-16 bg-gray-200 dark:bg-gray-700 rounded" />
               </div>
             </CardContent>
           </Card>
@@ -38,7 +38,7 @@ export function ActividadesStats({ stats, isLoading }: ActividadesStatsProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
       {statsConfig.map((item) => {
         const Icon = item.icon;
         const value = stats[item.key as keyof ActivityStats];
@@ -46,18 +46,18 @@ export function ActividadesStats({ stats, isLoading }: ActividadesStatsProps) {
         return (
           <Card
             key={item.key}
-            className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition-shadow"
           >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${item.bg}`}>
-                  <Icon className={`h-5 w-5 ${item.color}`} />
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={`p-1.5 sm:p-2 rounded-lg shrink-0 ${item.bg}`}>
+                  <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${item.color}`} />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {value}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
                     {item.label}
                   </p>
                 </div>

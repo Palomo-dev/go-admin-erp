@@ -120,17 +120,17 @@ export function EmployeeFiltersComponent({
 
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <CardContent className="pt-4 space-y-4">
+      <CardContent className="p-3 sm:pt-4 sm:p-6 space-y-3 sm:space-y-4">
         {/* Fila principal de filtros */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Búsqueda */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="relative flex-1 min-w-[150px] sm:min-w-[200px]">
+            <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
             <Input
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
-              placeholder="Buscar por nombre, código o email..."
-              className="pl-10 bg-white dark:bg-gray-900"
+              placeholder="Buscar..."
+              className="pl-8 sm:pl-10 h-9 text-xs sm:text-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
           </div>
 
@@ -139,12 +139,12 @@ export function EmployeeFiltersComponent({
             value={filters.status}
             onValueChange={(value) => onFiltersChange({ ...filters, status: value })}
           >
-            <SelectTrigger className="w-[160px] bg-white dark:bg-gray-900">
+            <SelectTrigger className="w-[120px] sm:w-[160px] h-9 text-xs sm:text-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
+                <SelectItem key={opt.value} value={opt.value} className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                   {opt.label}
                 </SelectItem>
               ))}
@@ -162,13 +162,13 @@ export function EmployeeFiltersComponent({
                 })
               }
             >
-              <SelectTrigger className="w-[160px] bg-white dark:bg-gray-900">
+              <SelectTrigger className="w-[120px] sm:w-[160px] h-9 text-xs sm:text-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 hidden sm:flex">
                 <SelectValue placeholder="Sede" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las sedes</SelectItem>
+              <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectItem value="all" className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">Todas las sedes</SelectItem>
                 {branches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id.toString()}>
+                  <SelectItem key={branch.id} value={branch.id.toString()} className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                     {branch.name}
                   </SelectItem>
                 ))}
@@ -181,23 +181,25 @@ export function EmployeeFiltersComponent({
             variant={showAdvanced ? 'default' : 'outline'}
             size="sm"
             onClick={() => setShowAdvanced(!showAdvanced)}
+            className="h-9 text-xs sm:text-sm border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           >
-            <Filter className="h-4 w-4 mr-2" />
-            Más filtros
+            <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Más filtros</span>
+            <span className="xs:hidden">Filtros</span>
           </Button>
 
           {/* Limpiar */}
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-              <X className="h-4 w-4 mr-1" />
-              Limpiar
+            <Button variant="ghost" size="sm" onClick={handleClearFilters} className="h-9 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
+              <span className="hidden xs:inline">Limpiar</span>
             </Button>
           )}
         </div>
 
         {/* Filtros avanzados */}
         {showAdvanced && (
-          <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
             {/* Departamento */}
             {departments.length > 0 && (
               <Select
@@ -209,13 +211,13 @@ export function EmployeeFiltersComponent({
                   })
                 }
               >
-                <SelectTrigger className="w-[180px] bg-white dark:bg-gray-900">
+                <SelectTrigger className="w-[140px] sm:w-[180px] h-9 text-xs sm:text-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                   <SelectValue placeholder="Departamento" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los deptos.</SelectItem>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="all" className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">Todos los deptos.</SelectItem>
                   {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
+                    <SelectItem key={dept.id} value={dept.id} className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                       {dept.name}
                     </SelectItem>
                   ))}
@@ -234,13 +236,13 @@ export function EmployeeFiltersComponent({
                   })
                 }
               >
-                <SelectTrigger className="w-[180px] bg-white dark:bg-gray-900">
+                <SelectTrigger className="w-[140px] sm:w-[180px] h-9 text-xs sm:text-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                   <SelectValue placeholder="Cargo" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los cargos</SelectItem>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="all" className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">Todos los cargos</SelectItem>
                   {positions.map((pos) => (
-                    <SelectItem key={pos.id} value={pos.id}>
+                    <SelectItem key={pos.id} value={pos.id} className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                       {pos.name}
                     </SelectItem>
                   ))}
@@ -255,12 +257,12 @@ export function EmployeeFiltersComponent({
                 onFiltersChange({ ...filters, contractType: value })
               }
             >
-              <SelectTrigger className="w-[170px] bg-white dark:bg-gray-900">
+              <SelectTrigger className="w-[130px] sm:w-[170px] h-9 text-xs sm:text-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                 <SelectValue placeholder="Tipo contrato" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 {CONTRACT_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
+                  <SelectItem key={opt.value} value={opt.value} className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                     {opt.label}
                   </SelectItem>
                 ))}
@@ -273,17 +275,17 @@ export function EmployeeFiltersComponent({
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[150px] justify-start text-left font-normal bg-white dark:bg-gray-900',
-                    !filters.hireDateFrom && 'text-muted-foreground'
+                    'w-[120px] sm:w-[150px] h-9 text-xs sm:text-sm justify-start text-left font-normal bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700',
+                    !filters.hireDateFrom && 'text-gray-500 dark:text-gray-400'
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   {filters.hireDateFrom
                     ? format(new Date(filters.hireDateFrom), 'dd/MM/yyyy')
                     : 'Desde'}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <Calendar
                   mode="single"
                   selected={filters.hireDateFrom ? new Date(filters.hireDateFrom) : undefined}
@@ -304,17 +306,17 @@ export function EmployeeFiltersComponent({
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[150px] justify-start text-left font-normal bg-white dark:bg-gray-900',
-                    !filters.hireDateTo && 'text-muted-foreground'
+                    'w-[120px] sm:w-[150px] h-9 text-xs sm:text-sm justify-start text-left font-normal bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700',
+                    !filters.hireDateTo && 'text-gray-500 dark:text-gray-400'
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   {filters.hireDateTo
                     ? format(new Date(filters.hireDateTo), 'dd/MM/yyyy')
                     : 'Hasta'}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <Calendar
                   mode="single"
                   selected={filters.hireDateTo ? new Date(filters.hireDateTo) : undefined}

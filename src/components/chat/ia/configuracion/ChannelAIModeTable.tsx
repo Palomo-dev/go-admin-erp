@@ -187,7 +187,7 @@ export default function ChannelAIModeTable({
 
         <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Modos disponibles:</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {AI_MODE_OPTIONS.map((mode) => (
               <div key={mode.value} className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg ${modeColors[mode.value]?.split(' ')[0]} bg-opacity-50`}>

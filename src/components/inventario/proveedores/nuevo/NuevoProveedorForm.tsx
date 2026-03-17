@@ -275,7 +275,7 @@ export function NuevoProveedorForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <Label className="dark:text-gray-300">Banco</Label>
                     <Input value={formData.bank_name} onChange={(e) => handleChange('bank_name', e.target.value)} placeholder="Nombre del banco" className="dark:bg-gray-900 dark:border-gray-700" />

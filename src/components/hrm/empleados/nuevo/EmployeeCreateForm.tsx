@@ -27,6 +27,7 @@ import { es } from 'date-fns/locale';
 import {
   Loader2,
   User,
+  UserPlus,
   Briefcase,
   Building2,
   DollarSign,
@@ -339,8 +340,15 @@ export function EmployeeCreateForm({
             {availableMembers.length === 0 ? (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  No hay miembros disponibles. Todos los miembros ya tienen un empleo registrado.
+                <AlertDescription className="flex flex-col gap-2">
+                  <span>No hay miembros disponibles. Todos los miembros ya tienen un empleo registrado.</span>
+                  <a
+                    href="/app/organizacion/invitaciones"
+                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium text-sm underline"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Invitar nuevo miembro a la organización
+                  </a>
                 </AlertDescription>
               </Alert>
             ) : (
@@ -434,10 +442,10 @@ export function EmployeeCreateForm({
                   <Calendar
                     mode="single"
                     selected={formData.hire_date ? new Date(formData.hire_date) : undefined}
-                    onSelect={(date) =>
+                    onSelect={(date: Date) =>
                       setFormData({
                         ...formData,
-                        hire_date: date ? format(date, 'yyyy-MM-dd') : '',
+                        hire_date: format(date, 'yyyy-MM-dd'),
                       })
                     }
                     locale={es}
@@ -501,7 +509,7 @@ export function EmployeeCreateForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label className="text-gray-700 dark:text-gray-300">Departamento</Label>
               <Select
@@ -605,7 +613,7 @@ export function EmployeeCreateForm({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label className="text-gray-700 dark:text-gray-300">Salario Base</Label>
               <div className="relative">
@@ -758,7 +766,7 @@ export function EmployeeCreateForm({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label className="text-gray-700 dark:text-gray-300">Banco</Label>
               <Input

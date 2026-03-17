@@ -14,7 +14,7 @@ import GestorTareas from '@/components/crm/tareas/core/GestorTareas';
  */
 export default function TareasPage() {
   return (
-    <div className="container mx-auto py-6">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       <GestorTareas />
     </div>
   );

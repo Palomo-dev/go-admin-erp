@@ -163,7 +163,7 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
               key={index}
               className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
             >
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 {/* Sucursal */}
                 <div className="space-y-2">
                   <Label className="text-gray-700 dark:text-gray-300">

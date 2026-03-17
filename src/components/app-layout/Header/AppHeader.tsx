@@ -7,6 +7,7 @@ import BranchSelectorWrapper from './BranchSelectorWrapper';
 import GlobalSearch from './GlobalSearch';
 import { NotificationsMenu } from './NotificationsMenu';
 import { TrialBanner } from './TrialBanner';
+import { EmailVerificationBanner } from './EmailVerificationBanner';
 
 export const AppHeader = ({
   theme,
@@ -95,6 +96,7 @@ export const AppHeader = ({
         <GlobalSearch forceFullBar />
       </div>
       <TrialBanner orgId={orgId} />
+      <EmailVerificationBanner />
     </div>
   );
 };

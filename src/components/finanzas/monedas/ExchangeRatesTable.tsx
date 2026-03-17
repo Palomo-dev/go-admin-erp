@@ -1000,7 +1000,7 @@ export default function ExchangeRatesTable({ organizationId }: ExchangeRatesTabl
         </div>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <div className="md:col-span-2">
           {rates.length > 0 && currencies.length > 0 && (
             <CurrencyConverter 

@@ -109,7 +109,7 @@ export function SegmentosPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -119,9 +119,9 @@ export function SegmentosPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Filter className="h-6 w-6 text-blue-600" />
+                <Filter className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
               </div>
               Segmentos
             </h1>
@@ -144,55 +144,55 @@ export function SegmentosPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <FileText className="h-5 w-5 text-blue-600" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg shrink-0">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Zap className="h-5 w-5 text-green-600" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/40 rounded-lg shrink-0">
+                <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.dynamic}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Dinámicos</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <FileText className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.static}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Estáticos</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.dynamic}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Dinámicos</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <Users className="h-5 w-5 text-orange-600" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg shrink-0">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalCustomers}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Clientes</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.static}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Estáticos</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/40 rounded-lg shrink-0">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalCustomers}</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Clientes</p>
               </div>
             </div>
           </CardContent>
@@ -200,15 +200,16 @@ export function SegmentosPage() {
       </div>
 
       {/* Table */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50 dark:bg-gray-900">
-              <TableHead>Nombre</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead className="text-center">Clientes</TableHead>
-              <TableHead>Última ejecución</TableHead>
-              <TableHead className="w-12"></TableHead>
+            <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">Nombre</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden sm:table-cell">Tipo</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold text-center">Clientes</TableHead>
+              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden md:table-cell">Última ejecución</TableHead>
+              <TableHead className="w-10 sm:w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -243,44 +244,56 @@ export function SegmentosPage() {
               segments.map((segment) => (
                 <TableRow
                   key={segment.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900/50 cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
                   onClick={() => router.push(`/app/crm/segmentos/${segment.id}`)}
                 >
-                  <TableCell>
+                  <TableCell className="py-2 sm:py-3">
                     <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                      <p className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">
                         {segment.name}
                       </p>
                       {segment.description && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+                        <p className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
                           {segment.description}
                         </p>
                       )}
+                      <div className="sm:hidden mt-1">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${
+                            segment.is_dynamic
+                              ? 'text-green-600 dark:text-green-400 border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/30'
+                              : 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30'
+                          }`}
+                        >
+                          {segment.is_dynamic ? 'Dinámico' : 'Estático'}
+                        </Badge>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2 sm:py-3 hidden sm:table-cell">
                     <Badge
                       variant="outline"
-                      className={
+                      className={`text-[10px] sm:text-xs ${
                         segment.is_dynamic
-                          ? 'text-green-600 border-green-200 bg-green-50 dark:bg-green-900/20'
-                          : 'text-purple-600 border-purple-200 bg-purple-50 dark:bg-purple-900/20'
-                      }
+                          ? 'text-green-600 dark:text-green-400 border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/30'
+                          : 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30'
+                      }`}
                     >
                       {segment.is_dynamic ? 'Dinámico' : 'Estático'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  <TableCell className="py-2 sm:py-3 text-center">
+                    <span className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                       {segment.customer_count || 0}
                     </span>
                   </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                  <TableCell className="py-2 sm:py-3 hidden md:table-cell">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       {segment.last_run_at ? formatDate(segment.last_run_at) : 'Nunca'}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2 sm:py-3">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -322,6 +335,7 @@ export function SegmentosPage() {
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
 
       {/* Confirmación de eliminación */}

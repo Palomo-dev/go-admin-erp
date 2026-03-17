@@ -16,9 +16,9 @@ export default function ChannelsHeader({ stats, loading, onCreateChannel }: Chan
   return (
     <div className="border-b dark:border-gray-800 bg-white dark:bg-gray-900">
       <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
               Canales de Chat
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -26,7 +26,7 @@ export default function ChannelsHeader({ stats, loading, onCreateChannel }: Chan
             </p>
           </div>
 
-          <Button onClick={onCreateChannel} className="flex items-center gap-2">
+          <Button onClick={onCreateChannel} className="flex items-center gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" />
             Nuevo Canal
           </Button>

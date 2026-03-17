@@ -222,39 +222,35 @@ export default function DepartamentosPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/app/hrm">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <FolderTree className="h-6 w-6 text-blue-600" />
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <FolderTree className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
               Departamentos
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1">
               Gestiona la estructura organizacional
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
-          <Button variant="outline" onClick={() => setShowImport(true)}>
+          <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
             <Upload className="h-4 w-4 mr-2" />
             Importar
           </Button>
-          <Button onClick={handleCreate}>
+          <Button size="sm" onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Departamento
           </Button>
@@ -271,15 +267,15 @@ export default function DepartamentosPage() {
 
       {/* Árbol de Departamentos */}
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white flex items-center justify-between">
+        <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+          <CardTitle className="text-sm sm:text-base text-gray-900 dark:text-white flex items-center justify-between">
             <span>Estructura de Departamentos</span>
-            <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+            <span className="text-xs sm:text-sm font-normal text-gray-500 dark:text-gray-400">
               {departments.length} departamento(s)
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 sm:px-6">
           <DepartmentTree
             departments={hierarchy}
             onEdit={handleEdit}

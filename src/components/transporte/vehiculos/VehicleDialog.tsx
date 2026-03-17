@@ -175,7 +175,7 @@ export function VehicleDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="plate_number">Placa *</Label>
               <Input
@@ -259,7 +259,7 @@ export function VehicleDialog({
 
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Capacidad</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="capacity_kg">Carga máx. (kg)</Label>
                 <Input id="capacity_kg" type="number" {...register('capacity_kg')} placeholder="1000" />

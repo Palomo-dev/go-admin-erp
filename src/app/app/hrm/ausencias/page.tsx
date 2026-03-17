@@ -199,19 +199,19 @@ export default function AusenciasPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Calendar className="h-7 w-7 text-blue-600" />
+          <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Calendar className="h-5 w-5 sm:h-7 sm:w-7 text-blue-600 dark:text-blue-400" />
             Ausencias
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1">
             Gestión de solicitudes de ausencia
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Actualizar
@@ -226,78 +226,78 @@ export default function AusenciasPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
                   {stats.total}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Total</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+              <div className="min-w-0">
+                <div className="text-lg sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                   {stats.requested}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Pendientes</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Pendientes</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <div className="min-w-0">
+                <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">
                   {stats.approved}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Aprobadas</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Aprobadas</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 dark:text-red-400" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+              <div className="min-w-0">
+                <div className="text-lg sm:text-2xl font-bold text-red-600 dark:text-red-400">
                   {stats.rejected}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Rechazadas</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Rechazadas</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-900/30 flex items-center justify-center">
-                <Ban className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 col-span-2 sm:col-span-1">
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                <Ban className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-400" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+              <div className="min-w-0">
+                <div className="text-lg sm:text-2xl font-bold text-gray-600 dark:text-gray-400">
                   {stats.cancelled}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Canceladas</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Canceladas</p>
               </div>
             </div>
           </CardContent>

@@ -44,17 +44,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Obtener suscripción actual
+    // Obtener suscripción actual (incluir past_due para permitir reactivar/cancelar)
     const { data: subscription, error: subError } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('organization_id', organizationId)
-      .eq('status', 'active')
+      .in('status', ['active', 'past_due'])
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (subError || !subscription) {
       return NextResponse.json(
-        { error: 'No se encontró una suscripción activa' },
+        { error: 'No se encontró una suscripción activa o con pago pendiente' },
         { status: 404 }
       );
     }

@@ -25,6 +25,13 @@ function createSupabaseClient() {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe no está configurado. Verifica STRIPE_SECRET_KEY.' },
+        { status: 500 }
+      )
+    }
+
     const cookieHeader = request.headers.get('cookie') || '';
     let userId = null;
     
@@ -136,11 +143,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Buscar suscripción existente (incluyendo canceled/past_due para reutilizar stripe_customer_id)
     const { data: currentSub } = await supabase
       .from('subscriptions')
-      .select('stripe_customer_id, stripe_subscription_id, plan_id')
+      .select('stripe_customer_id, stripe_subscription_id, plan_id, status')
       .eq('organization_id', organizationId)
-      .eq('status', 'active')
+      .not('stripe_customer_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single()
 
     let customerId = currentSub?.stripe_customer_id
@@ -157,7 +167,8 @@ export async function POST(request: NextRequest) {
       customerId = customer.id
     }
 
-    if (currentSub?.stripe_subscription_id) {
+    // Solo cancelar suscripción anterior si está activa o past_due (no si ya está canceled)
+    if (currentSub?.stripe_subscription_id && currentSub.status !== 'canceled') {
       try {
         await stripe.subscriptions.update(currentSub.stripe_subscription_id, {
           cancel_at_period_end: true,

@@ -1,16 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/config';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticación
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const supabase = getSupabaseAdmin();
+
+    // Obtener token de auth desde el header Authorization
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
-        { error: 'No autorizado' },
+        { error: 'No autorizado - Token no proporcionado' },
         { status: 401 }
       );
     }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user?.id) {
+      return NextResponse.json(
+        { error: 'No autorizado - Token inválido' },
+        { status: 401 }
+      );
+    }
+
+    const userId = user.id;
 
     const { organizationId, billingPeriod } = await request.json();
 
@@ -35,7 +50,7 @@ export async function POST(request: NextRequest) {
       .from('organization_members')
       .select('role_id, is_super_admin')
       .eq('organization_id', organizationId)
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .eq('is_active', true)
       .single();
 
@@ -53,12 +68,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Obtener suscripción actual
+    // Obtener suscripción actual (incluir trialing ya que cuentas nuevas están en período de prueba)
     const { data: currentSubscription, error: subError } = await supabase
       .from('subscriptions')
       .select('*, plan:plans(*)')
       .eq('organization_id', organizationId)
-      .eq('status', 'active')
+      .in('status', ['active', 'trialing'])
       .single();
 
     if (subError || !currentSubscription) {
@@ -81,6 +96,7 @@ export async function POST(request: NextRequest) {
     const { data: updatedSubscription, error: updateError } = await supabase
       .from('subscriptions')
       .update({
+        billing_period: billingPeriod,
         current_period_end: newPeriodEnd.toISOString(),
         updated_at: new Date().toISOString()
       })

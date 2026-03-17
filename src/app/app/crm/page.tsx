@@ -116,7 +116,7 @@ export default function CrmPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         {/* Header */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -127,10 +127,10 @@ export default function CrmPage() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                   Panel de Control CRM
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 capitalize hidden sm:block">
                   {new Date().toLocaleDateString('es-ES', {
                     weekday: 'long',
                     year: 'numeric',

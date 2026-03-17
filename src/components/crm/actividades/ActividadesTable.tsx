@@ -109,14 +109,15 @@ export function ActividadesTable({
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50 dark:bg-gray-900">
-            <TableHead className="w-12">Tipo</TableHead>
-            <TableHead>Descripción</TableHead>
-            <TableHead>Relacionado</TableHead>
-            <TableHead>Fecha</TableHead>
-            <TableHead className="w-12"></TableHead>
+          <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+            <TableHead className="w-10 sm:w-12 text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">Tipo</TableHead>
+            <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">Descripción</TableHead>
+            <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden md:table-cell">Relacionado</TableHead>
+            <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden sm:table-cell">Fecha</TableHead>
+            <TableHead className="w-10 sm:w-12"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -127,49 +128,52 @@ export function ActividadesTable({
             return (
               <TableRow
                 key={activity.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-900/50 cursor-pointer"
+                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
                 onClick={() => handleViewDetail(activity)}
               >
-                <TableCell>
-                  <div className={`p-2 rounded-lg ${config.bgColor} ${config.darkBgColor} w-fit`}>
-                    <Icon className={`h-4 w-4 ${config.color}`} />
+                <TableCell className="py-2 sm:py-3">
+                  <div className={`p-1.5 sm:p-2 rounded-lg ${config.bgColor} ${config.darkBgColor} w-fit`}>
+                    <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${config.color}`} />
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3">
                   <div>
-                    <Badge variant="outline" className={`mb-1 ${config.color}`}>
+                    <Badge variant="outline" className={`mb-1 text-[10px] sm:text-xs ${config.color}`}>
                       {config.label}
                     </Badge>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
                       {activity.notes || 'Sin descripción'}
                     </p>
+                    <div className="sm:hidden mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+                      {formatDateTime(activity.occurred_at)}
+                    </div>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3 hidden md:table-cell">
                   {activity.related_type === 'customer' && activity.customer ? (
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
+                      <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate max-w-[120px]">
                         {activity.customer.full_name}
                       </span>
                     </div>
                   ) : activity.related_type === 'opportunity' && activity.opportunity ? (
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <Briefcase className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
+                      <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate max-w-[120px]">
                         {activity.opportunity.title}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-400">—</span>
+                    <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">—</span>
                   )}
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                <TableCell className="py-2 sm:py-3 hidden sm:table-cell">
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                     {formatDateTime(activity.occurred_at)}
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -205,6 +209,7 @@ export function ActividadesTable({
           })}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

@@ -89,6 +89,11 @@ const PROVIDER_LOGOS: Record<string, { logoUrl: string; bgColor: string; borderC
     bgColor: 'bg-[#4285F4]/10',
     borderColor: 'border-[#4285F4]/30',
   },
+  tripadvisor: {
+    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/02/TripAdvisor_Logo.svg',
+    bgColor: 'bg-[#00AA6C]/10',
+    borderColor: 'border-[#00AA6C]/30',
+  },
   booking: {
     logoUrl: 'https://cdn.worldvectorlogo.com/logos/bookingcom-1.svg',
     bgColor: 'bg-[#003580]/10',

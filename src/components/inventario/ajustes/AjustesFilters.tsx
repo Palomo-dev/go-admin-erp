@@ -42,7 +42,7 @@ export function AjustesFilters({
         Filtros
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {/* Sucursal */}
         <Select value={branchId} onValueChange={onBranchChange}>
           <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700 dark:text-white">

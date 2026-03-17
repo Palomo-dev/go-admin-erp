@@ -74,6 +74,7 @@ export const inicioService = {
       branchesRes,
       membersRes,
       taxesRes,
+      modulesRes,
     ] = await Promise.all([
       // Ventas hoy
       supabase
@@ -151,6 +152,12 @@ export const inicioService = {
         .from('organization_taxes')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId),
+      // Módulos activos (para onboarding check)
+      supabase
+        .from('organization_modules')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('is_active', true),
     ]);
 
     // KPIs
@@ -180,6 +187,14 @@ export const inicioService = {
 
     // Onboarding steps
     const onboarding: OnboardingStep[] = [
+      {
+        id: 'modules',
+        titulo: 'Activar módulos',
+        descripcion: 'Activa los módulos que necesitas para tu negocio',
+        href: '/app/organizacion/modulos',
+        completado: (modulesRes.count || 0) > 0,
+        icono: 'LayoutGrid',
+      },
       {
         id: 'org',
         titulo: 'Configurar organización',

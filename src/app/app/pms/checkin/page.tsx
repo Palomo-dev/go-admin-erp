@@ -173,16 +173,16 @@ export default function CheckinPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-50 dark:bg-blue-950">
-                <LogIn className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-blue-50 dark:bg-blue-950 flex-shrink-0">
+                <LogIn className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
                   Llegadas del Día
                 </h1>
                 <div className="flex items-center gap-2 mt-1">

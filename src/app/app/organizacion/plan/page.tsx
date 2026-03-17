@@ -112,16 +112,12 @@ export default function PlanPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900">Mi Plan</h1>
-            <p className="mt-2 text-gray-600">Gestiona tu plan de suscripción y módulos disponibles</p>
-          </div>
-          <div className="mt-8">
-            <PlanSkeleton />
-          </div>
+      <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Mi Plan</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona tu plan de suscripción y módulos disponibles</p>
         </div>
+        <PlanSkeleton />
       </div>
     );
   }
@@ -165,8 +161,7 @@ export default function PlanPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         {/* Mensaje de éxito */}
         {successMessage && (
           <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
@@ -197,17 +192,16 @@ export default function PlanPage() {
           </div>
         )}
 
-        <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Mi Plan</h1>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Mi Plan</h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona tu plan de suscripción y módulos disponibles</p>
+          </div>
         </div>
-        <p className="mt-2 text-gray-600">Gestiona tu plan de suscripción y módulos disponibles</p>
         
-        <div className="mt-8">
-          <Suspense fallback={<PlanSkeleton />}>
-            <PlanTab orgId={orgData} />
-          </Suspense>
-        </div>
-      </div>
+        <Suspense fallback={<PlanSkeleton />}>
+          <PlanTab orgId={orgData} />
+        </Suspense>
     </div>
   );
 }

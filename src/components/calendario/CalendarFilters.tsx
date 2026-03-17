@@ -47,7 +47,10 @@ interface Member {
   profiles: {
     first_name: string;
     last_name: string;
-  } | null;
+  } | {
+    first_name: string;
+    last_name: string;
+  }[] | null;
 }
 
 export function CalendarFilters({
@@ -141,7 +144,9 @@ export function CalendarFilters({
           {members.map((member) => (
             <SelectItem key={member.user_id} value={member.user_id}>
               {member.profiles
-                ? `${member.profiles.first_name} ${member.profiles.last_name}`
+                ? Array.isArray(member.profiles)
+                  ? `${member.profiles[0]?.first_name || ''} ${member.profiles[0]?.last_name || ''}`.trim() || 'Usuario'
+                  : `${member.profiles.first_name} ${member.profiles.last_name}`
                 : 'Usuario'}
             </SelectItem>
           ))}

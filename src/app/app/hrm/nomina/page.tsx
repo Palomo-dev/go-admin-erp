@@ -211,45 +211,41 @@ export default function NominaPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link href="/app/hrm">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Calculator className="h-7 w-7 text-blue-600" />
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Calculator className="h-5 w-5 sm:h-7 sm:w-7 text-blue-600 dark:text-blue-400" />
               Nómina
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               HRM / Nómina / Periodos
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="icon" onClick={loadData}>
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setShowCalculateDialog(true)}
-            disabled={calculablePeriods.length === 0}
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowCalculateDialog(true)} disabled={calculablePeriods.length === 0}>
             <Play className="mr-2 h-4 w-4" />
             Calcular Nómina
           </Button>
           <Link href="/app/hrm/nomina/colillas">
-            <Button variant="outline">
+            <Button variant="outline" size="sm">
               <FileText className="mr-2 h-4 w-4" />
               Ver Colillas
             </Button>
           </Link>
           <Link href="/app/hrm/nomina/periodos/nuevo">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Periodo
             </Button>
@@ -258,42 +254,42 @@ export default function NominaPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Periodos</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.totalPeriods}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Periodos</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{stats.totalPeriods}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
-                <Calculator className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg shrink-0">
+                <Calculator className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Pendientes</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.pendingPeriods}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Pendientes</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{stats.pendingPeriods}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total Bruto</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Total Bruto</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   {formatCurrency(stats.totalGross, 'COP')}
                 </p>
               </div>
@@ -301,14 +297,14 @@ export default function NominaPage() {
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total Neto</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Total Neto</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   {formatCurrency(stats.totalNet, 'COP')}
                 </p>
               </div>
@@ -316,14 +312,14 @@ export default function NominaPage() {
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-cyan-100 dark:bg-cyan-900 rounded-lg">
-                <DollarSign className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-600 dark:text-cyan-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Costo Empleador</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Costo Empleador</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   {formatCurrency(stats.totalEmployerCost, 'COP')}
                 </p>
               </div>
@@ -331,14 +327,14 @@ export default function NominaPage() {
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg">
-                <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          <CardContent className="p-3 sm:pt-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg shrink-0">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Empleados</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.totalEmployees}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Empleados</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{stats.totalEmployees}</p>
               </div>
             </div>
           </CardContent>

@@ -149,7 +149,7 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
       </div>
 
       {/* Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">

@@ -92,7 +92,7 @@ export function ConciliacionPage() {
             <Skeleton className="h-4 w-48 mt-2" />
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28" />)}
         </div>
         <Skeleton className="h-96" />
@@ -145,7 +145,7 @@ export function ConciliacionPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">

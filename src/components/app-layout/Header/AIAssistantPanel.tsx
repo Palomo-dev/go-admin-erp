@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, Loader2, Sparkles, Trash2, PanelRightClose, CheckCircle2, XCircle } from 'lucide-react';
+import { Bot, Send, Loader2, Sparkles, Trash2, PanelRightClose, X, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { cn } from '@/utils/Utils';
 import type { AssistantMessage, AssistantContext, ProposedAction } from '@/lib/services/aiAssistantService';
 import type { AIAction, UserRole } from '@/lib/services/aiActionsService';
 import { aiActionsService } from '@/lib/services/aiActionsService';
 import ActionConfirmationForm from './ActionConfirmationForm';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface AIAssistantPanelProps {
   isOpen: boolean;
@@ -30,6 +33,15 @@ export default function AIAssistantPanel({
   const [isExecutingAction, setIsExecutingAction] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -251,18 +263,10 @@ export default function AIAssistantPanel({
     setPendingAction(null);
   };
 
-  return (
-    <div
-      className={cn(
-        'hidden lg:flex flex-col h-full',
-        isOpen ? 'w-80 xl:w-96' : 'w-0',
-        'bg-white dark:bg-gray-900',
-        'border-l border-gray-200 dark:border-gray-700',
-        'transition-all duration-300 ease-in-out',
-        'overflow-hidden flex-shrink-0'
-      )}
-    >
-      {/* Header - misma altura que el sidebar principal */}
+  // Contenido compartido del asistente (header + mensajes + input)
+  const renderAssistantContent = () => (
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+      {/* Header */}
       <div className="flex items-center justify-between p-4 min-h-[60px] bg-blue-600 flex-shrink-0">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="text-white flex-shrink-0">
@@ -288,7 +292,7 @@ export default function AIAssistantPanel({
             className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-700 text-white hover:bg-blue-800 transition-colors"
             aria-label="Cerrar panel de asistente"
           >
-            <PanelRightClose size={16} />
+            {isMobile ? <X size={16} /> : <PanelRightClose size={16} />}
           </button>
         </div>
       </div>
@@ -354,7 +358,11 @@ export default function AIAssistantPanel({
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-tl-sm'
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {message.role === 'assistant' ? (
+                    <MarkdownRenderer content={message.content} />
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  )}
                 </div>
               </div>
             ))}
@@ -428,5 +436,38 @@ export default function AIAssistantPanel({
         </p>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop: Panel lateral */}
+      <div
+        className={cn(
+          'hidden lg:flex flex-col h-full',
+          isOpen ? 'w-80 xl:w-96' : 'w-0',
+          'bg-white dark:bg-gray-900',
+          'border-l border-gray-200 dark:border-gray-700',
+          'transition-all duration-300 ease-in-out',
+          'overflow-hidden flex-shrink-0'
+        )}
+      >
+        {renderAssistantContent()}
+      </div>
+
+      {/* Móvil: Sheet fullscreen desde la derecha */}
+      {isMobile && (
+        <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onToggle(); }}>
+          <SheetContent
+            side="right"
+            className="w-full sm:w-full sm:max-w-full p-0 border-0 [&>button:last-child]:hidden"
+          >
+            <VisuallyHidden.Root>
+              <SheetTitle>GO Assistant</SheetTitle>
+            </VisuallyHidden.Root>
+            {renderAssistantContent()}
+          </SheetContent>
+        </Sheet>
+      )}
+    </>
   );
 }

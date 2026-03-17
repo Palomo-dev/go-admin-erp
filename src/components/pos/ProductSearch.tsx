@@ -265,7 +265,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                 variant={gridSize === 'small' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setGridSize('small')}
-                className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white light:border-gray-300 light:text-gray-600 light:hover:text-gray-900"
+                className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white border-gray-300 text-gray-600 hover:text-gray-900"
                 title="Vista compacta"
               >
                 <Grid3X3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -274,7 +274,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                 variant={gridSize === 'large' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setGridSize('large')}
-                className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white light:border-gray-300 light:text-gray-600 light:hover:text-gray-900"
+                className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white border-gray-300 text-gray-600 hover:text-gray-900"
                 title="Vista amplia"
               >
                 <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -325,10 +325,10 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                 <SelectTrigger className="flex-1 sm:flex-none sm:w-[180px] h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 text-sm">
                   <SelectValue placeholder="Categorías" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200">
+                <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
                   <SelectItem value="all">Todas las categorías</SelectItem>
                   {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id.toString()} className="dark:text-gray-200 light:text-gray-800">
+                    <SelectItem key={category.id} value={category.id.toString()} className="dark:text-gray-200 text-gray-800">
                       {category.name}
                     </SelectItem>
                   ))}
@@ -340,7 +340,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                   variant="outline" 
                   onClick={clearFilters} 
                   size="sm" 
-                  className="shrink-0 h-9 sm:h-10 px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
+                  className="shrink-0 h-9 sm:h-10 px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white border-gray-300 text-gray-700 hover:bg-gray-100"
                 >
                   <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
                   <span className="hidden sm:inline">Limpiar</span>
@@ -352,7 +352,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       </Card>
 
       {/* Grid de productos mejorado - RESPONSIVE */}
-      <Card className="flex-1 shadow-lg dark:bg-gray-900 dark:border-gray-800 light:bg-white light:border-gray-200 overflow-hidden flex flex-col">
+      <Card className="flex-1 shadow-lg dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 overflow-hidden flex flex-col">
         <CardContent className="p-2 sm:p-3 md:p-4 flex-1 overflow-auto">
           {loading ? (
             <div className={cn(
@@ -419,7 +419,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                 {productsData.data.map((product: any) => (
                   <Card 
                     key={product.id}
-                    className="group overflow-hidden hover:shadow-xl transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 light:bg-white hover:scale-[1.02] active:scale-[0.98]"
+                    className="group overflow-hidden hover:shadow-xl transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 bg-white hover:scale-[1.02] active:scale-[0.98]"
                     onClick={() => handleProductClick(product)}
                   >
                     {/* Imagen del producto */}
@@ -536,7 +536,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
               {/* Paginación - RESPONSIVE */}
               {productsData.totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-t dark:border-gray-800 light:border-gray-200 pt-3 sm:pt-4 mt-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-t dark:border-gray-800 border-gray-200 pt-3 sm:pt-4 mt-4">
                   <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
                     <span className="hidden sm:inline">
                       Mostrando {((productsData.page - 1) * getCurrentLimit()) + 1} a{' '}
@@ -555,7 +555,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       size="sm"
                       onClick={() => handlePageChange(productsData.page - 1)}
                       disabled={productsData.page === 1}
-                      className="h-8 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
+                      className="h-8 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 border-gray-300 text-gray-700 hover:bg-gray-100"
                     >
                       <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline ml-1">Anterior</span>
@@ -573,8 +573,8 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                             className={cn(
                               "w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm",
                               page === productsData.page 
-                                ? "dark:bg-blue-600 dark:text-white light:bg-blue-600 light:text-white" 
-                                : "dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
+                                ? "dark:bg-blue-600 dark:text-white bg-blue-600 text-white" 
+                                : "dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 border-gray-300 text-gray-700 hover:bg-gray-100"
                             )}
                             onClick={() => handlePageChange(page)}
                           >
@@ -589,7 +589,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
+                            className="w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 border-gray-300 text-gray-700 hover:bg-gray-100"
                             onClick={() => handlePageChange(productsData.totalPages)}
                           >
                             {productsData.totalPages}
@@ -603,7 +603,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       size="sm"
                       onClick={() => handlePageChange(productsData.page + 1)}
                       disabled={productsData.page === productsData.totalPages}
-                      className="h-8 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 light:border-gray-300 light:text-gray-700 light:hover:bg-gray-100"
+                      className="h-8 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 border-gray-300 text-gray-700 hover:bg-gray-100"
                     >
                       <span className="hidden sm:inline mr-1">Siguiente</span>
                       <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

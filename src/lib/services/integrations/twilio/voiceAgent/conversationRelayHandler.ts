@@ -115,8 +115,10 @@ export function handleConversationRelayConnection(ws: WebSocket): void {
   ws.on('message', async (data) => {
     let msgType = 'unknown';
     try {
-      const message: CRInboundMessage = JSON.parse(data.toString());
+      const raw = data.toString();
+      const message: CRInboundMessage = JSON.parse(raw);
       msgType = message.type;
+      console.log(`[CR] << Incoming (${msgType}):`, raw.substring(0, 300));
 
       switch (message.type) {
         case 'setup':

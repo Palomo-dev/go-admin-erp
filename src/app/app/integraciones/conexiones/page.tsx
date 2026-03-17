@@ -111,6 +111,19 @@ export default function ConexionesPage() {
 
   // Conectar con proveedor
   const handleConnectProvider = (provider: IntegrationProvider) => {
+    // Twilio es gestionado centralmente por GO Admin — redirigir al panel dedicado
+    if (provider.code === 'twilio') {
+      router.push('/app/integraciones/twilio');
+      return;
+    }
+
+    // OTAs se gestionan desde el Channel Manager del PMS
+    if (provider.category === 'ota') {
+      const pmsRedirect = (provider.metadata as Record<string, unknown>)?.pms_redirect as string | undefined;
+      router.push(pmsRedirect || '/app/pms/channel-manager');
+      return;
+    }
+
     router.push(`/app/integraciones/conexiones/nueva?provider=${provider.id}`);
   };
 
@@ -322,6 +335,9 @@ export default function ConexionesPage() {
             onHealthCheck={handleHealthCheck}
             onDuplicate={(conn) => router.push(`/app/integraciones/conexiones/nueva?mode=duplicate&id=${conn.id}`)}
             onDelete={confirmDelete}
+            onConnectBookingApi={(providerId: string) => router.push(`/app/integraciones/conexiones/nueva?provider=${providerId}`)}
+            onConnectExpediaApi={(providerId: string) => router.push(`/app/integraciones/conexiones/nueva?provider=${providerId}`)}
+            onConnectTripAdvisorApi={(providerId: string) => router.push(`/app/integraciones/conexiones/nueva?provider=${providerId}`)}
           />
         )}
       </div>

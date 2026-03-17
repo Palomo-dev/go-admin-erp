@@ -100,17 +100,18 @@ export function IdentidadesTable({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50 dark:bg-gray-800">
-            <TableHead className="font-semibold">Tipo</TableHead>
-            <TableHead className="font-semibold">Valor</TableHead>
-            <TableHead className="font-semibold">Cliente</TableHead>
-            <TableHead className="font-semibold">Canal</TableHead>
-            <TableHead className="font-semibold">Estado</TableHead>
-            <TableHead className="font-semibold">Última actividad</TableHead>
-            <TableHead className="w-[80px]"></TableHead>
+          <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300">Tipo</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300">Valor</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">Cliente</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">Canal</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300">Estado</TableHead>
+            <TableHead className="font-semibold text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden lg:table-cell">Última actividad</TableHead>
+            <TableHead className="w-10 sm:w-[80px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -121,64 +122,66 @@ export function IdentidadesTable({
             return (
               <TableRow 
                 key={identity.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700/50"
               >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className={cn('p-1.5 rounded-lg', colorClass.split(' ').slice(2).join(' '))}>
-                      <Icon className={cn('h-4 w-4', colorClass.split(' ').slice(0, 2).join(' '))} />
+                <TableCell className="py-2 sm:py-3">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className={cn('p-1 sm:p-1.5 rounded-lg', colorClass.split(' ').slice(2).join(' '))}>
+                      <Icon className={cn('h-3.5 w-3.5 sm:h-4 sm:w-4', colorClass.split(' ').slice(0, 2).join(' '))} />
                     </div>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden xs:inline">
                       {getTypeLabel(identity.identity_type)}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                <TableCell className="py-2 sm:py-3">
+                  <code className="text-[10px] sm:text-sm font-mono bg-gray-100 dark:bg-gray-700 px-1.5 sm:px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 truncate max-w-[100px] sm:max-w-none block">
                     {identity.identity_value}
                   </code>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3 hidden sm:table-cell">
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
+                    <p className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white truncate max-w-[120px]">
                       {identity.customer?.full_name || 'Sin nombre'}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">
                       {identity.customer?.email || identity.customer?.phone || '-'}
                     </p>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3 hidden md:table-cell">
                   {identity.channel ? (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-[10px] sm:text-xs border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400">
                       {identity.channel.name}
                     </Badge>
                   ) : (
-                    <span className="text-gray-400">-</span>
+                    <span className="text-gray-400 dark:text-gray-500">-</span>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3">
                   {identity.verified ? (
-                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Verificado
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[10px] sm:text-xs">
+                      <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                      <span className="hidden xs:inline">Verificado</span>
+                      <span className="xs:hidden">✓</span>
                     </Badge>
                   ) : (
-                    <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                      <XCircle className="h-3 w-3 mr-1" />
-                      Sin verificar
+                    <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] sm:text-xs">
+                      <XCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                      <span className="hidden xs:inline">Sin verificar</span>
+                      <span className="xs:hidden">✗</span>
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                <TableCell className="py-2 sm:py-3 hidden lg:table-cell">
+                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                     {identity.last_seen_at 
                       ? formatDistanceToNow(new Date(identity.last_seen_at), { addSuffix: true, locale: es })
                       : 'Nunca'
                     }
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2 sm:py-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -211,6 +214,7 @@ export function IdentidadesTable({
           })}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

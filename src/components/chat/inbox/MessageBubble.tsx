@@ -76,7 +76,7 @@ export default function MessageBubble({ message, showAvatar = false, senderName 
     switch (contentType) {
       case 'image':
         return (
-          <div className="max-w-xs">
+          <div className="max-w-[200px] sm:max-w-xs">
             <img
               src={message.content}
               alt={message.metadata?.file_name || 'Imagen'}
@@ -163,7 +163,7 @@ export default function MessageBubble({ message, showAvatar = false, senderName 
 
       default:
         return (
-          <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+          <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words" style={{ wordBreak: 'break-word' }}>
             {message.content}
           </p>
         );
@@ -173,7 +173,7 @@ export default function MessageBubble({ message, showAvatar = false, senderName 
   return (
     <div
       className={cn(
-        'flex items-end gap-2 mb-2 group',
+        'flex items-end gap-2 mb-2 group min-w-0',
         isAgent ? 'justify-end' : 'justify-start'
       )}
     >
@@ -187,7 +187,7 @@ export default function MessageBubble({ message, showAvatar = false, senderName 
       {/* Burbuja de mensaje */}
       <div
         className={cn(
-          'max-w-[70%] sm:max-w-[60%] rounded-2xl px-4 py-2 shadow-sm',
+          'max-w-[75%] sm:max-w-[70%] md:max-w-[60%] rounded-2xl px-3 sm:px-4 py-2 shadow-sm overflow-hidden break-words',
           isAgent
             ? 'bg-blue-600 text-white rounded-br-sm'
             : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-sm'

@@ -75,6 +75,7 @@ interface Plan {
   trial_days: number;
   max_modules: number;
   max_branches: number;
+  max_users: number | null;
   features: {
     support: string;
     analytics: boolean;
@@ -155,6 +156,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   const [changingBilling, setChangingBilling] = useState(false);
   const [showPlanComparison, setShowPlanComparison] = useState(false);
   const [branchCount, setBranchCount] = useState(0);
+  const [memberCount, setMemberCount] = useState(0);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [reactivating, setReactivating] = useState(false);
   const [aiCredits, setAiCredits] = useState<{ remaining: number; monthly: number } | null>(null);
@@ -223,6 +225,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
             trial_days: currentPlanData.trial_days || 0,
             max_modules: currentPlanData.max_modules || 0,
             max_branches: currentPlanData.max_branches || 0,
+            max_users: currentPlanData.max_users || null,
             features: currentPlanData.features || {},
             is_active: true
           }
@@ -288,6 +291,19 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         console.error('Error loading branches:', branchError);
       } else {
         setBranchCount(branchData?.length || 0);
+      }
+
+      // Obtener conteo de miembros activos
+      const { data: memberData, error: memberError } = await supabase
+        .from('organization_members')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('is_active', true);
+
+      if (memberError) {
+        console.error('Error loading members:', memberError);
+      } else {
+        setMemberCount(memberData?.length || 0);
       }
 
       // Obtener créditos de IA
@@ -395,10 +411,14 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       setChangingBilling(true);
       setError(null);
 
+      // Obtener token de sesión para enviar en el header
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
       const response = await fetch('/api/subscriptions/change-billing', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(currentSession?.access_token ? { 'Authorization': `Bearer ${currentSession.access_token}` } : {}),
         },
         body: JSON.stringify({
           organizationId: orgId,
@@ -406,10 +426,15 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         }),
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error('Error al procesar la respuesta del servidor');
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || 'Error al cambiar el ciclo de facturación');
+        throw new Error(result?.error || 'Error al cambiar el ciclo de facturación');
       }
 
       // Mostrar mensaje de éxito
@@ -603,12 +628,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 
                 {/* Botones de ciclo de facturación */}
                 {currentPlan?.code !== 'free' && (() => {
-                  // Determinar ciclo actual basado en fechas
-                  const periodStart = new Date(subscription.current_period_start);
-                  const periodEnd = new Date(subscription.current_period_end);
-                  const diffMonths = (periodEnd.getFullYear() - periodStart.getFullYear()) * 12 + 
-                    (periodEnd.getMonth() - periodStart.getMonth());
-                  const isCurrentlyYearly = diffMonths >= 11;
+                  // Determinar ciclo actual basado en el campo billing_period
+                  const isCurrentlyYearly = subscription.billing_period === 'yearly';
                   
                   return (
                     <div className="flex items-center space-x-2">
@@ -652,7 +673,15 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         Portal de Facturación
                       </button>
                     )}
-                    {subscription?.cancel_at_period_end ? (
+                    {subscription?.status === 'canceled' ? (
+                      <button
+                        onClick={() => setShowChangePlanModal(true)}
+                        className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100"
+                      >
+                        <ArrowPathIcon className="w-4 h-4 mr-1" />
+                        Renovar Plan
+                      </button>
+                    ) : subscription?.cancel_at_period_end ? (
                       <button
                         onClick={handleReactivate}
                         disabled={reactivating}
@@ -672,8 +701,26 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     )}
                 </div>
 
+                {/* Aviso de suscripción cancelada */}
+                {subscription?.status === 'canceled' && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-800">
+                      ⚠️ Tu suscripción está cancelada. Selecciona un plan para recuperar el acceso completo a la plataforma.
+                    </p>
+                  </div>
+                )}
+
+                {/* Aviso de pago pendiente */}
+                {subscription?.status === 'past_due' && (
+                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                    <p className="text-sm text-orange-800">
+                      ⚠️ Tu último pago falló. Actualiza tu método de pago en el Portal de Facturación para evitar la suspensión.
+                    </p>
+                  </div>
+                )}
+
                 {/* Aviso de cancelación pendiente */}
-                {subscription?.cancel_at_period_end && (
+                {subscription?.cancel_at_period_end && subscription?.status !== 'canceled' && (
                   <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                     <p className="text-sm text-yellow-800">
                       ⚠️ Tu suscripción se cancelará al final del período actual. 
@@ -713,8 +760,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
             {(() => {
               // Obtener límites desde metadata.custom_config (Enterprise) o plan
               const customConfig = subscription?.metadata?.custom_config;
-              const maxModules = customConfig?.total_available_modules || customConfig?.modules_count || currentPlan.max_modules || null;
+              const planMaxModules = customConfig?.total_available_modules || customConfig?.modules_count || currentPlan.max_modules || null;
+              // Limitar al total real de módulos existentes en el sistema
+              const maxModules = planMaxModules && allModules.length > 0 ? Math.min(planMaxModules, allModules.length) : planMaxModules;
               const maxBranches = customConfig?.branches_count || customConfig?.branchesCount || currentPlan.max_branches || null;
+              const maxUsers = customConfig?.users_count || customConfig?.usersCount || currentPlan.max_users || null;
               const maxStorage = currentPlan.features?.storage_gb || null;
               const aiCreditsLimit = aiCredits?.monthly || 0;
               const aiCreditsUsed = aiCreditsLimit - (aiCredits?.remaining || 0);
@@ -722,10 +772,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               // Calcular porcentajes
               const modulesPercent = maxModules ? Math.min((totalActiveModules / maxModules) * 100, 100) : 0;
               const branchesPercent = maxBranches ? Math.min((branchCount / maxBranches) * 100, 100) : 0;
+              const usersPercent = maxUsers ? Math.min((memberCount / maxUsers) * 100, 100) : 0;
               const aiCreditsPercent = aiCreditsLimit ? Math.min((aiCreditsUsed / aiCreditsLimit) * 100, 100) : 0;
               
               return (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
                   {/* Módulos */}
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">
@@ -762,6 +813,25 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         <div 
                           className="bg-green-600 h-2 rounded-full transition-all duration-300" 
                           style={{ width: `${branchesPercent}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Usuarios */}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-indigo-600">
+                      {memberCount}
+                      <span className="text-sm text-gray-500">
+                        /{maxUsers || '∞'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">Usuarios</p>
+                    {maxUsers && (
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-indigo-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${usersPercent}%` }}
                         />
                       </div>
                     )}
@@ -949,7 +1019,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
             </p>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               {availablePlans.map((plan) => {
                 const isCurrentPlan = plan.code === currentPlan?.code;
                 const planPrice = plan.price_usd_month;

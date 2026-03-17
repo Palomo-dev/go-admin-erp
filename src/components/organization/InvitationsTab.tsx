@@ -28,6 +28,11 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
   const [sendingInvitation, setSendingInvitation] = useState(false);
+
+  // Límite de usuarios del plan
+  const [maxUsers, setMaxUsers] = useState<number | null>(null);
+  const [currentMemberCount, setCurrentMemberCount] = useState(0);
+  const [pendingInvitationsCount, setPendingInvitationsCount] = useState(0);
   
   // Estados para los filtros
   const [emailFilter, setEmailFilter] = useState('');
@@ -39,8 +44,45 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
     if (orgId) {
       fetchInvitations();
       fetchRoles();
+      fetchUserLimits();
     }
   }, [orgId]);
+
+  const fetchUserLimits = async () => {
+    try {
+      // Obtener max_users del plan actual
+      const { data: planData, error: planError } = await supabase
+        .rpc('get_current_plan', { org_id: orgId });
+
+      if (!planError && planData && planData.length > 0) {
+        setMaxUsers(planData[0].max_users || null);
+      }
+
+      // Contar miembros activos
+      const { data: membersData, error: membersError } = await supabase
+        .from('organization_members')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('is_active', true);
+
+      if (!membersError) {
+        setCurrentMemberCount(membersData?.length || 0);
+      }
+
+      // Contar invitaciones pendientes
+      const { data: pendingData, error: pendingError } = await supabase
+        .from('invitations')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('status', 'pending');
+
+      if (!pendingError) {
+        setPendingInvitationsCount(pendingData?.length || 0);
+      }
+    } catch (err) {
+      console.error('Error fetching user limits:', err);
+    }
+  };
 
   const fetchInvitations = async () => {
     try {
@@ -122,6 +164,12 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       
       if (!email || !roleId) {
         setError('Por favor completa todos los campos obligatorios');
+        return;
+      }
+
+      // Validar límite de usuarios del plan
+      if (maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers) {
+        setError(`Has alcanzado el límite de ${maxUsers} usuarios de tu plan. Actualiza tu plan para invitar más miembros.`);
         return;
       }
       
@@ -249,8 +297,9 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       setEmail('');
       setRoleId('');
       
-      // Refresh invitations list
+      // Refresh invitations list y conteos de límite
       fetchInvitations();
+      fetchUserLimits();
       
     } catch (err: any) {
       console.error('Error sending invitation:', err);
@@ -479,7 +528,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         
         {/* Contenido de filtros */}
         <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Filtro por email */}
             <div className="relative">
               <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -576,6 +625,43 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Enviar Nueva Invitación</h3>
+
+          {/* Banner de límite de usuarios */}
+          {maxUsers && (
+            <div className={`mt-3 p-3 rounded-md border ${
+              (currentMemberCount + pendingInvitationsCount) >= maxUsers
+                ? 'bg-red-50 border-red-200'
+                : 'bg-blue-50 border-blue-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <p className={`text-sm font-medium ${
+                  (currentMemberCount + pendingInvitationsCount) >= maxUsers
+                    ? 'text-red-800'
+                    : 'text-blue-800'
+                }`}>
+                  Usuarios: {currentMemberCount}/{maxUsers}
+                  {pendingInvitationsCount > 0 && (
+                    <span className="font-normal text-xs ml-1">
+                      (+{pendingInvitationsCount} invitaciones pendientes)
+                    </span>
+                  )}
+                </p>
+                {(currentMemberCount + pendingInvitationsCount) >= maxUsers && (
+                  <a
+                    href="/app/organizacion/plan"
+                    className="text-xs font-medium text-red-700 hover:text-red-900 underline"
+                  >
+                    Actualizar plan
+                  </a>
+                )}
+              </div>
+              {(currentMemberCount + pendingInvitationsCount) >= maxUsers && (
+                <p className="text-xs text-red-600 mt-1">
+                  Has alcanzado el límite de usuarios de tu plan. Actualiza tu plan para invitar más miembros.
+                </p>
+              )}
+            </div>
+          )}
           
           {error && (
             <div className="mt-2 bg-red-50 border-l-4 border-red-500 p-4">
@@ -618,7 +704,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="ejemplo@correo.com"
                 required
               />
@@ -633,7 +720,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 name="role"
                 value={roleId}
                 onChange={(e) => setRoleId(e.target.value)}
-                className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
+                className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                 required
               >
                 <option value="" disabled>Selecciona un rol</option>
@@ -648,8 +736,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={sendingInvitation}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={sendingInvitation || !!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendingInvitation ? 'Enviando...' : 'Enviar Invitación'}
               </button>

@@ -114,8 +114,8 @@ export function ReservationsTable({
   const canCancel = (status: string) => ['tentative', 'confirmed'].includes(status);
 
   return (
-    <div className="rounded-md border dark:border-gray-700">
-      <Table>
+    <div className="rounded-md border dark:border-gray-700 overflow-x-auto">
+      <Table className="min-w-[900px]">
         <TableHeader>
           <TableRow className="bg-gray-50 dark:bg-gray-800">
             <TableHead className="w-12">

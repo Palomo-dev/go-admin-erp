@@ -98,30 +98,33 @@ export function OpportunitiesFilters({
           </Button>
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
           {onExport && (
             <Button
               variant="outline"
+              size="sm"
               onClick={onExport}
-              className="border-gray-200 dark:border-gray-700"
+              className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 h-9 text-xs sm:text-sm"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
+              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Exportar</span>
             </Button>
           )}
           {onImport && (
             <Button
               variant="outline"
+              size="sm"
               onClick={onImport}
-              className="border-gray-200 dark:border-gray-700"
+              className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 h-9 text-xs sm:text-sm"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Importar
+              <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Importar</span>
             </Button>
           )}
-          <Button onClick={onNewOpportunity} className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Oportunidad
+          <Button onClick={onNewOpportunity} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs sm:text-sm flex-1 sm:flex-none">
+            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Nueva Oportunidad</span>
+            <span className="xs:hidden">Nuevo</span>
           </Button>
         </div>
       </div>
@@ -265,7 +268,7 @@ export function OpportunitiesFilters({
                   <Calendar
                     mode="single"
                     selected={filters.dateFrom ? new Date(filters.dateFrom) : undefined}
-                    onSelect={(date) =>
+                    onSelect={(date: Date | undefined) =>
                       onFiltersChange({
                         ...filters,
                         dateFrom: date ? format(date, 'yyyy-MM-dd') : undefined,
@@ -301,7 +304,7 @@ export function OpportunitiesFilters({
                   <Calendar
                     mode="single"
                     selected={filters.dateTo ? new Date(filters.dateTo) : undefined}
-                    onSelect={(date) =>
+                    onSelect={(date: Date | undefined) =>
                       onFiltersChange({
                         ...filters,
                         dateTo: date ? format(date, 'yyyy-MM-dd') : undefined,

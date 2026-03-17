@@ -61,58 +61,61 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
       <div
         className={`h-full flex flex-col rounded-md ${
           theme === "dark"
-            ? "bg-gray-950 border-gray-800"
+            ? "bg-gray-900 border-gray-700"
             : "bg-gray-50 border-gray-200"
-        } border shadow-sm relative overflow-hidden`}
+        } border shadow-sm relative overflow-hidden min-w-[200px] sm:min-w-[240px]`}
       >
         <div className={`absolute top-0 left-0 w-full h-1 ${getStageColorClass()}`} />
         
         <div
-          className={`p-3 pt-4 ${
+          className={`p-2 sm:p-3 pt-3 sm:pt-4 ${
             theme === "dark"
-              ? "bg-gray-900 text-gray-100"
+              ? "bg-gray-800 text-gray-100"
               : "bg-gray-100 text-gray-900"
           } rounded-t-md border-b ${
-            theme === "dark" ? "border-gray-800" : "border-gray-200"
+            theme === "dark" ? "border-gray-700" : "border-gray-200"
           }`}
         >
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              {isNewStage && <span className="text-blue-500 text-sm">●</span>}
-              {isWonStage && <span className="text-green-500 text-sm">✓</span>}
-              {isLostStage && <span className="text-red-500 text-sm">✗</span>}
-              <h3 className="font-medium text-sm">{stage.name}</h3>
+          <div className="flex justify-between items-center gap-1">
+            <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
+              {isNewStage && <span className="text-blue-500 dark:text-blue-400 text-xs sm:text-sm shrink-0">●</span>}
+              {isWonStage && <span className="text-green-500 dark:text-green-400 text-xs sm:text-sm shrink-0">✓</span>}
+              {isLostStage && <span className="text-red-500 dark:text-red-400 text-xs sm:text-sm shrink-0">✗</span>}
+              <h3 className="font-medium text-xs sm:text-sm truncate">{stage.name}</h3>
               <Badge 
                 variant={isWonStage ? "success" : (isLostStage ? "destructive" : "secondary")} 
-                className="text-xs font-normal"
+                className="text-[10px] sm:text-xs font-normal shrink-0"
               >
                 {opportunities.length}
               </Badge>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="text-xs font-medium">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <div className="text-[10px] sm:text-xs font-medium text-gray-700 dark:text-gray-300 hidden xs:block">
                 {formatCurrency(totalValue, currency)}
               </div>
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-6 ml-1 flex items-center text-xs gap-1 opacity-70 hover:opacity-100" 
+                className="h-5 w-5 sm:h-6 sm:w-6 p-0 flex items-center justify-center opacity-70 hover:opacity-100 text-gray-600 dark:text-gray-400" 
                 onClick={() => setIsConfigOpen(true)}
                 title="Configurar etapa"
               >
-                <Settings className="h-3.5 w-3.5" />
+                <Settings className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               </Button>
             </div>
           </div>
+          <div className="xs:hidden text-[10px] font-medium text-gray-600 dark:text-gray-400 mt-1">
+            {formatCurrency(totalValue, currency)}
+          </div>
           {stage.probability !== null && (
-            <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-              <div className="w-full bg-gray-200 dark:bg-gray-700 h-1 rounded-full overflow-hidden">
+            <div className="mt-1 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              <div className="w-full bg-gray-200 dark:bg-gray-600 h-1 rounded-full overflow-hidden">
                 <div 
                   className={`h-full ${getStageColorClass()}`}
                   style={{ width: `${stage.probability}%` }}
                 />
               </div>
-              <span>{stage.probability}%</span>
+              <span className="shrink-0">{stage.probability}%</span>
             </div>
           )}
         </div>

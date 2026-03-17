@@ -160,34 +160,30 @@ export default function ReportesHRMPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link href="/app/hrm">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <FileBarChart className="h-7 w-7 text-blue-600" />
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <FileBarChart className="h-5 w-5 sm:h-7 sm:w-7 text-blue-600 dark:text-blue-400" />
               Reportes HRM
             </h1>
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               HRM / Reportes Operativos
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => loadReport(currentFilters)}>
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleExportCSV}
-            disabled={data.length === 0}
-          >
+          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={data.length === 0}>
             <Download className="mr-2 h-4 w-4" />
             Exportar CSV
           </Button>
@@ -195,15 +191,15 @@ export default function ReportesHRMPage() {
       </div>
 
       {/* Report Type Tabs */}
-      <Tabs value={reportType} onValueChange={setReportType} className="space-y-6">
-        <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1">
+      <Tabs value={reportType} onValueChange={setReportType} className="space-y-4 sm:space-y-6">
+        <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1 flex flex-wrap h-auto gap-1">
           {reportTypes.map((type) => (
             <TabsTrigger
               key={type.value}
               value={type.value}
-              className="data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300"
+              className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300"
             >
-              {getTabIcon(type.icon)}
+              <span className="hidden sm:inline">{getTabIcon(type.icon)}</span>
               {type.label}
             </TabsTrigger>
           ))}

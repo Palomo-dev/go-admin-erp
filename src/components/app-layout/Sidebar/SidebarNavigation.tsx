@@ -88,6 +88,7 @@ import {
   Upload,
   History,
   Palette,
+  Radio,
 } from 'lucide-react';
 import ProfileDropdownMenu from '../ProfileDropdownMenu';
 import { NavItem } from './NavItem';
@@ -258,6 +259,7 @@ const SidebarNavigationComponent = ({
             { name: "Mantenimiento", href: "/app/pms/mantenimiento", icon: <Settings size={16} /> },
             { name: "Consumos", href: "/app/pms/folios", icon: <Receipt size={16} /> },
             { name: "Origenes", href: "/app/pms/origenes", icon: <Globe size={16} /> },
+            { name: "Channel Manager", href: "/app/pms/channel-manager", icon: <Radio size={16} /> },
             { name: "Parquedero", href: "/app/pms/parking", icon: <ParkingCircle size={16} /> },
             { name: "Configuración", href: "/app/pms/configuracion", icon: <Settings size={16} /> },
           ]

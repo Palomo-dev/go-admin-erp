@@ -219,7 +219,7 @@ export default function ModulesMarketplacePage() {
   
   if (showInitialLoader) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <div className="space-y-4">
           <h1 className="text-3xl font-bold">Marketplace de Módulos</h1>
           <p className="text-gray-600">Activa y desactiva módulos según las necesidades de tu negocio</p>
@@ -231,7 +231,7 @@ export default function ModulesMarketplacePage() {
 
   if (!organizationId) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -254,7 +254,7 @@ export default function ModulesMarketplacePage() {
   const totalActiveCount = coreCount + additionalActiveCount;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="space-y-4">
         <h1 className="text-3xl font-bold">Marketplace de Módulos</h1>
@@ -409,8 +409,8 @@ export default function ModulesMarketplacePage() {
         </div>
       </div>
 
-      {/* Upgrade Plan CTA */}
-      {organizationStatus?.plan && totalActiveCount >= organizationStatus.plan.max_modules && (
+      {/* Upgrade Plan CTA - Solo mostrar si hay módulos que podrían activarse */}
+      {organizationStatus?.plan && totalActiveCount >= organizationStatus.plan.max_modules && paidModules.some(m => !optimisticActiveModules.has(m.code)) && (
         <Card className="border-purple-200 bg-purple-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-800">

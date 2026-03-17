@@ -196,7 +196,7 @@ export function LoanForm({
           </div>
 
           {/* Loan Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="principal" className="text-gray-700 dark:text-gray-300">
                 Monto Principal *

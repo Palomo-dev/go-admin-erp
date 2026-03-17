@@ -41,7 +41,7 @@ function ChatSidePanelComponent({
     <div
       className={cn(
         'flex flex-col h-full',
-        'w-80 lg:w-96',
+        'w-full sm:w-80 lg:w-96',
         'bg-white dark:bg-gray-900',
         'border-l border-gray-200 dark:border-gray-700',
         'transition-all duration-300 ease-in-out',

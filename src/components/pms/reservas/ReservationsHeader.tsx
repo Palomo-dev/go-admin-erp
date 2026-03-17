@@ -27,16 +27,16 @@ export function ReservationsHeader({
   return (
     <div className="space-y-6">
       {/* Título y acciones */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
             Reservas
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">
             Gestiona todas las reservas de tu establecimiento
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <Button
             variant="outline"
             onClick={onRefresh}
@@ -53,7 +53,7 @@ export function ReservationsHeader({
       </div>
 
       {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">

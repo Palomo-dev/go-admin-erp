@@ -35,7 +35,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       value: stats.total,
       icon: Send,
       color: 'blue',
-      bgLight: 'bg-blue-50',
+      bg: 'bg-blue-50',
       bgDark: 'dark:bg-blue-900/20',
       iconColor: 'text-blue-600 dark:text-blue-400',
     },
@@ -44,7 +44,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       value: stats.accepted,
       icon: FileCheck2,
       color: 'green',
-      bgLight: 'bg-green-50',
+      bg: 'bg-green-50',
       bgDark: 'dark:bg-green-900/20',
       iconColor: 'text-green-600 dark:text-green-400',
     },
@@ -53,7 +53,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       value: stats.rejected,
       icon: FileX2,
       color: 'red',
-      bgLight: 'bg-red-50',
+      bg: 'bg-red-50',
       bgDark: 'dark:bg-red-900/20',
       iconColor: 'text-red-600 dark:text-red-400',
     },
@@ -62,7 +62,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       value: stats.pending + stats.processing,
       icon: Clock,
       color: 'yellow',
-      bgLight: 'bg-yellow-50',
+      bg: 'bg-yellow-50',
       bgDark: 'dark:bg-yellow-900/20',
       iconColor: 'text-yellow-600 dark:text-yellow-400',
     },
@@ -71,7 +71,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       value: stats.failed,
       icon: AlertTriangle,
       color: 'orange',
-      bgLight: 'bg-orange-50',
+      bg: 'bg-orange-50',
       bgDark: 'dark:bg-orange-900/20',
       iconColor: 'text-orange-600 dark:text-orange-400',
     },
@@ -80,7 +80,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       value: `${stats.successRate.toFixed(1)}%`,
       icon: TrendingUp,
       color: 'indigo',
-      bgLight: 'bg-indigo-50',
+      bg: 'bg-indigo-50',
       bgDark: 'dark:bg-indigo-900/20',
       iconColor: 'text-indigo-600 dark:text-indigo-400',
       isPercentage: true,
@@ -94,7 +94,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
           key={index}
           className={cn(
             'border-0 shadow-sm transition-all hover:shadow-md',
-            card.bgLight,
+            card.bg,
             card.bgDark
           )}
         >
@@ -120,7 +120,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
                   </p>
                 )}
               </div>
-              <div className={cn('p-2 rounded-lg', card.bgLight, card.bgDark)}>
+              <div className={cn('p-2 rounded-lg', card.bg, card.bgDark)}>
                 <card.icon className={cn('h-5 w-5', card.iconColor)} />
               </div>
             </div>

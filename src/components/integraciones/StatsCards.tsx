@@ -9,12 +9,21 @@ import {
   Activity,
   XCircle,
   Webhook,
+  Hotel,
 } from 'lucide-react';
 import type { IntegrationStats } from '@/lib/services/integrationsService';
+
+interface OtaStatsData {
+  totalOtaConnections: number;
+  activeOtaConnections: number;
+  errorOtaConnections: number;
+  channelsUsed: string[];
+}
 
 interface StatsCardsProps {
   stats: IntegrationStats | null;
   loading: boolean;
+  otaStats?: OtaStatsData | null;
 }
 
 interface StatCardProps {
@@ -91,7 +100,7 @@ function StatCard({ title, value, icon, color, subtitle }: StatCardProps) {
   );
 }
 
-export function StatsCards({ stats, loading }: StatsCardsProps) {
+export function StatsCards({ stats, loading, otaStats }: StatsCardsProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -156,6 +165,15 @@ export function StatsCards({ stats, loading }: StatsCardsProps) {
         color="purple"
         subtitle="hoy"
       />
+      {otaStats && otaStats.totalOtaConnections > 0 && (
+        <StatCard
+          title="Canales OTA"
+          value={otaStats.activeOtaConnections}
+          icon={<Hotel size={24} />}
+          color="purple"
+          subtitle={`${otaStats.totalOtaConnections} total · ${otaStats.channelsUsed.length} canales`}
+        />
+      )}
     </div>
   );
 }

@@ -274,25 +274,25 @@ export function AddressDialog({
           <div className="space-y-2">
             <Label>Cliente *</Label>
             {selectedCustomer && !isEditing ? (
-              <div className="p-3 rounded-lg border dark:bg-blue-900/20 dark:border-blue-500/30 light:bg-blue-50 light:border-blue-200">
+              <div className="p-3 rounded-lg border dark:bg-blue-900/20 dark:border-blue-500/30 bg-blue-50 border-blue-200">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="p-2 rounded-full dark:bg-blue-500/20 light:bg-blue-100 shrink-0">
-                      <User className="h-5 w-5 dark:text-blue-400 light:text-blue-600" />
+                    <div className="p-2 rounded-full dark:bg-blue-500/20 bg-blue-100 shrink-0">
+                      <User className="h-5 w-5 dark:text-blue-400 text-blue-600" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold dark:text-white light:text-gray-900">
+                      <p className="font-semibold dark:text-white text-gray-900">
                         {selectedCustomer.first_name} {selectedCustomer.last_name}
                       </p>
                       <div className="mt-1 space-y-0.5">
                         {selectedCustomer.email && (
-                          <div className="flex items-center gap-1.5 text-xs dark:text-gray-300 light:text-gray-600">
+                          <div className="flex items-center gap-1.5 text-xs dark:text-gray-300 text-gray-600">
                             <Mail className="h-3 w-3" />
                             <span className="truncate">{selectedCustomer.email}</span>
                           </div>
                         )}
                         {selectedCustomer.phone && (
-                          <div className="flex items-center gap-1.5 text-xs dark:text-gray-300 light:text-gray-600">
+                          <div className="flex items-center gap-1.5 text-xs dark:text-gray-300 text-gray-600">
                             <Phone className="h-3 w-3" />
                             <span>{selectedCustomer.phone}</span>
                           </div>
@@ -308,7 +308,7 @@ export function AddressDialog({
                       setSelectedCustomer(null);
                       setFormData({ ...formData, customer_id: '' });
                     }}
-                    className="h-8 w-8 p-0 dark:hover:bg-red-500/20 dark:hover:text-red-400 light:hover:bg-red-50 light:hover:text-red-600"
+                    className="h-8 w-8 p-0 dark:hover:bg-red-500/20 dark:hover:text-red-400 hover:bg-red-50 hover:text-red-600"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -317,11 +317,11 @@ export function AddressDialog({
             ) : isEditing && selectedCustomer ? (
               <div className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-full dark:bg-gray-700 light:bg-gray-200">
+                  <div className="p-2 rounded-full dark:bg-gray-700 bg-gray-200">
                     <User className="h-5 w-5 text-gray-500" />
                   </div>
                   <div>
-                    <p className="font-medium dark:text-white light:text-gray-900">
+                    <p className="font-medium dark:text-white text-gray-900">
                       {selectedCustomer.first_name} {selectedCustomer.last_name}
                     </p>
                     <p className="text-xs text-gray-500">Cliente no editable</p>
@@ -334,30 +334,30 @@ export function AddressDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full justify-start text-left h-auto p-3 dark:border-gray-700 dark:hover:bg-gray-800/50 dark:hover:border-blue-500/50 light:border-gray-300 light:hover:bg-blue-50 light:hover:border-blue-300 transition-all"
+                    className="w-full justify-start text-left h-auto p-3 dark:border-gray-700 dark:hover:bg-gray-800/50 dark:hover:border-blue-500/50 border-gray-300 hover:bg-blue-50 hover:border-blue-300 transition-all"
                   >
                     <div className="flex items-center gap-3 min-w-0 w-full">
-                      <div className="p-2 rounded-full dark:bg-blue-500/20 light:bg-blue-100 shrink-0">
-                        <User className="h-5 w-5 dark:text-blue-400 light:text-blue-600" />
+                      <div className="p-2 rounded-full dark:bg-blue-500/20 bg-blue-100 shrink-0">
+                        <User className="h-5 w-5 dark:text-blue-400 text-blue-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium dark:text-white light:text-gray-900">
+                        <p className="font-medium dark:text-white text-gray-900">
                           Seleccionar cliente
                         </p>
-                        <p className="text-xs dark:text-gray-400 light:text-gray-600">
+                        <p className="text-xs dark:text-gray-400 text-gray-600">
                           Buscar por nombre, email o teléfono
                         </p>
                       </div>
-                      <SearchIcon className="h-4 w-4 dark:text-gray-400 light:text-gray-500 shrink-0" />
+                      <SearchIcon className="h-4 w-4 dark:text-gray-400 text-gray-500 shrink-0" />
                     </div>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-96 p-0 dark:bg-gray-900 dark:border-gray-800" align="start">
                   <div className="p-4 space-y-4">
                     <div className="space-y-2">
-                      <h4 className="font-semibold dark:text-white light:text-gray-900">Buscar Cliente</h4>
+                      <h4 className="font-semibold dark:text-white text-gray-900">Buscar Cliente</h4>
                       <div className="relative">
-                        <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 light:text-gray-500" />
+                        <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
                         <Input
                           placeholder="Nombre, email o teléfono..."
                           value={customerSearch}
@@ -379,36 +379,36 @@ export function AddressDialog({
                           </div>
                         ) : customers.length === 0 && customerSearch.length >= 2 ? (
                           <div className="flex flex-col items-center justify-center py-6 text-center">
-                            <User className="h-10 w-10 dark:text-gray-600 light:text-gray-400 mb-2" />
+                            <User className="h-10 w-10 dark:text-gray-600 text-gray-400 mb-2" />
                             <p className="text-sm dark:text-gray-400">No se encontraron clientes</p>
                           </div>
                         ) : customers.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-6 text-center">
-                            <SearchIcon className="h-10 w-10 dark:text-gray-600 light:text-gray-400 mb-2" />
+                            <SearchIcon className="h-10 w-10 dark:text-gray-600 text-gray-400 mb-2" />
                             <p className="text-sm dark:text-gray-400">Escribe para buscar clientes</p>
                           </div>
                         ) : (
                           customers.map((customer) => (
                             <div
                               key={customer.id}
-                              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all dark:hover:bg-gray-800 light:hover:bg-gray-50 border border-transparent dark:hover:border-blue-500/30 light:hover:border-blue-200"
+                              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all dark:hover:bg-gray-800 hover:bg-gray-50 border border-transparent dark:hover:border-blue-500/30 hover:border-blue-200"
                               onClick={() => handleSelectCustomer(customer)}
                             >
-                              <div className="p-1.5 rounded-full dark:bg-blue-500/20 light:bg-blue-100">
-                                <User className="h-4 w-4 dark:text-blue-400 light:text-blue-600" />
+                              <div className="p-1.5 rounded-full dark:bg-blue-500/20 bg-blue-100">
+                                <User className="h-4 w-4 dark:text-blue-400 text-blue-600" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm dark:text-white light:text-gray-900 truncate">
+                                <p className="font-medium text-sm dark:text-white text-gray-900 truncate">
                                   {customer.first_name} {customer.last_name}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {customer.email && (
-                                    <span className="text-xs dark:text-gray-400 light:text-gray-600 truncate max-w-[150px]">
+                                    <span className="text-xs dark:text-gray-400 text-gray-600 truncate max-w-[150px]">
                                       {customer.email}
                                     </span>
                                   )}
                                   {customer.phone && (
-                                    <span className="text-xs dark:text-gray-400 light:text-gray-600">
+                                    <span className="text-xs dark:text-gray-400 text-gray-600">
                                       {customer.phone}
                                     </span>
                                   )}

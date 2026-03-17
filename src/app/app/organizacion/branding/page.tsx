@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Palette, Image, LayoutGrid, Zap, Search, FileText, Code, Globe,
-  ArrowLeft, RefreshCw, Save
+  Palette, Search, FileText, Code, Globe,
+  ArrowLeft, RefreshCw, Save, FileEdit
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
@@ -19,20 +19,16 @@ import {
 } from '@/lib/services/websiteSettingsService';
 import {
   BrandingThemeTab,
-  BrandingHeroTab,
-  BrandingSectionsTab,
-  BrandingFeaturesTab,
   BrandingSEOTab,
   BrandingContentTab,
   BrandingAdvancedTab,
   BrandingPublishTab,
+  BrandingPagesTab,
 } from '@/components/organization/branding';
 
 const TABS = [
   { id: 'theme', label: 'Tema', icon: Palette },
-  { id: 'hero', label: 'Hero', icon: Image },
-  { id: 'sections', label: 'Secciones', icon: LayoutGrid },
-  { id: 'features', label: 'Funcionalidades', icon: Zap },
+  { id: 'pages', label: 'Páginas', icon: FileEdit },
   { id: 'seo', label: 'SEO', icon: Search },
   { id: 'content', label: 'Contenido', icon: FileText },
   { id: 'advanced', label: 'Avanzado', icon: Code },
@@ -105,12 +101,6 @@ export default function BrandingPage() {
 
       if ('template_id' in data || 'theme_mode' in data || 'primary_color' in data) {
         updatedSettings = await websiteSettingsService.updateTheme(organizationId, safeData);
-      } else if ('hero_title' in data || 'hero_image_url' in data) {
-        updatedSettings = await websiteSettingsService.updateHero(organizationId, safeData);
-      } else if ('show_products' in data || 'show_services' in data) {
-        updatedSettings = await websiteSettingsService.updateSections(organizationId, safeData);
-      } else if ('enable_reservations' in data || 'enable_online_ordering' in data) {
-        updatedSettings = await websiteSettingsService.updateFeatures(organizationId, safeData);
       } else if ('meta_title' in data || 'meta_description' in data || 'favicon_url' in data) {
         updatedSettings = await websiteSettingsService.updateSEO(organizationId, safeData);
       } else if ('social_links' in data || 'business_hours' in data || 'gallery_images' in data) {
@@ -299,36 +289,20 @@ export default function BrandingPage() {
                 })}
               </TabsList>
 
+              <TabsContent value="pages">
+                {organizationId && (
+                  <BrandingPagesTab organizationId={organizationId} />
+                )}
+              </TabsContent>
+
               <TabsContent value="theme">
                 <BrandingThemeTab
                   settings={settings}
                   onSave={handleSave}
                   isSaving={isSaving}
-                />
-              </TabsContent>
-
-              <TabsContent value="hero">
-                <BrandingHeroTab
-                  settings={settings}
-                  onSave={handleSave}
-                  onUploadImage={handleUploadImage}
-                  isSaving={isSaving}
-                />
-              </TabsContent>
-
-              <TabsContent value="sections">
-                <BrandingSectionsTab
-                  settings={settings}
-                  onSave={handleSave}
-                  isSaving={isSaving}
-                />
-              </TabsContent>
-
-              <TabsContent value="features">
-                <BrandingFeaturesTab
-                  settings={settings}
-                  onSave={handleSave}
-                  isSaving={isSaving}
+                  organizationTypeId={organization?.type_id ?? null}
+                  organizationId={organizationId ?? null}
+                  subdomain={organization?.subdomain ?? null}
                 />
               </TabsContent>
 

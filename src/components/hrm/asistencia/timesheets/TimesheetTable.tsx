@@ -73,36 +73,37 @@ export function TimesheetTable({
 }: TimesheetTableProps) {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="flex items-center justify-center py-8 sm:py-12">
+        <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 dark:border-blue-400" />
       </div>
     );
   }
 
   if (timesheets.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-        <Clock className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-        <p>No hay timesheets para mostrar</p>
+      <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
+        <Clock className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-gray-300 dark:text-gray-600" />
+        <p className="text-sm sm:text-base">No hay timesheets para mostrar</p>
       </div>
     );
   }
 
   return (
     <TooltipProvider>
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-              <TableHead>Fecha</TableHead>
-              <TableHead>Empleado</TableHead>
-              <TableHead>Sede</TableHead>
-              <TableHead className="text-right">Trabajado</TableHead>
-              <TableHead className="text-right">Extra</TableHead>
-              <TableHead className="text-right">Nocturno</TableHead>
-              <TableHead className="text-right">Tardanza</TableHead>
-              <TableHead className="text-center">Estado</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+            <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+              <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Fecha</TableHead>
+              <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Empleado</TableHead>
+              <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden lg:table-cell">Sede</TableHead>
+              <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 text-right">Trabajado</TableHead>
+              <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 text-right hidden md:table-cell">Extra</TableHead>
+              <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 text-right hidden lg:table-cell">Nocturno</TableHead>
+              <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 text-right hidden md:table-cell">Tardanza</TableHead>
+              <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 text-center">Estado</TableHead>
+              <TableHead className="w-10 sm:w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -113,93 +114,93 @@ export function TimesheetTable({
               return (
                 <TableRow
                   key={timesheet.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
                   onClick={() => onView(timesheet.id)}
                 >
-                  <TableCell>
-                    <span className="font-medium text-gray-900 dark:text-white">
+                  <TableCell className="py-2 sm:py-3">
+                    <span className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
                       {formatDate(timesheet.work_date)}
                     </span>
                   </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
+                  <TableCell className="py-2 sm:py-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white truncate">
                         {timesheet.employee_name}
                       </p>
                       {timesheet.employee_code && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                           {timesheet.employee_code}
                         </p>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                  <TableCell className="py-2 sm:py-3 hidden lg:table-cell">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
                       {timesheet.branch_name || 'Sin asignar'}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <span className="font-mono text-sm text-gray-900 dark:text-white">
+                  <TableCell className="py-2 sm:py-3 text-right">
+                    <span className="font-mono text-xs sm:text-sm text-gray-900 dark:text-white">
                       {formatMinutes(timesheet.worked_minutes)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="py-2 sm:py-3 text-right hidden md:table-cell">
                     {timesheet.overtime_minutes > 0 ? (
                       <Tooltip>
                         <TooltipTrigger>
-                          <span className="font-mono text-sm text-orange-600 dark:text-orange-400">
+                          <span className="font-mono text-xs sm:text-sm text-orange-600 dark:text-orange-400">
                             {formatMinutes(timesheet.overtime_minutes)}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent>Horas extra</TooltipContent>
+                        <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">Horas extra</TooltipContent>
                       </Tooltip>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 dark:text-gray-500">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="py-2 sm:py-3 text-right hidden lg:table-cell">
                     {timesheet.night_minutes > 0 ? (
                       <Tooltip>
                         <TooltipTrigger>
-                          <span className="font-mono text-sm text-purple-600 dark:text-purple-400">
+                          <span className="font-mono text-xs sm:text-sm text-purple-600 dark:text-purple-400">
                             {formatMinutes(timesheet.night_minutes)}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent>Horas nocturnas</TooltipContent>
+                        <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">Horas nocturnas</TooltipContent>
                       </Tooltip>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 dark:text-gray-500">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="py-2 sm:py-3 text-right hidden md:table-cell">
                     {timesheet.late_minutes > 0 ? (
                       <Tooltip>
                         <TooltipTrigger>
-                          <span className="font-mono text-sm text-red-600 dark:text-red-400 flex items-center justify-end gap-1">
-                            <AlertTriangle className="h-3 w-3" />
+                          <span className="font-mono text-xs sm:text-sm text-red-600 dark:text-red-400 flex items-center justify-end gap-1">
+                            <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                             {formatMinutes(timesheet.late_minutes)}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent>Llegada tarde</TooltipContent>
+                        <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">Llegada tarde</TooltipContent>
                       </Tooltip>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 dark:text-gray-500">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <Badge className={cn('gap-1', statusConfig.color)}>
-                      <StatusIcon className="h-3 w-3" />
+                  <TableCell className="py-2 sm:py-3 text-center">
+                    <Badge className={cn('gap-1 text-[10px] sm:text-xs', statusConfig.color)}>
+                      <StatusIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                       {statusConfig.label}
                     </Badge>
                   </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="py-2 sm:py-3" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                          <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onView(timesheet.id)}>
@@ -238,6 +239,7 @@ export function TimesheetTable({
             })}
           </TableBody>
         </Table>
+        </div>
       </div>
     </TooltipProvider>
   );

@@ -24,6 +24,13 @@ import {
   Lock,
   Calendar,
   CheckCircle,
+  Search,
+  MapPin,
+  Building2,
+  Star,
+  MessageSquare,
+  Loader2,
+  ArrowRight,
 } from 'lucide-react';
 import { IntegrationProvider } from '@/lib/services/integrationsService';
 import { cn } from '@/lib/utils';
@@ -86,8 +93,9 @@ const PROVIDER_CREDENTIAL_OVERRIDES: Record<string, {
   fields: Array<{ key: string; label: string; placeholder: string; type: string; hint?: string }>;
   helpUrl?: string;
   helpText?: string;
-  oauthProvider?: 'facebook' | 'tiktok';
+  oauthProvider?: 'facebook' | 'tiktok' | 'google';
   embeddedSignup?: 'whatsapp';
+  propertyLinking?: boolean;
 }> = {
   wompi: {
     label: 'Wompi Colombia',
@@ -264,6 +272,109 @@ const PROVIDER_CREDENTIAL_OVERRIDES: Record<string, {
     oauthProvider: 'tiktok',
     fields: [],
   },
+  google_ads: {
+    label: 'Google Ads',
+    description: 'Conecta tu cuenta de Google Ads con un clic. GO Admin guardará las credenciales y configurará las conversiones.',
+    helpUrl: 'https://ads.google.com',
+    helpText: 'Haz clic en "Conectar con Google" para autorizar GO Admin. No necesitas copiar ninguna credencial manualmente.',
+    oauthProvider: 'google',
+    fields: [],
+  },
+  sendgrid: {
+    label: 'SendGrid Email',
+    description: 'Se requieren 3 datos para enviar emails con SendGrid',
+    helpUrl: 'https://app.sendgrid.com/settings/api_keys',
+    helpText: 'Obtén tu API Key en Settings → API Keys → Create API Key (Restricted Access con Mail Send Full Access)',
+    fields: [
+      {
+        key: 'api_key',
+        label: 'API Key',
+        placeholder: 'SG.xxxxxxxxxxxx.yyyyyyyyyyyy',
+        type: 'password',
+        hint: 'API Key con permisos de Mail Send. Se genera en Settings → API Keys (solo se muestra una vez)',
+      },
+      {
+        key: 'from_email',
+        label: 'Email del Remitente',
+        placeholder: 'noreply@midominio.com',
+        type: 'text',
+        hint: 'Debe estar verificado como Sender Identity o pertenecer a un dominio autenticado en SendGrid',
+      },
+      {
+        key: 'from_name',
+        label: 'Nombre del Remitente',
+        placeholder: 'Mi Negocio',
+        type: 'text',
+        hint: 'Nombre que aparecerá como remitente en los emails enviados',
+      },
+    ],
+  },
+  booking: {
+    label: 'Booking.com Connectivity API',
+    description: 'Conecta mediante OAuth2 Client Credentials. Obtén las credenciales desde el Provider Portal de Booking.com.',
+    helpUrl: 'https://connect.booking.com',
+    helpText: 'Obtén las credenciales Machine Account desde Provider Portal → Connectivity → Machine Account Credentials',
+    fields: [
+      {
+        key: 'hotel_id',
+        label: 'Hotel ID',
+        placeholder: 'Ej: 1234567',
+        type: 'text',
+        hint: 'ID numérico de tu propiedad en Booking.com (visible en la Extranet)',
+      },
+      {
+        key: 'machine_client_id',
+        label: 'Machine Client ID',
+        placeholder: 'Ej: abc123def456...',
+        type: 'text',
+        hint: 'Client ID de la cuenta Machine para OAuth2 client_credentials',
+      },
+      {
+        key: 'machine_client_secret',
+        label: 'Machine Client Secret',
+        placeholder: '••••••••••••',
+        type: 'password',
+        hint: 'Client Secret de la cuenta Machine (se almacena de forma segura)',
+      },
+    ],
+  },
+  tripadvisor: {
+    label: 'TripAdvisor Content API',
+    description: 'Vincula tu propiedad de TripAdvisor para mostrar reseñas, fotos y calificaciones en GO Admin.',
+    helpUrl: 'https://www.tripadvisor.com',
+    helpText: 'Busca tu hotel o negocio por nombre y selecciónalo de los resultados. No se requiere API Key.',
+    propertyLinking: true,
+    fields: [],
+  },
+  expedia: {
+    label: 'Expedia Group Connectivity API',
+    description: 'Conecta mediante Basic Auth (EQC Credentials). Obtén las credenciales desde el Developer Hub de Expedia Group.',
+    helpUrl: 'https://developers.expediagroup.com/supply/lodging',
+    helpText: 'Solicita credenciales EQC (Expedia Quick Connect) desde Developer Hub → Contact Us. El Property ID se encuentra en Partner Central.',
+    fields: [
+      {
+        key: 'property_id',
+        label: 'Expedia Property ID',
+        placeholder: 'Ej: 12345678',
+        type: 'text',
+        hint: 'ID numérico de tu propiedad en Expedia Group (visible en Partner Central)',
+      },
+      {
+        key: 'eqc_username',
+        label: 'EQC Username',
+        placeholder: 'Ej: EQCuser123',
+        type: 'text',
+        hint: 'Username de Expedia Quick Connect (prefijo EQC)',
+      },
+      {
+        key: 'eqc_password',
+        label: 'EQC Password',
+        placeholder: '••••••••••••',
+        type: 'password',
+        hint: 'Password EQC (mín. 16 caracteres, se almacena de forma segura)',
+      },
+    ],
+  },
   whatsapp: {
     label: 'WhatsApp Cloud API',
     description: 'Conecta tu WhatsApp Business con un clic, o ingresa las credenciales manualmente.',
@@ -323,6 +434,68 @@ export function StepCredentials({
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
 
+  // TripAdvisor property linking state
+  const [taSearchQuery, setTaSearchQuery] = useState('');
+  const [taSearchResults, setTaSearchResults] = useState<any[]>([]);
+  const [taIsSearching, setTaIsSearching] = useState(false);
+  const [taSearchError, setTaSearchError] = useState<string | null>(null);
+  const [taHasSearched, setTaHasSearched] = useState(false);
+  const [taSelectedLocation, setTaSelectedLocation] = useState<any | null>(null);
+  const [taIsLoadingDetails, setTaIsLoadingDetails] = useState(false);
+
+  const handleTaSearch = async () => {
+    if (!taSearchQuery.trim()) return;
+    setTaIsSearching(true);
+    setTaSearchError(null);
+    setTaHasSearched(true);
+    try {
+      const res = await fetch(`/api/integrations/tripadvisor/search?searchQuery=${encodeURIComponent(taSearchQuery.trim())}`);
+      const result = await res.json();
+      if (res.ok && result.data) {
+        setTaSearchResults(result.data);
+      } else {
+        setTaSearchError(result.error || 'Error buscando ubicaciones');
+        setTaSearchResults([]);
+      }
+    } catch {
+      setTaSearchError('Error de red al buscar');
+      setTaSearchResults([]);
+    }
+    setTaIsSearching(false);
+  };
+
+  const handleTaSelectLocation = async (location: any) => {
+    setTaIsLoadingDetails(true);
+    setTaSelectedLocation(location);
+    try {
+      const res = await fetch(`/api/integrations/tripadvisor/details?locationId=${location.location_id}`);
+      const result = await res.json();
+      if (res.ok && result.data) {
+        setTaSelectedLocation(result.data);
+      }
+    } catch { /* usar datos básicos */ }
+    setTaIsLoadingDetails(false);
+
+    // Guardar location_id en secret_ref como JSON para que el wizard lo use
+    const locationData = {
+      location_id: location.location_id,
+      location_name: location.name,
+      location_address: location.address_obj?.address_string || '',
+    };
+    onCredentialsChange({
+      ...credentials,
+      credential_type: 'property_link',
+      secret_ref: JSON.stringify(locationData),
+    });
+  };
+
+  const getTaAddress = (loc: any) =>
+    loc?.address_obj?.address_string ||
+    [loc?.address_obj?.street1, loc?.address_obj?.city, loc?.address_obj?.country]
+      .filter(Boolean)
+      .join(', ') ||
+    'Dirección no disponible';
+
   const authType = provider?.auth_type || 'api_key';
   const providerOverride = provider?.code ? PROVIDER_CREDENTIAL_OVERRIDES[provider.code] : undefined;
   const authConfig = providerOverride || AUTH_TYPE_CONFIG[authType] || AUTH_TYPE_CONFIG.api_key;
@@ -361,9 +534,12 @@ export function StepCredentials({
     if (!oauthType) return;
 
     // Seleccionar API route según el provider OAuth
-    const apiRoute = oauthType === 'facebook'
-      ? '/api/integrations/meta/oauth/authorize'
-      : '/api/integrations/tiktok/oauth/authorize';
+    const apiRouteMap: Record<string, string> = {
+      facebook: '/api/integrations/meta/oauth/authorize',
+      tiktok: '/api/integrations/tiktok/oauth/authorize',
+      google: '/api/integrations/google-ads/oauth/authorize',
+    };
+    const apiRoute = apiRouteMap[oauthType] || '/api/integrations/meta/oauth/authorize';
 
     setIsOAuthLoading(true);
     setOauthError(null);
@@ -388,6 +564,7 @@ export function StepCredentials({
 
   const isOAuthProvider = !!providerOverride?.oauthProvider;
   const isEmbeddedSignup = !!providerOverride?.embeddedSignup;
+  const isPropertyLinking = !!providerOverride?.propertyLinking;
   const [showManualFields, setShowManualFields] = useState(false);
   const [embeddedSignupSuccess, setEmbeddedSignupSuccess] = useState<string | null>(null);
 
@@ -592,8 +769,8 @@ export function StepCredentials({
             </Badge>
           </div>
 
-          {/* OAuth2 - Botón de autorización */}
-          {authType === 'oauth2' && (
+          {/* OAuth2 - Botón de autorización (solo para proveedores sin override específico) */}
+          {authType === 'oauth2' && !providerOverride && (
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
@@ -625,22 +802,173 @@ export function StepCredentials({
         <CardContent className="p-4 space-y-6">
           <h4 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
             <Lock className="h-4 w-4 text-gray-500" />
-            {isOAuthProvider || isEmbeddedSignup ? 'Conexión Automática' : 'Datos de Acceso'}
+            {isPropertyLinking ? 'Vincular Propiedad' : isOAuthProvider || isEmbeddedSignup ? 'Conexión Automática' : 'Datos de Acceso'}
           </h4>
+
+          {/* TripAdvisor Property Linking */}
+          {isPropertyLinking && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gradient-to-br from-[#00AA6C]/5 to-[#00AA6C]/10 dark:from-[#00AA6C]/10 dark:to-[#00AA6C]/20 rounded-xl border border-[#00AA6C]/20">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  Busca tu hotel o negocio por nombre como aparece en TripAdvisor. No se requiere API Key.
+                </p>
+              </div>
+
+              {/* Barra de búsqueda */}
+              <div className="flex gap-2">
+                <Input
+                  value={taSearchQuery}
+                  onChange={(e) => setTaSearchQuery(e.target.value)}
+                  placeholder="Ej: Hotel Dann Carlton Medellín"
+                  onKeyDown={(e) => e.key === 'Enter' && handleTaSearch()}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleTaSearch}
+                  disabled={!taSearchQuery.trim() || taIsSearching}
+                  style={{ backgroundColor: '#00AA6C' }}
+                  className="text-white hover:opacity-90"
+                >
+                  {taIsSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  <span className="ml-2 hidden sm:inline">Buscar</span>
+                </Button>
+              </div>
+
+              {/* Error */}
+              {taSearchError && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                  <span className="text-sm text-red-700 dark:text-red-400">{taSearchError}</span>
+                </div>
+              )}
+
+              {/* Sin resultados */}
+              {taHasSearched && !taIsSearching && taSearchResults.length === 0 && !taSearchError && (
+                <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+                  <MapPin className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No se encontraron resultados. Intenta con otro nombre.</p>
+                </div>
+              )}
+
+              {/* Resultados de búsqueda */}
+              {!taSelectedLocation && taSearchResults.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">{taSearchResults.length} resultado(s)</p>
+                  {taSearchResults.map((loc: any) => (
+                    <div
+                      key={loc.location_id}
+                      onClick={() => handleTaSelectLocation(loc)}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer transition-all hover:shadow-md hover:border-[#00AA6C]/50"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-[#00AA6C]/10 flex items-center justify-center shrink-0">
+                        <Building2 className="h-4 w-4 text-[#00AA6C]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{loc.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 truncate">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          {getTaAddress(loc)}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-gray-400 shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Propiedad seleccionada */}
+              {taSelectedLocation && (
+                <div className="space-y-3">
+                  <div className="p-4 rounded-lg border-2 border-[#00AA6C]/40 bg-[#00AA6C]/5">
+                    {taIsLoadingDetails ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-[#00AA6C]" />
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-3">
+                        {taSelectedLocation.photo?.images?.medium?.url ? (
+                          <img
+                            src={taSelectedLocation.photo.images.medium.url}
+                            alt={taSelectedLocation.name}
+                            className="w-16 h-16 rounded-lg object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg bg-[#00AA6C]/10 flex items-center justify-center shrink-0">
+                            <Building2 className="h-7 w-7 text-[#00AA6C]" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-gray-900 dark:text-white">{taSelectedLocation.name}</p>
+                            <CheckCircle className="h-4 w-4 text-[#00AA6C] shrink-0" />
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            {getTaAddress(taSelectedLocation)}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                            {taSelectedLocation.rating && (
+                              <Badge className="bg-[#00AA6C] text-white text-xs gap-1">
+                                <Star className="h-3 w-3" />
+                                {taSelectedLocation.rating}
+                              </Badge>
+                            )}
+                            {taSelectedLocation.num_reviews && (
+                              <span className="text-xs text-gray-500 flex items-center gap-1">
+                                <MessageSquare className="h-3 w-3" />
+                                {taSelectedLocation.num_reviews} reseñas
+                              </span>
+                            )}
+                            {taSelectedLocation.category?.name && (
+                              <Badge variant="outline" className="text-xs">{taSelectedLocation.category.name}</Badge>
+                            )}
+                          </div>
+                          {taSelectedLocation.ranking_data?.ranking_string && (
+                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{taSelectedLocation.ranking_data.ranking_string}</p>
+                          )}
+                          <p className="text-[10px] text-gray-400 mt-1">Location ID: {taSelectedLocation.location_id}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTaSelectedLocation(null);
+                      onCredentialsChange({ ...credentials, secret_ref: '{}' });
+                    }}
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline"
+                  >
+                    ← Buscar otra propiedad
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* OAuth: Botón de Conectar (Facebook o TikTok) */}
           {isOAuthProvider && (() => {
-            const isFacebook = providerOverride?.oauthProvider === 'facebook';
-            const brandColor = isFacebook ? '#0081FB' : '#000000';
-            const brandHover = isFacebook ? '#0070E0' : '#333333';
-            const brandName = isFacebook ? 'Facebook Business' : 'TikTok Ads';
-            const buttonLabel = isFacebook ? 'Conectar con Facebook' : 'Conectar con TikTok';
+            const oauthType = providerOverride?.oauthProvider;
+            const isFacebook = oauthType === 'facebook';
+            const isGoogle = oauthType === 'google';
+            const brandColor = isFacebook ? '#0081FB' : isGoogle ? '#4285F4' : '#000000';
+            const brandHover = isFacebook ? '#0070E0' : isGoogle ? '#3367D6' : '#333333';
+            const brandName = isFacebook ? 'Facebook Business' : isGoogle ? 'Google Ads' : 'TikTok Ads';
+            const buttonLabel = isFacebook ? 'Conectar con Facebook' : isGoogle ? 'Conectar con Google' : 'Conectar con TikTok';
             const stepTexts = isFacebook
               ? [
                   'Se abrirá Facebook para que autorices GO Admin',
                   'GO Admin obtendrá tu token y Business Manager automáticamente',
                   'Se creará un catálogo de productos y un pixel de conversión',
                   'Todos tus productos activos se sincronizarán al catálogo',
+                  'Volverás aquí con todo configurado',
+                ]
+              : isGoogle
+              ? [
+                  'Se abrirá Google para que autorices GO Admin',
+                  'GO Admin obtendrá el refresh token permanente automáticamente',
+                  'Se listarán tus cuentas de Google Ads disponibles',
+                  'Se seleccionará tu cuenta y se guardará la conexión',
                   'Volverás aquí con todo configurado',
                 ]
               : [
@@ -658,6 +986,8 @@ export function StepCredentials({
                   <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: brandColor }}>
                     {isFacebook ? (
                       <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    ) : isGoogle ? (
+                      <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#fff"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#fff"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#fff"/></svg>
                     ) : (
                       <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.86a8.28 8.28 0 004.76 1.5v-3.4a4.85 4.85 0 01-1-.27z"/></svg>
                     )}
@@ -666,7 +996,9 @@ export function StepCredentials({
                     Conectar con {brandName}
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 max-w-sm mx-auto">
-                    Haz clic para autorizar GO Admin. Se creará el catálogo de productos y pixel de conversión automáticamente.
+                    {isGoogle
+                      ? 'Haz clic para autorizar GO Admin en tu cuenta de Google Ads. No necesitas copiar credenciales.'
+                      : 'Haz clic para autorizar GO Admin. Se creará el catálogo de productos y pixel de conversión automáticamente.'}
                   </p>
                 </div>
 
@@ -814,8 +1146,8 @@ export function StepCredentials({
             </div>
           )}
 
-          {/* Ayuda específica del proveedor (solo para NO-OAuth y NO-EmbeddedSignup) */}
-          {!isOAuthProvider && !isEmbeddedSignup && providerOverride?.helpText && (
+          {/* Ayuda específica del proveedor (solo para NO-OAuth, NO-EmbeddedSignup y NO-PropertyLinking) */}
+          {!isOAuthProvider && !isEmbeddedSignup && !isPropertyLinking && providerOverride?.helpText && (
             <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
@@ -836,8 +1168,8 @@ export function StepCredentials({
             </div>
           )}
 
-          {/* Campos manuales (para proveedores NO-OAuth, o Embedded Signup en modo manual) */}
-          {(!isOAuthProvider || (isEmbeddedSignup && showManualFields)) && authConfig.fields.map((field) => (
+          {/* Campos manuales (para proveedores NO-OAuth, NO-PropertyLinking, o Embedded Signup en modo manual) */}
+          {(!isOAuthProvider && !isPropertyLinking || (isEmbeddedSignup && showManualFields)) && authConfig.fields.map((field) => (
             <div key={field.key} className="space-y-2">
               <Label htmlFor={field.key}>{field.label}</Label>
               <div className="relative max-w-md">
@@ -869,8 +1201,8 @@ export function StepCredentials({
             </div>
           ))}
 
-          {/* Propósito de la credencial (solo NO-OAuth o manual) */}
-          {(!isOAuthProvider || (isEmbeddedSignup && showManualFields)) && <div className="space-y-2">
+          {/* Propósito de la credencial (solo NO-OAuth, NO-PropertyLinking o manual) */}
+          {(!isOAuthProvider && !isPropertyLinking || (isEmbeddedSignup && showManualFields)) && <div className="space-y-2">
             <Label htmlFor="purpose">Propósito</Label>
             <Select
               value={credentials.purpose}
@@ -895,8 +1227,8 @@ export function StepCredentials({
             </Select>
           </div>}
 
-          {/* Expiración (solo NO-OAuth) */}
-          {!isOAuthProvider && <div className="space-y-2">
+          {/* Expiración (solo NO-OAuth y NO-PropertyLinking) */}
+          {!isOAuthProvider && !isPropertyLinking && <div className="space-y-2">
             <Label htmlFor="expires_at" className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-500" />
               Fecha de expiración (opcional)
@@ -918,8 +1250,8 @@ export function StepCredentials({
         </CardContent>
       </Card>
 
-      {/* Validación (solo NO-OAuth) */}
-      {!isOAuthProvider && <Card>
+      {/* Validación (solo NO-OAuth y NO-PropertyLinking) */}
+      {!isOAuthProvider && !isPropertyLinking && <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>

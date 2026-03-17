@@ -131,16 +131,12 @@ export default function SucursalesPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900">Sucursales</h1>
-            <p className="mt-2 text-gray-600">Gestiona las sucursales de tu organización</p>
-          </div>
-          <div className="mt-8">
-            <BranchesSkeleton />
-          </div>
+      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Sucursales</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona las sucursales de tu organización</p>
         </div>
+        <BranchesSkeleton />
       </div>
     );
   }
@@ -184,34 +180,32 @@ export default function SucursalesPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Sucursales</h1>
-        </div>
-        <p className="mt-2 text-gray-600">Gestiona las sucursales de tu organización</p>
-        
-        {userBranches.length > 0 && (
-          <div className="mt-4">
-            <h2 className="text-lg font-medium text-gray-900">Tus Sucursales</h2>
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userBranches.map((branch) => (
-                <div key={branch.branch_id} className="bg-white overflow-hidden shadow rounded-lg border">
-                  <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg font-medium text-gray-900 truncate">{branch.branch_name || `Sucursal #${branch.branch_id}`}</h3>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        <div className="mt-8">
-          <Suspense fallback={<BranchesSkeleton />}>
-            <BranchesTab orgId={orgData} userBranches={userBranches} />
-          </Suspense>
+    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Sucursales</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona las sucursales de tu organización</p>
         </div>
       </div>
+      
+      {userBranches.length > 0 && (
+        <div>
+          <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Tus Sucursales</h2>
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userBranches.map((branch) => (
+              <div key={branch.branch_id} className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
+                <div className="px-4 py-5 sm:p-6">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 truncate">{branch.branch_name || `Sucursal #${branch.branch_id}`}</h3>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      <Suspense fallback={<BranchesSkeleton />}>
+        <BranchesTab orgId={orgData} userBranches={userBranches} />
+      </Suspense>
     </div>
   );
 }

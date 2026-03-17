@@ -10,6 +10,7 @@ import {
   Hotel,
   Search,
   Truck,
+  Radio,
   Link2,
   Zap,
   Filter,
@@ -191,6 +192,33 @@ const PROVIDER_CONFIGS: Record<string, Omit<ProviderConfig, 'code' | 'name'>> = 
     borderColor: 'border-[#FF5A5F]/30',
     category: 'ota'
   },
+  expedia: {
+    description: 'Expedia & Vrbo channel',
+    icon: <Hotel className="h-6 w-6" />,
+    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/5b/Expedia_2012_logo.svg',
+    color: 'text-[#00355F]',
+    bgColor: 'bg-[#00355F]/10',
+    borderColor: 'border-[#00355F]/30',
+    category: 'ota'
+  },
+  tripadvisor: {
+    description: 'TripAdvisor rentals',
+    icon: <Hotel className="h-6 w-6" />,
+    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/02/TripAdvisor_Logo.svg',
+    color: 'text-[#34E0A1]',
+    bgColor: 'bg-[#34E0A1]/10',
+    borderColor: 'border-[#34E0A1]/30',
+    category: 'ota'
+  },
+  google_vacation_rentals: {
+    description: 'Google Vacation Rentals',
+    icon: <Hotel className="h-6 w-6" />,
+    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg',
+    color: 'text-[#4285F4]',
+    bgColor: 'bg-[#4285F4]/10',
+    borderColor: 'border-[#4285F4]/30',
+    category: 'ota'
+  },
 };
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string; bgColor: string }> = {
@@ -253,6 +281,9 @@ interface AvailableProvidersProps {
   onHealthCheck: (connection: IntegrationConnection) => void;
   onDuplicate: (connection: IntegrationConnection) => void;
   onDelete: (connection: IntegrationConnection) => void;
+  onConnectBookingApi?: (providerId: string) => void;
+  onConnectExpediaApi?: (providerId: string) => void;
+  onConnectTripAdvisorApi?: (providerId: string) => void;
 }
 
 export function AvailableProviders({ 
@@ -267,7 +298,10 @@ export function AvailableProviders({
   onRevoke,
   onHealthCheck,
   onDuplicate,
-  onDelete
+  onDelete,
+  onConnectBookingApi,
+  onConnectExpediaApi,
+  onConnectTripAdvisorApi,
 }: AvailableProvidersProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -630,6 +664,9 @@ export function AvailableProviders({
                   onHealthCheck={onHealthCheck}
                   onDuplicate={onDuplicate}
                   onDelete={onDelete}
+                  onConnectBookingApi={provider.code === 'booking' ? () => onConnectBookingApi?.(provider.id) : undefined}
+                  onConnectExpediaApi={provider.code === 'expedia' ? () => onConnectExpediaApi?.(provider.id) : undefined}
+                  onConnectTripAdvisorApi={provider.code === 'tripadvisor' ? () => onConnectTripAdvisorApi?.(provider.id) : undefined}
                 />
               );
             })}

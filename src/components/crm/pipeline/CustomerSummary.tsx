@@ -134,7 +134,7 @@ export function CustomerSummary() {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
       <Card className={cn(
         theme === "dark" ? "bg-background/50 border-slate-800" : "bg-white"
       )}>

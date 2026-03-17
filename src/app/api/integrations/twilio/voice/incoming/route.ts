@@ -109,7 +109,6 @@ function buildConversationRelayTwiml(wsHost: string, orgId: number): string {
     <ConversationRelay
       url="${wsHost}/conversation-relay"
       language="en-US"
-      welcomeGreeting="Hola, un momento mientras lo conecto con nuestro asistente virtual."
     >
       <Parameter name="orgId" value="${orgId}" />
     </ConversationRelay>

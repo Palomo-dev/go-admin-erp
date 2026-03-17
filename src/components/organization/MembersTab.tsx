@@ -45,13 +45,30 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<{id: string, name: string} | null>(null);
 
+  // Límite de usuarios del plan
+  const [maxUsers, setMaxUsers] = useState<number | null>(null);
+
   useEffect(() => {
     if (orgId) {
       fetchMembers();
       fetchRoles();
       fetchBranches();
+      fetchUserLimit();
     }
   }, [orgId]);
+
+  const fetchUserLimit = async () => {
+    try {
+      const { data: planData, error: planError } = await supabase
+        .rpc('get_current_plan', { org_id: orgId });
+
+      if (!planError && planData && planData.length > 0) {
+        setMaxUsers(planData[0].max_users || null);
+      }
+    } catch (err) {
+      console.error('Error fetching user limit:', err);
+    }
+  };
 
   const fetchMembers = async () => {
     try {
@@ -558,7 +575,18 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
           <div>
             <h3 className="text-lg leading-6 font-medium text-gray-900">Miembros de la Organización</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">Lista de miembros actuales {members.length > 0 && filteredMembers.length !== members.length && ` (${filteredMembers.length} de ${members.length})`}</p>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              Lista de miembros actuales {members.length > 0 && filteredMembers.length !== members.length && ` (${filteredMembers.length} de ${members.length})`}
+              {maxUsers && (
+                <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                  members.length >= maxUsers
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {members.length}/{maxUsers} usuarios
+                </span>
+              )}
+            </p>
           </div>
           
           {/* Botón para alternar filtros */}

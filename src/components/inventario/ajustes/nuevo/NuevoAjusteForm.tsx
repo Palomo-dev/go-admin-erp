@@ -323,7 +323,7 @@ export function NuevoAjusteForm() {
               <CardTitle className="text-lg dark:text-white">Información del Ajuste</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="dark:text-gray-300">Sucursal *</Label>
                   <Select value={branchId} onValueChange={setBranchId}>

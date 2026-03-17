@@ -66,28 +66,28 @@ export default function ConfiguracionHub() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center gap-4">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => router.push('/app/crm')}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="h-8 w-8 sm:h-10 sm:w-10 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <Settings className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white">
                   Configuración del CRM
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 hidden xs:block">
                   Gestiona canales, etiquetas, reglas y configuraciones
                 </p>
               </div>
@@ -97,27 +97,27 @@ export default function ConfiguracionHub() {
       </div>
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
           {configCards.map((card) => (
             <Card
               key={card.id}
-              className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:shadow-lg transition-shadow cursor-pointer group"
+              className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg dark:hover:shadow-gray-900/50 transition-shadow cursor-pointer group"
               onClick={() => router.push(card.href)}
             >
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
                 <div className="flex items-start justify-between">
-                  <div className={`p-3 rounded-lg ${card.bgColor}`}>
+                  <div className={`p-2 sm:p-3 rounded-lg ${card.bgColor}`}>
                     <span className={card.color}>{card.icon}</span>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
                 </div>
               </CardHeader>
-              <CardContent>
-                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <CardTitle className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
                   {card.title}
                 </CardTitle>
-                <CardDescription className="text-gray-500 dark:text-gray-400">
+                <CardDescription className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   {card.description}
                 </CardDescription>
               </CardContent>

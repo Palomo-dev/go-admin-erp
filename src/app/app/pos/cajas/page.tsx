@@ -119,7 +119,7 @@ export default function CajasPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
       <div className="container mx-auto max-w-7xl space-y-6">
         {/* Header */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+        <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
               <div className="flex items-center space-x-3">
@@ -127,10 +127,10 @@ export default function CajasPage() {
                   <Wallet className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl dark:text-white light:text-gray-900">
+                  <CardTitle className="text-2xl dark:text-white text-gray-900">
                     Apertura & Cierre de Caja
                   </CardTitle>
-                  <p className="text-sm dark:text-gray-400 light:text-gray-600">
+                  <p className="text-sm dark:text-gray-400 text-gray-600">
                     Gestión de sesiones de caja - {organization?.name || 'Organización'}
                   </p>
                 </div>
@@ -139,8 +139,8 @@ export default function CajasPage() {
               <div className="flex items-center space-x-4">
                 <div className="text-right">
                   <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 dark:text-gray-400 light:text-gray-500" />
-                    <span className="text-sm dark:text-gray-400 light:text-gray-600">
+                    <Clock className="h-4 w-4 dark:text-gray-400 text-gray-500" />
+                    <span className="text-sm dark:text-gray-400 text-gray-600">
                       {formatDateTime(lastUpdate)}
                     </span>
                   </div>
@@ -183,9 +183,9 @@ export default function CajasPage() {
         {!activeSession && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2 dark:text-white light:text-gray-900">
+                  <CardTitle className="flex items-center space-x-2 dark:text-white text-gray-900">
                     <Wallet className="h-5 w-5 text-blue-600" />
                     <span>No hay sesión de caja activa</span>
                   </CardTitle>
@@ -195,10 +195,10 @@ export default function CajasPage() {
                     <div className="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
                       <Wallet className="h-12 w-12 text-gray-400" />
                     </div>
-                    <h3 className="text-lg font-medium dark:text-white light:text-gray-900 mb-2">
+                    <h3 className="text-lg font-medium dark:text-white text-gray-900 mb-2">
                       Caja Cerrada
                     </h3>
-                    <p className="dark:text-gray-400 light:text-gray-600 mb-6">
+                    <p className="dark:text-gray-400 text-gray-600 mb-6">
                       Para comenzar a operar, debes abrir una nueva sesión de caja
                       declarando el monto inicial de efectivo.
                     </p>
@@ -206,7 +206,7 @@ export default function CajasPage() {
                     <AperturaCajaDialog onSessionOpened={handleSessionOpened} />
                   </div>
 
-                  <Separator className="dark:bg-gray-700 light:bg-gray-200" />
+                  <Separator className="dark:bg-gray-700 bg-gray-200" />
 
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                     <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
@@ -224,33 +224,33 @@ export default function CajasPage() {
             </div>
             
             <div>
-              <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
                 <CardHeader>
-                  <CardTitle className="text-lg dark:text-white light:text-gray-900">
+                  <CardTitle className="text-lg dark:text-white text-gray-900">
                     Acciones Rápidas
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <p className="text-sm dark:text-gray-400 light:text-gray-600">
+                  <p className="text-sm dark:text-gray-400 text-gray-600">
                     Funciones disponibles una vez abierta la caja:
                   </p>
                   
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2 text-sm">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="dark:text-gray-300 light:text-gray-700">Registrar ingresos/egresos</span>
+                      <span className="dark:text-gray-300 text-gray-700">Registrar ingresos/egresos</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="dark:text-gray-300 light:text-gray-700">Realizar arqueo de caja</span>
+                      <span className="dark:text-gray-300 text-gray-700">Realizar arqueo de caja</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm">
                       <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                      <span className="dark:text-gray-300 light:text-gray-700">Generar reportes PDF</span>
+                      <span className="dark:text-gray-300 text-gray-700">Generar reportes PDF</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm">
                       <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <span className="dark:text-gray-300 light:text-gray-700">Cerrar sesión de caja</span>
+                      <span className="dark:text-gray-300 text-gray-700">Cerrar sesión de caja</span>
                     </div>
                   </div>
                 </CardContent>
@@ -263,7 +263,7 @@ export default function CajasPage() {
         {activeSession && (
           <>
             {/* Controles principales */}
-            <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+            <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
               <CardContent className="pt-6">
                 <div className="flex flex-wrap gap-4 justify-center sm:justify-start">
                   <MovimientosDialog 
@@ -312,7 +312,7 @@ export default function CajasPage() {
         )}
 
         {/* Historial de Sesiones */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+        <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg dark:text-white">
               <History className="h-5 w-5" />
@@ -375,9 +375,9 @@ export default function CajasPage() {
         </Card>
 
         {/* Footer informativo */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700 light:bg-white light:border-gray-200">
+        <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
           <CardContent className="pt-4">
-            <div className="flex flex-col sm:flex-row justify-between items-center text-sm dark:text-gray-400 light:text-gray-600">
+            <div className="flex flex-col sm:flex-row justify-between items-center text-sm dark:text-gray-400 text-gray-600">
               <p>
                 © 2025 GO Admin ERP - Sistema de gestión de cajas POS
               </p>

@@ -117,9 +117,9 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-2xl dark:bg-gray-800 light:bg-white">
+      <DialogContent className="max-w-2xl dark:bg-gray-800 bg-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2 dark:text-white light:text-gray-900">
+          <DialogTitle className="flex items-center space-x-2 dark:text-white text-gray-900">
             <Calculator className="h-5 w-5 text-red-600" />
             <span>Arqueo y Cierre de Caja</span>
           </DialogTitle>
@@ -133,44 +133,44 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Resumen de movimientos */}
-            <Card className="dark:bg-gray-700 dark:border-gray-600 light:bg-gray-50 light:border-gray-200">
+            <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm dark:text-gray-200 light:text-gray-700">
+                <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
                   Resumen de Movimientos
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="dark:text-gray-400 light:text-gray-600">Monto inicial:</span>
-                    <p className="font-medium dark:text-white light:text-gray-900">
+                    <span className="dark:text-gray-400 text-gray-600">Monto inicial:</span>
+                    <p className="font-medium dark:text-white text-gray-900">
                       {summary ? formatCurrency(summary.initial_amount) : '-'}
                     </p>
                   </div>
                   <div>
-                    <span className="dark:text-gray-400 light:text-gray-600">Ventas en efectivo:</span>
+                    <span className="dark:text-gray-400 text-gray-600">Ventas en efectivo:</span>
                     <p className="font-medium text-green-600">
                       {summary ? formatCurrency(summary.sales_cash) : '-'}
                     </p>
                   </div>
                   <div>
-                    <span className="dark:text-gray-400 light:text-gray-600">Ingresos:</span>
+                    <span className="dark:text-gray-400 text-gray-600">Ingresos:</span>
                     <p className="font-medium text-blue-600">
                       {summary ? formatCurrency(summary.cash_in) : '-'}
                     </p>
                   </div>
                   <div>
-                    <span className="dark:text-gray-400 light:text-gray-600">Egresos:</span>
+                    <span className="dark:text-gray-400 text-gray-600">Egresos:</span>
                     <p className="font-medium text-red-600">
                       {summary ? formatCurrency(summary.cash_out) : '-'}
                     </p>
                   </div>
                 </div>
                 
-                <Separator className="dark:bg-gray-600 light:bg-gray-300" />
+                <Separator className="dark:bg-gray-600 bg-gray-300" />
                 
                 <div className="flex justify-between items-center">
-                  <span className="font-medium dark:text-gray-200 light:text-gray-800">
+                  <span className="font-medium dark:text-gray-200 text-gray-800">
                     Monto esperado:
                   </span>
                   <span className="text-lg font-bold text-blue-600">
@@ -181,16 +181,16 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
             </Card>
 
             {/* Arqueo */}
-            <Card className="dark:bg-gray-700 dark:border-gray-600 light:bg-gray-50 light:border-gray-200">
+            <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm dark:text-gray-200 light:text-gray-700">
+                <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
                   Arqueo de Caja
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Monto contado */}
                 <div className="space-y-2">
-                  <Label htmlFor="final_amount" className="dark:text-gray-200 light:text-gray-700">
+                  <Label htmlFor="final_amount" className="dark:text-gray-200 text-gray-700">
                     Monto Contado *
                   </Label>
                   <Input
@@ -200,7 +200,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                     min="0"
                     value={formData.final_amount}
                     onChange={(e) => handleInputChange('final_amount', parseFloat(e.target.value) || 0)}
-                    className="dark:bg-gray-600 dark:border-gray-500 dark:text-white light:bg-white light:border-gray-300"
+                    className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
                     required
                   />
                 </div>
@@ -208,7 +208,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 {/* Diferencia */}
                 <div className="p-3 bg-gray-100 dark:bg-gray-600 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700">
+                    <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
                       Diferencia:
                     </span>
                     <span className={`text-lg font-bold ${getDifferenceColor()}`}>
@@ -216,7 +216,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                     </span>
                   </div>
                   {getDifference() !== 0 && (
-                    <p className="text-xs mt-1 dark:text-gray-400 light:text-gray-500">
+                    <p className="text-xs mt-1 dark:text-gray-400 text-gray-500">
                       {getDifference() > 0 ? 'Sobrante' : 'Faltante'} de efectivo
                     </p>
                   )}
@@ -224,7 +224,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
 
                 {/* Notas */}
                 <div className="space-y-2">
-                  <Label htmlFor="notes" className="dark:text-gray-200 light:text-gray-700">
+                  <Label htmlFor="notes" className="dark:text-gray-200 text-gray-700">
                     Observaciones del Cierre (Opcional)
                   </Label>
                   <Textarea
@@ -232,7 +232,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                     value={formData.notes}
                     onChange={(e) => handleInputChange('notes', e.target.value)}
                     placeholder="Observaciones del cierre, novedades, etc..."
-                    className="dark:bg-gray-600 dark:border-gray-500 dark:text-white light:bg-white light:border-gray-300"
+                    className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
                     rows={3}
                   />
                 </div>

@@ -197,10 +197,36 @@ function SelectOrganizationContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando organizaciones...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          {/* Header skeleton */}
+          <div>
+            <div className="mx-auto h-12 w-12 rounded-full bg-gray-200 animate-pulse" />
+            <div className="mt-6 mx-auto h-8 w-64 bg-gray-200 rounded animate-pulse" />
+            <div className="mt-2 mx-auto h-4 w-80 bg-gray-100 rounded animate-pulse" />
+          </div>
+          {/* Org cards skeleton */}
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="w-full flex items-center p-4 border border-gray-200 rounded-lg">
+                <div className="flex-shrink-0 mr-4">
+                  <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse" />
+                </div>
+                <div className="flex-grow space-y-2">
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Divider + button skeleton */}
+          <div className="mt-6">
+            <div className="w-full border-t border-gray-200" />
+            <div className="mt-6 h-10 w-full bg-gray-100 rounded-md animate-pulse" />
+          </div>
         </div>
       </div>
     );
@@ -308,10 +334,25 @@ function SelectOrganizationContent() {
 export default function SelectOrganizationPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <div className="mx-auto h-12 w-12 rounded-full bg-gray-200 animate-pulse" />
+            <div className="mt-6 mx-auto h-8 w-64 bg-gray-200 rounded animate-pulse" />
+            <div className="mt-2 mx-auto h-4 w-80 bg-gray-100 rounded animate-pulse" />
+          </div>
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="w-full flex items-center p-4 border border-gray-200 rounded-lg">
+                <div className="flex-shrink-0 mr-4"><div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse" /></div>
+                <div className="flex-grow space-y-2">
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <div className="flex-shrink-0"><div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" /></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     }>

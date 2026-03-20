@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
+import { supabase } from '@/lib/supabase/config';
 import { 
   websiteSettingsService, 
   WebsiteSettings 
@@ -46,6 +47,22 @@ export default function BrandingPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('theme');
+  const [currentSubdomain, setCurrentSubdomain] = useState<string | null>(null);
+
+  // Cargar subdominio de la organización directamente desde la DB
+  const loadSubdomain = useCallback(async () => {
+    if (!organizationId) return;
+    try {
+      const { data } = await supabase
+        .from('organizations')
+        .select('subdomain')
+        .eq('id', organizationId)
+        .single();
+      setCurrentSubdomain(data?.subdomain || null);
+    } catch (error) {
+      console.error('Error loading subdomain:', error);
+    }
+  }, [organizationId]);
 
   // Cargar configuración
   const loadSettings = useCallback(async () => {
@@ -78,7 +95,8 @@ export default function BrandingPage() {
 
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+    loadSubdomain();
+  }, [loadSettings, loadSubdomain]);
 
   // Refrescar datos
   const handleRefresh = async () => {
@@ -336,7 +354,7 @@ export default function BrandingPage() {
                 <BrandingPublishTab
                   settings={settings}
                   organizationName={organization?.name || 'Mi Organización'}
-                  subdomain={undefined}
+                  subdomain={currentSubdomain || undefined}
                   onPublish={handlePublish}
                   onUnpublish={handleUnpublish}
                   onResetToTemplate={handleResetToTemplate}

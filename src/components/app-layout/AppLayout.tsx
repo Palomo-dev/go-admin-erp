@@ -87,7 +87,7 @@ import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { SubMenuPanel } from './Sidebar/SubMenuPanel';
 import AIAssistantPanel from './Header/AIAssistantPanel';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { usePathname, useRouter } from 'next/navigation';
 import { NavItemProps } from './types';
 import type { AssistantContext } from '@/lib/services/aiAssistantService';
@@ -627,7 +627,29 @@ export const AppLayout = ({
       }
 
       const user = session.user;
-      const currentOrgId = getOrganizationId();
+      let currentOrgId = getOrganizationId();
+
+      // Fallback: si no hay org en localStorage, obtener last_org_id del perfil
+      if (!currentOrgId || currentOrgId === 0) {
+        const { data: profileOrg } = await supabase
+          .from('profiles')
+          .select('last_org_id')
+          .eq('id', user.id)
+          .single();
+        
+        if (profileOrg?.last_org_id) {
+          currentOrgId = profileOrg.last_org_id;
+          // Obtener nombre de la org para guardar en localStorage
+          const { data: orgInfo } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', currentOrgId)
+            .single();
+          guardarOrganizacionActiva({ id: currentOrgId, name: orgInfo?.name || '' });
+          console.log('🔄 Org recuperada desde perfil:', currentOrgId);
+        }
+      }
+
       setOrgId(currentOrgId.toString());
 
       // Intentar cargar desde cache primero

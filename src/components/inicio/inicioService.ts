@@ -152,12 +152,14 @@ export const inicioService = {
         .from('organization_taxes')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId),
-      // Módulos activos (para onboarding check)
+      // Módulos activos NO-core (para onboarding check)
+      // Excluir módulos core que se crean automáticamente (clientes, organizations, roles)
       supabase
         .from('organization_modules')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId)
-        .eq('is_active', true),
+        .eq('is_active', true)
+        .not('module_code', 'in', '("clientes","organizations","roles")'),
     ]);
 
     // KPIs

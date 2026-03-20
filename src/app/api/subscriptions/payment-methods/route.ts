@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { 
   getCustomerPaymentMethods, 
   createSetupIntent, 
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 API payment-methods - BYPASS activado');
 
     // Obtener stripe_customer_id
-    const supabase = createSupabaseClient(request);
+    const supabase = createSupabaseClient();
     const { data: subscriptions, error: subError } = await supabase
       .from('subscriptions')
       .select('*')
@@ -102,9 +104,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createSupabaseClient(request);
-    
-    const { data: { session } } = await supabase.auth.getSession();
+    // Cliente con cookies para autenticación del usuario
+    const authClient = createRouteHandlerClient({ cookies });
+    const { data: { session } } = await authClient.auth.getSession();
     if (!session) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
@@ -119,11 +121,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar permisos (solo admin)
-    const { data: memberData } = await supabase
+    const { data: memberData } = await authClient
       .from('organization_members')
       .select('role_id, is_super_admin')
       .eq('organization_id', organizationId)
-      .eq('user_id', session?.user?.id)
+      .eq('user_id', session.user.id)
       .eq('is_active', true)
       .single();
 
@@ -134,7 +136,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Obtener suscripción
+    // Obtener suscripción (service role para bypass RLS)
+    const supabase = createSupabaseClient();
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id, stripe_subscription_id')

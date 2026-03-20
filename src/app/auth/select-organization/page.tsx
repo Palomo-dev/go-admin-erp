@@ -29,14 +29,63 @@ function SelectOrganizationContent() {
     loadUserOrganizations();
   }, []);
 
+  // Intentar obtener sesión o hidratar desde URL params / cookie OAuth (flujo Google)
+  const getActiveSession = async () => {
+    // 1. Hidratar desde URL query param _oauth (más confiable que cookies)
+    const oauthParam = searchParams.get('_oauth');
+    if (oauthParam) {
+      try {
+        const { at, rt } = JSON.parse(oauthParam);
+        if (at && rt) {
+          const { data, error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+          // Limpiar tokens de la URL
+          if (typeof window !== 'undefined') {
+            const dest = searchParams.get('dest');
+            const cleanUrl = dest ? `/auth/select-organization?dest=${encodeURIComponent(dest)}` : '/auth/select-organization';
+            window.history.replaceState(null, '', cleanUrl);
+          }
+          if (!error && data.session) return data.session;
+        }
+      } catch (e) {
+        console.error('Error hydrating OAuth session from URL:', e);
+      }
+    }
+
+    // 2. Fallback: cookie OAuth
+    if (typeof document !== 'undefined') {
+      const oauthCookie = document.cookie
+        .split(';')
+        .map(c => c.trim())
+        .find(c => c.startsWith('go-admin-oauth-session='));
+      if (oauthCookie) {
+        try {
+          const eqIndex = oauthCookie.indexOf('=');
+          const value = decodeURIComponent(oauthCookie.substring(eqIndex + 1));
+          const { access_token, refresh_token } = JSON.parse(value);
+          if (access_token && refresh_token) {
+            const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+            document.cookie = 'go-admin-oauth-session=; path=/; max-age=0';
+            if (!error && data.session) return data.session;
+          }
+        } catch (e) {
+          console.error('Error hydrating OAuth session from cookie:', e);
+        }
+      }
+    }
+
+    // 3. Fallback: sesión existente (login normal o ya hidratada)
+    const { data: { session } } = await supabase.auth.getSession();
+    return session;
+  };
+
   const loadUserOrganizations = async () => {
     try {
       setLoading(true);
       
-      // Verificar sesión activa
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Verificar sesión activa (o hidratar desde cookie OAuth)
+      const session = await getActiveSession();
       
-      if (sessionError || !session) {
+      if (!session) {
         router.push('/auth/login');
         return;
       }
@@ -90,6 +139,12 @@ function SelectOrganizationContent() {
         };
       });
 
+      // Auto-seleccionar si solo tiene 1 organización (flujo Google OAuth seamless)
+      if (orgs.length === 1) {
+        await handleSelectOrganization(orgs[0]);
+        return;
+      }
+
       setOrganizations(orgs);
       
     } catch (err: any) {
@@ -105,10 +160,10 @@ function SelectOrganizationContent() {
       setSelecting(true);
       setError(null);
 
-      // Verificar sesión activa
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Verificar sesión activa (usa hidratación OAuth si es necesario)
+      const session = await getActiveSession();
       
-      if (sessionError || !session) {
+      if (!session) {
         router.push('/auth/login');
         return;
       }
@@ -128,7 +183,7 @@ function SelectOrganizationContent() {
       localStorage.setItem('currentOrganizationName', org.name);
 
       // Proceder con el login usando la función existente
-      const next = searchParams.get('next') || '/app/inicio';
+      const next = searchParams.get('dest') || searchParams.get('next') || '/app/inicio';
       await proceedWithLogin(false, session.user.email || '');
       
       // Redirigir al destino final

@@ -34,7 +34,7 @@ export default function BrandingPublishTab({
   const [selectedTemplate, setSelectedTemplate] = useState(settings.template_id);
   const [isResetting, setIsResetting] = useState(false);
 
-  const siteUrl = subdomain ? `https://${subdomain}.tudominio.com` : 'No configurado';
+  const siteUrl = subdomain ? `https://${subdomain}.goadmin.io` : 'No configurado';
 
   const handleCopyUrl = () => {
     if (subdomain) {
@@ -55,10 +55,10 @@ export default function BrandingPublishTab({
 
   // Verificar completitud de configuración
   const checks = [
-    { label: 'Título del Hero', passed: !!settings.hero_title },
-    { label: 'Imagen del Hero', passed: !!settings.hero_image_url || !!settings.hero_video_url },
+    { label: 'Plantilla seleccionada', passed: !!settings.template_id },
     { label: 'Meta título SEO', passed: !!settings.meta_title },
     { label: 'Meta descripción SEO', passed: !!settings.meta_description },
+    { label: 'Color primario configurado', passed: !!settings.primary_color },
     { label: 'Al menos una sección activa', passed: settings.show_products || settings.show_services || settings.show_contact },
   ];
 
@@ -135,12 +135,19 @@ export default function BrandingPublishTab({
           <div className="flex gap-3 pt-2">
             {settings.is_published ? (
               <>
-                <Button variant="outline" asChild className="dark:border-gray-600">
-                  <a href={siteUrl} target="_blank" rel="noopener noreferrer">
+                {subdomain ? (
+                  <Button variant="outline" asChild className="dark:border-gray-600">
+                    <a href={siteUrl} target="_blank" rel="noopener noreferrer">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver Sitio
+                    </a>
+                  </Button>
+                ) : (
+                  <Button variant="outline" disabled className="dark:border-gray-600">
                     <Eye className="h-4 w-4 mr-2" />
                     Ver Sitio
-                  </a>
-                </Button>
+                  </Button>
+                )}
                 <Button 
                   variant="destructive" 
                   onClick={onUnpublish}

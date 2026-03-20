@@ -12,6 +12,7 @@ export type Organizacion = {
   name?: string;
   slug?: string;
   logo_url?: string;
+  subdomain?: string;
 };
 
 /**
@@ -397,7 +398,8 @@ export function useOrganization() {
             created_at: null,
             branches: [],
             slug: organizacionLocal.slug || '',
-            logo_url: organizacionLocal.logo_url || ''
+            logo_url: organizacionLocal.logo_url || '',
+            subdomain: organizacionLocal.subdomain || ''
           } as FormattedOrganization,
           branch_id: getCurrentBranchId(), // Obtener branch_id actual desde localStorage
           isLoading: false,
@@ -443,14 +445,14 @@ export function useOrganization() {
               name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
               created_at: null,
               branches: [],
-              // Agregar cualquier otro campo requerido por FormattedOrganization
               slug: organizacionLocal.slug || '',
-              logo_url: organizacionLocal.logo_url || ''
+              logo_url: organizacionLocal.logo_url || '',
+              subdomain: organizacionLocal.subdomain || ''
             };
             
             setOrganizationData({
               organization: formattedOrg,
-              branch_id: getCurrentBranchId(), // Obtener branch_id actual desde localStorage
+              branch_id: getCurrentBranchId(),
               isLoading: false,
               error: null
             });
@@ -473,7 +475,8 @@ export function useOrganization() {
             id: orgData.id,
             name: orgData.name,
             slug: orgData.slug || undefined,
-            logo_url: orgData.logo_url || undefined
+            logo_url: orgData.logo_url || undefined,
+            subdomain: orgData.subdomain || undefined
           });
           
           // Actualizar estado del componente
@@ -492,14 +495,14 @@ export function useOrganization() {
             name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
             created_at: null,
             branches: [],
-            // Agregar cualquier otro campo requerido por FormattedOrganization
             slug: organizacionLocal.slug || '',
-            logo_url: organizacionLocal.logo_url || ''
+            logo_url: organizacionLocal.logo_url || '',
+            subdomain: organizacionLocal.subdomain || ''
           };
           
           setOrganizationData({
             organization: formattedOrg,
-            branch_id: getCurrentBranchId(), // Obtener branch_id actual desde localStorage
+            branch_id: getCurrentBranchId(),
             isLoading: false,
             error: null
           });
@@ -518,20 +521,19 @@ export function useOrganization() {
         const organizacionLocal = obtenerOrganizacionActiva();
         if (organizacionLocal && organizacionLocal.id) {
           console.log('Error en API, usando datos de respaldo del almacenamiento local:', organizacionLocal.id);
-          // Crear un objeto FormattedOrganization válido a partir de los datos locales
           const formattedOrg: FormattedOrganization = {
             id: organizacionLocal.id,
             name: organizacionLocal.name || `Organización ${organizacionLocal.id}`,
             created_at: null,
             branches: [],
-            // Agregar cualquier otro campo requerido por FormattedOrganization
             slug: organizacionLocal.slug || '',
-            logo_url: organizacionLocal.logo_url || ''
+            logo_url: organizacionLocal.logo_url || '',
+            subdomain: organizacionLocal.subdomain || ''
           };
           
           setOrganizationData({
             organization: formattedOrg,
-            branch_id: getCurrentBranchId(), // Obtener branch_id actual desde localStorage
+            branch_id: getCurrentBranchId(),
             isLoading: false,
             error: null
           });

@@ -14,6 +14,7 @@ import SubscriptionStep from '../../../components/auth/SubscriptionStep';
 import PaymentMethodStep from '../../../components/auth/PaymentMethodStep';
 import { supabase } from '@/lib/supabase/config';
 import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
+import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 // Definición de tipos
 interface SignupData {
@@ -220,7 +221,7 @@ function SignupContent() {
       console.log('1️⃣ Creando perfil...');
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({
+        .upsert({
           id: userId,
           first_name: signupData.firstName,
           last_name: signupData.lastName,
@@ -229,7 +230,7 @@ function SignupContent() {
           avatar_url: signupData.avatarUrl || null,
           preferred_language: signupData.preferredLanguage || 'es',
           status: 'active'
-        });
+        }, { onConflict: 'id' });
       
       if (profileError) {
         console.error('❌ Error creando perfil:', profileError);
@@ -297,6 +298,15 @@ function SignupContent() {
           throw memberError;
         }
         console.log('✅ Membresía creada exitosamente');
+        
+        // Guardar organización activa en localStorage para que AppLayout la encuentre
+        guardarOrganizacionActiva({ id: orgId, name: signupData.organizationName });
+        
+        // Actualizar last_org_id en el perfil para que el fallback del AppLayout funcione
+        await supabase
+          .from('profiles')
+          .update({ last_org_id: orgId })
+          .eq('id', userId);
         
         // 4. Crear sucursal principal (después de membresía para cumplir RLS)
         console.log('4️⃣ Creando sucursal principal...');
@@ -446,17 +456,6 @@ function SignupContent() {
 
     try {
       console.log('Iniciando proceso de registro para:', signupData.email);
-      
-      // Verificar si el email ya existe
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', signupData.email)
-        .maybeSingle();
-
-      if (existingUser) {
-        throw new Error('Este correo electrónico ya está registrado');
-      }
       
       if (isGoogleUser && googleUserData) {
         // Usuario de Google ya autenticado, crear datos con el flujo completo

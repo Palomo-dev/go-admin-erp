@@ -166,6 +166,14 @@ function shouldSkipRoute(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  // Interceptar OAuth code en raíz: Supabase redirige a /?code=xxx, reenviar a /auth/callback
+  if (pathname === '/' && request.nextUrl.searchParams.has('code')) {
+    const code = request.nextUrl.searchParams.get('code');
+    const callbackUrl = new URL('/auth/callback', request.url);
+    callbackUrl.searchParams.set('code', code!);
+    return NextResponse.redirect(callbackUrl);
+  }
+  
   // Verificar si debemos saltar esta ruta completamente
   if (shouldSkipRoute(pathname)) {
     return NextResponse.next();

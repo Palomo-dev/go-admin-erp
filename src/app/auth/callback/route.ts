@@ -83,14 +83,30 @@ export async function GET(request: NextRequest) {
         
         // Para OAuth (Google login), crear o actualizar perfil
         if (user.app_metadata?.provider === 'google') {
+          // Cookie pequeña para hidratación client-side
+          pendingCookies.set('go-admin-oauth-session', JSON.stringify({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          }));
+
           await createOrUpdateUserProfile(supabase, user);
           
           const hasOrganization = await checkUserOrganization(supabase, user.id);
           
+          // Eliminar cookie de sesión completa DESPUÉS de DB ops (evita sesión parcial en el cliente)
+          const projectRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split('.')[0];
+          pendingCookies.delete(`sb-${projectRef}-auth-token`);
+          
+          // Pasar tokens por URL params para hidratación client-side (más confiable que cookies)
+          const oauthParam = encodeURIComponent(JSON.stringify({
+            at: data.session.access_token,
+            rt: data.session.refresh_token,
+          }));
+          
           if (hasOrganization) {
-            return redirectWithCookies(next);
+            return redirectWithCookies('/auth/select-organization?_oauth=' + oauthParam + '&dest=' + encodeURIComponent(next));
           } else {
-            return redirectWithCookies('/auth/select-organization');
+            return redirectWithCookies('/auth/select-organization?_oauth=' + oauthParam);
           }
         } else {
           // Para confirmación de email, verificar si es una invitación
@@ -216,7 +232,7 @@ async function checkUserOrganization(supabase: any, userId: string): Promise<boo
       .from('organization_members')
       .select('id, organization_id')
       .eq('user_id', userId)
-      .eq('status', 'active')
+      .eq('is_active', true)
       .single();
     
     if (error && error.code !== 'PGRST116') {

@@ -139,12 +139,6 @@ function SelectOrganizationContent() {
         };
       });
 
-      // Auto-seleccionar si solo tiene 1 organización (flujo Google OAuth seamless)
-      if (orgs.length === 1) {
-        await handleSelectOrganization(orgs[0]);
-        return;
-      }
-
       setOrganizations(orgs);
       
     } catch (err: any) {
@@ -225,7 +219,7 @@ function SelectOrganizationContent() {
             Selecciona una organización
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Tu cuenta está asociada a múltiples organizaciones. Selecciona una para continuar.
+            Elige una organización para continuar o crea una nueva.
           </p>
         </div>
 

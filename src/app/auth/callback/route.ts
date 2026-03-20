@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
         },
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true
+        detectSessionInUrl: false
       }
     }
   );
@@ -74,6 +74,14 @@ export async function GET(request: NextRequest) {
       
       if (exchangeError) {
         console.error('Code exchange error:', exchangeError);
+        
+        // Si el código ya fue consumido (request concurrente), redirigir sin error
+        // La autenticación probablemente ya tuvo éxito en la otra request
+        if (exchangeError.code === 'flow_state_not_found') {
+          console.log('Code already consumed by concurrent request, redirecting to select-organization');
+          return redirectWithCookies('/auth/select-organization');
+        }
+        
         return redirectWithCookies('/auth/login?error=auth-failed&details=' + encodeURIComponent(exchangeError.message));
       }
       

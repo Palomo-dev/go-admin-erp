@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SubscriptionPlanSelector from '../subscription/SubscriptionPlanSelector';
+import { useTranslations } from 'next-intl';
 
 export interface SubscriptionData {
   subscriptionPlan: string;
@@ -26,6 +27,8 @@ export default function SubscriptionStep({
   onBack,
   loading = false,
 }: SubscriptionStepProps) {
+  const t = useTranslations('auth.signup.subscription');
+  const tc = useTranslations('common');
   const [selectedPlan, setSelectedPlan] = useState(formData.subscriptionPlan || 'pro');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>(
     formData.billingPeriod || 'monthly'
@@ -56,10 +59,10 @@ export default function SubscriptionStep({
   return (
     <div className="space-y-4 sm:space-y-6 w-full">
       <div className="text-center">
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Selecciona un plan</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{t('selectPlan')}</h2>
         <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-500">
-          Elige el plan que mejor se adapte a las necesidades de tu organización.
-          <span className="block mt-1 text-[11px] sm:text-xs">Todos los planes incluyen un periodo de prueba de 30 días.</span>
+          {t('selectPlanDescription')}
+          <span className="block mt-1 text-[11px] sm:text-xs">{t('trialPeriod')}</span>
         </p>
       </div>
 
@@ -77,14 +80,14 @@ export default function SubscriptionStep({
             onClick={onBack}
             className="rounded-md border border-gray-300 bg-white py-1.5 px-4 sm:py-2 sm:px-6 text-xs sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            Atrás
+            {tc('back')}
           </button>
           <button
             type="submit"
             disabled={loading}
             className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-1.5 px-4 sm:py-2 sm:px-6 text-xs sm:text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
           >
-            {loading ? 'Procesando...' : 'Continuar'}
+            {loading ? tc('loading') : tc('continue')}
           </button>
         </div>
       </form>

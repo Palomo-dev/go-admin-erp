@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 import BranchAssignmentModal from './BranchAssignmentModal';
 import { MembersSkeleton } from './OrganizationSkeletons';
+import { useTranslations } from 'next-intl';
 
 interface MemberProps {
   id: string;
@@ -26,6 +27,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   const [roles, setRoles] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const t = useTranslations('org.membersTab');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [updatingRole, setUpdatingRole] = useState(false);
@@ -98,21 +100,21 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         const memberId = member.id;
         
         if (!memberMap.has(memberId)) {
-          const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Sin nombre';
+          const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || t('noName');
           const roleInfo = getRoleInfoById(member.role_id);
           
           memberMap.set(memberId, {
             id: member.id,
             user_id: member.user_id || member.id,
             full_name: fullName,
-            email: member.email || 'Sin email',
+            email: member.email || t('noEmail'),
             role: member.role_name || roleInfo.name, // Usar role_name de la RPC, fallback a roleInfo
             role_id: member.role_id,
             role_code: roleInfo.code,
             is_admin: member.is_super_admin || false,
-            status: member.is_active ? "Activo" : "Inactivo",
+            status: member.is_active ? t('active') : t('inactive'),
             branch_id: member.branch_id,
-            branch_name: member.branch_name || 'Sin sucursal',
+            branch_name: member.branch_name || t('noBranch'),
             branch_names: [], // Array to store all branch names
             created_at: new Date(member.created_at).toLocaleDateString()
           });
@@ -132,13 +134,13 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         ...member,
         branch_name: member.branch_names.length > 0 
           ? member.branch_names.join(', ') 
-          : 'Sin sucursal'
+          : t('noBranch')
       }));
 
       setMembers(formattedMembers);
     } catch (err: any) {
       console.error('Error al obtener miembros:', err);
-      setError(err.message || 'Error al cargar los miembros');
+      setError(err.message || t('errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -212,10 +214,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         return m;
       }));
       
-      setSuccess('Rol actualizado correctamente');
+      setSuccess(t('roleUpdated'));
     } catch (err: any) {
       console.error('Error al actualizar rol:', err);
-      setError(err.message || 'Error al actualizar el rol del miembro');
+      setError(err.message || t('errorUpdatingRole'));
     } finally {
       setUpdatingRole(false);
     }
@@ -247,7 +249,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       
       // Find the branch name
       const branch = branches.find(b => b.id === branchId);
-      const branchName = branch ? branch.name : 'Sin sucursal';
+      const branchName = branch ? branch.name : t('noBranch');
       
       // Update local member data
       setMembers(prev => prev.map(m => {
@@ -261,10 +263,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         return m;
       }));
       
-      setSuccess('Sucursal actualizada correctamente');
+      setSuccess(t('branchUpdated'));
     } catch (err: any) {
       console.error('Error al actualizar sucursal:', err);
-      setError(err.message || 'Error al actualizar la sucursal del miembro');
+      setError(err.message || t('errorUpdatingBranch'));
     } finally {
       setUpdatingBranch(false);
     }
@@ -291,23 +293,23 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         if (m.id === memberId) {
           return { 
             ...m, 
-            status: newStatus ? 'Activo' : 'Inactivo'
+            status: newStatus ? t('active') : t('inactive')
           };
         }
         return m;
       }));
       
-      setSuccess(`Usuario ${newStatus ? 'activado' : 'desactivado'} correctamente`);
+      setSuccess(t('userStatusChanged', { status: newStatus ? t('activated') : t('deactivated') }));
     } catch (err: any) {
       console.error('Error al actualizar estado:', err);
-      setError(err.message || 'Error al actualizar el estado del miembro');
+      setError(err.message || t('errorUpdatingStatus'));
     } finally {
       setUpdatingStatus(false);
     }
   };
 
   const removeMember = async (memberId: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar este miembro de la organización?')) {
+    if (confirm(t('confirmRemove'))) {
       try {
         setLoading(true);
         
@@ -322,13 +324,13 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         
         // Update the local state to remove the member
         setMembers(prev => prev.filter(m => m.id !== memberId));
-        setSuccess('Miembro eliminado correctamente');
+        setSuccess(t('memberRemoved'));
         
         // Refresh the members list
         await fetchMembers();
       } catch (err: any) {
         console.error('Error removing member:', err);
-        setError(err.message || 'Error al eliminar el miembro');
+        setError(err.message || t('errorRemoving'));
       } finally {
         setLoading(false);
       }
@@ -343,8 +345,8 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       const roleMatches = !roleFilter || member.role === roleFilter;
       const branchMatches = !branchFilter || member.branch_id === branchFilter;
       const statusMatches = statusFilter === 'all' || 
-        (statusFilter === 'active' && member.status === 'Activo') ||
-        (statusFilter === 'inactive' && member.status === 'Inactivo');
+        (statusFilter === 'active' && member.status === t('active')) ||
+        (statusFilter === 'inactive' && member.status === t('inactive'));
       
       return nameMatches && emailMatches && roleMatches && branchMatches && statusMatches;
     });
@@ -377,10 +379,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
             </svg>
-            <h3 className="font-medium text-gray-700">Filtrar miembros</h3>
+            <h3 className="font-medium text-gray-700">{t('filterMembers')}</h3>
             {activeFiltersCount > 0 && (
               <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
-                {activeFiltersCount} {activeFiltersCount === 1 ? 'filtro activo' : 'filtros activos'}
+                {activeFiltersCount} {activeFiltersCount === 1 ? t('activeFilter') : t('activeFilters')}
               </span>
             )}
           </div>
@@ -400,7 +402,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Limpiar todos
+              {t('clearAll')}
             </button>
           )}
         </div>
@@ -410,7 +412,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Filtro por nombre */}
             <div className="relative">
-              <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+              <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('nameLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -422,7 +424,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   type="text"
                   value={nameFilter}
                   onChange={(e) => setNameFilter(e.target.value)}
-                  placeholder="Buscar por nombre..."
+                  placeholder={t('namePlaceholder')}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
                 {nameFilter && (
@@ -442,7 +444,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por email */}
             <div className="relative">
-              <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -454,7 +456,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   type="text"
                   value={emailFilter}
                   onChange={(e) => setEmailFilter(e.target.value)}
-                  placeholder="Buscar por email..."
+                  placeholder={t('emailPlaceholder')}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
                 {emailFilter && (
@@ -474,7 +476,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por rol */}
             <div>
-              <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+              <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('roleLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -487,7 +489,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   onChange={(e) => setRoleFilter(e.target.value)}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
-                  <option value="">Todos los roles</option>
+                  <option value="">{t('allRoles')}</option>
                   {uniqueRoles.map((role: string) => (
                     <option key={role} value={role}>{role}</option>
                   ))}
@@ -497,7 +499,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por sucursal */}
             <div>
-              <label htmlFor="branch-filter" className="block text-sm font-medium text-gray-700 mb-1">Sucursal</label>
+              <label htmlFor="branch-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('branchLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -510,7 +512,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   onChange={(e) => setBranchFilter(e.target.value)}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
-                  <option value="">Todas las sucursales</option>
+                  <option value="">{t('allBranches')}</option>
                   {branches.map(branch => (
                     <option key={branch.id} value={branch.id}>{branch.name}</option>
                   ))}
@@ -520,7 +522,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por estado */}
             <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('statusLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -533,9 +535,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
-                  <option value="all">Todos</option>
-                  <option value="active">Activos</option>
-                  <option value="inactive">Inactivos</option>
+                  <option value="all">{t('allStatuses')}</option>
+                  <option value="active">{t('activeStatus')}</option>
+                  <option value="inactive">{t('inactiveStatus')}</option>
                 </select>
               </div>
             </div>
@@ -574,16 +576,16 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
           <div>
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Miembros de la Organización</h3>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">{t('title')}</h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Lista de miembros actuales {members.length > 0 && filteredMembers.length !== members.length && ` (${filteredMembers.length} de ${members.length})`}
+              {t('currentList')} {members.length > 0 && filteredMembers.length !== members.length && ` (${filteredMembers.length} de ${members.length})`}
               {maxUsers && (
                 <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                   members.length >= maxUsers
                     ? 'bg-red-100 text-red-800'
                     : 'bg-blue-100 text-blue-800'
                 }`}>
-                  {members.length}/{maxUsers} usuarios
+                  {members.length}/{maxUsers} {t('users')}
                 </span>
               )}
             </p>
@@ -599,14 +601,14 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
-                Ocultar filtros
+                {t('hideFilters')}
               </>
             ) : (
               <>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
-                Mostrar filtros
+                {t('showFilters')}
               </>
             )}
           </button>
@@ -617,25 +619,25 @@ export default function MembersTab({ orgId }: { orgId: number }) {
           <thead className="bg-gray-50">
             <tr>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nombre
+                {t('thName')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
+                {t('thEmail')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rol
+                {t('thRole')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Sucursal
+                {t('thBranch')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Estado
+                {t('thStatus')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Fecha de Registro
+                {t('thDate')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Acciones
+                {t('thActions')}
               </th>
             </tr>
           </thead>
@@ -643,7 +645,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             {filteredMembers.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                  {members.length === 0 ? "No hay miembros registrados" : "No se encontraron miembros con los filtros aplicados"}
+                  {members.length === 0 ? t('noMembers') : t('noResults')}
                 </td>
               </tr>
             ) : (
@@ -662,7 +664,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       onChange={(e) => updateMemberRole(member.id, e.target.value)}
                       disabled={member.is_admin} // Disable changing role for owners/admins
                     >
-                      <option value="">Seleccionar rol</option>
+                      <option value="">{t('selectRole')}</option>
                       {roles.map(role => (
                         <option key={role.id} value={role.code}>
                           {roleDisplayMap[role.code] || role.name}
@@ -679,15 +681,15 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
-                      {member.branch_name === 'Sin sucursal' ? 'Asignar' : 'Gestionar'} Sucursales
+                      {member.branch_name === t('noBranch') ? t('assign') : t('manage')} {t('branches')}
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button 
-                      onClick={() => !member.is_admin && toggleMemberStatus(member.id, member.status === 'Activo')}
+                      onClick={() => !member.is_admin && toggleMemberStatus(member.id, member.status === t('active'))}
                       disabled={member.is_admin}
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        member.status === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        member.status === t('active') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                       } ${!member.is_admin ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-75'}`}
                     >
                       {member.status}
@@ -701,7 +703,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       onClick={() => removeMember(member.id)}
                       className="text-red-600 hover:text-red-900"
                     >
-                      Eliminar
+                      {t('remove')}
                     </button>
                   </td>
                 </tr>

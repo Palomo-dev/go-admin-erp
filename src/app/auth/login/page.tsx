@@ -17,8 +17,12 @@ import {
 import GeolocationModal from '@/components/auth/GeolocationModal';
 import EmailNotConfirmedAlert from '@/components/auth/EmailNotConfirmedAlert';
 import { type GeolocationPreference, shouldShowGeolocationModal, saveGeolocationPreference } from '@/lib/utils/geolocation';
+import { useTranslations } from 'next-intl';
 
 function LoginContent() {
+  const t = useTranslations('auth.login');
+  const tc = useTranslations('common');
+  const tErr = useTranslations('auth.errors');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -241,10 +245,10 @@ function LoginContent() {
           
           {/* Título mejorado */}
           <h2 className="text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-1 sm:mb-2">
-            Bienvenido de nuevo
+            {t('welcomeBack')}
           </h2>
           <p className="text-center text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
-            Inicia sesión para acceder a tu cuenta
+            {t('subtitle')}
           </p>
           
           {/* Organization selector - hidden now, will show popup when needed */}
@@ -380,7 +384,7 @@ function LoginContent() {
                   autoComplete="email"
                   required
                   className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none"
-                  placeholder="Correo electrónico"
+                  placeholder={t('emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -400,7 +404,7 @@ function LoginContent() {
                   autoComplete="current-password"
                   required
                   className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none"
-                  placeholder="Contraseña"
+                  placeholder={t('passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -438,13 +442,13 @@ function LoginContent() {
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
               <label htmlFor="remember-me" className="ml-2 block text-xs sm:text-sm text-gray-700">
-                Recuérdame
+                {t('rememberMe')}
               </label>
             </div>
 
             <div className="text-xs sm:text-sm">
               <Link href="/auth/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                ¿Olvidaste tu contraseña?
+                {t('forgotPassword')}
               </Link>
             </div>
           </div>
@@ -455,21 +459,21 @@ function LoginContent() {
               disabled={loading}
               className="w-full flex justify-center py-2.5 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Cargando...' : 'INICIAR SESIÓN'}
+              {loading ? t('submitting') : t('submit')}
             </button>
           </div>
           
           <div className="text-center mt-3 sm:mt-4">
             <Link href="/auth/forgot-password" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
-              ¿Olvidaste tu contraseña?
+              {t('forgotPassword')}
             </Link>
           </div>
           
           <div className="text-center mt-3 sm:mt-4">
             <p className="text-xs sm:text-sm text-gray-600">
-              ¿No tienes una cuenta?{' '}
+              {t('noAccount')}{' '}
               <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
-                Regístrate aquí
+                {t('signUp')}
               </Link>
             </p>
           </div>
@@ -481,7 +485,7 @@ function LoginContent() {
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-xs sm:text-sm">
-              <span className="px-2 bg-white text-gray-500">O</span>
+              <span className="px-2 bg-white text-gray-500">{tc('or')}</span>
             </div>
           </div>
 
@@ -499,7 +503,7 @@ function LoginContent() {
                 <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z" />
                 <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z" />
               </svg>
-              Iniciar sesión con Google
+              {t('googleLogin')}
             </button>
             <button
               type="button"
@@ -514,7 +518,7 @@ function LoginContent() {
                 <path fill="#05a6f0" d="M1 12h10v10H1z" />
                 <path fill="#ffba08" d="M12 12h10v10H12z" />
               </svg>
-              Iniciar sesión con Microsoft
+              Microsoft
             </button>
           </div>
         </div>
@@ -535,7 +539,7 @@ export default function LoginPage() {
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600">Cargando...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     }>

@@ -19,6 +19,7 @@ import { Globe, RefreshCw, Plus, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 import {
   domainService,
   OrganizationDomain,
@@ -42,6 +43,7 @@ export default function DominiosPage() {
   const { session } = useSession();
   const organizationId = organization?.id;
   const { toast } = useToast();
+  const t = useTranslations('org.domains');
 
   // Estado principal
   const [domains, setDomains] = useState<OrganizationDomain[]>([]);
@@ -101,7 +103,7 @@ export default function DominiosPage() {
       console.error('Error loading domains:', error);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar los dominios',
+        description: t('errorLoadingDomains'),
         variant: 'destructive',
       });
     } finally {
@@ -137,14 +139,14 @@ export default function DominiosPage() {
       if (selectedDomain) {
         await domainService.updateDomain(selectedDomain.id, data as UpdateDomainInput);
         toast({
-          title: 'Dominio actualizado',
-          description: 'El dominio ha sido actualizado correctamente',
+          title: t('domainUpdated'),
+          description: t('domainUpdatedDesc'),
         });
       } else {
         await domainService.createDomain(data as CreateDomainInput);
         toast({
-          title: 'Dominio creado',
-          description: 'El dominio ha sido creado correctamente. Configura los registros DNS para verificarlo.',
+          title: t('domainCreated'),
+          description: t('domainCreatedDesc'),
         });
       }
       loadDomains();
@@ -174,14 +176,14 @@ export default function DominiosPage() {
     const success = await domainService.deleteDomain(domainToDelete.id);
     if (success) {
       toast({
-        title: 'Dominio eliminado',
-        description: `El dominio "${domainToDelete.host}" ha sido eliminado`,
+        title: t('domainDeleted'),
+        description: t('domainDeletedDesc', { host: domainToDelete.host }),
       });
       loadDomains();
     } else {
       toast({
         title: 'Error',
-        description: 'No se pudo eliminar el dominio',
+        description: t('errorDeletingDomain'),
         variant: 'destructive',
       });
     }
@@ -196,7 +198,7 @@ export default function DominiosPage() {
     try {
       const result = await domainService.verifyDomain(domain.id);
       toast({
-        title: result.success ? 'Verificación exitosa' : 'Verificación pendiente',
+        title: result.success ? t('verificationSuccess') : t('verificationPending'),
         description: result.message,
         variant: result.success ? 'default' : 'destructive',
       });
@@ -215,14 +217,14 @@ export default function DominiosPage() {
     const success = await domainService.setPrimaryDomain(domain.id, organizationId);
     if (success) {
       toast({
-        title: 'Dominio principal actualizado',
-        description: `"${domain.host}" es ahora el dominio principal`,
+        title: t('primaryUpdated'),
+        description: t('primaryUpdatedDesc', { host: domain.host }),
       });
       loadDomains();
     } else {
       toast({
         title: 'Error',
-        description: 'No se pudo establecer el dominio principal',
+        description: t('errorSettingPrimary'),
         variant: 'destructive',
       });
     }
@@ -233,14 +235,14 @@ export default function DominiosPage() {
     const success = await domainService.toggleDomainActive(domain.id, isActive);
     if (success) {
       toast({
-        title: isActive ? 'Dominio activado' : 'Dominio desactivado',
-        description: `El dominio "${domain.host}" ha sido ${isActive ? 'activado' : 'desactivado'}`,
+        title: isActive ? t('domainActivated') : t('domainDeactivated'),
+        description: t('domainToggleDesc', { host: domain.host, status: isActive ? t('activated') : t('deactivated') }),
       });
       loadDomains();
     } else {
       toast({
         title: 'Error',
-        description: 'No se pudo cambiar el estado del dominio',
+        description: t('errorTogglingDomain'),
         variant: 'destructive',
       });
     }
@@ -258,16 +260,16 @@ export default function DominiosPage() {
     const success = await domainService.configureRedirect(selectedDomain.id, redirectToDomainId, statusCode);
     if (success) {
       toast({
-        title: 'Redirección configurada',
+        title: t('redirectConfigured'),
         description: redirectToDomainId
-          ? 'La redirección ha sido configurada correctamente'
-          : 'La redirección ha sido eliminada',
+          ? t('redirectConfiguredDesc')
+          : t('redirectRemoved'),
       });
       loadDomains();
     } else {
       toast({
         title: 'Error',
-        description: 'No se pudo configurar la redirección',
+        description: t('errorConfiguringRedirect'),
         variant: 'destructive',
       });
     }
@@ -279,7 +281,7 @@ export default function DominiosPage() {
     try {
       const result = await domainService.syncWithVercel(domain.id);
       toast({
-        title: result.success ? 'Sincronización exitosa' : 'Error de sincronización',
+        title: result.success ? t('syncSuccess') : t('syncError'),
         description: result.message,
         variant: result.success ? 'default' : 'destructive',
       });
@@ -296,14 +298,14 @@ export default function DominiosPage() {
     const newDomain = await domainService.duplicateDomain(domain.id);
     if (newDomain) {
       toast({
-        title: 'Dominio duplicado',
-        description: `Se ha creado una copia de "${domain.host}"`,
+        title: t('domainDuplicated'),
+        description: t('domainDuplicatedDesc', { host: domain.host }),
       });
       loadDomains();
     } else {
       toast({
         title: 'Error',
-        description: 'No se pudo duplicar el dominio',
+        description: t('errorDuplicating'),
         variant: 'destructive',
       });
     }
@@ -333,10 +335,10 @@ export default function DominiosPage() {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                  Dominios
+                  {t('title')}
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Gestiona los dominios y subdominios de tu organización
+                  {t('description')}
                 </p>
               </div>
             </div>
@@ -349,7 +351,7 @@ export default function DominiosPage() {
                 className="border-gray-300 dark:border-gray-700"
               >
                 <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
-                Actualizar
+                {t('refresh')}
               </Button>
               <Button
                 size="sm"
@@ -358,7 +360,7 @@ export default function DominiosPage() {
                 className="border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-900/20"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Agregar Existente
+                {t('addExisting')}
               </Button>
               <Button
                 size="sm"
@@ -366,7 +368,7 @@ export default function DominiosPage() {
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <ShoppingCart className="h-4 w-4 mr-2" />
-                Comprar Dominio
+                {t('buyDomain')}
               </Button>
             </div>
           </div>
@@ -401,8 +403,8 @@ export default function DominiosPage() {
               onSubdomainChange={(newSubdomain) => {
                 setCurrentSubdomain(newSubdomain);
                 toast({
-                  title: 'Subdominio actualizado',
-                  description: `Tu nuevo subdominio es ${newSubdomain}.goadmin.io`,
+                  title: t('subdomainUpdated'),
+                  description: t('subdomainUpdatedDesc', { subdomain: newSubdomain }),
                 });
               }}
             />
@@ -411,11 +413,11 @@ export default function DominiosPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Dominios Personalizados
+                  {t('customDomains')}
                 </h2>
                 {domains.length > 0 && (
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {domains.length} dominio{domains.length !== 1 ? 's' : ''}
+                    {t('domainCount', { count: domains.length })}
                   </span>
                 )}
               </div>
@@ -425,17 +427,17 @@ export default function DominiosPage() {
                 <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
                   <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    No tienes dominios personalizados
+                    {t('noCustomDomains')}
                   </h3>
                   <p className="text-gray-500 dark:text-gray-400 mb-4">
-                    Conecta un dominio que ya tengas registrado para usarlo con tu sitio
+                    {t('noCustomDomainsDesc')}
                   </p>
                   <Button 
                     onClick={() => setAddCustomDomainOpen(true)} 
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Agregar Dominio Personalizado
+                    {t('addCustomDomain')}
                   </Button>
                 </div>
               ) : (
@@ -497,8 +499,8 @@ export default function DominiosPage() {
         organizationId={organizationId || 0}
         onDomainAdded={() => {
           toast({
-            title: 'Dominio agregado',
-            description: 'El dominio ha sido agregado. Configura los registros DNS para verificarlo.',
+            title: t('domainAdded'),
+            description: t('domainAddedDesc'),
           });
           loadDomains();
         }}
@@ -512,8 +514,8 @@ export default function DominiosPage() {
         userName={session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || ''}
         onPurchaseComplete={(domain) => {
           toast({
-            title: '¡Dominio comprado!',
-            description: `El dominio ${domain} ha sido registrado exitosamente.`,
+            title: t('domainPurchased'),
+            description: t('domainPurchasedDesc', { domain }),
           });
           loadDomains();
         }}
@@ -523,18 +525,17 @@ export default function DominiosPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
           <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-gray-100">¿Eliminar dominio?</AlertDialogTitle>
+            <AlertDialogTitle className="dark:text-gray-100">{t('deleteDomainTitle')}</AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-400">
-              Esta acción no se puede deshacer. El dominio &quot;{domainToDelete?.host}&quot; será
-              eliminado permanentemente.
+              {t('deleteDomainDesc', { host: domainToDelete?.host || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-              Cancelar
+              {t('cancel')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-              Eliminar
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

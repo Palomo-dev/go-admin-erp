@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
 import SubscriptionPlanSelector, { SubscriptionPlan } from '../subscription/SubscriptionPlanSelector';
 
 interface ChangePlanModalProps {
@@ -30,6 +31,7 @@ export default function ChangePlanModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const t = useTranslations('org.changePlan');
   
 
   const handleSelectPlan = (planId: string) => {
@@ -51,7 +53,7 @@ export default function ChangePlanModal({
     const planCode = selectedPlan.replace('-yearly', '');
     
     if (planCode === currentPlanId.replace('-yearly', '')) {
-      setError('Ya tienes este plan seleccionado.');
+      setError(t('samePlan'));
       return;
     }
     
@@ -77,19 +79,19 @@ export default function ChangePlanModal({
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.error || 'Error al crear sesión de pago');
+        throw new Error(result.error || t('errorCheckout'));
       }
       
       // Redirigir a Stripe Checkout
       if (result.url) {
         window.location.href = result.url;
       } else {
-        throw new Error('No se recibió URL de checkout');
+        throw new Error(t('noCheckoutUrl'));
       }
       
     } catch (err: any) {
       console.error('Error al cambiar el plan:', err);
-      setError(err.message || 'Ha ocurrido un error al cambiar el plan.');
+      setError(err.message || t('errorChanging'));
       setLoading(false);
     }
   };
@@ -125,12 +127,12 @@ export default function ChangePlanModal({
                   as="h3"
                   className="text-lg font-medium leading-6 text-gray-900"
                 >
-                  Cambiar Plan de Suscripción
+                  {t('title')}
                 </Dialog.Title>
                 
                 <div className="mt-2">
                   <p className="text-sm text-gray-500">
-                    Estás cambiando el plan de suscripción para <span className="font-medium">{organizationName}</span>.
+                    {t('description')} <span className="font-medium">{organizationName}</span>.
                   </p>
                 </div>
                 
@@ -180,14 +182,14 @@ export default function ChangePlanModal({
                         onClick={onClose}
                         className="inline-flex justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                       >
-                        Cancelar
+                        {t('cancel')}
                       </button>
                       <button
                         type="submit"
                         disabled={loading || selectedPlan === currentPlanId}
                         className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
                       >
-                        {loading ? 'Procesando...' : 'Cambiar Plan'}
+                        {loading ? t('processing') : t('changePlan')}
                       </button>
                     </div>
                   </form>

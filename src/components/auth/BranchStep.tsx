@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Branch, BranchFormData } from '@/types/branch';
 import { BranchForm, BranchFormRef } from '@/components/branches/BranchForm';
+import { useTranslations } from 'next-intl';
 
 interface FormData {
   // Branch data
@@ -42,6 +43,8 @@ export default function BranchStep({
   const [error, setError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const formRef = useRef<BranchFormRef>(null);
+  const t = useTranslations('auth.signup.branch');
+  const tc = useTranslations('common');
 
   // Handle form submission
   const handleSubmit = async (branchData: BranchFormData) => {
@@ -72,7 +75,7 @@ export default function BranchStep({
       // Move to the next step
       onNext();
     } catch (err: any) {
-      setError(err.message || 'Error al configurar la sucursal principal');
+      setError(err.message || t('errorSetupBranch'));
     } finally {
       setFormLoading(false);
     }
@@ -98,9 +101,9 @@ export default function BranchStep({
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h3 className="text-lg font-medium text-gray-900">Configura tu sucursal principal</h3>
+        <h3 className="text-lg font-medium text-gray-900">{t('mainBranchTitle')}</h3>
         <p className="mt-1 text-sm text-gray-500">
-          Esta será la sucursal principal de tu organización. Podrás añadir más sucursales después.
+          {t('mainBranchDescription')}
         </p>
       </div>
 
@@ -116,7 +119,7 @@ export default function BranchStep({
           initialData={initialBranchData}
           onSubmit={handleSubmit}
           isLoading={loading || formLoading}
-          submitLabel="Continuar"
+          submitLabel={tc('continue')}
           hideSubmitButton={true}
           noFormWrapper={true}
           hideStatusSection={true}
@@ -130,7 +133,7 @@ export default function BranchStep({
           className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
           disabled={loading || formLoading}
         >
-          Atrás
+          {tc('back')}
         </button>
         
         <button
@@ -147,11 +150,11 @@ export default function BranchStep({
           {loading || formLoading ? (
             <>
               <span className="loading loading-spinner loading-xs"></span>
-              <span>Guardando...</span>
+              <span>{t('saving')}</span>
             </>
           ) : (
             <>
-              <span>Continuar</span>
+              <span>{tc('continue')}</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>

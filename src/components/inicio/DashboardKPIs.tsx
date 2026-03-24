@@ -13,6 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
 import type { DashboardKPIData } from './inicioService';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface DashboardKPIsProps {
   data: DashboardKPIData | null;
@@ -22,56 +23,56 @@ interface DashboardKPIsProps {
 const kpiConfig = [
   {
     key: 'ventasHoy' as const,
-    label: 'Ventas Hoy',
+    labelKey: 'salesToday' as const,
     icon: DollarSign,
     color: 'blue',
     isCurrency: true,
   },
   {
     key: 'ventasMes' as const,
-    label: 'Ventas 30 días',
+    labelKey: 'sales30Days' as const,
     icon: TrendingUp,
     color: 'green',
     isCurrency: true,
   },
   {
     key: 'clientesActivos' as const,
-    label: 'Clientes',
+    labelKey: 'clients' as const,
     icon: Users,
     color: 'purple',
     isCurrency: false,
   },
   {
     key: 'productosActivos' as const,
-    label: 'Productos',
+    labelKey: 'products' as const,
     icon: Package,
     color: 'orange',
     isCurrency: false,
   },
   {
     key: 'facturasHoy' as const,
-    label: 'Facturas Hoy',
+    labelKey: 'invoicesToday' as const,
     icon: Receipt,
     color: 'cyan',
     isCurrency: false,
   },
   {
     key: 'empleadosActivos' as const,
-    label: 'Miembros',
+    labelKey: 'members' as const,
     icon: UserCheck,
     color: 'indigo',
     isCurrency: false,
   },
   {
     key: 'reservasActivas' as const,
-    label: 'Reservas Activas',
+    labelKey: 'activeReservations' as const,
     icon: Hotel,
     color: 'teal',
     isCurrency: false,
   },
   {
     key: 'cuentasPorCobrar' as const,
-    label: 'Por Cobrar',
+    labelKey: 'receivables' as const,
     icon: CreditCard,
     color: 'red',
     isCurrency: true,
@@ -122,6 +123,9 @@ const colorMap: Record<string, { bg: string; icon: string; text: string }> = {
 };
 
 export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
+  const t = useTranslations('home.kpis');
+  const locale = useLocale();
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -149,13 +153,13 @@ export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
                 <Icon className={`h-4 w-4 ${colors.icon}`} />
               </div>
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
-                {kpi.label}
+                {t(kpi.labelKey)}
               </span>
             </div>
             <p className={`text-lg font-bold ${colors.text}`}>
               {kpi.isCurrency
                 ? formatCurrency(value)
-                : value.toLocaleString('es-CO')}
+                : value.toLocaleString(locale)}
             </p>
           </div>
         );

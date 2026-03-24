@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Home, RefreshCw, QrCode, Clock } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import {
   inicioService,
@@ -28,6 +29,8 @@ function InicioContent() {
   const module = searchParams.get('module');
   const { organization } = useOrganization();
   const { toast } = useToast();
+  const t = useTranslations('home');
+  const locale = useLocale();
 
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,7 +42,7 @@ function InicioContent() {
   useEffect(() => {
     setMounted(true);
     setFechaHoy(
-      new Date().toLocaleDateString('es-ES', {
+      new Date().toLocaleDateString(locale, {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -62,7 +65,7 @@ function InicioContent() {
       console.error('Error cargando dashboard:', err);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar los datos del dashboard',
+        description: t('errorLoadingDashboard'),
         variant: 'destructive',
       });
     } finally {
@@ -78,7 +81,7 @@ function InicioContent() {
     setIsRefreshing(true);
     await loadData();
     setIsRefreshing(false);
-    toast({ title: 'Dashboard actualizado' });
+    toast({ title: t('dashboardUpdated') });
   };
 
   if (error === 'module_not_activated' && module) {
@@ -111,10 +114,10 @@ function InicioContent() {
       {error && (
         <Alert className="max-w-2xl mx-auto">
           <AlertDescription>
-            {error === 'module_not_activated' && 'El módulo solicitado no está activado.'}
-            {error === 'insufficient_permissions' && 'No tienes permisos suficientes.'}
-            {error === 'plan_limit_reached' && 'Tu plan no permite activar más módulos.'}
-            {!['module_not_activated', 'insufficient_permissions', 'plan_limit_reached'].includes(error) && 'Ha ocurrido un error inesperado.'}
+            {error === 'module_not_activated' && t('errors.moduleNotActivated')}
+            {error === 'insufficient_permissions' && t('errors.insufficientPermissions')}
+            {error === 'plan_limit_reached' && t('errors.planLimitReached')}
+            {!['module_not_activated', 'insufficient_permissions', 'plan_limit_reached'].includes(error) && t('errors.unexpected')}
           </AlertDescription>
         </Alert>
       )}
@@ -127,7 +130,7 @@ function InicioContent() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Dashboard
+              {t('dashboard')}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
               {fechaHoy}
@@ -143,7 +146,7 @@ function InicioContent() {
               className="border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
             >
               <QrCode className="h-4 w-4 mr-2" />
-              Marcar Turno
+              {t('markShift')}
             </Button>
           </Link>
 
@@ -155,7 +158,7 @@ function InicioContent() {
             className="border-gray-300 dark:border-gray-700"
           >
             <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
-            Actualizar
+            {t('refresh')}
           </Button>
         </div>
       </div>
@@ -184,7 +187,7 @@ function InicioContent() {
           <div className="flex items-center gap-2 mb-4">
             <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-              Accesos Rápidos
+              {t('quickAccess')}
             </h3>
           </div>
 
@@ -193,10 +196,10 @@ function InicioContent() {
               <Link href="/app/pos" className="block">
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 hover:shadow-sm transition-shadow">
                   <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                    Punto de Venta
+                    {t('quickLinks.posTitle')}
                   </p>
                   <p className="text-xs text-blue-500 dark:text-blue-400 mt-0.5">
-                    Abrir el POS para procesar ventas
+                    {t('quickLinks.posDesc')}
                   </p>
                 </div>
               </Link>
@@ -206,10 +209,10 @@ function InicioContent() {
               <Link href="/app/pos/mesas" className="block">
                 <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 hover:shadow-sm transition-shadow">
                   <p className="text-sm font-medium text-orange-700 dark:text-orange-300">
-                    Mesas
+                    {t('quickLinks.tablesTitle')}
                   </p>
                   <p className="text-xs text-orange-500 dark:text-orange-400 mt-0.5">
-                    Gestionar mesas del restaurante
+                    {t('quickLinks.tablesDesc')}
                   </p>
                 </div>
               </Link>
@@ -219,10 +222,10 @@ function InicioContent() {
               <Link href="/app/inventario/productos" className="block">
                 <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 hover:shadow-sm transition-shadow">
                   <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                    Productos
+                    {t('quickLinks.productsTitle')}
                   </p>
                   <p className="text-xs text-green-500 dark:text-green-400 mt-0.5">
-                    Administrar catálogo e inventario
+                    {t('quickLinks.productsDesc')}
                   </p>
                 </div>
               </Link>
@@ -232,10 +235,10 @@ function InicioContent() {
               <Link href="/app/reportes" className="block">
                 <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 hover:shadow-sm transition-shadow">
                   <p className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                    Reportes
+                    {t('quickLinks.reportsTitle')}
                   </p>
                   <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">
-                    Ver análisis y métricas detalladas
+                    {t('quickLinks.reportsDesc')}
                   </p>
                 </div>
               </Link>
@@ -244,10 +247,10 @@ function InicioContent() {
             <Link href="/marcar" className="block">
               <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 hover:shadow-sm transition-shadow">
                 <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                  Marcar Asistencia
+                  {t('quickLinks.attendanceTitle')}
                 </p>
                 <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">
-                  Registrar entrada/salida de turno
+                  {t('quickLinks.attendanceDesc')}
                 </p>
               </div>
             </Link>

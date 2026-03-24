@@ -4,6 +4,7 @@ import { useState, useEffect, ReactElement, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { OrganizationListSkeleton } from './OrganizationSkeletons';
 import ChangePlanModal from './ChangePlanModal';
+import { useTranslations } from 'next-intl';
 
 type ProfileData = {
   organization_id: number | null;
@@ -45,6 +46,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const t = useTranslations('org.orgList');
   const [changePlanModalOpen, setChangePlanModalOpen] = useState(false);
   const [selectedOrgForPlan, setSelectedOrgForPlan] = useState<{id: number, name: string, currentPlanId: string} | null>(null);
   
@@ -94,7 +96,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
       
       // Get current user session
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No se encontró sesión de usuario');
+      if (!session) throw new Error(t('noSession'));
     
       // Get user's profile to know their current organization
       const currentOrgId = localStorage.getItem('currentOrganizationId');
@@ -192,7 +194,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
     try {
       // Get current user session
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No se encontró sesión de usuario');
+      if (!session) throw new Error(t('noSession'));
 
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
       console.log('User ID:', session.user.id);
@@ -227,7 +229,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
     try {
       // Get current user session
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No se encontró sesión de usuario');
+      if (!session) throw new Error(t('noSession'));
 
       // Update user's organization
       const { error } = await supabase
@@ -286,10 +288,10 @@ export default function OrganizationList({ showActions = false, onDelete, filter
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
             </svg>
-            <h3 className="font-medium text-gray-700">Filtros</h3>
+            <h3 className="font-medium text-gray-700">{t('filters')}</h3>
             {activeFiltersCount > 0 && (
               <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
-                {activeFiltersCount} {activeFiltersCount === 1 ? 'filtro activo' : 'filtros activos'}
+                {activeFiltersCount} {activeFiltersCount === 1 ? t('activeFilter') : t('activeFilters')}
               </span>
             )}
           </div>
@@ -308,7 +310,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Limpiar todos
+              {t('clearAll')}
             </button>
           )}
         </div>
@@ -318,7 +320,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Filtro por nombre */}
             <div className="relative">
-              <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+              <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('nameLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -330,7 +332,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                   type="text"
                   value={nameFilter}
                   onChange={(e) => setNameFilter(e.target.value)}
-                  placeholder="Buscar por nombre..."
+                  placeholder={t('namePlaceholder')}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
                 {nameFilter && (
@@ -350,7 +352,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
             
             {/* Filtro por tipo */}
             <div>
-              <label htmlFor="type-filter" className="block text-sm font-medium text-gray-700 mb-1">Tipo de organización</label>
+              <label htmlFor="type-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('typeLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -363,7 +365,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                   onChange={(e) => setTypeFilter(e.target.value)}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
-                  <option value="">Todos los tipos</option>
+                  <option value="">{t('allTypes')}</option>
                   {uniqueTypes.map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
@@ -373,7 +375,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
             
             {/* Filtro por plan */}
             <div>
-              <label htmlFor="plan-filter" className="block text-sm font-medium text-gray-700 mb-1">Plan de suscripción</label>
+              <label htmlFor="plan-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('planLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -386,7 +388,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                   onChange={(e) => setPlanFilter(e.target.value)}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
-                  <option value="">Todos los planes</option>
+                  <option value="">{t('allPlans')}</option>
                   {uniquePlans.map(plan => (
                     <option key={plan} value={plan}>{plan}</option>
                   ))}
@@ -396,7 +398,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
             
             {/* Filtro por estado */}
             <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('statusLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -409,9 +411,9 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
-                  <option value="all">Todos</option>
-                  <option value="active">Activos</option>
-                  <option value="inactive">Inactivos</option>
+                  <option value="all">{t('allStatuses')}</option>
+                  <option value="active">{t('activeStatus')}</option>
+                  <option value="inactive">{t('inactiveStatus')}</option>
                 </select>
               </div>
             </div>
@@ -429,7 +431,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         {filteredOrganizations.length === 0 ? (
           <div className="text-center py-6">
-            <p className="text-gray-500">No se encontraron organizaciones con los filtros aplicados</p>
+            <p className="text-gray-500">{t('noResults')}</p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-200">
@@ -449,7 +451,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                           <p className="text-sm font-medium text-blue-600 truncate">{org.name}</p>
                           {org.is_current && (
                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              Actual
+                              {t('current')}
                             </span>
                           )}
                         </div>
@@ -462,14 +464,14 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex space-x-4">
                           <p className="text-sm text-gray-500">
-                            {org.role_id === 2 ? 'Administrador' : 'Miembro'}
+                            {org.role_id === 2 ? t('admin') : t('member')}
                           </p>
                           <p className="text-sm text-gray-500">
-                            Plan: <span className="font-medium text-purple-600">{org.plan_name}</span>
+                            {t('planPrefix')} <span className="font-medium text-purple-600">{org.plan_name}</span>
                           </p>
                         </div>
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${org.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {org.status === 'active' ? 'Activo' : 'Inactivo'}
+                          {org.status === 'active' ? t('active') : t('inactive')}
                         </span>
                       </div>
                     </div>
@@ -482,8 +484,8 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                             className={`cursor-pointer ${org.status === 'active' ? 'text-green-600 hover:text-green-800' : 'text-gray-500 hover:text-gray-700'}`}
                             role="button"
                             tabIndex={0}
-                            aria-label={org.status === 'active' ? 'Desactivar organización' : 'Activar organización'}
-                            title={org.status === 'active' ? 'Desactivar organización' : 'Activar organización'}
+                            aria-label={org.status === 'active' ? t('deactivateOrg') : t('activateOrg')}
+                            title={org.status === 'active' ? t('deactivateOrg') : t('activateOrg')}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === 'Space') {
                                 e.stopPropagation();
@@ -518,8 +520,8 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                             className="text-purple-600 hover:text-purple-900 cursor-pointer"
                             role="button"
                             tabIndex={0}
-                            aria-label="Cambiar plan"
-                            title="Cambiar plan de suscripción"
+                            aria-label={t('changePlanLabel')}
+                            title={t('changePlanTitle')}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === 'Space') {
                                 e.stopPropagation();

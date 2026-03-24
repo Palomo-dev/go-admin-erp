@@ -12,6 +12,7 @@ import { WebsiteSettings, TEMPLATE_PRESETS, getPresetsForType, FONTS, DEFAULT_CO
 import { websitePageBuilderService } from '@/lib/services/websitePageBuilderService';
 import { supabase } from '@/lib/supabase/config';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 
 interface BrandingThemeTabProps {
   settings: WebsiteSettings;
@@ -22,17 +23,19 @@ interface BrandingThemeTabProps {
   subdomain?: string | null;
 }
 
-const BUSINESS_TYPE_LABELS: Record<string, string> = {
-  restaurant: 'Restaurante',
-  hotel: 'Hotel',
-  retail: 'Retail',
-  services: 'Servicios',
-  gym: 'Gimnasio',
-  transport: 'Transporte',
-  parking: 'Parking',
+const BUSINESS_TYPE_KEYS: Record<string, string> = {
+  restaurant: 'bizRestaurant',
+  hotel: 'bizHotel',
+  retail: 'bizRetail',
+  services: 'bizServices',
+  gym: 'bizGym',
+  transport: 'bizTransport',
+  parking: 'bizParking',
 };
 
 export default function BrandingThemeTab({ settings, onSave, isSaving, organizationTypeId, organizationId, subdomain }: BrandingThemeTabProps) {
+  const t = useTranslations('branding.theme');
+  const tc = useTranslations('branding.common');
   const router = useRouter();
   const [homePageId, setHomePageId] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
@@ -97,7 +100,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="p-4">
           <div className="max-w-md">
-            <h3 className="text-sm font-semibold dark:text-white mb-3">Tema aplicado</h3>
+            <h3 className="text-sm font-semibold dark:text-white mb-3">{t('appliedTheme')}</h3>
             {siteUrl ? (
               <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
                 {/* Barra de navegador simulada */}
@@ -118,7 +121,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                     src={siteUrl}
                     className="absolute top-0 left-0 border-0"
                     style={{ width: '1440px', height: '900px', transform: 'scale(0.31)', transformOrigin: 'top left' }}
-                    title="Vista previa del sitio"
+                    title={t('sitePreview')}
                     sandbox="allow-scripts allow-same-origin"
                   />
                 </div>
@@ -126,15 +129,15 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
             ) : (
               <div className="flex flex-col items-center justify-center py-10 text-center rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
                 <Globe className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
-                <p className="text-gray-500 dark:text-gray-400 text-xs">No hay subdominio configurado.</p>
+                <p className="text-gray-500 dark:text-gray-400 text-xs">{t('noSubdomain')}</p>
               </div>
             )}
             {/* Info + botones */}
             <div className="mt-2 flex items-center justify-between">
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                <span className="font-medium dark:text-white">{settings.template_id || 'Sin template'}</span>
+                <span className="font-medium dark:text-white">{settings.template_id || t('noTemplate')}</span>
                 {settings.updated_at && (
-                  <span className="ml-2">· Modificado {new Date(settings.updated_at).toLocaleDateString('es')}</span>
+                  <span className="ml-2">· {t('modified')} {new Date(settings.updated_at).toLocaleDateString()}</span>
                 )}
               </div>
               <div className="flex items-center gap-1.5">
@@ -146,13 +149,13 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                 {siteUrl && (
                   <Button variant="outline" size="sm" onClick={() => window.open(siteUrl, '_blank')} className="h-7 text-xs dark:border-gray-600">
                     <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                    Ver sitio
+                    {t('viewSite')}
                   </Button>
                 )}
                 {homePageId && (
                   <Button size="sm" onClick={() => router.push(`/app/organizacion/branding/editor/${homePageId}`)} className="h-7 text-xs bg-blue-600 hover:bg-blue-700">
                     <Edit className="h-3.5 w-3.5 mr-1" />
-                    Editar
+                    {t('edit')}
                   </Button>
                 )}
               </div>
@@ -166,10 +169,10 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
             <Palette className="h-5 w-5" />
-            Plantilla
+            {t('templateTitle')}
           </CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Selecciona el estilo base para tu sitio web
+            {t('templateDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -178,17 +181,17 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
             <Filter className="h-4 w-4 text-gray-400" />
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-[200px] dark:bg-gray-700 dark:border-gray-600">
-                <SelectValue placeholder="Filtrar por tipo" />
+                <SelectValue placeholder={t('filterByType')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los tipos</SelectItem>
-                {Object.entries(BUSINESS_TYPE_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                <SelectItem value="all">{t('allTypes')}</SelectItem>
+                {Object.entries(BUSINESS_TYPE_KEYS).map(([key, tKey]) => (
+                  <SelectItem key={key} value={key}>{t(tKey)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <span className="text-xs text-gray-400 dark:text-gray-500">
-              {presets.length} {presets.length === 1 ? 'tema' : 'temas'}
+              {presets.length} {presets.length === 1 ? t('themesSingular') : t('themesPlural')}
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -271,10 +274,10 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
             {formData.theme_mode === 'light' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            Modo de Tema
+            {t('themeModeTitle')}
           </CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Elige entre modo claro u oscuro
+            {t('themeModeDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -286,13 +289,13 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="light" id="light" />
               <Label htmlFor="light" className="flex items-center gap-2 cursor-pointer dark:text-white">
-                <Sun className="h-4 w-4" /> Claro
+                <Sun className="h-4 w-4" /> {t('light')}
               </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="dark" id="dark" />
               <Label htmlFor="dark" className="flex items-center gap-2 cursor-pointer dark:text-white">
-                <Moon className="h-4 w-4" /> Oscuro
+                <Moon className="h-4 w-4" /> {t('dark')}
               </Label>
             </div>
           </RadioGroup>
@@ -303,20 +306,20 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="dark:text-white">Colores</CardTitle>
+            <CardTitle className="dark:text-white">{t('colorsTitle')}</CardTitle>
             <CardDescription className="dark:text-gray-400">
-              Personaliza los colores de tu marca
+              {t('colorsDesc')}
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={handleReset} className="dark:border-gray-600">
             <RotateCcw className="h-4 w-4 mr-2" />
-            Restablecer
+            {t('reset')}
           </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="space-y-2">
-              <Label className="dark:text-gray-300">Principal</Label>
+              <Label className="dark:text-gray-300">{t('colorPrimary')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -328,7 +331,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
               <span className="text-xs text-gray-500 dark:text-gray-400">{formData.primary_color}</span>
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-300">Secundario</Label>
+              <Label className="dark:text-gray-300">{t('colorSecondary')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -340,7 +343,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
               <span className="text-xs text-gray-500 dark:text-gray-400">{formData.secondary_color}</span>
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-300">Acento</Label>
+              <Label className="dark:text-gray-300">{t('colorAccent')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -352,7 +355,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
               <span className="text-xs text-gray-500 dark:text-gray-400">{formData.accent_color}</span>
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-300">Fondo</Label>
+              <Label className="dark:text-gray-300">{t('colorBackground')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -364,7 +367,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
               <span className="text-xs text-gray-500 dark:text-gray-400">{formData.background_color}</span>
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-300">Texto</Label>
+              <Label className="dark:text-gray-300">{t('colorText')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -380,20 +383,20 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
           {/* Preview */}
           <div className="mt-6 p-4 rounded-lg border dark:border-gray-700" style={{ backgroundColor: formData.background_color }}>
             <h3 className="text-lg font-bold mb-2" style={{ color: formData.primary_color, fontFamily: formData.font_heading }}>
-              Vista Previa del Tema
+              {t('previewTitle')}
             </h3>
             <p className="mb-3" style={{ color: formData.text_color, fontFamily: formData.font_body }}>
-              Este es un texto de ejemplo para ver cómo se verán los colores en tu sitio web.
+              {t('previewText')}
             </p>
             <div className="flex gap-2">
               <button className="px-4 py-2 rounded text-white text-sm" style={{ backgroundColor: formData.primary_color }}>
-                Botón Principal
+                {t('btnPrimary')}
               </button>
               <button className="px-4 py-2 rounded text-white text-sm" style={{ backgroundColor: formData.secondary_color }}>
-                Botón Secundario
+                {t('btnSecondary')}
               </button>
               <button className="px-4 py-2 rounded text-white text-sm" style={{ backgroundColor: formData.accent_color }}>
-                Acento
+                {t('btnAccent')}
               </button>
             </div>
           </div>
@@ -403,15 +406,15 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
       {/* Tipografía */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="dark:text-white">Tipografía</CardTitle>
+          <CardTitle className="dark:text-white">{t('typographyTitle')}</CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Selecciona las fuentes para títulos y texto
+            {t('typographyDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="dark:text-gray-300">Fuente de Títulos</Label>
+              <Label className="dark:text-gray-300">{t('fontHeading')}</Label>
               <Select
                 value={formData.font_heading}
                 onValueChange={(value) => setFormData({ ...formData, font_heading: value })}
@@ -428,11 +431,11 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                 </SelectContent>
               </Select>
               <p className="text-2xl mt-2 dark:text-white" style={{ fontFamily: formData.font_heading }}>
-                Título de Ejemplo
+                {t('sampleHeading')}
               </p>
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-300">Fuente de Cuerpo</Label>
+              <Label className="dark:text-gray-300">{t('fontBody')}</Label>
               <Select
                 value={formData.font_body}
                 onValueChange={(value) => setFormData({ ...formData, font_body: value })}
@@ -449,7 +452,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                 </SelectContent>
               </Select>
               <p className="mt-2 dark:text-gray-300" style={{ fontFamily: formData.font_body }}>
-                Este es un texto de ejemplo para ver cómo se ve la fuente del cuerpo.
+                {t('sampleBody')}
               </p>
             </div>
           </div>
@@ -462,12 +465,12 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
           {isSaving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Guardando...
+              {tc('saving')}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Guardar Cambios
+              {tc('saveChanges')}
             </>
           )}
         </Button>

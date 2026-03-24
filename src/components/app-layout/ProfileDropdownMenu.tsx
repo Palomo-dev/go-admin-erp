@@ -11,6 +11,7 @@ import { UserData } from './types';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { useTranslations } from 'next-intl';
 
 interface ProfileDropdownMenuProps {
   userData: UserData | null;
@@ -26,6 +27,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [planName, setPlanName] = useState<string | null>(null);
+  const t = useTranslations('nav');
   
   // Detectar si estamos en móvil y si el componente está montado
   useEffect(() => {
@@ -99,7 +101,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Mi Cuenta</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('myAccount')}</h3>
             <button
               onClick={() => setOpen(false)}
               className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -117,7 +119,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                   {userData?.avatar && getAvatarUrl(userData.avatar) ? (
                     <Image 
                       src={getAvatarUrl(userData.avatar)} 
-                      alt="Foto de perfil" 
+                      alt={t('profilePhoto')} 
                       width={64} 
                       height={64} 
                       className="object-cover"
@@ -129,7 +131,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                   )}
                 </div>
                 <div className="ml-4 flex-1">
-                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{userData?.name || 'Usuario'}</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{userData?.name || t('user')}</p>
                   {userData?.role && (
                     <p className="text-sm text-gray-600 dark:text-gray-400">{userData.role}</p>
                   )}
@@ -155,7 +157,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               >
                 <div className="flex items-center">
                   <CreditCard size={20} className="mr-3" />
-                  <span className="font-medium">Facturación</span>
+                  <span className="font-medium">{t('billing')}</span>
                 </div>
                 <ChevronRight size={20} />
               </Link>
@@ -170,7 +172,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               >
                 <div className="flex items-center">
                   <User size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">Ver perfil</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{t('viewProfile')}</span>
                 </div>
                 <ChevronRight size={20} className="text-gray-400" />
               </Link>
@@ -182,7 +184,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               >
                 <div className="flex items-center">
                   <Settings size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">Configuraciones</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{t('settings')}</span>
                 </div>
                 <ChevronRight size={20} className="text-gray-400" />
               </Link>
@@ -194,7 +196,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               >
                 <div className="flex items-center">
                   <Bell size={20} className="mr-3 text-gray-600 dark:text-gray-400" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">Notificaciones</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{t('notifications')}</span>
                 </div>
                 <ChevronRight size={20} className="text-gray-400" />
               </Link>
@@ -210,7 +212,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               >
                 <div className="flex items-center">
                   <LogOut size={20} className="mr-3" />
-                  <span className="font-medium">{loading ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
+                  <span className="font-medium">{loading ? t('signingOut') : t('signOut')}</span>
                 </div>
               </button>
             </div>
@@ -240,7 +242,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                 {userData?.avatar && getAvatarUrl(userData.avatar) ? (
                   <Image 
                     src={getAvatarUrl(userData.avatar)} 
-                    alt="Foto de perfil" 
+                    alt={t('profilePhoto')} 
                     width={48} 
                     height={48} 
                     className="object-cover"
@@ -255,10 +257,10 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               {/* Información del usuario */}
               <div className="ml-3 overflow-hidden flex-1">
                 <p className="text-base font-medium text-gray-800 dark:text-gray-200 truncate">
-                  {userData?.name || 'Usuario'}
+                  {userData?.name || t('user')}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                  {userData?.role || 'Usuario'}
+                  {userData?.role || t('user')}
                 </p>
               </div>
               
@@ -285,7 +287,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                   {userData?.avatar && getAvatarUrl(userData.avatar) ? (
                     <Image 
                       src={getAvatarUrl(userData.avatar)} 
-                      alt="Foto de perfil" 
+                      alt={t('profilePhoto')} 
                       width={40} 
                       height={40} 
                       className="object-cover"
@@ -301,7 +303,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                 {!collapsed && (
                   <div className="ml-3 overflow-hidden">
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                      {userData?.name || 'Usuario'}
+                      {userData?.name || t('user')}
                     </p>
                     <div className="flex flex-col space-y-0.5 text-xs text-gray-500 dark:text-gray-300">
                       {userData?.role && (
@@ -321,7 +323,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                 {collapsed && (
                   <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 pl-2 hidden lg:group-hover:block z-50 whitespace-nowrap">
                     <div className="bg-gray-800 dark:bg-gray-900 text-white text-sm py-2 px-3 rounded shadow-lg min-w-[200px]">
-                      <div className="font-medium mb-1 text-white">{userData?.name || 'Usuario'}</div>
+                      <div className="font-medium mb-1 text-white">{userData?.name || t('user')}</div>
                       {userData?.role && (
                         <div className="text-xs text-gray-300">{userData.role}</div>
                       )}
@@ -370,7 +372,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               {userData?.avatar && getAvatarUrl(userData.avatar) ? (
                 <Image 
                   src={getAvatarUrl(userData.avatar)} 
-                  alt="Avatar" 
+                  alt={t('profilePhoto')} 
                   width={36} 
                   height={36} 
                   className="object-cover"
@@ -399,7 +401,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                 {userData?.avatar && getAvatarUrl(userData.avatar) ? (
                   <Image 
                     src={getAvatarUrl(userData.avatar)} 
-                    alt="Avatar" 
+                    alt={t('profilePhoto')} 
                     width={32} 
                     height={32} 
                     className="object-cover"
@@ -411,8 +413,8 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                 )}
               </div>
               <div className="hidden md:block">
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{userData?.name || 'Usuario'}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{userData?.role || 'Usuario'}</p>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{userData?.name || t('user')}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{userData?.role || t('user')}</p>
               </div>
               <ChevronDown size={16} className="text-gray-500 dark:text-gray-400" />
             </div>
@@ -455,7 +457,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
         <DropdownMenuItem asChild>
           <Link href="/app/suscripcion" className="flex items-center bg-blue-600 hover:bg-blue-700 text-white hover:text-white w-full">
             <CreditCard size={14} className="mr-2" />
-            Facturación
+            {t('billing')}
           </Link>
         </DropdownMenuItem>
         
@@ -466,21 +468,21 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
         <DropdownMenuItem asChild>
           <Link href="/app/perfil" className="flex items-center text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-full">
             <User size={14} className="mr-2" />
-            Ver perfil
+            {t('viewProfile')}
           </Link>
         </DropdownMenuItem>
         
         <DropdownMenuItem asChild>
           <Link href="/app/organizacion/informacion" className="flex items-center text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-full">
             <Settings size={14} className="mr-2" />
-            Configuraciones
+            {t('settings')}
           </Link>
         </DropdownMenuItem>
         
         <DropdownMenuItem asChild>
           <Link href="/app/notificaciones" className="flex items-center text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-full">
             <Bell size={14} className="mr-2" />
-            Notificaciones
+            {t('notifications')}
           </Link>
         </DropdownMenuItem>
 
@@ -494,7 +496,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
           className="flex items-center text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
         >
           <LogOut size={14} className="mr-2" />
-          {loading ? 'Cerrando sesión...' : 'Cerrar sesión'}
+          {loading ? t('signingOut') : t('signOut')}
         </DropdownMenuItem>
       </>
     );

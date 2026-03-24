@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
 import { OrganizationInfoSkeleton } from '@/components/organization/OrganizationSkeletons';
+import { useTranslations } from 'next-intl';
 
 // Dynamic import for the OrganizationInfoTab component
 const OrganizationInfoTab = dynamic(() => import('../../../../components/organization/OrganizationInfoTab'), {
@@ -15,6 +16,7 @@ export default function InformacionPage() {
   const [userRole, setUserRole] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('org');
 
   useEffect(() => {
     const fetchOrgData = async () => {
@@ -25,7 +27,7 @@ export default function InformacionPage() {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          setError('No se encontró sesión de usuario');
+          setError(t('common.noSession'));
           return;
         }
         
@@ -52,12 +54,12 @@ export default function InformacionPage() {
 
         if (memberError) {
           console.error('Error fetching organization data:', memberError);
-          setError('Error al cargar datos de la organización');
+          setError(t('common.errorLoadingOrg'));
           return;
         }
 
         if (!memberData || memberData.length === 0) {
-          setError('No perteneces a ninguna organización');
+          setError(t('common.noOrganization'));
           return;
         }
 
@@ -75,7 +77,7 @@ export default function InformacionPage() {
         
       } catch (err: any) {
         console.error('Error in fetchOrgData:', err);
-        setError('Error inesperado al cargar datos');
+        setError(t('common.unexpectedError'));
       } finally {
         setLoading(false);
       }
@@ -91,8 +93,8 @@ export default function InformacionPage() {
     return (
       <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Información de la Organización</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona la información y configuración de tu organización</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{t('info.title')}</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">{t('info.description')}</p>
         </div>
         <OrganizationInfoSkeleton />
       </div>
@@ -129,7 +131,7 @@ export default function InformacionPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-yellow-700">No tienes permisos para administrar la organización. Contacta a un administrador.</p>
+              <p className="text-sm text-yellow-700">{t('common.noPermissions')}</p>
             </div>
           </div>
         </div>
@@ -141,8 +143,8 @@ export default function InformacionPage() {
     <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Información de la Organización</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona la información y configuración de tu organización</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{t('info.title')}</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">{t('info.description')}</p>
         </div>
       </div>
       

@@ -3,12 +3,14 @@
 import { useState, lazy, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import OrganizationList from './OrganizationList';
+import { useTranslations } from 'next-intl';
 
 const CreateOrganizationForm = lazy(() => import('./CreateOrganizationForm'));
 
 export default function ManageOrganizationsTab() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState('');
+  const t = useTranslations('org.manageOrgs');
 
   const handleCreateSuccess = () => {
     setShowCreateForm(false);
@@ -16,14 +18,14 @@ export default function ManageOrganizationsTab() {
   };
 
   const handleDeleteOrganization = async (orgId: number) => {
-    if (!window.confirm('¿Estás seguro de eliminar esta organización? Esta acción no se puede deshacer.')) {
+    if (!window.confirm(t('confirmDelete'))) {
       return;
     }
 
     try {
       // Check if user is admin of the organization
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No se encontró sesión de usuario');
+      if (!session) throw new Error(t('noSession'));
 
       const { data: memberData, error: memberError } = await supabase
         .from('organization_members')
@@ -34,7 +36,7 @@ export default function ManageOrganizationsTab() {
 
       if (memberError) throw memberError;
       if (memberData.role_id !== 2 && !memberData.is_super_admin) {
-        throw new Error('No tienes permisos para eliminar esta organización');
+        throw new Error(t('noPermissionsDelete'));
       }
 
       // Delete organization (this will cascade delete branches, organization_members, etc.)
@@ -55,12 +57,12 @@ export default function ManageOrganizationsTab() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium text-gray-900">Administrar Organizaciones</h2>
+        <h2 className="text-lg font-medium text-gray-900">{t('title')}</h2>
         <button
           onClick={() => setShowCreateForm(true)}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          Crear Nueva Organización
+          {t('createNew')}
         </button>
       </div>
 
@@ -80,7 +82,7 @@ export default function ManageOrganizationsTab() {
       )}
 
       {showCreateForm ? (
-        <Suspense fallback={<div>Cargando formulario...</div>}>
+        <Suspense fallback={<div>{t('loadingForm')}</div>}>
           <CreateOrganizationForm
             onSuccess={handleCreateSuccess}
             onCancel={() => setShowCreateForm(false)}
@@ -91,7 +93,7 @@ export default function ManageOrganizationsTab() {
         <div>
           <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
             <p className="text-sm text-blue-700">
-              Aquí puedes gestionar todas tus organizaciones. Las organizaciones inactivas no aparecerán en el selector de organizaciones durante el inicio de sesión.
+              {t('infoMessage')}
             </p>
           </div>
           {/* Mostrar todas las organizaciones con capacidad de filtrado */}

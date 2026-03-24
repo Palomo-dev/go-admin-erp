@@ -13,6 +13,7 @@ import {
   Plus, Trash2, Facebook, Instagram, Twitter, Linkedin, Youtube, FileText, Info
 } from 'lucide-react';
 import { WebsiteSettings, FooterLink, BusinessHours } from '@/lib/services/websiteSettingsService';
+import { useTranslations } from 'next-intl';
 
 interface BrandingContentTabProps {
   settings: WebsiteSettings;
@@ -21,15 +22,7 @@ interface BrandingContentTabProps {
   isSaving: boolean;
 }
 
-const DAYS = [
-  { key: 'monday', label: 'Lunes' },
-  { key: 'tuesday', label: 'Martes' },
-  { key: 'wednesday', label: 'Miércoles' },
-  { key: 'thursday', label: 'Jueves' },
-  { key: 'friday', label: 'Viernes' },
-  { key: 'saturday', label: 'Sábado' },
-  { key: 'sunday', label: 'Domingo' },
-];
+const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
 const SOCIAL_PLATFORMS = [
   { key: 'facebook', label: 'Facebook', icon: Facebook, placeholder: 'https://facebook.com/...' },
@@ -41,6 +34,8 @@ const SOCIAL_PLATFORMS = [
 ];
 
 export default function BrandingContentTab({ settings, onSave, isSaving }: BrandingContentTabProps) {
+  const t = useTranslations('branding.content');
+  const tc = useTranslations('branding.common');
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>(settings.social_links || {});
   const [businessHours, setBusinessHours] = useState<BusinessHours>(settings.business_hours || {});
   const [footerText, setFooterText] = useState(settings.footer_text || '');
@@ -68,16 +63,15 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
       <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50">
         <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
         <p className="text-xs text-blue-700 dark:text-blue-300">
-          La galería, testimonios y FAQ se gestionan directamente desde el editor visual de cada página.
-          Aquí configura los datos globales del sitio: redes sociales, horarios y footer.
+          {t('infoNote')}
         </p>
       </div>
 
       <Tabs defaultValue="social" className="w-full">
         <TabsList className="grid w-full grid-cols-3 dark:bg-gray-800">
-          <TabsTrigger value="social">Redes Sociales</TabsTrigger>
-          <TabsTrigger value="hours">Horarios</TabsTrigger>
-          <TabsTrigger value="footer">Footer</TabsTrigger>
+          <TabsTrigger value="social">{t('tabSocial')}</TabsTrigger>
+          <TabsTrigger value="hours">{t('tabHours')}</TabsTrigger>
+          <TabsTrigger value="footer">{t('tabFooter')}</TabsTrigger>
         </TabsList>
 
         {/* Redes Sociales */}
@@ -86,10 +80,10 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
             <CardHeader>
               <CardTitle className="flex items-center gap-2 dark:text-white">
                 <Share2 className="h-5 w-5" />
-                Redes Sociales
+                {t('socialTitle')}
               </CardTitle>
               <CardDescription className="dark:text-gray-400">
-                Enlaces a tus perfiles en redes sociales
+                {t('socialDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -122,30 +116,30 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
             <CardHeader>
               <CardTitle className="flex items-center gap-2 dark:text-white">
                 <Clock className="h-5 w-5" />
-                Horario de Atención
+                {t('hoursTitle')}
               </CardTitle>
               <CardDescription className="dark:text-gray-400">
-                Configura los horarios de tu negocio
+                {t('hoursDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {DAYS.map((day) => {
-                  const hours = (businessHours as any)[day.key] || { open: '09:00', close: '18:00', closed: false };
+                {DAY_KEYS.map((dayKey) => {
+                  const hours = (businessHours as any)[dayKey] || { open: '09:00', close: '18:00', closed: false };
                   return (
-                    <div key={day.key} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                    <div key={dayKey} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                       <div className="w-24">
-                        <span className="font-medium dark:text-white">{day.label}</span>
+                        <span className="font-medium dark:text-white">{t(dayKey)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={!hours.closed}
                           onCheckedChange={(checked) => 
-                            setBusinessHours({ ...businessHours, [day.key]: { ...hours, closed: !checked } })
+                            setBusinessHours({ ...businessHours, [dayKey]: { ...hours, closed: !checked } })
                           }
                         />
                         <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {hours.closed ? 'Cerrado' : 'Abierto'}
+                          {hours.closed ? t('closed') : t('open')}
                         </span>
                       </div>
                       {!hours.closed && (
@@ -154,16 +148,16 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
                             type="time"
                             value={hours.open}
                             onChange={(e) => 
-                              setBusinessHours({ ...businessHours, [day.key]: { ...hours, open: e.target.value } })
+                              setBusinessHours({ ...businessHours, [dayKey]: { ...hours, open: e.target.value } })
                             }
                             className="w-32 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                           />
-                          <span className="dark:text-gray-400">a</span>
+                          <span className="dark:text-gray-400">{t('timeSeparator')}</span>
                           <Input
                             type="time"
                             value={hours.close}
                             onChange={(e) => 
-                              setBusinessHours({ ...businessHours, [day.key]: { ...hours, close: e.target.value } })
+                              setBusinessHours({ ...businessHours, [dayKey]: { ...hours, close: e.target.value } })
                             }
                             className="w-32 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                           />
@@ -183,19 +177,19 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
             <CardHeader>
               <CardTitle className="flex items-center gap-2 dark:text-white">
                 <FileText className="h-5 w-5" />
-                Contenido del Footer
+                {t('footerTitle')}
               </CardTitle>
               <CardDescription className="dark:text-gray-400">
-                Texto y enlaces para el pie de página
+                {t('footerDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="dark:text-gray-300">Texto del Footer</Label>
+                <Label className="dark:text-gray-300">{t('footerTextLabel')}</Label>
                 <Textarea
                   value={footerText}
                   onChange={(e) => setFooterText(e.target.value)}
-                  placeholder="© 2024 Mi Empresa. Todos los derechos reservados."
+                  placeholder={t('footerTextPlaceholder')}
                   rows={2}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
@@ -203,10 +197,10 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="dark:text-gray-300">Enlaces del Footer</Label>
+                  <Label className="dark:text-gray-300">{t('footerLinksLabel')}</Label>
                   <Button variant="outline" size="sm" onClick={addFooterLink} className="dark:border-gray-600">
                     <Plus className="h-4 w-4 mr-2" />
-                    Agregar
+                    {t('addLink')}
                   </Button>
                 </div>
                 <div className="space-y-2">
@@ -219,7 +213,7 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
                           updated[index].label = e.target.value;
                           setFooterLinks(updated);
                         }}
-                        placeholder="Texto del enlace"
+                        placeholder={t('linkTextPlaceholder')}
                         className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       />
                       <Input
@@ -229,7 +223,7 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
                           updated[index].url = e.target.value;
                           setFooterLinks(updated);
                         }}
-                        placeholder="URL"
+                        placeholder={t('linkUrlPlaceholder')}
                         className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       />
                       <Button
@@ -255,12 +249,12 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
           {isSaving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Guardando...
+              {tc('saving')}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Guardar Cambios
+              {tc('saveChanges')}
             </>
           )}
         </Button>

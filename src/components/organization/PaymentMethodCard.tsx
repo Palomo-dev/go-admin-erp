@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CreditCardIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useTranslations } from 'next-intl';
 import { PaymentMethodSkeleton } from './OrganizationSkeletons';
 
 interface PaymentMethod {
@@ -39,6 +40,7 @@ export default function PaymentMethodCard({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const t = useTranslations('org.paymentMethod');
 
   useEffect(() => {
     if (stripeCustomerId) {
@@ -63,7 +65,7 @@ export default function PaymentMethodCard({
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.error || 'Error al cargar métodos de pago');
+        throw new Error(result.error || t('errorLoading'));
       }
       
       setPaymentMethods(result.paymentMethods || []);
@@ -76,7 +78,7 @@ export default function PaymentMethodCard({
   };
 
   const handleDeletePaymentMethod = async (paymentMethodId: string) => {
-    if (!confirm('¿Estás seguro de eliminar este método de pago?')) return;
+    if (!confirm(t('confirmDelete'))) return;
     
     try {
       setActionLoading(paymentMethodId);
@@ -95,7 +97,7 @@ export default function PaymentMethodCard({
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.error || 'Error al eliminar método de pago');
+        throw new Error(result.error || t('errorDeleting'));
       }
       
       // Recargar métodos de pago
@@ -129,7 +131,7 @@ export default function PaymentMethodCard({
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.error || 'Error al abrir portal de facturación');
+        throw new Error(result.error || t('errorPortal'));
       }
       
       if (result.url) {
@@ -152,15 +154,15 @@ export default function PaymentMethodCard({
     return (
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Método de Pago</h3>
-          <p className="text-sm text-gray-500">Gestiona tu método de pago para suscripciones</p>
+          <h3 className="text-lg font-medium text-gray-900">{t('title')}</h3>
+          <p className="text-sm text-gray-500">{t('description')}</p>
         </div>
         <div className="p-6">
           <div className="text-center py-6">
             <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h4 className="mt-2 text-sm font-medium text-gray-900">Sin método de pago</h4>
+            <h4 className="mt-2 text-sm font-medium text-gray-900">{t('noPaymentMethod')}</h4>
             <p className="mt-1 text-sm text-gray-500">
-              El método de pago se configurará al seleccionar un plan de pago.
+              {t('noPaymentMethodDesc')}
             </p>
           </div>
         </div>
@@ -176,8 +178,8 @@ export default function PaymentMethodCard({
     <div className="bg-white shadow rounded-lg">
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Método de Pago</h3>
-          <p className="text-sm text-gray-500">Gestiona tu método de pago para suscripciones</p>
+          <h3 className="text-lg font-medium text-gray-900">{t('title')}</h3>
+          <p className="text-sm text-gray-500">{t('description')}</p>
         </div>
         <button
           onClick={handleOpenBillingPortal}
@@ -187,12 +189,12 @@ export default function PaymentMethodCard({
           {actionLoading === 'portal' ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-              Abriendo...
+              {t('opening')}
             </>
           ) : (
             <>
               <PencilIcon className="h-4 w-4 mr-1" />
-              Gestionar Facturación
+              {t('manageBilling')}
             </>
           )}
         </button>
@@ -208,16 +210,16 @@ export default function PaymentMethodCard({
         {paymentMethods.length === 0 ? (
           <div className="text-center py-6">
             <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h4 className="mt-2 text-sm font-medium text-gray-900">Sin métodos de pago</h4>
+            <h4 className="mt-2 text-sm font-medium text-gray-900">{t('noPaymentMethods')}</h4>
             <p className="mt-1 text-sm text-gray-500">
-              Agrega un método de pago para tus suscripciones.
+              {t('addPaymentMethodDesc')}
             </p>
             <button
               onClick={handleOpenBillingPortal}
               className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
             >
               <PlusIcon className="h-4 w-4 mr-2" />
-              Agregar Método de Pago
+              {t('addPaymentMethod')}
             </button>
           </div>
         ) : (
@@ -242,12 +244,12 @@ export default function PaymentMethodCard({
                       {formatBrand(pm.brand)} •••• {pm.last4}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Expira {pm.expMonth.toString().padStart(2, '0')}/{pm.expYear}
+                      {t('expires')} {pm.expMonth.toString().padStart(2, '0')}/{pm.expYear}
                     </p>
                   </div>
                   {pm.isDefault && (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                      Predeterminada
+                      {t('default')}
                     </span>
                   )}
                 </div>
@@ -257,7 +259,7 @@ export default function PaymentMethodCard({
                     onClick={() => handleDeletePaymentMethod(pm.id)}
                     disabled={actionLoading === pm.id || paymentMethods.length === 1}
                     className="p-2 text-gray-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={paymentMethods.length === 1 ? 'No puedes eliminar el único método de pago' : 'Eliminar'}
+                    title={paymentMethods.length === 1 ? t('cantDeleteOnly') : t('delete')}
                   >
                     {actionLoading === pm.id ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>

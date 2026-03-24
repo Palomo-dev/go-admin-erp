@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import FileUpload from '@/components/common/FileUpload';
+import { useTranslations } from 'next-intl';
 
 interface RegistrationFormProps {
   initialEmail?: string;
@@ -51,6 +52,9 @@ export default function RegistrationForm({
   }>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const t = useTranslations('auth.signup');
+  const tc = useTranslations('common');
+  const te = useTranslations('auth.errors');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -71,7 +75,7 @@ export default function RegistrationForm({
         if (password !== confirmPassword) {
           setValidationErrors(prev => ({ 
             ...prev, 
-            confirmPassword: 'Las contraseñas no coinciden' 
+            confirmPassword: te('passwordMismatch') 
           }));
         } else {
           setValidationErrors(prev => ({ 
@@ -102,13 +106,13 @@ export default function RegistrationForm({
     
     // Validate email
     if (!validateEmail(formData.email)) {
-      setValidationErrors(prev => ({ ...prev, email: 'Por favor ingrese un correo electrónico válido' }));
+      setValidationErrors(prev => ({ ...prev, email: te('emailInvalid') }));
       return;
     }
     
     // Validate phone number
     if (!validatePhone(formData.phoneNumber)) {
-      setValidationErrors(prev => ({ ...prev, phoneNumber: 'El teléfono debe contener solo dígitos' }));
+      setValidationErrors(prev => ({ ...prev, phoneNumber: t('phoneDigitsOnly') }));
       return;
     }
     
@@ -116,7 +120,7 @@ export default function RegistrationForm({
     if (formData.password !== formData.confirmPassword) {
       setValidationErrors(prev => ({ 
         ...prev, 
-        confirmPassword: 'Las contraseñas no coinciden' 
+        confirmPassword: te('passwordMismatch') 
       }));
       return;
     }
@@ -125,7 +129,7 @@ export default function RegistrationForm({
     if (formData.password.length < 8) {
       setValidationErrors(prev => ({ 
         ...prev, 
-        password: 'La contraseña debe tener al menos 8 caracteres' 
+        password: te('passwordTooShort') 
       }));
       return;
     }
@@ -138,7 +142,7 @@ export default function RegistrationForm({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-            Nombre
+            {t('firstName')}
           </label>
           <input
             id="firstName"
@@ -152,7 +156,7 @@ export default function RegistrationForm({
         </div>
         <div>
           <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-            Apellido
+            {t('lastName')}
           </label>
           <input
             id="lastName"
@@ -168,7 +172,7 @@ export default function RegistrationForm({
       
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-          Correo electrónico
+          {t('email')}
         </label>
         <input
           id="email"
@@ -189,7 +193,7 @@ export default function RegistrationForm({
       
       <div>
         <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
-          Teléfono {!isEmployee && '(opcional)'}
+          {t('phone')} {!isEmployee && `(${tc('optional')})`}
         </label>
         <input
           id="phoneNumber"
@@ -207,7 +211,7 @@ export default function RegistrationForm({
       
       <div>
         <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-          Contraseña
+          {t('password')}
         </label>
         <div className="relative mt-1">
           <input
@@ -234,12 +238,12 @@ export default function RegistrationForm({
         {validationErrors.password && (
           <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
         )}
-        <p className="mt-1 text-xs text-gray-500">La contraseña debe tener al menos 8 caracteres</p>
+        <p className="mt-1 text-xs text-gray-500">{t('passwordRequirements')}</p>
       </div>
       
       <div>
         <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-          Confirmar contraseña
+          {t('confirmPassword')}
         </label>
         <div className="relative mt-1">
           <input
@@ -270,7 +274,7 @@ export default function RegistrationForm({
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Foto de perfil (opcional)
+          {t('profilePhoto')} ({tc('optional')})
         </label>
         <FileUpload
           bucket="profiles"
@@ -288,7 +292,7 @@ export default function RegistrationForm({
             setValidationErrors(prev => ({ ...prev, avatar: error }));
           }}
           currentFile={formData.avatarUrl}
-          placeholder="Subir foto"
+          placeholder={t('uploadPhoto')}
           preview={true}
         />
         {validationErrors.avatar && (
@@ -298,7 +302,7 @@ export default function RegistrationForm({
       
       <div>
         <label htmlFor="preferredLanguage" className="block text-sm font-medium text-gray-700">
-          Idioma preferido
+          {t('preferredLanguage')}
         </label>
         <select
           id="preferredLanguage"
@@ -337,7 +341,7 @@ export default function RegistrationForm({
           disabled={isLoading}
           className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Procesando...' : isEmployee ? 'Aceptar invitación' : 'Continuar'}
+          {isLoading ? tc('loading') : isEmployee ? t('acceptInvitation') : tc('continue')}
         </button>
       </div>
     </form>

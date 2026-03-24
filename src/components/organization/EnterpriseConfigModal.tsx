@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { XMarkIcon, CalculatorIcon } from '@heroicons/react/24/outline';
+import { useTranslations } from 'next-intl';
 import EnterpriseConfigSelector, { EnterpriseConfig } from '@/components/auth/EnterpriseConfigSelector';
 
 interface EnterpriseConfigModalProps {
@@ -31,6 +32,7 @@ export default function EnterpriseConfigModal({
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('org.enterpriseConfig');
 
   useEffect(() => {
     if (currentConfig) {
@@ -89,7 +91,7 @@ export default function EnterpriseConfigModal({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Error al guardar configuración');
+        throw new Error(result.error || t('errorSaving'));
       }
 
       onSave(config);
@@ -118,7 +120,7 @@ export default function EnterpriseConfigModal({
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
                 <CalculatorIcon className="w-5 h-5 text-blue-600" />
-                Configuración Enterprise
+                {t('title')}
               </h3>
               <button
                 onClick={onClose}
@@ -148,14 +150,14 @@ export default function EnterpriseConfigModal({
               disabled={loading}
               className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
             >
-              {loading ? 'Guardando...' : 'Guardar Configuración'}
+              {loading ? t('saving') : t('saveConfig')}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
             >
-              Cancelar
+              {t('cancel')}
             </button>
           </div>
         </div>

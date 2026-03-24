@@ -7,6 +7,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { proceedWithLogin } from '@/lib/auth';
+import { useTranslations } from 'next-intl';
 
 interface Organization {
   id: string;
@@ -20,6 +21,8 @@ interface Organization {
 function SelectOrganizationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('auth.selectOrganization');
+  const tc = useTranslations('common');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -242,10 +245,10 @@ function SelectOrganizationContent() {
             </svg>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Selecciona una organización
+            {t('title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Elige una organización para continuar o crea una nueva.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -309,7 +312,7 @@ function SelectOrganizationContent() {
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">O</span>
+              <span className="px-2 bg-gray-50 text-gray-500">{tc('or')}</span>
             </div>
           </div>
 
@@ -322,7 +325,7 @@ function SelectOrganizationContent() {
               <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              Crear nueva organización
+              {t('createNew')}
             </button>
           </div>
         </div>

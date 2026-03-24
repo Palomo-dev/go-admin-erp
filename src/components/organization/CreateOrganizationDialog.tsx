@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import CreateOrganizationForm from './CreateOrganizationForm';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface CreateOrganizationDialogProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export default function CreateOrganizationDialog({
 }: CreateOrganizationDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  const t = useTranslations('org.createOrgDialog');
   
   // Cerrar el diálogo al hacer clic fuera del contenido
   useEffect(() => {
@@ -79,7 +81,7 @@ export default function CreateOrganizationDialog({
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            Crear Nueva Organización
+            {t('title')}
           </h2>
           <button
             onClick={onClose}

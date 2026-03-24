@@ -9,6 +9,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { CreditCardIcon, CheckCircleIcon, ExclamationTriangleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { useTranslations } from 'next-intl';
 
 // Cargar Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -58,6 +59,8 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [verifiedCard, setVerifiedCard] = useState<any>(null);
+  const t = useTranslations('auth.signup.payment');
+  const tc = useTranslations('common');
 
   // Crear Setup Intent al montar el componente
   useEffect(() => {
@@ -80,11 +83,11 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
           // Guardar customer ID temporal en formData
           updateFormData({ stripeCustomerId: data.customerId });
         } else {
-          setError('Error preparando el sistema de pago. Puedes omitir este paso.');
+          setError(t('errorSetupPayment'));
         }
       } catch (err) {
         console.error('Error creating setup intent:', err);
-        setError('Error de conexión. Puedes omitir este paso.');
+        setError(t('errorConnection'));
       }
     };
 
@@ -106,7 +109,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
     e.preventDefault();
 
     if (!stripe || !elements || !setupIntentSecret) {
-      setError('El sistema de pago no está listo. Intenta de nuevo.');
+      setError(t('paymentNotReady'));
       return;
     }
 
@@ -117,7 +120,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
       const cardElement = elements.getElement(CardElement);
       
       if (!cardElement) {
-        throw new Error('No se encontró el elemento de tarjeta');
+        throw new Error(t('cardNotFound'));
       }
 
       // Confirmar el Setup Intent (esto verifica que la tarjeta es válida)
@@ -135,7 +138,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
       );
 
       if (confirmError) {
-        throw new Error(confirmError.message || 'Error al verificar la tarjeta');
+        throw new Error(confirmError.message || t('errorVerifyCard'));
       }
 
       if (setupIntent?.status === 'succeeded') {
@@ -155,7 +158,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
       }
     } catch (err: any) {
       console.error('Error verificando tarjeta:', err);
-      setError(err.message || 'Error al verificar el método de pago');
+      setError(err.message || t('errorVerifyCard'));
     } finally {
       setIsProcessing(false);
     }
@@ -175,18 +178,18 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
           <CreditCardIcon className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
         </div>
         <h3 className="text-base sm:text-lg font-semibold text-gray-900">
-          Método de Pago
+          {t('title')}
         </h3>
         <p className="text-xs sm:text-sm text-gray-600 mt-1 px-2">
           {isPaidPlan 
-            ? 'Agrega un método de pago para cuando termine tu período de prueba.'
-            : 'Puedes agregar un método de pago ahora o más tarde.'
+            ? t('paidPlanMessage')
+            : t('freePlanMessage')
           }
         </p>
         {isPaidPlan && (
           <div className="mt-2 inline-flex items-center px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
             <CheckCircleIcon className="w-3.5 h-3.5 mr-1" />
-            No se realizará ningún cobro ahora
+            {t('noChargeNow')}
           </div>
         )}
       </div>
@@ -198,7 +201,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
             <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
             <div>
               <p className="text-sm font-medium text-green-800">
-                ¡Método de pago verificado!
+                {t('verified')}
               </p>
               <p className="text-xs text-green-600 mt-0.5">
                 {verifiedCard.brand?.toUpperCase()} •••• {verifiedCard.last4} - Exp. {verifiedCard.expMonth}/{verifiedCard.expYear}
@@ -211,7 +214,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
         <form onSubmit={handleVerifyPayment} className="space-y-4">
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-              Información de la tarjeta
+              {t('cardInfo')}
             </label>
             <div className="bg-white rounded-md border border-gray-300 p-3 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
               <CardElement 
@@ -220,7 +223,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
               />
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              Solo verificamos que la tarjeta sea válida. No se realizará ningún cargo.
+              {t('verifyOnly')}
             </p>
           </div>
 
@@ -242,12 +245,12 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Verificando...
+                {t('verifying')}
               </>
             ) : (
               <>
                 <CreditCardIcon className="w-4 h-4 mr-2" />
-                Verificar Tarjeta
+                {t('verifyCard')}
               </>
             )}
           </button>
@@ -261,8 +264,8 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           <div>
-            <p className="font-medium">Pago seguro con Stripe</p>
-            <p className="mt-0.5 text-blue-600">Tus datos están protegidos con encriptación de nivel bancario.</p>
+            <p className="font-medium">{t('securePayment')}</p>
+            <p className="mt-0.5 text-blue-600">{t('securePaymentDescription')}</p>
           </div>
         </div>
       </div>
@@ -275,7 +278,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
           disabled={loading || isProcessing}
           className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
         >
-          Anterior
+          {t('previous')}
         </button>
         
         <button
@@ -284,7 +287,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
           disabled={loading || isProcessing}
           className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
         >
-          Omitir por ahora
+          {t('skipForNow')}
         </button>
 
         {paymentVerified && (
@@ -294,7 +297,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
             disabled={loading}
             className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center justify-center"
           >
-            Continuar
+            {tc('continue')}
             <ArrowRightIcon className="w-4 h-4 ml-1" />
           </button>
         )}

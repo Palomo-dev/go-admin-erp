@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
 
 interface Branch {
   id: string;
@@ -23,6 +24,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const t = useTranslations('org.branchAssignment');
 
   useEffect(() => {
     if (isOpen) {
@@ -48,7 +50,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
       setBranches(branchesWithStringIds);
     } catch (err: any) {
       console.error('Error al obtener sucursales:', err);
-      setError('No se pudieron cargar las sucursales');
+      setError(t('errorLoadingBranches'));
     }
   };
 
@@ -61,7 +63,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
       
       if (!memberIdValue) {
         console.error('ID inválido o vacío:', memberId);
-        setError('El ID del miembro no es válido');
+        setError(t('invalidMemberId'));
         setLoading(false);
         return;
       }
@@ -82,7 +84,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
       setAssignedBranches(assignedIds);
     } catch (err: any) {
       console.error('Error al obtener asignaciones:', err);
-      setError('No se pudieron cargar las asignaciones de sucursales');
+      setError(t('errorLoadingAssignments'));
     } finally {
       setLoading(false);
     }
@@ -123,7 +125,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
         .single();
         
       if (permsError || !currentUserPerms) {
-        throw new Error('No tienes permisos para asignar sucursales en esta organización');
+        throw new Error(t('noPermissions'));
       }
       
       console.log('Current user permissions:', currentUserPerms);
@@ -150,7 +152,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
         if (insertError) throw insertError;
       }
         
-      setSuccess('Asignaciones actualizadas correctamente');
+      setSuccess(t('assignmentsUpdated'));
         
       // Cerrar modal después de un breve delay
       setTimeout(() => {
@@ -167,7 +169,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
         assignedBranches,
         organizationId
       });
-      setError(err.message || 'Error al actualizar las asignaciones de sucursales');
+      setError(err.message || t('errorSaving'));
     } finally {
       setSaving(false);
     }
@@ -179,7 +181,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
         <div className="p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-1">Asignación de Sucursales</h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-1">{t('title')}</h3>
           <p className="text-sm text-gray-600 mb-6">
             {memberName}
           </p>
@@ -203,7 +205,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
           ) : (
             <div className="max-h-64 overflow-y-auto">
               {branches.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No hay sucursales disponibles</p>
+                <p className="text-gray-500 text-center py-8">{t('noBranches')}</p>
               ) : (
                 <div className="space-y-3">
                   {branches.map((branch) => (
@@ -232,7 +234,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
               disabled={saving}
               className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors"
             >
-              Cancelar
+              {t('cancel')}
             </button>
             <button
               type="button"
@@ -240,7 +242,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
               disabled={loading || saving}
               className="px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-md transition-colors disabled:opacity-50"
             >
-              {saving ? 'Guardando...' : 'Guardar'}
+              {saving ? t('saving') : t('save')}
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
 import { uploadFileToStorage, deleteFileFromStorage } from '@/lib/utils/storage';
 import StorageImage from '@/components/ui/StorageImage';
 
@@ -22,6 +23,7 @@ export default function LogoUploader({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const t = useTranslations('org.logoUploader');
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) {
@@ -33,13 +35,13 @@ export default function LogoUploader({
     
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('Por favor selecciona una imagen válida');
+      setError(t('invalidImage'));
       return;
     }
     
     // Validate file size (max 2MB)
     if (fileSize > 2) {
-      setError('La imagen no debe exceder 2MB');
+      setError(t('maxSize'));
       return;
     }
 
@@ -62,7 +64,7 @@ export default function LogoUploader({
       onLogoChange(uploadedPath);
     } catch (err: any) {
       console.error('Error uploading logo:', err);
-      setError('Error al subir la imagen. Intenta nuevamente.');
+      setError(t('uploadError'));
     } finally {
       setUploading(false);
     }
@@ -92,7 +94,7 @@ export default function LogoUploader({
 
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <div className="mb-2 text-sm font-medium text-gray-700">Logo de la organización</div>
+      <div className="mb-2 text-sm font-medium text-gray-700">{t('label')}</div>
       
       <div 
         className="relative group cursor-pointer"
@@ -102,14 +104,14 @@ export default function LogoUploader({
           <div className="relative w-32 h-32 rounded-full border-2 border-gray-200 overflow-hidden">
             <StorageImage 
               src={logo} 
-              alt="Logo de la organización" 
+              alt={t('altText')} 
               fill 
               style={{ objectFit: 'cover' }}
               className="rounded-full"
               bucketName="logos"
             />
             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center">
-              <span className="text-white opacity-0 group-hover:opacity-100">Cambiar</span>
+              <span className="text-white opacity-0 group-hover:opacity-100">{t('change')}</span>
             </div>
           </div>
         ) : (
@@ -117,7 +119,7 @@ export default function LogoUploader({
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <span className="mt-2 text-sm text-gray-500">Subir logo</span>
+            <span className="mt-2 text-sm text-gray-500">{t('upload')}</span>
           </div>
         )}
         
@@ -134,7 +136,7 @@ export default function LogoUploader({
           onClick={handleRemove}
           className="mt-2 text-sm text-red-600 hover:text-red-800"
         >
-          Eliminar logo
+          {t('remove')}
         </button>
       )}
       

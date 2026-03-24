@@ -15,6 +15,7 @@ import PaymentMethodStep from '../../../components/auth/PaymentMethodStep';
 import { supabase } from '@/lib/supabase/config';
 import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { useTranslations } from 'next-intl';
 
 // Definición de tipos
 interface SignupData {
@@ -75,6 +76,8 @@ interface SignupData {
 function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('auth.signup');
+  const tc = useTranslations('common');
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -192,7 +195,7 @@ function SignupContent() {
         .maybeSingle();
 
       if (existingUsers) {
-        setError('Este correo electrónico ya está registrado');
+        setError(t('emailAlreadyRegistered'));
         setLoading(false);
         return;
       }
@@ -554,7 +557,7 @@ function SignupContent() {
           console.error('Error creando datos de registro:', createError);
           // Si falla la creación de datos, aún así el usuario existe
           // Intentar limpiar y mostrar error
-          throw new Error('Error al configurar tu cuenta. Por favor, contacta a soporte.');
+          throw new Error(t('errorSetupAccount'));
         }
       }
       
@@ -602,11 +605,11 @@ function SignupContent() {
           
           {/* Título mejorado */}
           <h2 className="text-center text-lg sm:text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-1">
-            {isGoogleUser ? 'Configuración de cuenta' : 'Registro en GO Admin ERP'}
+            {isGoogleUser ? t('googleAccountSetup') : t('pageTitle')}
           </h2>
           {isGoogleUser && (
             <p className="text-center text-xs text-gray-500 mt-1">
-              Cuenta de Google: {signupData.email}
+              {t('googleAccount', { email: signupData.email })}
             </p>
           )}
           
@@ -667,17 +670,17 @@ function SignupContent() {
                 </svg>
               </div>
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5">
-                ¡Bienvenido, {signupData.firstName}!
+                {t('googleWelcome', { name: signupData.firstName })}
               </h3>
               <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 px-3">
-                Tu cuenta de Google ha sido vinculada exitosamente. Ahora necesitas configurar tu organización.
+                {t('googleLinked')}
               </p>
             </div>
             <button
               onClick={nextStep}
               className="bg-blue-600 text-white px-5 py-2 sm:px-7 sm:py-2.5 text-xs sm:text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             >
-              Continuar con la configuración
+              {t('continueSetup')}
             </button>
           </div>
         )}
@@ -732,9 +735,9 @@ function SignupContent() {
         {/* Enlace a login */}
         <div className="text-center mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-gray-100">
           <p className="text-xs sm:text-sm text-gray-600">
-            ¿Ya tienes una cuenta?{' '}
+            {t('hasAccount')}{' '}
             <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
-              Iniciar sesión
+              {t('login')}
             </Link>
           </p>
         </div>
@@ -748,7 +751,7 @@ export default function SignupPage() {
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600">Cargando...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     }>

@@ -94,6 +94,7 @@ import ProfileDropdownMenu from '../ProfileDropdownMenu';
 import { NavItem } from './NavItem';
 import { NavSection } from './NavSection';
 import { SidebarNavigationProps } from '../types';
+import { useTranslations } from 'next-intl';
 
 // Componente para la navegación lateral
 const SidebarNavigationComponent = ({ 
@@ -106,20 +107,21 @@ const SidebarNavigationComponent = ({
   activeModuleCodes
 }: SidebarNavigationProps) => {
   const pathname = usePathname();
+  const t = useTranslations('nav');
   
   // Memoizar las secciones de navegación para evitar re-creaciones costosas
   const navSections = useMemo(() => [
     {
-      title: "Principal",
+      title: t('sectionMain'),
       items: [
-        { name: "Inicio", href: "/app/inicio", icon: <HomeIcon size={18} /> }
+        { name: t('home'), href: "/app/inicio", icon: <HomeIcon size={18} /> }
       ]
     },
     {
-      title: "Gestión",
+      title: t('sectionManagement'),
       items: [
         { 
-          name: "CRM", 
+          name: t('crm'), 
           href: "/app/crm", 
           icon: <Users size={18} />,
           moduleCode: 'crm',
@@ -140,7 +142,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "HRM", 
+          name: t('hrm'), 
           href: "/app/hrm", 
           icon: <UserCog size={18} />,
           moduleCode: 'hrm',
@@ -162,7 +164,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Finanzas", 
+          name: t('finance'), 
           href: "/app/finanzas", 
           icon: <FileText size={18} />,
           moduleCode: 'finance',
@@ -186,7 +188,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Inventario", 
+          name: t('inventory'), 
           href: "/app/inventario", 
           icon: <Package size={18} />,
           moduleCode: 'inventory',
@@ -212,10 +214,10 @@ const SidebarNavigationComponent = ({
       ]
     },
     {
-      title: "Ventas",
+      title: t('sectionSales'),
       items: [
         { 
-          name: "POS", 
+          name: t('pos'), 
           href: "/app/pos", 
           icon: <ShoppingCart size={18} />,
           moduleCode: 'pos',
@@ -238,7 +240,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "PMS", 
+          name: t('pms'), 
           href: "/app/pms", 
           icon: <Building2 size={18} />,
           moduleCode: 'pms_hotel',
@@ -265,7 +267,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Chat", 
+          name: t('chat'), 
           href: "/app/chat", 
           icon: <MessageCircle size={18} />,
           moduleCode: 'chat',
@@ -280,7 +282,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Transporte", 
+          name: t('transport'), 
           href: "/app/transporte", 
           icon: <Bus size={18} />,
           moduleCode: 'transport',
@@ -305,7 +307,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Gimnasio", 
+          name: t('gym'), 
           href: "/app/gym", 
           icon: <Dumbbell size={18} />,
           moduleCode: 'gym',
@@ -323,7 +325,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Parqueadero", 
+          name: t('parking'), 
           href: "/app/parking", 
           icon: <ParkingCircle size={18} />,
           moduleCode: 'parking',
@@ -345,11 +347,11 @@ const SidebarNavigationComponent = ({
       ]
     },
     {
-      title: "Organización",
+      title: t('sectionOrganization'),
       items: [
-        { name: "Clientes", href: "/app/clientes", icon: <Users size={18} /> },
+        { name: t('clients'), href: "/app/clientes", icon: <Users size={18} /> },
         { 
-          name: "Calendario", 
+          name: t('calendar'), 
           href: "/app/calendario", 
           icon: <CalendarDays size={18} />,
           moduleCode: 'calendar',
@@ -361,7 +363,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Reportes", 
+          name: t('reports'), 
           href: "/app/reportes", 
           icon: <FileBarChart size={18} />,
           moduleCode: 'reports',
@@ -379,7 +381,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Mi Organización", 
+          name: t('myOrganization'), 
           href: "/app/organizacion", 
           icon: <Building2 size={18} />,
           submenu: [
@@ -395,7 +397,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Roles y Permisos", 
+          name: t('roles'), 
           href: "/app/roles", 
           icon: <Shield size={18} />,
           submenu: [
@@ -406,10 +408,10 @@ const SidebarNavigationComponent = ({
       ]
     },
     {
-      title: "Sistema",
+      title: t('sectionSystem'),
       items: [
         { 
-          name: "Notificaciones", 
+          name: t('notifications'), 
           href: "/app/notificaciones", 
           icon: <Bell size={18} />,
           moduleCode: 'notifications',
@@ -425,7 +427,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Integraciones", 
+          name: t('integrations'), 
           href: "/app/integraciones", 
           icon: <Link2 size={18} />,
           moduleCode: 'integrations',
@@ -441,7 +443,7 @@ const SidebarNavigationComponent = ({
           ]
         },
         { 
-          name: "Operaciones", 
+          name: t('operations'), 
           href: "/app/timeline", 
           icon: <History size={18} />,
           moduleCode: 'operations',
@@ -453,7 +455,7 @@ const SidebarNavigationComponent = ({
         }
       ]
     }
-  ], []);
+  ], [t]);
 
   // Filtrar items según módulos activos de la organización
   const filteredSections = useMemo(() => {
@@ -497,7 +499,7 @@ const SidebarNavigationComponent = ({
             className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow transition-all duration-200 border border-blue-500 min-h-[44px]"
           >
             <CreditCard size={18} className="mr-2" />
-            <span>Mi Suscripción</span>
+            <span>{t('mySubscription')}</span>
           </Link>
           <button
             onClick={handleSignOut}
@@ -505,7 +507,7 @@ const SidebarNavigationComponent = ({
             className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 active:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
           >
             <LogOut size={18} className="mr-2" />
-            <span>{loading ? 'Cerrando...' : 'Cerrar Sesión'}</span>
+            <span>{loading ? t('loggingOut') : t('logout')}</span>
           </button>
         </div>
       </div>
@@ -542,7 +544,7 @@ const SidebarNavigationComponent = ({
                   sideOffset={10} 
                   className="bg-white text-gray-900 dark:bg-gray-100 dark:text-gray-800 border border-gray-200 rounded-lg py-1 px-2 shadow-md"
                 >
-                  Mi Suscripción
+                  {t('mySubscription')}
                 </TooltipContent>
               </Tooltip>
             ) : (
@@ -552,7 +554,7 @@ const SidebarNavigationComponent = ({
                 className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow transition-all duration-200 border border-blue-500 min-h-[44px]"
               >
                 <CreditCard size={18} className="mr-2" />
-                <span>Mi Suscripción</span>
+                <span>{t('mySubscription')}</span>
               </Link>
             )}
           </TooltipProvider>
@@ -575,7 +577,7 @@ const SidebarNavigationComponent = ({
                   sideOffset={10} 
                   className="bg-white text-gray-900 dark:bg-gray-100 dark:text-gray-800 border border-gray-200 rounded-lg py-1 px-2 shadow-md"
                 >
-                  {loading ? 'Cerrando...' : 'Cerrar Sesión'}
+                  {loading ? t('loggingOut') : t('logout')}
                 </TooltipContent>
               </Tooltip>
             ) : (
@@ -585,7 +587,7 @@ const SidebarNavigationComponent = ({
                 className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 active:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
               >
                 <LogOut size={18} className="mr-2" />
-                <span>{loading ? 'Cerrando...' : 'Cerrar Sesión'}</span>
+                <span>{loading ? t('loggingOut') : t('logout')}</span>
               </button>
             )}
           </TooltipProvider>

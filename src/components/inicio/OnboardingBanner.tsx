@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import type { OnboardingStep } from './inicioService';
+import { useTranslations } from 'next-intl';
 
 interface OnboardingBannerProps {
   steps: OnboardingStep[];
@@ -39,6 +40,7 @@ const DISMISS_KEY = 'onboarding_dismissed';
 
 export function OnboardingBanner({ steps, organizacionCreatedAt }: OnboardingBannerProps) {
   const [dismissed, setDismissed] = useState(true); // default hidden until check
+  const t = useTranslations('home.onboarding');
 
   useEffect(() => {
     // Verificar si fue descartado manualmente
@@ -85,7 +87,7 @@ export function OnboardingBanner({ steps, organizacionCreatedAt }: OnboardingBan
       <button
         onClick={handleDismiss}
         className="absolute top-3 right-3 p-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/50 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-        aria-label="Cerrar"
+        aria-label={t('close')}
       >
         <X className="h-4 w-4" />
       </button>
@@ -96,10 +98,10 @@ export function OnboardingBanner({ steps, organizacionCreatedAt }: OnboardingBan
         </div>
         <div>
           <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
-            Primeros pasos
+            {t('title')}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {completados}/{steps.length} completados
+            {completados}/{steps.length} {t('completed')}
           </p>
         </div>
         <div className="flex-1 ml-4">
@@ -138,7 +140,7 @@ export function OnboardingBanner({ steps, organizacionCreatedAt }: OnboardingBan
                       : 'text-gray-900 dark:text-white'
                   }`}
                 >
-                  {step.titulo}
+                  {t(`${step.id}.title`)}
                 </p>
               </div>
             </Link>
@@ -149,11 +151,11 @@ export function OnboardingBanner({ steps, organizacionCreatedAt }: OnboardingBan
       {siguientePaso && (
         <div className="mt-4 flex items-center justify-between">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Siguiente: <span className="font-medium text-gray-700 dark:text-gray-300">{siguientePaso.titulo}</span> — {siguientePaso.descripcion}
+            {t('next')} <span className="font-medium text-gray-700 dark:text-gray-300">{t(`${siguientePaso.id}.title`)}</span> — {t(`${siguientePaso.id}.description`)}
           </p>
           <Link href={siguientePaso.href}>
             <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">
-              Continuar
+              {t('continue')}
               <ChevronRight className="h-3 w-3 ml-1" />
             </Button>
           </Link>

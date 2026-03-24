@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
 
 export default function SessionExpiredPage() {
+  const t = useTranslations('auth.sessionExpired');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -62,10 +64,10 @@ export default function SessionExpiredPage() {
             </div>
           </div>
           <h2 className="text-center text-2xl font-bold text-gray-800">
-            Sesión expirada
+            {t('title')}
           </h2>
           <p className="mt-2 text-center text-gray-600">
-            Tu sesión ha expirado por inactividad o ha sido cerrada. Por favor, inicia sesión nuevamente para continuar.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -83,12 +85,12 @@ export default function SessionExpiredPage() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             ) : null}
-            Iniciar sesión nuevamente
+            {t('login')}
           </button>
           
           <div className="text-center">
             <Link href="/" className="font-medium text-blue-600 hover:text-blue-500">
-              Volver a la página principal
+              {t('login')}
             </Link>
           </div>
         </div>

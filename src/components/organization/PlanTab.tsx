@@ -32,6 +32,7 @@ import ChangePlanModal from './ChangePlanModal';
 import { PlanSkeleton } from './OrganizationSkeletons';
 import CancelSubscriptionModal from '@/components/subscription/CancelSubscriptionModal';
 import PaymentMethodCard from './PaymentMethodCard';
+import { useTranslations } from 'next-intl';
 
 // Mapa de iconos para módulos (igual que en modulos/page.tsx)
 const moduleIcons: Record<string, LucideIcon> = {
@@ -145,6 +146,7 @@ interface PlanTabProps {
 }
 
 export default function PlanTab({ orgId }: PlanTabProps) {
+  const t = useTranslations('org.planTab');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -159,7 +161,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   const [memberCount, setMemberCount] = useState(0);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [reactivating, setReactivating] = useState(false);
-  const [aiCredits, setAiCredits] = useState<{ remaining: number; monthly: number } | null>(null);
+  const [aiCredits, setAiCredits] = useState<{ remaining: number; monthly: number; consumed: number } | null>(null);
   
   useEffect(() => {
     if (orgId) {
@@ -313,6 +315,16 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         .eq('organization_id', orgId)
         .single();
 
+      // Obtener consumo real del mes actual via RPC (server-side SUM)
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const { data: totalConsumedRpc } = await supabase.rpc('get_ai_credits_consumed', {
+        p_org_id: orgId,
+        p_since: startOfMonth.toISOString()
+      });
+      const totalConsumed = totalConsumedRpc || 0;
+
       // Obtener créditos mensuales: primero de metadata (Enterprise), luego de plan
       const currentPlanId = planData?.[0]?.plan_id;
       const planFromList = (plansData || []).find((p: any) => p.id === currentPlanId);
@@ -328,12 +340,14 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       if (!aiSettingsError && aiSettingsData) {
         setAiCredits({
           remaining: aiSettingsData.credits_remaining || 0,
-          monthly: planMonthlyCredits
+          monthly: planMonthlyCredits,
+          consumed: totalConsumed
         });
       } else {
         setAiCredits({
           remaining: planMonthlyCredits,
-          monthly: planMonthlyCredits
+          monthly: planMonthlyCredits,
+          consumed: 0
         });
       }
 
@@ -372,10 +386,10 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Error al reactivar la suscripción');
+        throw new Error(result.error || t('errorReactivate'));
       }
 
-      alert('Suscripción reactivada exitosamente');
+      alert(t('reactivated'));
       loadPlanData();
     } catch (err: any) {
       console.error('Error reactivating subscription:', err);
@@ -398,7 +412,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       if (data.success && data.url) {
         window.open(data.url, '_blank');
       } else {
-        throw new Error(data.error || 'Error abriendo portal de facturación');
+        throw new Error(data.error || t('errorBillingPortal'));
       }
     } catch (err: any) {
       console.error('Error opening billing portal:', err);
@@ -430,11 +444,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       try {
         result = await response.json();
       } catch {
-        throw new Error('Error al procesar la respuesta del servidor');
+        throw new Error(t('errorServerResponse'));
       }
 
       if (!response.ok) {
-        throw new Error(result?.error || 'Error al cambiar el ciclo de facturación');
+        throw new Error(result?.error || t('errorChangeBilling'));
       }
 
       // Mostrar mensaje de éxito
@@ -489,7 +503,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         <div className="flex">
           <XMarkIcon className="h-5 w-5 text-red-400" />
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">Error</h3>
+            <h3 className="text-sm font-medium text-red-800">{t('errorTitle')}</h3>
             <div className="mt-2 text-sm text-red-700">
               <p>{error}</p>
             </div>
@@ -516,16 +530,16 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       {/* Header */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Mi Plan</h2>
+          <h2 className="text-lg font-medium text-gray-900">{t('myPlan')}</h2>
           <p className="text-sm text-gray-500">
-            Gestiona tu suscripción y módulos activos
+            {t('manageSub')}
           </p>
         </div>
 
         {/* Plan Actual */}
         <div className="p-6">
           {subscription ? (
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -565,11 +579,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                       return (
                         <>
                           <p className="text-sm text-gray-500">
-                            {formatPrice(currentAmount || 0)} / {isYearly ? 'año' : 'mes'}
+                            {formatPrice(currentAmount || 0)} / {isYearly ? t('perYear') : t('perMonth')}
                           </p>
                           {isYearly && (currentAmount ?? 0) > 0 && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Ahorras 2 meses al año
+                              {t('save2Months')}
                             </span>
                           )}
                         </>
@@ -586,15 +600,15 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {subscription.status === 'active' && 'Activa'}
-                      {subscription.status === 'trialing' && 'Período de prueba'}
-                      {subscription.status === 'canceled' && 'Cancelada'}
-                      {subscription.status === 'past_due' && 'Pago pendiente'}
+                      {subscription.status === 'active' && t('statusActive')}
+                      {subscription.status === 'trialing' && t('statusTrialing')}
+                      {subscription.status === 'canceled' && t('statusCanceled')}
+                      {subscription.status === 'past_due' && t('statusPastDue')}
                     </span>
 
                     {isTrialActive(subscription) && (
                       <span className="text-sm text-yellow-600">
-                        {getDaysRemaining(subscription.trial_end!)} días de prueba restantes
+                        {t('trialDaysRemaining', { days: getDaysRemaining(subscription.trial_end!) })}
                       </span>
                     )}
                   </div>
@@ -603,26 +617,26 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   <div className="mt-3 text-sm text-gray-500 space-y-1">
                     <div className="flex items-center">
                       <CalendarIcon className="w-4 h-4 mr-2" />
-                      Período actual: {formatDate(subscription.current_period_start)} - {formatDate(subscription.current_period_end)}
+                      {t('currentPeriod')} {formatDate(subscription.current_period_start)} - {formatDate(subscription.current_period_end)}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col space-y-3">
-                <div className="flex space-x-2">
+              <div className="flex flex-col space-y-3 min-w-0">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setShowChangePlanModal(true)}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     <ArrowUpIcon className="w-4 h-4 mr-2" />
-                    Cambiar Plan
+                    {t('changePlan')}
                   </button>
                   <button
                     onClick={() => setShowPlanComparison(!showPlanComparison)}
                     className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    Comparar Planes
+                    {t('comparePlans')}
                   </button>
                 </div>
                 
@@ -632,8 +646,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   const isCurrentlyYearly = subscription.billing_period === 'yearly';
                   
                   return (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-500">Ciclo de facturación:</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm text-gray-500">{t('billingCycle')}</span>
                       <div className="flex rounded-md shadow-sm">
                         <button
                           onClick={() => handleBillingCycleChange('monthly')}
@@ -644,7 +658,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                           } ${changingBilling ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                          {changingBilling ? 'Cambiando...' : 'Mensual'}
+                          {changingBilling ? t('changing') : t('monthly')}
                         </button>
                         <button
                           onClick={() => handleBillingCycleChange('yearly')}
@@ -655,7 +669,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                           } ${changingBilling ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                          {changingBilling ? 'Cambiando...' : 'Anual'}
+                          {changingBilling ? t('changing') : t('yearly')}
                         </button>
                       </div>
                     </div>
@@ -670,7 +684,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                       >
                         <DocumentTextIcon className="w-4 h-4 mr-1" />
-                        Portal de Facturación
+                        {t('billingPortal')}
                       </button>
                     )}
                     {subscription?.status === 'canceled' ? (
@@ -679,7 +693,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100"
                       >
                         <ArrowPathIcon className="w-4 h-4 mr-1" />
-                        Renovar Plan
+                        {t('renewPlan')}
                       </button>
                     ) : subscription?.cancel_at_period_end ? (
                       <button
@@ -688,7 +702,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50"
                       >
                         <ArrowPathIcon className="w-4 h-4 mr-1" />
-                        {reactivating ? 'Reactivando...' : 'Reactivar Suscripción'}
+                        {reactivating ? t('reactivating') : t('reactivateSub')}
                       </button>
                     ) : (
                       <button
@@ -696,7 +710,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100"
                       >
                         <NoSymbolIcon className="w-4 h-4 mr-1" />
-                        Cancelar Suscripción
+                        {t('cancelSub')}
                       </button>
                     )}
                 </div>
@@ -705,7 +719,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 {subscription?.status === 'canceled' && (
                   <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
                     <p className="text-sm text-red-800">
-                      ⚠️ Tu suscripción está cancelada. Selecciona un plan para recuperar el acceso completo a la plataforma.
+                      {t('canceledWarning')}
                     </p>
                   </div>
                 )}
@@ -714,7 +728,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 {subscription?.status === 'past_due' && (
                   <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-md">
                     <p className="text-sm text-orange-800">
-                      ⚠️ Tu último pago falló. Actualiza tu método de pago en el Portal de Facturación para evitar la suspensión.
+                      {t('pastDueWarning')}
                     </p>
                   </div>
                 )}
@@ -723,8 +737,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 {subscription?.cancel_at_period_end && subscription?.status !== 'canceled' && (
                   <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                     <p className="text-sm text-yellow-800">
-                      ⚠️ Tu suscripción se cancelará al final del período actual. 
-                      Puedes reactivarla antes de esa fecha.
+                      {t('cancelPendingWarning')}
                     </p>
                   </div>
                 )}
@@ -733,16 +746,16 @@ export default function PlanTab({ orgId }: PlanTabProps) {
           ) : (
             <div className="text-center py-8">
               <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Sin suscripción activa</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">{t('noSubscription')}</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Actualmente estás usando el plan gratuito
+                {t('usingFreePlan')}
               </p>
               <div className="mt-6">
                 <button
                   onClick={() => setShowChangePlanModal(true)}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  Seleccionar Plan
+                  {t('selectPlan')}
                 </button>
               </div>
             </div>
@@ -754,7 +767,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       {currentPlan && (
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Límites del Plan</h3>
+            <h3 className="text-lg font-medium text-gray-900">{t('planLimits')}</h3>
           </div>
           <div className="p-6">
             {(() => {
@@ -767,7 +780,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               const maxUsers = customConfig?.users_count || customConfig?.usersCount || currentPlan.max_users || null;
               const maxStorage = currentPlan.features?.storage_gb || null;
               const aiCreditsLimit = aiCredits?.monthly || 0;
-              const aiCreditsUsed = aiCreditsLimit - (aiCredits?.remaining || 0);
+              const aiCreditsUsed = aiCredits?.consumed || 0;
+              const aiCreditsAvailable = Math.max(0, aiCreditsLimit - aiCreditsUsed);
               
               // Calcular porcentajes
               const modulesPercent = maxModules ? Math.min((totalActiveModules / maxModules) * 100, 100) : 0;
@@ -785,9 +799,9 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         /{maxModules || '∞'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">Módulos activos</p>
+                    <p className="text-sm text-gray-500 mt-1">{t('activeModulesLabel')}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      ({coreModulesCount} core + {activePaidModules.length} adicionales)
+                      {t('coreAdditional', { core: coreModulesCount, additional: activePaidModules.length })}
                     </p>
                     {maxModules && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
@@ -807,7 +821,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         /{maxBranches || '∞'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">Sucursales</p>
+                    <p className="text-sm text-gray-500 mt-1">{t('branchesLabel')}</p>
                     {maxBranches && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                         <div 
@@ -826,7 +840,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         /{maxUsers || '∞'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">Usuarios</p>
+                    <p className="text-sm text-gray-500 mt-1">{t('usersLabel')}</p>
                     {maxUsers && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                         <div 
@@ -842,7 +856,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     <div className="text-2xl font-bold text-purple-600">
                       {maxStorage ? `${maxStorage} GB` : '∞'}
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">Almacenamiento</p>
+                    <p className="text-sm text-gray-500 mt-1">{t('storageLabel')}</p>
                   </div>
                   
                   {/* Créditos IA */}
@@ -853,9 +867,9 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         /{aiCreditsLimit.toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">Créditos IA</p>
+                    <p className="text-sm text-gray-500 mt-1">{t('aiCreditsLabel')}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      ({(aiCredits?.remaining || 0).toLocaleString()} disponibles)
+                      {t('available', { count: aiCreditsAvailable.toLocaleString() })}
                     </p>
                     {aiCreditsLimit > 0 && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
@@ -885,9 +899,9 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       {/* Módulos Activos */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Módulos Activos</h3>
+          <h3 className="text-lg font-medium text-gray-900">{t('activeModulesTitle')}</h3>
           <p className="text-sm text-gray-500">
-            Módulos disponibles en tu plan actual ({coreModulesCount} core + {activePaidModules.length} adicionales)
+            {t('activeModulesDesc', { core: coreModulesCount, additional: activePaidModules.length })}
           </p>
         </div>
         <div className="p-6">
@@ -895,7 +909,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
           <div className="mb-6">
             <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
               <StarIcon className="w-4 h-4 text-yellow-500 mr-2" />
-              Módulos Core (incluidos en tu plan)
+              {t('coreModules')}
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {allModules.filter(m => m.is_core).map((module) => (
@@ -916,7 +930,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                           {module.description}
                         </p>
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-2">
-                          Core
+                          {t('coreLabel')}
                         </span>
                       </div>
                     </div>
@@ -932,7 +946,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
             <div>
               <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                 <ArrowUpIcon className="w-4 h-4 text-green-500 mr-2" />
-                Módulos Adicionales Activos
+                {t('additionalModules')}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {activePaidModules.map((orgModule) => (
@@ -947,13 +961,13 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         </div>
                         <div>
                           <h4 className="text-sm font-medium text-gray-900">
-                            {orgModule.modules?.name || 'Módulo sin nombre'}
+                            {orgModule.modules?.name || t('moduleNoName')}
                           </h4>
                           <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                            {orgModule.modules?.description || 'Sin descripción'}
+                            {orgModule.modules?.description || t('moduleNoDesc')}
                           </p>
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
-                            Activo
+                            {t('activeLabel')}
                           </span>
                         </div>
                       </div>
@@ -971,9 +985,9 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       {availableModules.length > 0 && (
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Módulos Disponibles</h3>
+            <h3 className="text-lg font-medium text-gray-900">{t('availableModulesTitle')}</h3>
             <p className="text-sm text-gray-500">
-              Módulos que puedes activar con tu plan actual
+              {t('availableModulesDesc')}
             </p>
           </div>
           <div className="p-6">
@@ -996,7 +1010,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                           {module.description}
                         </p>
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mt-2">
-                          No disponible
+                          {t('notAvailable')}
                         </span>
                       </div>
                     </div>
@@ -1013,9 +1027,9 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       {showPlanComparison && (
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Comparación de Planes</h3>
+            <h3 className="text-lg font-medium text-gray-900">{t('planComparisonTitle')}</h3>
             <p className="text-sm text-gray-500">
-              Compara las características de todos los planes disponibles
+              {t('planComparisonDesc')}
             </p>
           </div>
           <div className="p-6">
@@ -1034,7 +1048,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     {isCurrentPlan && (
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                         <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                          Plan Actual
+                          {t('currentPlanLabel')}
                         </span>
                       </div>
                     )}
@@ -1045,62 +1059,62 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         <span className="text-3xl font-bold text-gray-900">
                           {formatPrice(plan.price_usd_month)}
                         </span>
-                        <span className="text-gray-500">/mes</span>
+                        <span className="text-gray-500">{t('perMonthShort')}</span>
                       </div>
                       {plan.price_usd_year && plan.price_usd_year !== plan.price_usd_month * 12 && (
                         <div className="mt-1">
                           <span className="text-lg font-semibold text-green-600">
                             {formatPrice(plan.price_usd_year)}
                           </span>
-                          <span className="text-gray-500 text-sm">/año</span>
+                          <span className="text-gray-500 text-sm">{t('perYearShort')}</span>
                           <div className="text-xs text-green-600">
-                            Ahorra {formatPrice((plan.price_usd_month * 12) - plan.price_usd_year)}
+                            {t('saveAmount', { amount: formatPrice((plan.price_usd_month * 12) - plan.price_usd_year) })}
                           </div>
                         </div>
                       )}
                     </div>
                     
                     <div className="mt-4">
-                      <h5 className="font-medium text-gray-900 mb-2">Características:</h5>
+                      <h5 className="font-medium text-gray-900 mb-2">{t('features')}</h5>
                       <ul className="space-y-1 text-sm text-gray-600">
                         <li className="flex items-center">
                           <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                          {plan.max_modules || '∞'} módulos
+                          {t('modulesCount', { count: plan.max_modules || '∞' })}
                         </li>
                         <li className="flex items-center">
                           <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                          {plan.max_branches || '∞'} sucursales
+                          {t('branchesCount', { count: plan.max_branches || '∞' })}
                         </li>
                         {plan.features?.storage_gb && (
                           <li className="flex items-center">
                             <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                            {plan.features.storage_gb} GB almacenamiento
+                            {t('storageGb', { count: plan.features.storage_gb })}
                           </li>
                         )}
                         {plan.features?.analytics && (
                           <li className="flex items-center">
                             <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                            Análisis avanzados
+                            {t('advancedAnalytics')}
                           </li>
                         )}
                         {plan.features?.custom_reports && (
                           <li className="flex items-center">
                             <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                            Reportes personalizados
+                            {t('customReports')}
                           </li>
                         )}
                         {plan.features?.support && (
                           <li className="flex items-center">
                             <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                            {plan.features.support === 'community-only' && 'Soporte de comunidad'}
-                            {plan.features.support === 'email' && 'Soporte por email'}
-                            {plan.features.support === 'priority' && 'Soporte prioritario 24/7'}
+                            {plan.features.support === 'community-only' && t('communitySupport')}
+                            {plan.features.support === 'email' && t('emailSupport')}
+                            {plan.features.support === 'priority' && t('prioritySupport')}
                           </li>
                         )}
                         {plan.trial_days > 0 && (
                           <li className="flex items-center">
                             <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                            {plan.trial_days} días de prueba gratis
+                            {t('trialDays', { days: plan.trial_days })}
                           </li>
                         )}
                       </ul>
@@ -1109,7 +1123,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     <div className="mt-6">
                       {isCurrentPlan ? (
                         <div className="w-full text-center py-2 px-4 bg-blue-100 text-blue-800 rounded-md font-medium">
-                          Plan Actual
+                          {t('currentPlanLabel')}
                         </div>
                       ) : (
                         <button
@@ -1125,9 +1139,9 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                               : 'bg-blue-600 hover:bg-blue-700 text-white'
                           }`}
                         >
-                          {isUpgrade && 'Upgrade'}
-                          {isDowngrade && 'Downgrade'}
-                          {!isUpgrade && !isDowngrade && 'Seleccionar'}
+                          {isUpgrade && t('upgrade')}
+                          {isDowngrade && t('downgrade')}
+                          {!isUpgrade && !isDowngrade && t('select')}
                         </button>
                       )}
                     </div>

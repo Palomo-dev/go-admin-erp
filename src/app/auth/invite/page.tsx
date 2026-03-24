@@ -7,10 +7,13 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import InvitationWizard from '@/components/auth/InvitationWizard';
+import { useTranslations } from 'next-intl';
 
 function InviteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('auth.invite');
+  const tc = useTranslations('common');
   const inviteCode = searchParams.get('invite_code');
   console.log('🔍 Invite code obtenido:', inviteCode);
   
@@ -26,7 +29,7 @@ function InviteContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('Validando invitación...');
+  const [loadingMessage, setLoadingMessage] = useState('');
   
   console.log('✅ Componente renderizando');
   
@@ -42,7 +45,7 @@ function InviteContent() {
     
     if (!inviteCode) {
       console.log('❌ No se proporciono un codigo de invitacion');
-      setError('Código de invitación no proporcionado');
+      setError(t('noCode'));
       setIsLoading(false);
       return;
     }
@@ -61,7 +64,7 @@ function InviteContent() {
     
     try {
       // PASO 1: Validar código de invitación
-      setLoadingMessage('Validando invitación...');
+      setLoadingMessage(t('validating'));
       const { data: inviteData, error: inviteError } = await supabase
         .rpc('validate_invitation_by_code', {
           invitation_code: inviteCode
@@ -71,7 +74,7 @@ function InviteContent() {
       
       if (inviteError) {
         console.log('Error validando invitación - Error:', inviteError);
-        setError(`Error al validar la invitación: ${inviteError.message}`);
+        setError(t('errorValidating', { message: inviteError.message }));
         setIsLoading(false);
         return;
       }
@@ -79,7 +82,7 @@ function InviteContent() {
       if (!inviteData || inviteData.length === 0) {
         console.log('Invite data:', inviteData);
         console.log('Error validando invitación - No se encontró invitación válida para código:', inviteCode);
-        setError('La invitación no es válida, ha expirado o ya fue utilizada');
+        setError(t('invalidOrExpired'));
         setIsLoading(false);
         return;
       }
@@ -96,7 +99,7 @@ function InviteContent() {
       };
       
       // PASO 2: Intentar login automático con credenciales temporales
-      setLoadingMessage('Iniciando sesión automáticamente...');
+      setLoadingMessage(t('autoSignIn'));
       console.log('Intentando login con:', invitation.email, 'temp-password');
       
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -109,14 +112,14 @@ function InviteContent() {
       
       if (signInError) {
         console.log('Error en login automático:', signInError);
-        setError(`Error al iniciar sesión automáticamente: ${signInError.message}. Por favor, contacta al administrador.`);
+        setError(t('errorAutoSignIn', { message: signInError.message }));
         setIsLoading(false);
         return;
       }
       
       if (!signInData.user) {
         console.log('Login exitoso pero no hay usuario');
-        setError('Error inesperado al iniciar sesión. Por favor, contacta al administrador.');
+        setError(t('errorUnexpected'));
         setIsLoading(false);
         return;
       }
@@ -129,7 +132,7 @@ function InviteContent() {
       
     } catch (err) {
       console.log('Error en el proceso de validación y login:', err);
-      setError('Error al procesar la invitación');
+      setError(t('errorProcessing'));
       setIsLoading(false);
     }
   }
@@ -139,7 +142,7 @@ function InviteContent() {
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 px-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
-          <p className="text-sm sm:text-base text-gray-600">{loadingMessage}</p>
+          <p className="text-sm sm:text-base text-gray-600">{loadingMessage || t('validating')}</p>
         </div>
       </div>
     );
@@ -150,7 +153,7 @@ function InviteContent() {
       <div className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
         <div className="bg-white shadow-lg sm:shadow-2xl rounded-lg sm:rounded-xl w-full max-w-md overflow-hidden">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900">Error en la invitación</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('errorTitle')}</h2>
           </div>
           <div className="p-4 sm:p-6">
             <div className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 mb-3 sm:mb-4">
@@ -171,13 +174,13 @@ function InviteContent() {
               onClick={() => window.location.reload()} 
               className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              Reintentar
+              {tc('retry')}
             </button>
             <button 
               onClick={() => router.push('/auth/login')} 
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              Ir al inicio de sesión
+              {t('goToLogin')}
             </button>
           </div>
         </div>
@@ -191,7 +194,7 @@ function InviteContent() {
       <InvitationWizard
         inviteData={inviteData}
         onComplete={() => {
-          router.push('/auth/login?message=Registro completado correctamente. Inicia sesión con tu nueva contraseña.');
+          router.push(`/auth/login?message=${encodeURIComponent(t('completedMessage'))}`);
         }}
       />
     );
@@ -201,7 +204,7 @@ function InviteContent() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="text-center">
-        <p className="text-gray-600">Configurando tu cuenta...</p>
+        <p className="text-gray-600">{t('settingUp')}</p>
       </div>
     </div>
   );
@@ -215,7 +218,7 @@ export default function InvitePage() {
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600">Validando invitación...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     }>

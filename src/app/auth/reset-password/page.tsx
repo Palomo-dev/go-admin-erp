@@ -7,6 +7,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { updatePassword, getSession, supabase } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
 
 function ResetPasswordContent() {
   const [password, setPassword] = useState('');
@@ -19,6 +20,8 @@ function ResetPasswordContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('auth.resetPassword');
+  const tc = useTranslations('common');
 
   useEffect(() => {
     const checkSession = async () => {
@@ -29,7 +32,7 @@ function ResetPasswordContent() {
         // If no session, redirect to login
         setMessage({
           type: 'error',
-          text: 'El enlace de restablecimiento no es válido o ha expirado. Por favor solicita un nuevo enlace.'
+          text: t('linkExpired')
         });
       }
     };
@@ -44,7 +47,7 @@ function ResetPasswordContent() {
         setHasSession(true);
         setMessage({
           type: 'success',
-          text: 'Enlace de recuperación válido. Puedes establecer tu nueva contraseña.'
+          text: t('linkValid')
         });
       } else if (event === 'SIGNED_IN' && session) {
         setHasSession(true);
@@ -74,19 +77,19 @@ function ResetPasswordContent() {
     const errors = [];
     
     if (password.length < 8) {
-      errors.push('al menos 8 caracteres');
+      errors.push(t('passwordMinChars'));
     }
     if (!/[A-Z]/.test(password)) {
-      errors.push('una letra mayúscula');
+      errors.push(t('passwordUppercase'));
     }
     if (!/[a-z]/.test(password)) {
-      errors.push('una letra minúscula');
+      errors.push(t('passwordLowercase'));
     }
     if (!/[0-9]/.test(password)) {
-      errors.push('un número');
+      errors.push(t('passwordNumber'));
     }
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push('un carácter especial');
+      errors.push(t('passwordSpecial'));
     }
     
     return errors;
@@ -100,7 +103,7 @@ function ResetPasswordContent() {
     if (password !== confirmPassword) {
       setMessage({
         type: 'error',
-        text: 'Las contraseñas no coinciden'
+        text: t('passwordMismatch')
       });
       return;
     }
@@ -110,7 +113,7 @@ function ResetPasswordContent() {
     if (passwordErrors.length > 0) {
       setMessage({
         type: 'error',
-        text: `La contraseña debe tener ${passwordErrors.join(', ')}`
+        text: t('passwordMustHave', { requirements: passwordErrors.join(', ') })
       });
       return;
     }
@@ -127,7 +130,7 @@ function ResetPasswordContent() {
 
       setMessage({
         type: 'success',
-        text: 'Tu contraseña ha sido actualizada correctamente'
+        text: t('successMessage')
       });
       
       // Redirect to login after 2 seconds
@@ -137,7 +140,7 @@ function ResetPasswordContent() {
     } catch (err: any) {
       setMessage({
         type: 'error',
-        text: err.message || 'Error al actualizar la contraseña'
+        text: err.message || t('errorGeneric')
       });
     } finally {
       setLoading(false);
@@ -149,10 +152,10 @@ function ResetPasswordContent() {
       <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100">
         <div>
           <h2 className="mt-2 sm:mt-4 md:mt-6 text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-            Restablecer contraseña
+            {t('title')}
           </h2>
           <p className="mt-1 sm:mt-2 text-center text-xs sm:text-sm text-gray-600">
-            Ingresa tu nueva contraseña
+            {t('subtitle')}
           </p>
         </div>
         
@@ -166,7 +169,7 @@ function ResetPasswordContent() {
           <form className="mt-4 sm:mt-6 md:mt-8 space-y-4 sm:space-y-6" onSubmit={handleResetPassword}>
             <div className="space-y-3 sm:space-y-4">
               <div>
-                <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Nueva contraseña</label>
+                <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('newPassword')}</label>
                 <div className="relative">
                   <div className="flex items-center border border-blue-300 rounded-md">
                     <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
@@ -180,7 +183,7 @@ function ResetPasswordContent() {
                       type={showPassword ? 'text' : 'password'}
                       required
                       className="w-full px-2 py-2 sm:py-3 pr-8 sm:pr-10 text-sm sm:text-base focus:outline-none"
-                      placeholder="Nueva contraseña"
+                      placeholder={t('newPassword')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
@@ -208,14 +211,14 @@ function ResetPasswordContent() {
                 {/* Indicador de fortaleza de contraseña */}
                 {password && (
                   <div className="mt-2">
-                    <div className="text-xs text-gray-600 mb-1">Fortaleza de la contraseña:</div>
+                    <div className="text-xs text-gray-600 mb-1">{t('passwordStrength')}</div>
                     <div className="flex flex-wrap gap-1">
                       {[
-                        { test: password.length >= 8, label: '8+ caracteres' },
-                        { test: /[A-Z]/.test(password), label: 'Mayúscula' },
-                        { test: /[a-z]/.test(password), label: 'Minúscula' },
-                        { test: /[0-9]/.test(password), label: 'Número' },
-                        { test: /[!@#$%^&*(),.?":{}|<>]/.test(password), label: 'Especial' }
+                        { test: password.length >= 8, label: t('passwordMinChars') },
+                        { test: /[A-Z]/.test(password), label: t('passwordUppercase') },
+                        { test: /[a-z]/.test(password), label: t('passwordLowercase') },
+                        { test: /[0-9]/.test(password), label: t('passwordNumber') },
+                        { test: /[!@#$%^&*(),.?":{}|<>]/.test(password), label: t('passwordSpecial') }
                       ].map((requirement, index) => (
                         <div
                           key={index}
@@ -233,7 +236,7 @@ function ResetPasswordContent() {
                 )}
               </div>
               <div>
-                <label htmlFor="confirm-password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
+                <label htmlFor="confirm-password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('confirmPassword')}</label>
                 <div className="relative">
                   <div className="flex items-center border border-blue-300 rounded-md">
                     <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
@@ -247,7 +250,7 @@ function ResetPasswordContent() {
                       type={showConfirmPassword ? 'text' : 'password'}
                       required
                       className="w-full px-2 py-2 sm:py-3 pr-8 sm:pr-10 text-sm sm:text-base focus:outline-none"
-                      placeholder="Confirmar contraseña"
+                      placeholder={t('confirmPassword')}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
@@ -285,14 +288,14 @@ function ResetPasswordContent() {
                           <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
-                          Las contraseñas coinciden
+                          {t('passwordMatch')}
                         </>
                       ) : (
                         <>
                           <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                           </svg>
-                          Las contraseñas no coinciden
+                          {t('passwordMismatch')}
                         </>
                       )}
                     </div>
@@ -307,21 +310,21 @@ function ResetPasswordContent() {
                 disabled={loading}
                 className="w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
-                {loading ? 'Actualizando...' : 'Actualizar contraseña'}
+                {loading ? t('submitting') : t('submit')}
               </button>
             </div>
           </form>
         ) : (
           <div className="mt-4 sm:mt-6 text-center">
             <Link href="/auth/forgot-password" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
-              Solicitar un nuevo enlace de restablecimiento
+              {t('requestNewLink')}
             </Link>
           </div>
         )}
         
         <div className="text-center mt-3 sm:mt-4">
           <Link href="/auth/login" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
-            Volver al inicio de sesión
+            {t('backToLogin')}
           </Link>
         </div>
       </div>
@@ -334,7 +337,7 @@ export default function ResetPasswordPage() {
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600">Cargando...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     }>

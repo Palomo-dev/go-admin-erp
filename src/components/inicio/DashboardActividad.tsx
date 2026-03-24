@@ -4,26 +4,29 @@ import { ShoppingCart, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
 import type { ActividadReciente } from './inicioService';
+import { useTranslations } from 'next-intl';
 
 interface DashboardActividadProps {
   data: ActividadReciente[];
   isLoading: boolean;
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, t: ReturnType<typeof useTranslations>): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMin = Math.floor((now.getTime() - date.getTime()) / 60000);
 
-  if (diffMin < 1) return 'Ahora';
-  if (diffMin < 60) return `Hace ${diffMin} min`;
+  if (diffMin < 1) return t('now');
+  if (diffMin < 60) return t('minutesAgo', { min: diffMin });
   const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `Hace ${diffHours}h`;
+  if (diffHours < 24) return t('hoursAgo', { hours: diffHours });
   const diffDays = Math.floor(diffHours / 24);
-  return `Hace ${diffDays}d`;
+  return t('daysAgo', { days: diffDays });
 }
 
 export function DashboardActividad({ data, isLoading }: DashboardActividadProps) {
+  const t = useTranslations('home.activity');
+
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
@@ -42,13 +45,13 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
       <div className="flex items-center gap-2 mb-4">
         <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-          Actividad Reciente
+          {t('title')}
         </h3>
       </div>
 
       {data.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
-          Sin actividad reciente
+          {t('noActivity')}
         </p>
       ) : (
         <div className="space-y-2">
@@ -66,7 +69,7 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
                     {item.descripcion}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {formatRelativeTime(item.fecha)}
+                    {formatRelativeTime(item.fecha, t)}
                   </p>
                 </div>
               </div>

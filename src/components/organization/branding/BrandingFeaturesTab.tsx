@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Save, Zap, Calendar, ShoppingCart, Clock, CreditCard, Ticket, ParkingCircle, AlertTriangle } from 'lucide-react';
 import { WebsiteSettings } from '@/lib/services/websiteSettingsService';
+import { useTranslations } from 'next-intl';
 
 interface BrandingFeaturesTabProps {
   settings: WebsiteSettings;
@@ -17,57 +18,17 @@ interface BrandingFeaturesTabProps {
 }
 
 const FEATURES = [
-  { 
-    key: 'enable_reservations', 
-    label: 'Reservaciones', 
-    description: 'Permite a los clientes hacer reservaciones online', 
-    icon: Calendar,
-    module: 'pms_hotel',
-    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
-  },
-  { 
-    key: 'enable_online_ordering', 
-    label: 'Pedidos Online', 
-    description: 'Sistema de pedidos para delivery o pickup', 
-    icon: ShoppingCart,
-    module: 'pos',
-    color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-  },
-  { 
-    key: 'enable_appointments', 
-    label: 'Citas', 
-    description: 'Agenda de citas para servicios', 
-    icon: Clock,
-    module: 'calendar',
-    color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-  },
-  { 
-    key: 'enable_memberships', 
-    label: 'Membresías', 
-    description: 'Sistema de membresías y suscripciones', 
-    icon: CreditCard,
-    module: 'gym',
-    color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
-  },
-  { 
-    key: 'enable_tickets', 
-    label: 'Tickets', 
-    description: 'Venta de entradas y boletos', 
-    icon: Ticket,
-    module: 'pos',
-    color: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400'
-  },
-  { 
-    key: 'enable_parking_booking', 
-    label: 'Reserva de Parking', 
-    description: 'Reservación de espacios de estacionamiento', 
-    icon: ParkingCircle,
-    module: 'parking',
-    color: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400'
-  },
+  { key: 'enable_reservations', labelKey: 'reservations', descKey: 'reservationsDesc', icon: Calendar, module: 'pms_hotel', color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' },
+  { key: 'enable_online_ordering', labelKey: 'onlineOrdering', descKey: 'onlineOrderingDesc', icon: ShoppingCart, module: 'pos', color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
+  { key: 'enable_appointments', labelKey: 'appointments', descKey: 'appointmentsDesc', icon: Clock, module: 'calendar', color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
+  { key: 'enable_memberships', labelKey: 'memberships', descKey: 'membershipsDesc', icon: CreditCard, module: 'gym', color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' },
+  { key: 'enable_tickets', labelKey: 'tickets', descKey: 'ticketsDesc', icon: Ticket, module: 'pos', color: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400' },
+  { key: 'enable_parking_booking', labelKey: 'parkingBooking', descKey: 'parkingBookingDesc', icon: ParkingCircle, module: 'parking', color: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400' },
 ];
 
 export default function BrandingFeaturesTab({ settings, onSave, isSaving, activeModules = [] }: BrandingFeaturesTabProps) {
+  const t = useTranslations('branding.features');
+  const tc = useTranslations('branding.common');
   const [formData, setFormData] = useState({
     enable_reservations: settings.enable_reservations ?? false,
     enable_online_ordering: settings.enable_online_ordering ?? false,
@@ -93,10 +54,10 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
             <Zap className="h-5 w-5" />
-            Funcionalidades del Sitio
+            {t('title')}
           </CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Habilita funcionalidades interactivas para tus clientes ({enabledCount} de {FEATURES.length} activas)
+            {t('desc', { enabled: enabledCount, total: FEATURES.length })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -121,14 +82,14 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label className="font-medium dark:text-white">{feature.label}</Label>
+                        <Label className="font-medium dark:text-white">{t(feature.labelKey)}</Label>
                         {!hasModule && (
                           <Badge variant="outline" className="text-xs">
-                            Módulo requerido
+                            {t('moduleRequired')}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{feature.description}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t(feature.descKey)}</p>
                     </div>
                   </div>
                   <Switch
@@ -148,10 +109,9 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
         <CardContent className="flex items-start gap-3 pt-6">
           <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-medium text-yellow-800 dark:text-yellow-300">Importante</h4>
+            <h4 className="font-medium text-yellow-800 dark:text-yellow-300">{t('warningTitle')}</h4>
             <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
-              Las funcionalidades habilitadas aparecerán en tu sitio web público solo si tienes los módulos correspondientes activos en tu plan. 
-              Asegúrate de configurar correctamente cada funcionalidad desde su módulo respectivo.
+              {t('warningText')}
             </p>
           </div>
         </CardContent>
@@ -160,7 +120,7 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
       {/* Resumen */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="dark:text-white">Resumen de Funcionalidades</CardTitle>
+          <CardTitle className="dark:text-white">{t('summaryTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -172,12 +132,12 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
               return (
                 <Badge key={feature.key} variant="secondary" className="flex items-center gap-1 py-1">
                   <Icon className="h-3 w-3" />
-                  {feature.label}
+                  {t(feature.labelKey)}
                 </Badge>
               );
             })}
             {enabledCount === 0 && (
-              <p className="text-gray-500 dark:text-gray-400">No hay funcionalidades activas</p>
+              <p className="text-gray-500 dark:text-gray-400">{t('noFeatures')}</p>
             )}
           </div>
         </CardContent>
@@ -189,12 +149,12 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
           {isSaving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Guardando...
+              {tc('saving')}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Guardar Cambios
+              {tc('saveChanges')}
             </>
           )}
         </Button>

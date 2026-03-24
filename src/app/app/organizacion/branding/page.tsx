@@ -14,6 +14,7 @@ import {
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
 import { 
   websiteSettingsService, 
   WebsiteSettings 
@@ -27,20 +28,22 @@ import {
   BrandingPagesTab,
 } from '@/components/organization/branding';
 
-const TABS = [
-  { id: 'theme', label: 'Tema', icon: Palette },
-  { id: 'pages', label: 'Páginas', icon: FileEdit },
-  { id: 'seo', label: 'SEO', icon: Search },
-  { id: 'content', label: 'Contenido', icon: FileText },
-  { id: 'advanced', label: 'Avanzado', icon: Code },
-  { id: 'publish', label: 'Publicación', icon: Globe },
-];
+const TAB_IDS = ['theme', 'pages', 'seo', 'content', 'advanced', 'publish'] as const;
+const TAB_ICONS: Record<string, any> = {
+  theme: Palette,
+  pages: FileEdit,
+  seo: Search,
+  content: FileText,
+  advanced: Code,
+  publish: Globe,
+};
 
 export default function BrandingPage() {
   const router = useRouter();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const { toast } = useToast();
+  const t = useTranslations('org.branding');
 
   const [settings, setSettings] = useState<WebsiteSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,8 +78,8 @@ export default function BrandingPage() {
       if (!data) {
         data = await websiteSettingsService.createSettings(organizationId);
         toast({
-          title: 'Configuración creada',
-          description: 'Se ha creado la configuración inicial del sitio web',
+          title: t('configCreated'),
+          description: t('configCreatedDesc'),
         });
       }
       
@@ -85,7 +88,7 @@ export default function BrandingPage() {
       console.error('Error loading settings:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo cargar la configuración del sitio',
+        description: t('errorLoadingConfig'),
         variant: 'destructive',
       });
     } finally {
@@ -131,14 +134,14 @@ export default function BrandingPage() {
 
       setSettings(updatedSettings);
       toast({
-        title: 'Guardado',
-        description: 'Los cambios se han guardado correctamente',
+        title: t('saved'),
+        description: t('savedDesc'),
       });
     } catch (error) {
       console.error('Error saving settings:', error);
       toast({
         title: 'Error',
-        description: 'No se pudieron guardar los cambios',
+        description: t('errorSaving'),
         variant: 'destructive',
       });
     } finally {
@@ -161,14 +164,14 @@ export default function BrandingPage() {
       const updatedSettings = await websiteSettingsService.togglePublish(organizationId, true);
       setSettings(updatedSettings);
       toast({
-        title: '¡Sitio publicado!',
-        description: 'Tu sitio web ahora está visible para el público',
+        title: t('sitePublished'),
+        description: t('sitePublishedDesc'),
       });
     } catch (error) {
       console.error('Error publishing:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo publicar el sitio',
+        description: t('errorPublishing'),
         variant: 'destructive',
       });
     } finally {
@@ -185,14 +188,14 @@ export default function BrandingPage() {
       const updatedSettings = await websiteSettingsService.togglePublish(organizationId, false);
       setSettings(updatedSettings);
       toast({
-        title: 'Sitio despublicado',
-        description: 'Tu sitio web ya no es visible para el público',
+        title: t('siteUnpublished'),
+        description: t('siteUnpublishedDesc'),
       });
     } catch (error) {
       console.error('Error unpublishing:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo despublicar el sitio',
+        description: t('errorUnpublishing'),
         variant: 'destructive',
       });
     } finally {
@@ -208,14 +211,14 @@ export default function BrandingPage() {
       const updatedSettings = await websiteSettingsService.resetToTemplate(organizationId, templateId);
       setSettings(updatedSettings);
       toast({
-        title: 'Plantilla restablecida',
-        description: 'Los colores y fuentes se han restablecido',
+        title: t('templateReset'),
+        description: t('templateResetDesc'),
       });
     } catch (error) {
       console.error('Error resetting template:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo restablecer la plantilla',
+        description: t('errorResettingTemplate'),
         variant: 'destructive',
       });
     }
@@ -239,10 +242,10 @@ export default function BrandingPage() {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                  Branding & Sitio Web
+                  {t('title')}
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Configura el branding y sitio web público de tu organización
+                  {t('description')}
                 </p>
               </div>
             </div>
@@ -255,17 +258,17 @@ export default function BrandingPage() {
                 className="border-gray-300 dark:border-gray-700"
               >
                 <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
-                Actualizar
+                {t('refresh')}
               </Button>
               {settings?.is_published ? (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-md text-sm">
                   <Globe className="h-4 w-4" />
-                  Publicado
+                  {t('published')}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-md text-sm">
                   <Globe className="h-4 w-4" />
-                  Borrador
+                  {t('draft')}
                 </div>
               )}
             </div>
@@ -292,16 +295,16 @@ export default function BrandingPage() {
           <div className="p-4 sm:p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="flex flex-wrap justify-start gap-1 h-auto p-1 bg-gray-100 dark:bg-gray-800 mb-6">
-                {TABS.map((tab) => {
-                  const Icon = tab.icon;
+                {TAB_IDS.map((tabId) => {
+                  const Icon = TAB_ICONS[tabId];
                   return (
                     <TabsTrigger
-                      key={tab.id}
-                      value={tab.id}
+                      key={tabId}
+                      value={tabId}
                       className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
                     >
                       <Icon className="h-4 w-4" />
-                      <span className="hidden sm:inline">{tab.label}</span>
+                      <span className="hidden sm:inline">{t(`tabs.${tabId}`)}</span>
                     </TabsTrigger>
                   );
                 })}
@@ -353,7 +356,7 @@ export default function BrandingPage() {
               <TabsContent value="publish">
                 <BrandingPublishTab
                   settings={settings}
-                  organizationName={organization?.name || 'Mi Organización'}
+                  organizationName={organization?.name || t('myOrganization')}
                   subdomain={currentSubdomain || undefined}
                   onPublish={handlePublish}
                   onUnpublish={handleUnpublish}
@@ -366,10 +369,10 @@ export default function BrandingPage() {
         ) : (
           <div className="p-6 text-center">
             <p className="text-gray-500 dark:text-gray-400">
-              No se pudo cargar la configuración del sitio
+              {t('errorLoadingConfigEmpty')}
             </p>
             <Button onClick={handleRefresh} className="mt-4">
-              Reintentar
+              {t('retry')}
             </Button>
           </div>
         )}

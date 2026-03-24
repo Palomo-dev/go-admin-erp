@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { OrganizationInfoSkeleton } from './OrganizationSkeletons';
+import { useTranslations } from 'next-intl';
 
 interface OrganizationProps {
   id: number;
@@ -36,6 +37,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const t = useTranslations('org.orgInfo');
   const [organizationTypes, setOrganizationTypes] = useState<{id: number, description: string}[]>([]);
   
   useEffect(() => {
@@ -102,7 +104,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
       });
     } catch (err: any) {
       console.error('Error fetching organization details:', err);
-      setError(err.message || 'Error al cargar los detalles de la organización');
+      setError(err.message || t('errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -178,10 +180,10 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
       // No need to use localStorage for organization data
       // This data should be fetched from the database when needed
       
-      setSuccess('Información de la organización actualizada correctamente');
+      setSuccess(t('successUpdate'));
     } catch (err: any) {
       console.error('Error updating organization:', err);
-      setError(err.message || 'Error al actualizar la información de la organización');
+      setError(err.message || t('errorUpdating'));
     } finally {
       setSaving(false);
     }
@@ -196,13 +198,13 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
       
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        setError('El tamaño máximo de archivo es de 5MB');
+        setError(t('maxFileSize'));
         return;
       }
       
       // Check file type
       if (!file.type.match('image.*')) {
-        setError('Solo se permiten archivos de imagen');
+        setError(t('onlyImages'));
         return;
       }
       
@@ -226,7 +228,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
       setFormData((prev) => ({ ...prev, logo_url: publicUrl.publicUrl }));
     } catch (err: any) {
       console.error('Error uploading logo:', err);
-      setError(err.message || 'Error al subir el logo');
+      setError(err.message || t('errorUploadLogo'));
     }
   };
 
@@ -237,8 +239,8 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
   return (
     <div className="bg-white shadow overflow-hidden sm:rounded-lg">
       <div className="px-4 py-5 sm:px-6">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">Información de la Organización</h3>
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">Detalles y configuración de la organización</p>
+        <h3 className="text-lg leading-6 font-medium text-gray-900">{t('title')}</h3>
+        <p className="mt-1 max-w-2xl text-sm text-gray-500">{t('subtitle')}</p>
       </div>
       
       {error && (
@@ -276,7 +278,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
           <dl>
             {/* Organization Logo */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Logo</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('logo')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <div className="flex items-center space-x-4">
                   {formData.logo_url ? (
@@ -294,7 +296,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   )}
                   <div>
                     <label htmlFor="logo" className="cursor-pointer px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-                      Cambiar Logo
+                      {t('changeLogo')}
                       <input
                         type="file"
                         id="logo"
@@ -303,7 +305,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                         onChange={handleLogoUpload}
                       />
                     </label>
-                    <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF hasta 5MB</p>
+                    <p className="mt-1 text-xs text-gray-500">{t('logoHint')}</p>
                   </div>
                 </div>
               </dd>
@@ -311,7 +313,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Organization Name */}
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Nombre</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('name')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="text"
@@ -320,7 +322,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   value={formData.name || ''}
                   onChange={handleChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Nombre de la organización"
+                  placeholder={t('namePlaceholder')}
                   required
                 />
               </dd>
@@ -328,7 +330,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Organization Description */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Descripción</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('description')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <textarea
                   name="description"
@@ -336,7 +338,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   value={formData.description || ''}
                   onChange={handleChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Descripción de la organización"
+                  placeholder={t('descriptionPlaceholder')}
                   rows={3}
                 />
               </dd>
@@ -344,7 +346,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Organization Email */}
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Email</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('email')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="email"
@@ -360,7 +362,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Organization Type */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Tipo</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('type')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <select
                   name="type"
@@ -370,7 +372,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   className="block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   required
                 >
-                  <option value="" disabled>Selecciona un tipo</option>
+                  <option value="" disabled>{t('selectType')}</option>
                   {organizationTypes.map((type) => (
                     <option key={type.id} value={type.description}>
                       {type.description}
@@ -382,12 +384,12 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Contact Information Section */}
             <div className="bg-white px-4 py-5 sm:px-6">
-              <h4 className="text-md font-medium text-gray-900">Información de Contacto</h4>
+              <h4 className="text-md font-medium text-gray-900">{t('contactInfo')}</h4>
             </div>
             
             {/* Website */}
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Sitio Web</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('website')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="url"
@@ -403,7 +405,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Phone */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Teléfono</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('phone')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="tel"
@@ -419,12 +421,12 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Address Section */}
             <div className="bg-white px-4 py-5 sm:px-6">
-              <h4 className="text-md font-medium text-gray-900">Dirección</h4>
+              <h4 className="text-md font-medium text-gray-900">{t('addressSection')}</h4>
             </div>
             
             {/* Address */}
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Calle y Número</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('street')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="text"
@@ -433,14 +435,14 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   value={formData.address || ''}
                   onChange={handleChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Calle Principal #123"
+                  placeholder={t('streetPlaceholder')}
                 />
               </dd>
             </div>
             
             {/* City */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Ciudad</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('city')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="text"
@@ -449,14 +451,14 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   value={formData.city || ''}
                   onChange={handleChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Ciudad"
+                  placeholder={t('cityPlaceholder')}
                 />
               </dd>
             </div>
             
             {/* Country */}
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">País</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('country')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="text"
@@ -465,14 +467,14 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   value={formData.country || ''}
                   onChange={handleChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="País"
+                  placeholder={t('countryPlaceholder')}
                 />
               </dd>
             </div>
             
             {/* Postal Code */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Código Postal</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('postalCode')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="text"
@@ -488,7 +490,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Tax ID */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">NIT/RUT</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('taxId')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="text"
@@ -497,14 +499,14 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   value={formData.tax_id || ''}
                   onChange={handleChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="NIT o RUT"
+                  placeholder={t('taxIdPlaceholder')}
                 />
               </dd>
             </div>
             
             {/* Primary Color */}
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Color Primario</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('primaryColor')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
                 <input
                   type="color"
@@ -527,7 +529,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Secondary Color */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Color Secundario</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('secondaryColor')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
                 <input
                   type="color"
@@ -550,7 +552,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Subdomain */}
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Subdominio</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('subdomain')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
                 <input
                   type="text"
@@ -559,7 +561,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   value={formData.subdomain || ''}
                   onChange={handleChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="miorganizacion"
+                  placeholder={t('subdomainPlaceholder')}
                 />
                 <span className="ml-2 text-gray-500">.goadmin.io</span>
               </dd>
@@ -567,7 +569,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             
             {/* Custom Domain */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Dominio Personalizado</dt>
+              <dt className="text-sm font-medium text-gray-500">{t('customDomain')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="text"
@@ -576,9 +578,9 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   value={formData.custom_domain || ''}
                   onChange={handleChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="www.miorganizacion.com"
+                  placeholder={t('customDomainPlaceholder')}
                 />
-                <p className="text-xs text-gray-500 mt-1">Requiere configuración DNS adicional</p>
+                <p className="text-xs text-gray-500 mt-1">{t('customDomainHint')}</p>
               </dd>
             </div>
             
@@ -590,7 +592,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   disabled={saving}
                   className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  {saving ? 'Guardando...' : 'Guardar Cambios'}
+                  {saving ? t('saving') : t('saveChanges')}
                 </button>
               </div>
             </div>

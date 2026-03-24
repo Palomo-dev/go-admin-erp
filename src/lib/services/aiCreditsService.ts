@@ -238,7 +238,9 @@ export async function consumeAICredits(
     try {
       await supabase.from('ai_usage_logs').insert({
         organization_id: organizationId,
-        credits_used: amount,
+        credits_consumed: amount,
+        credits_before: currentCredits,
+        credits_after: newCredits,
         model: 'gpt-4o-mini',
         created_at: new Date().toISOString()
       });

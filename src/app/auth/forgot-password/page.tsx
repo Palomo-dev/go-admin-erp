@@ -3,8 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { resetPassword } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations('auth.forgotPassword');
+  const tErr = useTranslations('auth.errors');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -116,10 +119,10 @@ export default function ForgotPasswordPage() {
       <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100">
         <div>
           <h2 className="mt-2 sm:mt-4 md:mt-6 text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-            Recuperar contraseña
+            {t('title')}
           </h2>
           <p className="mt-1 sm:mt-2 text-center text-xs sm:text-sm text-gray-600">
-            Ingresa tu correo electrónico y te enviaremos instrucciones para restablecer tu contraseña.
+            {t('subtitle')}
           </p>
         </div>
         
@@ -146,7 +149,7 @@ export default function ForgotPasswordPage() {
                 autoComplete="email"
                 required
                 className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none"
-                placeholder="Correo electrónico"
+                placeholder={t('email')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -159,13 +162,13 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              {loading ? 'Enviando...' : 'Enviar instrucciones'}
+              {loading ? t('submitting') : t('submit')}
             </button>
           </div>
           
           <div className="text-center">
             <Link href="/auth/login" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
-              Volver al inicio de sesión
+              {t('backToLogin')}
             </Link>
           </div>
         </form>
@@ -180,7 +183,7 @@ export default function ForgotPasswordPage() {
                 </svg>
               </div>
               <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1 sm:mb-2">
-                Correo enviado
+                {t('successTitle')}
               </h3>
               <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                 Hemos enviado las instrucciones a <strong>{email}</strong>

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import CreateOrganizationForm from '@/components/organization/CreateOrganizationForm';
+import { useTranslations } from 'next-intl';
 
 interface FormData {
   joinType: 'create' | 'join';
@@ -68,7 +69,9 @@ export default function OrganizationStep({
   loading 
 }: OrganizationStepProps) {
   const [error, setError] = useState<string>('');
-  const [innerStep, setInnerStep] = useState<number>(1); // Track inner steps: 1 = selection, 2 = form
+  const [innerStep, setInnerStep] = useState<number>(1);
+  const t = useTranslations('auth.signup.organization');
+  const tc = useTranslations('common'); // Track inner steps: 1 = selection, 2 = form
 
   // Handle inner step navigation
   const nextInnerStep = () => {
@@ -82,7 +85,7 @@ export default function OrganizationStep({
   // Handle form submission for join mode
   const handleJoinSubmit = () => {
     if (!formData.invitationCode) {
-      setError('El código de invitación es requerido');
+      setError(t('invitationCodeRequired'));
       return;
     }
     setError('');
@@ -95,9 +98,9 @@ export default function OrganizationStep({
         // Inner Step 1: Choose between create or join
         <div className="mt-8 space-y-6">
           <div className="text-center mb-6">
-            <h3 className="text-lg font-medium text-gray-900">Elige una opción</h3>
+            <h3 className="text-lg font-medium text-gray-900">{t('joinOrCreate')}</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Puedes crear una nueva organización o unirte a una existente con un código de invitación.
+              {t('joinOrCreateDescription')}
             </p>
           </div>
           
@@ -113,7 +116,7 @@ export default function OrganizationStep({
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
-              Crear nueva organización
+              {t('createNew')}
             </button>
             <button
               type="button"
@@ -126,7 +129,7 @@ export default function OrganizationStep({
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
               </svg>
-              Unirse con código
+              {t('joinWithCode')}
             </button>
           </div>
 
@@ -137,7 +140,7 @@ export default function OrganizationStep({
               className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
               disabled={loading}
             >
-              Atrás
+              {tc('back')}
             </button>
           </div>
         </div>
@@ -155,7 +158,7 @@ export default function OrganizationStep({
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
-                  Volver a opciones
+                  {t('backToOptions')}
                 </button>
               </div>
               
@@ -188,7 +191,7 @@ export default function OrganizationStep({
                     onNext();
                   } catch (error) {
                     console.error('OrganizationStep: Error al procesar datos:', error);
-                    setError('Error al procesar los datos de la organización');
+                    setError(t('errorProcessing'));
                   }
                 }}
                 onCancel={prevInnerStep}
@@ -207,14 +210,14 @@ export default function OrganizationStep({
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
-                  Volver a opciones
+                  {t('backToOptions')}
                 </button>
               </div>
               
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Unirse con código de invitación</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">{t('joinWithInvitation')}</h3>
               
               <label htmlFor="invitationCode" className="block text-sm font-medium text-gray-700">
-                Código de invitación
+                {t('invitationCode')}
               </label>
               <input
                 type="text"
@@ -225,18 +228,18 @@ export default function OrganizationStep({
                 className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
                   error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
                 }`}
-                placeholder="Ingresa el código de invitación"
+                placeholder={t('enterInvitationCode')}
               />
               {error && (
                 <p className="mt-1 text-sm text-red-600">{error}</p>
               )}
 
               <div className="bg-blue-50 p-4 rounded-md mt-6">
-                <h3 className="text-sm font-medium text-blue-800">Al unirte con un código:</h3>
+                <h3 className="text-sm font-medium text-blue-800">{t('joinCodeInfo')}</h3>
                 <ul className="mt-2 text-sm text-blue-700 list-disc pl-5 space-y-1">
-                  <li>Serás asignado al rol definido en la invitación</li>
-                  <li>Tendrás acceso a la organización inmediatamente</li>
-                  <li>El código de invitación solo puede usarse una vez</li>
+                  <li>{t('joinCodeTip1')}</li>
+                  <li>{t('joinCodeTip2')}</li>
+                  <li>{t('joinCodeTip3')}</li>
                 </ul>
               </div>
               
@@ -247,7 +250,7 @@ export default function OrganizationStep({
                   className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
                   disabled={loading}
                 >
-                  Atrás
+                  {tc('back')}
                 </button>
                 <button
                   type="button"
@@ -255,7 +258,7 @@ export default function OrganizationStep({
                   className="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   disabled={loading}
                 >
-                  {loading ? 'Cargando...' : 'Siguiente'}
+                  {loading ? tc('loading') : tc('next')}
                 </button>
               </div>
             </div>

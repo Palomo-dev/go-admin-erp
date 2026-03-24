@@ -7,6 +7,8 @@ import { Save, Edit2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
+import { changeLanguage } from '@/i18n/provider';
+import { isValidLocale } from '@/i18n/config';
 
 interface Profile {
   id: string;
@@ -175,6 +177,10 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
         
       if (error) throw error;
       
+      // Sincronizar idioma en runtime si cambió
+      if (lang && isValidLocale(lang)) {
+        changeLanguage(lang);
+      }
       toast.success('Información actualizada correctamente');
       onProfileUpdated(data);
       setEditing(false);

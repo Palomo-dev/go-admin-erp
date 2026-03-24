@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
 import { OrganizationListSkeleton } from '@/components/organization/OrganizationSkeletons';
+import { useTranslations } from 'next-intl';
 
 // Dynamic import for the ManageOrganizationsTab component
 const ManageOrganizationsTab = dynamic(() => import('../../../../components/organization/ManageOrganizationsTab'), {
@@ -14,6 +15,7 @@ export default function MisOrganizacionesPage() {
   const [userRole, setUserRole] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('org');
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -24,7 +26,7 @@ export default function MisOrganizacionesPage() {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          setError('No se encontró sesión de usuario');
+          setError(t('common.noSession'));
           return;
         }
         
@@ -51,12 +53,12 @@ export default function MisOrganizacionesPage() {
 
         if (memberError) {
           console.error('Error fetching organization data:', memberError);
-          setError('Error al cargar datos de la organización');
+          setError(t('common.errorLoadingOrg'));
           return;
         }
 
         if (!memberData || memberData.length === 0) {
-          setError('No perteneces a ninguna organización');
+          setError(t('common.noOrganization'));
           return;
         }
 
@@ -73,7 +75,7 @@ export default function MisOrganizacionesPage() {
         
       } catch (err: any) {
         console.error('Error in fetchUserData:', err);
-        setError('Error inesperado al cargar datos');
+        setError(t('common.unexpectedError'));
       } finally {
         setLoading(false);
       }
@@ -89,8 +91,8 @@ export default function MisOrganizacionesPage() {
     return (
       <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Mis Organizaciones</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona todas las organizaciones de las que eres propietario</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{t('myOrgs.title')}</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">{t('myOrgs.description')}</p>
         </div>
         <OrganizationListSkeleton />
       </div>
@@ -127,7 +129,7 @@ export default function MisOrganizacionesPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-yellow-700">No tienes permisos para administrar organizaciones. Contacta a un administrador.</p>
+              <p className="text-sm text-yellow-700">{t('common.noPermissionsOrgs')}</p>
             </div>
           </div>
         </div>
@@ -139,8 +141,8 @@ export default function MisOrganizacionesPage() {
     <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Mis Organizaciones</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Gestiona todas las organizaciones de las que eres propietario</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{t('myOrgs.title')}</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">{t('myOrgs.description')}</p>
         </div>
       </div>
       

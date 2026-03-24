@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
 
 type VerificationStepProps = {
   email: string;
@@ -11,6 +12,7 @@ type VerificationStepProps = {
 export default function VerificationStep({ email }: VerificationStepProps) {
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('auth.signup.verification');
 
   const handleResendEmail = async () => {
     setResendStatus('sending');
@@ -29,7 +31,7 @@ export default function VerificationStep({ email }: VerificationStepProps) {
       setResendStatus('sent');
     } catch (err: any) {
       console.error('Error al reenviar correo:', err);
-      setError(err.message || 'Error al reenviar el correo de verificación');
+      setError(err.message || t('errorResend'));
       setResendStatus('error');
     }
   };
@@ -42,11 +44,13 @@ export default function VerificationStep({ email }: VerificationStepProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="mt-3 text-lg font-medium text-gray-900">¡Registro completado!</h3>
+        <h3 className="mt-3 text-lg font-medium text-gray-900">{t('registrationComplete')}</h3>
         <div className="mt-2 px-2">
           <p className="text-sm text-gray-500">
-            Hemos enviado un correo de verificación a <span className="font-medium text-gray-900">{email}</span>.
-            Por favor, revisa tu bandeja de entrada y haz clic en el enlace de verificación para activar tu cuenta.
+            {t.rich('verificationSent', {
+              email,
+              b: (chunks) => <span className="font-medium text-gray-900">{chunks}</span>
+            })}
           </p>
         </div>
       </div>
@@ -60,14 +64,14 @@ export default function VerificationStep({ email }: VerificationStepProps) {
       
       {resendStatus === 'sent' && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-          <span className="block sm:inline">Correo de verificación reenviado correctamente.</span>
+          <span className="block sm:inline">{t('resendSuccess')}</span>
         </div>
       )}
 
       <div className="bg-yellow-50 p-4 rounded-md">
-        <h3 className="text-sm font-medium text-yellow-800">¿No has recibido el correo?</h3>
+        <h3 className="text-sm font-medium text-yellow-800">{t('notReceived')}</h3>
         <p className="mt-1 text-sm text-yellow-700">
-          Revisa tu carpeta de spam o correo no deseado. Si aún no lo encuentras, puedes:
+          {t('checkSpam')}
         </p>
         <div className="mt-3">
           <button
@@ -75,18 +79,18 @@ export default function VerificationStep({ email }: VerificationStepProps) {
             disabled={resendStatus === 'sending'}
             className="inline-flex items-center px-3 py-1.5 border border-yellow-300 text-xs font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
           >
-            {resendStatus === 'sending' ? 'Enviando...' : 'Reenviar correo de verificación'}
+            {resendStatus === 'sending' ? t('resending') : t('resendVerification')}
           </button>
         </div>
       </div>
 
       <div className="bg-blue-50 p-4 rounded-md">
-        <h3 className="text-sm font-medium text-blue-800">Próximos pasos:</h3>
+        <h3 className="text-sm font-medium text-blue-800">{t('nextStepsTitle')}</h3>
         <ul className="mt-2 text-sm text-blue-700 list-disc pl-5 space-y-1">
-          <li>Verifica tu correo electrónico</li>
-          <li>Inicia sesión en tu cuenta</li>
-          <li>Completa el proceso de onboarding para personalizar tu organización</li>
-          <li>Explora las funcionalidades de GO Admin ERP</li>
+          <li>{t('nextStep1')}</li>
+          <li>{t('nextStep2')}</li>
+          <li>{t('nextStep3')}</li>
+          <li>{t('nextStep4')}</li>
         </ul>
       </div>
 
@@ -95,7 +99,7 @@ export default function VerificationStep({ email }: VerificationStepProps) {
           href="/auth/login" 
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          Ir a iniciar sesión
+          {t('goToLogin')}
         </Link>
       </div>
     </div>

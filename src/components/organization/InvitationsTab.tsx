@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 import { InvitationsSkeleton } from './OrganizationSkeletons';
+import { useTranslations } from 'next-intl';
 
 interface InvitationProps {
   id: string;
@@ -18,6 +19,7 @@ interface InvitationProps {
 }
 
 export default function InvitationsTab({ orgId }: { orgId: number }) {
+  const t = useTranslations('org.invitationsTab');
   const [invitations, setInvitations] = useState<InvitationProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +119,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           code: invite.code,
           role_name: roleInfo.name,
           created_at: new Date(invite.created_at).toLocaleDateString(),
-          expires_at: invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : 'No expira',
+          expires_at: invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : t('noExpires'),
           status: invite.status,
           used: invite.status === 'used',
           revoked: invite.status === 'revoked'
@@ -127,7 +129,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       setInvitations(formattedInvitations);
     } catch (err: any) {
       console.error('Error fetching invitations:', err);
-      setError(err.message || 'Error al cargar invitaciones');
+      setError(err.message || t('errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -163,13 +165,13 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       setSuccess(null);
       
       if (!email || !roleId) {
-        setError('Por favor completa todos los campos obligatorios');
+        setError(t('requiredFields'));
         return;
       }
 
       // Validar límite de usuarios del plan
       if (maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers) {
-        setError(`Has alcanzado el límite de ${maxUsers} usuarios de tu plan. Actualiza tu plan para invitar más miembros.`);
+        setError(t('userLimitReached', { max: maxUsers }));
         return;
       }
       
@@ -182,7 +184,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .eq('status', 'pending');
       
       if (existingInvites && existingInvites.length > 0) {
-        setError('Ya existe una invitación activa para este correo electrónico');
+        setError(t('alreadyInvited'));
         return;
       }
 
@@ -194,7 +196,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .single();
       
       if (existingUser) {
-        setError('Este correo ya está registrado en el sistema');
+        setError(t('alreadyRegistered'));
         return;
       }
       
@@ -203,7 +205,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       const currentUserId = session?.user?.id;
       
       if (!currentUserId) {
-        setError('No se pudo obtener la información del usuario actual');
+        setError(t('noCurrentUser'));
         return;
       }
 
@@ -215,7 +217,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .single();
 
       if (orgError || !orgData) {
-        setError('No se pudo obtener la información de la organización');
+        setError(t('noOrgInfo'));
         return;
       }
       
@@ -270,13 +272,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         if (signUpError) {
           // If signup fails (e.g., email already exists), provide manual URL
           console.warn('Signup for invitation failed:', signUpError);
-          setSuccess(
-            `Invitación creada para ${email}. ` +
-            `Envía esta URL manualmente: ${inviteUrl}`
-          );
+          setSuccess(t('inviteCreatedManual', { email, url: inviteUrl }));
         } else {
           // Success - Supabase will send the confirmation email automatically
-          setSuccess(`Invitación enviada exitosamente a ${email}`);
+          setSuccess(t('inviteSent', { email }));
           
           // Clean up the temporary user creation - mark the invitation properly
           // The user will use our custom invite flow instead of the auth confirmation
@@ -287,10 +286,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         }
       } catch (emailSendError: any) {
         console.warn('Error sending invitation email:', emailSendError);
-        setSuccess(
-          `Invitación creada para ${email}. ` +
-          `Envía esta URL manualmente: ${inviteUrl}`
-        );
+        setSuccess(t('inviteCreatedManual', { email, url: inviteUrl }));
       }
       
       // Reset form
@@ -303,7 +299,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       
     } catch (err: any) {
       console.error('Error sending invitation:', err);
-      setError(err.message || 'Error al enviar la invitación');
+      setError(err.message || t('errorSending'));
     } finally {
       setSendingInvitation(false);
     }
@@ -311,7 +307,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
   // Revoke invitation
   const revokeInvitation = async (id: string) => {
-    if (confirm('¿Estás seguro de que deseas revocar esta invitación?')) {
+    if (confirm(t('confirmRevoke'))) {
       try {
         setLoading(true);
         
@@ -329,10 +325,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           )
         );
         
-        setSuccess('Invitación revocada correctamente');
+        setSuccess(t('inviteRevoked'));
       } catch (err: any) {
         console.error('Error al revocar invitación:', err);
-        setError(err.message || 'Error al revocar la invitación');
+        setError(err.message || t('errorRevoking'));
       } finally {
         setLoading(false);
       }
@@ -369,7 +365,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .single();
 
       if (!inviteData) {
-        throw new Error('No se pudo obtener la información de la invitación');
+        throw new Error(t('noInviteInfo'));
       }
       
       // Generate the invitation URL
@@ -402,28 +398,28 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
         if (signUpError && signUpError.message.includes('already registered')) {
           // Expected error - user already exists, provide manual URL
-          setSuccess(`Invitación actualizada para ${email}. Envía esta URL manualmente: ${inviteUrl}`);
+          setSuccess(t('inviteUpdatedManual', { email, url: inviteUrl }));
         } else if (signUpError) {
           // Other signup error
           console.warn('Error reenviando invitación:', signUpError);
-          setSuccess(`Invitación actualizada para ${email}. URL: ${inviteUrl}`);
+          setSuccess(t('inviteUpdatedUrl', { email, url: inviteUrl }));
         } else {
           // Success - email sent
-          setSuccess(`Invitación reenviada exitosamente a ${email}`);
+          setSuccess(t('inviteResent', { email }));
           if (signUpData.user) {
             console.log('📧 Invitation email resent via Supabase Auth to:', email);
           }
         }
       } catch (emailSendError: any) {
         console.warn('Error reenviando invitación:', emailSendError);
-        setSuccess(`Invitación actualizada para ${email}. URL: ${inviteUrl}`);
+        setSuccess(t('inviteUpdatedUrl', { email, url: inviteUrl }));
       }
       
       // Refresh the invitations list
       await fetchInvitations();
     } catch (err: any) {
       console.error('Error al reenviar invitación:', err);
-      setError(err.message || 'Error al reenviar la invitación');
+      setError(err.message || t('errorResending'));
     } finally {
       setLoading(false);
     }
@@ -432,25 +428,25 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
     if (invitation.status === 'revoked' || invitation.revoked) {
       return (
         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-          Revocada
+          {t('statusRevoked')}
         </span>
       );
     } else if (invitation.status === 'used' || invitation.used) {
       return (
         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-          Aceptada
+          {t('statusAccepted')}
         </span>
       );
     } else if (new Date(invitation.expires_at || '') < new Date()) {
       return (
         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-          Expirada
+          {t('statusExpired')}
         </span>
       );
     } else {
       return (
         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-          Pendiente
+          {t('statusPending')}
         </span>
       );
     }
@@ -500,10 +496,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
             </svg>
-            <h3 className="font-medium text-gray-700">Filtrar invitaciones</h3>
+            <h3 className="font-medium text-gray-700">{t('filterInvitations')}</h3>
             {activeFiltersCount > 0 && (
               <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
-                {activeFiltersCount} {activeFiltersCount === 1 ? 'filtro activo' : 'filtros activos'}
+                {activeFiltersCount} {activeFiltersCount === 1 ? t('activeFilter') : t('activeFilters')}
               </span>
             )}
           </div>
@@ -521,7 +517,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Limpiar todos
+              {t('clearAll')}
             </button>
           )}
         </div>
@@ -531,7 +527,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Filtro por email */}
             <div className="relative">
-              <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -543,7 +539,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   type="text"
                   value={emailFilter}
                   onChange={(e) => setEmailFilter(e.target.value)}
-                  placeholder="Buscar por email..."
+                  placeholder={t('emailPlaceholder')}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
                 {emailFilter && (
@@ -563,7 +559,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por rol */}
             <div>
-              <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+              <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('roleLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -576,7 +572,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   onChange={(e) => setRoleFilter(e.target.value)}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
-                  <option value="">Todos los roles</option>
+                  <option value="">{t('allRoles')}</option>
                   {uniqueRoles.map((role: string) => (
                     <option key={role} value={role}>{role}</option>
                   ))}
@@ -586,7 +582,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por estado */}
             <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('statusLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -599,10 +595,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
-                  <option value="all">Todos</option>
-                  <option value="pending">Pendientes</option>
-                  <option value="used">Aceptadas</option>
-                  <option value="revoked">Revocadas</option>
+                  <option value="all">{t('allStatuses')}</option>
+                  <option value="pending">{t('pendingStatus')}</option>
+                  <option value="used">{t('acceptedStatus')}</option>
+                  <option value="revoked">{t('revokedStatus')}</option>
                 </select>
               </div>
             </div>
@@ -624,7 +620,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
 
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Enviar Nueva Invitación</h3>
+          <h3 className="text-lg leading-6 font-medium text-gray-900">{t('sendNewTitle')}</h3>
 
           {/* Banner de límite de usuarios */}
           {maxUsers && (
@@ -639,10 +635,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                     ? 'text-red-800'
                     : 'text-blue-800'
                 }`}>
-                  Usuarios: {currentMemberCount}/{maxUsers}
+                  {t('usersCount', { current: currentMemberCount, max: maxUsers })}
                   {pendingInvitationsCount > 0 && (
                     <span className="font-normal text-xs ml-1">
-                      (+{pendingInvitationsCount} invitaciones pendientes)
+                      {t('pendingInvitations', { count: pendingInvitationsCount })}
                     </span>
                   )}
                 </p>
@@ -651,13 +647,13 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                     href="/app/organizacion/plan"
                     className="text-xs font-medium text-red-700 hover:text-red-900 underline"
                   >
-                    Actualizar plan
+                    {t('upgradePlan')}
                   </a>
                 )}
               </div>
               {(currentMemberCount + pendingInvitationsCount) >= maxUsers && (
                 <p className="text-xs text-red-600 mt-1">
-                  Has alcanzado el límite de usuarios de tu plan. Actualiza tu plan para invitar más miembros.
+                  {t('userLimitMessage')}
                 </p>
               )}
             </div>
@@ -696,7 +692,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           <form onSubmit={handleSendInvitation} className="space-y-4 mt-4 bg-gray-50 p-4 rounded-lg">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Correo Electrónico
+                {t('emailField')}
               </label>
               <input
                 type="email"
@@ -706,14 +702,14 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                placeholder="ejemplo@correo.com"
+                placeholder={t('emailFieldPlaceholder')}
                 required
               />
             </div>
             
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Rol
+                {t('roleField')}
               </label>
               <select
                 id="role"
@@ -724,7 +720,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                 required
               >
-                <option value="" disabled>Selecciona un rol</option>
+                <option value="" disabled>{t('selectRole')}</option>
                 {roles.map((role) => (
                   <option key={role.id} value={role.id}>
                     {roleDisplayMap[role.code] || role.name}
@@ -739,7 +735,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 disabled={sendingInvitation || !!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {sendingInvitation ? 'Enviando...' : 'Enviar Invitación'}
+                {sendingInvitation ? t('sending') : t('sendInvitation')}
               </button>
             </div>
           </form>
@@ -751,10 +747,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
           <div>
             <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Invitaciones
+              {t('invitationsTitle')}
             </h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Envía invitaciones a nuevos miembros para tu organización
+              {t('invitationsDesc')}
               {invitations.length > 0 && filteredInvitations.length !== invitations.length && 
                 ` (${filteredInvitations.length} de ${invitations.length})`}
             </p>
@@ -771,14 +767,14 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
-                Ocultar filtros
+                {t('hideFilters')}
               </>
             ) : (
               <>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
-                Mostrar filtros
+                {t('showFilters')}
               </>
             )}
           </button>
@@ -789,22 +785,22 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             <thead className="bg-gray-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
+                  {t('thEmail')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rol
+                  {t('thRole')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
+                  {t('thStatus')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha de Envío
+                  {t('thSentDate')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha de Expiración
+                  {t('thExpirationDate')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
+                  {t('thActions')}
                 </th>
               </tr>
             </thead>
@@ -816,8 +812,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                     className="px-6 py-10 text-center text-sm font-medium text-gray-500"
                   >
                     {invitations.length === 0 ? 
-                      "No hay invitaciones pendientes" : 
-                      "No se encontraron invitaciones con los filtros aplicados"}
+                      t('noInvitations') : 
+                      t('noResults')}
                   </td>
                 </tr>
               ) : (
@@ -845,13 +841,13 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                             onClick={() => resendInvitation(invitation.id, invitation.email)}
                             className="text-blue-600 hover:text-blue-900 mr-4"
                           >
-                            Reenviar
+                            {t('resend')}
                           </button>
                           <button
                             onClick={() => revokeInvitation(invitation.id)}
                             className="text-red-600 hover:text-red-900"
                           >
-                            Revocar
+                            {t('revoke')}
                           </button>
                         </>
                       )}

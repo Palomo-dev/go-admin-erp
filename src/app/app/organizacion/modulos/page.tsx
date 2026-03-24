@@ -42,6 +42,7 @@ import { useActiveModules } from '@/hooks/useActiveModules';
 import { useModuleContext } from '@/lib/context/ModuleContext';
 import { moduleManagementService, type Module } from '@/lib/services/moduleManagementService';
 import { ModulesSkeleton } from '@/components/organization/OrganizationSkeletons';
+import { useTranslations } from 'next-intl';
 
 const moduleIcons: Record<string, React.ComponentType<any>> = {
   'organizations': Building2,
@@ -76,6 +77,7 @@ export default function ModulesMarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('org');
   
   // Estado local optimista para módulos activos
   const [optimisticActiveModules, setOptimisticActiveModules] = useState<Set<string>>(new Set());
@@ -109,7 +111,7 @@ export default function ModulesMarketplacePage() {
         setOrganizationId(org.id);
       } catch (error) {
         console.error('Error parsing organization data:', error);
-        setError('Error al cargar información de la organización');
+        setError(t('common.errorLoadingOrgInfo'));
       }
     }
   }, []);
@@ -123,7 +125,7 @@ export default function ModulesMarketplacePage() {
         setAllModules(modules);
       } catch (err) {
         console.error('Error loading modules:', err);
-        setError('Error al cargar módulos disponibles');
+        setError(t('modules.errorLoadingModules'));
       } finally {
         setLoading(false);
       }
@@ -168,7 +170,7 @@ export default function ModulesMarketplacePage() {
       if (!result.success) {
         // 3. REVERTIR SI FALLA
         setOptimisticActiveModules(previousState);
-        setError(result.message || 'Error al modificar el módulo');
+        setError(result.message || t('modules.errorToggling'));
         return;
       }
 
@@ -184,7 +186,7 @@ export default function ModulesMarketplacePage() {
       // REVERTIR EN CASO DE ERROR
       setOptimisticActiveModules(previousState);
       console.error('Error toggling module:', err);
-      setError('Error de conexión al modificar el módulo');
+      setError(t('modules.errorConnection'));
     } finally {
       setActionLoading(null);
     }
@@ -221,8 +223,8 @@ export default function ModulesMarketplacePage() {
     return (
       <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <div className="space-y-4">
-          <h1 className="text-3xl font-bold">Marketplace de Módulos</h1>
-          <p className="text-gray-600">Activa y desactiva módulos según las necesidades de tu negocio</p>
+          <h1 className="text-3xl font-bold">{t('modules.title')}</h1>
+          <p className="text-gray-600">{t('modules.description')}</p>
         </div>
         <ModulesSkeleton />
       </div>
@@ -235,7 +237,7 @@ export default function ModulesMarketplacePage() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            No se pudo cargar la información de la organización. Por favor, recarga la página.
+            {t('common.errorLoadingOrgInfo')}
           </AlertDescription>
         </Alert>
       </div>
@@ -257,9 +259,9 @@ export default function ModulesMarketplacePage() {
     <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="space-y-4">
-        <h1 className="text-3xl font-bold">Marketplace de Módulos</h1>
+        <h1 className="text-3xl font-bold">{t('modules.title')}</h1>
         <p className="text-gray-600">
-          Activa y desactiva módulos según las necesidades de tu negocio
+          {t('modules.description')}
         </p>
       </div>
 
@@ -272,7 +274,7 @@ export default function ModulesMarketplacePage() {
               {organizationStatus.plan.name}
             </CardTitle>
             <CardDescription>
-              Uso de módulos: {totalActiveCount} de {organizationStatus.plan.max_modules} ({coreCount} core + {additionalActiveCount} adicionales)
+              {t('modules.usage', { total: totalActiveCount, max: organizationStatus.plan.max_modules, core: coreCount, additional: additionalActiveCount })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -282,8 +284,8 @@ export default function ModulesMarketplacePage() {
                 className="h-2"
               />
               <div className="flex justify-between text-sm text-gray-500">
-                <span>{totalActiveCount} módulos activos ({coreCount} core)</span>
-                <span>{organizationStatus.plan.max_modules - totalActiveCount} adicionales disponibles</span>
+                <span>{t('modules.activeModules', { count: totalActiveCount, core: coreCount })}</span>
+                <span>{t('modules.availableAdditional', { count: organizationStatus.plan.max_modules - totalActiveCount })}</span>
               </div>
             </div>
           </CardContent>
@@ -302,8 +304,8 @@ export default function ModulesMarketplacePage() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Crown className="h-5 w-5 text-yellow-500" />
-          <h2 className="text-2xl font-semibold">Módulos Core</h2>
-          <Badge variant="secondary">Incluidos en todos los planes</Badge>
+          <h2 className="text-2xl font-semibold">{t('modules.coreModules')}</h2>
+          <Badge variant="secondary">{t('modules.includedInAllPlans')}</Badge>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -322,7 +324,7 @@ export default function ModulesMarketplacePage() {
                       <div>
                         <CardTitle className="text-lg">{module.name}</CardTitle>
                         <Badge variant="outline" className="text-xs">
-                          Core
+                          {t('modules.core')}
                         </Badge>
                       </div>
                     </div>
@@ -335,7 +337,7 @@ export default function ModulesMarketplacePage() {
                   </CardDescription>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-green-600 font-medium">
-                      Siempre activo
+                      {t('modules.alwaysActive')}
                     </span>
                     <Lock className="h-4 w-4 text-gray-400" />
                   </div>
@@ -352,8 +354,8 @@ export default function ModulesMarketplacePage() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-purple-500" />
-          <h2 className="text-2xl font-semibold">Módulos Especializados</h2>
-          <Badge variant="secondary">Según tu plan</Badge>
+          <h2 className="text-2xl font-semibold">{t('modules.specializedModules')}</h2>
+          <Badge variant="secondary">{t('modules.accordingToPlan')}</Badge>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -373,7 +375,7 @@ export default function ModulesMarketplacePage() {
                       <div>
                         <CardTitle className="text-lg">{module.name}</CardTitle>
                         <Badge variant={isActive ? "default" : "outline"} className="text-xs">
-                          {isActive ? 'Activo' : 'Inactivo'}
+                          {isActive ? t('modules.active') : t('modules.inactive')}
                         </Badge>
                       </div>
                     </div>
@@ -392,14 +394,14 @@ export default function ModulesMarketplacePage() {
                   {actionLoading === module.code && (
                     <div className="flex items-center gap-2 text-sm text-blue-600">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Procesando...
+                      {t('modules.processing')}
                     </div>
                   )}
                   
                   {!canToggle && !isActive && (
                     <div className="flex items-center gap-2 text-sm text-red-600">
                       <Lock className="h-4 w-4" />
-                      Límite del plan alcanzado
+                      {t('modules.planLimitReached')}
                     </div>
                   )}
                 </CardContent>
@@ -415,16 +417,16 @@ export default function ModulesMarketplacePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-800">
               <Crown className="h-5 w-5" />
-              ¿Necesitas más módulos?
+              {t('modules.needMoreModules')}
             </CardTitle>
             <CardDescription className="text-purple-600">
-              Has alcanzado el límite de tu plan actual. Actualiza para acceder a más módulos.
+              {t('modules.needMoreModulesDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/app/plan">
               <Button className="bg-purple-600 hover:bg-purple-700">
-                Actualizar Plan
+                {t('modules.upgradePlan')}
               </Button>
             </Link>
           </CardContent>

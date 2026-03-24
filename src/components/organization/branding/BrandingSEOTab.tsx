@@ -12,6 +12,7 @@ import ImagePickerDialog from '@/components/common/ImagePickerDialog';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface BrandingSEOTabProps {
   settings: WebsiteSettings;
@@ -21,6 +22,8 @@ interface BrandingSEOTabProps {
 }
 
 export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSaving }: BrandingSEOTabProps) {
+  const t = useTranslations('branding.seo');
+  const tc = useTranslations('branding.common');
   const { organization } = useOrganization();
   const [formData, setFormData] = useState({
     meta_keywords: settings.meta_keywords || [],
@@ -163,10 +166,9 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
         <CardContent className="flex items-start gap-3 pt-6">
           <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-medium text-blue-800 dark:text-blue-300">SEO por página</h4>
+            <h4 className="font-medium text-blue-800 dark:text-blue-300">{t('perPageTitle')}</h4>
             <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
-              El título, descripción e imagen OG de cada página se configuran desde el <strong>Editor Visual</strong> de cada página.
-              Aquí solo se gestionan los ajustes SEO globales que aplican a todo el sitio.
+              {t('perPageDesc')}
             </p>
           </div>
         </CardContent>
@@ -177,10 +179,10 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
             <Image className="h-5 w-5" />
-            Favicon
+            {t('faviconTitle')}
           </CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Ícono que aparece en la pestaña del navegador
+            {t('faviconDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -209,7 +211,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                     onClick={() => setShowFaviconPicker(true)}
                     className="dark:border-gray-600 dark:text-gray-300"
                   >
-                    <ImagePlus className="h-3 w-3 mr-1" /> Cambiar
+                    <ImagePlus className="h-3 w-3 mr-1" /> {t('changeFavicon')}
                   </Button>
                 </div>
               </div>
@@ -221,8 +223,8 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               >
                 <div className="flex flex-col items-center gap-2">
                   <ImagePlus className="h-6 w-6" />
-                  <span className="text-sm">Seleccionar favicon</span>
-                  <span className="text-xs">32x32px o 64x64px • .ico, .png, .svg</span>
+                  <span className="text-sm">{t('selectFavicon')}</span>
+                  <span className="text-xs">{t('faviconFormats')}</span>
                 </div>
               </Button>
             )}
@@ -231,7 +233,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               open={showFaviconPicker}
               onOpenChange={setShowFaviconPicker}
               onSelect={handleFaviconSelect}
-              title="Seleccionar Favicon"
+              title={t('faviconDialogTitle')}
             />
           </div>
         </CardContent>
@@ -244,10 +246,10 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             <div>
               <CardTitle className="flex items-center gap-2 dark:text-white">
                 <Search className="h-5 w-5" />
-                Palabras Clave Globales
+                {t('keywordsTitle')}
               </CardTitle>
               <CardDescription className="dark:text-gray-400 mt-1">
-                Keywords que aplican a todas las páginas del sitio
+                {t('keywordsDesc')}
               </CardDescription>
             </div>
             <Button
@@ -262,7 +264,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               ) : (
                 <Sparkles className="h-4 w-4 mr-1.5" />
               )}
-              Sugerir con IA
+              {t('suggestAI')}
             </Button>
           </div>
         </CardHeader>
@@ -273,7 +275,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Sugerencias de IA ({aiKeywords.length})
+                  {t('aiSuggestions', { count: aiKeywords.length })}
                 </p>
                 <Button
                   variant="ghost"
@@ -281,7 +283,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   onClick={handleAddAllAIKeywords}
                   className="h-6 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
                 >
-                  Agregar todas
+                  {t('addAll')}
                 </Button>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -303,12 +305,12 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             <Input
               value={newKeyword}
               onChange={(e) => setNewKeyword(e.target.value)}
-              placeholder="Agregar palabra clave..."
+              placeholder={t('addKeywordPlaceholder')}
               className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddKeyword())}
             />
             <Button variant="outline" onClick={handleAddKeyword} className="dark:border-gray-600">
-              Agregar
+              {t('add')}
             </Button>
           </div>
 
@@ -324,9 +326,9 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             ))}
             {formData.meta_keywords.length === 0 && !aiKeywords.length && (
               <div className="text-center w-full py-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400">No hay palabras clave definidas</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('noKeywords')}</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  Usa el botón <strong>"Sugerir con IA"</strong> para obtener recomendaciones automáticas
+                  {t('noKeywordsHint')}
                 </p>
               </div>
             )}
@@ -341,16 +343,16 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             <div>
               <CardTitle className="flex items-center gap-2 dark:text-white">
                 <Link2 className="h-5 w-5" />
-                Dominio del Sitio
+                {t('domainTitle')}
               </CardTitle>
               <CardDescription className="dark:text-gray-400 mt-1">
-                Tu dirección web actual y URL canónica
+                {t('domainDesc')}
               </CardDescription>
             </div>
             <Link href="/app/organizacion/dominios">
               <Button variant="outline" size="sm" className="dark:border-gray-600 dark:text-gray-300">
                 <Globe className="h-4 w-4 mr-1.5" />
-                Gestionar Dominios
+                {t('manageDomains')}
               </Button>
             </Link>
           </div>
@@ -362,7 +364,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
               <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Subdominio GO Admin</p>
+                <p className="text-xs font-medium text-blue-700 dark:text-blue-300">{t('subdomainLabel')}</p>
                 {subdomain ? (
                   <a
                     href={`https://${subdomain}.goadmin.io`}
@@ -374,11 +376,11 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 ) : (
-                  <p className="text-sm text-gray-400 dark:text-gray-500">No configurado</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">{t('notConfigured')}</p>
                 )}
               </div>
               <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs">
-                Activo
+                {t('active')}
               </Badge>
             </div>
 
@@ -387,7 +389,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
                 <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Dominio Personalizado</p>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('customDomainLabel')}</p>
                   <a
                     href={`https://${customDomain}`}
                     target="_blank"
@@ -403,12 +405,12 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
                 <Globe className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />
                 <div className="flex-1">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Sin dominio personalizado</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">Conecta tu propio dominio desde la sección de Dominios</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('noCustomDomain')}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{t('noCustomDomainHint')}</p>
                 </div>
                 <Link href="/app/organizacion/dominios">
                   <Button variant="ghost" size="sm" className="text-xs text-blue-600 dark:text-blue-400">
-                    Configurar
+                    {t('configure')}
                   </Button>
                 </Link>
               </div>
@@ -417,7 +419,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
 
           {/* URL Canónica */}
           <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-            <Label className="dark:text-gray-300">URL Canónica</Label>
+            <Label className="dark:text-gray-300">{t('canonicalUrl')}</Label>
             <Input
               value={formData.canonical_url}
               onChange={(e) => setFormData({ ...formData, canonical_url: e.target.value })}
@@ -425,7 +427,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              La URL principal de tu sitio para evitar contenido duplicado. Se auto-detecta según tu dominio.
+              {t('canonicalUrlHint')}
             </p>
           </div>
 
@@ -433,24 +435,24 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             <div className="space-y-2">
               <Label className="flex items-center gap-2 dark:text-gray-300">
                 <Shield className="h-4 w-4" />
-                Google Site Verification
+                {t('googleVerification')}
               </Label>
               <Input
                 value={formData.google_site_verification}
                 onChange={(e) => setFormData({ ...formData, google_site_verification: e.target.value })}
-                placeholder="Código de verificación de Google"
+                placeholder={t('googlePlaceholder')}
                 className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-2 dark:text-gray-300">
                 <Shield className="h-4 w-4" />
-                Bing Site Verification
+                {t('bingVerification')}
               </Label>
               <Input
                 value={formData.bing_site_verification}
                 onChange={(e) => setFormData({ ...formData, bing_site_verification: e.target.value })}
-                placeholder="Código de verificación de Bing"
+                placeholder={t('bingPlaceholder')}
                 className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               />
             </div>
@@ -464,12 +466,12 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
           {isSaving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Guardando...
+              {tc('saving')}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Guardar Cambios
+              {tc('saveChanges')}
             </>
           )}
         </Button>

@@ -10,6 +10,7 @@ import {
   Calendar, AlertTriangle, CheckCircle, XCircle, RotateCcw
 } from 'lucide-react';
 import { WebsiteSettings, TEMPLATES } from '@/lib/services/websiteSettingsService';
+import { useTranslations } from 'next-intl';
 
 interface BrandingPublishTabProps {
   settings: WebsiteSettings;
@@ -30,11 +31,12 @@ export default function BrandingPublishTab({
   onResetToTemplate,
   isPublishing 
 }: BrandingPublishTabProps) {
+  const t = useTranslations('branding.publish');
   const [copied, setCopied] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(settings.template_id);
   const [isResetting, setIsResetting] = useState(false);
 
-  const siteUrl = subdomain ? `https://${subdomain}.goadmin.io` : 'No configurado';
+  const siteUrl = subdomain ? `https://${subdomain}.goadmin.io` : t('notConfigured');
 
   const handleCopyUrl = () => {
     if (subdomain) {
@@ -55,11 +57,11 @@ export default function BrandingPublishTab({
 
   // Verificar completitud de configuración
   const checks = [
-    { label: 'Plantilla seleccionada', passed: !!settings.template_id },
-    { label: 'Meta título SEO', passed: !!settings.meta_title },
-    { label: 'Meta descripción SEO', passed: !!settings.meta_description },
-    { label: 'Color primario configurado', passed: !!settings.primary_color },
-    { label: 'Al menos una sección activa', passed: settings.show_products || settings.show_services || settings.show_contact },
+    { label: t('checkTemplate'), passed: !!settings.template_id },
+    { label: t('checkMetaTitle'), passed: !!settings.meta_title },
+    { label: t('checkMetaDesc'), passed: !!settings.meta_description },
+    { label: t('checkPrimaryColor'), passed: !!settings.primary_color },
+    { label: t('checkSections'), passed: settings.show_products || settings.show_services || settings.show_contact },
   ];
 
   const passedChecks = checks.filter(c => c.passed).length;
@@ -83,17 +85,17 @@ export default function BrandingPublishTab({
               )}
               <div>
                 <CardTitle className="dark:text-white">
-                  {settings.is_published ? 'Sitio Publicado' : 'Sitio No Publicado'}
+                  {settings.is_published ? t('sitePublished') : t('siteUnpublished')}
                 </CardTitle>
                 <CardDescription className="dark:text-gray-400">
                   {settings.is_published 
-                    ? 'Tu sitio web está visible para el público'
-                    : 'Tu sitio web está oculto. Publícalo para que sea visible.'}
+                    ? t('sitePublishedDesc')
+                    : t('siteUnpublishedDesc')}
                 </CardDescription>
               </div>
             </div>
             <Badge variant={settings.is_published ? 'default' : 'secondary'} className="text-sm">
-              {settings.is_published ? 'EN LÍNEA' : 'BORRADOR'}
+              {settings.is_published ? t('online') : t('draft')}
             </Badge>
           </div>
         </CardHeader>
@@ -121,7 +123,7 @@ export default function BrandingPublishTab({
           {settings.published_at && (
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <Calendar className="h-4 w-4" />
-              Publicado el {new Date(settings.published_at).toLocaleDateString('es-CO', {
+              {t('publishedAt')} {new Date(settings.published_at).toLocaleDateString(undefined, {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
@@ -139,13 +141,13 @@ export default function BrandingPublishTab({
                   <Button variant="outline" asChild className="dark:border-gray-600">
                     <a href={siteUrl} target="_blank" rel="noopener noreferrer">
                       <Eye className="h-4 w-4 mr-2" />
-                      Ver Sitio
+                      {t('viewSite')}
                     </a>
                   </Button>
                 ) : (
                   <Button variant="outline" disabled className="dark:border-gray-600">
                     <Eye className="h-4 w-4 mr-2" />
-                    Ver Sitio
+                    {t('viewSite')}
                   </Button>
                 )}
                 <Button 
@@ -158,7 +160,7 @@ export default function BrandingPublishTab({
                   ) : (
                     <GlobeLock className="h-4 w-4 mr-2" />
                   )}
-                  Despublicar
+                  {t('unpublish')}
                 </Button>
               </>
             ) : (
@@ -172,7 +174,7 @@ export default function BrandingPublishTab({
                 ) : (
                   <Globe className="h-4 w-4 mr-2" />
                 )}
-                Publicar Sitio
+                {t('publishSite')}
               </Button>
             )}
           </div>
@@ -182,9 +184,9 @@ export default function BrandingPublishTab({
       {/* Lista de verificación */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="dark:text-white">Lista de Verificación</CardTitle>
+          <CardTitle className="dark:text-white">{t('checklistTitle')}</CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Asegúrate de completar estos elementos antes de publicar ({passedChecks}/{checks.length})
+            {t('checklistDesc', { passed: passedChecks, total: checks.length })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -214,7 +216,7 @@ export default function BrandingPublishTab({
             <Alert className="mt-4 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
               <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
               <AlertDescription className="text-yellow-700 dark:text-yellow-400">
-                Completa todos los elementos de la lista antes de publicar tu sitio.
+                {t('checklistWarning')}
               </AlertDescription>
             </Alert>
           )}
@@ -226,10 +228,10 @@ export default function BrandingPublishTab({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
             <RotateCcw className="h-5 w-5" />
-            Restablecer a Plantilla
+            {t('resetTitle')}
           </CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Restablece los colores y fuentes a los valores predeterminados de una plantilla
+            {t('resetDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -253,8 +255,7 @@ export default function BrandingPublishTab({
           <Alert className="mb-4 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20">
             <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
             <AlertDescription className="text-orange-700 dark:text-orange-400">
-              Esta acción restablecerá los colores y fuentes a los valores predeterminados de la plantilla seleccionada. 
-              El contenido (textos, imágenes, etc.) no se verá afectado.
+              {t('resetWarning')}
             </AlertDescription>
           </Alert>
 
@@ -269,7 +270,7 @@ export default function BrandingPublishTab({
             ) : (
               <RotateCcw className="h-4 w-4 mr-2" />
             )}
-            Restablecer a &quot;{TEMPLATES.find(t => t.id === selectedTemplate)?.name}&quot;
+            {t('resetTo', { name: TEMPLATES.find(tmpl => tmpl.id === selectedTemplate)?.name || '' })}
           </Button>
         </CardContent>
       </Card>
@@ -277,27 +278,27 @@ export default function BrandingPublishTab({
       {/* Información */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="dark:text-white">Información del Sitio</CardTitle>
+          <CardTitle className="dark:text-white">{t('infoTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{organizationName}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Organización</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('organization')}</p>
             </div>
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 capitalize">{settings.template_id}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Plantilla</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('template')}</p>
             </div>
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 capitalize">{settings.theme_mode}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Modo</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('mode')}</p>
             </div>
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {new Date(settings.updated_at).toLocaleDateString('es-CO')}
+                {new Date(settings.updated_at).toLocaleDateString()}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Última actualización</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t('lastUpdate')}</p>
             </div>
           </div>
         </CardContent>

@@ -29,6 +29,7 @@ import {
   Percent,
   DollarSign,
   Package,
+  Globe,
 } from 'lucide-react';
 import type { ShippingRateWithCarrier } from '@/lib/services/shippingRatesService';
 
@@ -143,6 +144,12 @@ export function ShippingRateCard({
             <Scale className="h-3 w-3 mr-1" />
             {CALCULATION_METHOD_LABELS[rate.calculation_method] || rate.calculation_method}
           </Badge>
+          {rate.show_on_website && (
+            <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+              <Globe className="h-3 w-3 mr-1" />
+              Web
+            </Badge>
+          )}
           {isExpired && (
             <Badge variant="destructive" className="text-xs">Expirada</Badge>
           )}

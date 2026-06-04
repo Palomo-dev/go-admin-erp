@@ -35,6 +35,17 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
   const [newKeyword, setNewKeyword] = useState('');
   const [showFaviconPicker, setShowFaviconPicker] = useState(false);
 
+  // Sincronizar formData cuando settings cambia (ej: al volver al tab después de guardar)
+  useEffect(() => {
+    setFormData({
+      meta_keywords: settings.meta_keywords || [],
+      favicon_url: settings.favicon_url || '',
+      canonical_url: settings.canonical_url || '',
+      google_site_verification: settings.google_site_verification || '',
+      bing_site_verification: settings.bing_site_verification || '',
+    });
+  }, [settings]);
+
   // IA Keywords
   const [aiKeywords, setAiKeywords] = useState<string[]>([]);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
@@ -155,8 +166,14 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
     });
   };
 
-  const handleFaviconSelect = (url: string) => {
-    setFormData({ ...formData, favicon_url: url });
+  const handleFaviconSelect = async (url: string) => {
+    setFormData(prev => ({ ...prev, favicon_url: url }));
+    // Auto-guardar favicon para que no se pierda al cambiar de tab
+    try {
+      await onSave({ ...formData, favicon_url: url });
+    } catch (err) {
+      console.error('Error auto-guardando favicon:', err);
+    }
   };
 
   return (

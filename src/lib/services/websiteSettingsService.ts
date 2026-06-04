@@ -14,6 +14,8 @@ export interface WebsiteSettings {
   accent_color: string | null;
   background_color: string | null;
   text_color: string | null;
+  // Logo
+  logo_height: number;
   // Fuentes
   font_heading: string | null;
   font_body: string | null;
@@ -59,6 +61,7 @@ export interface WebsiteSettings {
   faq_items: FAQItem[];
   footer_text: string | null;
   footer_links: FooterLink[];
+  show_powered_by: boolean;
   // Avanzado
   custom_css: string | null;
   custom_scripts: string | null;
@@ -324,6 +327,7 @@ class WebsiteSettingsService {
       text_color?: string;
       font_heading?: string;
       font_body?: string;
+      logo_height?: number;
     }
   ): Promise<WebsiteSettings> {
     const { data, error } = await supabase
@@ -472,6 +476,7 @@ class WebsiteSettingsService {
       faq_items?: FAQItem[];
       footer_text?: string;
       footer_links?: FooterLink[];
+      show_powered_by?: boolean;
     }
   ): Promise<WebsiteSettings> {
     try {

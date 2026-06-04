@@ -42,8 +42,9 @@ export function ImageGallery({ productId, organizationId, readOnly = false }: Im
     if (!storagePath) return '/placeholder-product.png';
     
     try {
+      const bucket = storagePath.startsWith('products/') ? 'product-images' : 'organization_images';
       const { data } = supabase.storage
-        .from('organization_images')
+        .from(bucket)
         .getPublicUrl(storagePath);
       return data?.publicUrl || '/placeholder-product.png';
     } catch (error) {

@@ -7,3 +7,4 @@ export { default as BrandingContentTab } from './BrandingContentTab';
 export { default as BrandingAdvancedTab } from './BrandingAdvancedTab';
 export { default as BrandingPublishTab } from './BrandingPublishTab';
 export { default as BrandingPagesTab } from './BrandingPagesTab';
+export { default as BrandingCheckoutTab } from './BrandingCheckoutTab';

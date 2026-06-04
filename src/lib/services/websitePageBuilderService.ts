@@ -62,6 +62,7 @@ export interface ContentFieldDef {
   type: 'text' | 'textarea' | 'url' | 'image' | 'color' | 'number' | 'boolean' | 'select';
   placeholder?: string;
   options?: { value: string; label: string }[];
+  defaultValue?: boolean;
 }
 
 export const SECTION_CATALOG: SectionTypeDefinition[] = [
@@ -84,6 +85,9 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
       { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...' },
       { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
       { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
+      { key: 'show_overlay', label: 'Mostrar overlay oscuro', type: 'boolean', defaultValue: true },
+      { key: 'show_title', label: 'Mostrar título', type: 'boolean', defaultValue: true },
+      { key: 'show_cta', label: 'Mostrar botón', type: 'boolean', defaultValue: true },
     ],
   },
   {
@@ -278,6 +282,27 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
   },
   {
+    type: 'categories_grid',
+    label: 'Categorías',
+    icon: 'ShoppingBag',
+    description: 'Grid o carrusel de categorías de productos',
+    variants: [
+      { id: 'grid', label: 'Grid (cuadrado)' },
+      { id: 'horizontal', label: 'Carrusel (redondo)' },
+      { id: 'icons', label: 'Iconos' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Explora nuestros productos por categoría' },
+      { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '6' },
+      { key: 'shape', label: 'Forma', type: 'select', options: [
+        { value: 'square', label: 'Cuadrado' },
+        { value: 'round', label: 'Redondo' },
+      ]},
+      { key: 'show_count', label: 'Mostrar cantidad de productos', type: 'boolean' },
+    ],
+  },
+  {
     type: 'featured_products',
     label: 'Productos Destacados',
     icon: 'Star',
@@ -333,6 +358,44 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestro Menú' },
+    ],
+  },
+  {
+    type: 'offers',
+    label: 'Ofertas / Descuentos',
+    icon: 'Flame',
+    description: 'Grid de productos en oferta con descuentos automáticos',
+    variants: [
+      { id: 'grid', label: 'Grid' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Ofertas Especiales' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Aprovecha nuestros descuentos' },
+    ],
+  },
+  {
+    type: 'promo_banners',
+    label: 'Banners Promocionales',
+    icon: 'Megaphone',
+    description: 'Banners de promociones destacadas',
+    variants: [
+      { id: 'grid', label: 'Grid' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Promociones' },
+    ],
+  },
+  {
+    type: 'brands',
+    label: 'Marcas',
+    icon: 'Award',
+    description: 'Logos de marcas asociadas',
+    variants: [
+      { id: 'logos', label: 'Logos' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestras Marcas' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
     ],
   },
   {

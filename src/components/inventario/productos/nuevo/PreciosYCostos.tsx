@@ -36,7 +36,7 @@ export default function PreciosYCostos({ formData, updateFormData }: PreciosYCos
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
         {/* Precio de Venta */}
         <div className="space-y-2">
           <Label htmlFor="price" className="text-gray-700 dark:text-gray-300">
@@ -60,6 +60,33 @@ export default function PreciosYCostos({ formData, updateFormData }: PreciosYCos
           {formData.price > 0 && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {formatCurrency(formData.price)}
+            </p>
+          )}
+        </div>
+
+        {/* Precio de Comparación */}
+        <div className="space-y-2">
+          <Label htmlFor="compare_price" className="text-gray-700 dark:text-gray-300">
+            Precio de Comparación
+          </Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
+              $
+            </span>
+            <Input
+              id="compare_price"
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.compare_price || ''}
+              onChange={(e) => handleNumberChange('compare_price', e.target.value)}
+              className="pl-7 border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+              placeholder="Precio anterior"
+            />
+          </div>
+          {formData.compare_price > 0 && formData.price > 0 && formData.compare_price > formData.price && (
+            <p className="text-xs text-red-500 dark:text-red-400 font-medium">
+              -{Math.round((1 - formData.price / formData.compare_price) * 100)}% descuento
             </p>
           )}
         </div>

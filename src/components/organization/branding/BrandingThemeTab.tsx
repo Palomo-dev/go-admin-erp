@@ -77,6 +77,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
     text_color: settings.text_color || DEFAULT_COLORS.text,
     font_heading: settings.font_heading || 'Inter',
     font_body: settings.font_body || 'Inter',
+    logo_height: settings.logo_height || 48,
   });
 
   const handleSave = async () => {
@@ -454,6 +455,51 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
               <p className="mt-2 dark:text-gray-300" style={{ fontFamily: formData.font_body }}>
                 {t('sampleBody')}
               </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tamaño del Logo */}
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="dark:text-white">Tamaño del Logo</CardTitle>
+          <CardDescription className="dark:text-gray-400">
+            Ajusta la altura del logo en el header y footer del sitio web
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="dark:text-gray-300">Altura del logo</Label>
+                <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{formData.logo_height}px</span>
+              </div>
+              <input
+                type="range"
+                min={24}
+                max={120}
+                step={4}
+                value={formData.logo_height}
+                onChange={(e) => setFormData({ ...formData, logo_height: Number(e.target.value) })}
+                className="w-full accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>24px</span>
+                <span>48px</span>
+                <span>72px</span>
+                <span>96px</span>
+                <span>120px</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center gap-3">
+              <div
+                className="bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center"
+                style={{ height: formData.logo_height, width: formData.logo_height * 2 }}
+              >
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Logo</span>
+              </div>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Vista previa del tamaño</span>
             </div>
           </div>
         </CardContent>

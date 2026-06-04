@@ -81,8 +81,7 @@ export function AjustesFilters({
           <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
             <SelectItem value="all">Todos los estados</SelectItem>
             <SelectItem value="draft">Borrador</SelectItem>
-            <SelectItem value="applied">Aplicado</SelectItem>
-            <SelectItem value="cancelled">Cancelado</SelectItem>
+            <SelectItem value="posted">Aplicado</SelectItem>
           </SelectContent>
         </Select>
 

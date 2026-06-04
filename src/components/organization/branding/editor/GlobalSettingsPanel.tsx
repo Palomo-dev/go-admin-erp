@@ -2,6 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -10,26 +11,51 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Sun, Moon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 import { FONTS } from '@/lib/services/websiteSettingsService';
+import type { WebsitePage } from '@/lib/services/websitePageBuilderService';
 
 interface GlobalSettingsPanelProps {
   settings: WebsiteSettings;
   onUpdate: (updates: Partial<WebsiteSettings>) => void;
+  pages?: WebsitePage[];
+  onTogglePageHeader?: (pageId: string, show: boolean) => void;
 }
 
 export default function GlobalSettingsPanel({
   settings,
   onUpdate,
+  pages,
+  onTogglePageHeader,
 }: GlobalSettingsPanelProps) {
+  const t = useTranslations('branding.editor.globalSettings');
   return (
     <div className="space-y-4">
+      {/* Navegación del Header */}
+      {pages && pages.length > 0 && onTogglePageHeader && (
+        <div>
+          <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">Páginas en el Header</Label>
+          <div className="space-y-2">
+            {pages.map((page) => (
+              <div key={page.id} className="flex items-center justify-between py-1">
+                <span className="text-xs text-gray-700 dark:text-gray-300">{page.title}</span>
+                <Switch
+                  checked={page.show_in_header}
+                  onCheckedChange={(checked) => onTogglePageHeader(page.id, checked)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Colores */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">Colores</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('colors')}</Label>
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
-            <span className="text-[10px] text-gray-500 dark:text-gray-500">Principal</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('primary')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -43,7 +69,7 @@ export default function GlobalSettingsPanel({
             </div>
           </div>
           <div className="space-y-1">
-            <span className="text-[10px] text-gray-500 dark:text-gray-500">Secundario</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('secondary')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -57,7 +83,7 @@ export default function GlobalSettingsPanel({
             </div>
           </div>
           <div className="space-y-1">
-            <span className="text-[10px] text-gray-500 dark:text-gray-500">Acento</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('accent')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -71,7 +97,7 @@ export default function GlobalSettingsPanel({
             </div>
           </div>
           <div className="space-y-1">
-            <span className="text-[10px] text-gray-500 dark:text-gray-500">Fondo</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('background')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -89,10 +115,10 @@ export default function GlobalSettingsPanel({
 
       {/* Tipografía */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">Tipografía</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('typography')}</Label>
         <div className="space-y-2">
           <div className="space-y-1">
-            <span className="text-[10px] text-gray-500 dark:text-gray-500">Títulos</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('headings')}</span>
             <Select
               value={settings.font_heading || 'Inter'}
               onValueChange={(val) => onUpdate({ font_heading: val })}
@@ -110,7 +136,7 @@ export default function GlobalSettingsPanel({
             </Select>
           </div>
           <div className="space-y-1">
-            <span className="text-[10px] text-gray-500 dark:text-gray-500">Cuerpo</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('body')}</span>
             <Select
               value={settings.font_body || 'Inter'}
               onValueChange={(val) => onUpdate({ font_body: val })}
@@ -132,7 +158,7 @@ export default function GlobalSettingsPanel({
 
       {/* Modo tema */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">Modo del tema</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('themeMode')}</Label>
         <div className="flex gap-2">
           <button
             onClick={() => onUpdate({ theme_mode: 'light' })}
@@ -143,7 +169,7 @@ export default function GlobalSettingsPanel({
             }`}
           >
             <Sun className="h-3 w-3" />
-            Claro
+            {t('light')}
           </button>
           <button
             onClick={() => onUpdate({ theme_mode: 'dark' })}
@@ -154,14 +180,14 @@ export default function GlobalSettingsPanel({
             }`}
           >
             <Moon className="h-3 w-3" />
-            Oscuro
+            {t('dark')}
           </button>
         </div>
       </div>
 
       {/* Header Style */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">Estilo Header</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('headerStyle')}</Label>
         <Select
           value={(settings as any).header_style || 'default'}
           onValueChange={(val) => onUpdate({ ...settings, header_style: val } as any)}
@@ -170,28 +196,28 @@ export default function GlobalSettingsPanel({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="default">Por defecto</SelectItem>
-            <SelectItem value="transparent">Transparente</SelectItem>
-            <SelectItem value="minimal">Minimal</SelectItem>
-            <SelectItem value="centered">Centrado</SelectItem>
+            <SelectItem value="default">{t('headerStyleDefault')}</SelectItem>
+            <SelectItem value="transparent">{t('headerStyleTransparent')}</SelectItem>
+            <SelectItem value="minimal">{t('headerStyleMinimal')}</SelectItem>
+            <SelectItem value="centered">{t('headerStyleCentered')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Header CTA */}
       <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">Botón del Header</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('headerButton')}</Label>
         <div className="space-y-2">
           <Input
             value={settings.hero_cta_text || ''}
             onChange={(e) => onUpdate({ hero_cta_text: e.target.value })}
-            placeholder="Texto del botón"
+            placeholder={t('buttonText')}
             className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
           <Input
             value={settings.hero_cta_url || ''}
             onChange={(e) => onUpdate({ hero_cta_url: e.target.value })}
-            placeholder="URL del botón"
+            placeholder={t('buttonUrl')}
             className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
         </div>

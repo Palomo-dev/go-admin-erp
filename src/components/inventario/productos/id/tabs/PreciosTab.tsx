@@ -102,6 +102,7 @@ interface PriceHistory {
   id: number;
   product_id: number;
   price: number; // Current price
+  compare_price?: number | null; // Precio de comparación
   previous_price?: number; // Calculated from previous record
   percentage_change?: number; // Calculated
   effective_from: string;
@@ -153,6 +154,7 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [newPrice, setNewPrice] = useState<string>(producto.price?.toString() || '');
+  const [newComparePrice, setNewComparePrice] = useState<string>('');
   
   useEffect(() => {
     const fetchPriceHistory = async () => {
@@ -185,7 +187,8 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
             id: item.id,
             product_id: item.product_id,
             price: item.price,
-            previous_price: previousPrice || item.price, // Si no hay previo, usar el mismo
+            compare_price: item.compare_price || null,
+            previous_price: previousPrice || item.price,
             percentage_change: percentageChange,
             effective_from: item.effective_from,
             effective_to: item.effective_to
@@ -243,14 +246,18 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
       }
       
       // 2. Insertar nuevo precio efectivo desde ahora
+      const newPriceData: any = {
+        product_id: producto.id,
+        price: priceValue,
+        effective_from: now,
+        effective_to: null
+      };
+      if (newComparePrice && parseFloat(newComparePrice) > 0) {
+        newPriceData.compare_price = parseFloat(newComparePrice);
+      }
       const { error: newPriceError } = await supabase
         .from('product_prices')
-        .insert({
-          product_id: producto.id,
-          price: priceValue,
-          effective_from: now,
-          effective_to: null // Precio actualmente vigente
-        });
+        .insert(newPriceData);
       
       if (newPriceError) throw newPriceError;
       
@@ -355,13 +362,27 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <p className="text-3xl font-semibold">
-              {formatCurrency(
-                // Usar el precio más reciente del historial o el precio base si no hay historial
-                (priceHistory && priceHistory.length > 0) ? 
-                  priceHistory[0].price : producto.price || 0
-              )}
-            </p>
+            {(() => {
+              const currentPrice = (priceHistory && priceHistory.length > 0) ? priceHistory[0].price : producto.price || 0;
+              const currentCompare = (priceHistory && priceHistory.length > 0) ? priceHistory[0].compare_price : null;
+              const hasDiscount = currentCompare && currentCompare > currentPrice;
+              const discountPercent = hasDiscount ? Math.round((1 - currentPrice / currentCompare) * 100) : 0;
+              return (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-3xl font-semibold">{formatCurrency(currentPrice)}</p>
+                    {hasDiscount && (
+                      <span className="px-1.5 py-0.5 text-xs font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded">
+                        -{discountPercent}%
+                      </span>
+                    )}
+                  </div>
+                  {hasDiscount && (
+                    <p className="text-sm text-gray-400 line-through mt-1">{formatCurrency(currentCompare)}</p>
+                  )}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
         
@@ -403,6 +424,20 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                     onChange={(e) => setNewPrice(e.target.value)}
                     className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
                   />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-compare-price">Precio de Comparación (opcional)</Label>
+                  <Input
+                    id="new-compare-price"
+                    type="number"
+                    step="0.01"
+                    placeholder="Precio anterior o de lista"
+                    value={newComparePrice}
+                    onChange={(e) => setNewComparePrice(e.target.value)}
+                    className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                  />
+                  <p className="text-xs text-gray-500">Si es mayor al precio de venta, se mostrará como descuento</p>
                 </div>
               </div>
               
@@ -485,7 +520,8 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
               <TableHead>Válido Desde</TableHead>
               <TableHead>Válido Hasta</TableHead>
               <TableHead>Precio</TableHead>
-              <TableHead>Precio Anterior</TableHead>
+              <TableHead>Comparación</TableHead>
+              <TableHead>Descuento</TableHead>
               <TableHead>Cambio %</TableHead>
             </TableRow>
           </TableHeader>
@@ -506,34 +542,53 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                 </TableCell>
               </TableRow>
             ) : (
-              priceHistory.map((item: any) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-mono">
-                    <div className="flex items-center">
-                      <CalendarIcon className="h-3 w-3 mr-1 text-gray-400" />
-                      {formatDate(item.effective_from)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {item.effective_to ? formatDate(item.effective_to) : 'Vigente'}
-                  </TableCell>
-                  <TableCell className="font-semibold">{formatCurrency(item.price)}</TableCell>
-                  <TableCell>{formatCurrency(item.previous_price || 0)}</TableCell>
-                  <TableCell>
-                    <span 
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                        ${item.percentage_change > 0 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-                          : item.percentage_change < 0
-                            ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}
-                    >
-                      {item.percentage_change > 0 ? '+' : ''}
-                      {item.percentage_change?.toFixed(2)}%
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))
+              priceHistory.map((item: any) => {
+                const hasDiscount = item.compare_price && item.compare_price > item.price;
+                const discount = hasDiscount ? Math.round((1 - item.price / item.compare_price) * 100) : 0;
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-mono">
+                      <div className="flex items-center">
+                        <CalendarIcon className="h-3 w-3 mr-1 text-gray-400" />
+                        {formatDate(item.effective_from)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {item.effective_to ? formatDate(item.effective_to) : 'Vigente'}
+                    </TableCell>
+                    <TableCell className="font-semibold">{formatCurrency(item.price)}</TableCell>
+                    <TableCell>
+                      {item.compare_price ? (
+                        <span className="text-gray-400 line-through">{formatCurrency(item.compare_price)}</span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {hasDiscount ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                          -{discount}%
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span 
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                          ${item.percentage_change > 0 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                            : item.percentage_change < 0
+                              ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}
+                      >
+                        {item.percentage_change > 0 ? '+' : ''}
+                        {item.percentage_change?.toFixed(2)}%
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

@@ -56,7 +56,7 @@ const CURRENCIES = [
   { value: 'EUR', label: 'EUR - Euro' },
 ];
 
-const initialFormData: Partial<CreateShippingRateData> = {
+const initialFormData: Partial<CreateShippingRateData> & { show_on_website?: boolean; free_shipping_threshold?: number } = {
   rate_name: '',
   rate_code: '',
   carrier_id: '',
@@ -79,6 +79,8 @@ const initialFormData: Partial<CreateShippingRateData> = {
   valid_from: '',
   valid_until: '',
   is_active: true,
+  show_on_website: true,
+  free_shipping_threshold: 0,
 };
 
 export function ShippingRateDialog({
@@ -117,6 +119,8 @@ export function ShippingRateDialog({
         valid_from: rate.valid_from || '',
         valid_until: rate.valid_until || '',
         is_active: rate.is_active,
+        show_on_website: rate.show_on_website !== false,
+        free_shipping_threshold: rate.free_shipping_threshold || 0,
       });
     } else {
       setFormData(initialFormData);
@@ -243,6 +247,49 @@ export function ShippingRateDialog({
                   onCheckedChange={(checked) => handleChange('is_active', checked)}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="show_on_website">Disponible en página web</Label>
+                  <p className="text-xs text-muted-foreground">Mostrar esta tarifa en el checkout de la web</p>
+                </div>
+                <Switch
+                  id="show_on_website"
+                  checked={(formData as any).show_on_website !== false}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_on_website: checked }))}
+                />
+              </div>
+
+              {(formData as any).show_on_website && (
+                <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-900/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="enable_free_shipping">Habilitar envío gratis</Label>
+                      <p className="text-xs text-muted-foreground">Ofrecer envío gratis a partir de cierto monto</p>
+                    </div>
+                    <Switch
+                      id="enable_free_shipping"
+                      checked={((formData as any).free_shipping_threshold || 0) > 0}
+                      onCheckedChange={(checked) => {
+                        setFormData(prev => ({ ...prev, free_shipping_threshold: checked ? 100000 : 0 }));
+                      }}
+                    />
+                  </div>
+                  {((formData as any).free_shipping_threshold || 0) > 0 && (
+                    <div className="space-y-1">
+                      <Label htmlFor="free_shipping_threshold">Envío gratis desde ($)</Label>
+                      <Input
+                        id="free_shipping_threshold"
+                        type="number"
+                        min={1}
+                        value={(formData as any).free_shipping_threshold}
+                        onChange={(e) => setFormData(prev => ({ ...prev, free_shipping_threshold: Number(e.target.value) }))}
+                      />
+                      <p className="text-xs text-muted-foreground">Si el subtotal supera este monto, esta tarifa será gratis.</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </TabsContent>
 
             {/* Tab Precios */}

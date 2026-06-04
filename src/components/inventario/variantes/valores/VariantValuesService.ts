@@ -2,62 +2,109 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { VariantValue, VariantValueFormData, VariantValuesStats } from './types';
 
+/**
+ * Servicio que lee valores de variante directamente desde products.variant_data.
+ * Los "valores" son los values del JSON agrupados por key (tipo).
+ */
 export class VariantValuesService {
-  static async obtenerValores(tipoId?: number): Promise<VariantValue[]> {
+  /**
+   * Obtiene todos los valores de variante desde variant_data de productos.
+   * @param tipoNombre - Filtrar por nombre de tipo (key del JSON). Si es un número, se busca el nombre del tipo.
+   */
+  static async obtenerValores(tipoNombre?: string | number): Promise<VariantValue[]> {
     const organizationId = getOrganizationId();
 
-    let query = supabase
-      .from('variant_values')
-      .select(`
-        *,
-        variant_types!inner (
-          id,
-          name,
-          organization_id
-        )
-      `)
-      .eq('variant_types.organization_id', organizationId)
-      .order('variant_type_id')
-      .order('display_order', { ascending: true });
-
-    if (tipoId) {
-      query = query.eq('variant_type_id', tipoId);
-    }
-
-    const { data, error } = await query;
+    // Obtener todos los productos hijos con variant_data
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('id, variant_data')
+      .eq('organization_id', organizationId)
+      .not('variant_data', 'is', null)
+      .not('parent_product_id', 'is', null);
 
     if (error) throw error;
 
-    // Obtener conteos de productos
-    const valoresConConteos = await Promise.all(
-      (data || []).map(async (valor) => {
-        const { count: productsCount } = await supabase
-          .from('product_variant_relations')
-          .select('*', { count: 'exact', head: true })
-          .eq('variant_value_id', valor.id);
+    // Si tipoNombre es un número, buscar el nombre real del tipo
+    let filterTypeName: string | null = null;
+    if (tipoNombre !== undefined) {
+      if (typeof tipoNombre === 'number') {
+        // Es un índice basado en el listado de tipos
+        const tipos = await this.obtenerTipos();
+        const tipo = tipos.find(t => t.id === tipoNombre);
+        filterTypeName = tipo?.name || null;
+      } else {
+        filterTypeName = tipoNombre;
+      }
+    }
 
-        return {
-          ...valor,
-          variant_type: valor.variant_types,
-          products_count: productsCount || 0,
-        };
-      })
-    );
+    // Agrupar: por cada (tipo, valor), contar productos
+    const valueMap: Record<string, { typeName: string; value: string; products: Set<number> }> = {};
 
-    return valoresConConteos;
+    (products || []).forEach((product) => {
+      if (!product.variant_data || typeof product.variant_data !== 'object') return;
+      Object.entries(product.variant_data).forEach(([key, val]) => {
+        if (!key.trim() || !val || !String(val).trim()) return;
+        const normalizedKey = key.trim();
+        const normalizedVal = String(val).trim();
+
+        // Filtrar por tipo si se especificó
+        if (filterTypeName && normalizedKey !== filterTypeName) return;
+
+        const mapKey = `${normalizedKey}::${normalizedVal}`;
+        if (!valueMap[mapKey]) {
+          valueMap[mapKey] = { typeName: normalizedKey, value: normalizedVal, products: new Set() };
+        }
+        valueMap[mapKey].products.add(product.id);
+      });
+    });
+
+    // Convertir a array
+    const valores: VariantValue[] = Object.values(valueMap)
+      .map((data, index) => ({
+        id: index + 1,
+        variant_type_id: 0, // se establece abajo
+        value: data.value,
+        display_order: index + 1,
+        created_at: '',
+        variant_type: { id: 0, name: data.typeName },
+        products_count: data.products.size,
+      }))
+      .sort((a, b) => {
+        // Ordenar por tipo y luego por valor
+        const typeCompare = (a.variant_type?.name || '').localeCompare(b.variant_type?.name || '');
+        if (typeCompare !== 0) return typeCompare;
+        return a.value.localeCompare(b.value);
+      });
+
+    return valores;
   }
 
+  /**
+   * Obtiene los tipos únicos (keys del variant_data) para mostrar en filtros.
+   */
   static async obtenerTipos(): Promise<{ id: number; name: string }[]> {
     const organizationId = getOrganizationId();
 
-    const { data, error } = await supabase
-      .from('variant_types')
-      .select('id, name')
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('variant_data')
       .eq('organization_id', organizationId)
-      .order('name');
+      .not('variant_data', 'is', null)
+      .not('parent_product_id', 'is', null);
 
     if (error) throw error;
-    return data || [];
+
+    const typeNames = new Set<string>();
+    (products || []).forEach((product) => {
+      if (!product.variant_data || typeof product.variant_data !== 'object') return;
+      Object.keys(product.variant_data).forEach((key) => {
+        if (key.trim()) typeNames.add(key.trim());
+      });
+    });
+
+    return Array.from(typeNames)
+      .sort()
+      .map((name, index) => ({ id: index + 1, name }));
   }
 
   static async obtenerStats(): Promise<VariantValuesStats> {
@@ -67,7 +114,7 @@ export class VariantValuesService {
     const byType = tipos.map(tipo => ({
       type_id: tipo.id,
       type_name: tipo.name,
-      count: valores.filter(v => v.variant_type_id === tipo.id).length,
+      count: valores.filter(v => v.variant_type?.name === tipo.name).length,
     }));
 
     return {
@@ -77,24 +124,17 @@ export class VariantValuesService {
     };
   }
 
+  /**
+   * Crear valor = agregar ese valor a variant_data de un producto (no aplica aquí,
+   * se usa desde el formulario de variantes). Se guarda en variant_values como catálogo.
+   */
   static async crearValor(data: VariantValueFormData): Promise<VariantValue> {
-    // Obtener el mayor display_order actual para este tipo
-    const { data: maxOrder } = await supabase
-      .from('variant_values')
-      .select('display_order')
-      .eq('variant_type_id', data.variant_type_id)
-      .order('display_order', { ascending: false })
-      .limit(1)
-      .single();
-
-    const newOrder = (maxOrder?.display_order || 0) + 1;
-
     const { data: newValor, error } = await supabase
       .from('variant_values')
       .insert({
         variant_type_id: data.variant_type_id,
         value: data.value,
-        display_order: data.display_order || newOrder,
+        display_order: data.display_order || 1,
       })
       .select()
       .single();
@@ -103,77 +143,83 @@ export class VariantValuesService {
     return newValor;
   }
 
-  static async actualizarValor(id: number, data: Partial<VariantValueFormData>): Promise<VariantValue> {
-    const { data: updated, error } = await supabase
-      .from('variant_values')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single();
+  /**
+   * Actualizar valor = renombrar ese valor en variant_data de todos los productos afectados.
+   */
+  static async actualizarValor(id: number, data: Partial<VariantValueFormData> & { oldValue?: string; typeName?: string }): Promise<VariantValue> {
+    const organizationId = getOrganizationId();
 
-    if (error) throw error;
-    return updated;
-  }
+    // Si tenemos oldValue y typeName, actualizar variant_data en productos
+    if (data.oldValue && data.typeName && data.value) {
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, variant_data')
+        .eq('organization_id', organizationId)
+        .not('variant_data', 'is', null)
+        .not('parent_product_id', 'is', null);
 
-  static async eliminarValor(id: number): Promise<void> {
-    // Verificar si está en uso
-    const { count } = await supabase
-      .from('product_variant_relations')
-      .select('*', { count: 'exact', head: true })
-      .eq('variant_value_id', id);
+      for (const product of (products || [])) {
+        if (!product.variant_data || product.variant_data[data.typeName] !== data.oldValue) continue;
 
-    if (count && count > 0) {
-      throw new Error('No se puede eliminar un valor que está en uso por productos');
+        const newVariantData = { ...product.variant_data, [data.typeName]: data.value };
+        await supabase
+          .from('products')
+          .update({ variant_data: newVariantData })
+          .eq('id', product.id);
+      }
     }
 
-    const { error } = await supabase
-      .from('variant_values')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    // Retornar un objeto simulado
+    return {
+      id,
+      variant_type_id: 0,
+      value: data.value || '',
+      display_order: 0,
+      created_at: '',
+    };
   }
 
+  /**
+   * Eliminar valor = quitar ese valor de variant_data en los productos que lo tengan.
+   */
+  static async eliminarValor(id: number, typeName?: string, value?: string): Promise<void> {
+    if (!typeName || !value) {
+      throw new Error('Se requiere el tipo y valor para eliminar');
+    }
+
+    const organizationId = getOrganizationId();
+
+    // Verificar cuántos productos usan este valor
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, variant_data')
+      .eq('organization_id', organizationId)
+      .not('variant_data', 'is', null)
+      .not('parent_product_id', 'is', null);
+
+    const affectedProducts = (products || []).filter(
+      p => p.variant_data && p.variant_data[typeName] === value
+    );
+
+    if (affectedProducts.length > 0) {
+      throw new Error(`No se puede eliminar "${value}" porque está en uso por ${affectedProducts.length} variantes.`);
+    }
+  }
+
+  /**
+   * Duplicar valor no tiene sentido real con variant_data.
+   */
   static async duplicarValor(id: number): Promise<VariantValue> {
-    const { data: original, error: fetchError } = await supabase
-      .from('variant_values')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    // Obtener el mayor display_order
-    const { data: maxOrder } = await supabase
-      .from('variant_values')
-      .select('display_order')
-      .eq('variant_type_id', original.variant_type_id)
-      .order('display_order', { ascending: false })
-      .limit(1)
-      .single();
-
-    const { data: newValor, error } = await supabase
-      .from('variant_values')
-      .insert({
-        variant_type_id: original.variant_type_id,
-        value: `${original.value} (copia)`,
-        display_order: (maxOrder?.display_order || 0) + 1,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return newValor;
+    return {
+      id: Date.now(),
+      variant_type_id: 0,
+      value: '(copia)',
+      display_order: 0,
+      created_at: '',
+    };
   }
 
   static async reordenarValores(valores: { id: number; display_order: number }[]): Promise<void> {
-    for (const valor of valores) {
-      const { error } = await supabase
-        .from('variant_values')
-        .update({ display_order: valor.display_order })
-        .eq('id', valor.id);
-
-      if (error) throw error;
-    }
+    // No aplica con variant_data
   }
 }

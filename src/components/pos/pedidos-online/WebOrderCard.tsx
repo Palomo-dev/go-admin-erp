@@ -20,6 +20,7 @@ import {
   Coins
 } from 'lucide-react';
 import type { WebOrder, WebOrderStatus, DeliveryType } from '@/lib/services/webOrdersService';
+import { PaymentStatusBadge } from './PaymentStatusBadge';
 
 interface WebOrderCardProps {
   order: WebOrder;
@@ -45,6 +46,39 @@ const DELIVERY_TYPE_CONFIG: Record<DeliveryType, { label: string; icon: React.Re
   delivery_own: { label: 'Delivery propio', icon: <Bike className="h-4 w-4" /> },
   delivery_third_party: { label: 'Delivery tercero', icon: <Truck className="h-4 w-4" /> },
 };
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Efectivo',
+  transfer: 'Transferencia',
+  wompi: 'Wompi',
+  wompi_co: 'Wompi',
+  nequi: 'Nequi',
+  daviplata: 'Daviplata',
+  pse: 'PSE',
+  card: 'Tarjeta',
+  mp_checkout: 'MercadoPago',
+  stripe_payments: 'Stripe',
+  payu_co: 'PayU',
+  paypal_checkout: 'PayPal',
+};
+
+const PAYMENT_DETAIL_LABELS: Record<string, string> = {
+  bancolombia_transfer: 'Bancolombia',
+  card: 'Tarjeta',
+  nequi: 'Nequi',
+  pse: 'PSE',
+  bancolombia_collect: 'Bancolombia Collect',
+  daviplata: 'Daviplata',
+};
+
+function getPaymentMethodLabel(method: string): string {
+  return PAYMENT_METHOD_LABELS[method] || method;
+}
+
+function getPaymentDetailLabel(detail?: string): string | null {
+  if (!detail) return null;
+  return PAYMENT_DETAIL_LABELS[detail] || detail;
+}
 
 export function WebOrderCard({ 
   order, 
@@ -90,7 +124,7 @@ export function WebOrderCard({
   const isUrgent = isPending && (Date.now() - new Date(order.created_at).getTime()) > 10 * 60000; // 10 min
 
   return (
-    <Card className={`overflow-hidden transition-all hover:shadow-md ${isUrgent ? 'ring-2 ring-red-500 animate-pulse' : ''}`}>
+    <Card className={`overflow-hidden transition-all hover:shadow-md ${isUrgent ? 'ring-2 ring-red-500' : ''}`}>
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
@@ -146,15 +180,24 @@ export function WebOrderCard({
           )}
         </div>
 
-        {/* Tipo de entrega */}
-        <div className="flex items-center gap-2 mb-3 p-2 bg-muted/50 rounded-lg">
+        {/* Tipo de entrega + Método de pago + Estado de pago */}
+        <div className="flex items-center gap-2 mb-1 p-2 bg-muted/50 rounded-lg">
           {deliveryConfig.icon}
           <span className="text-sm font-medium">{deliveryConfig.label}</span>
-          {order.delivery_partner && (
+          {order.payment_method && (
+            <Badge variant="outline" className="ml-auto text-xs">
+              {getPaymentMethodLabel(order.payment_method)}
+              {order.payment_method_detail && ` · ${getPaymentDetailLabel(order.payment_method_detail)}`}
+            </Badge>
+          )}
+          {!order.payment_method && order.delivery_partner && (
             <Badge variant="outline" className="ml-auto text-xs">
               {order.delivery_partner}
             </Badge>
           )}
+        </div>
+        <div className="mb-3">
+          <PaymentStatusBadge status={order.payment_status} />
         </div>
 
         {/* Dirección (si es delivery) */}

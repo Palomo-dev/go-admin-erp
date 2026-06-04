@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Save, LayoutGrid, ShoppingBag, Briefcase, ImageIcon, MessageSquare, Users, FileText, HelpCircle, Mail, MapPin, Share2 } from 'lucide-react';
 import { WebsiteSettings } from '@/lib/services/websiteSettingsService';
+import { useTranslations } from 'next-intl';
 
 interface BrandingSectionsTabProps {
   settings: WebsiteSettings;
@@ -15,19 +16,21 @@ interface BrandingSectionsTabProps {
 }
 
 const SECTIONS = [
-  { key: 'show_products', label: 'Productos', description: 'Muestra tus productos destacados', icon: ShoppingBag },
-  { key: 'show_services', label: 'Servicios', description: 'Lista de servicios que ofreces', icon: Briefcase },
-  { key: 'show_gallery', label: 'Galería', description: 'Galería de imágenes', icon: ImageIcon },
-  { key: 'show_testimonials', label: 'Testimonios', description: 'Opiniones de tus clientes', icon: MessageSquare },
-  { key: 'show_team', label: 'Equipo', description: 'Presenta a tu equipo de trabajo', icon: Users },
-  { key: 'show_blog', label: 'Blog', description: 'Artículos y noticias', icon: FileText },
-  { key: 'show_faq', label: 'Preguntas Frecuentes', description: 'Sección de FAQ', icon: HelpCircle },
-  { key: 'show_contact', label: 'Contacto', description: 'Formulario de contacto', icon: Mail },
-  { key: 'show_map', label: 'Mapa', description: 'Ubicación en Google Maps', icon: MapPin },
-  { key: 'show_social_links', label: 'Redes Sociales', description: 'Enlaces a tus redes', icon: Share2 },
+  { key: 'show_products', labelKey: 'products', descKey: 'productsDesc', icon: ShoppingBag },
+  { key: 'show_services', labelKey: 'services', descKey: 'servicesDesc', icon: Briefcase },
+  { key: 'show_gallery', labelKey: 'gallery', descKey: 'galleryDesc', icon: ImageIcon },
+  { key: 'show_testimonials', labelKey: 'testimonials', descKey: 'testimonialsDesc', icon: MessageSquare },
+  { key: 'show_team', labelKey: 'team', descKey: 'teamDesc', icon: Users },
+  { key: 'show_blog', labelKey: 'blog', descKey: 'blogDesc', icon: FileText },
+  { key: 'show_faq', labelKey: 'faq', descKey: 'faqDesc', icon: HelpCircle },
+  { key: 'show_contact', labelKey: 'contact', descKey: 'contactDesc', icon: Mail },
+  { key: 'show_map', labelKey: 'map', descKey: 'mapDesc', icon: MapPin },
+  { key: 'show_social_links', labelKey: 'socialLinks', descKey: 'socialLinksDesc', icon: Share2 },
 ];
 
 export default function BrandingSectionsTab({ settings, onSave, isSaving }: BrandingSectionsTabProps) {
+  const t = useTranslations('branding.sections');
+  const tc = useTranslations('branding.common');
   const [formData, setFormData] = useState({
     show_products: settings.show_products ?? true,
     show_services: settings.show_services ?? true,
@@ -57,10 +60,10 @@ export default function BrandingSectionsTab({ settings, onSave, isSaving }: Bran
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
             <LayoutGrid className="h-5 w-5" />
-            Secciones del Sitio Web
+            {t('title')}
           </CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Activa o desactiva las secciones que deseas mostrar en tu sitio ({enabledCount} de {SECTIONS.length} activas)
+            {t('description', { enabled: enabledCount, total: SECTIONS.length })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -83,8 +86,8 @@ export default function BrandingSectionsTab({ settings, onSave, isSaving }: Bran
                       <Icon className={`h-5 w-5 ${isEnabled ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
                     </div>
                     <div>
-                      <Label className="font-medium dark:text-white">{section.label}</Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{section.description}</p>
+                      <Label className="font-medium dark:text-white">{t(section.labelKey)}</Label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t(section.descKey)}</p>
                     </div>
                   </div>
                   <Switch
@@ -101,9 +104,9 @@ export default function BrandingSectionsTab({ settings, onSave, isSaving }: Bran
       {/* Vista previa del orden */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="dark:text-white">Orden de Secciones</CardTitle>
+          <CardTitle className="dark:text-white">{t('orderTitle')}</CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Las secciones se mostrarán en este orden en tu sitio web
+            {t('orderDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -119,13 +122,13 @@ export default function BrandingSectionsTab({ settings, onSave, isSaving }: Bran
                     {index + 1}
                   </span>
                   <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                  <span className="dark:text-white">{section.label}</span>
+                  <span className="dark:text-white">{t(section.labelKey)}</span>
                 </div>
               );
             })}
             {enabledCount === 0 && (
               <p className="text-center text-gray-500 dark:text-gray-400 py-4">
-                No hay secciones activas
+                {t('noActiveSections')}
               </p>
             )}
           </div>
@@ -138,12 +141,12 @@ export default function BrandingSectionsTab({ settings, onSave, isSaving }: Bran
           {isSaving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Guardando...
+              {tc('saving')}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Guardar Cambios
+              {tc('saveChanges')}
             </>
           )}
         </Button>

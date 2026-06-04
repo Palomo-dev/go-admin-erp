@@ -33,14 +33,14 @@ export function AjustesStats({ stats, isLoading }: AjustesStatsProps) {
     },
     {
       title: 'Aplicados',
-      value: stats.applied.toLocaleString(),
+      value: stats.posted.toLocaleString(),
       icon: CheckCircle2,
       bgColor: 'bg-green-100 dark:bg-green-900/30',
       textColor: 'text-green-600 dark:text-green-400'
     },
     {
       title: 'Cancelados',
-      value: stats.cancelled.toLocaleString(),
+      value: '0',
       icon: XCircle,
       bgColor: 'bg-red-100 dark:bg-red-900/30',
       textColor: 'text-red-600 dark:text-red-400'

@@ -112,9 +112,10 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
         data.forEach((img: ProductImage) => {
           if (!img.storage_path) return;
           
-          // Generar URL pública usando supabase.storage
+          // Generar URL pública usando supabase.storage (detectar bucket correcto)
+          const bucket = img.storage_path.startsWith('products/') ? 'product-images' : 'organization_images';
           const { data: urlData } = supabase.storage
-            .from('organization_images')
+            .from(bucket)
             .getPublicUrl(img.storage_path);
           
           if (urlData?.publicUrl) {
@@ -263,7 +264,19 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                   <div className="max-w-[150px] sm:max-w-none truncate">{producto.name}</div>
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">{producto.category?.name || '-'}</TableCell>
-                <TableCell className="text-right text-xs sm:text-sm dark:text-gray-300 font-semibold">{typeof producto.price === 'number' ? formatCurrency(producto.price) : '-'}</TableCell>
+                <TableCell className="text-right text-xs sm:text-sm dark:text-gray-300">
+                  {typeof producto.price === 'number' ? (
+                    <div>
+                      <span className="font-semibold">{formatCurrency(producto.price)}</span>
+                      {producto.compare_price && producto.compare_price > producto.price && (
+                        <>
+                          <span className="block text-xs text-gray-400 line-through">{formatCurrency(producto.compare_price)}</span>
+                          <span className="text-xs text-red-500 font-medium">-{Math.round((1 - producto.price / producto.compare_price) * 100)}%</span>
+                        </>
+                      )}
+                    </div>
+                  ) : '-'}
+                </TableCell>
                 <TableCell className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">{typeof producto.cost === 'number' ? formatCurrency(producto.cost) : '-'}</TableCell>
                 <TableCell className="text-center text-xs sm:text-sm">
                   <span className={`font-semibold ${producto.stock && producto.stock <= 0 ? 'text-red-500' : 'dark:text-gray-200'}`}>{producto.stock || 0}</span>

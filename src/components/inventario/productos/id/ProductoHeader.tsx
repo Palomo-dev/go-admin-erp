@@ -14,6 +14,7 @@ import { Badge as UIBadge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
+import { loadProductImages, getPublicUrl, ProductImageType } from '@/lib/supabase/imageUtils';
 
 import { useOrganization } from '@/lib/hooks/useOrganization';
 
@@ -36,17 +37,22 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
     available: 0
   });
   const [loadingStock, setLoadingStock] = useState(false);
-  console.log('Producto:', producto);
-  // Obtener imágenes del producto
-  const images = producto.product_images || [];
+  const [images, setImages] = useState<ProductImageType[]>([]);
+
+  // Cargar imágenes de forma independiente (no depender de cache)
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (!producto?.id) return;
+      const imgs = await loadProductImages(producto.id);
+      setImages(imgs);
+    };
+    fetchImages();
+  }, [producto?.id]);
   
   // Función para obtener URL pública de imagen
   const getImageUrl = (storagePath: string): string => {
     if (!storagePath) return '';
-    const { data } = supabase.storage
-      .from('organization_images')
-      .getPublicUrl(storagePath);
-    return data?.publicUrl || '';
+    return getPublicUrl(storagePath);
   };
   
   const mainImageUrl = images.length > 0 && images[selectedImage]?.storage_path 
@@ -61,6 +67,12 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
       try {
         setLoadingStock(true);
         
+        // Obtener IDs de productos a consultar (padre + hijos si es producto padre)
+        const productIds = [producto.id];
+        if (producto.is_parent && producto.children && producto.children.length > 0) {
+          producto.children.forEach((child: any) => productIds.push(child.id));
+        }
+        
         // Obtener niveles de stock por sucursal
         const { data: stock, error: stockError } = await supabase
           .from('stock_levels')
@@ -68,7 +80,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
             qty_on_hand, 
             qty_reserved
           `)
-          .eq('product_id', producto.id);
+          .in('product_id', productIds);
         
         if (stockError) throw stockError;
         
@@ -283,13 +295,35 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <p className="mt-1 text-2xl font-semibold">
-                    {formatCurrency(
-                      producto.product_prices.reduce((prev: any, current: any) =>
-                        current.effective_from > prev.effective_from ? current : prev
-                      ).price
-                    )}
-                  </p>
+                  {(() => {
+                    const currentPriceRecord = producto.product_prices.reduce((prev: any, current: any) =>
+                      current.effective_from > prev.effective_from ? current : prev
+                    );
+                    const comparePrice = currentPriceRecord.compare_price;
+                    const price = currentPriceRecord.price;
+                    const hasDiscount = comparePrice && comparePrice > price;
+                    const discountPercent = hasDiscount ? Math.round((1 - price / comparePrice) * 100) : 0;
+                    
+                    return (
+                      <div className="mt-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-2xl font-semibold">
+                            {formatCurrency(price)}
+                          </p>
+                          {hasDiscount && (
+                            <span className="px-1.5 py-0.5 text-xs font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded">
+                              -{discountPercent}%
+                            </span>
+                          )}
+                        </div>
+                        {hasDiscount && (
+                          <p className="text-sm text-gray-400 line-through">
+                            {formatCurrency(comparePrice)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </TooltipProvider>
 

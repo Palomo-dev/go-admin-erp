@@ -53,6 +53,7 @@ export interface WebOrder {
   estimated_delivery_at?: string;
   payment_status: PaymentStatus;
   payment_method?: string;
+  payment_method_detail?: string;
   payment_reference?: string;
   customer_name?: string;
   customer_email?: string;

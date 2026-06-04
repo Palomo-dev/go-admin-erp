@@ -3,7 +3,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 /**
  * Define la estructura de un bucket de Supabase
  */
-export type StorageBucket = 'organization_images';
+export type StorageBucket = 'organization_images' | 'product-images';
 
 /**
  * Interfaz para imágenes de productos
@@ -19,32 +19,31 @@ export interface ProductImageType {
 }
 
 /**
- * Todas las imágenes ahora se almacenan en organization_images
+ * Determina el bucket correcto según el path de almacenamiento
  */
-export function getBucketName(): StorageBucket {
+export function getBucketName(storagePath?: string): StorageBucket {
+  if (storagePath?.startsWith('products/')) return 'product-images';
   return 'organization_images';
 }
 
 /**
- * Genera una URL pública para una ruta de almacenamiento usando organization_images
+ * Genera una URL pública para una ruta de almacenamiento, detectando el bucket correcto
  */
 export function getPublicUrl(storagePath: string): string {
-  // Validación de entrada
   if (!storagePath) {
     console.log('getPublicUrl: Empty storagePath provided');
     return '';
   }
   
-  // Crear cliente de Supabase
   const supabase = createClientComponentClient();
+  const bucket = getBucketName(storagePath);
   
-  // Usar directamente organization_images bucket
   const { data } = supabase.storage
-    .from('organization_images')
+    .from(bucket)
     .getPublicUrl(storagePath);
   
   if (!data?.publicUrl) {
-    console.error(`getPublicUrl: Failed to get public URL for ${storagePath}`);
+    console.error(`getPublicUrl: Failed to get public URL for ${storagePath} in bucket ${bucket}`);
     return '';
   }
   
@@ -131,9 +130,9 @@ export async function uploadProductImage({
     const fileName = `${productId}/${Date.now()}-${Math.random().toString(36).substring(2, 10)}.${fileExt}`;
     const filePath = `productos/${fileName}`;
     
-    // Subir a Storage
+    // Subir a Storage (product-images para productos)
     const { error: uploadError } = await supabase.storage
-      .from('organization_images')
+      .from('product-images')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -194,8 +193,9 @@ export async function deleteProductImage(imageId: string, storagePath?: string):
     
     // Eliminar archivo de Storage si tenemos la ruta
     if (path) {
+      const bucket = getBucketName(path);
       await supabase.storage
-        .from('organization_images')
+        .from(bucket)
         .remove([path]);
     }
     
@@ -362,8 +362,9 @@ export function updateImageUrlsInArray<T extends { path: string, url: string }>(
     // Solo actualizar si hay un path válido
     if (image.path) {
       // Generar URL pública directamente desde Supabase
+      const bucket = getBucketName(image.path);
       const { data } = supabase.storage
-        .from('organization_images')
+        .from(bucket)
         .getPublicUrl(image.path);
         
       if (data?.publicUrl) {

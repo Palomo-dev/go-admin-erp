@@ -30,6 +30,7 @@ import PreciosTab from './tabs/PreciosTab';
 import EtiquetasTab from './tabs/EtiquetasTab';
 import NotasTab from './tabs/NotasTab';
 import AuditoriaTab from './tabs/AuditoriaTab';
+import ProveedoresTab from './tabs/ProveedoresTab';
 
 // Importaciones de componentes UI
 import { 
@@ -245,12 +246,13 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
         {/* Pestañas de producto */}
         <div className="mt-6">
           <Tabs defaultValue="detalles" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-8">
+            <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-9">
               <TabsTrigger value="detalles">Detalles</TabsTrigger>
               <TabsTrigger value="variantes">Variantes</TabsTrigger>
               <TabsTrigger value="stock">Stock</TabsTrigger>
               <TabsTrigger value="imagenes">Imágenes</TabsTrigger>
               <TabsTrigger value="precios">Precios</TabsTrigger>
+              <TabsTrigger value="proveedores">Proveedores</TabsTrigger>
               <TabsTrigger value="etiquetas">Etiquetas</TabsTrigger>
               <TabsTrigger value="notas">Notas</TabsTrigger>
               <TabsTrigger value="auditoria">Auditoría</TabsTrigger>
@@ -280,6 +282,11 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
             <TabsContent value="precios">
               <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
                 <PreciosTab producto={producto} />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="proveedores">
+              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+                <ProveedoresTab producto={producto} />
               </Suspense>
             </TabsContent>
             <TabsContent value="etiquetas">

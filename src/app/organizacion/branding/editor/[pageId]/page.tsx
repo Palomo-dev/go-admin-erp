@@ -278,6 +278,21 @@ export default function PageEditorPage() {
     setHasChanges(true);
   };
 
+  // ---- TOGGLE PAGE IN HEADER ----
+  const handleTogglePageHeader = async (pageId: string, show: boolean) => {
+    try {
+      await websitePageBuilderService.updatePage(pageId, { show_in_header: show });
+      setPages((prev) =>
+        prev.map((p) => (p.id === pageId ? { ...p, show_in_header: show } : p))
+      );
+      setPreviewRefreshKey((k) => k + 1);
+      toast({ title: show ? 'Página visible en header' : 'Página oculta del header' });
+    } catch (error) {
+      console.error('Error toggling page header:', error);
+      toast({ title: 'Error', description: 'No se pudo actualizar la visibilidad', variant: 'destructive' });
+    }
+  };
+
   // ---- SAVE ALL CHANGES ----
   const handleSave = async () => {
     if (!organizationId || !currentPage) return;
@@ -422,6 +437,8 @@ export default function PageEditorPage() {
               <GlobalSettingsPanel
                 settings={settings}
                 onUpdate={handleUpdateGlobalSettings}
+                pages={pages}
+                onTogglePageHeader={handleTogglePageHeader}
               />
             ) : null
           }

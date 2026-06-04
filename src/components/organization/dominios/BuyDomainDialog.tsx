@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -77,6 +78,7 @@ function BuyDomainForm({
 }: BuyDomainDialogProps) {
   const stripe = useStripe();
   const elements = useElements();
+  const t = useTranslations('org.domains.buyDialog');
   
   const [step, setStep] = useState<Step>('search');
   const [searchTerm, setSearchTerm] = useState('');
@@ -129,10 +131,10 @@ function BuyDomainForm({
             setSetupIntentSecret(data.clientSecret);
             setCustomerId(data.customerId);
           } else {
-            setError('Error preparando el sistema de pago');
+            setError(t('errorPaymentSetup'));
           }
         } catch {
-          setError('Error de conexión con el sistema de pago');
+          setError(t('errorPaymentConnection'));
         }
       }
     };
@@ -160,10 +162,10 @@ function BuyDomainForm({
       if (data.success) {
         setDomainResult(data.data);
       } else {
-        setError(data.error || 'Error verificando dominio');
+        setError(data.error || t('errorVerifying'));
       }
     } catch {
-      setError('Error de conexión');
+      setError(t('errorConnection'));
     } finally {
       setIsChecking(false);
     }
@@ -233,7 +235,7 @@ function BuyDomainForm({
       const purchaseData = await purchaseResponse.json();
       
       if (!purchaseData.success) {
-        throw new Error(purchaseData.error || 'Error al comprar el dominio');
+        throw new Error(purchaseData.error || t('errorPurchase'));
       }
 
       setStep('success');
@@ -243,7 +245,7 @@ function BuyDomainForm({
       }, 3000);
 
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error procesando la compra';
+      const errorMessage = err instanceof Error ? err.message : t('errorProcessing');
       setError(errorMessage);
     } finally {
       setIsProcessing(false);
@@ -263,12 +265,12 @@ function BuyDomainForm({
               <ShoppingCart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <DialogTitle className="dark:text-white">Comprar Dominio</DialogTitle>
+              <DialogTitle className="dark:text-white">{t('title')}</DialogTitle>
               <DialogDescription className="dark:text-gray-400">
-                {step === 'search' && 'Busca un dominio disponible'}
-                {step === 'contact' && 'Información de contacto para el registro'}
-                {step === 'payment' && 'Completa el pago'}
-                {step === 'success' && '¡Compra completada!'}
+                {step === 'search' && t('stepSearch')}
+                {step === 'contact' && t('stepContact')}
+                {step === 'payment' && t('stepPayment')}
+                {step === 'success' && t('stepSuccess')}
               </DialogDescription>
             </div>
           </div>
@@ -305,7 +307,7 @@ function BuyDomainForm({
           {step === 'search' && (
             <>
               <div className="space-y-2">
-                <Label className="dark:text-gray-200">Buscar Dominio</Label>
+                <Label className="dark:text-gray-200">{t('searchLabel')}</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -352,13 +354,13 @@ function BuyDomainForm({
                           domainResult.available && !domainResult.price ? "text-yellow-600" :
                           "text-red-600"
                         )}>
-                          {domainResult.available && domainResult.price ? '¡Disponible!' : 
-                           domainResult.available && !domainResult.price ? 'TLD no disponible para compra directa' :
-                           domainResult.error || 'No disponible'}
+                          {domainResult.available && domainResult.price ? t('available') : 
+                           domainResult.available && !domainResult.price ? t('tldNotAvailable') :
+                           domainResult.error || t('notAvailable')}
                         </p>
                         {domainResult.available && !domainResult.price && (
                           <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                            Prueba con .com, .io, .co, .net, .org, .app
+                            {t('tryWith')}
                           </p>
                         )}
                       </div>
@@ -366,7 +368,7 @@ function BuyDomainForm({
                     {domainResult.available && domainResult.price && (
                       <div className="text-right">
                         <span className="text-2xl font-bold dark:text-white">${domainResult.price.toFixed(2)}</span>
-                        <span className="text-sm text-gray-500 ml-1">USD/año</span>
+                        <span className="text-sm text-gray-500 ml-1">{t('perYear')}</span>
                       </div>
                     )}
                   </div>
@@ -379,47 +381,47 @@ function BuyDomainForm({
           {step === 'contact' && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="dark:text-gray-200">Nombre *</Label>
+                <Label className="dark:text-gray-200">{t('firstName')}</Label>
                 <Input value={contactInfo.firstName} onChange={(e) => setContactInfo({...contactInfo, firstName: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">Apellido *</Label>
+                <Label className="dark:text-gray-200">{t('lastName')}</Label>
                 <Input value={contactInfo.lastName} onChange={(e) => setContactInfo({...contactInfo, lastName: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">Email *</Label>
+                <Label className="dark:text-gray-200">{t('email')}</Label>
                 <Input type="email" value={contactInfo.email} onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">Teléfono * (E.164)</Label>
+                <Label className="dark:text-gray-200">{t('phone')}</Label>
                 <Input value={contactInfo.phone} onChange={(e) => setContactInfo({...contactInfo, phone: e.target.value})}
                   placeholder="+573001234567" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div className="col-span-2">
-                <Label className="dark:text-gray-200">Dirección *</Label>
+                <Label className="dark:text-gray-200">{t('address')}</Label>
                 <Input value={contactInfo.address1} onChange={(e) => setContactInfo({...contactInfo, address1: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">Ciudad *</Label>
+                <Label className="dark:text-gray-200">{t('city')}</Label>
                 <Input value={contactInfo.city} onChange={(e) => setContactInfo({...contactInfo, city: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">Estado/Depto *</Label>
+                <Label className="dark:text-gray-200">{t('state')}</Label>
                 <Input value={contactInfo.state} onChange={(e) => setContactInfo({...contactInfo, state: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">Código Postal *</Label>
+                <Label className="dark:text-gray-200">{t('postalCode')}</Label>
                 <Input value={contactInfo.zip} onChange={(e) => setContactInfo({...contactInfo, zip: e.target.value})}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className="dark:text-gray-200">País (código) *</Label>
+                <Label className="dark:text-gray-200">{t('country')}</Label>
                 <Input value={contactInfo.country} onChange={(e) => setContactInfo({...contactInfo, country: e.target.value.toUpperCase()})}
                   placeholder="CO" maxLength={2} className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
@@ -434,12 +436,12 @@ function BuyDomainForm({
                   <span className="font-medium dark:text-white">{domainResult?.domain}</span>
                   <span className="text-xl font-bold dark:text-white">${domainResult?.price?.toFixed(2)} USD</span>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Registro por 1 año con renovación automática</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('registration')}</p>
               </div>
 
               <div>
                 <Label className="dark:text-gray-200 flex items-center gap-2 mb-2">
-                  <CreditCard className="h-4 w-4" /> Tarjeta de Crédito/Débito
+                  <CreditCard className="h-4 w-4" /> {t('creditCard')}
                 </Label>
                 <div className="bg-white dark:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600 p-3">
                   <CardElement options={cardElementOptions} onChange={(e) => setCardComplete(e.complete)} />
@@ -449,7 +451,7 @@ function BuyDomainForm({
               <Alert className="dark:bg-blue-900/20 dark:border-blue-800">
                 <Globe className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-sm dark:text-gray-300">
-                  El pago se procesará de forma segura con Stripe. El dominio se registrará a través de Vercel.
+                  {t('paymentSecure')}
                 </AlertDescription>
               </Alert>
             </div>
@@ -460,8 +462,8 @@ function BuyDomainForm({
             <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
               <Check className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-700 dark:text-green-300">
-                <strong>¡Dominio comprado exitosamente!</strong><br />
-                <strong>{domainResult?.domain}</strong> ha sido registrado y se agregará a tu lista.
+                <strong>{t('successTitle')}</strong><br />
+                <strong>{domainResult?.domain}</strong> {t('successDesc', { domain: domainResult?.domain || '' })}
               </AlertDescription>
             </Alert>
           )}
@@ -470,24 +472,24 @@ function BuyDomainForm({
         <DialogFooter className="gap-2">
           {step !== 'success' && (
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}
-              className="dark:border-gray-600 dark:text-gray-300">Cancelar</Button>
+              className="dark:border-gray-600 dark:text-gray-300">{t('cancel')}</Button>
           )}
 
           {step === 'search' && (
             <Button onClick={() => setStep('contact')} disabled={!domainResult?.available || !domainResult?.price}
               className="bg-blue-600 hover:bg-blue-700 text-white">
-              Continuar <ChevronRight className="h-4 w-4 ml-1" />
+              {t('continue')} <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           )}
 
           {step === 'contact' && (
             <>
               <Button variant="outline" onClick={() => setStep('search')} className="dark:border-gray-600 dark:text-gray-300">
-                <ChevronLeft className="h-4 w-4 mr-1" /> Atrás
+                <ChevronLeft className="h-4 w-4 mr-1" /> {t('back')}
               </Button>
               <Button onClick={() => setStep('payment')} disabled={!isContactValid()}
                 className="bg-blue-600 hover:bg-blue-700 text-white">
-                Continuar <ChevronRight className="h-4 w-4 ml-1" />
+                {t('continue')} <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </>
           )}
@@ -496,18 +498,18 @@ function BuyDomainForm({
             <>
               <Button variant="outline" onClick={() => setStep('contact')} disabled={isProcessing}
                 className="dark:border-gray-600 dark:text-gray-300">
-                <ChevronLeft className="h-4 w-4 mr-1" /> Atrás
+                <ChevronLeft className="h-4 w-4 mr-1" /> {t('back')}
               </Button>
               <Button onClick={handlePurchase} disabled={!stripe || !cardComplete || isProcessing || !setupIntentSecret}
                 className="bg-green-600 hover:bg-green-700 text-white">
-                {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Procesando...</> :
-                  <><ShoppingCart className="h-4 w-4 mr-2" />Pagar ${domainResult?.price?.toFixed(2)}</>}
+                {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t('processing')}</> :
+                  <><ShoppingCart className="h-4 w-4 mr-2" />{t('pay')} ${domainResult?.price?.toFixed(2)}</>}
               </Button>
             </>
           )}
 
           {step === 'success' && (
-            <Button onClick={() => onOpenChange(false)} className="bg-blue-600 hover:bg-blue-700 text-white">Cerrar</Button>
+            <Button onClick={() => onOpenChange(false)} className="bg-blue-600 hover:bg-blue-700 text-white">{t('close')}</Button>
           )}
         </DialogFooter>
       </DialogContent>

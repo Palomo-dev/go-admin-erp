@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ImagePlus, X } from 'lucide-react';
 import ImagePickerDialog from '@/components/common/ImagePickerDialog';
+import { useTranslations } from 'next-intl';
 
 interface PageSEOPanelProps {
   metaTitle: string;
@@ -21,6 +22,7 @@ export default function PageSEOPanel({
   ogImageUrl,
   onUpdate,
 }: PageSEOPanelProps) {
+  const t = useTranslations('branding.editor.pageSEO');
   const titleLength = metaTitle.length;
   const descLength = metaDescription.length;
   const [showImagePicker, setShowImagePicker] = useState(false);
@@ -30,7 +32,7 @@ export default function PageSEOPanel({
       {/* Meta Title */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-gray-500 dark:text-gray-400">Meta Title</Label>
+          <Label className="text-xs text-gray-500 dark:text-gray-400">{t('metaTitle')}</Label>
           <span className={`text-[10px] ${titleLength > 60 ? 'text-red-500' : 'text-gray-400'}`}>
             {titleLength}/60
           </span>
@@ -38,7 +40,7 @@ export default function PageSEOPanel({
         <Input
           value={metaTitle}
           onChange={(e) => onUpdate({ meta_title: e.target.value })}
-          placeholder="Título para buscadores"
+          placeholder={t('metaTitlePlaceholder')}
           className="h-8 text-xs dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           maxLength={70}
         />
@@ -47,7 +49,7 @@ export default function PageSEOPanel({
       {/* Meta Description */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-gray-500 dark:text-gray-400">Meta Description</Label>
+          <Label className="text-xs text-gray-500 dark:text-gray-400">{t('metaDescription')}</Label>
           <span className={`text-[10px] ${descLength > 160 ? 'text-red-500' : 'text-gray-400'}`}>
             {descLength}/160
           </span>
@@ -55,7 +57,7 @@ export default function PageSEOPanel({
         <Textarea
           value={metaDescription}
           onChange={(e) => onUpdate({ meta_description: e.target.value })}
-          placeholder="Descripción para buscadores..."
+          placeholder={t('metaDescriptionPlaceholder')}
           rows={2}
           className="text-xs resize-none dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           maxLength={200}
@@ -64,7 +66,7 @@ export default function PageSEOPanel({
 
       {/* OG Image */}
       <div className="space-y-1.5">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">Imagen OG (Redes Sociales)</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400">{t('ogImage')}</Label>
         {ogImageUrl ? (
           <div className="relative group">
             <img
@@ -89,7 +91,7 @@ export default function PageSEOPanel({
           >
             <div className="flex flex-col items-center gap-1">
               <ImagePlus className="h-5 w-5" />
-              <span className="text-[10px]">Seleccionar imagen (1200x630px)</span>
+              <span className="text-[10px]">{t('selectImage')}</span>
             </div>
           </Button>
         )}
@@ -103,12 +105,12 @@ export default function PageSEOPanel({
 
       {/* Mini Google Preview */}
       <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-[10px] space-y-0.5">
-        <p className="text-gray-400 dark:text-gray-500 mb-1">Vista previa en Google:</p>
+        <p className="text-gray-400 dark:text-gray-500 mb-1">{t('googlePreview')}</p>
         <p className="text-blue-600 dark:text-blue-400 truncate">
-          {metaTitle || 'Título de la página'}
+          {metaTitle || t('pageTitle')}
         </p>
         <p className="text-gray-500 dark:text-gray-400 line-clamp-2">
-          {metaDescription || 'Descripción de la página...'}
+          {metaDescription || t('pageDescription')}
         </p>
       </div>
     </div>

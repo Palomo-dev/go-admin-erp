@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/tooltip';
 import { OrganizationDomain } from '@/lib/services/domainService';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 
 interface DomainCardProps {
   domain: OrganizationDomain;
@@ -65,6 +66,7 @@ export function DomainCard({
   isVerifying = false,
   isSyncing = false,
 }: DomainCardProps) {
+  const t = useTranslations('organization.domains.card');
   const [isTogglingActive, setIsTogglingActive] = useState(false);
 
   const handleToggleActive = async (checked: boolean) => {
@@ -79,21 +81,21 @@ export function DomainCard({
         return (
           <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0">
             <Check className="w-3 h-3 mr-1" />
-            Verificado
+            {t('verified')}
           </Badge>
         );
       case 'pending':
         return (
           <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-0">
             <Clock className="w-3 h-3 mr-1" />
-            Pendiente
+            {t('pending')}
           </Badge>
         );
       case 'failed':
         return (
           <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0">
             <X className="w-3 h-3 mr-1" />
-            Fallido
+            {t('failed')}
           </Badge>
         );
       default:
@@ -105,13 +107,13 @@ export function DomainCard({
     if (domain.domain_type === 'subdomain') {
       return (
         <Badge variant="outline" className="text-blue-600 border-blue-300 dark:text-blue-400 dark:border-blue-700">
-          Subdominio
+          {t('subdomain')}
         </Badge>
       );
     }
     return (
       <Badge variant="outline" className="text-purple-600 border-purple-300 dark:text-purple-400 dark:border-purple-700">
-        Dominio Personalizado
+        {t('customDomain')}
       </Badge>
     );
   };
@@ -156,7 +158,7 @@ export function DomainCard({
                       <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Dominio Principal</p>
+                      <p>{t('primaryDomain')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -184,18 +186,18 @@ export function DomainCard({
             <DropdownMenuContent align="end" className="w-48 dark:bg-gray-800 dark:border-gray-700">
               <DropdownMenuItem onClick={() => onEdit(domain)} className="dark:hover:bg-gray-700">
                 <Edit className="h-4 w-4 mr-2" />
-                Editar
+                {t('edit')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDuplicate(domain)} className="dark:hover:bg-gray-700">
                 <Copy className="h-4 w-4 mr-2" />
-                Duplicar
+                {t('duplicate')}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="dark:bg-gray-700" />
               {domain.status === 'pending' && domain.domain_type === 'custom_domain' && (
                 <>
                   <DropdownMenuItem onClick={() => onShowDNS(domain)} className="dark:hover:bg-gray-700">
                     <Settings className="h-4 w-4 mr-2" />
-                    Ver Instrucciones DNS
+                    {t('dnsInstructions')}
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => onVerify(domain)} 
@@ -203,19 +205,19 @@ export function DomainCard({
                     className="dark:hover:bg-gray-700"
                   >
                     <RefreshCw className={cn("h-4 w-4 mr-2", isVerifying && "animate-spin")} />
-                    Verificar Dominio
+                    {t('verifyDomain')}
                   </DropdownMenuItem>
                 </>
               )}
               {!domain.is_primary && domain.status === 'verified' && (
                 <DropdownMenuItem onClick={() => onSetPrimary(domain)} className="dark:hover:bg-gray-700">
                   <Star className="h-4 w-4 mr-2" />
-                  Marcar como Principal
+                  {t('setPrimary')}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => onConfigureRedirect(domain)} className="dark:hover:bg-gray-700">
                 <ArrowRight className="h-4 w-4 mr-2" />
-                Configurar Redirección
+                {t('configureRedirect')}
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => onSyncVercel(domain)} 
@@ -223,7 +225,7 @@ export function DomainCard({
                 className="dark:hover:bg-gray-700"
               >
                 <Zap className={cn("h-4 w-4 mr-2", isSyncing && "animate-pulse")} />
-                Sincronizar con Vercel
+                {t('syncVercel')}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="dark:bg-gray-700" />
               <DropdownMenuItem 
@@ -231,7 +233,7 @@ export function DomainCard({
                 className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Eliminar
+                {t('deleteDomain')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -241,20 +243,20 @@ export function DomainCard({
       {/* Info adicional */}
       <div className="grid grid-cols-2 gap-4 text-sm">
         <div>
-          <span className="text-gray-500 dark:text-gray-400">Intentos verificación:</span>
+          <span className="text-gray-500 dark:text-gray-400">{t('verificationAttempts')}</span>
           <span className="ml-2 text-gray-900 dark:text-white">{domain.verification_attempts}</span>
         </div>
         {domain.verified_at && (
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Verificado:</span>
+            <span className="text-gray-500 dark:text-gray-400">{t('verifiedAt')}</span>
             <span className="ml-2 text-gray-900 dark:text-white">
-              {new Date(domain.verified_at).toLocaleDateString('es-ES')}
+              {new Date(domain.verified_at).toLocaleDateString()}
             </span>
           </div>
         )}
         {domain.redirect_to_domain_id && (
           <div className="col-span-2">
-            <span className="text-gray-500 dark:text-gray-400">Redirección:</span>
+            <span className="text-gray-500 dark:text-gray-400">{t('redirect')}</span>
             <Badge variant="outline" className="ml-2">
               {domain.redirect_status_code || 301}
             </Badge>
@@ -262,9 +264,9 @@ export function DomainCard({
         )}
         {domain.last_vercel_sync_at && (
           <div className="col-span-2">
-            <span className="text-gray-500 dark:text-gray-400">Última sync Vercel:</span>
+            <span className="text-gray-500 dark:text-gray-400">{t('lastVercelSync')}</span>
             <span className="ml-2 text-gray-900 dark:text-white">
-              {new Date(domain.last_vercel_sync_at).toLocaleString('es-ES')}
+              {new Date(domain.last_vercel_sync_at).toLocaleString()}
             </span>
           </div>
         )}
@@ -279,7 +281,7 @@ export function DomainCard({
           className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
         >
           <ExternalLink className="h-4 w-4 mr-1" />
-          Visitar sitio
+          {t('visitSite')}
         </a>
       </div>
     </div>

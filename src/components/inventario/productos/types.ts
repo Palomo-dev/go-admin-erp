@@ -24,6 +24,7 @@ export interface Producto {
   // Campos calculados basados en relaciones
   cost?: number; // Campo calculado del costo actual
   price?: number; // Campo calculado del precio actual
+  compare_price?: number; // Precio de comparación para mostrar descuento
   stock?: number; // Campo calculado de stock
   
   // Relaciones optimizadas
@@ -94,6 +95,7 @@ export interface ProductoPrecio {
   id: number | string;
   product_id: number | string;
   price: number;
+  compare_price?: number | null;
   effective_from: string;
   effective_to: string | null;
   created_at?: string;

@@ -41,6 +41,9 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
   const [unidades, setUnidades] = useState<any[]>([]);
   const [proveedores, setProveedores] = useState<any[]>([]);
   
+  // Obtener el proveedor preferido desde product_suppliers
+  const preferredSupplier = producto.product_suppliers?.find((ps: any) => ps.is_preferred);
+  
   const [formData, setFormData] = useState({
     name: producto.name || '',
     sku: producto.sku || '',
@@ -48,7 +51,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     description: producto.description || '',
     category_id: producto.category_id || '',
     unit_code: producto.unit_code || '',
-    supplier_id: producto.supplier_id || '',
+    supplier_id: preferredSupplier?.supplier_id?.toString() || '',
   });
   
   // Cargar datos de categorías, unidades y proveedores al montar el componente
@@ -123,7 +126,6 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           description: formData.description,
           category_id: formData.category_id || null,
           unit_code: formData.unit_code || null,
-          supplier_id: formData.supplier_id || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', producto.id)

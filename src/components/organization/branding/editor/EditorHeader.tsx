@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 import type { WebsitePage } from '@/lib/services/websitePageBuilderService';
 
 export type DevicePreview = 'desktop' | 'tablet' | 'mobile';
@@ -46,12 +47,13 @@ export default function EditorHeader({
   hasChanges,
   previewUrl,
 }: EditorHeaderProps) {
+  const t = useTranslations('branding.editor.header');
   const currentPage = pages.find((p) => p.id === currentPageId);
 
   const devices: { id: DevicePreview; icon: typeof Monitor; label: string }[] = [
-    { id: 'desktop', icon: Monitor, label: 'Escritorio' },
-    { id: 'tablet', icon: Tablet, label: 'Tablet' },
-    { id: 'mobile', icon: Smartphone, label: 'Móvil' },
+    { id: 'desktop', icon: Monitor, label: t('desktop') },
+    { id: 'tablet', icon: Tablet, label: t('tablet') },
+    { id: 'mobile', icon: Smartphone, label: t('mobile') },
   ];
 
   return (
@@ -66,10 +68,10 @@ export default function EditorHeader({
         </Link>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-blue-200">Editando:</span>
+          <span className="text-sm text-blue-200">{t('editing')}</span>
           <Select value={currentPageId} onValueChange={onPageChange}>
             <SelectTrigger className="h-8 w-[180px] bg-white/10 border-white/20 text-white text-sm">
-              <SelectValue placeholder="Seleccionar página" />
+              <SelectValue placeholder={t('selectPage')} />
             </SelectTrigger>
             <SelectContent>
               {pages.map((page) => (
@@ -114,7 +116,7 @@ export default function EditorHeader({
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded hover:bg-white/10 transition-colors text-gray-300 hover:text-white"
           >
             <Eye className="h-3.5 w-3.5" />
-            Ver sitio
+            {t('viewSite')}
           </a>
         )}
 
@@ -134,7 +136,7 @@ export default function EditorHeader({
           ) : (
             <Save className="h-3.5 w-3.5 mr-1.5" />
           )}
-          Guardar
+          {t('save')}
         </Button>
       </div>
     </div>

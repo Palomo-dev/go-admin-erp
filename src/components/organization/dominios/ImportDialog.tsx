@@ -16,6 +16,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { DomainType } from '@/lib/services/domainService';
+import { useTranslations } from 'next-intl';
 
 interface ImportDialogProps {
   open: boolean;
@@ -35,6 +36,7 @@ interface ParsedDomain {
 }
 
 export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
+  const t = useTranslations('organization.domains.importDialog');
   const [file, setFile] = useState<File | null>(null);
   const [parsedDomains, setParsedDomains] = useState<ParsedDomain[]>([]);
   const [isImporting, setIsImporting] = useState(false);
@@ -78,7 +80,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
         host,
         domain_type: type,
         valid,
-        error: valid ? undefined : 'Formato de dominio inválido',
+        error: valid ? undefined : t('invalidFormat'),
       };
     });
 
@@ -119,10 +121,10 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
             </div>
             <div>
               <DialogTitle className="dark:text-white">
-                Importar Dominios
+                {t('title')}
               </DialogTitle>
               <DialogDescription className="dark:text-gray-400">
-                Importa múltiples dominios desde un archivo CSV
+                {t('description')}
               </DialogDescription>
             </div>
           </div>
@@ -138,13 +140,13 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
             }>
               <CheckCircle2 className={`h-4 w-4 ${importResult.failed === 0 ? 'text-green-600' : 'text-yellow-600'}`} />
               <AlertDescription className="dark:text-gray-300">
-                <strong>Importación completada:</strong>
+                <strong>{t('importComplete')}</strong>
                 <br />
-                ✓ {importResult.success} dominios importados correctamente
+                ✓ {t('domainsImported', { count: importResult.success })}
                 {importResult.failed > 0 && (
                   <>
                     <br />
-                    ✗ {importResult.failed} dominios fallidos
+                    ✗ {t('domainsFailed', { count: importResult.failed })}
                   </>
                 )}
                 {importResult.errors.length > 0 && (
@@ -153,7 +155,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                       <li key={i}>• {err}</li>
                     ))}
                     {importResult.errors.length > 3 && (
-                      <li>• ... y {importResult.errors.length - 3} errores más</li>
+                      <li>• {t('andMoreErrors', { count: importResult.errors.length - 3 })}</li>
                     )}
                   </ul>
                 )}
@@ -165,7 +167,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
           {!importResult && (
             <>
               <div className="space-y-2">
-                <Label className="dark:text-gray-200">Archivo CSV</Label>
+                <Label className="dark:text-gray-200">{t('csvFile')}</Label>
                 <div 
                   className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
@@ -202,10 +204,10 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                     <>
                       <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
                       <p className="text-gray-600 dark:text-gray-400">
-                        Haz clic para seleccionar un archivo CSV
+                        {t('clickToSelect')}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                        o arrastra y suelta aquí
+                        {t('dragDrop')}
                       </p>
                     </>
                   )}
@@ -216,7 +218,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               <Alert className="dark:bg-gray-900 dark:border-gray-700">
                 <AlertTriangle className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 <AlertDescription className="text-sm dark:text-gray-300">
-                  <strong>Formato esperado del CSV:</strong>
+                  <strong>{t('expectedFormat')}</strong>
                   <code className="block mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
                     host,domain_type<br />
                     www.ejemplo.com,custom_domain<br />
@@ -229,14 +231,14 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               {parsedDomains.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="dark:text-gray-200">Vista Previa</Label>
+                    <Label className="dark:text-gray-200">{t('preview')}</Label>
                     <div className="flex gap-2">
                       <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                        {validCount} válidos
+                        {validCount} {t('valid')}
                       </Badge>
                       {invalidCount > 0 && (
                         <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                          {invalidCount} inválidos
+                          {invalidCount} {t('invalid')}
                         </Badge>
                       )}
                     </div>
@@ -246,9 +248,9 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
                         <tr>
-                          <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400">Dominio</th>
-                          <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400">Tipo</th>
-                          <th className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">Estado</th>
+                          <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400">{t('domainCol')}</th>
+                          <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400">{t('typeCol')}</th>
+                          <th className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">{t('statusCol')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -256,7 +258,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                           <tr key={idx} className={!domain.valid ? 'bg-red-50 dark:bg-red-900/10' : ''}>
                             <td className="px-3 py-2 text-gray-900 dark:text-white">{domain.host}</td>
                             <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
-                              {domain.domain_type === 'subdomain' ? 'Subdominio' : 'Personalizado'}
+                              {domain.domain_type === 'subdomain' ? t('subdomainType') : t('customType')}
                             </td>
                             <td className="px-3 py-2 text-center">
                               {domain.valid ? (
@@ -271,7 +273,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                     </table>
                     {parsedDomains.length > 10 && (
                       <p className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 text-center bg-gray-50 dark:bg-gray-900">
-                        ... y {parsedDomains.length - 10} dominios más
+                        {t('andMoreDomains', { count: parsedDomains.length - 10 })}
                       </p>
                     )}
                   </div>
@@ -287,7 +289,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
             onClick={handleClose}
             className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            {importResult ? 'Cerrar' : 'Cancelar'}
+            {importResult ? t('close') : t('cancel')}
           </Button>
           {!importResult && (
             <Button
@@ -295,7 +297,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               disabled={isImporting || validCount === 0}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {isImporting ? 'Importando...' : `Importar ${validCount} dominio${validCount !== 1 ? 's' : ''}`}
+              {isImporting ? t('importing') : t('importCount', { count: validCount })}
             </Button>
           )}
         </DialogFooter>

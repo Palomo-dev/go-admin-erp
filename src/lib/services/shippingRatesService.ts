@@ -25,6 +25,8 @@ export interface ShippingRate {
   valid_from?: string;
   valid_until?: string;
   is_active: boolean;
+  show_on_website: boolean;
+  free_shipping_threshold?: number;
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;

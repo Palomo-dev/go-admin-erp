@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
@@ -43,6 +43,8 @@ import {
   ADJUSTMENT_REASONS 
 } from '@/lib/services/adjustmentService';
 import Link from 'next/link';
+import Image from 'next/image';
+import { getPublicUrl } from '@/lib/supabase/imageUtils';
 
 interface ProductForAdjustment {
   id: number;
@@ -57,6 +59,7 @@ interface AdjustmentItemInput {
   product_id: number;
   product_name: string;
   product_sku: string;
+  product_image?: string | null;
   system_qty: number;
   counted_qty: number;
   difference: number;
@@ -65,12 +68,27 @@ interface AdjustmentItemInput {
 
 export function NuevoAjusteForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { organization, isLoading: loadingOrg } = useOrganization();
+  const preloadedRef = useRef(false);
+
+  // Leer query params de la URL
+  const paramProductId = searchParams.get('productId') || searchParams.get('producto_id');
+  const paramTypeRaw = searchParams.get('type');
+  const paramBranchId = searchParams.get('branchId');
+  
+  // Mapear tipo del StockTab (entrada/salida) a valores válidos de BD ('gain'/'loss')
+  const mapType = (t: string | null): string => {
+    if (!t) return '';
+    if (t === 'entrada') return 'gain';
+    if (t === 'salida') return 'loss';
+    return t;
+  };
 
   // Estados del formulario
-  const [branchId, setBranchId] = useState<string>('');
-  const [type, setType] = useState<string>('');
+  const [branchId, setBranchId] = useState<string>(paramBranchId || '');
+  const [type, setType] = useState<string>(mapType(paramTypeRaw));
   const [reason, setReason] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   
@@ -96,9 +114,10 @@ export function NuevoAjusteForm() {
         const branchesData = await adjustmentService.getBranches(organization.id);
         setBranches(branchesData);
         
-        // Seleccionar la primera sucursal por defecto
+        // Seleccionar sucursal del param o la primera por defecto
         if (branchesData.length > 0 && !branchId) {
-          setBranchId(branchesData[0].id.toString());
+          const defaultBranch = paramBranchId || branchesData[0].id.toString();
+          setBranchId(defaultBranch);
         }
       } catch (error) {
         console.error('Error cargando sucursales:', error);
@@ -109,6 +128,121 @@ export function NuevoAjusteForm() {
 
     loadBranches();
   }, [organization?.id]);
+
+  // Precargar producto desde query params
+  useEffect(() => {
+    const preloadProduct = async () => {
+      if (!paramProductId || !organization?.id || !branchId || preloadedRef.current) return;
+      preloadedRef.current = true;
+
+      try {
+        const productId = parseInt(paramProductId);
+        
+        // Obtener producto padre con sus variantes, incluyendo product_costs e imágenes
+        const { data: product, error } = await supabase
+          .from('products')
+          .select(`
+            id, name, sku, is_parent,
+            stock_levels(qty_on_hand, avg_cost, branch_id),
+            product_costs(cost, effective_from, effective_to),
+            product_images(storage_path, is_primary),
+            children:products(
+              id, name, sku, variant_data,
+              stock_levels(qty_on_hand, avg_cost, branch_id),
+              product_costs(cost, effective_from, effective_to),
+              product_images(storage_path, is_primary)
+            )
+          `)
+          .eq('id', productId)
+          .single();
+
+        if (error || !product) return;
+
+        // Función para obtener la URL de imagen principal
+        const getImageUrl = (productData: any, parentData?: any): string | null => {
+          const images = productData.product_images;
+          if (images && images.length > 0) {
+            const primary = images.find((img: any) => img.is_primary) || images[0];
+            return primary?.storage_path ? getPublicUrl(primary.storage_path) : null;
+          }
+          // Fallback a imagen del padre
+          if (parentData?.product_images && parentData.product_images.length > 0) {
+            const primary = parentData.product_images.find((img: any) => img.is_primary) || parentData.product_images[0];
+            return primary?.storage_path ? getPublicUrl(primary.storage_path) : null;
+          }
+          return null;
+        };
+
+        // Función para obtener el costo más reciente de product_costs
+        const getCurrentCost = (productData: any): number => {
+          const costs = productData.product_costs;
+          if (!costs || costs.length === 0) return productData.stock_levels?.[0]?.avg_cost || 0;
+          const now = new Date().toISOString();
+          const current = costs
+            .filter((c: any) => c.effective_from <= now && (!c.effective_to || c.effective_to >= now))
+            .sort((a: any, b: any) => b.effective_from.localeCompare(a.effective_from))[0];
+          return parseFloat(current?.cost) || parseFloat(costs[0]?.cost) || 0;
+        };
+
+        const branchIdNum = parseInt(branchId);
+        const newItems: AdjustmentItemInput[] = [];
+
+        if (product.is_parent && product.children && product.children.length > 0) {
+          // Producto padre: agregar cada variante como item
+          product.children.forEach((child: any) => {
+            const stockLevel = child.stock_levels?.find((sl: any) => sl.branch_id === branchIdNum);
+            const currentQty = stockLevel?.qty_on_hand || 0;
+            const unitCost = getCurrentCost(child) || getCurrentCost(product);
+            
+            // Construir nombre con atributos
+            let displayName = child.name;
+            if (child.variant_data && typeof child.variant_data === 'object') {
+              const attrs = Object.entries(child.variant_data)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(' | ');
+              if (attrs) displayName = `${child.name} (${attrs})`;
+            }
+
+            newItems.push({
+              product_id: child.id,
+              product_name: displayName,
+              product_sku: child.sku,
+              product_image: getImageUrl(child, product),
+              system_qty: currentQty,
+              counted_qty: currentQty,
+              difference: 0,
+              unit_cost: unitCost
+            });
+          });
+        } else {
+          // Producto simple: agregar directamente
+          const stockLevel = product.stock_levels?.find((sl: any) => sl.branch_id === branchIdNum);
+          const currentQty = stockLevel?.qty_on_hand || 0;
+          const unitCost = getCurrentCost(product);
+
+          newItems.push({
+            product_id: product.id,
+            product_name: product.name,
+            product_sku: product.sku,
+            product_image: getImageUrl(product),
+            system_qty: currentQty,
+            counted_qty: currentQty,
+            difference: 0,
+            unit_cost: unitCost
+          });
+        }
+
+        if (newItems.length > 0) {
+          setItems(newItems);
+          setNotes(`Ajuste de stock para ${product.name}`);
+        }
+      } catch (error) {
+        console.error('Error precargando producto:', error);
+      }
+    };
+
+    preloadProduct();
+  }, [paramProductId, organization?.id, branchId]);
 
   // Buscar productos
   const searchProducts = useCallback(async () => {
@@ -470,9 +604,26 @@ export function NuevoAjusteForm() {
                       {items.map((item, index) => (
                         <TableRow key={index} className="dark:border-gray-700">
                           <TableCell>
-                            <div>
-                              <p className="font-medium dark:text-white">{item.product_name}</p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{item.product_sku}</p>
+                            <div className="flex items-center gap-3">
+                              {item.product_image ? (
+                                <div className="relative h-10 w-10 rounded-md overflow-hidden border dark:border-gray-700 flex-shrink-0">
+                                  <Image
+                                    src={item.product_image}
+                                    alt={item.product_name}
+                                    fill
+                                    className="object-cover"
+                                    sizes="40px"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                                  <Package className="h-5 w-5 text-gray-400" />
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-medium dark:text-white">{item.product_name}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{item.product_sku}</p>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right dark:text-gray-300">

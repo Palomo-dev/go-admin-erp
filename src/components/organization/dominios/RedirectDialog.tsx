@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { OrganizationDomain } from '@/lib/services/domainService';
+import { useTranslations } from 'next-intl';
 
 interface RedirectDialogProps {
   open: boolean;
@@ -39,6 +40,7 @@ export function RedirectDialog({
   onSubmit,
   isLoading = false,
 }: RedirectDialogProps) {
+  const t = useTranslations('organization.domains.redirectDialog');
   const [redirectToDomainId, setRedirectToDomainId] = useState<string>('none');
   const [statusCode, setStatusCode] = useState<string>('301');
 
@@ -73,10 +75,10 @@ export function RedirectDialog({
             </div>
             <div>
               <DialogTitle className="dark:text-white">
-                Configurar Redirección
+                {t('title')}
               </DialogTitle>
               <DialogDescription className="dark:text-gray-400">
-                Redirigir <span className="font-semibold">{domain.host}</span> a otro dominio
+                {t('description', { host: domain.host })}
               </DialogDescription>
             </div>
           </div>
@@ -86,15 +88,15 @@ export function RedirectDialog({
           {/* Dominio destino */}
           <div className="space-y-2">
             <Label htmlFor="redirectTo" className="dark:text-gray-200">
-              Redirigir a
+              {t('redirectTo')}
             </Label>
             <Select value={redirectToDomainId} onValueChange={setRedirectToDomainId}>
               <SelectTrigger id="redirectTo" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                <SelectValue placeholder="Selecciona un dominio" />
+                <SelectValue placeholder={t('selectDomain')} />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 <SelectItem value="none" className="dark:text-white dark:focus:bg-gray-700">
-                  Sin redirección
+                  {t('noRedirect')}
                 </SelectItem>
                 {filteredDomains.map((d) => (
                   <SelectItem 
@@ -102,14 +104,14 @@ export function RedirectDialog({
                     value={d.id}
                     className="dark:text-white dark:focus:bg-gray-700"
                   >
-                    {d.host} {d.is_primary && '(Principal)'}
+                    {d.host} {d.is_primary && t('primary')}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {filteredDomains.length === 0 && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                No hay dominios verificados disponibles para redirección
+                {t('noVerifiedDomains')}
               </p>
             )}
           </div>
@@ -118,7 +120,7 @@ export function RedirectDialog({
           {redirectToDomainId !== 'none' && (
             <div className="space-y-2">
               <Label htmlFor="statusCode" className="dark:text-gray-200">
-                Código de Estado HTTP
+                {t('httpStatusCode')}
               </Label>
               <Select value={statusCode} onValueChange={setStatusCode}>
                 <SelectTrigger id="statusCode" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white">
@@ -126,16 +128,16 @@ export function RedirectDialog({
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                   <SelectItem value="301" className="dark:text-white dark:focus:bg-gray-700">
-                    301 - Redirección Permanente
+                    {t('permanent301')}
                   </SelectItem>
                   <SelectItem value="302" className="dark:text-white dark:focus:bg-gray-700">
-                    302 - Redirección Temporal
+                    {t('temporary302')}
                   </SelectItem>
                   <SelectItem value="307" className="dark:text-white dark:focus:bg-gray-700">
-                    307 - Redirección Temporal (preserva método)
+                    {t('temporary307')}
                   </SelectItem>
                   <SelectItem value="308" className="dark:text-white dark:focus:bg-gray-700">
-                    308 - Redirección Permanente (preserva método)
+                    {t('permanent308')}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -147,9 +149,9 @@ export function RedirectDialog({
             <Alert className="dark:bg-blue-900/20 dark:border-blue-800">
               <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <AlertDescription className="text-sm dark:text-gray-300">
-                <strong>301 (Permanente):</strong> Los motores de búsqueda actualizarán sus índices al nuevo dominio.
+                <strong>{t('info301')}</strong>
                 <br />
-                <strong>302 (Temporal):</strong> Los motores de búsqueda mantendrán el dominio original en sus índices.
+                <strong>{t('info302')}</strong>
               </AlertDescription>
             </Alert>
           )}
@@ -161,14 +163,14 @@ export function RedirectDialog({
             onClick={() => onOpenChange(false)}
             className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            Cancelar
+            {t('cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={isLoading}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {isLoading ? 'Guardando...' : 'Guardar'}
+            {isLoading ? t('saving') : t('save')}
           </Button>
         </DialogFooter>
       </DialogContent>

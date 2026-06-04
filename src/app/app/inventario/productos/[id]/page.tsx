@@ -28,22 +28,8 @@ export default function ProductoDetallePage() {
 
       try {
         setLoading(true);
-        // Primero, intenta obtener el producto del sessionStorage para evitar consultas innecesarias
-        const cachedProductData = sessionStorage.getItem(`product_${id}_data`);
         
-        if (cachedProductData) {
-          try {
-            const parsedData = JSON.parse(cachedProductData);
-            setProducto(parsedData);
-            setLoading(false);
-            console.log('Producto recuperado de sessionStorage:', parsedData);
-            return;
-          } catch (e) {
-            console.log('Error parsing cached product data, fetching from database');
-          }
-        }
-        
-        // Si no hay datos en cache o hay un error, consulta la base de datos
+        // Siempre consultar la BD para obtener datos completos (incluyendo product_suppliers, etc.)
         // Buscar por UUID (el id de la URL ahora es UUID)
         const { data, error: fetchError } = await supabase
           .from('products')
@@ -53,12 +39,12 @@ export default function ProductoDetallePage() {
             children:products(
               *,
               categories(id, name),
-              product_prices(id, price, effective_from, effective_to),
+              product_prices(id, price, compare_price, effective_from, effective_to),
               product_costs(id, cost, effective_from, effective_to),
               stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
               product_images(id, storage_path, is_primary)
             ),
-            product_prices(id, price, effective_from, effective_to),
+            product_prices(id, price, compare_price, effective_from, effective_to),
             product_costs(id, cost, effective_from, effective_to),
             stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
             product_images(id, storage_path, is_primary),

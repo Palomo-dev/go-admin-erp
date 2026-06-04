@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 
 interface SubdomainManagerProps {
   organizationId: number;
@@ -23,6 +24,7 @@ export function SubdomainManager({
   currentSubdomain,
   onSubdomainChange,
 }: SubdomainManagerProps) {
+  const t = useTranslations('org.domains.subdomainMgr');
   const [isEditing, setIsEditing] = useState(false);
   const [subdomain, setSubdomain] = useState(currentSubdomain || '');
   const [status, setStatus] = useState<AvailabilityStatus>('idle');
@@ -122,12 +124,12 @@ export function SubdomainManager({
   // Guardar cambios
   const handleSave = async () => {
     if (status !== 'available') {
-      setError('El subdominio no está disponible');
+      setError(t('errorNotAvailable'));
       return;
     }
 
     if (subdomain.length < 3) {
-      setError('El subdominio debe tener al menos 3 caracteres');
+      setError(t('errorMinChars'));
       return;
     }
 
@@ -183,7 +185,7 @@ export function SubdomainManager({
       onSubdomainChange(subdomain);
       setIsEditing(false);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al guardar el subdominio';
+      const errorMessage = err instanceof Error ? err.message : t('errorSaving');
       setError(errorMessage);
     } finally {
       setIsSaving(false);
@@ -207,28 +209,28 @@ export function SubdomainManager({
         return (
           <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Verificando...</span>
+            <span className="text-sm">{t('checking')}</span>
           </div>
         );
       case 'available':
         return (
           <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
             <Check className="h-4 w-4" />
-            <span className="text-sm">¡Disponible!</span>
+            <span className="text-sm">{t('available')}</span>
           </div>
         );
       case 'taken':
         return (
           <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
             <X className="h-4 w-4" />
-            <span className="text-sm">Ya está en uso</span>
+            <span className="text-sm">{t('taken')}</span>
           </div>
         );
       case 'invalid':
         return (
           <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
             <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm">Mínimo 3 caracteres</span>
+            <span className="text-sm">{t('minChars')}</span>
           </div>
         );
       default:
@@ -245,15 +247,15 @@ export function SubdomainManager({
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-white">
-              Subdominio del Sistema
+              {t('title')}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Tu URL gratuita en goadmin.io
+              {t('description')}
             </p>
           </div>
         </div>
         <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-          Gratuito
+          {t('free')}
         </Badge>
       </div>
 
@@ -267,7 +269,7 @@ export function SubdomainManager({
       <div className="space-y-4">
         <div>
           <Label htmlFor="subdomain" className="text-gray-700 dark:text-gray-300">
-            Subdominio
+            {t('subdomainLabel')}
           </Label>
           <div className="mt-1 flex items-center gap-2">
             {isEditing ? (
@@ -291,7 +293,7 @@ export function SubdomainManager({
             ) : (
               <div className="flex-1 flex items-center">
                 <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-l-md text-gray-900 dark:text-white font-medium">
-                  {currentSubdomain || 'No configurado'}
+                  {currentSubdomain || t('notConfigured')}
                 </div>
                 <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-md text-gray-500 dark:text-gray-400 text-sm">
                   .goadmin.io
@@ -307,7 +309,7 @@ export function SubdomainManager({
                 className="dark:border-gray-600 dark:text-gray-300"
               >
                 <Pencil className="h-4 w-4 mr-1" />
-                Editar
+                {t('edit')}
               </Button>
             )}
           </div>
@@ -323,7 +325,7 @@ export function SubdomainManager({
                   disabled={isSaving}
                   className="dark:border-gray-600 dark:text-gray-300"
                 >
-                  Cancelar
+                  {t('cancel')}
                 </Button>
                 <Button
                   size="sm"
@@ -334,12 +336,12 @@ export function SubdomainManager({
                   {isSaving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      Guardando...
+                      {t('saving')}
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-1" />
-                      Guardar
+                      {t('save')}
                     </>
                   )}
                 </Button>
@@ -351,7 +353,7 @@ export function SubdomainManager({
         {currentSubdomain && (
           <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-              Tu sitio web está disponible en:
+              {t('siteAvailableAt')}
             </p>
             <a
               href={`https://${currentSubdomain}.goadmin.io`}

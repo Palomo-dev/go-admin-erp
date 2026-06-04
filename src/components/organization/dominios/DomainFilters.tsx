@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DomainStatus, DomainType } from '@/lib/services/domainService';
+import { useTranslations } from 'next-intl';
 
 interface DomainFiltersProps {
   searchTerm: string;
@@ -38,6 +39,7 @@ export function DomainFilters({
   totalDomains,
   filteredCount,
 }: DomainFiltersProps) {
+  const t = useTranslations('organization.domains.filters');
   const hasFilters = searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || activeFilter !== 'all';
 
   const clearFilters = () => {
@@ -56,7 +58,7 @@ export function DomainFilters({
           <Input
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Buscar por dominio..."
+            placeholder={t('searchPlaceholder')}
             className="pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
           />
         </div>
@@ -69,10 +71,10 @@ export function DomainFilters({
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-              <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">Todos los estados</SelectItem>
-              <SelectItem value="verified" className="dark:text-white dark:focus:bg-gray-700">Verificado</SelectItem>
-              <SelectItem value="pending" className="dark:text-white dark:focus:bg-gray-700">Pendiente</SelectItem>
-              <SelectItem value="failed" className="dark:text-white dark:focus:bg-gray-700">Fallido</SelectItem>
+              <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">{t('allStatuses')}</SelectItem>
+              <SelectItem value="verified" className="dark:text-white dark:focus:bg-gray-700">{t('verified')}</SelectItem>
+              <SelectItem value="pending" className="dark:text-white dark:focus:bg-gray-700">{t('pending')}</SelectItem>
+              <SelectItem value="failed" className="dark:text-white dark:focus:bg-gray-700">{t('failed')}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -82,9 +84,9 @@ export function DomainFilters({
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-              <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">Todos los tipos</SelectItem>
-              <SelectItem value="subdomain" className="dark:text-white dark:focus:bg-gray-700">Subdominio</SelectItem>
-              <SelectItem value="custom_domain" className="dark:text-white dark:focus:bg-gray-700">Personalizado</SelectItem>
+              <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">{t('allTypes')}</SelectItem>
+              <SelectItem value="subdomain" className="dark:text-white dark:focus:bg-gray-700">{t('subdomain')}</SelectItem>
+              <SelectItem value="custom_domain" className="dark:text-white dark:focus:bg-gray-700">{t('custom')}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -94,9 +96,9 @@ export function DomainFilters({
               <SelectValue placeholder="Actividad" />
             </SelectTrigger>
             <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-              <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">Todos</SelectItem>
-              <SelectItem value="active" className="dark:text-white dark:focus:bg-gray-700">Activos</SelectItem>
-              <SelectItem value="inactive" className="dark:text-white dark:focus:bg-gray-700">Inactivos</SelectItem>
+              <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">{t('all')}</SelectItem>
+              <SelectItem value="active" className="dark:text-white dark:focus:bg-gray-700">{t('active')}</SelectItem>
+              <SelectItem value="inactive" className="dark:text-white dark:focus:bg-gray-700">{t('inactive')}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -109,7 +111,7 @@ export function DomainFilters({
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
               <X className="h-4 w-4 mr-1" />
-              Limpiar
+              {t('clearFilters')}
             </Button>
           )}
         </div>
@@ -119,12 +121,12 @@ export function DomainFilters({
       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
         <Filter className="h-4 w-4" />
         <span>
-          Mostrando <strong className="text-gray-900 dark:text-white">{filteredCount}</strong> de{' '}
-          <strong className="text-gray-900 dark:text-white">{totalDomains}</strong> dominio{totalDomains !== 1 ? 's' : ''}
+          {t('showing')} <strong className="text-gray-900 dark:text-white">{filteredCount}</strong> {t('of')}{' '}
+          <strong className="text-gray-900 dark:text-white">{totalDomains}</strong> {totalDomains !== 1 ? t('domainPlural') : t('domain')}
         </span>
         {hasFilters && (
           <Badge variant="secondary" className="ml-2 dark:bg-gray-700 dark:text-gray-300">
-            Filtros activos
+            {t('activeFilters')}
           </Badge>
         )}
       </div>

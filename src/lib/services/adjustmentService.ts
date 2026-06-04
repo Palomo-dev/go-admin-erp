@@ -7,7 +7,7 @@ export interface InventoryAdjustment {
   branch_id: number;
   type: string;
   reason: string;
-  status: 'draft' | 'applied' | 'cancelled';
+  status: 'draft' | 'posted';
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -83,20 +83,13 @@ export interface UpdateAdjustmentInput {
 export interface AdjustmentStats {
   total: number;
   draft: number;
-  applied: number;
-  cancelled: number;
+  posted: number;
 }
 
-// Tipos de ajuste
+// Tipos de ajuste (deben coincidir con CHECK constraint: 'gain' o 'loss')
 export const ADJUSTMENT_TYPES = [
-  { value: 'count', label: 'Conteo Físico' },
-  { value: 'damage', label: 'Daño/Merma' },
-  { value: 'loss', label: 'Pérdida' },
-  { value: 'correction', label: 'Corrección' },
-  { value: 'initial', label: 'Inventario Inicial' },
-  { value: 'write_off', label: 'Baja de Inventario' },
-  { value: 'found', label: 'Producto Encontrado' },
-  { value: 'other', label: 'Otro' }
+  { value: 'gain', label: 'Entrada (Ganancia)' },
+  { value: 'loss', label: 'Salida (Pérdida)' },
 ];
 
 // Razones de ajuste
@@ -212,10 +205,6 @@ class AdjustmentService {
             uuid,
             name,
             sku
-          ),
-          lots (
-            id,
-            lot_number
           )
         `)
         .eq('inventory_adjustment_id', adjustmentId);
@@ -453,11 +442,11 @@ class AdjustmentService {
         }
       }
 
-      // Actualizar estado del ajuste a aplicado
+      // Actualizar estado del ajuste a 'posted' (CHECK constraint: draft/posted)
       const { error: updateError } = await supabase
         .from('inventory_adjustments')
         .update({
-          status: 'applied',
+          status: 'posted',
           updated_at: new Date().toISOString()
         })
         .eq('id', adjustmentId);
@@ -493,15 +482,13 @@ class AdjustmentService {
         throw new Error('Solo se pueden cancelar ajustes en estado borrador');
       }
 
-      const { error: updateError } = await supabase
+      // Eliminar el ajuste borrador (no existe status 'cancelled' en BD)
+      const { error: deleteError } = await supabase
         .from('inventory_adjustments')
-        .update({
-          status: 'cancelled',
-          updated_at: new Date().toISOString()
-        })
+        .delete()
         .eq('id', adjustmentId);
 
-      if (updateError) throw updateError;
+      if (deleteError) throw deleteError;
 
       return { success: true, error: null };
     } catch (error) {
@@ -574,20 +561,18 @@ class AdjustmentService {
       const stats: AdjustmentStats = {
         total: data?.length || 0,
         draft: 0,
-        applied: 0,
-        cancelled: 0
+        posted: 0
       };
 
       data?.forEach((item: any) => {
         if (item.status === 'draft') stats.draft++;
-        else if (item.status === 'applied') stats.applied++;
-        else if (item.status === 'cancelled') stats.cancelled++;
+        else if (item.status === 'posted') stats.posted++;
       });
 
       return stats;
     } catch (error) {
       console.error('Error obteniendo estadísticas:', error);
-      return { total: 0, draft: 0, applied: 0, cancelled: 0 };
+      return { total: 0, draft: 0, posted: 0 };
     }
   }
 

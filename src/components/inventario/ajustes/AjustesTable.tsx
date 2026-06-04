@@ -48,15 +48,10 @@ function getStatusBadge(status: string) {
       color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
       icon: FileEdit
     },
-    applied: {
+    posted: {
       label: 'Aplicado',
       color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
       icon: CheckCircle
-    },
-    cancelled: {
-      label: 'Cancelado',
-      color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-      icon: XCircle
     }
   };
   return badges[status] || badges.draft;

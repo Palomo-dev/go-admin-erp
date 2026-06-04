@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ImagePickerDialog from '@/components/common/ImagePickerDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,8 +48,12 @@ import {
   Search,
   ImagePlus,
   X,
+  Flame,
+  Megaphone,
+  Award,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 import type {
   WebsitePageSection,
   SectionTypeDefinition,
@@ -77,6 +81,9 @@ const ICON_MAP: Record<string, any> = {
   LayoutPanelLeft,
   UtensilsCrossed,
   CreditCard,
+  Flame,
+  Megaphone,
+  Award,
 };
 
 interface EditorSidebarProps {
@@ -116,6 +123,7 @@ export default function EditorSidebar({
   onTogglePageSEO,
   pageSEOContent,
 }: EditorSidebarProps) {
+  const t = useTranslations('branding.editor.sidebar');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const handleDragStart = (index: number) => {
@@ -139,7 +147,7 @@ export default function EditorSidebar({
       {/* Sidebar Header */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700/50">
         <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-          Secciones de la página
+          {t('sections')}
         </h2>
       </div>
 
@@ -155,7 +163,7 @@ export default function EditorSidebar({
             )}
           >
             <Settings className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">Configuración del Tema</span>
+            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">{t('themeConfig')}</span>
             {showGlobalSettings ? (
               <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             ) : (
@@ -179,7 +187,7 @@ export default function EditorSidebar({
             )}
           >
             <Search className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">SEO de la Página</span>
+            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">{t('pageSEO')}</span>
             {showPageSEO ? (
               <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             ) : (
@@ -229,7 +237,7 @@ export default function EditorSidebar({
           className="w-full border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white hover:border-blue-400 dark:hover:border-gray-400 bg-transparent hover:bg-blue-50 dark:hover:bg-white/5"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Agregar sección
+          {t('addSection')}
         </Button>
       </div>
     </div>
@@ -271,6 +279,7 @@ function SectionListItem({
   onDragOver,
   onDragEnd,
 }: SectionListItemProps) {
+  const t = useTranslations('branding.editor.sidebar');
   const label = definition?.label || section.section_type;
   const variantLabel = definition?.variants.find(
     (v) => v.id === section.section_variant
@@ -312,7 +321,7 @@ function SectionListItem({
           {/* Variant Selector */}
           {definition && definition.variants.length > 1 && (
             <div className="space-y-1.5">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">Variante</Label>
+              <Label className="text-xs text-gray-500 dark:text-gray-400">{t('variant')}</Label>
               <Select
                 value={section.section_variant}
                 onValueChange={onUpdateVariant}
@@ -387,13 +396,62 @@ function SectionListItem({
                   }
                 />
               )}
+              {field.type === 'boolean' && (
+                <div className="flex items-center justify-between">
+                  <Switch
+                    checked={section.content?.[field.key] ?? field.defaultValue ?? false}
+                    onCheckedChange={(checked) =>
+                      onUpdateContent({
+                        ...section.content,
+                        [field.key]: checked,
+                      })
+                    }
+                  />
+                </div>
+              )}
+              {field.type === 'number' && (
+                <Input
+                  type="number"
+                  value={(section.content?.[field.key] as number) ?? ''}
+                  onChange={(e) =>
+                    onUpdateContent({
+                      ...section.content,
+                      [field.key]: e.target.value ? Number(e.target.value) : undefined,
+                    })
+                  }
+                  placeholder={field.placeholder}
+                  className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                />
+              )}
+              {field.type === 'select' && field.options && (
+                <Select
+                  value={(section.content?.[field.key] as string) || field.options[0]?.value || ''}
+                  onValueChange={(val) =>
+                    onUpdateContent({
+                      ...section.content,
+                      [field.key]: val,
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           ))}
 
           {/* Hero Booking Switch */}
           {section.section_type === 'hero' && (
             <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700/50">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">Buscador de reservas</Label>
+              <Label className="text-xs text-gray-500 dark:text-gray-400">{t('bookingWidget')}</Label>
               <Switch
                 checked={section.content?.show_booking_widget === true}
                 onCheckedChange={(checked) =>
@@ -436,6 +494,16 @@ function SectionListItem({
             />
           )}
 
+          {/* Hero Slides Editor (only for slider variant) */}
+          {section.section_type === 'hero' && section.section_variant === 'slider' && (
+            <HeroSlidesEditor
+              items={(section.content?.slides as HeroSlideItem[]) || []}
+              onChange={(slides) =>
+                onUpdateContent({ ...section.content, slides })
+              }
+            />
+          )}
+
           {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700/50">
             <div className="flex items-center gap-2">
@@ -445,7 +513,7 @@ function SectionListItem({
                   onToggleVisibility(!section.is_visible);
                 }}
                 className="p-1 rounded hover:bg-white/10 transition-colors"
-                title={section.is_visible ? 'Ocultar sección' : 'Mostrar sección'}
+                title={section.is_visible ? t('hideSection') : t('showSection')}
               >
                 {section.is_visible ? (
                   <Eye className="h-3.5 w-3.5 text-gray-400" />
@@ -460,7 +528,7 @@ function SectionListItem({
                 onDelete();
               }}
               className="p-1 rounded hover:bg-red-900/30 transition-colors"
-              title="Eliminar sección"
+              title={t('deleteSection')}
             >
               <Trash2 className="h-3.5 w-3.5 text-red-400" />
             </button>
@@ -496,11 +564,21 @@ interface FAQItem {
   answer: string;
 }
 
+interface HeroSlideItem {
+  id: string;
+  title?: string;
+  subtitle?: string;
+  image_url?: string;
+  cta_text?: string;
+  cta_url?: string;
+}
+
 // ============================================================
 // IMAGE FIELD PICKER (inline image selector with ImagePickerDialog)
 // ============================================================
 
 function ImageFieldPicker({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const t = useTranslations('branding.editor.sidebar');
   const [showPicker, setShowPicker] = useState(false);
 
   return (
@@ -509,7 +587,7 @@ function ImageFieldPicker({ value, onChange }: { value: string; onChange: (url: 
         <div className="relative group rounded-md overflow-hidden border border-gray-300 dark:border-gray-600">
           <img
             src={value}
-            alt="Imagen"
+            alt={t('imageAlt')}
             className="w-full h-20 object-cover cursor-pointer"
             onClick={() => setShowPicker(true)}
           />
@@ -526,7 +604,7 @@ function ImageFieldPicker({ value, onChange }: { value: string; onChange: (url: 
           className="w-full h-16 flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-blue-400 hover:text-blue-500 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors bg-white dark:bg-white/5"
         >
           <ImagePlus className="h-4 w-4" />
-          <span className="text-[10px]">Seleccionar imagen</span>
+          <span className="text-[10px]">{t('selectImage')}</span>
         </button>
       )}
       <ImagePickerDialog
@@ -549,6 +627,7 @@ function GalleryItemsEditor({
   items: GalleryItem[];
   onChange: (items: GalleryItem[]) => void;
 }) {
+  const t = useTranslations('branding.editor.sidebar');
   const [showPicker, setShowPicker] = useState(false);
 
   const handleAddImage = (url: string) => {
@@ -563,13 +642,13 @@ function GalleryItemsEditor({
     <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
       <div className="flex items-center justify-between">
         <Label className="text-xs text-gray-500 dark:text-gray-400">
-          Imágenes ({items.length})
+          {t('imagesLabel', { count: items.length })}
         </Label>
         <button
           onClick={() => setShowPicker(true)}
           className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
         >
-          <Plus className="h-3 w-3" /> Agregar
+          <Plus className="h-3 w-3" /> {t('add')}
         </button>
       </div>
 
@@ -596,7 +675,7 @@ function GalleryItemsEditor({
         </div>
       ) : (
         <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
-          Sin imágenes. Haz clic en Agregar.
+          {t('noImages')}
         </p>
       )}
 
@@ -604,7 +683,7 @@ function GalleryItemsEditor({
         open={showPicker}
         onOpenChange={setShowPicker}
         onSelect={handleAddImage}
-        title="Agregar imagen a la galería"
+        title={t('addImageToGallery')}
       />
     </div>
   );
@@ -621,6 +700,7 @@ function TestimonialItemsEditor({
   items: TestimonialItem[];
   onChange: (items: TestimonialItem[]) => void;
 }) {
+  const tr = useTranslations('branding.editor.sidebar');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleAdd = () => {
@@ -647,13 +727,13 @@ function TestimonialItemsEditor({
     <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
       <div className="flex items-center justify-between">
         <Label className="text-xs text-gray-500 dark:text-gray-400">
-          Testimonios ({items.length})
+          {tr('testimonialsLabel', { count: items.length })}
         </Label>
         <button
           onClick={handleAdd}
           className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
         >
-          <Plus className="h-3 w-3" /> Agregar
+          <Plus className="h-3 w-3" /> {tr('add')}
         </button>
       </div>
 
@@ -670,7 +750,7 @@ function TestimonialItemsEditor({
               >
                 <MessageSquareQuote className="h-3 w-3 text-gray-400 shrink-0" />
                 <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
-                  {t.name || 'Sin nombre'}
+                  {t.name || tr('noName')}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemove(t.id); }}
@@ -689,19 +769,19 @@ function TestimonialItemsEditor({
                   <Input
                     value={t.name}
                     onChange={(e) => handleUpdate(t.id, { name: e.target.value })}
-                    placeholder="Nombre"
+                    placeholder={tr('namePlaceholder')}
                     className="h-7 text-[11px] mt-1.5 bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
                   />
                   <Input
                     value={t.company || ''}
                     onChange={(e) => handleUpdate(t.id, { company: e.target.value })}
-                    placeholder="Empresa (opcional)"
+                    placeholder={tr('companyPlaceholder')}
                     className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
                   />
                   <Textarea
                     value={t.content}
                     onChange={(e) => handleUpdate(t.id, { content: e.target.value })}
-                    placeholder="Testimonio..."
+                    placeholder={tr('testimonialPlaceholder')}
                     rows={2}
                     className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
                   />
@@ -729,7 +809,7 @@ function TestimonialItemsEditor({
         </div>
       ) : (
         <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
-          Sin testimonios. Haz clic en Agregar.
+          {tr('noTestimonials')}
         </p>
       )}
     </div>
@@ -747,6 +827,7 @@ function FAQItemsEditor({
   items: FAQItem[];
   onChange: (items: FAQItem[]) => void;
 }) {
+  const t = useTranslations('branding.editor.sidebar');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleAdd = () => {
@@ -772,13 +853,13 @@ function FAQItemsEditor({
     <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
       <div className="flex items-center justify-between">
         <Label className="text-xs text-gray-500 dark:text-gray-400">
-          Preguntas ({items.length})
+          {t('faqLabel', { count: items.length })}
         </Label>
         <button
           onClick={handleAdd}
           className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
         >
-          <Plus className="h-3 w-3" /> Agregar
+          <Plus className="h-3 w-3" /> {t('add')}
         </button>
       </div>
 
@@ -795,7 +876,7 @@ function FAQItemsEditor({
               >
                 <HelpCircle className="h-3 w-3 text-gray-400 shrink-0" />
                 <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
-                  {f.question || 'Sin pregunta'}
+                  {f.question || t('noQuestion')}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemove(f.id); }}
@@ -814,13 +895,13 @@ function FAQItemsEditor({
                   <Input
                     value={f.question}
                     onChange={(e) => handleUpdate(f.id, { question: e.target.value })}
-                    placeholder="Pregunta"
+                    placeholder={t('questionPlaceholder')}
                     className="h-7 text-[11px] mt-1.5 bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
                   />
                   <Textarea
                     value={f.answer}
                     onChange={(e) => handleUpdate(f.id, { answer: e.target.value })}
-                    placeholder="Respuesta"
+                    placeholder={t('answerPlaceholder')}
                     rows={2}
                     className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
                   />
@@ -831,7 +912,146 @@ function FAQItemsEditor({
         </div>
       ) : (
         <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
-          Sin preguntas. Haz clic en Agregar.
+          {t('noQuestions')}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// HERO SLIDES EDITOR (inline slide manager for Hero Slider)
+// ============================================================
+
+function HeroSlidesEditor({
+  items: rawItems,
+  onChange,
+}: {
+  items: HeroSlideItem[];
+  onChange: (items: HeroSlideItem[]) => void;
+}) {
+  const didNormalize = useRef(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Normalizar una sola vez: asignar id a slides que no tengan
+  useEffect(() => {
+    if (didNormalize.current) return;
+    const needsIds = rawItems.some((s) => !s.id);
+    if (needsIds && rawItems.length > 0) {
+      didNormalize.current = true;
+      onChange(rawItems.map((s) => (s.id ? s : { ...s, id: crypto.randomUUID() })));
+    }
+  }, [rawItems, onChange]);
+
+  const items = rawItems.every((s) => s.id) ? rawItems : rawItems.map((s, i) => ({ ...s, id: s.id || `tmp-${i}` }));
+
+  const handleAdd = () => {
+    const newItem: HeroSlideItem = {
+      id: crypto.randomUUID(),
+      title: '',
+      subtitle: '',
+      image_url: '',
+      cta_text: '',
+      cta_url: '',
+    };
+    onChange([...items, newItem]);
+    setExpandedId(newItem.id);
+  };
+
+  const handleUpdate = (id: string, updates: Partial<HeroSlideItem>) => {
+    onChange(items.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+  };
+
+  const handleRemove = (id: string) => {
+    onChange(items.filter((s) => s.id !== id));
+    if (expandedId === id) setExpandedId(null);
+  };
+
+  return (
+    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-gray-500 dark:text-gray-400">
+          Slides ({items.length})
+        </Label>
+        <button
+          onClick={handleAdd}
+          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          <Plus className="h-3 w-3" /> Agregar
+        </button>
+      </div>
+
+      {items.length > 0 ? (
+        <div className="space-y-1.5">
+          {items.map((slide, idx) => (
+            <div
+              key={slide.id}
+              className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden"
+            >
+              <div
+                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
+                onClick={() => setExpandedId(expandedId === slide.id ? null : slide.id)}
+              >
+                <Image className="h-3 w-3 text-gray-400 shrink-0" />
+                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                  {slide.title || `Slide ${idx + 1}`}
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRemove(slide.id); }}
+                  className="p-0.5 hover:text-red-500 text-gray-400"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {expandedId === slide.id ? (
+                  <ChevronUp className="h-3 w-3 text-gray-400" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 text-gray-400" />
+                )}
+              </div>
+              {expandedId === slide.id && (
+                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
+                  <Label className="text-[10px] text-gray-400 mt-1.5 block">Título</Label>
+                  <Input
+                    value={slide.title || ''}
+                    onChange={(e) => handleUpdate(slide.id, { title: e.target.value })}
+                    placeholder="Título del slide"
+                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                  />
+                  <Label className="text-[10px] text-gray-400 block">Subtítulo</Label>
+                  <Textarea
+                    value={slide.subtitle || ''}
+                    onChange={(e) => handleUpdate(slide.id, { subtitle: e.target.value })}
+                    placeholder="Descripción del slide"
+                    rows={2}
+                    className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
+                  />
+                  <Label className="text-[10px] text-gray-400 block">Imagen de fondo</Label>
+                  <ImageFieldPicker
+                    value={slide.image_url || ''}
+                    onChange={(url) => handleUpdate(slide.id, { image_url: url })}
+                  />
+                  <Label className="text-[10px] text-gray-400 block">Texto del botón</Label>
+                  <Input
+                    value={slide.cta_text || ''}
+                    onChange={(e) => handleUpdate(slide.id, { cta_text: e.target.value })}
+                    placeholder="Ver más"
+                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                  />
+                  <Label className="text-[10px] text-gray-400 block">URL del botón</Label>
+                  <Input
+                    value={slide.cta_url || ''}
+                    onChange={(e) => handleUpdate(slide.id, { cta_url: e.target.value })}
+                    placeholder="/productos"
+                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
+          Sin slides. Agrega al menos uno.
         </p>
       )}
     </div>

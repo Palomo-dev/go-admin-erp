@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Package, Sparkles, Loader2 } from 'lucide-react'
+import { Package, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface InformacionBasicaProps {
@@ -94,20 +94,31 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
 
       // Auto-generar SKU si está vacío
       if (!formData.sku) {
-        const { count } = await supabase
-          .from('products')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', organization.id)
-
-        const nextNum = (count ?? 0) + 1
-        const autoSku = `PROD-${String(nextNum).padStart(3, '0')}`
-        updateFormData('sku', autoSku)
+        updateFormData('sku', await generateUniqueSku())
       }
     } catch (error) {
       console.error('Error cargando datos:', error)
     } finally {
       setIsLoadingData(false)
     }
+  }
+
+  const generateUniqueSku = async (): Promise<string> => {
+    if (!organization?.id) return `PROD-${Date.now().toString(36).toUpperCase()}`
+
+    const { count } = await supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organization.id)
+
+    const nextNum = (count ?? 0) + 1
+    const suffix = Date.now().toString(36).slice(-3).toUpperCase()
+    return `PROD-${String(nextNum).padStart(3, '0')}-${suffix}`
+  }
+
+  const handleRegenerateSku = async () => {
+    const newSku = await generateUniqueSku()
+    updateFormData('sku', newSku)
   }
 
   const handleImproveDescription = async () => {
@@ -160,14 +171,26 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
           <Label htmlFor="sku" className="text-gray-700 dark:text-gray-300">
             SKU / Código <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="sku"
-            value={formData.sku}
-            onChange={(e) => updateFormData('sku', e.target.value.toUpperCase())}
-            placeholder="Ej: PROD-001"
-            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
-            required
-          />
+          <div className="flex gap-2">
+            <Input
+              id="sku"
+              value={formData.sku}
+              onChange={(e) => updateFormData('sku', e.target.value.toUpperCase())}
+              placeholder="Ej: PROD-001-A1B"
+              className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 flex-1"
+              required
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleRegenerateSku}
+              title="Generar nuevo SKU"
+              className="shrink-0 border-gray-300 dark:border-gray-700"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Código de Barras */}

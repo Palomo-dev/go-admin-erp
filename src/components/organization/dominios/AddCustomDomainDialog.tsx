@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslations } from 'next-intl';
 
 interface AddCustomDomainDialogProps {
   open: boolean;
@@ -29,6 +30,7 @@ export function AddCustomDomainDialog({
   organizationId,
   onDomainAdded,
 }: AddCustomDomainDialogProps) {
+  const t = useTranslations('org.domains.addCustom');
   const [domain, setDomain] = useState('');
   const [step, setStep] = useState<'input' | 'dns'>('input');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,12 +78,12 @@ export function AddCustomDomainDialog({
     const normalized = normalizeDomain(domain);
     
     if (!normalized) {
-      setError('Ingresa un dominio');
+      setError(t('errorEnterDomain'));
       return;
     }
 
     if (!isValidDomain(normalized)) {
-      setError('El formato del dominio no es válido. Ejemplo: www.miempresa.com');
+      setError(t('errorInvalidFormat'));
       return;
     }
 
@@ -91,14 +93,14 @@ export function AddCustomDomainDialog({
     try {
       const exists = await checkDomainExists(normalized);
       if (exists) {
-        setError('Este dominio ya está registrado en el sistema');
+        setError(t('errorAlreadyRegistered'));
         return;
       }
 
       setDomain(normalized);
       setStep('dns');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al verificar el dominio';
+      const errorMessage = err instanceof Error ? err.message : t('errorVerifying');
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -131,7 +133,7 @@ export function AddCustomDomainDialog({
       onDomainAdded();
       handleClose();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al guardar el dominio';
+      const errorMessage = err instanceof Error ? err.message : t('errorSaving');
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -152,13 +154,13 @@ export function AddCustomDomainDialog({
       type: 'CNAME',
       name: domain.startsWith('www.') ? 'www' : domain.split('.')[0],
       value: 'cname.vercel-dns.com',
-      description: 'Apunta tu dominio a los servidores de Vercel',
+      description: t('cnameDesc'),
     },
     {
       type: 'TXT',
       name: `_goadmin-challenge`,
       value: verificationToken,
-      description: 'Verifica la propiedad del dominio',
+      description: t('txtDesc'),
     },
   ];
 
@@ -172,12 +174,12 @@ export function AddCustomDomainDialog({
             </div>
             <div>
               <DialogTitle className="dark:text-white">
-                {step === 'input' ? 'Agregar Dominio Personalizado' : 'Configurar DNS'}
+                {step === 'input' ? t('title') : t('configureDns')}
               </DialogTitle>
               <DialogDescription className="dark:text-gray-400">
                 {step === 'input' 
-                  ? 'Conecta un dominio que ya tienes registrado' 
-                  : 'Configura los registros DNS en tu proveedor de dominio'
+                  ? t('connectDomain') 
+                  : t('configureDnsDesc')
                 }
               </DialogDescription>
             </div>
@@ -196,29 +198,29 @@ export function AddCustomDomainDialog({
             <div className="space-y-4">
               <div>
                 <Label htmlFor="domain" className="dark:text-gray-200">
-                  Dominio
+                  {t('domainLabel')}
                 </Label>
                 <Input
                   id="domain"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value.toLowerCase())}
-                  placeholder="www.miempresa.com"
+                  placeholder={t('domainPlaceholder')}
                   className="mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   disabled={isSubmitting}
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Ingresa el dominio completo que deseas conectar
+                  {t('domainHint')}
                 </p>
               </div>
 
               <Alert className="dark:bg-blue-900/20 dark:border-blue-800">
                 <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <AlertDescription className="text-sm dark:text-gray-300">
-                  <strong>Requisitos:</strong>
+                  <strong>{t('requirements')}</strong>
                   <ul className="mt-2 space-y-1 list-disc list-inside">
-                    <li>Debes ser el propietario del dominio</li>
-                    <li>Tener acceso a la configuración DNS</li>
-                    <li>El dominio no debe estar registrado en otra cuenta de GO Admin</li>
+                    <li>{t('req1')}</li>
+                    <li>{t('req2')}</li>
+                    <li>{t('req3')}</li>
                   </ul>
                 </AlertDescription>
               </Alert>
@@ -228,13 +230,13 @@ export function AddCustomDomainDialog({
               <Alert className="dark:bg-yellow-900/20 dark:border-yellow-800">
                 <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                 <AlertDescription className="text-sm dark:text-gray-300">
-                  <strong>Importante:</strong> Los cambios de DNS pueden tardar hasta 48 horas en propagarse.
+                  <strong>{t('dnsImportant')}</strong> {t('dnsDelay')}
                 </AlertDescription>
               </Alert>
 
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                  Configura estos registros DNS en <strong>{domain}</strong>:
+                  {t('configureDnsRecords')} <strong>{domain}</strong>:
                 </h4>
                 
                 <div className="space-y-4">
@@ -254,7 +256,7 @@ export function AddCustomDomainDialog({
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-xs text-gray-500 dark:text-gray-400">Nombre / Host</Label>
+                          <Label className="text-xs text-gray-500 dark:text-gray-400">{t('nameHost')}</Label>
                           <div className="flex items-center gap-2 mt-1">
                             <code className="flex-1 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm border border-gray-200 dark:border-gray-600 dark:text-gray-200">
                               {record.name}
@@ -275,7 +277,7 @@ export function AddCustomDomainDialog({
                         </div>
                         
                         <div>
-                          <Label className="text-xs text-gray-500 dark:text-gray-400">Valor / Destino</Label>
+                          <Label className="text-xs text-gray-500 dark:text-gray-400">{t('valueTarget')}</Label>
                           <div className="flex items-center gap-2 mt-1">
                             <code className="flex-1 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm border border-gray-200 dark:border-gray-600 truncate dark:text-gray-200">
                               {record.value}
@@ -303,7 +305,7 @@ export function AddCustomDomainDialog({
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <ExternalLink className="h-4 w-4" />
                 <span>
-                  ¿Necesitas ayuda? Consulta las guías de tu proveedor: 
+                  {t('needHelp')} 
                   <a href="https://support.google.com/domains/answer/9211383" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline ml-1">
                     Google Domains
                   </a>,{' '}
@@ -327,7 +329,7 @@ export function AddCustomDomainDialog({
                 onClick={handleClose}
                 className="dark:border-gray-600 dark:text-gray-300"
               >
-                Cancelar
+                {t('cancel')}
               </Button>
               <Button
                 onClick={handleContinue}
@@ -337,10 +339,10 @@ export function AddCustomDomainDialog({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Verificando...
+                    {t('verifying')}
                   </>
                 ) : (
-                  'Continuar'
+                  t('continue')
                 )}
               </Button>
             </>
@@ -351,7 +353,7 @@ export function AddCustomDomainDialog({
                 onClick={() => setStep('input')}
                 className="dark:border-gray-600 dark:text-gray-300"
               >
-                Atrás
+                {t('back')}
               </Button>
               <Button
                 onClick={handleSave}
@@ -361,10 +363,10 @@ export function AddCustomDomainDialog({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Guardando...
+                    {t('saving')}
                   </>
                 ) : (
-                  'Guardar Dominio'
+                  t('saveDomain')
                 )}
               </Button>
             </>

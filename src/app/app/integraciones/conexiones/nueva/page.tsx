@@ -140,15 +140,25 @@ export default function NuevaConexionPage() {
       setConnectors(connectorsData);
       setBranches(branchesData);
 
-      // Dominio: priorizar custom_domain verificado, sino system_subdomain
+      // Dominio: priorizar custom_domain verificado, sino system_subdomain, sino organizations.subdomain
       if (domainsResult.data && domainsResult.data.length > 0) {
         const customDomain = domainsResult.data.find(
           (d) => d.domain_type === 'custom_domain' && d.is_primary
         );
-        const subdomain = domainsResult.data.find(
+        const systemSubdomain = domainsResult.data.find(
           (d) => d.domain_type === 'system_subdomain'
         );
-        setOrganizationDomain(customDomain?.host || subdomain?.host || '');
+        setOrganizationDomain(customDomain?.host || systemSubdomain?.host || '');
+      } else {
+        // Fallback: usar el subdomain de la organización
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('subdomain')
+          .eq('id', organizationId)
+          .single();
+        if (orgData?.subdomain) {
+          setOrganizationDomain(`${orgData.subdomain}.goadmin.io`);
+        }
       }
 
       // Si viene un provider preseleccionado desde la URL, auto-seleccionarlo
@@ -967,6 +977,40 @@ export default function NuevaConexionPage() {
 
           if (!credentialsSaved) {
             console.warn('No se pudieron guardar las credenciales');
+          }
+        }
+      }
+
+      // Auto-link: Si es un proveedor de pagos, vincular con métodos de pago
+      if (wizardData.provider?.category === 'payments' && organizationId) {
+        const PROVIDER_PAYMENT_METHODS: Record<string, string[]> = {
+          wompi: ['wompi', 'nequi', 'daviplata', 'pse', 'card'],
+          payu: ['payu'],
+          mercadopago: ['mp'],
+          stripe: ['card'],
+          paypal: ['paypal'],
+        };
+
+        const methodCodes = PROVIDER_PAYMENT_METHODS[wizardData.provider.code] || [];
+        if (methodCodes.length > 0) {
+          const { data: orgMethods } = await supabase
+            .from('organization_payment_methods')
+            .select('id, payment_method_code, integration_connection_id')
+            .eq('organization_id', organizationId)
+            .in('payment_method_code', methodCodes);
+
+          for (const method of (orgMethods || [])) {
+            // Solo vincular si no tiene ya otra conexión activa
+            if (!method.integration_connection_id) {
+              await supabase
+                .from('organization_payment_methods')
+                .update({
+                  integration_connection_id: connectionId,
+                  settings: { gateway: wizardData.provider.name },
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', method.id);
+            }
           }
         }
       }

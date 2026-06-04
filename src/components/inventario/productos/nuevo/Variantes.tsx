@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Card } from '@/components/ui/card'
-import { GitBranch, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { GitBranch, Plus, Trash2, ChevronDown, ChevronUp, X, Tags } from 'lucide-react'
 
 interface VariantesProps {
   formData: any
@@ -20,21 +22,35 @@ interface Branch {
   name: string
 }
 
+interface VariantTypeOption {
+  id: number
+  name: string
+}
+
+interface VariantValueOption {
+  id: number
+  variant_type_id: number
+  value: string
+}
+
 export default function Variantes({ formData, updateFormData }: VariantesProps) {
   const { organization } = useOrganization()
-  const [attributeTypes, setAttributeTypes] = useState<string[]>(['Color', 'Talla'])
+  const [selectedAttributeTypes, setSelectedAttributeTypes] = useState<string[]>([])
+  const [availableTypes, setAvailableTypes] = useState<VariantTypeOption[]>([])
+  const [availableValues, setAvailableValues] = useState<VariantValueOption[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
   const [expandedVariants, setExpandedVariants] = useState<number[]>([])
+  const [customAttrName, setCustomAttrName] = useState('')
 
   useEffect(() => {
     if (organization?.id) {
       loadBranches()
+      loadVariantTypesAndValues()
     }
   }, [organization?.id])
 
   const loadBranches = async () => {
     if (!organization?.id) return
-
     try {
       const { data, error } = await supabase
         .from('branches')
@@ -42,12 +58,121 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
         .eq('organization_id', organization.id)
         .eq('is_active', true)
         .order('name')
-
       if (error) throw error
       if (data) setBranches(data)
     } catch (error) {
       console.error('Error cargando sucursales:', error)
     }
+  }
+
+  const loadVariantTypesAndValues = async () => {
+    if (!organization?.id) return
+    try {
+      // Leer tipos del catálogo (variant_types)
+      const { data: catalogTypes } = await supabase
+        .from('variant_types')
+        .select('id, name')
+        .eq('organization_id', organization.id)
+        .order('name')
+
+      // Leer tipos y valores reales desde variant_data de productos existentes
+      const { data: products } = await supabase
+        .from('products')
+        .select('variant_data')
+        .eq('organization_id', organization.id)
+        .not('variant_data', 'is', null)
+        .not('parent_product_id', 'is', null)
+
+      // Combinar tipos: catálogo + tipos reales de variant_data
+      const typeNamesSet = new Set<string>()
+      const realValues: VariantValueOption[] = []
+      let syntheticId = 1000
+
+      ;(catalogTypes || []).forEach(t => typeNamesSet.add(t.name))
+      ;(products || []).forEach(p => {
+        if (p.variant_data && typeof p.variant_data === 'object') {
+          Object.entries(p.variant_data).forEach(([key, val]) => {
+            if (key.trim()) typeNamesSet.add(key.trim())
+          })
+        }
+      })
+
+      // Generar lista de tipos combinada
+      const combinedTypes: VariantTypeOption[] = Array.from(typeNamesSet)
+        .sort()
+        .map((name, idx) => {
+          const catalogEntry = (catalogTypes || []).find(t => t.name === name)
+          return { id: catalogEntry?.id || (syntheticId + idx), name }
+        })
+      setAvailableTypes(combinedTypes)
+
+      // Generar valores reales desde variant_data
+      const valuesByType: Record<string, Set<string>> = {}
+      ;(products || []).forEach(p => {
+        if (p.variant_data && typeof p.variant_data === 'object') {
+          Object.entries(p.variant_data).forEach(([key, val]) => {
+            if (!key.trim() || !val || !String(val).trim()) return
+            if (!valuesByType[key.trim()]) valuesByType[key.trim()] = new Set()
+            valuesByType[key.trim()].add(String(val).trim())
+          })
+        }
+      })
+
+      // Convertir a VariantValueOption[]
+      const allValues: VariantValueOption[] = []
+      combinedTypes.forEach(type => {
+        const vals = valuesByType[type.name]
+        if (vals) {
+          vals.forEach(v => {
+            allValues.push({ id: syntheticId++, variant_type_id: type.id, value: v })
+          })
+        }
+      })
+
+      // También agregar valores del catálogo (variant_values)
+      if (catalogTypes && catalogTypes.length > 0) {
+        const { data: catalogValues } = await supabase
+          .from('variant_values')
+          .select('id, variant_type_id, value')
+          .in('variant_type_id', catalogTypes.map(t => t.id))
+          .order('display_order')
+        if (catalogValues) {
+          catalogValues.forEach(cv => {
+            // Evitar duplicados
+            const exists = allValues.some(av => av.variant_type_id === cv.variant_type_id && av.value === cv.value)
+            if (!exists) allValues.push(cv)
+          })
+        }
+      }
+
+      setAvailableValues(allValues)
+    } catch (error) {
+      console.error('Error cargando tipos de variantes:', error)
+    }
+  }
+
+  const addAttributeType = (typeName: string) => {
+    if (!typeName.trim() || selectedAttributeTypes.includes(typeName)) return
+    setSelectedAttributeTypes([...selectedAttributeTypes, typeName])
+  }
+
+  const removeAttributeType = (typeName: string) => {
+    setSelectedAttributeTypes(selectedAttributeTypes.filter(t => t !== typeName))
+    // Limpiar el atributo de las variantes existentes
+    const updatedVariants = formData.variants.map((v: any) => {
+      const newAttrs = { ...v.attributes }
+      delete newAttrs[typeName]
+      return { ...v, attributes: newAttrs }
+    })
+    updateFormData('variants', updatedVariants)
+  }
+
+  const getValuesForType = (typeName: string): string[] => {
+    const type = availableTypes.find(t => t.name === typeName)
+    if (!type) return []
+    return availableValues
+      .filter(v => v.variant_type_id === type.id)
+      .map(v => v.value)
   }
 
   const toggleVariants = (enabled: boolean) => {
@@ -58,19 +183,25 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
   }
 
   const addVariant = () => {
+    const varNum = formData.variants.length + 1
+    const suffix = Date.now().toString(36).slice(-2).toUpperCase()
     const newVariant = {
-      sku: `${formData.sku}-VAR${formData.variants.length + 1}`,
+      sku: `${formData.sku}-V${varNum}${suffix}`,
       barcode: '',
-      name: `${formData.name} - Variante ${formData.variants.length + 1}`,
+      name: `${formData.name} - Variante ${varNum}`,
       price: formData.price,
       cost: formData.cost,
-      attributes: {},
+      attributes: {} as Record<string, string>,
       stock: branches.map(branch => ({
         branch_id: branch.id,
         branch_name: branch.name,
         qty_on_hand: 0
       }))
     }
+    // Pre-llenar atributos seleccionados con valor vacío
+    selectedAttributeTypes.forEach(attr => {
+      newVariant.attributes[attr] = ''
+    })
     updateFormData('variants', [...formData.variants, newVariant])
     setExpandedVariants([...expandedVariants, formData.variants.length])
   }
@@ -97,8 +228,16 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
   }
 
   const updateVariantStock = (variantIndex: number, branchIndex: number, qty: number) => {
-    const newVariants = [...formData.variants]
-    newVariants[variantIndex].stock[branchIndex].qty_on_hand = qty
+    const newVariants = formData.variants.map((v: any, i: number) => {
+      if (i !== variantIndex) return v
+      return {
+        ...v,
+        stock: v.stock.map((s: any, j: number) => {
+          if (j !== branchIndex) return s
+          return { ...s, qty_on_hand: qty }
+        })
+      }
+    })
     updateFormData('variants', newVariants)
   }
 
@@ -150,6 +289,92 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
         </div>
       ) : (
         <>
+          {/* Selector de tipos de atributos */}
+          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+            <div className="flex items-center gap-2">
+              <Tags className="h-4 w-4 text-indigo-500" />
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Tipos de Atributos
+              </Label>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Selecciona o crea los atributos que diferencian tus variantes (ej: Color, Talla, Material, Estilo)
+            </p>
+
+            {/* Atributos seleccionados */}
+            {selectedAttributeTypes.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedAttributeTypes.map(attr => (
+                  <Badge
+                    key={attr}
+                    variant="secondary"
+                    className="flex items-center gap-1 px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                  >
+                    {attr}
+                    <button
+                      type="button"
+                      onClick={() => removeAttributeType(attr)}
+                      className="ml-1 hover:text-red-500"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Agregar desde tipos existentes o personalizado */}
+            <div className="flex gap-2">
+              {availableTypes.length > 0 && (
+                <Select
+                  value=""
+                  onValueChange={(val) => { if (val) addAttributeType(val) }}
+                >
+                  <SelectTrigger className="flex-1 border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-sm">
+                    <SelectValue placeholder="Agregar tipo existente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTypes
+                      .filter(t => !selectedAttributeTypes.includes(t.name))
+                      .map(t => (
+                        <SelectItem key={t.id} value={t.name}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <div className="flex gap-1">
+                <Input
+                  value={customAttrName}
+                  onChange={(e) => setCustomAttrName(e.target.value)}
+                  placeholder="Nuevo atributo..."
+                  className="w-40 text-sm border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addAttributeType(customAttrName)
+                      setCustomAttrName('')
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    addAttributeType(customAttrName)
+                    setCustomAttrName('')
+                  }}
+                  disabled={!customAttrName.trim()}
+                  className="shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <Button
               type="button"
@@ -303,27 +528,58 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
                           </div>
                         </div>
 
-                        {/* Atributos */}
-                        <div className="space-y-2">
-                          <Label className="text-gray-700 dark:text-gray-300">
-                            Atributos de la Variante
-                          </Label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {attributeTypes.map((attrType) => (
-                              <div key={attrType} className="space-y-2">
-                                <Label className="text-sm text-gray-600 dark:text-gray-400">
-                                  {attrType}
-                                </Label>
-                                <Input
-                                  value={variant.attributes[attrType] || ''}
-                                  onChange={(e) => updateVariantAttribute(index, attrType, e.target.value)}
-                                  placeholder={`Ej: ${attrType === 'Color' ? 'Azul' : 'M'}`}
-                                  className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
-                                />
-                              </div>
-                            ))}
+                        {/* Atributos dinámicos */}
+                        {selectedAttributeTypes.length > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-gray-700 dark:text-gray-300">
+                              Atributos de la Variante
+                            </Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {selectedAttributeTypes.map((attrType) => {
+                                const suggestions = getValuesForType(attrType)
+                                return (
+                                  <div key={attrType} className="space-y-2">
+                                    <Label className="text-sm text-gray-600 dark:text-gray-400">
+                                      {attrType}
+                                    </Label>
+                                    <Input
+                                      value={variant.attributes[attrType] || ''}
+                                      onChange={(e) => updateVariantAttribute(index, attrType, e.target.value)}
+                                      placeholder={`Ingrese ${attrType.toLowerCase()}...`}
+                                      className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                                      list={`suggestions-${index}-${attrType}`}
+                                    />
+                                    {suggestions.length > 0 && (
+                                      <>
+                                        <datalist id={`suggestions-${index}-${attrType}`}>
+                                          {suggestions.map(s => (
+                                            <option key={s} value={s} />
+                                          ))}
+                                        </datalist>
+                                        <div className="flex flex-wrap gap-1">
+                                          {suggestions.map(s => (
+                                            <button
+                                              key={s}
+                                              type="button"
+                                              onClick={() => updateVariantAttribute(index, attrType, s)}
+                                              className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                                                variant.attributes[attrType] === s
+                                                  ? 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-600 dark:text-indigo-300'
+                                                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700'
+                                              }`}
+                                            >
+                                              {s}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Stock por sucursal */}
                         <div className="space-y-2">

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { OrganizationDomain, DomainType, CreateDomainInput, UpdateDomainInput } from '@/lib/services/domainService';
+import { useTranslations } from 'next-intl';
 
 interface DomainFormProps {
   open: boolean;
@@ -41,6 +42,7 @@ export function DomainForm({
   onSubmit,
   isLoading = false,
 }: DomainFormProps) {
+  const t = useTranslations('org.domains.form');
   const [host, setHost] = useState('');
   const [domainType, setDomainType] = useState<DomainType>('custom_domain');
   const [isPrimary, setIsPrimary] = useState(false);
@@ -75,12 +77,12 @@ export function DomainForm({
     setError(null);
 
     if (!host.trim()) {
-      setError('El dominio es requerido');
+      setError(t('errorRequired'));
       return;
     }
 
     if (!validateHost(host.trim())) {
-      setError('Formato de dominio inválido. Ejemplo: midominio.com o app.midominio.com');
+      setError(t('errorInvalidFormat'));
       return;
     }
 
@@ -103,7 +105,7 @@ export function DomainForm({
       }
       onOpenChange(false);
     } catch (err: any) {
-      setError(err.message || 'Error al guardar el dominio');
+      setError(err.message || t('errorSaving'));
     }
   };
 
@@ -117,12 +119,12 @@ export function DomainForm({
             </div>
             <div>
               <DialogTitle className="dark:text-white">
-                {isEditing ? 'Editar Dominio' : 'Nuevo Dominio'}
+                {isEditing ? t('editTitle') : t('newTitle')}
               </DialogTitle>
               <DialogDescription className="dark:text-gray-400">
                 {isEditing 
-                  ? 'Modifica la configuración del dominio' 
-                  : 'Registra un nuevo dominio para tu organización'}
+                  ? t('editDesc') 
+                  : t('newDesc')}
               </DialogDescription>
             </div>
           </div>
@@ -138,7 +140,7 @@ export function DomainForm({
           {/* Tipo de dominio */}
           <div className="space-y-2">
             <Label htmlFor="domainType" className="dark:text-gray-200">
-              Tipo de Dominio
+              {t('domainTypeLabel')}
             </Label>
             <Select
               value={domainType}
@@ -146,20 +148,20 @@ export function DomainForm({
               disabled={isEditing}
             >
               <SelectTrigger id="domainType" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                <SelectValue placeholder="Selecciona el tipo" />
+                <SelectValue placeholder={t('selectType')} />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 <SelectItem value="subdomain" className="dark:text-white dark:focus:bg-gray-700">
-                  Subdominio (*.goadmin.io)
+                  {t('subdomainOption')}
                 </SelectItem>
                 <SelectItem value="custom_domain" className="dark:text-white dark:focus:bg-gray-700">
-                  Dominio Personalizado
+                  {t('customDomainOption')}
                 </SelectItem>
               </SelectContent>
             </Select>
             {domainType === 'subdomain' && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Los subdominios se verifican automáticamente
+                {t('subdomainAutoVerify')}
               </p>
             )}
           </div>
@@ -167,7 +169,7 @@ export function DomainForm({
           {/* Host */}
           <div className="space-y-2">
             <Label htmlFor="host" className="dark:text-gray-200">
-              Dominio
+              {t('domainLabel')}
             </Label>
             <div className="relative">
               <Input
@@ -182,7 +184,7 @@ export function DomainForm({
               <Alert className="mt-2 dark:bg-blue-900/20 dark:border-blue-800">
                 <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <AlertDescription className="text-sm dark:text-gray-300">
-                  Después de crear el dominio, deberás configurar los registros DNS para verificarlo.
+                  {t('dnsHint')}
                 </AlertDescription>
               </Alert>
             )}
@@ -193,10 +195,10 @@ export function DomainForm({
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="isPrimary" className="dark:text-gray-200">
-                  Dominio Principal
+                  {t('primaryDomain')}
                 </Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Solo puede haber un dominio principal
+                  {t('onlyOnePrimary')}
                 </p>
               </div>
               <Switch
@@ -209,10 +211,10 @@ export function DomainForm({
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="isActive" className="dark:text-gray-200">
-                  Activo
+                  {t('activeLabel')}
                 </Label>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Los dominios inactivos no resolverán
+                  {t('inactiveHint')}
                 </p>
               </div>
               <Switch
@@ -231,14 +233,14 @@ export function DomainForm({
             onClick={() => onOpenChange(false)}
             className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            Cancelar
+            {t('cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={isLoading}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {isLoading ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Crear Dominio'}
+            {isLoading ? t('saving') : isEditing ? t('saveChanges') : t('createDomain')}
           </Button>
         </DialogFooter>
       </DialogContent>

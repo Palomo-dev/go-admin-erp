@@ -5,7 +5,8 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { Plus, Trash2, PlusCircle, Save, Edit, Loader2 } from 'lucide-react';
+import { Plus, Trash2, PlusCircle, Save, Edit, Loader2, Tags } from 'lucide-react';
+import { Badge as UIBadge } from '@/components/ui/badge';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -329,6 +330,43 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
         </Button>
       </div>
       
+      {/* Resumen de atributos de variantes */}
+      {variantes.length > 0 && (() => {
+        const attrMap: Record<string, Set<string>> = {};
+        variantes.forEach((v) => {
+          if (v.variant_data && typeof v.variant_data === 'object') {
+            Object.entries(v.variant_data).forEach(([key, val]) => {
+              if (!attrMap[key]) attrMap[key] = new Set();
+              if (val) attrMap[key].add(String(val));
+            });
+          }
+        });
+        const attrEntries = Object.entries(attrMap);
+        if (attrEntries.length === 0) return null;
+        return (
+          <div className="space-y-3">
+            {attrEntries.map(([attrName, values]) => (
+              <div key={attrName} className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[60px]">
+                  {attrName}:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {Array.from(values).map((val) => (
+                    <UIBadge
+                      key={val}
+                      variant="secondary"
+                      className="px-3 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-700"
+                    >
+                      {val}
+                    </UIBadge>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Tabla de variantes */}
       <div className={`rounded-md border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
         <Table>
@@ -336,6 +374,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             <TableRow>
               <TableHead className="w-[100px]">SKU</TableHead>
               <TableHead>Nombre</TableHead>
+              <TableHead>Atributos</TableHead>
               <TableHead className="text-right">Precio</TableHead>
               <TableHead className="text-right">Costo</TableHead>
               <TableHead className="text-center">Stock</TableHead>
@@ -345,13 +384,13 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
                 </TableCell>
               </TableRow>
             ) : variantes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={7} className="h-24 text-center text-gray-500 dark:text-gray-400">
                   <div className="flex flex-col items-center justify-center p-4">
                     <p className="mb-2">Este producto no tiene variantes</p>
                     <Button 
@@ -369,8 +408,28 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             ) : (
               variantes.map((variante) => (
                 <TableRow key={variante.id}>
-                  <TableCell className="font-mono">{variante.sku}</TableCell>
-                  <TableCell>{variante.name}</TableCell>
+                  <TableCell className="font-mono text-xs">{variante.sku}</TableCell>
+                  <TableCell className="font-medium">{variante.name}</TableCell>
+                  <TableCell>
+                    {variante.variant_data && typeof variante.variant_data === 'object' ? (
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(variante.variant_data).map(([key, val]) => (
+                          val ? (
+                            <UIBadge
+                              key={key}
+                              variant="outline"
+                              className="text-[11px] px-2 py-0.5 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                            >
+                              <span className="font-semibold text-gray-500 dark:text-gray-400 mr-1">{key}:</span>
+                              <span className="text-gray-800 dark:text-gray-200">{String(val)}</span>
+                            </UIBadge>
+                          ) : null
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">{formatCurrency(variante.price || 0)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(variante.cost || 0)}</TableCell>
                   <TableCell className="text-center">{variante.stock || 0}</TableCell>
@@ -487,6 +546,51 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                 />
               </div>
             </div>
+            
+            {/* Atributos de variante (Color, Talla, etc.) */}
+            {editingVariante?.variant_data && typeof editingVariante.variant_data === 'object' && Object.keys(editingVariante.variant_data).length > 0 && (
+              <div className="space-y-2">
+                <Label>Atributos</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(editingVariante.variant_data).map(([key, val]) => (
+                    <div key={key} className="space-y-1">
+                      <Label className="text-xs text-gray-500 dark:text-gray-400">{key}</Label>
+                      <Input
+                        value={String(val || '')}
+                        onChange={(e) => {
+                          const newData = { ...editingVariante.variant_data, [key]: e.target.value };
+                          handleVarianteChange('variant_data', newData);
+                        }}
+                        placeholder={key}
+                        className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Agregar nuevo atributo */}
+            {dialogMode === 'edit' && (
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => {
+                    const attrName = prompt('Nombre del atributo (ej: Color, Talla, Material)');
+                    if (attrName && attrName.trim()) {
+                      const newData = { ...(editingVariante?.variant_data || {}), [attrName.trim()]: '' };
+                      handleVarianteChange('variant_data', newData);
+                    }
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Agregar atributo
+                </Button>
+              </div>
+            )}
             
             <div className="space-y-2">
               <Label htmlFor="stock">Stock Inicial</Label>

@@ -13,6 +13,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { OrganizationDomain } from '@/lib/services/domainService';
+import { useTranslations } from 'next-intl';
 
 interface DNSInstructionsProps {
   open: boolean;
@@ -29,6 +30,7 @@ export function DNSInstructions({
   onVerify,
   isVerifying = false,
 }: DNSInstructionsProps) {
+  const t = useTranslations('organization.domains.dns');
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   if (!domain) return null;
@@ -60,10 +62,10 @@ export function DNSInstructions({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 dark:text-white">
             <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            Instrucciones de Verificación DNS
+            {t('title')}
           </DialogTitle>
           <DialogDescription className="dark:text-gray-400">
-            Configura los siguientes registros DNS en tu proveedor de dominio para verificar{' '}
+            {t('description')}{' '}
             <span className="font-semibold text-gray-900 dark:text-white">{domain.host}</span>
           </DialogDescription>
         </DialogHeader>
@@ -71,7 +73,7 @@ export function DNSInstructions({
         <div className="space-y-6 py-4">
           {/* Estado actual */}
           <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Estado actual:</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{t('currentStatus')}</span>
             <Badge 
               className={
                 domain.status === 'verified' 
@@ -81,20 +83,20 @@ export function DNSInstructions({
                   : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
               }
             >
-              {domain.status === 'verified' ? 'Verificado' : domain.status === 'pending' ? 'Pendiente' : 'Fallido'}
+              {domain.status === 'verified' ? t('verified') : domain.status === 'pending' ? t('pending') : t('failed')}
             </Badge>
           </div>
 
           {/* Tipo de verificación */}
           <div className="space-y-3">
             <h4 className="font-medium text-gray-900 dark:text-white">
-              Método de Verificación: {domain.verification_type || 'TXT'}
+              {t('verificationMethod')} {domain.verification_type || 'TXT'}
             </h4>
             
             <Alert className="dark:bg-blue-900/20 dark:border-blue-800">
               <AlertTriangle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <AlertDescription className="text-sm dark:text-gray-300">
-                Agrega un registro <strong>{domain.verification_type || 'TXT'}</strong> en la configuración DNS de tu dominio.
+                {t('addRecord')} <strong>{domain.verification_type || 'TXT'}</strong> {t('inDnsConfig')}
               </AlertDescription>
             </Alert>
           </div>
@@ -106,7 +108,7 @@ export function DNSInstructions({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Host / Name
+                    {t('hostName')}
                   </span>
                   <CopyButton text={domain.verification_record || ''} field="record" />
                 </div>
@@ -119,7 +121,7 @@ export function DNSInstructions({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Tipo
+                    {t('type')}
                   </span>
                 </div>
                 <code className="block w-full p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-sm font-mono text-gray-900 dark:text-white">
@@ -131,12 +133,12 @@ export function DNSInstructions({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Valor
+                    {t('value')}
                   </span>
                   <CopyButton text={domain.verification_value || domain.verification_token || ''} field="value" />
                 </div>
                 <code className="block w-full p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-sm font-mono text-gray-900 dark:text-white break-all">
-                  {domain.verification_value || domain.verification_token || 'No disponible'}
+                  {domain.verification_value || domain.verification_token || t('notAvailable')}
                 </code>
               </div>
 
@@ -144,11 +146,11 @@ export function DNSInstructions({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    TTL (Time To Live)
+                    {t('ttl')}
                   </span>
                 </div>
                 <code className="block w-full p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-sm font-mono text-gray-900 dark:text-white">
-                  3600 (o el mínimo permitido por tu proveedor)
+                  {t('ttlValue')}
                 </code>
               </div>
             </div>
@@ -157,17 +159,17 @@ export function DNSInstructions({
           {/* Configuración CNAME para el dominio */}
           <div className="space-y-3">
             <h4 className="font-medium text-gray-900 dark:text-white">
-              Configuración del Dominio (CNAME)
+              {t('cnameConfig')}
             </h4>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Además del registro de verificación, configura un registro CNAME para que tu dominio apunte a nuestros servidores:
+              {t('cnameDesc')}
             </p>
             
             <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Host / Name
+                    {t('hostName')}
                   </span>
                   <CopyButton text={domain.host.split('.')[0] === 'www' ? 'www' : '@'} field="cname-host" />
                 </div>
@@ -179,7 +181,7 @@ export function DNSInstructions({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Tipo
+                    {t('type')}
                   </span>
                 </div>
                 <code className="block w-full p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-sm font-mono text-gray-900 dark:text-white">
@@ -190,7 +192,7 @@ export function DNSInstructions({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Valor / Target
+                    {t('valueTarget')}
                   </span>
                   <CopyButton text="cname.vercel-dns.com" field="cname-value" />
                 </div>
@@ -203,10 +205,10 @@ export function DNSInstructions({
 
           {/* Intentos de verificación */}
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Intentos de verificación: <strong>{domain.verification_attempts}</strong>
+            {t('verificationAttempts')} <strong>{domain.verification_attempts}</strong>
             {domain.last_verification_at && (
               <span className="ml-2">
-                (Último intento: {new Date(domain.last_verification_at).toLocaleString('es-ES')})
+                ({t('lastAttempt')} {new Date(domain.last_verification_at).toLocaleString()})
               </span>
             )}
           </div>
@@ -215,9 +217,7 @@ export function DNSInstructions({
           <Alert className="dark:bg-gray-900 dark:border-gray-700">
             <Info className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             <AlertDescription className="text-sm dark:text-gray-300">
-              <strong>Nota:</strong> Los cambios de DNS pueden tardar hasta 48 horas en propagarse, 
-              aunque normalmente ocurre en minutos. Puedes verificar el estado de propagación usando 
-              herramientas como{' '}
+              <strong>{t('noteTitle')}</strong> {t('noteDesc')}{' '}
               <a 
                 href="https://www.whatsmydns.net" 
                 target="_blank" 
@@ -236,14 +236,14 @@ export function DNSInstructions({
             onClick={() => onOpenChange(false)}
             className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            Cerrar
+            {t('close')}
           </Button>
           <Button
             onClick={onVerify}
             disabled={isVerifying || domain.status === 'verified'}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {isVerifying ? 'Verificando...' : 'Verificar Ahora'}
+            {isVerifying ? t('verifying') : t('verifyNow')}
           </Button>
         </div>
       </DialogContent>

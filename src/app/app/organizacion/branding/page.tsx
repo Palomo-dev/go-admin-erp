@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Palette, Search, FileText, Code, Globe,
-  ArrowLeft, RefreshCw, Save, FileEdit
+  ArrowLeft, RefreshCw, Save, FileEdit, ShoppingCart
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
@@ -26,12 +26,14 @@ import {
   BrandingAdvancedTab,
   BrandingPublishTab,
   BrandingPagesTab,
+  BrandingCheckoutTab,
 } from '@/components/organization/branding';
 
-const TAB_IDS = ['theme', 'pages', 'seo', 'content', 'advanced', 'publish'] as const;
+const TAB_IDS = ['theme', 'pages', 'checkout', 'seo', 'content', 'advanced', 'publish'] as const;
 const TAB_ICONS: Record<string, any> = {
   theme: Palette,
   pages: FileEdit,
+  checkout: ShoppingCart,
   seo: Search,
   content: FileText,
   advanced: Code,
@@ -325,6 +327,10 @@ export default function BrandingPage() {
                   organizationId={organizationId ?? null}
                   subdomain={organization?.subdomain ?? null}
                 />
+              </TabsContent>
+
+              <TabsContent value="checkout">
+                <BrandingCheckoutTab />
               </TabsContent>
 
               <TabsContent value="seo">

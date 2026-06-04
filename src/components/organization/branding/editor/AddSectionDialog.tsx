@@ -34,6 +34,7 @@ import {
   Layout,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 import {
   SECTION_CATALOG,
   type SectionTypeDefinition,
@@ -74,6 +75,7 @@ export default function AddSectionDialog({
   onAdd,
   existingSectionTypes,
 }: AddSectionDialogProps) {
+  const t = useTranslations('branding.editor.addSection');
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<SectionTypeDefinition | null>(null);
 
@@ -111,12 +113,12 @@ export default function AddSectionDialog({
       <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
-            {selectedType ? `${selectedType.label} — Elegir variante` : 'Agregar sección'}
+            {selectedType ? t('titleVariant', { label: selectedType.label }) : t('title')}
           </DialogTitle>
           <DialogDescription>
             {selectedType
-              ? 'Selecciona cómo quieres que se vea esta sección'
-              : 'Elige el tipo de sección que deseas agregar a la página'}
+              ? t('descVariant')
+              : t('desc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -128,7 +130,7 @@ export default function AddSectionDialog({
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar secciones..."
+                placeholder={t('searchPlaceholder')}
                 className="pl-9"
               />
             </div>
@@ -157,7 +159,7 @@ export default function AddSectionDialog({
                         <p className="text-sm font-medium dark:text-white">{def.label}</p>
                         {alreadyExists && (
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            Ya existe
+                            {t('alreadyExists')}
                           </Badge>
                         )}
                       </div>
@@ -166,14 +168,14 @@ export default function AddSectionDialog({
                       </p>
                     </div>
                     <span className="text-xs text-gray-400 shrink-0">
-                      {def.variants.length} variante{def.variants.length > 1 ? 's' : ''}
+                      {def.variants.length} {def.variants.length > 1 ? t('variantsPlural') : t('variantsSingular')}
                     </span>
                   </button>
                 );
               })}
               {filtered.length === 0 && (
                 <p className="text-center text-sm text-gray-500 py-8">
-                  No se encontraron secciones
+                  {t('noSectionsFound')}
                 </p>
               )}
             </div>
@@ -185,7 +187,7 @@ export default function AddSectionDialog({
               onClick={() => setSelectedType(null)}
               className="text-sm text-blue-600 hover:underline mb-2"
             >
-              ← Volver a tipos
+              {t('backToTypes')}
             </button>
             <div className="grid grid-cols-2 gap-2">
               {selectedType.variants.map((variant) => (

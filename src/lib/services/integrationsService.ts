@@ -989,7 +989,7 @@ class IntegrationsService {
   }
 
   /**
-   * Revoca (desconecta) una conexión
+   * Revoca (desconecta) una conexión y desvincula métodos de pago asociados
    */
   async revokeConnection(connectionId: string): Promise<boolean> {
     const { error } = await supabase
@@ -1005,18 +1005,66 @@ class IntegrationsService {
       return false;
     }
 
+    // Desvincular métodos de pago asociados a esta conexión
+    await supabase
+      .from('organization_payment_methods')
+      .update({
+        integration_connection_id: null,
+        settings: {},
+        updated_at: new Date().toISOString(),
+      })
+      .eq('integration_connection_id', connectionId);
+
     return true;
   }
 
   /**
-   * Realiza un health check de la conexión
+   * Realiza un health check real de la conexión según el proveedor
    */
   async healthCheck(connectionId: string): Promise<{
     success: boolean;
     message: string;
   }> {
-    // Simular health check - en producción esto llamaría al servicio externo
-    const { error } = await supabase
+    // Obtener info de la conexión y su proveedor
+    const { data: connection, error: connError } = await supabase
+      .from('integration_connections')
+      .select(`
+        id, environment, status,
+        connector:integration_connectors(
+          code,
+          provider:integration_providers(code)
+        )
+      `)
+      .eq('id', connectionId)
+      .single();
+
+    if (connError || !connection) {
+      return { success: false, message: 'No se encontró la conexión' };
+    }
+
+    const providerCode = (connection.connector as any)?.provider?.code;
+
+    // Health check específico por proveedor
+    if (providerCode === 'wompi') {
+      try {
+        const { wompiService } = await import('@/lib/services/integrations/wompi/wompiService');
+        const result = await wompiService.healthCheck(connectionId);
+        return { success: result.ok, message: result.message };
+      } catch (err) {
+        return { success: false, message: 'Error al verificar Wompi' };
+      }
+    }
+
+    // Para proveedores sin health check específico, verificar que tenga credenciales
+    const { data: creds } = await supabase
+      .from('integration_credentials')
+      .select('id')
+      .eq('connection_id', connectionId)
+      .eq('status', 'active')
+      .limit(1);
+
+    // Actualizar timestamp
+    await supabase
       .from('integration_connections')
       .update({
         last_health_check_at: new Date().toISOString(),
@@ -1024,18 +1072,45 @@ class IntegrationsService {
       })
       .eq('id', connectionId);
 
-    if (error) {
-      return { success: false, message: 'Error al verificar conexión' };
+    if (!creds || creds.length === 0) {
+      return { success: false, message: 'Sin credenciales activas configuradas' };
     }
 
-    return { success: true, message: 'Conexión verificada correctamente' };
+    return { success: true, message: `Conexión activa (${providerCode || 'desconocido'})` };
   }
 
   /**
-   * Elimina una conexión (soft delete - cambia a revoked)
+   * Elimina una conexión completamente de la base de datos
    */
   async deleteConnection(connectionId: string): Promise<boolean> {
-    return this.revokeConnection(connectionId);
+    // Desvincular métodos de pago asociados
+    await supabase
+      .from('organization_payment_methods')
+      .update({
+        integration_connection_id: null,
+        settings: {},
+        updated_at: new Date().toISOString(),
+      })
+      .eq('integration_connection_id', connectionId);
+
+    // Eliminar credenciales (cascade debería hacerlo, pero por seguridad)
+    await supabase
+      .from('integration_credentials')
+      .delete()
+      .eq('connection_id', connectionId);
+
+    // Eliminar la conexión
+    const { error } = await supabase
+      .from('integration_connections')
+      .delete()
+      .eq('id', connectionId);
+
+    if (error) {
+      console.error('Error deleting connection:', error);
+      return false;
+    }
+
+    return true;
   }
 
   /**

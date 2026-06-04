@@ -99,6 +99,7 @@ export default function TarifasEnvioPage() {
     byServiceLevel: {} as Record<string, number>,
   });
 
+
   // Cargar tarifas
   const loadRates = useCallback(async () => {
     if (!organizationId) return;

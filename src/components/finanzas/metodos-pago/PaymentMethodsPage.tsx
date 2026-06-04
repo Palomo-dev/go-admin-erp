@@ -47,6 +47,7 @@ export interface OrganizationPaymentMethod {
     account_mapping?: Record<string, string>;
   };
   payment_method?: PaymentMethod;
+  integration_connection_id?: string | null;
   // Campos de configuración para Website
   show_on_website?: boolean;
   website_display_order?: number;
@@ -136,6 +137,7 @@ export default function PaymentMethodsPage() {
           payment_method_code,
           is_active,
           settings,
+          integration_connection_id,
           show_on_website,
           website_display_order,
           website_display_name,

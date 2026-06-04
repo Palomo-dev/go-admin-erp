@@ -60,15 +60,10 @@ function getStatusBadge(status: string) {
       color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
       icon: FileEdit
     },
-    applied: {
+    posted: {
       label: 'Aplicado',
       color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
       icon: CheckCircle
-    },
-    cancelled: {
-      label: 'Cancelado',
-      color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-      icon: XCircle
     }
   };
   return badges[status] || badges.draft;
@@ -123,7 +118,7 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
       setAdjustment(data);
 
       // Si está aplicado, cargar movimientos generados
-      if (data.status === 'applied') {
+      if (data.status === 'posted') {
         const movs = await adjustmentService.getMovementsByAdjustment(adjustmentId);
         setMovements(movs);
       }
@@ -433,7 +428,7 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
           </Card>
 
           {/* Movimientos generados (solo si está aplicado) */}
-          {adjustment.status === 'applied' && movements.length > 0 && (
+          {adjustment.status === 'posted' && movements.length > 0 && (
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
                 <CardTitle className="text-lg dark:text-white flex items-center gap-2">
@@ -531,7 +526,7 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
                 </Badge>
               </div>
 
-              {adjustment.status === 'applied' && (
+              {adjustment.status === 'posted' && (
                 <div className="mt-4">
                   <Link href="/app/inventario/movimientos">
                     <Button variant="outline" className="w-full dark:border-gray-700">

@@ -79,6 +79,12 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
           return;
         }
         
+        // Obtener IDs de productos a consultar (padre + hijos si es producto padre)
+        const productIds = [producto.id];
+        if (producto.is_parent && producto.children && producto.children.length > 0) {
+          producto.children.forEach((child: any) => productIds.push(child.id));
+        }
+        
         // Obtener niveles de stock por sucursal
         const { data: stock, error: stockError } = await supabase
           .from('stock_levels')
@@ -89,24 +95,27 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
             qty_reserved,
             updated_at
           `)
-          .eq('product_id', producto.id);
+          .in('product_id', productIds);
         
         if (stockError) throw stockError;
         
-        // Mapear y combinar datos de sucursales con stock
+        // Mapear y combinar datos de sucursales con stock (sumando hijos por sucursal)
         const stockData: StockLevel[] = branches.map((branch) => {
-          const branchStock = stock?.find(s => s.branch_id === branch.id);
-          const qtyOnHand = branchStock?.qty_on_hand || 0;
-          const qtyReserved = branchStock?.qty_reserved || 0;
+          const branchStocks = stock?.filter(s => s.branch_id === branch.id) || [];
+          const qtyOnHand = branchStocks.reduce((sum, s) => sum + (s.qty_on_hand || 0), 0);
+          const qtyReserved = branchStocks.reduce((sum, s) => sum + (s.qty_reserved || 0), 0);
+          const latestStock = branchStocks.sort((a, b) => 
+            (b.updated_at || '').localeCompare(a.updated_at || '')
+          )[0];
           
           return {
-            id: branchStock?.id || 0,
+            id: latestStock?.id || 0,
             branch_id: branch.id,
             branch_name: branch.name,
             qty_on_hand: qtyOnHand,
             qty_reserved: qtyReserved,
             qty_available: qtyOnHand - qtyReserved,
-            last_movement_date: branchStock?.updated_at || '',
+            last_movement_date: latestStock?.updated_at || '',
           };
         });
         
@@ -143,7 +152,7 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
   // Redireccionar a página de ajuste de stock
   const handleAdjustStock = (type: 'entrada' | 'salida', branchId?: number) => {
     const params = new URLSearchParams();
-    params.append('productId', producto.id);
+    params.append('productId', producto.id.toString());
     params.append('type', type);
     if (branchId) params.append('branchId', branchId.toString());
     

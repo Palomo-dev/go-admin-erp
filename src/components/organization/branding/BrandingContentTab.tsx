@@ -40,6 +40,7 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
   const [businessHours, setBusinessHours] = useState<BusinessHours>(settings.business_hours || {});
   const [footerText, setFooterText] = useState(settings.footer_text || '');
   const [footerLinks, setFooterLinks] = useState<FooterLink[]>(settings.footer_links || []);
+  const [showPoweredBy, setShowPoweredBy] = useState(settings.show_powered_by !== false);
 
   const handleSave = async () => {
     await onSave({
@@ -47,6 +48,7 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
       business_hours: businessHours,
       footer_text: footerText,
       footer_links: footerLinks,
+      show_powered_by: showPoweredBy,
     });
   };
 
@@ -184,6 +186,17 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="dark:text-gray-300">Mostrar "Powered by GO Admin"</Label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Muestra la atribución en el pie de página del sitio web</p>
+                </div>
+                <Switch
+                  checked={showPoweredBy}
+                  onCheckedChange={setShowPoweredBy}
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label className="dark:text-gray-300">{t('footerTextLabel')}</Label>
                 <Textarea

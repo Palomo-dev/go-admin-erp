@@ -98,30 +98,36 @@ function SortableRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const getIntegrationBadge = (code: string, gateway?: string) => {
+  // Métodos que requieren integración
+  const INTEGRATION_METHODS = [
+    'wompi', 'payu', 'stripe', 'mp', 'mercadopago', 'paypal', 'conekta',
+    'nequi', 'daviplata', 'pse', 'oxxo', 'spei', 'cashapp', 'venmo', 'zelle'
+  ];
+
+  const getIntegrationBadge = (code: string, gateway?: string, connectionId?: string | null) => {
     const lowerCode = code.toLowerCase();
-    const requiresGateway = GATEWAY_METHODS.includes(lowerCode);
+    const isIntegrationMethod = INTEGRATION_METHODS.includes(lowerCode) || GATEWAY_METHODS.includes(lowerCode);
     
-    // Si tiene gateway configurado, mostrar badge con estado conectado
-    if (gateway) {
+    // Si tiene gateway configurado o conexión vinculada, mostrar badge conectado
+    if (gateway || connectionId) {
       return (
         <Link 
-          href={`/app/integraciones/conexiones/nueva?provider=${lowerCode}&return=/app/finanzas/metodos-pago`}
+          href="/app/integraciones/conexiones"
           className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
         >
           <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
-            {gateway}
+            {gateway || 'Conectado'}
           </Badge>
           <Settings className="h-3 w-3 text-gray-400" />
         </Link>
       );
     }
     
-    // Si requiere gateway pero no está configurado, mostrar botón para conectar
-    if (requiresGateway) {
+    // Si es método de integración pero no está conectado → ir a integraciones
+    if (isIntegrationMethod) {
       return (
         <Link 
-          href={`/app/integraciones/conexiones/nueva?provider=${lowerCode}&return=/app/finanzas/metodos-pago`}
+          href="/app/integraciones/conexiones"
           className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
         >
           <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800">
@@ -132,21 +138,11 @@ function SortableRow({
       );
     }
     
-    // Métodos nativos que no requieren integración externa
-    if (lowerCode === 'nequi') {
-      return <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800">Bancolombia</Badge>;
-    } else if (lowerCode === 'daviplata') {
-      return <Badge variant="outline" className="text-xs bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800">Davivienda</Badge>;
-    } else if (lowerCode === 'pse') {
-      return <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">ACH Colombia</Badge>;
-    } else if (lowerCode === 'oxxo') {
-      return <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800">OXXO Pay</Badge>;
-    } else if (lowerCode === 'spei') {
-      return <Badge variant="outline" className="text-xs bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800">Banxico SPEI</Badge>;
-    } else if (['cash', 'card', 'transfer', 'check', 'credit'].includes(lowerCode)) {
+    // Métodos manuales/nativos
+    if (['cash', 'card', 'transfer', 'check', 'credit'].includes(lowerCode)) {
       return <Badge variant="secondary" className="text-xs dark:bg-gray-700 dark:text-gray-300">Nativo</Badge>;
     }
-    return <span className="text-xs text-gray-500 dark:text-gray-400">N/A</span>;
+    return <span className="text-xs text-gray-500 dark:text-gray-400">—</span>;
   };
 
   return (
@@ -229,7 +225,7 @@ function SortableRow({
         {method.payment_method?.requires_reference ? "Sí" : "No"}
       </TableCell>
       <TableCell className="hidden sm:table-cell">
-        {getIntegrationBadge(method.payment_method_code, method.settings?.gateway)}
+        {getIntegrationBadge(method.payment_method_code, method.settings?.gateway, method.integration_connection_id)}
       </TableCell>
       <TableCell>
         <Switch 
@@ -518,29 +514,14 @@ export default function PaymentMethodsList({
     return recommendedMethods.some(rec => rec.code === methodCode || rec.payment_method_code === methodCode);
   };
 
-  // Combinamos los métodos de pago globales con los de la organización (usando estado local para optimismo)
+  // Solo mostrar los métodos que la organización tiene asignados (no todo el catálogo global)
   const combinedMethods = useMemo(() => {
-    return paymentMethods.map(method => {
-      const orgMethod = localOrgMethods.find(om => om.payment_method_code === method.code);
-      
-      if (orgMethod) {
-        return {
-          ...orgMethod,
-          payment_method: method
-        };
-      } else {
-        // Si la organización no tiene configurado este método, creamos una versión predeterminada
-        return {
-          id: 0,
-          organization_id: 0,
-          payment_method_code: method.code,
-          is_active: false,
-          settings: {},
-          show_on_website: false,
-          website_display_order: 999,
-          payment_method: method
-        } as OrganizationPaymentMethod;
-      }
+    return localOrgMethods.map(orgMethod => {
+      const globalMethod = paymentMethods.find(pm => pm.code === orgMethod.payment_method_code);
+      return {
+        ...orgMethod,
+        payment_method: globalMethod || orgMethod.payment_method
+      };
     });
   }, [paymentMethods, localOrgMethods]);
 

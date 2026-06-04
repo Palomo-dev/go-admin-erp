@@ -88,8 +88,9 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
     if (!storagePath) return '/placeholder-image.png';
     
     try {
+      const bucket = storagePath.startsWith('products/') ? 'product-images' : 'organization_images';
       const { data } = supabase.storage
-        .from('organization_images')
+        .from(bucket)
         .getPublicUrl(storagePath);
       return data?.publicUrl || '/placeholder-image.png';
     } catch (error) {

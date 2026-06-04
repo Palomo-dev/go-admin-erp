@@ -135,6 +135,9 @@ export async function POST(request: Request) {
     
     const userId = session.user.id
     
+    // Usar adminClient para operaciones en user_devices (evita bloqueos de RLS)
+    const adminSupabase = createAdminClient()
+    
     // Obtener datos del request
     const requestData = await request.json()
     const { 
@@ -188,7 +191,7 @@ export async function POST(request: Request) {
     const finalIpAddress = getClientIP()
     
     // Buscar si ya existe un dispositivo con esta huella digital para este usuario
-    const { data: existingDevice, error: searchError } = await supabase
+    const { data: existingDevice, error: searchError } = await adminSupabase
       .from('user_devices')
       .select('*')
       .eq('user_id', userId)
@@ -198,7 +201,7 @@ export async function POST(request: Request) {
     
     if (searchError) {
       console.error('[API:Sessions] Error buscando dispositivo:', searchError)
-      return NextResponse.json({ error: 'Error al buscar dispositivo' }, { status: 500 })
+      return NextResponse.json({ error: 'Error al buscar dispositivo', detail: searchError.message }, { status: 500 })
     }
     
     let result
@@ -248,7 +251,7 @@ export async function POST(request: Request) {
       if (os) updateData.os = os
       if (os_version) updateData.os_version = os_version
       
-      result = await supabase.from('user_devices').update(updateData).eq('id', existingDevice.id)
+      result = await adminSupabase.from('user_devices').update(updateData).eq('id', existingDevice.id)
       
     } else {
       console.log('[API:Sessions] Creando nuevo dispositivo con fingerprint:', clientFingerprint.substring(0, 10) + '...')
@@ -301,12 +304,12 @@ export async function POST(request: Request) {
         user_agent: newDeviceData.user_agent ? newDeviceData.user_agent.substring(0, 50) + '...' : null
       })
       
-      result = await supabase.from('user_devices').insert(newDeviceData)
+      result = await adminSupabase.from('user_devices').insert(newDeviceData)
     }
     
     if (result.error) {
       console.error('Error al guardar dispositivo:', result.error)
-      return NextResponse.json({ error: 'Error al guardar dispositivo' }, { status: 500 })
+      return NextResponse.json({ error: 'Error al guardar dispositivo', detail: result.error.message }, { status: 500 })
     }
     
     return NextResponse.json({ success: true })

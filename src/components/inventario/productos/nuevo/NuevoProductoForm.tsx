@@ -29,6 +29,7 @@ interface ProductFormData {
   
   // Precios y costos
   price: number
+  compare_price: number
   cost: number
   
   // Inventario
@@ -54,6 +55,7 @@ interface ProductFormData {
   has_variants: boolean
   variants: Array<{
     sku: string
+    barcode?: string
     name: string
     price: number
     cost: number
@@ -84,6 +86,7 @@ export default function NuevoProductoForm() {
     unit_code: 'UN',
     supplier_id: null,
     price: 0,
+    compare_price: 0,
     cost: 0,
     stock_inicial: [],
     tax_id: null,
@@ -182,13 +185,17 @@ export default function NuevoProductoForm() {
 
       // 3. Guardar precio
       if (formData.price > 0) {
+        const priceData: any = {
+          product_id: product.id,
+          price: formData.price,
+          effective_from: new Date().toISOString()
+        }
+        if (formData.compare_price > 0) {
+          priceData.compare_price = formData.compare_price
+        }
         const { error: priceError } = await supabase
           .from('product_prices')
-          .insert({
-            product_id: product.id,
-            price: formData.price,
-            effective_from: new Date().toISOString()
-          })
+          .insert(priceData)
         
         if (priceError) throw priceError
       }
@@ -241,7 +248,7 @@ export default function NuevoProductoForm() {
           branch_id: stock.branch_id,
           qty_on_hand: stock.qty_on_hand,
           min_level: stock.min_level,
-          avg_cost: stock.avg_cost
+          avg_cost: formData.cost || 0
         }))
 
         const { error: stockError } = await supabase
@@ -405,6 +412,7 @@ export default function NuevoProductoForm() {
               await supabase.from('stock_movements').insert(variantMovements)
             }
           }
+
         }
       }
 
@@ -415,10 +423,11 @@ export default function NuevoProductoForm() {
 
       router.push(`/app/inventario/productos/${product.uuid}`)
     } catch (error: any) {
-      console.error('Error creando producto:', error)
+      const errMsg = error?.message || error?.details || error?.hint || (typeof error === 'string' ? error : JSON.stringify(error))
+      console.error('Error creando producto:', errMsg, error)
       toast({
         title: "Error al crear producto",
-        description: error.message || "Ocurrió un error inesperado",
+        description: errMsg || "Ocurrió un error inesperado",
         variant: "destructive"
       })
     } finally {

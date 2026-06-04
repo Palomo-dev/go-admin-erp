@@ -212,25 +212,10 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
                   />
                 </div>
 
-                {/* Costo Promedio */}
+                {/* Eliminar entrada */}
                 <div className="space-y-2">
-                  <Label className="text-gray-700 dark:text-gray-300">
-                    Costo Promedio
-                  </Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
-                        $
-                      </span>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={stock.avg_cost}
-                        onChange={(e) => updateStockEntry(index, 'avg_cost', parseFloat(e.target.value) || 0)}
-                        className="pl-7 border-gray-300 dark:border-gray-700 dark:bg-gray-800"
-                      />
-                    </div>
+                  <Label className="text-gray-700 dark:text-gray-300 invisible">Acciones</Label>
+                  <div className="flex items-center justify-end h-10">
                     <Button
                       type="button"
                       variant="ghost"
@@ -252,7 +237,7 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
       <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg">
         <p className="text-sm text-purple-800 dark:text-purple-300">
           <strong>Nota:</strong> El stock inicial se registrará como un movimiento de entrada tipo "ajuste". 
-          El costo promedio se utilizará para calcular el valor del inventario.
+          El costo promedio se tomará automáticamente del costo configurado en "Precios y Costos".
         </p>
       </div>
     </div>

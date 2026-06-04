@@ -26,6 +26,7 @@ import {
   GripVertical,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   websitePageBuilderService,
   type WebsitePage,
@@ -37,6 +38,7 @@ interface BrandingPagesTabProps {
 
 export default function BrandingPagesTab({ organizationId }: BrandingPagesTabProps) {
   const router = useRouter();
+  const t = useTranslations('branding.pages');
   const [pages, setPages] = useState<WebsitePage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -84,7 +86,7 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
   };
 
   const handleDeletePage = async (pageId: string) => {
-    const confirm = window.confirm('¿Eliminar esta página y todas sus secciones?');
+    const confirm = window.confirm(t('deleteConfirm'));
     if (!confirm) return;
 
     try {
@@ -127,10 +129,10 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
             <div>
               <CardTitle className="flex items-center gap-2 dark:text-white">
                 <LayoutGrid className="h-5 w-5" />
-                Páginas del Sitio Web
+                {t('title')}
               </CardTitle>
               <CardDescription className="dark:text-gray-400">
-                Administra las páginas de tu sitio web. Haz clic en &quot;Editar&quot; para abrir el editor visual tipo Shopify.
+                {t('description')}
               </CardDescription>
             </div>
             <Button
@@ -139,7 +141,7 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Nueva Página
+              {t('newPage')}
             </Button>
           </div>
         </CardHeader>
@@ -148,10 +150,10 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
             <div className="text-center py-8">
               <LayoutGrid className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
               <p className="text-gray-500 dark:text-gray-400 mb-2">
-                No hay páginas creadas
+                {t('noPages')}
               </p>
               <p className="text-sm text-gray-400 dark:text-gray-500">
-                Aplica un template preset o crea páginas manualmente
+                {t('noPagesHint')}
               </p>
             </div>
           ) : (
@@ -172,11 +174,11 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
                         variant={page.is_published ? 'default' : 'secondary'}
                         className="text-[10px] px-1.5 py-0"
                       >
-                        {page.is_published ? 'Publicada' : 'Borrador'}
+                        {page.is_published ? t('published') : t('draft')}
                       </Badge>
                       {page.show_in_header && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 dark:border-gray-600">
-                          Header
+                          {t('header')}
                         </Badge>
                       )}
                     </div>
@@ -191,7 +193,7 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
                       size="sm"
                       onClick={() => handleTogglePublish(page)}
                       className="h-8 w-8 p-0"
-                      title={page.is_published ? 'Despublicar' : 'Publicar'}
+                      title={page.is_published ? t('unpublish') : t('publish')}
                     >
                       {page.is_published ? (
                         <Eye className="h-3.5 w-3.5 text-green-600" />
@@ -204,7 +206,7 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
                       size="sm"
                       onClick={() => handleDeletePage(page.id)}
                       className="h-8 w-8 p-0"
-                      title="Eliminar página"
+                      title={t('deletePage')}
                     >
                       <Trash2 className="h-3.5 w-3.5 text-red-400" />
                     </Button>
@@ -216,7 +218,7 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
                     className="bg-blue-600 hover:bg-blue-700 shrink-0"
                   >
                     <FileEdit className="h-3.5 w-3.5 mr-1.5" />
-                    Editar
+                    {t('edit')}
                   </Button>
                 </div>
               ))}
@@ -229,14 +231,14 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Crear nueva página</DialogTitle>
+            <DialogTitle>{t('createTitle')}</DialogTitle>
             <DialogDescription>
-              Agrega una nueva página a tu sitio web
+              {t('createDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Título</Label>
+              <Label>{t('titleLabel')}</Label>
               <Input
                 value={newPageTitle}
                 onChange={(e) => {
@@ -248,24 +250,24 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
                       .replace(/[^a-z0-9-]/g, '')
                   );
                 }}
-                placeholder="Ej: Nosotros, Galería, Servicios"
+                placeholder={t('titlePlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Slug (URL)</Label>
+              <Label>{t('slugLabel')}</Label>
               <div className="flex items-center gap-1">
                 <span className="text-sm text-gray-500">/</span>
                 <Input
                   value={newPageSlug}
                   onChange={(e) => setNewPageSlug(e.target.value)}
-                  placeholder="nosotros"
+                  placeholder={t('slugPlaceholder')}
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Cancelar
+              {t('cancel')}
             </Button>
             <Button
               onClick={handleCreatePage}
@@ -273,7 +275,7 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
               className="bg-blue-600 hover:bg-blue-700"
             >
               {isCreating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Crear Página
+              {t('create')}
             </Button>
           </DialogFooter>
         </DialogContent>

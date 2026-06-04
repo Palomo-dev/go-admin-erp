@@ -80,11 +80,13 @@ const CatalogoProductos: React.FC = () => {
             categories(id, name),
             children:products(
               *,
-              categories(id, name)
+              categories(id, name),
+              stock_levels(branch_id, qty_on_hand, qty_reserved)
             ),
             product_prices(
               id, 
-              price, 
+              price,
+              compare_price,
               effective_from, 
               effective_to
             ),
@@ -147,6 +149,7 @@ const CatalogoProductos: React.FC = () => {
         const processedProducts = mainProductsData.map((product: any) => {
           // Obtener el precio actual (el más reciente y vigente)
           let currentPrice = 0;
+          let comparePrice = 0;
         
           if (product.product_prices && product.product_prices.length > 0) {
             const validPrices = product.product_prices
@@ -155,6 +158,7 @@ const CatalogoProductos: React.FC = () => {
             
             if (validPrices.length > 0) {
               currentPrice = validPrices[0].price;
+              comparePrice = validPrices[0].compare_price || 0;
             }
           }
           
@@ -189,6 +193,24 @@ const CatalogoProductos: React.FC = () => {
             }
           }
           
+          // Para productos padre, sumar stock de variantes hijas
+          if (product.is_parent && product.children && product.children.length > 0) {
+            product.children.forEach((child: any) => {
+              if (child.stock_levels && child.stock_levels.length > 0) {
+                stockTotal += child.stock_levels.reduce((sum: number, sl: any) => {
+                  return sum + (sl.qty_on_hand || 0) - (sl.qty_reserved || 0);
+                }, 0);
+                
+                if (branchId) {
+                  const childBranchStock = child.stock_levels.find((sl: any) => sl.branch_id === branchId);
+                  if (childBranchStock) {
+                    stockBranch += (childBranchStock.qty_on_hand || 0) - (childBranchStock.qty_reserved || 0);
+                  }
+                }
+              }
+            });
+          }
+          
           // Obtener la ruta de almacenamiento de la imagen principal si existe
           let imagePath = null;
           if (product.product_images && product.product_images.length > 0) {
@@ -219,6 +241,7 @@ const CatalogoProductos: React.FC = () => {
             ...product,
             category: product.categories,
             price: currentPrice,
+            compare_price: comparePrice,
             cost: currentCost,
             stock: stockTotal,
             stock_branch: stockBranch,
@@ -356,7 +379,7 @@ const CatalogoProductos: React.FC = () => {
             *,
             categories(id, name)
           ),
-          product_prices(id, price, effective_from, effective_to),
+          product_prices(id, price, compare_price, effective_from, effective_to),
           product_costs(id, cost, effective_from, effective_to),
           product_images(id, storage_path, is_primary)
         `)
@@ -422,12 +445,12 @@ const CatalogoProductos: React.FC = () => {
           children:products(
             *,
             categories(id, name),
-            product_prices(id, price, effective_from, effective_to),
+            product_prices(id, price, compare_price, effective_from, effective_to),
             product_costs(id, cost, effective_from, effective_to),
             stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
             product_images(id, storage_path, is_primary)
           ),
-          product_prices(id, price, effective_from, effective_to),
+          product_prices(id, price, compare_price, effective_from, effective_to),
           product_costs(id, cost, effective_from, effective_to),
           stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
           product_images(id, storage_path, is_primary)

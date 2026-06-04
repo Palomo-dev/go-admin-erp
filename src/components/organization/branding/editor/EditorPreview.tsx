@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Loader2, Globe, AlertCircle } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 import type { DevicePreview } from './EditorHeader';
 
 interface EditorPreviewProps {
@@ -18,6 +19,7 @@ const DEVICE_WIDTHS: Record<DevicePreview, string> = {
 };
 
 export default function EditorPreview({ previewUrl, devicePreview, refreshKey }: EditorPreviewProps) {
+  const t = useTranslations('branding.editor.preview');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
@@ -31,11 +33,10 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
             <Globe className="h-8 w-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-            Sin vista previa
+            {t('noPreviewTitle')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            No se encontró un dominio configurado para esta organización.
-            Configura un dominio o subdominio para ver la vista previa del sitio.
+            {t('noPreviewDesc')}
           </p>
         </div>
       </div>
@@ -75,7 +76,7 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
             <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
               <div className="text-center space-y-2">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-                <p className="text-sm text-gray-500">Cargando vista previa...</p>
+                <p className="text-sm text-gray-500">{t('loading')}</p>
               </div>
             </div>
           )}
@@ -86,10 +87,10 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
               <div className="text-center space-y-2">
                 <AlertCircle className="h-8 w-8 text-orange-500 mx-auto" />
                 <p className="text-sm text-gray-600">
-                  No se pudo cargar la vista previa
+                  {t('loadError')}
                 </p>
                 <p className="text-xs text-gray-400">
-                  El sitio puede no estar disponible o el dominio no está configurado
+                  {t('loadErrorHint')}
                 </p>
               </div>
             </div>
@@ -107,7 +108,7 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
               setIsLoading(false);
               setHasError(true);
             }}
-            title="Vista previa del sitio"
+            title={t('iframeTitle')}
             sandbox="allow-scripts allow-same-origin allow-popups"
           />
         </div>

@@ -66,7 +66,7 @@ export function DomainCard({
   isVerifying = false,
   isSyncing = false,
 }: DomainCardProps) {
-  const t = useTranslations('organization.domains.card');
+  const t = useTranslations('org.domains.card');
   const [isTogglingActive, setIsTogglingActive] = useState(false);
 
   const handleToggleActive = async (checked: boolean) => {
@@ -124,38 +124,38 @@ export function DomainCard({
 
   return (
     <div className={cn(
-      "bg-white dark:bg-gray-800 rounded-xl border p-4 transition-all duration-200 hover:shadow-md",
+      "bg-white dark:bg-gray-800 rounded-xl border p-4 sm:p-5 transition-all duration-200 hover:shadow-md",
       domain.is_primary 
         ? "border-blue-300 dark:border-blue-700 ring-1 ring-blue-200 dark:ring-blue-800" 
         : "border-gray-200 dark:border-gray-700",
       !domain.is_active && "opacity-60"
     )}>
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <div className={cn(
-            "p-2 rounded-lg",
+            "p-2 rounded-lg shrink-0",
             domain.is_primary 
               ? "bg-blue-100 dark:bg-blue-900/30" 
               : "bg-gray-100 dark:bg-gray-700"
           )}>
             <Globe className={cn(
-              "h-5 w-5",
+              "h-4 w-4 sm:h-5 sm:w-5",
               domain.is_primary 
                 ? "text-blue-600 dark:text-blue-400" 
                 : "text-gray-500 dark:text-gray-400"
             )} />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate max-w-[180px] sm:max-w-none">
                 {domain.host}
               </h3>
               {domain.is_primary && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>{t('primaryDomain')}</p>
@@ -164,14 +164,14 @@ export function DomainCard({
                 </TooltipProvider>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-1.5 flex-wrap">
               {getStatusBadge()}
               {getDomainTypeBadge()}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Switch
             checked={domain.is_active}
             onCheckedChange={handleToggleActive}
@@ -241,31 +241,33 @@ export function DomainCard({
       </div>
 
       {/* Info adicional */}
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <span className="text-gray-500 dark:text-gray-400">{t('verificationAttempts')}</span>
-          <span className="ml-2 text-gray-900 dark:text-white">{domain.verification_attempts}</span>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
         {domain.verified_at && (
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">{t('verifiedAt')}</span>
-            <span className="ml-2 text-gray-900 dark:text-white">
+          <div className="flex items-center gap-1">
+            <span className="text-gray-500 dark:text-gray-400 text-xs">{t('verifiedAt')}</span>
+            <span className="text-gray-700 dark:text-gray-200 text-xs font-medium">
               {new Date(domain.verified_at).toLocaleDateString()}
             </span>
           </div>
         )}
+        {domain.verification_attempts > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="text-gray-500 dark:text-gray-400 text-xs">{t('verificationAttempts')}</span>
+            <span className="text-gray-700 dark:text-gray-200 text-xs font-medium">{domain.verification_attempts}</span>
+          </div>
+        )}
         {domain.redirect_to_domain_id && (
-          <div className="col-span-2">
-            <span className="text-gray-500 dark:text-gray-400">{t('redirect')}</span>
-            <Badge variant="outline" className="ml-2">
+          <div className="flex items-center gap-1 col-span-1 sm:col-span-2">
+            <span className="text-gray-500 dark:text-gray-400 text-xs">{t('redirect')}</span>
+            <Badge variant="outline" className="text-xs h-5">
               {domain.redirect_status_code || 301}
             </Badge>
           </div>
         )}
         {domain.last_vercel_sync_at && (
-          <div className="col-span-2">
-            <span className="text-gray-500 dark:text-gray-400">{t('lastVercelSync')}</span>
-            <span className="ml-2 text-gray-900 dark:text-white">
+          <div className="flex items-center gap-1 col-span-1 sm:col-span-2">
+            <span className="text-gray-500 dark:text-gray-400 text-xs">{t('lastVercelSync')}</span>
+            <span className="text-gray-700 dark:text-gray-200 text-xs font-medium">
               {new Date(domain.last_vercel_sync_at).toLocaleString()}
             </span>
           </div>
@@ -273,14 +275,14 @@ export function DomainCard({
       </div>
 
       {/* Botón de visitar */}
-      <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
         <a
           href={`https://${domain.host}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          className="inline-flex items-center text-xs sm:text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
         >
-          <ExternalLink className="h-4 w-4 mr-1" />
+          <ExternalLink className="h-3.5 w-3.5 mr-1" />
           {t('visitSite')}
         </a>
       </div>

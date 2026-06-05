@@ -30,7 +30,7 @@ export function DNSInstructions({
   onVerify,
   isVerifying = false,
 }: DNSInstructionsProps) {
-  const t = useTranslations('organization.domains.dns');
+  const t = useTranslations('org.domains.dns');
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   if (!domain) return null;

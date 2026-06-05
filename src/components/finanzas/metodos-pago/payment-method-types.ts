@@ -42,14 +42,16 @@ export const PAYMENT_GATEWAYS = {
   NONE: '',
   STRIPE: 'stripe',
   PAYU: 'payu',
-  MERCADOPAGO: 'mercadopago'
+  MERCADOPAGO: 'mercadopago',
+  WOMPI: 'wompi'
 };
 
 export const PAYMENT_GATEWAY_OPTIONS = [
   { label: "Ninguno", value: PAYMENT_GATEWAYS.NONE },
   { label: "Stripe", value: PAYMENT_GATEWAYS.STRIPE },
   { label: "PayU", value: PAYMENT_GATEWAYS.PAYU },
-  { label: "Mercado Pago", value: PAYMENT_GATEWAYS.MERCADOPAGO }
+  { label: "Mercado Pago", value: PAYMENT_GATEWAYS.MERCADOPAGO },
+  { label: "Wompi", value: PAYMENT_GATEWAYS.WOMPI }
 ];
 
 export const ACCOUNTING_DEFAULT_MAPPINGS = [

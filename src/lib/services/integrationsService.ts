@@ -431,6 +431,11 @@ class IntegrationsService {
       return false;
     }
 
+    // Al reanudar, re-sincronizar el método de pago
+    if (newStatus === 'connected') {
+      await this.syncPaymentMethodFromConnection(connectionId);
+    }
+
     return true;
   }
 
@@ -671,7 +676,79 @@ class IntegrationsService {
       })
       .eq('id', connectionId);
 
+    // Auto-sincronizar: si es pasarela de pagos, crear método de pago automáticamente
+    await this.syncPaymentMethodFromConnection(connectionId);
+
     return true;
+  }
+
+  /**
+   * Sincroniza automáticamente un método de pago cuando se conecta una integración de pagos.
+   * Mapea provider_code → payment_method_code y crea/actualiza el registro en organization_payment_methods.
+   */
+  private async syncPaymentMethodFromConnection(connectionId: string): Promise<void> {
+    try {
+      // Obtener la conexión con su provider
+      const { data: connection, error: connError } = await supabase
+        .from('integration_connections')
+        .select(`
+          id, organization_id,
+          connector:integration_connectors(
+            code, name,
+            provider:integration_providers(code, name, category)
+          )
+        `)
+        .eq('id', connectionId)
+        .single();
+
+      if (connError || !connection) return;
+
+      const provider = (connection.connector as any)?.provider;
+      if (!provider || provider.category !== 'payments') return;
+
+      // Mapeo provider_code → payment_method_code
+      const PROVIDER_TO_METHOD: Record<string, string> = {
+        wompi: 'wompi',
+        stripe: 'stripe',
+        payu: 'payu',
+        mercadopago: 'mp',
+        paypal: 'paypal',
+      };
+
+      const methodCode = PROVIDER_TO_METHOD[provider.code];
+      if (!methodCode) return;
+
+      // Verificar que el método existe en el catálogo global
+      const { data: globalMethod } = await supabase
+        .from('payment_methods')
+        .select('code')
+        .eq('code', methodCode)
+        .eq('is_active', true)
+        .single();
+
+      if (!globalMethod) return;
+
+      // Crear o actualizar en organization_payment_methods
+      const { error: upsertError } = await supabase
+        .from('organization_payment_methods')
+        .upsert(
+          {
+            organization_id: connection.organization_id,
+            payment_method_code: methodCode,
+            is_active: true,
+            show_on_website: true,
+            settings: { gateway: provider.name },
+            integration_connection_id: connectionId,
+          },
+          { onConflict: 'organization_id,payment_method_code' }
+        );
+
+      if (upsertError) {
+        console.error('Error syncing payment method from connection:', upsertError);
+      }
+    } catch (err) {
+      console.error('Error in syncPaymentMethodFromConnection:', err);
+    }
   }
 
   /**

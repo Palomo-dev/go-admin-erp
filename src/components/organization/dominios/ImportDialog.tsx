@@ -36,7 +36,7 @@ interface ParsedDomain {
 }
 
 export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
-  const t = useTranslations('organization.domains.importDialog');
+  const t = useTranslations('org.domains.importDialog');
   const [file, setFile] = useState<File | null>(null);
   const [parsedDomains, setParsedDomains] = useState<ParsedDomain[]>([]);
   const [isImporting, setIsImporting] = useState(false);

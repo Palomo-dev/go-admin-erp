@@ -486,36 +486,42 @@ const CatalogoProductos: React.FC = () => {
 
     try {
       setLoading(true);
-      
-      // Obtener el ID de la organización del localStorage
-      const organizationId = parseInt(localStorage.getItem('organization_id') || '0');
-      
-      if (!organizationId) {
-        throw new Error('No se pudo determinar la organización actual');
+
+      if (!productoToDelete) {
+        throw new Error('No se seleccionó ningún producto para eliminar');
       }
-      
-      // Usar la función deactivate_product con ID de organización explícito
-      const { data, error } = await supabase
-        .rpc('deactivate_product', { 
-          p_product_id: productoToDelete,
-          p_organization_id: organizationId
+
+      console.log('Eliminando producto via RPC:', { productoToDelete });
+
+      // Usar función RPC con SECURITY DEFINER para evitar problemas de RLS
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc('soft_delete_product', {
+          p_product_id: productoToDelete
         });
-        
-      if (error) throw error;
-      
+
+      console.log('Respuesta RPC soft_delete_product:', { rpcResult, rpcError });
+
+      if (rpcError) {
+        console.error('RPC error details:', rpcError);
+        throw new Error(rpcError.message || 'Error al eliminar el producto');
+      }
+
+      if (!rpcResult) {
+        throw new Error('No se pudo eliminar el producto. Verifique permisos.');
+      }
+
       toast({
         title: "Producto eliminado",
         description: "El producto ha sido eliminado correctamente."
       });
-      
+
       // Actualizar lista de productos (eliminarlo de la vista)
       setProductos(productos.filter(p => p.id !== productoToDelete));
     } catch (error: any) {
       console.error('Error al eliminar producto:', error);
-      
-      // Mensaje de error específico si lo proporciona la función
+
       const errorMessage = error.message || "No se pudo eliminar el producto. Intente de nuevo más tarde.";
-      
+
       toast({
         variant: "destructive",
         title: "Error",

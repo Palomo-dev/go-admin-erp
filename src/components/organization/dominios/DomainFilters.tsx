@@ -39,7 +39,7 @@ export function DomainFilters({
   totalDomains,
   filteredCount,
 }: DomainFiltersProps) {
-  const t = useTranslations('organization.domains.filters');
+  const t = useTranslations('org.domains.filters');
   const hasFilters = searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || activeFilter !== 'all';
 
   const clearFilters = () => {

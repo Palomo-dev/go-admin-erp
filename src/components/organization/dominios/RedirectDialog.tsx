@@ -40,7 +40,7 @@ export function RedirectDialog({
   onSubmit,
   isLoading = false,
 }: RedirectDialogProps) {
-  const t = useTranslations('organization.domains.redirectDialog');
+  const t = useTranslations('org.domains.redirectDialog');
   const [redirectToDomainId, setRedirectToDomainId] = useState<string>('none');
   const [statusCode, setStatusCode] = useState<string>('301');
 

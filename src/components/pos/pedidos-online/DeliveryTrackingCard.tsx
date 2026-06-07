@@ -169,7 +169,7 @@ export function DeliveryTrackingCard({
         {/* Número de tracking */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Tracking:</span>
-          <span className="font-mono font-medium">{shipment.tracking_number as string}</span>
+          <span className="font-mono font-medium dark:text-gray-100">{shipment.tracking_number as string}</span>
         </div>
 
         {/* Vehiculo y conductor asignados */}
@@ -179,10 +179,10 @@ export function DeliveryTrackingCard({
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Truck className="h-4 w-4 text-muted-foreground" />
-                <span>Vehículo asignado</span>
+                <span className="dark:text-gray-100">Vehículo asignado</span>
               </div>
               {shipment.vehicle && (
-                <p className="text-sm font-medium pl-6">
+                <p className="text-sm font-medium pl-6 dark:text-gray-200">
                   {shipment.vehicle.plate} - {shipment.vehicle.brand || ''} {shipment.vehicle.model || ''}
                 </p>
               )}
@@ -194,10 +194,10 @@ export function DeliveryTrackingCard({
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span>Conductor</span>
+              <span className="dark:text-gray-100">Conductor</span>
             </div>
             <div className="flex items-center justify-between pl-6">
-              <p className="text-sm font-medium">
+              <p className="text-sm font-medium dark:text-gray-200">
                 {shipment.driver.employee
                   ? `${shipment.driver.employee.first_name} ${shipment.driver.employee.last_name}`
                   : 'Conductor asignado'}
@@ -233,7 +233,7 @@ export function DeliveryTrackingCard({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium">Historial</p>
+              <p className="text-sm font-medium dark:text-gray-100">Historial</p>
               <div className="space-y-3">
                 {events.slice(-5).reverse().map((event, index) => (
                   <div key={event.id} className="flex gap-3">
@@ -248,7 +248,7 @@ export function DeliveryTrackingCard({
                       )}
                     </div>
                     <div className="flex-1 pb-3">
-                      <p className="text-sm">{event.description || event.event_type}</p>
+                      <p className="text-sm dark:text-gray-200">{event.description || event.event_type}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatTime(event.event_time)}
                       </p>
@@ -265,18 +265,18 @@ export function DeliveryTrackingCard({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2">
+              <p className="text-sm font-medium flex items-center gap-2 dark:text-gray-100">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
                 Prueba de entrega
               </p>
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Recibido por:</span>
-                  <span className="font-medium">{proof.recipient_name}</span>
+                  <span className="font-medium dark:text-gray-100">{proof.recipient_name}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Fecha:</span>
-                  <span>{formatDateTime(proof.delivered_at)}</span>
+                  <span className="dark:text-gray-200">{formatDateTime(proof.delivered_at)}</span>
                 </div>
                 {proof.customer_rating && (
                   <div className="flex items-center justify-between text-sm">

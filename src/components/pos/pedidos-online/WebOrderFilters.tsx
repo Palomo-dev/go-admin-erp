@@ -57,10 +57,10 @@ const STATUS_OPTIONS: { value: WebOrderStatus; label: string; icon: React.ReactN
 ];
 
 const DELIVERY_TYPE_OPTIONS: { value: DeliveryType | 'all'; label: string; icon: React.ReactNode }[] = [
-  { value: 'all', label: 'Todos', icon: <Filter className="h-4 w-4" /> },
-  { value: 'pickup', label: 'Retiro', icon: <Store className="h-4 w-4" /> },
-  { value: 'delivery_own', label: 'Delivery propio', icon: <Bike className="h-4 w-4" /> },
-  { value: 'delivery_third_party', label: 'Terceros', icon: <Truck className="h-4 w-4" /> },
+  { value: 'all', label: 'Todos', icon: <Filter className="h-4 w-4 dark:text-gray-300" /> },
+  { value: 'pickup', label: 'Retiro', icon: <Store className="h-4 w-4 dark:text-gray-300" /> },
+  { value: 'delivery_own', label: 'Delivery propio', icon: <Bike className="h-4 w-4 dark:text-gray-300" /> },
+  { value: 'delivery_third_party', label: 'Terceros', icon: <Truck className="h-4 w-4 dark:text-gray-300" /> },
 ];
 
 export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFiltersProps) {
@@ -159,11 +159,11 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
           onClick={handleScheduledToggle}
           className="gap-1 flex-shrink-0 whitespace-nowrap"
         >
-          <CalendarClock className="h-4 w-4 text-indigo-500" />
+          <CalendarClock className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
           Programados
         </Button>
         <span className="text-muted-foreground flex-shrink-0">|</span>
-        <span className="text-sm font-medium flex-shrink-0">Tipo:</span>
+        <span className="text-sm font-medium flex-shrink-0 dark:text-gray-100">Tipo:</span>
         {DELIVERY_TYPE_OPTIONS.map((option) => {
           const isActive = option.value === 'all' 
             ? !activeFilters.delivery_type 

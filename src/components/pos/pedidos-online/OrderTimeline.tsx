@@ -140,11 +140,11 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
                 className={`
                   w-8 h-8 rounded-full flex items-center justify-center
                   ${step.isCancelled 
-                    ? 'bg-red-100 text-red-600' 
+                    ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300' 
                     : step.isCurrent 
                       ? 'bg-primary text-primary-foreground' 
                       : step.isCompleted 
-                        ? 'bg-green-100 text-green-600' 
+                        ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300' 
                         : 'bg-muted text-muted-foreground'
                   }
                 `}
@@ -186,11 +186,11 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
               className={`
                 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
                 ${step.isCancelled 
-                  ? 'bg-red-100 text-red-600' 
+                  ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300' 
                   : step.isCurrent 
                     ? 'bg-primary text-primary-foreground' 
                     : step.isCompleted 
-                      ? 'bg-green-100 text-green-600' 
+                      ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300' 
                       : 'bg-muted text-muted-foreground'
                 }
               `}
@@ -210,7 +210,7 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
             )}
           </div>
           <div className="flex-1 pb-4">
-            <p className={`font-medium ${step.isCancelled ? 'text-red-600' : step.isCurrent ? 'text-primary' : ''}`}>
+            <p className={`font-medium ${step.isCancelled ? 'text-red-600 dark:text-red-400' : step.isCurrent ? 'text-primary' : ''}`}>
               {step.label}
             </p>
             {step.timestamp && (
@@ -219,7 +219,7 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
               </p>
             )}
             {step.key === 'cancelled' && order.cancellation_reason && (
-              <p className="text-sm text-red-600 mt-1">
+              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                 Motivo: {order.cancellation_reason}
               </p>
             )}

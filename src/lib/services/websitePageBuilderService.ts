@@ -89,6 +89,15 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
       { key: 'show_overlay', label: 'Mostrar overlay oscuro', type: 'boolean', defaultValue: true },
       { key: 'show_title', label: 'Mostrar título', type: 'boolean', defaultValue: true },
       { key: 'show_cta', label: 'Mostrar botón', type: 'boolean', defaultValue: true },
+      { key: 'full_width', label: 'Ancho completo', type: 'boolean', defaultValue: true },
+      { key: 'border_radius', label: 'Bordes redondeados', type: 'select', options: [
+        { value: 'none', label: 'Sin redondear' },
+        { value: 'sm', label: 'Pequeño' },
+        { value: 'md', label: 'Mediano' },
+        { value: 'lg', label: 'Grande' },
+        { value: 'xl', label: 'Extra grande' },
+      ]},
+      { key: 'show_shadow', label: 'Mostrar sombra', type: 'boolean', defaultValue: false },
     ],
   },
   {

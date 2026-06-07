@@ -102,7 +102,7 @@ export function WebOrderStats({ stats, isLoading, datePreset = 'today' }: WebOrd
               {item.icon}
             </div>
             <p className="text-sm text-muted-foreground">{item.label}</p>
-            <p className="text-2xl font-bold">{item.value}</p>
+            <p className="text-2xl font-bold dark:text-gray-100">{item.value}</p>
           </CardContent>
         </Card>
       ))}

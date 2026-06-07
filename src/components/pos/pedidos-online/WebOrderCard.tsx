@@ -216,7 +216,7 @@ export function WebOrderCard({
           <div className="text-sm space-y-1 max-h-20 overflow-y-auto">
             {order.items?.slice(0, 3).map((item, idx) => (
               <div key={idx} className="flex justify-between">
-                <span className="truncate">{item.quantity}x {item.product_name}</span>
+                <span className="truncate dark:text-gray-200">{item.quantity}x {item.product_name}</span>
                 <span className="text-muted-foreground">${item.total.toLocaleString()}</span>
               </div>
             ))}

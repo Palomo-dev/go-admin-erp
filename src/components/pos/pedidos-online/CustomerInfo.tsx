@@ -41,7 +41,7 @@ export function CustomerInfo({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p className="font-medium">{displayName}</p>
+          <p className="font-medium dark:text-gray-100">{displayName}</p>
           {displayPhone && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="h-4 w-4" />
@@ -73,7 +73,7 @@ export function CustomerInfo({
     return (
       <div className="flex items-center gap-2">
         <User className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium text-sm">{displayName}</span>
+        <span className="font-medium text-sm dark:text-gray-100">{displayName}</span>
         {displayPhone && (
           <>
             <span className="text-muted-foreground">•</span>
@@ -89,7 +89,7 @@ export function CustomerInfo({
     <div className="space-y-1">
       <p className="flex items-center gap-2 text-sm">
         <User className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{displayName}</span>
+        <span className="font-medium dark:text-gray-100">{displayName}</span>
       </p>
       {displayPhone && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">

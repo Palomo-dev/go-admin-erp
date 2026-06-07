@@ -29,8 +29,8 @@ export function OrderTotals({
 
   if (variant === 'compact') {
     return (
-      <div className="flex items-center justify-between border-t pt-3">
-        <span className="font-medium">Total</span>
+      <div className="flex items-center justify-between border-t dark:border-gray-700 pt-3">
+        <span className="font-medium dark:text-gray-100">Total</span>
         <span className="text-lg font-bold text-primary">{formatCurrency(total)}</span>
       </div>
     );
@@ -51,7 +51,7 @@ export function OrderTotals({
       )}
       
       {discountTotal > 0 && (
-        <div className="flex justify-between text-sm text-green-600">
+        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
           <span>Descuento</span>
           <span>-{formatCurrency(discountTotal)}</span>
         </div>
@@ -74,7 +74,7 @@ export function OrderTotals({
       <Separator />
       
       <div className="flex justify-between text-lg font-bold">
-        <span>Total</span>
+        <span className="dark:text-gray-100">Total</span>
         <span className="text-primary">{formatCurrency(total)}</span>
       </div>
     </div>

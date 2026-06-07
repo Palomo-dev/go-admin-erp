@@ -108,14 +108,14 @@ export function ProofOfDeliveryView({
           <div className="flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">Recibido por:</span>
-            <span className="font-medium">{proof.recipient_name}</span>
+            <span className="font-medium dark:text-gray-100">{proof.recipient_name}</span>
           </div>
 
           {proof.recipient_doc_number && (
             <div className="flex items-center gap-2 text-sm">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">Documento:</span>
-              <span className="font-medium">
+              <span className="font-medium dark:text-gray-100">
                 {proof.recipient_doc_type && `${proof.recipient_doc_type}: `}
                 {proof.recipient_doc_number}
               </span>
@@ -136,7 +136,7 @@ export function ProofOfDeliveryView({
                 href={`https://maps.google.com/?q=${proof.latitude},${proof.longitude}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline flex items-center gap-1"
+                className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
               >
                 Ver en mapa
                 <ExternalLink className="h-3 w-3" />
@@ -150,7 +150,7 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2">
+              <p className="text-sm font-medium flex items-center gap-2 dark:text-gray-100">
                 <Star className="h-4 w-4 text-yellow-500" />
                 Calificación del cliente
               </p>
@@ -161,7 +161,7 @@ export function ProofOfDeliveryView({
                     className={`h-5 w-5 ${
                       star <= proof.customer_rating!
                         ? 'text-yellow-500 fill-yellow-500'
-                        : 'text-gray-300'
+                        : 'text-gray-300 dark:text-gray-600'
                     }`}
                   />
                 ))}
@@ -178,7 +178,7 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium">Comentarios del cliente</p>
+              <p className="text-sm font-medium dark:text-gray-100">Comentarios del cliente</p>
               <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
                 "{proof.customer_feedback}"
               </p>
@@ -191,7 +191,7 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium">Notas del conductor</p>
+              <p className="text-sm font-medium dark:text-gray-100">Notas del conductor</p>
               <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
                 {proof.notes}
               </p>
@@ -204,11 +204,11 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2">
+              <p className="text-sm font-medium flex items-center gap-2 dark:text-gray-100">
                 <FileText className="h-4 w-4" />
                 Firma del receptor
               </p>
-              <div className="border rounded-lg p-2 bg-white">
+              <div className="border dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-800">
                 <img
                   src={proof.signature_url}
                   alt="Firma del receptor"
@@ -230,7 +230,7 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2">
+              <p className="text-sm font-medium flex items-center gap-2 dark:text-gray-100">
                 <ImageIcon className="h-4 w-4" />
                 Fotos de entrega ({proof.photo_urls.length})
               </p>
@@ -241,7 +241,7 @@ export function ProofOfDeliveryView({
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="border rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
+                    className="border dark:border-gray-700 rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
                   >
                     <img
                       src={url}

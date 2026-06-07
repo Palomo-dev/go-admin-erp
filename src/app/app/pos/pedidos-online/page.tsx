@@ -353,13 +353,13 @@ export default function PedidosOnlinePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Pedidos Online</h1>
+          <h1 className="text-xl sm:text-2xl font-bold dark:text-gray-100">Pedidos Online</h1>
           <p className="text-sm text-muted-foreground">
             Gestiona los pedidos recibidos desde el sitio web
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center border rounded-md overflow-hidden">
+          <div className="flex items-center border dark:border-gray-700 rounded-md overflow-hidden">
             <Button
               variant={viewMode === 'kanban' ? 'default' : 'ghost'}
               size="sm"
@@ -415,7 +415,7 @@ export default function PedidosOnlinePage() {
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium mr-1">Período:</span>
+            <span className="text-sm font-medium mr-1 dark:text-gray-100">Período:</span>
             {([
               { value: 'today', label: 'Hoy' },
               { value: 'yesterday', label: 'Ayer' },

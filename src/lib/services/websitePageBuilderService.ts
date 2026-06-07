@@ -306,6 +306,7 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
       { key: 'mobile_layout', label: 'Layout en móvil', type: 'select', options: [
         { value: 'grid', label: 'Grid' },
         { value: 'list', label: 'Lista' },
+        { value: 'carousel', label: 'Carrusel' },
       ]},
     ],
   },

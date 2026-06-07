@@ -54,8 +54,48 @@ async function validateJWTLocally(token: string): Promise<{ valid: boolean; payl
     const expired = payload.exp ? payload.exp < currentTime : false;
     
     return { valid: true, payload, expired };
-  } catch (error) {
+  } catch (error: any) {
+    // Si el token expiró pero la firma es válida, marcarlo como expirado
+    if (error?.code === 'ERR_JWT_EXPIRED') {
+      return { valid: true, expired: true, payload: error.payload };
+    }
     return { valid: false };
+  }
+}
+
+/**
+ * Refresca el token directamente con la API REST de Supabase (funciona en Edge/middleware)
+ */
+async function refreshTokenViaAPI(refreshToken: string): Promise<{ session: any; error: any }> {
+  try {
+    const projectRef = getProjectRef();
+    const response = await fetch(`https://${projectRef}.supabase.co/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { session: null, error: errorData };
+    }
+    
+    const data = await response.json();
+    return {
+      session: {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: data.expires_at,
+        expires_in: data.expires_in,
+        user: data.user,
+      },
+      error: null,
+    };
+  } catch (error) {
+    return { session: null, error };
   }
 }
 
@@ -69,7 +109,7 @@ async function getValidatedSession(authCookie: any) {
   
   // Verificar cache válido
   if (cached && (currentTime - cached.cachedAt) < CACHE_DURATION && cached.expiresAt > currentTime) {
-    return { session: cached.session, isAuthenticated: true, isExpired: false };
+    return { session: cached.session, isAuthenticated: true, isExpired: false, newCookieValue: null };
   }
   
   try {
@@ -77,7 +117,7 @@ async function getValidatedSession(authCookie: any) {
     const { access_token, refresh_token, expires_at } = tokenData;
     
     if (!access_token || !refresh_token) {
-      return { session: null, isAuthenticated: false, isExpired: false };
+      return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
     }
     
     // Intentar validación JWT local primero
@@ -99,39 +139,44 @@ async function getValidatedSession(authCookie: any) {
         cachedAt: currentTime
       });
       
-      // Validación JWT local exitosa
+      return { session: mockSession, isAuthenticated: true, isExpired: false, newCookieValue: null };
+    }
+    
+    // Token expirado o inválido: intentar refrescar via API REST
+    console.log('🔄 [MIDDLEWARE] Token expirado, intentando refresh via API...');
+    const refreshResult = await refreshTokenViaAPI(refresh_token);
+    
+    if (refreshResult.session) {
+      const newSession = refreshResult.session;
+      console.log('✅ [MIDDLEWARE] Token refrescado exitosamente');
       
-      return { session: mockSession, isAuthenticated: true, isExpired: false };
-    }
-    
-    // Si JWT local falla, usar Supabase como fallback
-    
-    const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-    
-    if (error || !data.session) {
-      return { session: null, isAuthenticated: false, isExpired: false };
-    }
-    
-    const session = data.session;
-    const sessionExpired = !!session.expires_at && session.expires_at < Math.floor(Date.now() / 1000);
-    
-    if (!sessionExpired) {
       // Guardar en cache
       sessionCache.set(cacheKey, {
-        session,
-        expiresAt: (session.expires_at || 0) * 1000,
+        session: newSession,
+        expiresAt: (newSession.expires_at || 0) * 1000,
         cachedAt: currentTime
       });
+      
+      // Preparar el nuevo valor de cookie para actualizar en la response
+      const newCookieValue = JSON.stringify({
+        access_token: newSession.access_token,
+        refresh_token: newSession.refresh_token,
+        expires_at: newSession.expires_at,
+        expires_in: newSession.expires_in,
+        token_type: 'bearer',
+        type: 'access',
+        user: newSession.user,
+      });
+      
+      return { session: newSession, isAuthenticated: true, isExpired: false, newCookieValue };
     }
     
-    return { 
-      session: sessionExpired ? null : session, 
-      isAuthenticated: !sessionExpired, 
-      isExpired: sessionExpired 
-    };
+    console.warn('⚠️ [MIDDLEWARE] Refresh token falló:', refreshResult.error);
+    return { session: null, isAuthenticated: false, isExpired: true, newCookieValue: null };
     
   } catch (error) {
-    return { session: null, isAuthenticated: false, isExpired: false };
+    console.error('❌ [MIDDLEWARE] Error en getValidatedSession:', error);
+    return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
   }
 }
 
@@ -247,6 +292,19 @@ export async function middleware(request: NextRequest) {
     if (isAuthenticated && session?.user?.id) {
       // Acción asíncrona: registrar actividad del usuario (optimizada)
       updateUserActivityOptimized(session.user.id, request);
+    }
+    
+    // Si el token fue refrescado, actualizar la cookie en la response
+    if (sessionResult.newCookieValue) {
+      const response = await handleRouteProtection(request, isAuthenticated, isExpired);
+      response.cookies.set(authCookieName, sessionResult.newCookieValue, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30, // 30 días
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: false, // Necesario para que el cliente pueda leerla
+      });
+      return response;
     }
   }
   

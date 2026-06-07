@@ -287,14 +287,14 @@ export default function PedidosOnlinePage() {
 
   const getStatusColor = (status: WebOrderStatus): string => {
     const colors: Record<WebOrderStatus, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      preparing: 'bg-orange-100 text-orange-800',
-      ready: 'bg-green-100 text-green-800',
-      in_delivery: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-emerald-100 text-emerald-800',
-      cancelled: 'bg-red-100 text-red-800',
-      rejected: 'bg-gray-100 text-gray-800',
+      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      preparing: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      ready: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      in_delivery: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+      delivered: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+      cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+      rejected: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
     };
     return colors[status];
   };
@@ -481,32 +481,32 @@ export default function PedidosOnlinePage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[640px]">
                 <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-medium">Pedido</th>
-                    <th className="text-left p-3 font-medium">Cliente</th>
-                    <th className="text-left p-3 font-medium">Estado</th>
-                    <th className="text-left p-3 font-medium">Entrega</th>
-                    <th className="text-left p-3 font-medium">Pago</th>
-                    <th className="text-right p-3 font-medium">Total</th>
-                    <th className="text-left p-3 font-medium">Fecha</th>
-                    <th className="text-center p-3 font-medium">Acciones</th>
+                  <tr className="border-b dark:border-gray-700 bg-muted/50">
+                    <th className="text-left p-3 font-medium dark:text-gray-100">Pedido</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100">Cliente</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100">Estado</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100">Entrega</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100">Pago</th>
+                    <th className="text-right p-3 font-medium dark:text-gray-100">Total</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100">Fecha</th>
+                    <th className="text-center p-3 font-medium dark:text-gray-100">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(order => (
-                    <tr key={order.id} className="border-b hover:bg-muted/30 transition-colors">
-                      <td className="p-3 font-medium">{order.order_number}</td>
-                      <td className="p-3">{order.customer_name || order.customer?.full_name || '—'}</td>
+                    <tr key={order.id} className="border-b dark:border-gray-700 hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-colors">
+                      <td className="p-3 font-medium dark:text-gray-100">{order.order_number}</td>
+                      <td className="p-3 dark:text-gray-300">{order.customer_name || order.customer?.full_name || '—'}</td>
                       <td className="p-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                           {getStatusLabel(order.status)}
                         </span>
                       </td>
                       <td className="p-3">
-                        <span className="flex items-center gap-1 text-xs">
-                          {order.delivery_type === 'pickup' && <Store className="h-3 w-3" />}
-                          {order.delivery_type === 'delivery_own' && <Bike className="h-3 w-3" />}
-                          {order.delivery_type === 'delivery_third_party' && <Truck className="h-3 w-3" />}
+                        <span className="flex items-center gap-1 text-xs dark:text-gray-300">
+                          {order.delivery_type === 'pickup' && <Store className="h-3 w-3 dark:text-gray-400" />}
+                          {order.delivery_type === 'delivery_own' && <Bike className="h-3 w-3 dark:text-gray-400" />}
+                          {order.delivery_type === 'delivery_third_party' && <Truck className="h-3 w-3 dark:text-gray-400" />}
                           {order.delivery_type === 'pickup' ? 'Retiro' : order.delivery_type === 'delivery_own' ? 'Propio' : 'Tercero'}
                         </span>
                       </td>
@@ -519,7 +519,7 @@ export default function PedidosOnlinePage() {
                           </span>
                         </div>
                       </td>
-                      <td className="p-3 text-right font-semibold">${order.total.toLocaleString()}</td>
+                      <td className="p-3 text-right font-semibold dark:text-gray-100">${order.total.toLocaleString()}</td>
                       <td className="p-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -652,7 +652,7 @@ export default function PedidosOnlinePage() {
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
               <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-              <span className="font-medium text-sm sm:text-base">Pendientes ({pendingOrders.length})</span>
+              <span className="font-medium text-sm sm:text-base dark:text-gray-100">Pendientes ({pendingOrders.length})</span>
             </div>
             {paginateKanban(pendingOrders, 'pending').map(order => (
               <WebOrderCard
@@ -679,7 +679,7 @@ export default function PedidosOnlinePage() {
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <div className="w-3 h-3 bg-blue-500 rounded-full" />
-              <span className="font-medium text-sm sm:text-base">Confirmados ({confirmedOrders.length})</span>
+              <span className="font-medium text-sm sm:text-base dark:text-gray-100">Confirmados ({confirmedOrders.length})</span>
             </div>
             {paginateKanban(confirmedOrders, 'confirmed').map(order => (
               <WebOrderCard
@@ -705,7 +705,7 @@ export default function PedidosOnlinePage() {
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
               <div className="w-3 h-3 bg-orange-500 rounded-full" />
-              <span className="font-medium text-sm sm:text-base">Preparando ({preparingOrders.length})</span>
+              <span className="font-medium text-sm sm:text-base dark:text-gray-100">Preparando ({preparingOrders.length})</span>
             </div>
             {paginateKanban(preparingOrders, 'preparing').map(order => (
               <WebOrderCard
@@ -731,7 +731,7 @@ export default function PedidosOnlinePage() {
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
               <div className="w-3 h-3 bg-green-500 rounded-full" />
-              <span className="font-medium text-sm sm:text-base">Listos / En camino ({readyOrders.length})</span>
+              <span className="font-medium text-sm sm:text-base dark:text-gray-100">Listos / En camino ({readyOrders.length})</span>
             </div>
             {paginateKanban(readyOrders, 'ready').map(order => (
               <WebOrderCard

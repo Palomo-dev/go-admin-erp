@@ -47,13 +47,13 @@ interface WebOrderFiltersProps {
 }
 
 const STATUS_OPTIONS: { value: WebOrderStatus; label: string; icon: React.ReactNode }[] = [
-  { value: 'pending', label: 'Pendientes', icon: <Clock className="h-4 w-4 text-yellow-500" /> },
-  { value: 'confirmed', label: 'Confirmados', icon: <CheckCircle className="h-4 w-4 text-blue-500" /> },
-  { value: 'preparing', label: 'Preparando', icon: <ChefHat className="h-4 w-4 text-orange-500" /> },
-  { value: 'ready', label: 'Listos', icon: <Package className="h-4 w-4 text-green-500" /> },
-  { value: 'in_delivery', label: 'En camino', icon: <Truck className="h-4 w-4 text-purple-500" /> },
-  { value: 'delivered', label: 'Entregados', icon: <CheckCircle className="h-4 w-4 text-emerald-500" /> },
-  { value: 'cancelled', label: 'Cancelados', icon: <XCircle className="h-4 w-4 text-red-500" /> },
+  { value: 'pending', label: 'Pendientes', icon: <Clock className="h-4 w-4 text-yellow-500 dark:text-yellow-400" /> },
+  { value: 'confirmed', label: 'Confirmados', icon: <CheckCircle className="h-4 w-4 text-blue-500 dark:text-blue-400" /> },
+  { value: 'preparing', label: 'Preparando', icon: <ChefHat className="h-4 w-4 text-orange-500 dark:text-orange-400" /> },
+  { value: 'ready', label: 'Listos', icon: <Package className="h-4 w-4 text-green-500 dark:text-green-400" /> },
+  { value: 'in_delivery', label: 'En camino', icon: <Truck className="h-4 w-4 text-purple-500 dark:text-purple-400" /> },
+  { value: 'delivered', label: 'Entregados', icon: <CheckCircle className="h-4 w-4 text-emerald-500 dark:text-emerald-400" /> },
+  { value: 'cancelled', label: 'Cancelados', icon: <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" /> },
 ];
 
 const DELIVERY_TYPE_OPTIONS: { value: DeliveryType | 'all'; label: string; icon: React.ReactNode }[] = [

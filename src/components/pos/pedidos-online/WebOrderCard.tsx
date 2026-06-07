@@ -209,7 +209,7 @@ export function WebOrderCard({
         )}
 
         {/* Items resumen */}
-        <div className="border-t pt-3 mb-3">
+        <div className="border-t dark:border-gray-700 pt-3 mb-3">
           <p className="text-sm text-muted-foreground mb-1">
             {order.items?.length || 0} producto(s)
           </p>
@@ -227,8 +227,8 @@ export function WebOrderCard({
         </div>
 
         {/* Total */}
-        <div className="flex items-center justify-between border-t pt-3 mb-3">
-          <span className="font-medium">Total</span>
+        <div className="flex items-center justify-between border-t dark:border-gray-700 pt-3 mb-3">
+          <span className="font-medium dark:text-gray-100">Total</span>
           <span className="text-lg font-bold text-primary">${order.total.toLocaleString()}</span>
         </div>
 

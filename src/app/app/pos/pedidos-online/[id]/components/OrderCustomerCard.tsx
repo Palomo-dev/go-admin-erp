@@ -23,7 +23,7 @@ export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <p className="font-medium">{displayName}</p>
+        <p className="font-medium dark:text-gray-100">{displayName}</p>
         
         {displayPhone && (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">

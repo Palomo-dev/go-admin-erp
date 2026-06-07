@@ -32,7 +32,7 @@ export function OrderHeader({ order }: OrderHeaderProps) {
         </Button>
         <div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold">{order.order_number}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold dark:text-gray-100">{order.order_number}</h1>
             <StatusBadge status={order.status} size="lg" />
             {order.is_scheduled && (
               <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 flex items-center gap-1">

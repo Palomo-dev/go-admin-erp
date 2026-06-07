@@ -130,7 +130,7 @@ export function WebOrderCard({
         <div className="flex items-start justify-between mb-3 gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              <span className="font-bold text-base sm:text-lg">{order.order_number}</span>
+              <span className="font-bold text-base sm:text-lg dark:text-gray-100">{order.order_number}</span>
               {isUrgent && (
                 <Badge variant="destructive" className="text-xs">
                   ¡Urgente!
@@ -170,12 +170,12 @@ export function WebOrderCard({
         <div className="space-y-1 mb-3">
           <p className="flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{order.customer_name || order.customer?.full_name || 'Cliente anónimo'}</span>
+            <span className="font-medium dark:text-gray-100">{order.customer_name || order.customer?.full_name || 'Cliente anónimo'}</span>
           </p>
           {(order.customer_phone || order.customer?.phone) && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="h-4 w-4" />
-              {order.customer_phone || order.customer?.phone}
+              <span className="dark:text-gray-300">{order.customer_phone || order.customer?.phone}</span>
             </p>
           )}
         </div>
@@ -183,7 +183,7 @@ export function WebOrderCard({
         {/* Tipo de entrega + Método de pago + Estado de pago */}
         <div className="flex items-center gap-2 mb-1 p-2 bg-muted/50 rounded-lg">
           {deliveryConfig.icon}
-          <span className="text-sm font-medium">{deliveryConfig.label}</span>
+          <span className="text-sm font-medium dark:text-gray-100">{deliveryConfig.label}</span>
           {order.payment_method && (
             <Badge variant="outline" className="ml-auto text-xs">
               {getPaymentMethodLabel(order.payment_method)}
@@ -204,7 +204,7 @@ export function WebOrderCard({
         {order.delivery_type !== 'pickup' && order.delivery_address?.address && (
           <div className="flex items-start gap-2 mb-3 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <span className="line-clamp-2">{order.delivery_address.address}</span>
+            <span className="line-clamp-2 dark:text-gray-300">{order.delivery_address.address}</span>
           </div>
         )}
 
@@ -235,8 +235,8 @@ export function WebOrderCard({
         {/* Notas del cliente */}
         {order.customer_notes && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded text-sm mb-3">
-            <span className="font-medium">Nota: </span>
-            {order.customer_notes}
+            <span className="font-medium dark:text-yellow-200">Nota: </span>
+            <span className="dark:text-yellow-100">{order.customer_notes}</span>
           </div>
         )}
 

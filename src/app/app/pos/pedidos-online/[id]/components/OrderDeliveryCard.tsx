@@ -22,17 +22,17 @@ const DELIVERY_TYPE_CONFIG: Record<DeliveryType, {
   pickup: { 
     label: 'Retiro en tienda', 
     icon: Store, 
-    color: 'text-blue-600' 
+    color: 'text-blue-600 dark:text-blue-400' 
   },
   delivery_own: { 
     label: 'Delivery propio', 
     icon: Bike, 
-    color: 'text-green-600' 
+    color: 'text-green-600 dark:text-green-400' 
   },
   delivery_third_party: { 
     label: 'Delivery terceros', 
     icon: Truck, 
-    color: 'text-purple-600' 
+    color: 'text-purple-600 dark:text-purple-400' 
   },
 };
 
@@ -72,7 +72,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
         {/* Tipo de entrega */}
         <div className="flex items-center gap-2">
           <Icon className={cn("h-5 w-5", config.color)} />
-          <span className="font-medium">{config.label}</span>
+          <span className="font-medium dark:text-gray-100">{config.label}</span>
           {order.delivery_partner && (
             <Badge variant="outline" className="text-xs ml-auto">
               {order.delivery_partner}
@@ -85,7 +85,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
           <div className="space-y-1">
             <p className="flex items-start gap-2 text-sm">
               <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-              <span>{address.address}</span>
+              <span className="dark:text-gray-200">{address.address}</span>
             </p>
             {address.neighborhood && (
               <p className="text-sm text-muted-foreground ml-6">
@@ -94,7 +94,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
               </p>
             )}
             {address.instructions && (
-              <p className="text-sm text-yellow-600 ml-6">
+              <p className="text-sm text-yellow-600 dark:text-yellow-400 ml-6">
                 📝 {address.instructions}
               </p>
             )}
@@ -105,7 +105,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
                 rel="noopener noreferrer"
                 className={cn(
                   "flex items-center gap-1 text-sm ml-6",
-                  "text-blue-600 hover:underline"
+                  "text-blue-600 dark:text-blue-400 hover:underline"
                 )}
               >
                 <Navigation className="h-3 w-3" />
@@ -119,19 +119,19 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
         {order.scheduled_at && (
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <span>Programado: {formatDateTime(order.scheduled_at)}</span>
+            <span className="dark:text-gray-200">Programado: {formatDateTime(order.scheduled_at)}</span>
           </div>
         )}
 
         {order.estimated_ready_at && (
-          <div className="flex items-center gap-2 text-sm text-green-600">
+          <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
             <Clock className="h-4 w-4" />
             <span>Listo aprox: {formatTime(order.estimated_ready_at)}</span>
           </div>
         )}
 
         {order.estimated_delivery_at && order.delivery_type !== 'pickup' && (
-          <div className="flex items-center gap-2 text-sm text-purple-600">
+          <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
             <Truck className="h-4 w-4" />
             <span>Entrega aprox: {formatTime(order.estimated_delivery_at)}</span>
           </div>

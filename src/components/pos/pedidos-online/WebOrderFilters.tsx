@@ -133,7 +133,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
       </div>
 
       {/* Filtros rápidos por estado */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {STATUS_OPTIONS.map((option) => {
           const isActive = activeFilters.status?.includes(option.value);
           return (
@@ -142,7 +142,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
               variant={isActive ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleStatusToggle(option.value)}
-              className="gap-1"
+              className="gap-1 flex-shrink-0 whitespace-nowrap"
             >
               {option.icon}
               {option.label}
@@ -152,37 +152,35 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
       </div>
 
       {/* Filtro por tipo de entrega y programados */}
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         <Button
           variant={activeFilters.is_scheduled ? 'default' : 'outline'}
           size="sm"
           onClick={handleScheduledToggle}
-          className="gap-1"
+          className="gap-1 flex-shrink-0 whitespace-nowrap"
         >
           <CalendarClock className="h-4 w-4 text-indigo-500" />
           Programados
         </Button>
-        <span className="text-muted-foreground">|</span>
-        <span className="text-sm font-medium">Tipo de entrega:</span>
-        <div className="flex gap-2">
-          {DELIVERY_TYPE_OPTIONS.map((option) => {
-            const isActive = option.value === 'all' 
-              ? !activeFilters.delivery_type 
-              : activeFilters.delivery_type === option.value;
-            return (
-              <Button
-                key={option.value}
-                variant={isActive ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => handleDeliveryTypeChange(option.value)}
-                className="gap-1"
-              >
-                {option.icon}
-                {option.label}
-              </Button>
-            );
-          })}
-        </div>
+        <span className="text-muted-foreground flex-shrink-0">|</span>
+        <span className="text-sm font-medium flex-shrink-0">Tipo:</span>
+        {DELIVERY_TYPE_OPTIONS.map((option) => {
+          const isActive = option.value === 'all' 
+            ? !activeFilters.delivery_type 
+            : activeFilters.delivery_type === option.value;
+          return (
+            <Button
+              key={option.value}
+              variant={isActive ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => handleDeliveryTypeChange(option.value)}
+              className="gap-1 flex-shrink-0 whitespace-nowrap"
+            >
+              {option.icon}
+              {option.label}
+            </Button>
+          );
+        })}
       </div>
 
       {/* Filtros activos */}

@@ -31,7 +31,10 @@ import {
   Clock,
   Store,
   Bike,
-  Truck
+  Truck,
+  Calendar,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { WebOrderCard } from '@/components/pos/pedidos-online/WebOrderCard';
 import { WebOrderFilters } from '@/components/pos/pedidos-online/WebOrderFilters';
@@ -54,7 +57,13 @@ interface LocalFilters {
   payment_status?: PaymentStatus;
   search?: string;
   is_scheduled?: boolean;
+  date_from?: string;
+  date_to?: string;
 }
+
+type DatePreset = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
+
+const ITEMS_PER_PAGE = 20;
 
 export default function PedidosOnlinePage() {
   const router = useRouter();
@@ -74,6 +83,10 @@ export default function PedidosOnlinePage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [datePreset, setDatePreset] = useState<DatePreset>('today');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Dialogs
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; orderId: string | null }>({ 
@@ -88,14 +101,47 @@ export default function PedidosOnlinePage() {
   const [estimatedMinutes, setEstimatedMinutes] = useState(30);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Calcular rango de fecha según preset
+  const getDateRange = useCallback((): { from?: string; to?: string } => {
+    const now = new Date();
+    const startOfDay = (d: Date) => { const c = new Date(d); c.setHours(0,0,0,0); return c.toISOString(); };
+    const endOfDay = (d: Date) => { const c = new Date(d); c.setHours(23,59,59,999); return c.toISOString(); };
+    switch (datePreset) {
+      case 'today':
+        return { from: startOfDay(now), to: endOfDay(now) };
+      case 'yesterday': {
+        const y = new Date(now); y.setDate(y.getDate() - 1);
+        return { from: startOfDay(y), to: endOfDay(y) };
+      }
+      case 'last7': {
+        const d = new Date(now); d.setDate(d.getDate() - 7);
+        return { from: startOfDay(d), to: endOfDay(now) };
+      }
+      case 'last30': {
+        const d = new Date(now); d.setDate(d.getDate() - 30);
+        return { from: startOfDay(d), to: endOfDay(now) };
+      }
+      case 'custom':
+        return {
+          from: customDateFrom ? new Date(customDateFrom + 'T00:00:00').toISOString() : undefined,
+          to: customDateTo ? new Date(customDateTo + 'T23:59:59').toISOString() : undefined,
+        };
+      default:
+        return {};
+    }
+  }, [datePreset, customDateFrom, customDateTo]);
+
   const loadOrders = useCallback(async () => {
     try {
+      const dateRange = getDateRange();
+      const mergedFilters = { ...filters, date_from: dateRange.from, date_to: dateRange.to };
       const [ordersData, statsData] = await Promise.all([
-        webOrdersService.getOrders(filters),
-        webOrdersService.getOrderStats()
+        webOrdersService.getOrders(mergedFilters),
+        webOrdersService.getOrderStats(dateRange.from, dateRange.to)
       ]);
       setOrders(ordersData);
       setStats(statsData);
+      setCurrentPage(1);
     } catch (error) {
       console.error('Error loading orders:', error);
       toast({
@@ -106,7 +152,7 @@ export default function PedidosOnlinePage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, toast]);
+  }, [filters, getDateRange, toast]);
 
   useEffect(() => {
     loadOrders();
@@ -290,22 +336,29 @@ export default function PedidosOnlinePage() {
   };
 
   // Agrupar pedidos por estado para vista tipo Kanban
+  const KANBAN_PAGE_SIZE = 10;
+  const [kanbanPages, setKanbanPages] = useState<Record<string, number>>({ pending: 1, confirmed: 1, preparing: 1, ready: 1 });
+
   const pendingOrders = orders.filter(o => o.status === 'pending');
   const confirmedOrders = orders.filter(o => o.status === 'confirmed');
   const preparingOrders = orders.filter(o => o.status === 'preparing');
   const readyOrders = orders.filter(o => ['ready', 'in_delivery'].includes(o.status));
 
+  const paginateKanban = (items: WebOrder[], key: string) => items.slice(0, (kanbanPages[key] || 1) * KANBAN_PAGE_SIZE);
+  const hasMoreKanban = (items: WebOrder[], key: string) => items.length > (kanbanPages[key] || 1) * KANBAN_PAGE_SIZE;
+  const showMoreKanban = (key: string) => setKanbanPages(prev => ({ ...prev, [key]: (prev[key] || 1) + 1 }));
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Pedidos Online</h1>
           <p className="text-sm text-muted-foreground">
             Gestiona los pedidos recibidos desde el sitio web
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center border rounded-md overflow-hidden">
             <Button
               variant={viewMode === 'kanban' ? 'default' : 'ghost'}
@@ -349,13 +402,56 @@ export default function PedidosOnlinePage() {
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
+            <span className="hidden sm:inline">Actualizar</span>
           </Button>
         </div>
       </div>
 
       {/* Estadísticas */}
-      <WebOrderStats stats={stats} isLoading={loading} />
+      <WebOrderStats stats={stats} isLoading={loading} datePreset={datePreset} />
+
+      {/* Filtro de fechas */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium mr-1">Período:</span>
+            {([
+              { value: 'today', label: 'Hoy' },
+              { value: 'yesterday', label: 'Ayer' },
+              { value: 'last7', label: 'Últimos 7 días' },
+              { value: 'last30', label: 'Últimos 30 días' },
+              { value: 'custom', label: 'Personalizado' },
+            ] as { value: DatePreset; label: string }[]).map((opt) => (
+              <Button
+                key={opt.value}
+                variant={datePreset === opt.value ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setDatePreset(opt.value)}
+              >
+                {opt.label}
+              </Button>
+            ))}
+            {datePreset === 'custom' && (
+              <div className="flex items-center gap-2 ml-2">
+                <Input
+                  type="date"
+                  value={customDateFrom}
+                  onChange={(e) => setCustomDateFrom(e.target.value)}
+                  className="h-8 w-36 text-xs"
+                />
+                <span className="text-sm text-muted-foreground">a</span>
+                <Input
+                  type="date"
+                  value={customDateTo}
+                  onChange={(e) => setCustomDateTo(e.target.value)}
+                  className="h-8 w-36 text-xs"
+                />
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filtros */}
       <Card>
@@ -374,7 +470,7 @@ export default function PedidosOnlinePage() {
         </div>
       ) : orders.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center">
+          <CardContent className="p-8 sm:p-12 text-center">
             <p className="text-muted-foreground">No hay pedidos que mostrar</p>
           </CardContent>
         </Card>
@@ -383,7 +479,7 @@ export default function PedidosOnlinePage() {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[640px]">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="text-left p-3 font-medium">Pedido</th>
@@ -397,7 +493,7 @@ export default function PedidosOnlinePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map(order => (
+                  {orders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(order => (
                     <tr key={order.id} className="border-b hover:bg-muted/30 transition-colors">
                       <td className="p-3 font-medium">{order.order_number}</td>
                       <td className="p-3">{order.customer_name || order.customer?.full_name || '—'}</td>
@@ -518,18 +614,47 @@ export default function PedidosOnlinePage() {
                 </tbody>
               </table>
             </div>
+            {/* Paginación lista */}
+            {orders.length > ITEMS_PER_PAGE && (
+              <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-t">
+                <span className="text-sm text-muted-foreground">
+                  {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, orders.length)} de {orders.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm px-2">
+                    {currentPage} / {Math.ceil(orders.length / ITEMS_PER_PAGE)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= Math.ceil(orders.length / ITEMS_PER_PAGE)}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
         /* ─── Vista Kanban ─── */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* Columna: Pendientes */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
               <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-              <span className="font-medium">Pendientes ({pendingOrders.length})</span>
+              <span className="font-medium text-sm sm:text-base">Pendientes ({pendingOrders.length})</span>
             </div>
-            {pendingOrders.map(order => (
+            {paginateKanban(pendingOrders, 'pending').map(order => (
               <WebOrderCard
                 key={order.id}
                 order={order}
@@ -538,6 +663,11 @@ export default function PedidosOnlinePage() {
                 onViewDetails={handleViewDetails}
               />
             ))}
+            {hasMoreKanban(pendingOrders, 'pending') && (
+              <Button variant="ghost" size="sm" className="w-full" onClick={() => showMoreKanban('pending')}>
+                Ver más ({pendingOrders.length - (kanbanPages.pending || 1) * KANBAN_PAGE_SIZE} restantes)
+              </Button>
+            )}
             {pendingOrders.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-4">
                 Sin pedidos pendientes
@@ -546,12 +676,12 @@ export default function PedidosOnlinePage() {
           </div>
 
           {/* Columna: Confirmados */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <div className="w-3 h-3 bg-blue-500 rounded-full" />
-              <span className="font-medium">Confirmados ({confirmedOrders.length})</span>
+              <span className="font-medium text-sm sm:text-base">Confirmados ({confirmedOrders.length})</span>
             </div>
-            {confirmedOrders.map(order => (
+            {paginateKanban(confirmedOrders, 'confirmed').map(order => (
               <WebOrderCard
                 key={order.id}
                 order={order}
@@ -559,6 +689,11 @@ export default function PedidosOnlinePage() {
                 onViewDetails={handleViewDetails}
               />
             ))}
+            {hasMoreKanban(confirmedOrders, 'confirmed') && (
+              <Button variant="ghost" size="sm" className="w-full" onClick={() => showMoreKanban('confirmed')}>
+                Ver más ({confirmedOrders.length - (kanbanPages.confirmed || 1) * KANBAN_PAGE_SIZE} restantes)
+              </Button>
+            )}
             {confirmedOrders.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-4">
                 Sin pedidos confirmados
@@ -567,12 +702,12 @@ export default function PedidosOnlinePage() {
           </div>
 
           {/* Columna: En preparación */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
               <div className="w-3 h-3 bg-orange-500 rounded-full" />
-              <span className="font-medium">Preparando ({preparingOrders.length})</span>
+              <span className="font-medium text-sm sm:text-base">Preparando ({preparingOrders.length})</span>
             </div>
-            {preparingOrders.map(order => (
+            {paginateKanban(preparingOrders, 'preparing').map(order => (
               <WebOrderCard
                 key={order.id}
                 order={order}
@@ -580,6 +715,11 @@ export default function PedidosOnlinePage() {
                 onViewDetails={handleViewDetails}
               />
             ))}
+            {hasMoreKanban(preparingOrders, 'preparing') && (
+              <Button variant="ghost" size="sm" className="w-full" onClick={() => showMoreKanban('preparing')}>
+                Ver más ({preparingOrders.length - (kanbanPages.preparing || 1) * KANBAN_PAGE_SIZE} restantes)
+              </Button>
+            )}
             {preparingOrders.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-4">
                 Nada en preparación
@@ -588,12 +728,12 @@ export default function PedidosOnlinePage() {
           </div>
 
           {/* Columna: Listos / En camino */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
               <div className="w-3 h-3 bg-green-500 rounded-full" />
-              <span className="font-medium">Listos / En camino ({readyOrders.length})</span>
+              <span className="font-medium text-sm sm:text-base">Listos / En camino ({readyOrders.length})</span>
             </div>
-            {readyOrders.map(order => (
+            {paginateKanban(readyOrders, 'ready').map(order => (
               <WebOrderCard
                 key={order.id}
                 order={order}
@@ -601,6 +741,11 @@ export default function PedidosOnlinePage() {
                 onViewDetails={handleViewDetails}
               />
             ))}
+            {hasMoreKanban(readyOrders, 'ready') && (
+              <Button variant="ghost" size="sm" className="w-full" onClick={() => showMoreKanban('ready')}>
+                Ver más ({readyOrders.length - (kanbanPages.ready || 1) * KANBAN_PAGE_SIZE} restantes)
+              </Button>
+            )}
             {readyOrders.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-4">
                 Sin pedidos listos

@@ -10,6 +10,16 @@ import {
   Package
 } from 'lucide-react';
 
+type DatePreset = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
+
+const DATE_PRESET_LABELS: Record<DatePreset, string> = {
+  today: 'Pedidos hoy',
+  yesterday: 'Pedidos ayer',
+  last7: 'Pedidos (7 días)',
+  last30: 'Pedidos (30 días)',
+  custom: 'Total pedidos',
+};
+
 interface WebOrderStatsProps {
   stats: {
     total_orders: number;
@@ -20,12 +30,13 @@ interface WebOrderStatsProps {
     avg_order_value: number;
   };
   isLoading?: boolean;
+  datePreset?: DatePreset;
 }
 
-export function WebOrderStats({ stats, isLoading }: WebOrderStatsProps) {
+export function WebOrderStats({ stats, isLoading, datePreset = 'today' }: WebOrderStatsProps) {
   const statItems = [
     {
-      label: 'Pedidos hoy',
+      label: DATE_PRESET_LABELS[datePreset] || 'Pedidos',
       value: stats.total_orders,
       icon: <Package className="h-5 w-5" />,
       color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',

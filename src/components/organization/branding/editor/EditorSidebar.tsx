@@ -569,6 +569,7 @@ interface HeroSlideItem {
   title?: string;
   subtitle?: string;
   image_url?: string;
+  image_url_mobile?: string;
   cta_text?: string;
   cta_url?: string;
 }
@@ -1025,10 +1026,15 @@ function HeroSlidesEditor({
                     rows={2}
                     className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
                   />
-                  <Label className="text-[10px] text-gray-400 block">Imagen de fondo</Label>
+                  <Label className="text-[10px] text-gray-400 block">Imagen escritorio</Label>
                   <ImageFieldPicker
                     value={slide.image_url || ''}
                     onChange={(url) => handleUpdate(slide.id, { image_url: url })}
+                  />
+                  <Label className="text-[10px] text-gray-400 block">Imagen móvil</Label>
+                  <ImageFieldPicker
+                    value={slide.image_url_mobile || ''}
+                    onChange={(url) => handleUpdate(slide.id, { image_url_mobile: url })}
                   />
                   <Label className="text-[10px] text-gray-400 block">Texto del botón</Label>
                   <Input

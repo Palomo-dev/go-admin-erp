@@ -97,20 +97,27 @@ export const getOptimizedSession = async () => {
   
   // Mejora del caché: Si ya tenemos una sesión en caché y no ha pasado el tiempo mínimo, usarla
   if (cachedSession && (now - lastSessionCheck < MIN_CHECK_INTERVAL)) {
-    // Verificar si la sesión está por expirar y refrescarla si es necesario
     const expiresAt = (cachedSession.expires_at || 0) * 1000;
-    if (expiresAt - now < REFRESH_BEFORE_EXPIRY) {
-      // Debounce: evitar múltiples refreshes en un periodo corto de tiempo
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
+    
+    // Si la sesión ya expiró, invalidar caché y forzar refresh real
+    if (expiresAt <= now) {
+      console.log('⏰ [AUTH] Sesión cacheada expirada, forzando refresh...');
+      cachedSession = null;
+      lastSessionCheck = 0;
+      // No retornar, continuar al bloque de verificación con Supabase
+    } else {
+      // Sesión válida: verificar si está próxima a expirar y refrescarla
+      if (expiresAt - now < REFRESH_BEFORE_EXPIRY) {
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+        }
+        debounceTimer = setTimeout(() => {
+          debounceTimer = null;
+          refreshSessionToken();
+        }, DEBOUNCE_TIMEOUT);
       }
-      
-      debounceTimer = setTimeout(() => {
-        debounceTimer = null;
-        refreshSessionToken();
-      }, DEBOUNCE_TIMEOUT);
+      return { session: cachedSession, error: null };
     }
-    return { session: cachedSession, error: null };
   }
   
   // Crear una nueva promesa para obtener la sesión
@@ -185,51 +192,46 @@ export const getOptimizedSession = async () => {
 export const refreshSessionToken = async () => {
   // Usar un flag para evitar múltiples refrescos simultáneos
   const refreshingKey = 'sb-refreshing-token';
-  if (sessionStorage.getItem(refreshingKey) === 'true') {
+  if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(refreshingKey) === 'true') {
     return { session: cachedSession, error: null };
   }
   
   try {
-    sessionStorage.setItem(refreshingKey, 'true');
-    
-    // Verificar si tenemos un token válido antes de intentar refrescar
-    const { session } = await getOptimizedSession();
-    if (!session) {
-      sessionStorage.removeItem(refreshingKey);
-      return { error: 'No hay sesión activa' };
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(refreshingKey, 'true');
     }
     
-    // Verificar si el token expira en menos de 30 minutos
-    const expiresAt = (session.expires_at || 0) * 1000; // convertir a ms
-    const expiryThreshold = Date.now() + REFRESH_BEFORE_EXPIRY;
+    // Llamar directamente a refreshSession de Supabase
+    // Esto usa el refresh_token almacenado, que es válido incluso si el access_token ya expiró
+    console.log('🔄 [AUTH] Refrescando sesión con Supabase...');
+    const { data, error } = await supabase.auth.refreshSession();
     
-    // Solo refrescar si está próximo a expirar
-    if (expiresAt < expiryThreshold) {
-      const { data, error } = await supabase.auth.refreshSession();
+    if (data?.session) {
+      // Actualizar caché con la nueva sesión
+      cachedSession = data.session;
+      lastSessionCheck = Date.now();
       
-      if (data.session) {
-        // Actualizar caché con la nueva sesión
-        cachedSession = data.session;
-        lastSessionCheck = Date.now();
-        
-        // Guardar en localStorage para persistencia entre recargas
-        try {
-          localStorage.setItem('sb-session-cache', JSON.stringify(data.session));
-        } catch (e) {
-          console.warn('Error al guardar sesión refrescada en localStorage:', e);
-        }
-        
-        sessionStorage.removeItem(refreshingKey);
-        return { session: data.session, error };
+      // Guardar en localStorage para persistencia entre recargas
+      try {
+        localStorage.setItem('sb-session-cache', JSON.stringify(data.session));
+      } catch (e) {
+        console.warn('Error al guardar sesión refrescada en localStorage:', e);
       }
       
-      sessionStorage.removeItem(refreshingKey);
-      return { session: null, error };
+      console.log('✅ [AUTH] Sesión refrescada exitosamente, expira:', new Date((data.session.expires_at || 0) * 1000).toLocaleString());
+      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(refreshingKey);
+      return { session: data.session, error: null };
     }
     
-    return { session, error: null };
+    // Si no hay sesión en el refresh, limpiar caché
+    console.warn('⚠️ [AUTH] refreshSession no retornó sesión:', error?.message);
+    cachedSession = null;
+    lastSessionCheck = 0;
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(refreshingKey);
+    return { session: null, error: error || 'No se pudo refrescar la sesión' };
   } catch (e) {
     console.error('Error al refrescar token:', e);
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(refreshingKey);
     return { session: null, error: e };
   }
 };

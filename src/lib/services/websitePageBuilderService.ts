@@ -81,7 +81,8 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Título principal' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Descripción breve' },
-      { key: 'image_url', label: 'Imagen de fondo', type: 'image' },
+      { key: 'image_url', label: 'Imagen escritorio', type: 'image' },
+      { key: 'image_url_mobile', label: 'Imagen móvil', type: 'image' },
       { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...' },
       { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
       { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
@@ -287,9 +288,7 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     icon: 'ShoppingBag',
     description: 'Grid o carrusel de categorías de productos',
     variants: [
-      { id: 'grid', label: 'Grid (cuadrado)' },
-      { id: 'horizontal', label: 'Carrusel (redondo)' },
-      { id: 'icons', label: 'Iconos' },
+      { id: 'grid', label: 'Grid' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },
@@ -300,6 +299,14 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
         { value: 'round', label: 'Redondo' },
       ]},
       { key: 'show_count', label: 'Mostrar cantidad de productos', type: 'boolean' },
+      { key: 'desktop_layout', label: 'Layout en escritorio', type: 'select', options: [
+        { value: 'grid', label: 'Grid' },
+        { value: 'carousel', label: 'Carrusel' },
+      ]},
+      { key: 'mobile_layout', label: 'Layout en móvil', type: 'select', options: [
+        { value: 'grid', label: 'Grid' },
+        { value: 'list', label: 'Lista' },
+      ]},
     ],
   },
   {

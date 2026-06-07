@@ -173,6 +173,40 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [state.showRenewalPopup, state.countdown]);
   
+  // Refrescar sesión cuando el usuario vuelve a la pestaña (visibilitychange / focus)
+  // Los browsers throttlean timers en pestañas inactivas, así que autoRefreshToken puede no ejecutarse
+  useEffect(() => {
+    if (!state.session) return;
+    
+    let isRefreshing = false;
+    
+    const handleVisibilityOrFocus = async () => {
+      // Solo actuar cuando la pestaña se vuelve visible o recibe foco
+      if (document.visibilityState === 'hidden') return;
+      if (isRefreshing) return;
+      
+      isRefreshing = true;
+      try {
+        const result = await refreshSessionToken();
+        if (result?.session) {
+          setState(prev => ({ ...prev, session: result.session }));
+        }
+      } catch (err) {
+        console.warn('Error al refrescar sesión al volver a la pestaña:', err);
+      } finally {
+        isRefreshing = false;
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+    };
+  }, [state.session]);
+  
   // Fetch initial session
   useEffect(() => {
     const initSession = async () => {

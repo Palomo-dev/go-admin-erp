@@ -127,10 +127,10 @@ export function WebOrderCard({
     <Card className={`overflow-hidden transition-all hover:shadow-md ${isUrgent ? 'ring-2 ring-red-500' : ''}`}>
       <CardContent className="p-4">
         {/* Header */}
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-lg">{order.order_number}</span>
+        <div className="flex items-start justify-between mb-3 gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <span className="font-bold text-base sm:text-lg">{order.order_number}</span>
               {isUrgent && (
                 <Badge variant="destructive" className="text-xs">
                   ¡Urgente!
@@ -250,11 +250,13 @@ export function WebOrderCard({
                 onClick={() => onConfirm?.(order.id)}
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
-                Confirmar
+                <span className="hidden sm:inline">Confirmar</span>
+                <span className="sm:hidden">Ok</span>
               </Button>
               <Button 
                 size="sm" 
                 variant="destructive"
+                className="px-2 sm:px-3"
                 onClick={() => onReject?.(order.id)}
               >
                 <XCircle className="h-4 w-4" />
@@ -269,7 +271,8 @@ export function WebOrderCard({
               onClick={() => onUpdateStatus?.(order.id, 'preparing')}
             >
               <ChefHat className="h-4 w-4 mr-1" />
-              Iniciar preparación
+              <span className="hidden sm:inline">Iniciar preparación</span>
+              <span className="sm:hidden">Preparar</span>
             </Button>
           )}
 
@@ -280,7 +283,8 @@ export function WebOrderCard({
               onClick={() => onUpdateStatus?.(order.id, 'ready')}
             >
               <Package className="h-4 w-4 mr-1" />
-              Marcar listo
+              <span className="hidden sm:inline">Marcar listo</span>
+              <span className="sm:hidden">Listo</span>
             </Button>
           )}
 
@@ -291,7 +295,8 @@ export function WebOrderCard({
               onClick={() => onUpdateStatus?.(order.id, 'in_delivery')}
             >
               <Truck className="h-4 w-4 mr-1" />
-              Enviar a domicilio
+              <span className="hidden sm:inline">Enviar a domicilio</span>
+              <span className="sm:hidden">Enviar</span>
             </Button>
           )}
 
@@ -302,13 +307,15 @@ export function WebOrderCard({
               onClick={() => onUpdateStatus?.(order.id, 'delivered')}
             >
               <CheckCircle className="h-4 w-4 mr-1" />
-              Marcar entregado
+              <span className="hidden sm:inline">Marcar entregado</span>
+              <span className="sm:hidden">Entregado</span>
             </Button>
           ) : null}
 
           <Button 
             size="sm" 
             variant="outline"
+            className="px-2 sm:px-3"
             onClick={() => onViewDetails?.(order.id)}
           >
             <Eye className="h-4 w-4" />

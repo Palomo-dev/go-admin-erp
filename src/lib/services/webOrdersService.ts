@@ -554,7 +554,7 @@ class WebOrdersService {
     try {
       let query = supabase
         .from('web_orders')
-        .select('id, status, total, delivery_type, source')
+        .select('id, status, total, delivery_type, source, payment_status')
         .eq('organization_id', this.organizationId);
 
       if (dateFrom) query = query.gte('created_at', dateFrom);
@@ -577,6 +577,7 @@ class WebOrdersService {
 
       const deliveryTypeMap = new Map<string, { count: number; revenue: number }>();
       const sourceMap = new Map<string, number>();
+      let paidOrderCount = 0;
 
       orders?.forEach(order => {
         // Conteo por estado
@@ -584,23 +585,30 @@ class WebOrdersService {
           stats.pending_orders++;
         } else if (order.status === 'delivered') {
           stats.completed_orders++;
-          stats.total_revenue += Number(order.total) || 0;
         } else if (['cancelled', 'rejected'].includes(order.status)) {
           stats.cancelled_orders++;
+        }
+
+        // Ingresos: sumar pedidos pagados o entregados (no cancelados)
+        if (order.payment_status === 'paid' || order.status === 'delivered') {
+          stats.total_revenue += Number(order.total) || 0;
+          paidOrderCount++;
         }
 
         // Por tipo de entrega
         const dt = deliveryTypeMap.get(order.delivery_type) || { count: 0, revenue: 0 };
         dt.count++;
-        if (order.status === 'delivered') dt.revenue += Number(order.total) || 0;
+        if (order.payment_status === 'paid' || order.status === 'delivered') {
+          dt.revenue += Number(order.total) || 0;
+        }
         deliveryTypeMap.set(order.delivery_type, dt);
 
         // Por origen
         sourceMap.set(order.source, (sourceMap.get(order.source) || 0) + 1);
       });
 
-      stats.avg_order_value = stats.completed_orders > 0 
-        ? stats.total_revenue / stats.completed_orders 
+      stats.avg_order_value = paidOrderCount > 0 
+        ? stats.total_revenue / paidOrderCount 
         : 0;
 
       stats.by_delivery_type = Array.from(deliveryTypeMap.entries()).map(([type, data]) => ({

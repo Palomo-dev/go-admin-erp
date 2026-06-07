@@ -92,7 +92,7 @@ export const createSupabaseClient = () => {
             // También guardar en cookies para que el middleware pueda leerlo
             // Usar secure en producción, no secure en desarrollo
             const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-            const cookieValue = `${key}=${encodeURIComponent(value)}; path=/; max-age=604800; SameSite=Lax${secureFlag}`;
+            const cookieValue = `${key}=${encodeURIComponent(value)}; path=/; max-age=2592000; SameSite=Lax${secureFlag}`;
             document.cookie = cookieValue;
             console.log('🍪 [STORAGE] Guardado en cookie:', key, 'con flags:', secureFlag);
             

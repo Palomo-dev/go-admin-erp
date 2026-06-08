@@ -15,8 +15,8 @@ export function OrderProductsCard({ order }: OrderProductsCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Receipt className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 dark:text-gray-100">
+          <Receipt className="h-5 w-5 dark:text-gray-300" />
           Productos ({order.items?.length || 0})
         </CardTitle>
       </CardHeader>

@@ -114,7 +114,9 @@ const CatalogoProductos: React.FC = () => {
 
           // Aplicar filtros
         if (filters.busqueda) {
-          mainProductsQuery = mainProductsQuery.or(`name.ilike.%${filters.busqueda}%,sku.ilike.%${filters.busqueda}%,barcode.ilike.%${filters.busqueda}%`);
+          // Usar comillas dobles alrededor del valor para escapar comas en PostgREST
+          const searchTerm = filters.busqueda;
+          mainProductsQuery = mainProductsQuery.or(`name.ilike."%${searchTerm}%",sku.ilike."%${searchTerm}%",barcode.ilike."%${searchTerm}%"`);
         }
         
         if (filters.categoria) {
@@ -137,7 +139,15 @@ const CatalogoProductos: React.FC = () => {
         // Ejecutar consulta
         const { data: mainProductsData, error } = await mainProductsQuery;
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error de Supabase al cargar productos:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+          });
+          throw new Error(`Supabase error: ${error.message || error.code || 'Unknown error'}`);
+        }
         
         if (!mainProductsData || mainProductsData.length === 0) {
           setProductos([]);
@@ -254,8 +264,13 @@ const CatalogoProductos: React.FC = () => {
         
         setProductos(processedProducts);
         
-      } catch (error) {
-        console.error('Error al cargar productos:', error);
+      } catch (error: any) {
+        console.error('Error al cargar productos:', {
+          message: error?.message,
+          name: error?.name,
+          stack: error?.stack,
+          raw: error,
+        });
         toast({
           variant: "destructive",
           title: "Error",

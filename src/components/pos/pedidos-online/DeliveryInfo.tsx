@@ -25,9 +25,9 @@ interface DeliveryInfoProps {
 }
 
 const DELIVERY_TYPE_CONFIG = {
-  pickup: { label: 'Retiro en tienda', icon: Store, color: 'text-blue-600' },
-  delivery_own: { label: 'Delivery propio', icon: Bike, color: 'text-green-600' },
-  delivery_third_party: { label: 'Delivery terceros', icon: Truck, color: 'text-purple-600' },
+  pickup: { label: 'Retiro en tienda', icon: Store, color: 'text-blue-600 dark:text-blue-400' },
+  delivery_own: { label: 'Delivery propio', icon: Bike, color: 'text-green-600 dark:text-green-400' },
+  delivery_third_party: { label: 'Delivery terceros', icon: Truck, color: 'text-purple-600 dark:text-purple-400' },
 };
 
 export function DeliveryInfo({
@@ -62,7 +62,7 @@ export function DeliveryInfo({
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
             <Truck className="h-4 w-4" />
             Entrega
           </CardTitle>
@@ -70,9 +70,9 @@ export function DeliveryInfo({
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
             <Icon className={`h-5 w-5 ${config.color}`} />
-            <span className="font-medium">{config.label}</span>
+            <span className="font-medium dark:text-gray-100">{config.label}</span>
             {deliveryPartner && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs dark:text-gray-100 dark:border-gray-600">
                 {deliveryPartner}
               </Badge>
             )}
@@ -81,8 +81,8 @@ export function DeliveryInfo({
           {deliveryType !== 'pickup' && deliveryAddress?.address && (
             <div className="space-y-1">
               <p className="flex items-start gap-2 text-sm">
-                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                <span>{deliveryAddress.address}</span>
+                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground dark:text-gray-400" />
+                <span className="dark:text-gray-200">{deliveryAddress.address}</span>
               </p>
               {deliveryAddress.neighborhood && (
                 <p className="text-sm text-muted-foreground ml-6">
@@ -91,7 +91,7 @@ export function DeliveryInfo({
                 </p>
               )}
               {deliveryAddress.instructions && (
-                <p className="text-sm text-yellow-600 ml-6">
+                <p className="text-sm text-yellow-600 dark:text-yellow-400 ml-6">
                   📝 {deliveryAddress.instructions}
                 </p>
               )}
@@ -100,7 +100,7 @@ export function DeliveryInfo({
                   href={`https://maps.google.com/?q=${deliveryAddress.lat},${deliveryAddress.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-sm text-blue-600 hover:underline ml-6"
+                  className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline ml-6"
                 >
                   <Navigation className="h-3 w-3" />
                   Ver en mapa
@@ -111,22 +111,22 @@ export function DeliveryInfo({
 
           {scheduledAt && (
             <div className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>Programado: {formatDateTime(scheduledAt)}</span>
+              <Clock className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+              <span className="dark:text-gray-200">Programado: {formatDateTime(scheduledAt)}</span>
             </div>
           )}
 
           {estimatedReadyAt && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
+            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
               <Clock className="h-4 w-4" />
-              <span>Listo aprox: {formatTime(estimatedReadyAt)}</span>
+              <span className="dark:text-gray-200">Listo aprox: {formatTime(estimatedReadyAt)}</span>
             </div>
           )}
 
           {estimatedDeliveryAt && deliveryType !== 'pickup' && (
-            <div className="flex items-center gap-2 text-sm text-purple-600">
+            <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
               <Truck className="h-4 w-4" />
-              <span>Entrega aprox: {formatTime(estimatedDeliveryAt)}</span>
+              <span className="dark:text-gray-200">Entrega aprox: {formatTime(estimatedDeliveryAt)}</span>
             </div>
           )}
         </CardContent>
@@ -137,9 +137,9 @@ export function DeliveryInfo({
   return (
     <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
       <Icon className={`h-4 w-4 ${config.color}`} />
-      <span className="text-sm font-medium">{config.label}</span>
+      <span className="text-sm font-medium dark:text-gray-100">{config.label}</span>
       {deliveryPartner && (
-        <Badge variant="outline" className="ml-auto text-xs">
+        <Badge variant="outline" className="ml-auto text-xs dark:text-gray-100 dark:border-gray-600">
           {deliveryPartner}
         </Badge>
       )}

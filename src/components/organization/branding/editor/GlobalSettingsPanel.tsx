@@ -32,24 +32,6 @@ export default function GlobalSettingsPanel({
   const t = useTranslations('branding.editor.globalSettings');
   return (
     <div className="space-y-4">
-      {/* Navegación del Header */}
-      {pages && pages.length > 0 && onTogglePageHeader && (
-        <div>
-          <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">Páginas en el Header</Label>
-          <div className="space-y-2">
-            {pages.map((page) => (
-              <div key={page.id} className="flex items-center justify-between py-1">
-                <span className="text-xs text-gray-700 dark:text-gray-300">{page.title}</span>
-                <Switch
-                  checked={page.show_in_header}
-                  onCheckedChange={(checked) => onTogglePageHeader(page.id, checked)}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Colores */}
       <div>
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('colors')}</Label>

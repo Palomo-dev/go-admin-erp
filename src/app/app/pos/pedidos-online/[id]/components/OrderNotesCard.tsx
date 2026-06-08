@@ -17,8 +17,8 @@ export function OrderNotesCard({ order }: OrderNotesCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 dark:text-gray-100">
+          <FileText className="h-5 w-5 dark:text-gray-300" />
           Notas
         </CardTitle>
       </CardHeader>
@@ -28,8 +28,8 @@ export function OrderNotesCard({ order }: OrderNotesCardProps) {
             "p-3 rounded-lg",
             "bg-yellow-50 dark:bg-yellow-900/20"
           )}>
-            <p className="text-sm font-medium mb-1">Nota del cliente:</p>
-            <p className="text-sm">{order.customer_notes}</p>
+            <p className="text-sm font-medium mb-1 dark:text-yellow-200">Nota del cliente:</p>
+            <p className="text-sm dark:text-yellow-100">{order.customer_notes}</p>
           </div>
         )}
         {order.internal_notes && (
@@ -37,8 +37,8 @@ export function OrderNotesCard({ order }: OrderNotesCardProps) {
             "p-3 rounded-lg",
             "bg-muted"
           )}>
-            <p className="text-sm font-medium mb-1">Notas internas:</p>
-            <p className="text-sm">{order.internal_notes}</p>
+            <p className="text-sm font-medium mb-1 dark:text-gray-100">Notas internas:</p>
+            <p className="text-sm dark:text-gray-200">{order.internal_notes}</p>
           </div>
         )}
       </CardContent>

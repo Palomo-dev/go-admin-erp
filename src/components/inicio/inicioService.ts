@@ -63,6 +63,8 @@ export const inicioService = {
     const [
       ventasHoyRes,
       ventasMesRes,
+      webOrdersHoyRes,
+      webOrdersMesRes,
       clientesRes,
       productosRes,
       facturasHoyRes,
@@ -76,19 +78,35 @@ export const inicioService = {
       taxesRes,
       modulesRes,
     ] = await Promise.all([
-      // Ventas hoy
+      // Ventas POS hoy
       supabase
         .from('sales')
         .select('total')
         .eq('organization_id', organizationId)
         .gte('sale_date', today)
         .in('status', ['paid', 'completed']),
-      // Ventas últimos 30 días
+      // Ventas POS últimos 30 días
       supabase
         .from('sales')
         .select('total')
         .eq('organization_id', organizationId)
         .gte('sale_date', last30Days),
+      // Pedidos web hoy (pagados o entregados)
+      supabase
+        .from('web_orders')
+        .select('total')
+        .eq('organization_id', organizationId)
+        .gte('created_at', today)
+        .or('payment_status.eq.paid,status.eq.delivered')
+        .not('status', 'in', '("cancelled","rejected")'),
+      // Pedidos web últimos 30 días (pagados o entregados)
+      supabase
+        .from('web_orders')
+        .select('total')
+        .eq('organization_id', organizationId)
+        .gte('created_at', last30Days)
+        .or('payment_status.eq.paid,status.eq.delivered')
+        .not('status', 'in', '("cancelled","rejected")'),
       // Clientes activos
       supabase
         .from('customers')
@@ -162,14 +180,16 @@ export const inicioService = {
         .not('module_code', 'in', '("clientes","organizations","roles")'),
     ]);
 
-    // KPIs
-    const ventasHoy = (ventasHoyRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
-    const ventasMes = (ventasMesRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
+    // KPIs — sumar ventas POS + pedidos web
+    const ventasPosHoy = (ventasHoyRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
+    const ventasPosMes = (ventasMesRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
+    const ventasWebHoy = (webOrdersHoyRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
+    const ventasWebMes = (webOrdersMesRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
     const cuentasPorCobrar = (cuentasRes.data || []).reduce((s, c) => s + Number(c.balance || 0), 0);
 
     const kpis: DashboardKPIData = {
-      ventasHoy,
-      ventasMes,
+      ventasHoy: ventasPosHoy + ventasWebHoy,
+      ventasMes: ventasPosMes + ventasWebMes,
       clientesActivos: clientesRes.count || 0,
       productosActivos: productosRes.count || 0,
       facturasHoy: facturasHoyRes.count || 0,

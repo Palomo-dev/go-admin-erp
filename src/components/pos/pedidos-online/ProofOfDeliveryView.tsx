@@ -72,7 +72,7 @@ export function ProofOfDeliveryView({
     if (loading) {
       return (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground dark:text-gray-400" />
         </div>
       );
     }
@@ -80,8 +80,8 @@ export function ProofOfDeliveryView({
     if (!proof) {
       return (
         <div className="text-center py-8">
-          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">
+          <FileText className="h-10 w-10 mx-auto text-muted-foreground dark:text-gray-400 mb-3" />
+          <p className="text-sm text-muted-foreground dark:text-gray-300">
             No hay prueba de entrega registrada
           </p>
         </div>
@@ -92,11 +92,11 @@ export function ProofOfDeliveryView({
       <div className="space-y-4">
         {/* Estado de entrega */}
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-green-500" />
+          <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
           <span className="font-medium text-green-700 dark:text-green-400">
             Entrega Confirmada
           </span>
-          <Badge variant="outline" className="ml-auto">
+          <Badge variant="outline" className="ml-auto dark:text-gray-100 dark:border-gray-600">
             Completa
           </Badge>
         </div>
@@ -106,16 +106,16 @@ export function ProofOfDeliveryView({
         {/* Información del receptor */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Recibido por:</span>
-            <span className="font-medium">{proof.recipient_name}</span>
+            <User className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+            <span className="text-muted-foreground dark:text-gray-400">Recibido por:</span>
+            <span className="font-medium dark:text-gray-100">{proof.recipient_name}</span>
           </div>
 
           {proof.recipient_doc_number && (
             <div className="flex items-center gap-2 text-sm">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Documento:</span>
-              <span className="font-medium">
+              <FileText className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+              <span className="text-muted-foreground dark:text-gray-400">Documento:</span>
+              <span className="font-medium dark:text-gray-100">
                 {proof.recipient_doc_type && `${proof.recipient_doc_type}: `}
                 {proof.recipient_doc_number}
               </span>
@@ -123,23 +123,23 @@ export function ProofOfDeliveryView({
           )}
 
           <div className="flex items-center gap-2 text-sm">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Fecha:</span>
-            <span>{formatDateTime(proof.delivered_at)}</span>
+            <Calendar className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+            <span className="text-muted-foreground dark:text-gray-400">Fecha:</span>
+            <span className="dark:text-gray-100">{formatDateTime(proof.delivered_at)}</span>
           </div>
 
           {(proof.latitude && proof.longitude) && (
             <div className="flex items-center gap-2 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Ubicación:</span>
+              <MapPin className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+              <span className="text-muted-foreground dark:text-gray-400">Ubicación:</span>
               <a
                 href={`https://maps.google.com/?q=${proof.latitude},${proof.longitude}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline flex items-center gap-1"
+                className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
               >
                 Ver en mapa
-                <ExternalLink className="h-3 w-3" />
+                <ExternalLink className="h-3 w-3 dark:text-gray-300" />
               </a>
             </div>
           )}
@@ -150,8 +150,8 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2">
-                <Star className="h-4 w-4 text-yellow-500" />
+              <p className="text-sm font-medium flex items-center gap-2 dark:text-gray-100">
+                <Star className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />
                 Calificación del cliente
               </p>
               <div className="flex items-center gap-1">
@@ -160,12 +160,12 @@ export function ProofOfDeliveryView({
                     key={star}
                     className={`h-5 w-5 ${
                       star <= proof.customer_rating!
-                        ? 'text-yellow-500 fill-yellow-500'
-                        : 'text-gray-300'
+                        ? 'text-yellow-500 fill-yellow-500 dark:text-yellow-400'
+                        : 'text-gray-300 dark:text-gray-600'
                     }`}
                   />
                 ))}
-                <span className="ml-2 text-sm text-muted-foreground">
+                <span className="ml-2 text-sm text-muted-foreground dark:text-gray-400">
                   ({proof.customer_rating}/5)
                 </span>
               </div>
@@ -178,8 +178,8 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium">Comentarios del cliente</p>
-              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+              <p className="text-sm font-medium dark:text-gray-100">Comentarios del cliente</p>
+              <p className="text-sm text-muted-foreground dark:text-gray-400 bg-muted p-3 rounded-lg">
                 "{proof.customer_feedback}"
               </p>
             </div>
@@ -191,8 +191,8 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium">Notas del conductor</p>
-              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+              <p className="text-sm font-medium dark:text-gray-100">Notas del conductor</p>
+              <p className="text-sm text-muted-foreground dark:text-gray-400 bg-muted p-3 rounded-lg">
                 {proof.notes}
               </p>
             </div>
@@ -204,20 +204,20 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2">
-                <FileText className="h-4 w-4" />
+              <p className="text-sm font-medium flex items-center gap-2 dark:text-gray-100">
+                <FileText className="h-4 w-4 dark:text-gray-300" />
                 Firma del receptor
               </p>
-              <div className="border rounded-lg p-2 bg-white">
+              <div className="border dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-800">
                 <img
                   src={proof.signature_url}
                   alt="Firma del receptor"
                   className="max-h-24 mx-auto"
                 />
               </div>
-              <Button variant="outline" size="sm" className="w-full" asChild>
+              <Button variant="outline" size="sm" className="w-full dark:border-gray-600" asChild>
                 <a href={proof.signature_url} download target="_blank" rel="noopener noreferrer">
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2 dark:text-gray-300" />
                   Descargar firma
                 </a>
               </Button>
@@ -230,8 +230,8 @@ export function ProofOfDeliveryView({
           <>
             <Separator />
             <div className="space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
+              <p className="text-sm font-medium flex items-center gap-2 dark:text-gray-100">
+                <ImageIcon className="h-4 w-4 dark:text-gray-300" />
                 Fotos de entrega ({proof.photo_urls.length})
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -241,7 +241,7 @@ export function ProofOfDeliveryView({
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="border rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
+                    className="border dark:border-gray-700 rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
                   >
                     <img
                       src={url}
@@ -263,8 +263,8 @@ export function ProofOfDeliveryView({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <DialogTitle className="flex items-center gap-2 dark:text-gray-100">
+              <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
               Prueba de Entrega
             </DialogTitle>
           </DialogHeader>
@@ -277,8 +277,8 @@ export function ProofOfDeliveryView({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-green-500" />
+        <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
+          <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
           Prueba de Entrega
         </CardTitle>
       </CardHeader>

@@ -81,13 +81,23 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Título principal' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Descripción breve' },
-      { key: 'image_url', label: 'Imagen de fondo', type: 'image' },
+      { key: 'image_url', label: 'Imagen escritorio', type: 'image' },
+      { key: 'image_url_mobile', label: 'Imagen móvil', type: 'image' },
       { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...' },
       { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
       { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
       { key: 'show_overlay', label: 'Mostrar overlay oscuro', type: 'boolean', defaultValue: true },
       { key: 'show_title', label: 'Mostrar título', type: 'boolean', defaultValue: true },
       { key: 'show_cta', label: 'Mostrar botón', type: 'boolean', defaultValue: true },
+      { key: 'full_width', label: 'Ancho completo', type: 'boolean', defaultValue: true },
+      { key: 'border_radius', label: 'Bordes redondeados', type: 'select', options: [
+        { value: 'none', label: 'Sin redondear' },
+        { value: 'sm', label: 'Pequeño' },
+        { value: 'md', label: 'Mediano' },
+        { value: 'lg', label: 'Grande' },
+        { value: 'xl', label: 'Extra grande' },
+      ]},
+      { key: 'show_shadow', label: 'Mostrar sombra', type: 'boolean', defaultValue: false },
     ],
   },
   {
@@ -287,9 +297,7 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     icon: 'ShoppingBag',
     description: 'Grid o carrusel de categorías de productos',
     variants: [
-      { id: 'grid', label: 'Grid (cuadrado)' },
-      { id: 'horizontal', label: 'Carrusel (redondo)' },
-      { id: 'icons', label: 'Iconos' },
+      { id: 'grid', label: 'Grid' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },
@@ -300,6 +308,15 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
         { value: 'round', label: 'Redondo' },
       ]},
       { key: 'show_count', label: 'Mostrar cantidad de productos', type: 'boolean' },
+      { key: 'desktop_layout', label: 'Layout en escritorio', type: 'select', options: [
+        { value: 'grid', label: 'Grid' },
+        { value: 'carousel', label: 'Carrusel' },
+      ]},
+      { key: 'mobile_layout', label: 'Layout en móvil', type: 'select', options: [
+        { value: 'grid', label: 'Grid' },
+        { value: 'list', label: 'Lista' },
+        { value: 'carousel', label: 'Carrusel' },
+      ]},
     ],
   },
   {

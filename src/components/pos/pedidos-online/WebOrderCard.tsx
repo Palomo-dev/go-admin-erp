@@ -127,10 +127,10 @@ export function WebOrderCard({
     <Card className={`overflow-hidden transition-all hover:shadow-md ${isUrgent ? 'ring-2 ring-red-500' : ''}`}>
       <CardContent className="p-4">
         {/* Header */}
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-lg">{order.order_number}</span>
+        <div className="flex items-start justify-between mb-3 gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <span className="font-bold text-base sm:text-lg dark:text-gray-100">{order.order_number}</span>
               {isUrgent && (
                 <Badge variant="destructive" className="text-xs">
                   ¡Urgente!
@@ -138,24 +138,24 @@ export function WebOrderCard({
               )}
               {order.is_scheduled && (
                 <Badge className="text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 flex items-center gap-1">
-                  <CalendarClock className="h-3 w-3" />
+                  <CalendarClock className="h-3 w-3 dark:text-indigo-200" />
                   Programado
                 </Badge>
               )}
               {order.tip_amount > 0 && (
                 <Badge className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 flex items-center gap-1">
-                  <Coins className="h-3 w-3" />
+                  <Coins className="h-3 w-3 dark:text-amber-200" />
                   Propina
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" />
+            <p className="text-sm text-muted-foreground dark:text-gray-400 flex items-center gap-1">
+              <Clock className="h-3 w-3 dark:text-gray-400" />
               {formatDate(order.created_at)} • {getTimeSinceOrder()}
             </p>
             {order.is_scheduled && order.scheduled_at && (
               <p className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                <CalendarClock className="h-3 w-3" />
+                <CalendarClock className="h-3 w-3 dark:text-indigo-400" />
                 Para: {formatDate(order.scheduled_at)}
               </p>
             )}
@@ -169,13 +169,13 @@ export function WebOrderCard({
         {/* Cliente */}
         <div className="space-y-1 mb-3">
           <p className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{order.customer_name || order.customer?.full_name || 'Cliente anónimo'}</span>
+            <User className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+            <span className="font-medium dark:text-gray-100">{order.customer_name || order.customer?.full_name || 'Cliente anónimo'}</span>
           </p>
           {(order.customer_phone || order.customer?.phone) && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Phone className="h-4 w-4" />
-              {order.customer_phone || order.customer?.phone}
+            <p className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
+              <Phone className="h-4 w-4 dark:text-gray-400" />
+              <span className="dark:text-gray-300">{order.customer_phone || order.customer?.phone}</span>
             </p>
           )}
         </div>
@@ -183,15 +183,15 @@ export function WebOrderCard({
         {/* Tipo de entrega + Método de pago + Estado de pago */}
         <div className="flex items-center gap-2 mb-1 p-2 bg-muted/50 rounded-lg">
           {deliveryConfig.icon}
-          <span className="text-sm font-medium">{deliveryConfig.label}</span>
+          <span className="text-sm font-medium dark:text-gray-100">{deliveryConfig.label}</span>
           {order.payment_method && (
-            <Badge variant="outline" className="ml-auto text-xs">
+            <Badge variant="outline" className="ml-auto text-xs dark:text-gray-100 dark:border-gray-600">
               {getPaymentMethodLabel(order.payment_method)}
               {order.payment_method_detail && ` · ${getPaymentDetailLabel(order.payment_method_detail)}`}
             </Badge>
           )}
           {!order.payment_method && order.delivery_partner && (
-            <Badge variant="outline" className="ml-auto text-xs">
+            <Badge variant="outline" className="ml-auto text-xs dark:text-gray-100 dark:border-gray-600">
               {order.delivery_partner}
             </Badge>
           )}
@@ -202,41 +202,41 @@ export function WebOrderCard({
 
         {/* Dirección (si es delivery) */}
         {order.delivery_type !== 'pickup' && order.delivery_address?.address && (
-          <div className="flex items-start gap-2 mb-3 text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <span className="line-clamp-2">{order.delivery_address.address}</span>
+          <div className="flex items-start gap-2 mb-3 text-sm text-muted-foreground dark:text-gray-400">
+            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 dark:text-gray-400" />
+            <span className="line-clamp-2 dark:text-gray-300">{order.delivery_address.address}</span>
           </div>
         )}
 
         {/* Items resumen */}
-        <div className="border-t pt-3 mb-3">
-          <p className="text-sm text-muted-foreground mb-1">
+        <div className="border-t dark:border-gray-700 pt-3 mb-3">
+          <p className="text-sm text-muted-foreground dark:text-gray-400 mb-1">
             {order.items?.length || 0} producto(s)
           </p>
           <div className="text-sm space-y-1 max-h-20 overflow-y-auto">
             {order.items?.slice(0, 3).map((item, idx) => (
               <div key={idx} className="flex justify-between">
-                <span className="truncate">{item.quantity}x {item.product_name}</span>
-                <span className="text-muted-foreground">${item.total.toLocaleString()}</span>
+                <span className="truncate dark:text-gray-200">{item.quantity}x {item.product_name}</span>
+                <span className="text-muted-foreground dark:text-gray-400">${item.total.toLocaleString()}</span>
               </div>
             ))}
             {(order.items?.length || 0) > 3 && (
-              <p className="text-xs text-muted-foreground">+{order.items!.length - 3} más...</p>
+              <p className="text-xs text-muted-foreground dark:text-gray-400">+{order.items!.length - 3} más...</p>
             )}
           </div>
         </div>
 
         {/* Total */}
-        <div className="flex items-center justify-between border-t pt-3 mb-3">
-          <span className="font-medium">Total</span>
-          <span className="text-lg font-bold text-primary">${order.total.toLocaleString()}</span>
+        <div className="flex items-center justify-between border-t dark:border-gray-700 pt-3 mb-3">
+          <span className="font-medium dark:text-gray-100">Total</span>
+          <span className="text-lg font-bold text-primary dark:text-blue-400">${order.total.toLocaleString()}</span>
         </div>
 
         {/* Notas del cliente */}
         {order.customer_notes && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded text-sm mb-3">
-            <span className="font-medium">Nota: </span>
-            {order.customer_notes}
+            <span className="font-medium dark:text-yellow-200">Nota: </span>
+            <span className="dark:text-yellow-100">{order.customer_notes}</span>
           </div>
         )}
 
@@ -250,11 +250,13 @@ export function WebOrderCard({
                 onClick={() => onConfirm?.(order.id)}
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
-                Confirmar
+                <span className="hidden sm:inline">Confirmar</span>
+                <span className="sm:hidden">Ok</span>
               </Button>
               <Button 
                 size="sm" 
                 variant="destructive"
+                className="px-2 sm:px-3"
                 onClick={() => onReject?.(order.id)}
               >
                 <XCircle className="h-4 w-4" />
@@ -269,7 +271,8 @@ export function WebOrderCard({
               onClick={() => onUpdateStatus?.(order.id, 'preparing')}
             >
               <ChefHat className="h-4 w-4 mr-1" />
-              Iniciar preparación
+              <span className="hidden sm:inline">Iniciar preparación</span>
+              <span className="sm:hidden">Preparar</span>
             </Button>
           )}
 
@@ -280,7 +283,8 @@ export function WebOrderCard({
               onClick={() => onUpdateStatus?.(order.id, 'ready')}
             >
               <Package className="h-4 w-4 mr-1" />
-              Marcar listo
+              <span className="hidden sm:inline">Marcar listo</span>
+              <span className="sm:hidden">Listo</span>
             </Button>
           )}
 
@@ -291,7 +295,8 @@ export function WebOrderCard({
               onClick={() => onUpdateStatus?.(order.id, 'in_delivery')}
             >
               <Truck className="h-4 w-4 mr-1" />
-              Enviar a domicilio
+              <span className="hidden sm:inline">Enviar a domicilio</span>
+              <span className="sm:hidden">Enviar</span>
             </Button>
           )}
 
@@ -302,16 +307,18 @@ export function WebOrderCard({
               onClick={() => onUpdateStatus?.(order.id, 'delivered')}
             >
               <CheckCircle className="h-4 w-4 mr-1" />
-              Marcar entregado
+              <span className="hidden sm:inline">Marcar entregado</span>
+              <span className="sm:hidden">Entregado</span>
             </Button>
           ) : null}
 
           <Button 
             size="sm" 
             variant="outline"
+            className="px-2 sm:px-3 dark:border-gray-600"
             onClick={() => onViewDetails?.(order.id)}
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-4 w-4 dark:text-gray-300" />
           </Button>
         </div>
       </CardContent>

@@ -173,14 +173,14 @@ export function OrderActions({
       {/* Acciones secundarias */}
       <div className="flex gap-2">
         {onPrint && (
-          <Button variant="outline" className="flex-1" onClick={onPrint}>
-            <Printer className="h-4 w-4 mr-2" />
+          <Button variant="outline" className="flex-1 dark:border-gray-600" onClick={onPrint}>
+            <Printer className="h-4 w-4 mr-2 dark:text-gray-300" />
             Imprimir
           </Button>
         )}
         {canCancel && onCancel && (
-          <Button variant="outline" className="flex-1 text-red-600" onClick={onCancel}>
-            <XCircle className="h-4 w-4 mr-2" />
+          <Button variant="outline" className="flex-1 text-red-600 dark:text-red-400 dark:border-gray-600" onClick={onCancel}>
+            <XCircle className="h-4 w-4 mr-2 dark:text-red-400" />
             Cancelar
           </Button>
         )}

@@ -47,20 +47,20 @@ interface WebOrderFiltersProps {
 }
 
 const STATUS_OPTIONS: { value: WebOrderStatus; label: string; icon: React.ReactNode }[] = [
-  { value: 'pending', label: 'Pendientes', icon: <Clock className="h-4 w-4 text-yellow-500" /> },
-  { value: 'confirmed', label: 'Confirmados', icon: <CheckCircle className="h-4 w-4 text-blue-500" /> },
-  { value: 'preparing', label: 'Preparando', icon: <ChefHat className="h-4 w-4 text-orange-500" /> },
-  { value: 'ready', label: 'Listos', icon: <Package className="h-4 w-4 text-green-500" /> },
-  { value: 'in_delivery', label: 'En camino', icon: <Truck className="h-4 w-4 text-purple-500" /> },
-  { value: 'delivered', label: 'Entregados', icon: <CheckCircle className="h-4 w-4 text-emerald-500" /> },
-  { value: 'cancelled', label: 'Cancelados', icon: <XCircle className="h-4 w-4 text-red-500" /> },
+  { value: 'pending', label: 'Pendientes', icon: <Clock className="h-4 w-4 text-yellow-500 dark:text-yellow-400" /> },
+  { value: 'confirmed', label: 'Confirmados', icon: <CheckCircle className="h-4 w-4 text-blue-500 dark:text-blue-400" /> },
+  { value: 'preparing', label: 'Preparando', icon: <ChefHat className="h-4 w-4 text-orange-500 dark:text-orange-400" /> },
+  { value: 'ready', label: 'Listos', icon: <Package className="h-4 w-4 text-green-500 dark:text-green-400" /> },
+  { value: 'in_delivery', label: 'En camino', icon: <Truck className="h-4 w-4 text-purple-500 dark:text-purple-400" /> },
+  { value: 'delivered', label: 'Entregados', icon: <CheckCircle className="h-4 w-4 text-emerald-500 dark:text-emerald-400" /> },
+  { value: 'cancelled', label: 'Cancelados', icon: <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" /> },
 ];
 
 const DELIVERY_TYPE_OPTIONS: { value: DeliveryType | 'all'; label: string; icon: React.ReactNode }[] = [
-  { value: 'all', label: 'Todos', icon: <Filter className="h-4 w-4" /> },
-  { value: 'pickup', label: 'Retiro', icon: <Store className="h-4 w-4" /> },
-  { value: 'delivery_own', label: 'Delivery propio', icon: <Bike className="h-4 w-4" /> },
-  { value: 'delivery_third_party', label: 'Terceros', icon: <Truck className="h-4 w-4" /> },
+  { value: 'all', label: 'Todos', icon: <Filter className="h-4 w-4 dark:text-gray-300" /> },
+  { value: 'pickup', label: 'Retiro', icon: <Store className="h-4 w-4 dark:text-gray-300" /> },
+  { value: 'delivery_own', label: 'Delivery propio', icon: <Bike className="h-4 w-4 dark:text-gray-300" /> },
+  { value: 'delivery_third_party', label: 'Terceros', icon: <Truck className="h-4 w-4 dark:text-gray-300" /> },
 ];
 
 export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFiltersProps) {
@@ -112,7 +112,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
       {/* Barra de búsqueda */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
           <Input
             placeholder="Buscar por # pedido, nombre o teléfono..."
             value={search}
@@ -125,15 +125,15 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
           Buscar
         </Button>
         {hasActiveFilters && (
-          <Button variant="outline" onClick={clearFilters}>
-            <X className="h-4 w-4 mr-1" />
+          <Button variant="outline" onClick={clearFilters} className="dark:border-gray-600">
+            <X className="h-4 w-4 mr-1 dark:text-gray-300" />
             Limpiar
           </Button>
         )}
       </div>
 
       {/* Filtros rápidos por estado */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {STATUS_OPTIONS.map((option) => {
           const isActive = activeFilters.status?.includes(option.value);
           return (
@@ -142,7 +142,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
               variant={isActive ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleStatusToggle(option.value)}
-              className="gap-1"
+              className={`gap-1 flex-shrink-0 whitespace-nowrap ${!isActive ? 'dark:border-gray-600' : ''}`}
             >
               {option.icon}
               {option.label}
@@ -152,48 +152,46 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
       </div>
 
       {/* Filtro por tipo de entrega y programados */}
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         <Button
           variant={activeFilters.is_scheduled ? 'default' : 'outline'}
           size="sm"
           onClick={handleScheduledToggle}
-          className="gap-1"
+          className={`gap-1 flex-shrink-0 whitespace-nowrap ${!activeFilters.is_scheduled ? 'dark:border-gray-600' : ''}`}
         >
-          <CalendarClock className="h-4 w-4 text-indigo-500" />
+          <CalendarClock className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
           Programados
         </Button>
-        <span className="text-muted-foreground">|</span>
-        <span className="text-sm font-medium">Tipo de entrega:</span>
-        <div className="flex gap-2">
-          {DELIVERY_TYPE_OPTIONS.map((option) => {
-            const isActive = option.value === 'all' 
-              ? !activeFilters.delivery_type 
-              : activeFilters.delivery_type === option.value;
-            return (
-              <Button
-                key={option.value}
-                variant={isActive ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => handleDeliveryTypeChange(option.value)}
-                className="gap-1"
-              >
-                {option.icon}
-                {option.label}
-              </Button>
-            );
-          })}
-        </div>
+        <span className="text-muted-foreground dark:text-gray-400 flex-shrink-0">|</span>
+        <span className="text-sm font-medium flex-shrink-0 dark:text-gray-100">Tipo:</span>
+        {DELIVERY_TYPE_OPTIONS.map((option) => {
+          const isActive = option.value === 'all' 
+            ? !activeFilters.delivery_type 
+            : activeFilters.delivery_type === option.value;
+          return (
+            <Button
+              key={option.value}
+              variant={isActive ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => handleDeliveryTypeChange(option.value)}
+              className="gap-1 flex-shrink-0 whitespace-nowrap"
+            >
+              {option.icon}
+              {option.label}
+            </Button>
+          );
+        })}
       </div>
 
       {/* Filtros activos */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Filtros activos:</span>
+          <span className="text-muted-foreground dark:text-gray-400">Filtros activos:</span>
           {activeFilters.status?.map(status => (
             <Badge key={status} variant="secondary" className="gap-1">
               {STATUS_OPTIONS.find(s => s.value === status)?.label}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={() => handleStatusToggle(status)}
               />
             </Badge>
@@ -202,7 +200,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
             <Badge variant="secondary" className="gap-1">
               {DELIVERY_TYPE_OPTIONS.find(d => d.value === activeFilters.delivery_type)?.label}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={() => handleDeliveryTypeChange('all')}
               />
             </Badge>
@@ -211,7 +209,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
             <Badge variant="secondary" className="gap-1">
               &quot;{activeFilters.search}&quot;
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={() => {
                   setSearch('');
                   onFilterChange({ ...activeFilters, search: undefined });
@@ -223,7 +221,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
             <Badge variant="secondary" className="gap-1">
               Programados
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={handleScheduledToggle}
               />
             </Badge>

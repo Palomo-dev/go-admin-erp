@@ -46,13 +46,13 @@ export function CancelOrderDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="dark:text-gray-100">{title}</DialogTitle>
+          <DialogDescription className="dark:text-gray-400">
             Indica el motivo. El cliente será notificado automáticamente.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <Label htmlFor="cancel-reason">Motivo</Label>
+          <Label htmlFor="cancel-reason" className="dark:text-gray-200">Motivo</Label>
           <Textarea
             id="cancel-reason"
             value={reason}
@@ -61,12 +61,12 @@ export function CancelOrderDialog({
             className="mt-2"
             rows={3}
           />
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground dark:text-gray-400 mt-2">
             Este motivo se mostrará al cliente en su notificación.
           </p>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose} className="dark:border-gray-600">
             Volver
           </Button>
           <Button

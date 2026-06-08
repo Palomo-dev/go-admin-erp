@@ -27,37 +27,37 @@ export function OrderHeader({ order }: OrderHeaderProps) {
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div className="flex items-center gap-2 sm:gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Volver</span>
+          <ArrowLeft className="h-4 w-4 sm:mr-2 dark:text-gray-300" />
+          <span className="hidden sm:inline dark:text-gray-300">Volver</span>
         </Button>
         <div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold">{order.order_number}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold dark:text-gray-100">{order.order_number}</h1>
             <StatusBadge status={order.status} size="lg" />
             {order.is_scheduled && (
               <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 flex items-center gap-1">
-                <CalendarClock className="h-3 w-3" />
+                <CalendarClock className="h-3 w-3 dark:text-indigo-200" />
                 Programado
               </Badge>
             )}
             {order.coupon_code && (
               <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 flex items-center gap-1">
-                <Tag className="h-3 w-3" />
+                <Tag className="h-3 w-3 dark:text-emerald-200" />
                 Cupón: {order.coupon_code}
               </Badge>
             )}
             {order.tip_amount > 0 && (
               <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 flex items-center gap-1">
-                <Coins className="h-3 w-3" />
+                <Coins className="h-3 w-3 dark:text-amber-200" />
                 Propina: ${order.tip_amount.toLocaleString()}
               </Badge>
             )}
           </div>
           <div className="flex items-center gap-2 text-muted-foreground flex-wrap">
-            <span>{formatDateTime(order.created_at)}</span>
+            <span className="dark:text-gray-400">{formatDateTime(order.created_at)}</span>
             {order.is_scheduled && order.scheduled_at && (
               <span className="text-sm text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                <CalendarClock className="h-3 w-3" />
+                <CalendarClock className="h-3 w-3 dark:text-indigo-400" />
                 Para: {formatDateTime(order.scheduled_at)}
               </span>
             )}
@@ -66,7 +66,7 @@ export function OrderHeader({ order }: OrderHeaderProps) {
                 href={`/app/pos/ventas/${order.sale_id}`}
                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               >
-                <ExternalLink className="h-3 w-3" />
+                <ExternalLink className="h-3 w-3 dark:text-blue-400" />
                 Ver venta POS
               </Link>
             )}

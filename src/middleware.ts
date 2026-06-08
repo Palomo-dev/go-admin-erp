@@ -1,181 +1,70 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { supabase, getProjectRef } from '@/lib/supabase/config';
-import { jwtVerify, importSPKI } from 'jose';
+import { decodeJwt } from 'jose';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 
-// Session cache para evitar llamadas repetidas a Supabase
-interface CachedSession {
-  session: any;
-  expiresAt: number;
-  cachedAt: number;
-}
-
-const sessionCache = new Map<string, CachedSession>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 const ACTIVITY_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutos
 
-// Supabase JWT public key para validación local
-let supabasePublicKey: any = null;
 
 /**
- * Obtiene la clave pública de Supabase para validación JWT local
- */
-async function getSupabasePublicKey() {
-  if (supabasePublicKey) return supabasePublicKey;
-  
-  try {
-    const projectRef = getProjectRef();
-    const response = await fetch(`https://${projectRef}.supabase.co/auth/v1/jwks`);
-    const jwks = await response.json();
-    
-    if (jwks.keys && jwks.keys[0]) {
-      const key = jwks.keys[0];
-      const pemKey = `-----BEGIN PUBLIC KEY-----\n${key.x5c[0]}\n-----END PUBLIC KEY-----`;
-      supabasePublicKey = await importSPKI(pemKey, key.alg);
-    }
-  } catch (error) {
-    console.warn('⚠️ [MIDDLEWARE] Error obteniendo clave pública:', error);
-  }
-  
-  return supabasePublicKey;
-}
-
-/**
- * Valida JWT localmente sin llamar a Supabase
- */
-async function validateJWTLocally(token: string): Promise<{ valid: boolean; payload?: any; expired?: boolean }> {
-  try {
-    const publicKey = await getSupabasePublicKey();
-    if (!publicKey) return { valid: false };
-    
-    const { payload } = await jwtVerify(token, publicKey);
-    const currentTime = Math.floor(Date.now() / 1000);
-    const expired = payload.exp ? payload.exp < currentTime : false;
-    
-    return { valid: true, payload, expired };
-  } catch (error: any) {
-    // Si el token expiró pero la firma es válida, marcarlo como expirado
-    if (error?.code === 'ERR_JWT_EXPIRED') {
-      return { valid: true, expired: true, payload: error.payload };
-    }
-    return { valid: false };
-  }
-}
-
-/**
- * Refresca el token directamente con la API REST de Supabase (funciona en Edge/middleware)
- */
-async function refreshTokenViaAPI(refreshToken: string): Promise<{ session: any; error: any }> {
-  try {
-    const projectRef = getProjectRef();
-    const response = await fetch(`https://${projectRef}.supabase.co/auth/v1/token?grant_type=refresh_token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return { session: null, error: errorData };
-    }
-    
-    const data = await response.json();
-    return {
-      session: {
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        expires_at: data.expires_at,
-        expires_in: data.expires_in,
-        user: data.user,
-      },
-      error: null,
-    };
-  } catch (error) {
-    return { session: null, error };
-  }
-}
-
-/**
- * Obtiene sesión desde cache o valida con Supabase
+ * Obtiene sesión desde la cookie de forma SIMPLE y tolerante a fallos.
+ * 
+ * PRINCIPIO: El middleware NUNCA intenta refrescar tokens.
+ * Solo verifica que la cookie existe y contiene un JWT decodificable.
+ * El refresh lo maneja exclusivamente el client-side (auth-manager.ts).
+ * Esto elimina race conditions por refresh token rotation.
  */
 async function getValidatedSession(authCookie: any) {
-  const cacheKey = authCookie.value.substring(0, 50); // Usar parte del token como key
-  const cached = sessionCache.get(cacheKey);
-  const currentTime = Date.now();
-  
-  // Verificar cache válido
-  if (cached && (currentTime - cached.cachedAt) < CACHE_DURATION && cached.expiresAt > currentTime) {
-    return { session: cached.session, isAuthenticated: true, isExpired: false, newCookieValue: null };
-  }
-  
   try {
     const tokenData = JSON.parse(authCookie.value);
-    const { access_token, refresh_token, expires_at } = tokenData;
+    const { access_token, refresh_token } = tokenData;
     
-    if (!access_token || !refresh_token) {
+    // Si no hay tokens básicos, no hay sesión
+    if (!access_token) {
       return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
     }
     
-    // Intentar validación JWT local primero
-    const jwtValidation = await validateJWTLocally(access_token);
+    // Decodificar el JWT sin verificar firma (solo para obtener payload/exp)
+    let payload: any = null;
+    try {
+      payload = decodeJwt(access_token);
+    } catch {
+      // Si ni siquiera se puede decodificar, la cookie está corrupta
+      return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
+    }
     
-    if (jwtValidation.valid && !jwtValidation.expired) {
-      // Crear sesión mock para cache (sin llamar a Supabase)
-      const mockSession = {
+    // Verificar expiración
+    const currentTime = Math.floor(Date.now() / 1000);
+    const isExpired = payload.exp ? payload.exp < currentTime : false;
+    
+    // SIEMPRE considerar autenticado si tenemos un JWT decodificable con sub (user id)
+    // El client-side se encarga de refrescar si está expirado
+    if (payload.sub) {
+      const session = {
         access_token,
         refresh_token,
-        expires_at,
-        user: jwtValidation.payload
+        expires_at: payload.exp,
+        user: payload
       };
       
-      // Guardar en cache
-      sessionCache.set(cacheKey, {
-        session: mockSession,
-        expiresAt: (expires_at || 0) * 1000,
-        cachedAt: currentTime
-      });
+      // Solo marcar como NO autenticado si expiró hace más de 7 días
+      // (sesión abandonada, no un refresh pendiente)
+      const HARD_EXPIRY = 7 * 24 * 60 * 60; // 7 días en segundos
+      const timeSinceExpiry = currentTime - (payload.exp || currentTime);
       
-      return { session: mockSession, isAuthenticated: true, isExpired: false, newCookieValue: null };
+      if (isExpired && timeSinceExpiry > HARD_EXPIRY) {
+        return { session: null, isAuthenticated: false, isExpired: true, newCookieValue: null };
+      }
+      
+      // Token válido o expirado recientemente → autenticado (client refreshará)
+      return { session, isAuthenticated: true, isExpired: false, newCookieValue: null };
     }
     
-    // Token expirado o inválido: intentar refrescar via API REST
-    console.log('🔄 [MIDDLEWARE] Token expirado, intentando refresh via API...');
-    const refreshResult = await refreshTokenViaAPI(refresh_token);
-    
-    if (refreshResult.session) {
-      const newSession = refreshResult.session;
-      console.log('✅ [MIDDLEWARE] Token refrescado exitosamente');
-      
-      // Guardar en cache
-      sessionCache.set(cacheKey, {
-        session: newSession,
-        expiresAt: (newSession.expires_at || 0) * 1000,
-        cachedAt: currentTime
-      });
-      
-      // Preparar el nuevo valor de cookie para actualizar en la response
-      const newCookieValue = JSON.stringify({
-        access_token: newSession.access_token,
-        refresh_token: newSession.refresh_token,
-        expires_at: newSession.expires_at,
-        expires_in: newSession.expires_in,
-        token_type: 'bearer',
-        type: 'access',
-        user: newSession.user,
-      });
-      
-      return { session: newSession, isAuthenticated: true, isExpired: false, newCookieValue };
-    }
-    
-    console.warn('⚠️ [MIDDLEWARE] Refresh token falló:', refreshResult.error);
-    return { session: null, isAuthenticated: false, isExpired: true, newCookieValue: null };
+    return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
     
   } catch (error) {
-    console.error('❌ [MIDDLEWARE] Error en getValidatedSession:', error);
+    // Error parseando JSON → cookie corrupta
     return { session: null, isAuthenticated: false, isExpired: false, newCookieValue: null };
   }
 }
@@ -230,10 +119,25 @@ export async function middleware(request: NextRequest) {
   const authCookieName = `sb-${projectRef}-auth-token`;
   let authCookie = request.cookies.get(authCookieName);
 
-  // Si no encontramos la cookie exacta, buscar variaciones
+  // Si no encontramos la cookie exacta, buscar chunked cookies o variaciones
+  if (!authCookie) {
+    // Supabase SSR divide cookies grandes en chunks: .0, .1, .2...
+    const chunk0 = request.cookies.get(`${authCookieName}.0`);
+    if (chunk0) {
+      let fullValue = chunk0.value;
+      let i = 1;
+      while (true) {
+        const chunk = request.cookies.get(`${authCookieName}.${i}`);
+        if (!chunk) break;
+        fullValue += chunk.value;
+        i++;
+      }
+      authCookie = { name: authCookieName, value: fullValue };
+    }
+  }
+  
   if (!authCookie) {
     const possibleNames = [
-      `sb-${projectRef}-auth-token`,
       `sb-auth-token`,
       'supabase-auth-token'
     ];
@@ -242,6 +146,20 @@ export async function middleware(request: NextRequest) {
       const cookie = request.cookies.get(name);
       if (cookie) {
         authCookie = cookie;
+        break;
+      }
+      // También buscar chunks de estas variaciones
+      const chunk0 = request.cookies.get(`${name}.0`);
+      if (chunk0) {
+        let fullValue = chunk0.value;
+        let i = 1;
+        while (true) {
+          const chunk = request.cookies.get(`${name}.${i}`);
+          if (!chunk) break;
+          fullValue += chunk.value;
+          i++;
+        }
+        authCookie = { name, value: fullValue };
         break;
       }
     }
@@ -283,28 +201,15 @@ export async function middleware(request: NextRequest) {
       return response;
     }
     
-    // Usar la función optimizada de validación
+    // Validar sesión de forma simple (sin refresh, sin llamadas externas)
     const sessionResult = await getValidatedSession(authCookie);
     session = sessionResult.session;
     isAuthenticated = sessionResult.isAuthenticated;
     isExpired = sessionResult.isExpired;
     
-    if (isAuthenticated && session?.user?.id) {
+    if (isAuthenticated && session?.user?.sub) {
       // Acción asíncrona: registrar actividad del usuario (optimizada)
-      updateUserActivityOptimized(session.user.id, request);
-    }
-    
-    // Si el token fue refrescado, actualizar la cookie en la response
-    if (sessionResult.newCookieValue) {
-      const response = await handleRouteProtection(request, isAuthenticated, isExpired);
-      response.cookies.set(authCookieName, sessionResult.newCookieValue, {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 30, // 30 días
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: false, // Necesario para que el cliente pueda leerla
-      });
-      return response;
+      updateUserActivityOptimized(session.user.sub, request);
     }
   }
   
@@ -337,31 +242,6 @@ function updateUserActivityOptimized(userId: string, request: NextRequest) {
   }
 }
 
-/**
- * Actualiza la actividad del usuario de forma asíncrona (versión legacy)
- */
-function updateUserActivity(supabase: any, userId: string, request: NextRequest) {
-  const lastActivityUpdate = request.cookies.get('last_activity_update')?.value;
-  const currentTime = Date.now();
-  const TEN_MINUTES = 600000; // 10 minutos en ms
-  
-  // Solo actualizar si han pasado más de 10 minutos
-  if (!lastActivityUpdate || (currentTime - parseInt(lastActivityUpdate)) > TEN_MINUTES) {
-    // Actualizar de forma asíncrona sin bloquear
-    void supabase
-      .from('user_devices')
-      .update({ last_active_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .then(() => {
-        // Marcar la actualización en cookie
-        // Nota: No podemos modificar cookies aquí, se haría en el response
-      })
-      .catch(() => {
-        // Ignorar errores de actividad para no afectar navegación
-      });
-  }
-}
 
 /**
  * Mapeo de rutas a módulos
@@ -517,9 +397,16 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
     return NextResponse.next();
   }
 
-  // Manejar sesión expirada
-  if (isExpired && !pathname.startsWith('/auth/session-expired')) {
-    return NextResponse.redirect(new URL('/auth/session-expired', request.url));
+  // Manejar sesión expirada - solo redirigir si está REALMENTE expirada (fuera de grace period)
+  // El client-side SDK maneja el refresh automáticamente en la mayoría de casos
+  if (isExpired && !isPublicRoute) {
+    console.log('🔒 [MIDDLEWARE] Sesión expirada fuera de grace period, redirigiendo a login');
+    const redirectUrl = new URL('/auth/login', request.url);
+    if (pathname.startsWith('/app/')) {
+      redirectUrl.searchParams.set('redirectTo', pathname);
+    }
+    redirectUrl.searchParams.set('reason', 'expired');
+    return NextResponse.redirect(redirectUrl);
   }
   
   // Prevenir acceso a página de sesión expirada si no está expirada

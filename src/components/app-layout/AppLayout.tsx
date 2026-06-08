@@ -202,6 +202,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     icon: <ShoppingCart size={18} />,
     submenu: [
       { name: "POS", href: "/app/pos", icon: <ShoppingCart size={16} /> },
+      { name: "Pedidos Online", href: "/app/pos/pedidos-online", icon: <Globe size={16} /> },
       { name: "Ventas", href: "/app/pos/ventas", icon: <Receipt size={16} /> },
       { name: "Cajas", href: "/app/pos/cajas", icon: <Wallet size={16} /> },
       { name: "Mesas", href: "/app/pos/mesas", icon: <Table2 size={16} /> },

@@ -32,6 +32,7 @@ export interface WidgetStyle {
   primaryColor: string;
   iconColor: string;
   iconType: 'chat' | 'whatsapp' | 'message' | 'support' | 'custom';
+  iconStyle: 'outline' | 'filled';
   iconUrl?: string;
   buttonSize: number;
   borderRadius: number;

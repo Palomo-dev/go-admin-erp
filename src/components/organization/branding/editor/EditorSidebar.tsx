@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -444,6 +445,26 @@ function SectionListItem({
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+              {field.type === 'range' && (
+                <div className="flex items-center gap-2">
+                  <Slider
+                    value={[Number(section.content?.[field.key] ?? field.defaultValue ?? 0)]}
+                    onValueChange={([val]) =>
+                      onUpdateContent({
+                        ...section.content,
+                        [field.key]: val,
+                      })
+                    }
+                    min={field.min ?? 0}
+                    max={field.max ?? 100}
+                    step={field.step ?? 1}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[40px] text-right">
+                    {Number(section.content?.[field.key] ?? field.defaultValue ?? 0)}{field.suffix || ''}
+                  </span>
+                </div>
               )}
             </div>
           ))}

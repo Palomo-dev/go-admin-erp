@@ -46,10 +46,10 @@ const isJWTError = (error: any): boolean => {
 
 // Almacena la última vez que se verificó la sesión para evitar verificaciones frecuentes
 let lastSessionCheck = 0;
-// Tiempo mínimo entre verificaciones (30 minutos en ms para reducir solicitudes)
-const MIN_CHECK_INTERVAL = 30 * 60 * 1000; // Aumentado de 15 a 30 minutos
-// Tiempo adicional para evitar que expiren los tokens (30 minutos antes)
-const REFRESH_BEFORE_EXPIRY = 30 * 60 * 1000;
+// Tiempo mínimo entre verificaciones (8 horas en ms para JWT expiry de 24h)
+const MIN_CHECK_INTERVAL = 8 * 60 * 60 * 1000; // 8 horas
+// Tiempo adicional para evitar que expiren los tokens (2 horas antes del expiry)
+const REFRESH_BEFORE_EXPIRY = 2 * 60 * 60 * 1000; // 2 horas
 // Tiempo de espera para debounce (5 segundos)
 const DEBOUNCE_TIMEOUT = 5000;
 
@@ -320,7 +320,7 @@ export const isAuthenticated = async () => {
 
 // Almacena la última verificación de salud para reducir llamadas innecesarias
 let lastHealthCheck = 0;
-const HEALTH_CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutos entre verificaciones de salud
+const HEALTH_CHECK_INTERVAL = 8 * 60 * 60 * 1000; // 8 horas entre verificaciones de salud (proporcional a JWT expiry de 24h)
 
 /**
  * Realiza una verificación de salud optimizada

@@ -26,6 +26,7 @@ const defaultStyle: WidgetStyle = {
   primaryColor: '#3B82F6',
   iconColor: '#FFFFFF',
   iconType: 'chat',
+  iconStyle: 'outline',
   buttonSize: 56,
   borderRadius: 28,
   borderWidth: 0,
@@ -192,6 +193,32 @@ export default function WidgetStyleSection({
               );
             })}
           </div>
+
+          {/* Estilo del Ícono: Outline / Filled */}
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => setLocalStyle({ ...localStyle, iconStyle: 'outline' })}
+              className={`flex-1 p-2 rounded-lg border-2 flex items-center justify-center gap-2 transition-all ${
+                localStyle.iconStyle !== 'filled'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <IconComponent className="h-5 w-5" />
+              <span className="text-xs font-medium">Contorno</span>
+            </button>
+            <button
+              onClick={() => setLocalStyle({ ...localStyle, iconStyle: 'filled' })}
+              className={`flex-1 p-2 rounded-lg border-2 flex items-center justify-center gap-2 transition-all ${
+                localStyle.iconStyle === 'filled'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <IconComponent className="h-5 w-5" fill="currentColor" />
+              <span className="text-xs font-medium">Relleno</span>
+            </button>
+          </div>
           {localStyle.iconType === 'custom' && (
             <Input
               value={localStyle.iconUrl || ''}
@@ -308,7 +335,10 @@ export default function WidgetStyleSection({
                 color: localStyle.iconColor
               }}
             >
-              <IconComponent style={{ width: localStyle.buttonSize * 0.4, height: localStyle.buttonSize * 0.4 }} />
+              <IconComponent 
+                style={{ width: localStyle.buttonSize * 0.4, height: localStyle.buttonSize * 0.4 }} 
+                {...(localStyle.iconStyle === 'filled' ? { fill: 'currentColor' } : {})}
+              />
             </button>
           </div>
         </div>

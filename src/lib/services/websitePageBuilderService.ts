@@ -59,10 +59,14 @@ export interface SectionTypeDefinition {
 export interface ContentFieldDef {
   key: string;
   label: string;
-  type: 'text' | 'textarea' | 'url' | 'image' | 'color' | 'number' | 'boolean' | 'select';
+  type: 'text' | 'textarea' | 'url' | 'image' | 'color' | 'number' | 'boolean' | 'select' | 'range';
   placeholder?: string;
   options?: { value: string; label: string }[];
-  defaultValue?: boolean;
+  defaultValue?: boolean | number;
+  min?: number;
+  max?: number;
+  step?: number;
+  suffix?: string;
 }
 
 export const SECTION_CATALOG: SectionTypeDefinition[] = [
@@ -90,14 +94,8 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
       { key: 'show_title', label: 'Mostrar título', type: 'boolean', defaultValue: true },
       { key: 'show_cta', label: 'Mostrar botón', type: 'boolean', defaultValue: true },
       { key: 'full_width', label: 'Ancho completo', type: 'boolean', defaultValue: true },
-      { key: 'border_radius', label: 'Bordes redondeados', type: 'select', options: [
-        { value: 'none', label: 'Sin redondear' },
-        { value: 'sm', label: 'Pequeño' },
-        { value: 'md', label: 'Mediano' },
-        { value: 'lg', label: 'Grande' },
-        { value: 'xl', label: 'Extra grande' },
-      ]},
-      { key: 'show_shadow', label: 'Mostrar sombra', type: 'boolean', defaultValue: false },
+      { key: 'border_radius', label: 'Bordes redondeados (px)', type: 'range', min: 0, max: 50, step: 1, defaultValue: 0, suffix: 'px' },
+      { key: 'shadow_intensity', label: 'Intensidad de sombra', type: 'range', min: 0, max: 50, step: 1, defaultValue: 0, suffix: '' },
     ],
   },
   {
@@ -311,7 +309,10 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
       { key: 'desktop_layout', label: 'Layout en escritorio', type: 'select', options: [
         { value: 'grid', label: 'Grid' },
         { value: 'carousel', label: 'Carrusel' },
+        { value: 'list', label: 'Lista' },
       ]},
+      { key: 'desktop_columns', label: 'Columnas (escritorio)', type: 'number', placeholder: 'Auto' },
+      { key: 'desktop_rows', label: 'Filas máximas (escritorio)', type: 'number', placeholder: 'Todas' },
       { key: 'mobile_layout', label: 'Layout en móvil', type: 'select', options: [
         { value: 'grid', label: 'Grid' },
         { value: 'list', label: 'Lista' },
@@ -425,6 +426,36 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros Planes' },
+    ],
+  },
+  {
+    type: 'countdown',
+    label: 'Countdown Timer',
+    icon: 'Flame',
+    description: 'Temporizador de cuenta regresiva para ofertas',
+    variants: [
+      { id: 'banner', label: 'Banner completo' },
+      { id: 'inline', label: 'Inline' },
+      { id: 'compact', label: 'Compacto' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Texto', type: 'text', placeholder: '¡Oferta por tiempo limitado!' },
+      { key: 'mode', label: 'Modo', type: 'select', options: [
+        { value: 'daily_reset', label: 'Se reinicia cada 24h' },
+        { value: 'custom', label: 'Fecha personalizada' },
+      ]},
+      { key: 'end_date', label: 'Fecha fin (modo custom)', type: 'text', placeholder: '2025-12-31T23:59' },
+      { key: 'timezone', label: 'Zona horaria', type: 'select', options: [
+        { value: 'America/Bogota', label: 'Colombia (GMT-5)' },
+        { value: 'America/Mexico_City', label: 'México (GMT-6)' },
+        { value: 'America/Argentina/Buenos_Aires', label: 'Argentina (GMT-3)' },
+        { value: 'America/Santiago', label: 'Chile (GMT-4)' },
+        { value: 'America/Lima', label: 'Perú (GMT-5)' },
+        { value: 'Europe/Madrid', label: 'España (GMT+1)' },
+        { value: 'America/New_York', label: 'EEUU Este (GMT-5)' },
+        { value: 'America/Los_Angeles', label: 'EEUU Oeste (GMT-8)' },
+      ]},
+      { key: 'reset_hour', label: 'Hora de reinicio (0-23)', type: 'number', placeholder: '0' },
     ],
   },
 ];

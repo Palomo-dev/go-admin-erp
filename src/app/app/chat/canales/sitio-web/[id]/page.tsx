@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Globe } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import ChatChannelsService, {
@@ -44,6 +46,8 @@ export default function WebsiteChannelSettingsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRotatingKey, setIsRotatingKey] = useState(false);
   const [isUpdatingAI, setIsUpdatingAI] = useState(false);
+  const [showInWebsite, setShowInWebsite] = useState(false);
+  const [isTogglingWebsite, setIsTogglingWebsite] = useState(false);
 
   useEffect(() => {
     if (organizationId && channelId) {
@@ -85,6 +89,14 @@ export default function WebsiteChannelSettingsPage() {
 
       setChannel(channelData);
       setWidgetStats(statsData);
+
+      // Cargar estado de widget en sitio web
+      const { data: wsData } = await supabase
+        .from('website_settings')
+        .select('chat_widget_enabled')
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+      setShowInWebsite(wsData?.chat_widget_enabled ?? false);
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast({
@@ -127,6 +139,41 @@ export default function WebsiteChannelSettingsPage() {
       });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleToggleWebsite = async (enabled: boolean) => {
+    if (!organizationId || !channel) return;
+
+    try {
+      setIsTogglingWebsite(true);
+      const { error } = await supabase
+        .from('website_settings')
+        .update({
+          chat_widget_enabled: enabled,
+          chat_widget_public_key: enabled ? channel.public_key : null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('organization_id', organizationId);
+
+      if (error) throw error;
+
+      setShowInWebsite(enabled);
+      toast({
+        title: enabled ? 'Widget visible en sitio web' : 'Widget oculto en sitio web',
+        description: enabled
+          ? 'El chat ahora se muestra en las páginas de tu organización'
+          : 'El chat ya no se muestra en las páginas de tu organización'
+      });
+    } catch (error) {
+      console.error('Error actualizando website_settings:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la visibilidad del widget',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsTogglingWebsite(false);
     }
   };
 
@@ -451,6 +498,38 @@ export default function WebsiteChannelSettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-6">
+            {/* Mostrar en sitio web */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-blue-600" />
+                  Mostrar en Sitio Web
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      Activar widget en páginas web
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      El chat aparecerá automáticamente en tu sitio web
+                    </p>
+                  </div>
+                  <Switch
+                    checked={showInWebsite}
+                    onCheckedChange={handleToggleWebsite}
+                    disabled={isTogglingWebsite || channel.status !== 'active'}
+                  />
+                </div>
+                {channel.status !== 'active' && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                    ⚠️ Activa el canal primero para poder mostrarlo en tu sitio web
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             <WidgetCodeSection
               channel={channel}
               onRotateKey={handleRotateKey}

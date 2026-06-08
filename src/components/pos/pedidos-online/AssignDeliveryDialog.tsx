@@ -180,24 +180,24 @@ export function AssignDeliveryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5" />
+          <DialogTitle className="flex items-center gap-2 dark:text-gray-100">
+            <Truck className="h-5 w-5 dark:text-gray-300" />
             Asignar Delivery
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="dark:text-gray-400">
             Selecciona el vehículo y conductor para la entrega
           </DialogDescription>
         </DialogHeader>
 
         {loadingData ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground dark:text-gray-400" />
           </div>
         ) : error && vehicles.length === 0 && drivers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <AlertCircle className="h-10 w-10 text-yellow-500 mb-3" />
-            <p className="text-sm text-muted-foreground">{error}</p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <AlertCircle className="h-10 w-10 text-yellow-500 dark:text-yellow-400 mb-3" />
+            <p className="text-sm text-muted-foreground dark:text-gray-300">{error}</p>
+            <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
               Configura vehículos y conductores en el módulo de Transporte
             </p>
           </div>
@@ -205,7 +205,7 @@ export function AssignDeliveryDialog({
           <div className="space-y-4 py-4">
             {/* Selección de Vehículo */}
             <div className="space-y-2">
-              <Label htmlFor="vehicle">Vehículo</Label>
+              <Label htmlFor="vehicle" className="dark:text-gray-200">Vehículo</Label>
               <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
                 <SelectTrigger id="vehicle">
                   <SelectValue placeholder="Seleccionar vehículo" />
@@ -215,12 +215,12 @@ export function AssignDeliveryDialog({
                     <SelectItem key={vehicle.id} value={vehicle.id}>
                       <div className="flex items-center gap-2">
                         {getVehicleIcon(vehicle.vehicle_type)}
-                        <span className="font-medium">{vehicle.plate}</span>
-                        <Badge variant="outline" className="text-xs">
+                        <span className="font-medium dark:text-gray-100">{vehicle.plate}</span>
+                        <Badge variant="outline" className="text-xs dark:text-gray-100 dark:border-gray-600">
                           {getVehicleTypeLabel(vehicle.vehicle_type)}
                         </Badge>
                         {vehicle.brand && vehicle.model && (
-                          <span className="text-muted-foreground text-xs">
+                          <span className="text-muted-foreground dark:text-gray-400 text-xs">
                             {vehicle.brand} {vehicle.model}
                           </span>
                         )}
@@ -230,7 +230,7 @@ export function AssignDeliveryDialog({
                 </SelectContent>
               </Select>
               {vehicles.length === 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground dark:text-gray-400">
                   No hay vehículos disponibles
                 </p>
               )}
@@ -238,7 +238,7 @@ export function AssignDeliveryDialog({
 
             {/* Selección de Conductor */}
             <div className="space-y-2">
-              <Label htmlFor="driver">Conductor</Label>
+              <Label htmlFor="driver" className="dark:text-gray-200">Conductor</Label>
               <Select value={selectedDriver} onValueChange={setSelectedDriver}>
                 <SelectTrigger id="driver">
                   <SelectValue placeholder="Seleccionar conductor" />
@@ -247,13 +247,13 @@ export function AssignDeliveryDialog({
                   {drivers.map((driver) => (
                     <SelectItem key={driver.id} value={driver.id}>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <span>
+                        <User className="h-4 w-4 dark:text-gray-400" />
+                        <span className="dark:text-gray-100">
                           {driver.employee
                             ? `${driver.employee.first_name} ${driver.employee.last_name}`
                             : `Conductor ${driver.license_number}`}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground dark:text-gray-400">
                           Lic: {driver.license_category}
                         </span>
                       </div>
@@ -262,7 +262,7 @@ export function AssignDeliveryDialog({
                 </SelectContent>
               </Select>
               {drivers.length === 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground dark:text-gray-400">
                   No hay conductores disponibles
                 </p>
               )}
@@ -270,8 +270,8 @@ export function AssignDeliveryDialog({
 
             {/* Tiempo estimado */}
             <div className="space-y-2">
-              <Label htmlFor="estimated-time" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
+              <Label htmlFor="estimated-time" className="flex items-center gap-2 dark:text-gray-200">
+                <Clock className="h-4 w-4 dark:text-gray-400" />
                 Tiempo estimado de entrega (minutos)
               </Label>
               <Input
@@ -282,7 +282,7 @@ export function AssignDeliveryDialog({
                 min={5}
                 max={180}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground dark:text-gray-400">
                 Llegada estimada:{' '}
                 {new Date(Date.now() + estimatedMinutes * 60000).toLocaleTimeString(
                   'es-CO',
@@ -294,7 +294,7 @@ export function AssignDeliveryDialog({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="dark:border-gray-600">
             Cancelar
           </Button>
           <Button

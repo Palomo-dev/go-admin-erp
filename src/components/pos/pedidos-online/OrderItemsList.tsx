@@ -29,18 +29,18 @@ export function OrderItemsList({
   if (variant === 'summary') {
     return (
       <div className="text-sm">
-        <p className="text-muted-foreground mb-1">
+        <p className="text-muted-foreground dark:text-gray-400 mb-1">
           {items.length} producto(s)
         </p>
         <div className="space-y-1 max-h-20 overflow-y-auto">
           {displayItems.map((item, idx) => (
             <div key={idx} className="flex justify-between">
               <span className="truncate dark:text-gray-200">{item.quantity}x {item.product_name}</span>
-              <span className="text-muted-foreground">${item.total.toLocaleString()}</span>
+              <span className="text-muted-foreground dark:text-gray-400">${item.total.toLocaleString()}</span>
             </div>
           ))}
           {remainingCount > 0 && (
-            <p className="text-xs text-muted-foreground">+{remainingCount} más...</p>
+            <p className="text-xs text-muted-foreground dark:text-gray-400">+{remainingCount} más...</p>
           )}
         </div>
       </div>
@@ -53,14 +53,14 @@ export function OrderItemsList({
         {displayItems.map((item, idx) => (
           <div key={idx} className="flex items-center justify-between text-sm py-1">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-muted-foreground">{item.quantity}x</span>
+              <span className="font-medium text-muted-foreground dark:text-gray-400">{item.quantity}x</span>
               <span className="truncate max-w-[200px] dark:text-gray-200">{item.product_name}</span>
             </div>
-            <span className="font-medium">${item.total.toLocaleString()}</span>
+            <span className="font-medium dark:text-gray-100">${item.total.toLocaleString()}</span>
           </div>
         ))}
         {remainingCount > 0 && (
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-xs text-muted-foreground dark:text-gray-400 text-center">
             +{remainingCount} producto(s) más
           </p>
         )}
@@ -85,7 +85,7 @@ export function OrderItemsList({
               )}
             </div>
             {item.product_sku && (
-              <p className="text-sm text-muted-foreground">SKU: {item.product_sku}</p>
+              <p className="text-sm text-muted-foreground dark:text-gray-400">SKU: {item.product_sku}</p>
             )}
             {item.notes && (
               <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">📝 {item.notes}</p>
@@ -93,7 +93,7 @@ export function OrderItemsList({
             {item.modifiers && item.modifiers.length > 0 && (
               <div className="mt-1 space-y-0.5">
                 {item.modifiers.map((mod: any, idx: number) => (
-                  <p key={idx} className="text-sm text-muted-foreground">
+                  <p key={idx} className="text-sm text-muted-foreground dark:text-gray-400">
                     + {mod.name} {mod.price > 0 && `(+$${mod.price.toLocaleString()})`}
                   </p>
                 ))}
@@ -101,15 +101,15 @@ export function OrderItemsList({
             )}
           </div>
           <div className="text-right ml-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground dark:text-gray-400">
               {item.quantity} x ${item.unit_price.toLocaleString()}
             </p>
-            <p className="font-medium">${item.total.toLocaleString()}</p>
+            <p className="font-medium dark:text-gray-100">${item.total.toLocaleString()}</p>
           </div>
         </div>
       ))}
       {remainingCount > 0 && (
-        <p className="text-sm text-muted-foreground text-center py-2">
+        <p className="text-sm text-muted-foreground dark:text-gray-400 text-center py-2">
           +{remainingCount} producto(s) más
         </p>
       )}

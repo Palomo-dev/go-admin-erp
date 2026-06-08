@@ -63,8 +63,8 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
   const baseCard = (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Truck className="h-4 w-4" />
+        <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
+          <Truck className="h-4 w-4 dark:text-gray-300" />
           Entrega
         </CardTitle>
       </CardHeader>
@@ -74,7 +74,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
           <Icon className={cn("h-5 w-5", config.color)} />
           <span className="font-medium dark:text-gray-100">{config.label}</span>
           {order.delivery_partner && (
-            <Badge variant="outline" className="text-xs ml-auto">
+            <Badge variant="outline" className="text-xs ml-auto dark:text-gray-100 dark:border-gray-600">
               {order.delivery_partner}
             </Badge>
           )}
@@ -84,11 +84,11 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
         {order.delivery_type !== 'pickup' && address?.address && (
           <div className="space-y-1">
             <p className="flex items-start gap-2 text-sm">
-              <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+              <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground dark:text-gray-400" />
               <span className="dark:text-gray-200">{address.address}</span>
             </p>
             {address.neighborhood && (
-              <p className="text-sm text-muted-foreground ml-6">
+              <p className="text-sm text-muted-foreground dark:text-gray-400 ml-6">
                 {address.neighborhood}
                 {address.city && `, ${address.city}`}
               </p>
@@ -108,7 +108,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
                   "text-blue-600 dark:text-blue-400 hover:underline"
                 )}
               >
-                <Navigation className="h-3 w-3" />
+                <Navigation className="h-3 w-3 dark:text-gray-300" />
                 Ver en mapa
               </a>
             )}
@@ -118,22 +118,22 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
         {/* Tiempos estimados */}
         {order.scheduled_at && (
           <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
             <span className="dark:text-gray-200">Programado: {formatDateTime(order.scheduled_at)}</span>
           </div>
         )}
 
         {order.estimated_ready_at && (
           <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-            <Clock className="h-4 w-4" />
-            <span>Listo aprox: {formatTime(order.estimated_ready_at)}</span>
+            <Clock className="h-4 w-4 dark:text-green-400" />
+            <span className="dark:text-gray-200">Listo aprox: {formatTime(order.estimated_ready_at)}</span>
           </div>
         )}
 
         {order.estimated_delivery_at && order.delivery_type !== 'pickup' && (
           <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
-            <Truck className="h-4 w-4" />
-            <span>Entrega aprox: {formatTime(order.estimated_delivery_at)}</span>
+            <Truck className="h-4 w-4 dark:text-purple-400" />
+            <span className="dark:text-gray-200">Entrega aprox: {formatTime(order.estimated_delivery_at)}</span>
           </div>
         )}
 
@@ -142,10 +142,10 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
           <Button
             variant="outline"
             size="sm"
-            className="w-full mt-2"
+            className="w-full mt-2 dark:border-gray-600"
             onClick={onAssignDelivery}
           >
-            <UserPlus className="h-4 w-4 mr-2" />
+            <UserPlus className="h-4 w-4 mr-2 dark:text-gray-300" />
             Asignar Conductor
           </Button>
         )}

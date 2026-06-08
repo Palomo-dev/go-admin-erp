@@ -13,8 +13,8 @@ export function OrderTimelineCard({ order }: OrderTimelineCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <History className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 dark:text-gray-100">
+          <History className="h-5 w-5 dark:text-gray-300" />
           Historial del pedido
         </CardTitle>
       </CardHeader>

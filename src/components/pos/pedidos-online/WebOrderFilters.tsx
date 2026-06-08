@@ -112,7 +112,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
       {/* Barra de búsqueda */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
           <Input
             placeholder="Buscar por # pedido, nombre o teléfono..."
             value={search}
@@ -125,8 +125,8 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
           Buscar
         </Button>
         {hasActiveFilters && (
-          <Button variant="outline" onClick={clearFilters}>
-            <X className="h-4 w-4 mr-1" />
+          <Button variant="outline" onClick={clearFilters} className="dark:border-gray-600">
+            <X className="h-4 w-4 mr-1 dark:text-gray-300" />
             Limpiar
           </Button>
         )}
@@ -142,7 +142,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
               variant={isActive ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleStatusToggle(option.value)}
-              className="gap-1 flex-shrink-0 whitespace-nowrap"
+              className={`gap-1 flex-shrink-0 whitespace-nowrap ${!isActive ? 'dark:border-gray-600' : ''}`}
             >
               {option.icon}
               {option.label}
@@ -157,12 +157,12 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
           variant={activeFilters.is_scheduled ? 'default' : 'outline'}
           size="sm"
           onClick={handleScheduledToggle}
-          className="gap-1 flex-shrink-0 whitespace-nowrap"
+          className={`gap-1 flex-shrink-0 whitespace-nowrap ${!activeFilters.is_scheduled ? 'dark:border-gray-600' : ''}`}
         >
           <CalendarClock className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
           Programados
         </Button>
-        <span className="text-muted-foreground flex-shrink-0">|</span>
+        <span className="text-muted-foreground dark:text-gray-400 flex-shrink-0">|</span>
         <span className="text-sm font-medium flex-shrink-0 dark:text-gray-100">Tipo:</span>
         {DELIVERY_TYPE_OPTIONS.map((option) => {
           const isActive = option.value === 'all' 
@@ -186,12 +186,12 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
       {/* Filtros activos */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Filtros activos:</span>
+          <span className="text-muted-foreground dark:text-gray-400">Filtros activos:</span>
           {activeFilters.status?.map(status => (
             <Badge key={status} variant="secondary" className="gap-1">
               {STATUS_OPTIONS.find(s => s.value === status)?.label}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={() => handleStatusToggle(status)}
               />
             </Badge>
@@ -200,7 +200,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
             <Badge variant="secondary" className="gap-1">
               {DELIVERY_TYPE_OPTIONS.find(d => d.value === activeFilters.delivery_type)?.label}
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={() => handleDeliveryTypeChange('all')}
               />
             </Badge>
@@ -209,7 +209,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
             <Badge variant="secondary" className="gap-1">
               &quot;{activeFilters.search}&quot;
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={() => {
                   setSearch('');
                   onFilterChange({ ...activeFilters, search: undefined });
@@ -221,7 +221,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
             <Badge variant="secondary" className="gap-1">
               Programados
               <X 
-                className="h-3 w-3 cursor-pointer" 
+                className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={handleScheduledToggle}
               />
             </Badge>

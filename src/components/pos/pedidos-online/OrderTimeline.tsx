@@ -149,13 +149,13 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
                   }
                 `}
               >
-                {step.isCompleted || step.isCurrent ? step.icon : <Circle className="h-3 w-3" />}
+                {step.isCompleted || step.isCurrent ? step.icon : <Circle className="h-3 w-3 dark:text-gray-400" />}
               </div>
-              <span className={`text-xs mt-1 whitespace-nowrap ${step.isCurrent ? 'font-medium' : 'text-muted-foreground'}`}>
+              <span className={`text-xs mt-1 whitespace-nowrap ${step.isCurrent ? 'font-medium dark:text-gray-100' : 'text-muted-foreground dark:text-gray-400'}`}>
                 {step.label}
               </span>
               {step.timestamp && (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground dark:text-gray-400">
                   {formatTime(step.timestamp)}
                 </span>
               )}
@@ -165,7 +165,7 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
                 className={`
                   h-0.5 w-8 mx-2
                   ${steps[index + 1].isCompleted || steps[index + 1].isCurrent 
-                    ? 'bg-green-500' 
+                    ? 'bg-green-500 dark:bg-green-600' 
                     : 'bg-muted'
                   }
                 `}
@@ -195,14 +195,14 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
                 }
               `}
             >
-              {step.isCompleted || step.isCurrent ? step.icon : <Circle className="h-3 w-3" />}
+              {step.isCompleted || step.isCurrent ? step.icon : <Circle className="h-3 w-3 dark:text-gray-400" />}
             </div>
             {index < steps.length - 1 && (
               <div 
                 className={`
                   w-0.5 flex-1 min-h-[24px]
                   ${steps[index + 1].isCompleted || steps[index + 1].isCurrent 
-                    ? 'bg-green-500' 
+                    ? 'bg-green-500 dark:bg-green-600' 
                     : 'bg-muted'
                   }
                 `}
@@ -210,11 +210,11 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
             )}
           </div>
           <div className="flex-1 pb-4">
-            <p className={`font-medium ${step.isCancelled ? 'text-red-600 dark:text-red-400' : step.isCurrent ? 'text-primary' : ''}`}>
+            <p className={`font-medium ${step.isCancelled ? 'text-red-600 dark:text-red-400' : step.isCurrent ? 'text-primary dark:text-blue-400' : 'dark:text-gray-100'}`}>
               {step.label}
             </p>
             {step.timestamp && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-gray-400">
                 {formatDateTime(step.timestamp)}
               </p>
             )}

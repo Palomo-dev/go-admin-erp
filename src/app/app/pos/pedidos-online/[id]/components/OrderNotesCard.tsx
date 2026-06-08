@@ -17,8 +17,8 @@ export function OrderNotesCard({ order }: OrderNotesCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 dark:text-gray-100">
+          <FileText className="h-5 w-5 dark:text-gray-300" />
           Notas
         </CardTitle>
       </CardHeader>

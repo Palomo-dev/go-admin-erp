@@ -17,8 +17,8 @@ export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <User className="h-4 w-4" />
+        <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
+          <User className="h-4 w-4 dark:text-gray-300" />
           Cliente
         </CardTitle>
       </CardHeader>
@@ -26,13 +26,13 @@ export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
         <p className="font-medium dark:text-gray-100">{displayName}</p>
         
         {displayPhone && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Phone className="h-4 w-4" />
+          <p className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
+            <Phone className="h-4 w-4 dark:text-gray-400" />
             <a 
               href={`tel:${displayPhone}`} 
               className={cn(
                 "hover:underline",
-                "hover:text-primary transition-colors"
+                "hover:text-primary transition-colors dark:text-gray-300 dark:hover:text-blue-400"
               )}
             >
               {displayPhone}
@@ -41,13 +41,13 @@ export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
         )}
         
         {displayEmail && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Mail className="h-4 w-4" />
+          <p className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
+            <Mail className="h-4 w-4 dark:text-gray-400" />
             <a 
               href={`mailto:${displayEmail}`} 
               className={cn(
                 "hover:underline truncate max-w-[200px]",
-                "hover:text-primary transition-colors"
+                "hover:text-primary transition-colors dark:text-gray-300 dark:hover:text-blue-400"
               )}
             >
               {displayEmail}

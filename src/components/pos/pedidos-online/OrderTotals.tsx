@@ -31,7 +31,7 @@ export function OrderTotals({
     return (
       <div className="flex items-center justify-between border-t dark:border-gray-700 pt-3">
         <span className="font-medium dark:text-gray-100">Total</span>
-        <span className="text-lg font-bold text-primary">{formatCurrency(total)}</span>
+        <span className="text-lg font-bold text-primary dark:text-blue-400">{formatCurrency(total)}</span>
       </div>
     );
   }
@@ -39,14 +39,14 @@ export function OrderTotals({
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground">Subtotal</span>
-        <span>{formatCurrency(subtotal)}</span>
+        <span className="text-muted-foreground dark:text-gray-400">Subtotal</span>
+        <span className="dark:text-gray-100">{formatCurrency(subtotal)}</span>
       </div>
       
       {taxTotal > 0 && (
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Impuestos</span>
-          <span>{formatCurrency(taxTotal)}</span>
+          <span className="text-muted-foreground dark:text-gray-400">Impuestos</span>
+          <span className="dark:text-gray-100">{formatCurrency(taxTotal)}</span>
         </div>
       )}
       
@@ -59,15 +59,15 @@ export function OrderTotals({
       
       {deliveryFee > 0 && (
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Envío</span>
-          <span>{formatCurrency(deliveryFee)}</span>
+          <span className="text-muted-foreground dark:text-gray-400">Envío</span>
+          <span className="dark:text-gray-100">{formatCurrency(deliveryFee)}</span>
         </div>
       )}
       
       {tipAmount > 0 && (
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Propina</span>
-          <span>{formatCurrency(tipAmount)}</span>
+          <span className="text-muted-foreground dark:text-gray-400">Propina</span>
+          <span className="dark:text-gray-100">{formatCurrency(tipAmount)}</span>
         </div>
       )}
       
@@ -75,7 +75,7 @@ export function OrderTotals({
       
       <div className="flex justify-between text-lg font-bold">
         <span className="dark:text-gray-100">Total</span>
-        <span className="text-primary">{formatCurrency(total)}</span>
+        <span className="text-primary dark:text-blue-400">{formatCurrency(total)}</span>
       </div>
     </div>
   );

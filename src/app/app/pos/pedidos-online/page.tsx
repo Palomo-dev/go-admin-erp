@@ -354,7 +354,7 @@ export default function PedidosOnlinePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold dark:text-gray-100">Pedidos Online</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground dark:text-gray-400">
             Gestiona los pedidos recibidos desde el sitio web
           </p>
         </div>
@@ -367,7 +367,7 @@ export default function PedidosOnlinePage() {
               className="rounded-none"
               title="Vista Kanban"
             >
-              <LayoutGrid className="h-4 w-4" />
+              <LayoutGrid className="h-4 w-4 dark:text-gray-300" />
             </Button>
             <Button
               variant={viewMode === 'list' ? 'default' : 'ghost'}
@@ -376,7 +376,7 @@ export default function PedidosOnlinePage() {
               className="rounded-none"
               title="Vista Lista"
             >
-              <List className="h-4 w-4" />
+              <List className="h-4 w-4 dark:text-gray-300" />
             </Button>
           </div>
           <Button
@@ -384,25 +384,28 @@ export default function PedidosOnlinePage() {
             size="sm"
             onClick={() => setSoundEnabled(!soundEnabled)}
             title={soundEnabled ? 'Silenciar notificaciones' : 'Activar sonido'}
+            className="dark:border-gray-600"
           >
-            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            {soundEnabled ? <Volume2 className="h-4 w-4 dark:text-gray-300" /> : <VolumeX className="h-4 w-4 dark:text-gray-300" />}
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setAutoRefresh(!autoRefresh)}
             title={autoRefresh ? 'Desactivar auto-refresh' : 'Activar auto-refresh'}
+            className="dark:border-gray-600"
           >
-            {autoRefresh ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+            {autoRefresh ? <Bell className="h-4 w-4 dark:text-gray-300" /> : <BellOff className="h-4 w-4 dark:text-gray-300" />}
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => loadOrders()}
             disabled={loading}
+            className="dark:border-gray-600"
           >
-            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Actualizar</span>
+            <RefreshCw className={`h-4 w-4 mr-1 dark:text-gray-300 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline dark:text-gray-300">Actualizar</span>
           </Button>
         </div>
       </div>
@@ -414,7 +417,7 @@ export default function PedidosOnlinePage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Calendar className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
             <span className="text-sm font-medium mr-1 dark:text-gray-100">Período:</span>
             {([
               { value: 'today', label: 'Hoy' },
@@ -440,7 +443,7 @@ export default function PedidosOnlinePage() {
                   onChange={(e) => setCustomDateFrom(e.target.value)}
                   className="h-8 w-36 text-xs"
                 />
-                <span className="text-sm text-muted-foreground">a</span>
+                <span className="text-sm text-muted-foreground dark:text-gray-400">a</span>
                 <Input
                   type="date"
                   value={customDateTo}
@@ -466,12 +469,12 @@ export default function PedidosOnlinePage() {
       {/* Vista de pedidos */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground dark:text-gray-400" />
         </div>
       ) : orders.length === 0 ? (
         <Card>
           <CardContent className="p-8 sm:p-12 text-center">
-            <p className="text-muted-foreground">No hay pedidos que mostrar</p>
+            <p className="text-muted-foreground dark:text-gray-300">No hay pedidos que mostrar</p>
           </CardContent>
         </Card>
       ) : viewMode === 'list' ? (
@@ -513,16 +516,16 @@ export default function PedidosOnlinePage() {
                       <td className="p-3">
                         <div className="flex flex-col gap-1">
                           <PaymentStatusBadge status={order.payment_status} />
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground dark:text-gray-400">
                             {getPaymentLabel(order.payment_method)}
                             {order.payment_method_detail && ` · ${getPaymentDetailLabel(order.payment_method_detail)}`}
                           </span>
                         </div>
                       </td>
                       <td className="p-3 text-right font-semibold dark:text-gray-100">${order.total.toLocaleString()}</td>
-                      <td className="p-3 text-xs text-muted-foreground">
+                      <td className="p-3 text-xs text-muted-foreground dark:text-gray-400">
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
+                          <Clock className="h-3 w-3 dark:text-gray-400" />
                           {new Date(order.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </td>
@@ -536,7 +539,7 @@ export default function PedidosOnlinePage() {
                                 className="h-7 text-xs"
                                 onClick={() => setConfirmDialog({ open: true, orderId: order.id })}
                               >
-                                <CheckCircle className="h-3 w-3 mr-1" />
+                                <CheckCircle className="h-3 w-3 mr-1 dark:text-white" />
                                 Confirmar
                               </Button>
                               <Button
@@ -545,7 +548,7 @@ export default function PedidosOnlinePage() {
                                 className="h-7 w-7 p-0"
                                 onClick={() => setRejectDialog({ open: true, orderId: order.id })}
                               >
-                                <XCircle className="h-3 w-3" />
+                                <XCircle className="h-3 w-3 dark:text-white" />
                               </Button>
                             </>
                           )}
@@ -602,10 +605,10 @@ export default function PedidosOnlinePage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 w-7 p-0"
+                            className="h-7 w-7 p-0 dark:border-gray-600"
                             onClick={() => handleViewDetails(order.id)}
                           >
-                            <Eye className="h-3 w-3" />
+                            <Eye className="h-3 w-3 dark:text-gray-300" />
                           </Button>
                         </div>
                       </td>
@@ -616,8 +619,8 @@ export default function PedidosOnlinePage() {
             </div>
             {/* Paginación lista */}
             {orders.length > ITEMS_PER_PAGE && (
-              <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-t">
-                <span className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-t dark:border-gray-700">
+                <span className="text-sm text-muted-foreground dark:text-gray-300">
                   {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, orders.length)} de {orders.length}
                 </span>
                 <div className="flex items-center gap-1">
@@ -626,10 +629,11 @@ export default function PedidosOnlinePage() {
                     size="sm"
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(p => p - 1)}
+                    className="dark:border-gray-600"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4 dark:text-gray-300" />
                   </Button>
-                  <span className="text-sm px-2">
+                  <span className="text-sm px-2 dark:text-gray-300">
                     {currentPage} / {Math.ceil(orders.length / ITEMS_PER_PAGE)}
                   </span>
                   <Button
@@ -637,8 +641,9 @@ export default function PedidosOnlinePage() {
                     size="sm"
                     disabled={currentPage >= Math.ceil(orders.length / ITEMS_PER_PAGE)}
                     onClick={() => setCurrentPage(p => p + 1)}
+                    className="dark:border-gray-600"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 dark:text-gray-300" />
                   </Button>
                 </div>
               </div>
@@ -664,12 +669,12 @@ export default function PedidosOnlinePage() {
               />
             ))}
             {hasMoreKanban(pendingOrders, 'pending') && (
-              <Button variant="ghost" size="sm" className="w-full" onClick={() => showMoreKanban('pending')}>
+              <Button variant="ghost" size="sm" className="w-full dark:text-gray-300" onClick={() => showMoreKanban('pending')}>
                 Ver más ({pendingOrders.length - (kanbanPages.pending || 1) * KANBAN_PAGE_SIZE} restantes)
               </Button>
             )}
             {pendingOrders.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-4">
+              <p className="text-center text-sm text-muted-foreground dark:text-gray-400 py-4">
                 Sin pedidos pendientes
               </p>
             )}
@@ -690,12 +695,12 @@ export default function PedidosOnlinePage() {
               />
             ))}
             {hasMoreKanban(confirmedOrders, 'confirmed') && (
-              <Button variant="ghost" size="sm" className="w-full" onClick={() => showMoreKanban('confirmed')}>
+              <Button variant="ghost" size="sm" className="w-full dark:text-gray-300" onClick={() => showMoreKanban('confirmed')}>
                 Ver más ({confirmedOrders.length - (kanbanPages.confirmed || 1) * KANBAN_PAGE_SIZE} restantes)
               </Button>
             )}
             {confirmedOrders.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-4">
+              <p className="text-center text-sm text-muted-foreground dark:text-gray-400 py-4">
                 Sin pedidos confirmados
               </p>
             )}
@@ -716,12 +721,12 @@ export default function PedidosOnlinePage() {
               />
             ))}
             {hasMoreKanban(preparingOrders, 'preparing') && (
-              <Button variant="ghost" size="sm" className="w-full" onClick={() => showMoreKanban('preparing')}>
+              <Button variant="ghost" size="sm" className="w-full dark:text-gray-300" onClick={() => showMoreKanban('preparing')}>
                 Ver más ({preparingOrders.length - (kanbanPages.preparing || 1) * KANBAN_PAGE_SIZE} restantes)
               </Button>
             )}
             {preparingOrders.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-4">
+              <p className="text-center text-sm text-muted-foreground dark:text-gray-400 py-4">
                 Nada en preparación
               </p>
             )}
@@ -742,12 +747,12 @@ export default function PedidosOnlinePage() {
               />
             ))}
             {hasMoreKanban(readyOrders, 'ready') && (
-              <Button variant="ghost" size="sm" className="w-full" onClick={() => showMoreKanban('ready')}>
+              <Button variant="ghost" size="sm" className="w-full dark:text-gray-300" onClick={() => showMoreKanban('ready')}>
                 Ver más ({readyOrders.length - (kanbanPages.ready || 1) * KANBAN_PAGE_SIZE} restantes)
               </Button>
             )}
             {readyOrders.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-4">
+              <p className="text-center text-sm text-muted-foreground dark:text-gray-400 py-4">
                 Sin pedidos listos
               </p>
             )}
@@ -759,13 +764,13 @@ export default function PedidosOnlinePage() {
       <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, orderId: open ? confirmDialog.orderId : null })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar pedido</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="dark:text-gray-100">Confirmar pedido</DialogTitle>
+            <DialogDescription className="dark:text-gray-400">
               Indica el tiempo estimado de preparación
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="estimated-time">Tiempo estimado (minutos)</Label>
+            <Label htmlFor="estimated-time" className="dark:text-gray-200">Tiempo estimado (minutos)</Label>
             <Input
               id="estimated-time"
               type="number"
@@ -780,6 +785,7 @@ export default function PedidosOnlinePage() {
             <Button 
               variant="outline" 
               onClick={() => setConfirmDialog({ open: false, orderId: null })}
+              className="dark:border-gray-600"
             >
               Cancelar
             </Button>
@@ -795,13 +801,13 @@ export default function PedidosOnlinePage() {
       <Dialog open={rejectDialog.open} onOpenChange={(open) => setRejectDialog({ open, orderId: open ? rejectDialog.orderId : null })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rechazar pedido</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="dark:text-gray-100">Rechazar pedido</DialogTitle>
+            <DialogDescription className="dark:text-gray-400">
               Indica el motivo del rechazo. El cliente será notificado.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="reject-reason">Motivo del rechazo</Label>
+            <Label htmlFor="reject-reason" className="dark:text-gray-200">Motivo del rechazo</Label>
             <Textarea
               id="reject-reason"
               value={rejectReason}
@@ -818,6 +824,7 @@ export default function PedidosOnlinePage() {
                 setRejectDialog({ open: false, orderId: null });
                 setRejectReason('');
               }}
+              className="dark:border-gray-600"
             >
               Cancelar
             </Button>

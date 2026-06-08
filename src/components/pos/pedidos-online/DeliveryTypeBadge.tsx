@@ -49,9 +49,9 @@ export function DeliveryTypeBadge({
     return (
       <div className="flex items-center gap-2">
         {config.icon}
-        {showLabel && <span className="text-sm">{config.label}</span>}
+        {showLabel && <span className="text-sm dark:text-gray-100">{config.label}</span>}
         {partner && (
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs dark:text-gray-100 dark:border-gray-600">
             {partner}
           </Badge>
         )}
@@ -66,7 +66,7 @@ export function DeliveryTypeBadge({
         {showLabel && <span>{config.shortLabel}</span>}
       </Badge>
       {partner && (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="text-xs dark:text-gray-100 dark:border-gray-600">
           {partner}
         </Badge>
       )}

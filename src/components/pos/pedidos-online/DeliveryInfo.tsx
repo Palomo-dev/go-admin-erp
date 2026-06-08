@@ -62,7 +62,7 @@ export function DeliveryInfo({
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
             <Truck className="h-4 w-4" />
             Entrega
           </CardTitle>
@@ -72,7 +72,7 @@ export function DeliveryInfo({
             <Icon className={`h-5 w-5 ${config.color}`} />
             <span className="font-medium dark:text-gray-100">{config.label}</span>
             {deliveryPartner && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs dark:text-gray-100 dark:border-gray-600">
                 {deliveryPartner}
               </Badge>
             )}
@@ -81,8 +81,8 @@ export function DeliveryInfo({
           {deliveryType !== 'pickup' && deliveryAddress?.address && (
             <div className="space-y-1">
               <p className="flex items-start gap-2 text-sm">
-                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                <span>{deliveryAddress.address}</span>
+                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground dark:text-gray-400" />
+                <span className="dark:text-gray-200">{deliveryAddress.address}</span>
               </p>
               {deliveryAddress.neighborhood && (
                 <p className="text-sm text-muted-foreground ml-6">
@@ -111,22 +111,22 @@ export function DeliveryInfo({
 
           {scheduledAt && (
             <div className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>Programado: {formatDateTime(scheduledAt)}</span>
+              <Clock className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
+              <span className="dark:text-gray-200">Programado: {formatDateTime(scheduledAt)}</span>
             </div>
           )}
 
           {estimatedReadyAt && (
             <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
               <Clock className="h-4 w-4" />
-              <span>Listo aprox: {formatTime(estimatedReadyAt)}</span>
+              <span className="dark:text-gray-200">Listo aprox: {formatTime(estimatedReadyAt)}</span>
             </div>
           )}
 
           {estimatedDeliveryAt && deliveryType !== 'pickup' && (
             <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
               <Truck className="h-4 w-4" />
-              <span>Entrega aprox: {formatTime(estimatedDeliveryAt)}</span>
+              <span className="dark:text-gray-200">Entrega aprox: {formatTime(estimatedDeliveryAt)}</span>
             </div>
           )}
         </CardContent>
@@ -139,7 +139,7 @@ export function DeliveryInfo({
       <Icon className={`h-4 w-4 ${config.color}`} />
       <span className="text-sm font-medium dark:text-gray-100">{config.label}</span>
       {deliveryPartner && (
-        <Badge variant="outline" className="ml-auto text-xs">
+        <Badge variant="outline" className="ml-auto text-xs dark:text-gray-100 dark:border-gray-600">
           {deliveryPartner}
         </Badge>
       )}

@@ -13,8 +13,8 @@ export function OrderLoadingState({ message = 'Cargando pedido...' }: OrderLoadi
       "flex flex-col items-center justify-center h-screen",
       "gap-4"
     )}>
-      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      <p className="text-muted-foreground">{message}</p>
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground dark:text-gray-400" />
+      <p className="text-muted-foreground dark:text-gray-300">{message}</p>
     </div>
   );
 }

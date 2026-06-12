@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Smile, Mic, MicOff, X, Zap, Square } from 'lucide-react';
+import { Send, Paperclip, Smile, Mic, MicOff, X, Zap, Square, Bold, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -52,6 +52,7 @@ export default function ChatInput({
   const [recordingTime, setRecordingTime] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -145,6 +146,34 @@ export default function ChatInput({
     if (file) {
       onSendMessage(file.name, 'file', file);
       e.target.value = '';
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onSendMessage(file.name, 'file', file);
+      e.target.value = '';
+    }
+  };
+
+  const handleBold = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = message;
+    if (start !== end) {
+      const selected = text.substring(start, end);
+      const newText = text.substring(0, start) + `**${selected}**` + text.substring(end);
+      setMessage(newText);
+    } else {
+      const newText = text.substring(0, start) + '****' + text.substring(end);
+      setMessage(newText);
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+        textarea.focus();
+      }, 0);
     }
   };
 
@@ -271,6 +300,14 @@ export default function ChatInput({
           className="hidden"
           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
         />
+        {/* Input oculto para imágenes */}
+        <input
+          type="file"
+          ref={imageInputRef}
+          onChange={handleImageChange}
+          className="hidden"
+          accept="image/*"
+        />
 
         {/* Botones izquierdos */}
         <div className="flex items-center gap-1">
@@ -283,6 +320,28 @@ export default function ChatInput({
             title="Adjuntar archivo"
           >
             <Paperclip className="h-5 w-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            disabled={disabled}
+            onClick={() => imageInputRef.current?.click()}
+            title="Enviar imagen"
+          >
+            <ImagePlus className="h-5 w-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            disabled={disabled}
+            onClick={handleBold}
+            title="Negrilla (selecciona texto)"
+          >
+            <Bold className="h-5 w-5" />
           </Button>
           
           {/* Respuestas rápidas */}

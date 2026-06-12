@@ -76,7 +76,7 @@ export default function MessageBubble({ message, showAvatar = false, senderName 
     switch (contentType) {
       case 'image':
         return (
-          <div className="max-w-[200px] sm:max-w-xs">
+          <div style={{ maxWidth: '180px' }}>
             <img
               src={message.content}
               alt={message.metadata?.file_name || 'Imagen'}
@@ -162,12 +162,52 @@ export default function MessageBubble({ message, showAvatar = false, senderName 
         );
 
       default:
-        return (
-          <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words" style={{ wordBreak: 'break-word' }}>
-            {message.content}
-          </p>
-        );
+        return renderFormattedText(message.content);
     }
+  };
+
+  const renderFormattedText = (text: string) => {
+    // Separar por [IMG:url]
+    const parts = text.split(/(\[IMG:[^\]]+\])/g);
+
+    return (
+      <div className="text-[15px] leading-relaxed break-words" style={{ wordBreak: 'break-word' }}>
+        {parts.map((part, i) => {
+          const imgMatch = part.match(/\[IMG:([^\]]+)\]/);
+          if (imgMatch) {
+            return (
+              <img
+                key={i}
+                src={imgMatch[1]}
+                alt="Producto"
+                className="rounded-lg h-auto my-2 cursor-pointer hover:opacity-90"
+                style={{ maxWidth: '180px' }}
+                onClick={() => window.open(imgMatch[1], '_blank')}
+                loading="lazy"
+              />
+            );
+          }
+          // Texto: parsear **negrillas** y saltos de línea
+          return (
+            <span key={i}>
+              {part.split(/(\*\*[^*]+\*\*)/g).map((seg, j) => {
+                const boldMatch = seg.match(/^\*\*([^*]+)\*\*$/);
+                if (boldMatch) {
+                  return <strong key={j} className="font-bold">{boldMatch[1]}</strong>;
+                }
+                // Respetar saltos de línea
+                return seg.split('\n').map((line, k, arr) => (
+                  <React.Fragment key={`${j}-${k}`}>
+                    {line}
+                    {k < arr.length - 1 && <br />}
+                  </React.Fragment>
+                ));
+              })}
+            </span>
+          );
+        })}
+      </div>
+    );
   };
 
   return (

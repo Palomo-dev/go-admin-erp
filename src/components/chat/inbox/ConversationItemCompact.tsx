@@ -49,7 +49,10 @@ export default function ConversationItemCompact({
   });
 
   const isUnread = conversation.unread_count > 0;
-  const lastMessageContent = conversation.last_message?.content || 'Sin mensajes';
+  const rawContent = conversation.last_message?.content || 'Sin mensajes';
+  const lastMessageContent = rawContent
+    .replace(/\[IMG:[^\]]+\]/g, '📷 Imagen')
+    .replace(/\*\*([^*]+)\*\*/g, '$1');
 
   return (
     <div

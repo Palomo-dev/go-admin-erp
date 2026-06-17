@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -10,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useTranslations } from 'next-intl';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 import { FONTS } from '@/lib/services/websiteSettingsService';
@@ -30,6 +32,10 @@ export default function GlobalSettingsPanel({
   onTogglePageHeader,
 }: GlobalSettingsPanelProps) {
   const t = useTranslations('branding.editor.globalSettings');
+  const [newButtonText, setNewButtonText] = useState('');
+  const cartTexts: string[] = (settings as any).cart_button_texts || ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento'];
+  const cartMode: string = (settings as any).cart_button_mode || 'dynamic';
+
   return (
     <div className="space-y-4">
       {/* Colores */}
@@ -217,6 +223,88 @@ export default function GlobalSettingsPanel({
         </div>
       </div>
 
+      {/* Texto del botón del carrito */}
+      <div>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">🛒 Texto botón del carrito</Label>
+        <div className="space-y-3 rounded-md border dark:border-gray-700 p-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">Modo</span>
+            <Select
+              value={cartMode}
+              onValueChange={(val) => onUpdate({ ...settings, cart_button_mode: val } as any)}
+            >
+              <SelectTrigger className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dynamic">Dinámico (rota textos)</SelectItem>
+                <SelectItem value="fixed">Texto fijo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">
+              {cartMode === 'fixed' ? 'Texto del botón' : 'Textos que rotan'}
+            </span>
+            {cartTexts.map((text: string, i: number) => (
+              <div key={i} className="flex items-center gap-1">
+                <Input
+                  value={text}
+                  onChange={(e) => {
+                    const updated = [...cartTexts];
+                    updated[i] = e.target.value;
+                    onUpdate({ ...settings, cart_button_texts: updated } as any);
+                  }}
+                  className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white flex-1"
+                />
+                {cartTexts.length > 1 && (
+                  <button
+                    onClick={() => {
+                      const updated = cartTexts.filter((_: string, j: number) => j !== i);
+                      onUpdate({ ...settings, cart_button_texts: updated } as any);
+                    }}
+                    className="p-1 text-red-400 hover:text-red-600"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {(cartMode === 'dynamic' || cartTexts.length === 0) && (
+              <div className="flex items-center gap-1 mt-1">
+                <Input
+                  value={newButtonText}
+                  onChange={(e) => setNewButtonText(e.target.value)}
+                  placeholder="Nuevo texto..."
+                  className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newButtonText.trim()) {
+                      onUpdate({ ...settings, cart_button_texts: [...cartTexts, newButtonText.trim()] } as any);
+                      setNewButtonText('');
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    if (newButtonText.trim()) {
+                      onUpdate({ ...settings, cart_button_texts: [...cartTexts, newButtonText.trim()] } as any);
+                      setNewButtonText('');
+                    }
+                  }}
+                  className="p-1 text-green-500 hover:text-green-700"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
+          <p className="text-[9px] text-gray-400">
+            {cartMode === 'dynamic' ? 'Cada vez que se abre el carrito, se muestra un texto aleatorio' : 'Se mostrará siempre el primer texto'}
+          </p>
+        </div>
+      </div>
+
       {/* Countdown Timer */}
       <div>
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">⏰ Countdown Timer</Label>
@@ -340,10 +428,32 @@ export default function GlobalSettingsPanel({
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_hero: checked } as any)}
                     />
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Checkout</span>
+                    <Switch
+                      checked={(settings as any).checkout_show_countdown ?? false}
+                      onCheckedChange={(checked) => onUpdate({ ...settings, checkout_show_countdown: checked } as any)}
+                    />
+                  </div>
                 </div>
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Urgencia de compra */}
+      <div>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">� Urgencia de compra</Label>
+        <div className="space-y-2 rounded-md border dark:border-gray-700 p-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-600 dark:text-gray-400">Mostrar en checkout</span>
+            <Switch
+              checked={(settings as any).checkout_show_stock_warning ?? false}
+              onCheckedChange={(checked) => onUpdate({ ...settings, checkout_show_stock_warning: checked } as any)}
+            />
+          </div>
+          <p className="text-[9px] text-gray-400">Muestra mensajes como &quot;¡Solo quedan 3!&quot; para incentivar la compra rápida</p>
         </div>
       </div>
 

@@ -3,7 +3,7 @@ import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganizati
 import { SaleWithDetails, SalesFilter, DailySummary, CashSession, CashCount } from './types';
 
 export class VentasService {
-  // Obtener ventas con filtros y paginación
+  // Obtener ventas con filtros y paginación (POS + Web)
   static async getSales(
     filter: SalesFilter = {},
     page: number = 1,
@@ -11,166 +11,273 @@ export class VentasService {
   ): Promise<{ data: SaleWithDetails[]; total: number }> {
     const organizationId = getOrganizationId();
     const branchId = getCurrentBranchId();
-    const offset = (page - 1) * limit;
+    const sourceType = filter.source_type || 'all';
 
     try {
-      // Consulta principal de ventas
-      let query = supabase
-        .from('sales')
-        .select('*', { count: 'exact' })
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
+      let posSales: any[] = [];
+      let posCount = 0;
+      let webSales: any[] = [];
+      let webCount = 0;
 
-      if (branchId) {
-        query = query.eq('branch_id', branchId);
+      // ── Ventas POS (tabla sales) ──
+      if (sourceType === 'all' || sourceType === 'pos') {
+        let query = supabase
+          .from('sales')
+          .select('*', { count: 'exact' })
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false });
+
+        if (branchId) query = query.eq('branch_id', branchId);
+        if (filter.status && filter.status !== 'all') query = query.eq('status', filter.status);
+        if (filter.payment_status && filter.payment_status !== 'all') query = query.eq('payment_status', filter.payment_status);
+        if (filter.date_from) query = query.gte('sale_date', filter.date_from);
+        if (filter.date_to) query = query.lte('sale_date', filter.date_to);
+        if (filter.customer_id) query = query.eq('customer_id', filter.customer_id);
+        if (filter.search) query = query.or(`notes.ilike.%${filter.search}%`);
+
+        const { data, error, count } = await query;
+        if (error) console.error('Error fetching POS sales:', error.message);
+        posSales = (data || []).map(s => ({ ...s, _source: 'pos' as const }));
+        posCount = count || 0;
       }
 
-      if (filter.status && filter.status !== 'all') {
-        query = query.eq('status', filter.status);
+      // ── Ventas Web (tabla web_orders) ──
+      if (sourceType === 'all' || sourceType === 'web') {
+        let wQuery = supabase
+          .from('web_orders')
+          .select('*', { count: 'exact' })
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false });
+
+        if (filter.status && filter.status !== 'all') {
+          const statusMap: Record<string, string> = { completed: 'confirmed', pending: 'pending', cancelled: 'cancelled' };
+          wQuery = wQuery.eq('status', statusMap[filter.status] || filter.status);
+        }
+        if (filter.payment_status && filter.payment_status !== 'all') wQuery = wQuery.eq('payment_status', filter.payment_status);
+        if (filter.date_from) wQuery = wQuery.gte('created_at', `${filter.date_from}T00:00:00`);
+        if (filter.date_to) wQuery = wQuery.lte('created_at', `${filter.date_to}T23:59:59`);
+        if (filter.customer_id) wQuery = wQuery.eq('customer_id', filter.customer_id);
+        if (filter.search) wQuery = wQuery.or(`order_number.ilike.%${filter.search}%,customer_name.ilike.%${filter.search}%,customer_notes.ilike.%${filter.search}%`);
+
+        const { data: wData, error: wError, count: wCount } = await wQuery;
+        if (wError) console.error('Error fetching web orders:', wError.message);
+        webSales = (wData || []).map(wo => ({
+          id: wo.id,
+          organization_id: wo.organization_id,
+          branch_id: wo.branch_id,
+          customer_id: wo.customer_id,
+          sale_date: wo.created_at,
+          invoice_number: wo.order_number,
+          subtotal: Number(wo.subtotal) || 0,
+          tax_total: Number(wo.tax_total) || 0,
+          discount_total: Number(wo.discount_total) || 0,
+          total: Number(wo.total) || 0,
+          status: wo.status === 'confirmed' || wo.status === 'delivered' ? 'completed' : wo.status,
+          payment_status: wo.payment_status,
+          payment_method: wo.payment_method,
+          notes: wo.customer_notes || wo.internal_notes,
+          created_at: wo.created_at,
+          updated_at: wo.updated_at,
+          _source: 'web' as const,
+          _customer_name: wo.customer_name,
+          _customer_email: wo.customer_email,
+          _customer_phone: wo.customer_phone,
+        }));
+        webCount = wCount || 0;
       }
 
-      if (filter.payment_status && filter.payment_status !== 'all') {
-        query = query.eq('payment_status', filter.payment_status);
-      }
+      // ── Combinar, ordenar y paginar ──
+      const combined = [...posSales, ...webSales]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      if (filter.date_from) {
-        query = query.gte('sale_date', filter.date_from);
-      }
+      const totalCount = posCount + webCount;
+      const offset = (page - 1) * limit;
+      const paginated = combined.slice(offset, offset + limit);
 
-      if (filter.date_to) {
-        query = query.lte('sale_date', filter.date_to);
-      }
-
-      if (filter.customer_id) {
-        query = query.eq('customer_id', filter.customer_id);
-      }
-
-      if (filter.search) {
-        query = query.or(`notes.ilike.%${filter.search}%`);
-      }
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error('Error fetching sales:', error.message, error.details, error.hint);
-        throw error;
-      }
-
-      // Obtener clientes para las ventas que tienen customer_id
-      const customerIds = Array.from(new Set((data || []).filter(s => s.customer_id).map(s => s.customer_id)));
+      // ── Obtener clientes de BD (solo para POS que tienen customer_id) ──
+      const posCustomerIds = Array.from(new Set(paginated.filter(s => s.customer_id && s._source === 'pos').map(s => s.customer_id)));
       let customersMap: Record<string, any> = {};
 
-      if (customerIds.length > 0) {
+      if (posCustomerIds.length > 0) {
         const { data: customers } = await supabase
           .from('customers')
           .select('id, full_name, email, phone, doc_number')
-          .in('id', customerIds);
-
-        if (customers) {
-          customers.forEach(c => { customersMap[c.id] = c; });
-        }
+          .in('id', posCustomerIds);
+        if (customers) customers.forEach(c => { customersMap[c.id] = c; });
       }
 
-      // Obtener items para las ventas
-      const saleIds = (data || []).map(s => s.id);
+      // ── Obtener items POS ──
+      const posSaleIds = paginated.filter(s => s._source === 'pos').map(s => s.id);
       let itemsMap: Record<string, any[]> = {};
 
-      if (saleIds.length > 0) {
+      if (posSaleIds.length > 0) {
         const { data: items } = await supabase
           .from('sale_items')
           .select('id, sale_id, product_id, quantity, unit_price, total, tax_amount, discount_amount, notes')
-          .in('sale_id', saleIds);
-
-        if (items) {
-          items.forEach(item => {
-            if (!itemsMap[item.sale_id]) itemsMap[item.sale_id] = [];
-            itemsMap[item.sale_id].push(item);
-          });
-        }
+          .in('sale_id', posSaleIds);
+        if (items) items.forEach(item => {
+          if (!itemsMap[item.sale_id]) itemsMap[item.sale_id] = [];
+          itemsMap[item.sale_id].push(item);
+        });
       }
 
-      const sales: SaleWithDetails[] = (data || []).map(sale => ({
+      // ── Obtener items Web ──
+      const webOrderIds = paginated.filter(s => s._source === 'web').map(s => s.id);
+      if (webOrderIds.length > 0) {
+        const { data: webItems } = await supabase
+          .from('web_order_items')
+          .select('id, web_order_id, product_id, product_name, quantity, unit_price, total')
+          .in('web_order_id', webOrderIds);
+        if (webItems) webItems.forEach(item => {
+          const key = item.web_order_id;
+          if (!itemsMap[key]) itemsMap[key] = [];
+          itemsMap[key].push({ ...item, sale_id: key });
+        });
+      }
+
+      const sales: SaleWithDetails[] = paginated.map(sale => ({
         ...sale,
-        customer: sale.customer_id ? customersMap[sale.customer_id] : undefined,
-        items: itemsMap[sale.id] || []
+        customer: sale._source === 'web'
+          ? { full_name: sale._customer_name, email: sale._customer_email, phone: sale._customer_phone }
+          : (sale.customer_id ? customersMap[sale.customer_id] : undefined),
+        items: itemsMap[sale.id] || [],
       }));
 
-      return { data: sales, total: count || 0 };
+      return { data: sales, total: totalCount };
     } catch (err: any) {
       console.error('Error in getSales:', err?.message || err);
       return { data: [], total: 0 };
     }
   }
 
-  // Obtener venta por ID con detalles completos
+  // Obtener venta por ID con detalles completos (POS o Web)
   static async getSaleById(saleId: string): Promise<SaleWithDetails | null> {
     try {
-      // Consulta principal de la venta
+      // 1. Intentar buscar en tabla sales (POS)
       const { data, error } = await supabase
         .from('sales')
         .select('*')
         .eq('id', saleId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching sale:', error.message, error.details);
-        return null;
+      if (data) {
+        // ── Venta POS encontrada ──
+        let customer = undefined;
+        if (data.customer_id) {
+          const { data: customerData } = await supabase
+            .from('customers')
+            .select('id, full_name, email, phone, doc_number, address')
+            .eq('id', data.customer_id)
+            .maybeSingle();
+          customer = customerData;
+        }
+
+        const { data: saleItems } = await supabase
+          .from('sale_items')
+          .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes')
+          .eq('sale_id', saleId);
+
+        const productIds = (saleItems || []).filter(i => i.product_id).map(i => i.product_id);
+        let productsMap: Record<number, any> = {};
+        if (productIds.length > 0) {
+          const { data: products } = await supabase
+            .from('products')
+            .select('id, name, sku, barcode')
+            .in('id', productIds);
+          if (products) products.forEach(p => { productsMap[p.id] = p; });
+        }
+
+        const itemsWithProducts = (saleItems || []).map(item => ({
+          ...item,
+          products: item.product_id ? productsMap[item.product_id] : undefined
+        }));
+
+        const { data: payments } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('source', 'sale')
+          .eq('source_id', saleId);
+
+        return {
+          ...data,
+          _source: 'pos' as const,
+          customer,
+          items: itemsWithProducts,
+          payments: payments || []
+        };
       }
 
-      if (!data) return null;
+      // 2. Si no está en sales, buscar en web_orders
+      const { data: wo, error: woError } = await supabase
+        .from('web_orders')
+        .select('*')
+        .eq('id', saleId)
+        .maybeSingle();
 
-      // Obtener cliente si existe
-      let customer = undefined;
-      if (data.customer_id) {
-        const { data: customerData } = await supabase
-          .from('customers')
-          .select('id, full_name, email, phone, doc_number, address')
-          .eq('id', data.customer_id)
-          .single();
-        customer = customerData;
-      }
+      if (!wo) return null;
 
-      // Obtener items de la venta
-      const { data: saleItems } = await supabase
-        .from('sale_items')
-        .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes')
-        .eq('sale_id', saleId);
+      // Obtener items de web_order
+      const { data: webItems } = await supabase
+        .from('web_order_items')
+        .select('id, web_order_id, product_id, product_name, product_sku, quantity, unit_price, tax_amount, discount_amount, total, notes')
+        .eq('web_order_id', saleId);
 
-      // Obtener productos para los items
-      const productIds = (saleItems || []).filter(i => i.product_id).map(i => i.product_id);
-      let productsMap: Record<number, any> = {};
-
-      if (productIds.length > 0) {
+      const wProductIds = (webItems || []).filter(i => i.product_id).map(i => i.product_id);
+      let wProductsMap: Record<number, any> = {};
+      if (wProductIds.length > 0) {
         const { data: products } = await supabase
           .from('products')
           .select('id, name, sku, barcode')
-          .in('id', productIds);
-
-        if (products) {
-          products.forEach(p => { productsMap[p.id] = p; });
-        }
+          .in('id', wProductIds);
+        if (products) products.forEach(p => { wProductsMap[p.id] = p; });
       }
 
-      // Combinar items con productos
-      const itemsWithProducts = (saleItems || []).map(item => ({
-        ...item,
-        products: item.product_id ? productsMap[item.product_id] : undefined
+      const itemsMapped = (webItems || []).map(item => ({
+        id: item.id,
+        sale_id: saleId,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: Number(item.unit_price) || 0,
+        total: Number(item.total) || 0,
+        tax_amount: Number(item.tax_amount) || 0,
+        discount_amount: Number(item.discount_amount) || 0,
+        notes: item.notes,
+        products: item.product_id ? wProductsMap[item.product_id] : { name: item.product_name, sku: item.product_sku },
       }));
 
-      // Obtener pagos
-      const { data: payments } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('source', 'sale')
-        .eq('source_id', saleId);
-
       return {
-        ...data,
-        customer,
-        items: itemsWithProducts,
-        payments: payments || []
-      };
+        id: wo.id,
+        organization_id: wo.organization_id,
+        branch_id: wo.branch_id,
+        customer_id: wo.customer_id,
+        user_id: wo.confirmed_by || '',
+        total: Number(wo.total) || 0,
+        subtotal: Number(wo.subtotal) || 0,
+        tax_total: Number(wo.tax_total) || 0,
+        discount_total: Number(wo.discount_total) || 0,
+        balance: 0,
+        status: (wo.status === 'confirmed' || wo.status === 'delivered') ? 'completed' : wo.status,
+        payment_status: wo.payment_status,
+        payment_method: wo.payment_method,
+        sale_date: wo.created_at,
+        invoice_number: wo.order_number,
+        notes: wo.customer_notes || wo.internal_notes,
+        created_at: wo.created_at,
+        updated_at: wo.updated_at,
+        _source: 'web' as const,
+        delivery_fee: Number(wo.delivery_fee) || 0,
+        tip_amount: Number(wo.tip_amount) || 0,
+        delivery_type: wo.delivery_type,
+        delivery_address: wo.delivery_address,
+        coupon_code: wo.coupon_code,
+        customer: {
+          full_name: wo.customer_name,
+          email: wo.customer_email,
+          phone: wo.customer_phone,
+        },
+        items: itemsMapped,
+        payments: [],
+      } as SaleWithDetails;
     } catch (err: any) {
       console.error('Error in getSaleById:', err?.message || err);
       return null;

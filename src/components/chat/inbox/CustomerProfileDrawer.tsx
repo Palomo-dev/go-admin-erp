@@ -12,7 +12,8 @@ import {
   User,
   FileText,
   ExternalLink,
-  Loader2
+  Loader2,
+  Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -70,6 +71,7 @@ export default function CustomerProfileDrawer({
   organizationId
 }: CustomerProfileDrawerProps) {
   const [customer, setCustomer] = useState<CustomerDetails | null>(null);
+  const [linkedCustomer, setLinkedCustomer] = useState<CustomerDetails | null>(null);
   const [summary, setSummary] = useState<ConversationSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [recentConversations, setRecentConversations] = useState<Array<{
@@ -102,6 +104,15 @@ export default function CustomerProfileDrawer({
       if (customerError) throw customerError;
 
       setCustomer({ ...customerData, tags: [] });
+
+      // Load linked real customer if exists
+      const lcId = customerData.metadata?.linked_customer_id as string;
+      if (lcId) {
+        const { data: lcData } = await supabase.from('customers').select('*').eq('id', lcId).single();
+        if (lcData) setLinkedCustomer({ ...lcData, tags: [] });
+      } else {
+        setLinkedCustomer(null);
+      }
 
       // Obtener resumen de conversaciones
       const { data: convData, error: convError } = await supabase
@@ -225,17 +236,21 @@ export default function CustomerProfileDrawer({
               </h4>
               
               <div className="space-y-2 text-sm">
-                {customer.email && (
-                  <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-                    <Mail className="h-4 w-4 flex-shrink-0" />
-                    <a 
-                      href={`mailto:${customer.email}`}
-                      className="hover:text-blue-600 truncate"
-                    >
-                      {customer.email}
-                    </a>
-                  </div>
-                )}
+                {(() => {
+                  const displayEmail = (customer.metadata?.real_email as string) || 
+                    (!customer.email?.includes('@widget.local') ? customer.email : null);
+                  return displayEmail ? (
+                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                      <Mail className="h-4 w-4 flex-shrink-0" />
+                      <a 
+                        href={`mailto:${displayEmail}`}
+                        className="hover:text-blue-600 truncate"
+                      >
+                        {displayEmail}
+                      </a>
+                    </div>
+                  ) : null;
+                })()}
                 
                 {customer.phone && (
                   <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
@@ -366,12 +381,29 @@ export default function CustomerProfileDrawer({
               </>
             )}
 
+            {/* Linked customer badge */}
+            {linkedCustomer && (
+              <>
+                <Separator />
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 space-y-1">
+                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-sm font-medium">
+                    <Link2 className="h-4 w-4" />
+                    Cliente vinculado en CRM
+                  </div>
+                  <p className="text-sm text-blue-600 dark:text-blue-400">
+                    {linkedCustomer.full_name || `${linkedCustomer.first_name} ${linkedCustomer.last_name}`.trim()}
+                    {linkedCustomer.email && !linkedCustomer.email.includes('@widget.local') ? ` • ${linkedCustomer.email}` : ''}
+                  </p>
+                </div>
+              </>
+            )}
+
             {/* Botón ver perfil completo */}
             <div className="pt-4">
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => window.open(`/app/crm/clientes/${customer.id}`, '_blank')}
+                onClick={() => window.open(`/app/crm/clientes/${linkedCustomer?.id || customer.id}`, '_blank')}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Ver perfil completo

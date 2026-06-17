@@ -17,6 +17,8 @@ import ProductosPageHeader from './ProductosPageHeader';
 import FiltrosProductosComponent from './FiltrosProductos';
 // @ts-ignore - Ignorar errores de importación
 import ProductosTable from './ProductosTable';
+import AccionesMasivas from './bulk/AccionesMasivas';
+import ScrapingProductos from './scraping/ScrapingProductos';
 
 import {
   Dialog,
@@ -55,6 +57,9 @@ const CatalogoProductos: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [productoToDelete, setProductoToDelete] = useState<number | null>(null);
   const [stockPorSucursal, setStockPorSucursal] = useState<StockSucursal[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isScrapingOpen, setIsScrapingOpen] = useState<boolean>(false);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
 
   // Cargar productos desde Supabase con una sola consulta eficiente
@@ -167,8 +172,8 @@ const CatalogoProductos: React.FC = () => {
               .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
             
             if (validPrices.length > 0) {
-              currentPrice = validPrices[0].price;
-              comparePrice = validPrices[0].compare_price || 0;
+              currentPrice = Number(validPrices[0].price) || 0;
+              comparePrice = Number(validPrices[0].compare_price) || 0;
             }
           }
           
@@ -180,7 +185,7 @@ const CatalogoProductos: React.FC = () => {
               .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
             
             if (validCosts.length > 0) {
-              currentCost = validCosts[0].cost;
+              currentCost = Number(validCosts[0].cost) || 0;
             }
           }
           
@@ -282,7 +287,7 @@ const CatalogoProductos: React.FC = () => {
     };
 
     fetchProductos();
-  }, [organization?.id, branch_id, filters]);
+  }, [organization?.id, branch_id, filters, refreshKey]);
 
   // Función para obtener información de stock por sucursal para un producto específico
   const fetchStockPorSucursal = async (productId: number) => {
@@ -590,9 +595,10 @@ const CatalogoProductos: React.FC = () => {
       <ProductosPageHeader 
         onCrearClick={handleCrear} 
         onImportarClick={handleImportar}
+        onScrapingClick={() => setIsScrapingOpen(true)}
         onRefreshClick={() => {
           setLoading(true);
-          window.location.reload();
+          setRefreshKey(k => k + 1);
         }}
         isRefreshing={loading}
         totalProducts={productos.length}
@@ -604,6 +610,13 @@ const CatalogoProductos: React.FC = () => {
         onFiltersChange={setFilters}
       />
       
+      {/* Barra de acciones masivas (visible cuando hay selección) */}
+      <AccionesMasivas
+        selectedIds={selectedIds}
+        onClearSelection={() => setSelectedIds([])}
+        onActionComplete={() => setRefreshKey(k => k + 1)}
+      />
+      
       {/* Tabla de productos */}
       <ProductosTable 
         productos={productos}
@@ -612,6 +625,15 @@ const CatalogoProductos: React.FC = () => {
         onView={(producto: Producto) => handleVer(producto)}
         onDelete={(id: string | number) => handleEliminarClick(id)}
         onDuplicate={(producto: Producto) => handleDuplicar(producto)}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+      />
+      
+      {/* Modal de scraping con IA */}
+      <ScrapingProductos
+        open={isScrapingOpen}
+        onOpenChange={setIsScrapingOpen}
+        onImportComplete={() => setRefreshKey(k => k + 1)}
       />
       
       {/* Diálogo de confirmación para eliminar */}

@@ -23,8 +23,9 @@ import {
 // Función para obtener URL de imagen desde storage path usando el cliente de supabase
 const getStorageImageUrl = (storagePath: string): string => {
   if (!storagePath) return '';
+  const bucket = storagePath.startsWith('products/') ? 'product-images' : 'organization_images';
   const { data } = supabase.storage
-    .from('organization_images')
+    .from(bucket)
     .getPublicUrl(storagePath);
   return data?.publicUrl || '';
 };
@@ -149,7 +150,8 @@ export class POSService {
           slug
         ),
         product_prices(
-          price
+          price,
+          compare_price
         )
       `, { count: 'exact' })
       .eq('organization_id', this.organizationId);
@@ -224,6 +226,7 @@ export class POSService {
         ...product,
         category: product.categories,
         price: product.product_prices?.[0]?.price || null,
+        compare_price: product.product_prices?.[0]?.compare_price || null,
         product_images: productImagesMap[product.id] || [],
         // Información de variantes
         has_variants: product.is_parent === true,

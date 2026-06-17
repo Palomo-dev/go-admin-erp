@@ -74,10 +74,10 @@ const modules: Module[] = [
     category: 'business'
   },
   {
-    name: 'POS',
+    name: 'Ventas',
     path: '/app/pos',
     icon: ShoppingCartIcon,
-    description: 'Punto de venta',
+    description: 'Gestión de ventas',
     color: 'from-indigo-500 to-indigo-600',
     category: 'business'
   },

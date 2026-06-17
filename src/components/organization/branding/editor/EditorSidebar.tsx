@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import ImagePickerDialog from '@/components/common/ImagePickerDialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,6 +107,7 @@ interface EditorSidebarProps {
   showPageSEO: boolean;
   onTogglePageSEO: () => void;
   pageSEOContent?: React.ReactNode;
+  organizationId?: number;
 }
 
 export default function EditorSidebar({
@@ -123,6 +126,7 @@ export default function EditorSidebar({
   showPageSEO,
   onTogglePageSEO,
   pageSEOContent,
+  organizationId,
 }: EditorSidebarProps) {
   const t = useTranslations('branding.editor.sidebar');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -221,6 +225,7 @@ export default function EditorSidebar({
               onUpdateVariant={(variant) => onUpdateSectionVariant(section.id, variant)}
               onToggleVisibility={(visible) => onToggleVisibility(section.id, visible)}
               onDelete={() => onDeleteSection(section.id)}
+              organizationId={organizationId}
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
@@ -260,6 +265,7 @@ interface SectionListItemProps {
   onUpdateVariant: (variant: string) => void;
   onToggleVisibility: (visible: boolean) => void;
   onDelete: () => void;
+  organizationId?: number;
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -276,6 +282,7 @@ function SectionListItem({
   onUpdateVariant,
   onToggleVisibility,
   onDelete,
+  organizationId,
   onDragStart,
   onDragOver,
   onDragEnd,
@@ -525,6 +532,39 @@ function SectionListItem({
             />
           )}
 
+          {/* Category Selector Editor */}
+          {(section.section_type === 'categories_grid' || section.section_type === 'offers' || section.section_type === 'products_grid') && organizationId && (
+            <CategorySelectorEditor
+              organizationId={organizationId}
+              selectedIds={(section.content?.selected_category_ids as number[]) || []}
+              onChange={(ids) =>
+                onUpdateContent({ ...section.content, selected_category_ids: ids })
+              }
+            />
+          )}
+
+          {/* Brands Items Editor */}
+          {section.section_type === 'brands' && (
+            <BrandsItemsEditor
+              items={(section.content?.items as BrandItem[]) || []}
+              onChange={(items) =>
+                onUpdateContent({ ...section.content, items })
+              }
+            />
+          )}
+
+          {/* Spacing Controls (all sections) */}
+          <SectionSpacingEditor
+            paddingTop={(section.content?.padding_top as string) || 'lg'}
+            paddingBottom={(section.content?.padding_bottom as string) || 'lg'}
+            paddingX={(section.content?.padding_x as string) || 'md'}
+            marginTop={(section.content?.margin_top as string) || 'none'}
+            marginBottom={(section.content?.margin_bottom as string) || 'none'}
+            onChange={(key, value) =>
+              onUpdateContent({ ...section.content, [key]: value })
+            }
+          />
+
           {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700/50">
             <div className="flex items-center gap-2">
@@ -569,6 +609,13 @@ interface GalleryItem {
   url: string;
   alt: string;
   caption?: string;
+}
+
+interface BrandItem {
+  id: string;
+  name: string;
+  logo_url?: string;
+  url?: string;
 }
 
 interface TestimonialItem {
@@ -725,6 +772,14 @@ function TestimonialItemsEditor({
   const tr = useTranslations('branding.editor.sidebar');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Asignar id a items que no lo tengan
+  useEffect(() => {
+    const hasEmpty = items.some((item) => !item.id);
+    if (hasEmpty) {
+      onChange(items.map((item) => item.id ? item : { ...item, id: crypto.randomUUID() }));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleAdd = () => {
     const newItem: TestimonialItem = {
       id: crypto.randomUUID(),
@@ -761,9 +816,9 @@ function TestimonialItemsEditor({
 
       {items.length > 0 ? (
         <div className="space-y-1.5">
-          {items.map((t) => (
+          {items.map((t, idx) => (
             <div
-              key={t.id}
+              key={t.id || `testimonial-${idx}`}
               className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden"
             >
               <div
@@ -1080,6 +1135,424 @@ function HeroSlidesEditor({
         <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
           Sin slides. Agrega al menos uno.
         </p>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// CATEGORY SELECTOR EDITOR (select + reorder categories)
+// ============================================================
+
+interface CategoryOption {
+  id: number;
+  name: string;
+  image_url?: string;
+}
+
+function CategorySelectorEditor({
+  organizationId,
+  selectedIds,
+  onChange,
+}: {
+  organizationId: number;
+  selectedIds: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('categories')
+        .select('id, name, image_url')
+        .eq('organization_id', organizationId)
+        .order('rank', { ascending: true });
+      setCategories(data || []);
+      setLoading(false);
+    };
+    load();
+  }, [organizationId]);
+
+  const handleToggle = (catId: number, checked: boolean) => {
+    if (checked) {
+      onChange([...selectedIds, catId]);
+    } else {
+      onChange(selectedIds.filter((id) => id !== catId));
+    }
+  };
+
+  const handleDragStart = (idx: number) => setDragIdx(idx);
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragIdx !== null && dragIdx !== idx) {
+      const reordered = [...selectedIds];
+      const [moved] = reordered.splice(dragIdx, 1);
+      reordered.splice(idx, 0, moved);
+      onChange(reordered);
+      setDragIdx(idx);
+    }
+  };
+  const handleDragEnd = () => setDragIdx(null);
+
+  const selectedCats = selectedIds
+    .map((id) => categories.find((c) => c.id === id))
+    .filter(Boolean) as CategoryOption[];
+
+  const unselectedCats = categories.filter((c) => !selectedIds.includes(c.id));
+
+  if (loading) {
+    return (
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700/50">
+        <p className="text-[10px] text-gray-400 text-center py-2">Cargando categorías...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+      <Label className="text-xs text-gray-500 dark:text-gray-400">
+        Categorías seleccionadas ({selectedIds.length})
+      </Label>
+
+      {selectedCats.length > 0 && (
+        <div className="space-y-1">
+          {selectedCats.map((cat, idx) => (
+            <div
+              key={cat.id}
+              draggable
+              onDragStart={() => handleDragStart(idx)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDragEnd={handleDragEnd}
+              className={cn(
+                'flex items-center gap-2 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 cursor-grab',
+                dragIdx === idx && 'opacity-50'
+              )}
+            >
+              <GripVertical className="h-3 w-3 text-gray-400 shrink-0" />
+              {cat.image_url ? (
+                <img src={cat.image_url} alt={cat.name} className="w-6 h-6 rounded object-cover shrink-0" />
+              ) : (
+                <div className="w-6 h-6 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                  <span className="text-[10px]">🏷️</span>
+                </div>
+              )}
+              <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate">{cat.name}</span>
+              <span className="text-[9px] text-gray-400 shrink-0">#{idx + 1}</span>
+              <button
+                onClick={() => handleToggle(cat.id, false)}
+                className="p-0.5 text-red-400 hover:text-red-600 shrink-0"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {unselectedCats.length > 0 && (
+        <div className="space-y-1 mt-2">
+          <span className="text-[10px] text-gray-500 dark:text-gray-500">Disponibles</span>
+          <div className="max-h-40 overflow-y-auto space-y-1 rounded border border-gray-200 dark:border-gray-700 p-1">
+            {unselectedCats.map((cat) => (
+              <label
+                key={cat.id}
+                className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
+              >
+                <Checkbox
+                  checked={false}
+                  onCheckedChange={(checked) => handleToggle(cat.id, !!checked)}
+                />
+                {cat.image_url ? (
+                  <img src={cat.image_url} alt={cat.name} className="w-5 h-5 rounded object-cover shrink-0" />
+                ) : (
+                  <div className="w-5 h-5 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                    <span className="text-[9px]">🏷️</span>
+                  </div>
+                )}
+                <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{cat.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {categories.length === 0 && (
+        <p className="text-[10px] text-gray-400 text-center py-2">No hay categorías creadas</p>
+      )}
+
+      <p className="text-[9px] text-gray-400">
+        {selectedIds.length === 0
+          ? 'Sin selección: se muestran todas las categorías'
+          : 'Arrastra para reordenar. Solo se mostrarán las seleccionadas.'}
+      </p>
+    </div>
+  );
+}
+
+// ============================================================
+// BRANDS ITEMS EDITOR (inline brand logo manager)
+// ============================================================
+
+function BrandsItemsEditor({
+  items,
+  onChange,
+}: {
+  items: BrandItem[];
+  onChange: (items: BrandItem[]) => void;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  // Asignar id a items que no lo tengan
+  useEffect(() => {
+    const hasEmpty = items.some((item) => !item.id);
+    if (hasEmpty) {
+      onChange(items.map((item) => item.id ? item : { ...item, id: crypto.randomUUID() }));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAddLogo = (url: string) => {
+    const newItem: BrandItem = {
+      id: crypto.randomUUID(),
+      name: '',
+      logo_url: url,
+    };
+    onChange([...items, newItem]);
+    setExpandedId(newItem.id);
+  };
+
+  const handleUpdate = (id: string, updates: Partial<BrandItem>) => {
+    onChange(items.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+  };
+
+  const handleRemove = (id: string) => {
+    onChange(items.filter((b) => b.id !== id));
+    if (expandedId === id) setExpandedId(null);
+  };
+
+  const handleDragStart = (idx: number) => setDragIdx(idx);
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragIdx !== null && dragIdx !== idx) {
+      const reordered = [...items];
+      const [moved] = reordered.splice(dragIdx, 1);
+      reordered.splice(idx, 0, moved);
+      onChange(reordered);
+      setDragIdx(idx);
+    }
+  };
+  const handleDragEnd = () => setDragIdx(null);
+
+  return (
+    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-gray-500 dark:text-gray-400">
+          Marcas ({items.length})
+        </Label>
+        <button
+          onClick={() => setShowPicker(true)}
+          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          <Plus className="h-3 w-3" /> Agregar
+        </button>
+      </div>
+
+      {items.length > 0 ? (
+        <div className="space-y-1">
+          {items.map((brand, idx) => (
+            <div
+              key={brand.id || `brand-${idx}`}
+              draggable
+              onDragStart={() => handleDragStart(idx)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDragEnd={handleDragEnd}
+              className={cn(
+                'rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden',
+                dragIdx === idx && 'opacity-50'
+              )}
+            >
+              <div
+                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
+                onClick={() => setExpandedId(expandedId === brand.id ? null : brand.id)}
+              >
+                <GripVertical className="h-3 w-3 text-gray-400 shrink-0 cursor-grab" />
+                {brand.logo_url ? (
+                  <img src={brand.logo_url} alt={brand.name} className="h-6 w-10 object-contain shrink-0 rounded" />
+                ) : (
+                  <div className="h-6 w-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center shrink-0">
+                    <span className="text-[9px]">🏢</span>
+                  </div>
+                )}
+                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                  {brand.name || 'Sin nombre'}
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRemove(brand.id); }}
+                  className="p-0.5 hover:text-red-500 text-gray-400"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {expandedId === brand.id ? (
+                  <ChevronUp className="h-3 w-3 text-gray-400" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 text-gray-400" />
+                )}
+              </div>
+              {expandedId === brand.id && (
+                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
+                  <div className="mt-1.5">
+                    <ImageFieldPicker
+                      value={brand.logo_url || ''}
+                      onChange={(url) => handleUpdate(brand.id, { logo_url: url })}
+                    />
+                  </div>
+                  <Input
+                    value={brand.name}
+                    onChange={(e) => handleUpdate(brand.id, { name: e.target.value })}
+                    placeholder="Nombre de la marca"
+                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                  />
+                  <Input
+                    value={brand.url || ''}
+                    onChange={(e) => handleUpdate(brand.id, { url: e.target.value })}
+                    placeholder="URL (opcional) ej: https://marca.com"
+                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
+          Sin marcas. Agrega logos de tus marcas asociadas.
+        </p>
+      )}
+
+      <ImagePickerDialog
+        open={showPicker}
+        onOpenChange={setShowPicker}
+        onSelect={handleAddLogo}
+        title="Agregar logo de marca"
+      />
+    </div>
+  );
+}
+
+// ============================================================
+// SECTION SPACING EDITOR (padding & margin for all sections)
+// ============================================================
+
+const SPACING_OPTIONS = [
+  { value: 'none', label: 'Ninguno' },
+  { value: 'xs', label: 'Muy poco' },
+  { value: 'sm', label: 'Pequeño' },
+  { value: 'md', label: 'Mediano' },
+  { value: 'lg', label: 'Grande' },
+  { value: 'xl', label: 'Muy grande' },
+];
+
+function SectionSpacingEditor({
+  paddingTop,
+  paddingBottom,
+  paddingX,
+  marginTop,
+  marginBottom,
+  onChange,
+}: {
+  paddingTop: string;
+  paddingBottom: string;
+  paddingX: string;
+  marginTop: string;
+  marginBottom: string;
+  onChange: (key: string, value: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="pt-2 border-t border-gray-200 dark:border-gray-700/50">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 w-full text-left"
+      >
+        <Layout className="h-3 w-3 text-gray-400" />
+        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-1">Espaciado</span>
+        {isOpen ? (
+          <ChevronUp className="h-3 w-3 text-gray-400" />
+        ) : (
+          <ChevronDown className="h-3 w-3 text-gray-400" />
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="space-y-2 mt-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[9px] text-gray-400 block mb-0.5">Padding arriba</label>
+              <Select value={paddingTop} onValueChange={(v) => onChange('padding_top', v)}>
+                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SPACING_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[9px] text-gray-400 block mb-0.5">Padding abajo</label>
+              <Select value={paddingBottom} onValueChange={(v) => onChange('padding_bottom', v)}>
+                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SPACING_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[9px] text-gray-400 block mb-0.5">Padding horizontal</label>
+            <Select value={paddingX} onValueChange={(v) => onChange('padding_x', v)}>
+              <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SPACING_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[9px] text-gray-400 block mb-0.5">Margen arriba</label>
+              <Select value={marginTop} onValueChange={(v) => onChange('margin_top', v)}>
+                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SPACING_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[9px] text-gray-400 block mb-0.5">Margen abajo</label>
+              <Select value={marginBottom} onValueChange={(v) => onChange('margin_bottom', v)}>
+                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SPACING_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

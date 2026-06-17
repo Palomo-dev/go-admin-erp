@@ -30,6 +30,15 @@ interface Message {
     file_name?: string;
     file_type?: string;
     file_size?: number;
+    products?: Array<{
+      id: number;
+      name: string;
+      price: number;
+      comparePrice?: number | null;
+      imageUrl?: string | null;
+      stock?: number | null;
+    }>;
+    order_action?: any;
   };
 }
 

@@ -18,7 +18,13 @@ import {
   Clock,
   AlertCircle,
   Receipt,
-  RefreshCw
+  RefreshCw,
+  Globe,
+  ShoppingCart,
+  Truck,
+  MapPin,
+  Tag,
+  Wallet
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -193,8 +199,19 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Venta #{sale.id.slice(0, 8)}
+                {sale._source === 'web' ? `Pedido ${sale.invoice_number || '#' + sale.id.slice(0, 8)}` : `Venta #${sale.id.slice(0, 8)}`}
               </h1>
+              {sale._source === 'web' ? (
+                <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 flex items-center gap-1">
+                  <Globe className="h-3.5 w-3.5" />
+                  Web
+                </Badge>
+              ) : (
+                <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-0 flex items-center gap-1">
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                  POS
+                </Badge>
+              )}
               {getStatusBadge(sale.status)}
               {eInvoiceStatus && (
                 <FactusStatusBadge
@@ -390,6 +407,18 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                   <span>-{formatCurrency(sale.discount_total || 0)}</span>
                 </div>
               )}
+              {Number(sale.delivery_fee) > 0 && (
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span className="flex items-center gap-1"><Truck className="h-3.5 w-3.5" /> Envío</span>
+                  <span>{formatCurrency(sale.delivery_fee || 0)}</span>
+                </div>
+              )}
+              {Number(sale.tip_amount) > 0 && (
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>Propina</span>
+                  <span>{formatCurrency(sale.tip_amount || 0)}</span>
+                </div>
+              )}
               <Separator className="dark:bg-gray-700" />
               <div className="flex justify-between text-lg font-bold text-gray-900 dark:text-white">
                 <span>Total</span>
@@ -403,6 +432,64 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* Info Web */}
+          {sale._source === 'web' && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <Globe className="h-5 w-5" />
+                  Detalles del Pedido
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {sale.delivery_type && (
+                  <div className="flex items-start gap-2">
+                    <Truck className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Tipo de entrega</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                        {sale.delivery_type === 'delivery' ? 'Domicilio' : sale.delivery_type === 'pickup' ? 'Recoger en tienda' : sale.delivery_type}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {sale.delivery_address && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Dirección de entrega</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {typeof sale.delivery_address === 'string' ? sale.delivery_address : sale.delivery_address?.address || sale.delivery_address?.formatted || JSON.stringify(sale.delivery_address)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {sale.payment_method && (
+                  <div className="flex items-start gap-2">
+                    <Wallet className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Método de pago</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                        {sale.payment_method}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {sale.coupon_code && (
+                  <div className="flex items-start gap-2">
+                    <Tag className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Cupón aplicado</p>
+                      <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                        {sale.coupon_code}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Notas */}
           {sale.notes && (

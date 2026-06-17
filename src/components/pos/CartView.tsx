@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +60,16 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
     } catch (error) {
       console.error('Error removing item:', error);
     }
+  };
+
+  // Toggle impuesto por ítem (excluir/incluir en esta transacción)
+  const handleToggleTax = (itemId: string) => {
+    const updatedItems = cart.items.map(item => 
+      item.id === itemId 
+        ? { ...item, tax_excluded: !item.tax_excluded } 
+        : item
+    );
+    onCartUpdate({ ...cart, items: updatedItems });
   };
 
   // Poner carrito en espera
@@ -333,11 +343,17 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                             </span>
                           </div>
                           
-                          {/* Mostrar impuestos si existen */}
-                          {item.tax_amount && item.tax_amount > 0 && (
-                            <div className="text-[0.65rem] sm:text-xs dark:text-green-400 text-green-600 mt-0.5 sm:mt-1">
-                              +{formatCurrency(item.tax_amount)} impuestos
+                          {/* Mostrar estado de impuesto */}
+                          {item.tax_excluded ? (
+                            <div className="text-[0.65rem] sm:text-xs dark:text-orange-400 text-orange-600 mt-0.5 sm:mt-1">
+                              Sin impuesto (excluido)
                             </div>
+                          ) : (
+                            item.tax_amount != null && item.tax_amount > 0 && (
+                              <div className="text-[0.65rem] sm:text-xs dark:text-green-400 text-green-600 mt-0.5 sm:mt-1">
+                                +{formatCurrency(item.tax_amount)} impuestos
+                              </div>
+                            )
                           )}
                         </div>
                         
@@ -404,6 +420,23 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                             </div>
                           )}
                         </div>
+
+                        {/* Toggle impuesto por ítem */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={cn(
+                            "h-6 w-6 sm:h-7 sm:w-7 p-0 shrink-0",
+                            item.tax_excluded
+                              ? "dark:text-orange-400 dark:hover:bg-orange-500/20 text-orange-600 hover:bg-orange-100"
+                              : "dark:text-gray-400 dark:hover:bg-gray-600/20 text-gray-500 hover:bg-gray-100"
+                          )}
+                          onClick={() => handleToggleTax(item.id)}
+                          disabled={isOnHold}
+                          title={item.tax_excluded ? "Impuesto excluido - clic para incluir" : "Excluir impuesto de este producto"}
+                        >
+                          <ReceiptText className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        </Button>
 
                         {/* Eliminar item */}
                         <Button

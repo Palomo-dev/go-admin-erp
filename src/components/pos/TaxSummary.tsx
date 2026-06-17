@@ -26,6 +26,7 @@ interface OrganizationTax {
   description?: string;
   is_default: boolean;
   is_active: boolean;
+  tax_included?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -106,6 +107,14 @@ export function TaxSummary({
       // Procesar cada ítem del carrito
       for (const item of cart.items) {
         try {
+          // Si el ítem tiene impuesto excluido, sumar sin impuestos
+          if (item.tax_excluded) {
+            const lineTotal = item.quantity * item.unit_price;
+            combinedSubtotal += lineTotal;
+            combinedFinalTotal += lineTotal;
+            continue;
+          }
+
           const productTaxes = await POSService.getProductTaxes(item.product_id);
           
           const taxItem: TaxCalculationItem = {
@@ -122,9 +131,16 @@ export function TaxSummary({
             const productAppliedTaxes: {[key: string]: boolean} = {};
             const productOrgTaxes: TaxUtilOrganizationTax[] = [];
             
+            // Determinar si el impuesto está incluido: usar config del impuesto o el toggle global
+            let itemTaxIncluded = taxIncluded;
+            
             productTaxes.forEach(relation => {
               if (relation.organization_taxes && relation.organization_taxes.is_active) {
                 productAppliedTaxes[relation.organization_taxes.id] = true;
+                // Si algún impuesto del producto tiene tax_included configurado, usarlo
+                if (relation.organization_taxes.tax_included === true) {
+                  itemTaxIncluded = true;
+                }
                 productOrgTaxes.push({
                   id: relation.organization_taxes.id,
                   name: relation.organization_taxes.name,
@@ -139,10 +155,14 @@ export function TaxSummary({
               [taxItem],
               productAppliedTaxes,
               productOrgTaxes,
-              taxIncluded
+              itemTaxIncluded
             );
           } else {
             // Usar impuestos de organización
+            // Determinar si alguno de los impuestos aplicados tiene tax_included
+            const anyTaxIncluded = organizationTaxes.some(tax => appliedTaxes[tax.id] && tax.tax_included);
+            const effectiveTaxIncluded = taxIncluded || anyTaxIncluded;
+            
             const orgTaxesForCalculation: TaxUtilOrganizationTax[] = organizationTaxes.map(tax => ({
               id: tax.id,
               name: tax.name,
@@ -155,7 +175,7 @@ export function TaxSummary({
               [taxItem],
               appliedTaxes,
               orgTaxesForCalculation,
-              taxIncluded
+              effectiveTaxIncluded
             );
           }
           

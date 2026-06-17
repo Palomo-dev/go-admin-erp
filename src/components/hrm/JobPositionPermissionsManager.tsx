@@ -57,7 +57,7 @@ export default function JobPositionPermissionsManager({
       'hr': 'Recursos Humanos',
       'finance': 'Finanzas',
       'inventory': 'Inventario',
-      'pos': 'Punto de Venta',
+      'pos': 'Ventas',
       'crm': 'CRM',
       'pms': 'PMS',
       'admin': 'Administración',

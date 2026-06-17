@@ -156,6 +156,55 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
     setSelectedAttributeTypes([...selectedAttributeTypes, typeName])
   }
 
+  // Crea (o reutiliza) un tipo de variante en el catálogo y devuelve su id
+  const createTypeInCatalog = async (name: string): Promise<number | null> => {
+    if (!organization?.id) return null
+    const clean = name.trim()
+    if (!clean) return null
+    const { data: existing } = await supabase
+      .from('variant_types')
+      .select('id')
+      .eq('organization_id', organization.id)
+      .ilike('name', clean)
+      .maybeSingle()
+    if (existing) return existing.id
+    const { data: created } = await supabase
+      .from('variant_types')
+      .insert({ organization_id: organization.id, name: clean })
+      .select('id')
+      .single()
+    return created?.id || null
+  }
+
+  // Agrega un atributo personalizado y lo guarda en el catálogo para reutilizarlo
+  const addCustomAttributeType = async (typeName: string) => {
+    const clean = typeName.trim()
+    if (!clean) return
+    addAttributeType(clean)
+    await createTypeInCatalog(clean)
+    await loadVariantTypesAndValues()
+  }
+
+  // Guarda un valor de variante en el catálogo (variant_values) para reutilizarlo
+  const createValueInCatalog = async (typeName: string, value: string) => {
+    const clean = value.trim()
+    if (!clean) return
+    const typeId = await createTypeInCatalog(typeName)
+    if (!typeId) return
+    const { data: existing } = await supabase
+      .from('variant_values')
+      .select('id')
+      .eq('variant_type_id', typeId)
+      .ilike('value', clean)
+      .maybeSingle()
+    if (!existing) {
+      await supabase
+        .from('variant_values')
+        .insert({ variant_type_id: typeId, value: clean, display_order: 0 })
+    }
+    await loadVariantTypesAndValues()
+  }
+
   const removeAttributeType = (typeName: string) => {
     setSelectedAttributeTypes(selectedAttributeTypes.filter(t => t !== typeName))
     // Limpiar el atributo de las variantes existentes
@@ -353,7 +402,7 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
-                      addAttributeType(customAttrName)
+                      addCustomAttributeType(customAttrName)
                       setCustomAttrName('')
                     }
                   }}
@@ -363,11 +412,12 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    addAttributeType(customAttrName)
+                    addCustomAttributeType(customAttrName)
                     setCustomAttrName('')
                   }}
                   disabled={!customAttrName.trim()}
                   className="shrink-0"
+                  title="Crear atributo y guardarlo en el catálogo"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -542,13 +592,26 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
                                     <Label className="text-sm text-gray-600 dark:text-gray-400">
                                       {attrType}
                                     </Label>
-                                    <Input
-                                      value={variant.attributes[attrType] || ''}
-                                      onChange={(e) => updateVariantAttribute(index, attrType, e.target.value)}
-                                      placeholder={`Ingrese ${attrType.toLowerCase()}...`}
-                                      className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
-                                      list={`suggestions-${index}-${attrType}`}
-                                    />
+                                    <div className="flex gap-1">
+                                      <Input
+                                        value={variant.attributes[attrType] || ''}
+                                        onChange={(e) => updateVariantAttribute(index, attrType, e.target.value)}
+                                        placeholder={`Ingrese ${attrType.toLowerCase()}...`}
+                                        className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                                        list={`suggestions-${index}-${attrType}`}
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="shrink-0 h-9 w-9"
+                                        title="Guardar este valor en el catálogo"
+                                        disabled={!variant.attributes[attrType]?.trim()}
+                                        onClick={() => createValueInCatalog(attrType, variant.attributes[attrType] || '')}
+                                      >
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                     {suggestions.length > 0 && (
                                       <>
                                         <datalist id={`suggestions-${index}-${attrType}`}>

@@ -24,6 +24,7 @@ import {
   LayoutGrid,
   ExternalLink,
   GripVertical,
+  ShoppingBag,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -34,9 +35,10 @@ import {
 
 interface BrandingPagesTabProps {
   organizationId: number;
+  typeId?: number;
 }
 
-export default function BrandingPagesTab({ organizationId }: BrandingPagesTabProps) {
+export default function BrandingPagesTab({ organizationId, typeId }: BrandingPagesTabProps) {
   const router = useRouter();
   const t = useTranslations('branding.pages');
   const [pages, setPages] = useState<WebsitePage[]>([]);
@@ -45,6 +47,7 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
   const [newPageTitle, setNewPageTitle] = useState('');
   const [newPageSlug, setNewPageSlug] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   useEffect(() => {
     loadPages();
@@ -59,6 +62,18 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
       console.error('Error loading pages:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSeedDefaultPages = async () => {
+    setIsSeeding(true);
+    try {
+      await websitePageBuilderService.seedDefaultPages(organizationId, typeId);
+      await loadPages();
+    } catch (error) {
+      console.error('Error seeding default pages:', error);
+    } finally {
+      setIsSeeding(false);
     }
   };
 
@@ -152,9 +167,19 @@ export default function BrandingPagesTab({ organizationId }: BrandingPagesTabPro
               <p className="text-gray-500 dark:text-gray-400 mb-2">
                 {t('noPages')}
               </p>
-              <p className="text-sm text-gray-400 dark:text-gray-500">
+              <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">
                 {t('noPagesHint')}
               </p>
+              <Button
+                onClick={handleSeedDefaultPages}
+                disabled={isSeeding}
+                size="sm"
+                variant="outline"
+                className="border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              >
+                {isSeeding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShoppingBag className="h-4 w-4 mr-2" />}
+                Generar páginas por defecto
+              </Button>
             </div>
           ) : (
             <div className="space-y-2">

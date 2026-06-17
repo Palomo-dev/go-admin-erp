@@ -314,7 +314,7 @@ export default function BrandingPage() {
 
               <TabsContent value="pages">
                 {organizationId && (
-                  <BrandingPagesTab organizationId={organizationId} />
+                  <BrandingPagesTab organizationId={organizationId} typeId={organization?.type_id} />
                 )}
               </TabsContent>
 

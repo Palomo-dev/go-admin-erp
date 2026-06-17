@@ -35,6 +35,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase/config';
+import { useOrgCurrency, formatMonedaSinDecimales } from '@/lib/hooks/useOrgCurrency';
 // Using direct Supabase storage calls for URL generation
 
 
@@ -45,6 +46,8 @@ interface ProductosTableProps {
   onView: (producto: Producto) => void;
   onDelete: (id: string | number) => void;
   onDuplicate: (producto: Producto) => void;
+  selectedIds?: number[];
+  onSelectionChange?: (ids: number[]) => void;
 }
 
 // Interfaz para las imágenes de productos
@@ -64,9 +67,15 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   onEdit,
   onView,
   onDelete,
-  onDuplicate
+  onDuplicate,
+  selectedIds = [],
+  onSelectionChange
 }) => {
   const { theme } = useTheme();
+  const orgCurrency = useOrgCurrency();
+  // Formato sin decimales para la tabla usando la moneda de la organización
+  const formatPrecioTabla = (value: number): string =>
+    formatMonedaSinDecimales(value, orgCurrency);
   
   // Estado para la paginación
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -80,6 +89,32 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   const indexOfFirstProduct = indexOfLastProduct - pageSize;
   const currentProductos = productos.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(productos.length / pageSize);
+
+  // Lógica de selección múltiple
+  const numericIds = currentProductos
+    .map(p => typeof p.id === 'number' ? p.id : parseInt(String(p.id), 10))
+    .filter(id => !isNaN(id));
+  const allPageSelected = numericIds.length > 0 && numericIds.every(id => selectedIds.includes(id));
+
+  const toggleSelectAll = () => {
+    if (!onSelectionChange) return;
+    if (allPageSelected) {
+      onSelectionChange(selectedIds.filter(id => !numericIds.includes(id)));
+    } else {
+      onSelectionChange([...new Set([...selectedIds, ...numericIds])]);
+    }
+  };
+
+  const toggleSelect = (productoId: number | string) => {
+    if (!onSelectionChange) return;
+    const id = typeof productoId === 'number' ? productoId : parseInt(String(productoId), 10);
+    if (isNaN(id)) return;
+    if (selectedIds.includes(id)) {
+      onSelectionChange(selectedIds.filter(sid => sid !== id));
+    } else {
+      onSelectionChange([...selectedIds, id]);
+    }
+  };
   
   // Cargar las imágenes principales de los productos cuando cambia la lista
   useEffect(() => {
@@ -211,6 +246,17 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
         <Table>
           <TableHeader className="bg-gray-50 dark:bg-gray-800">
             <TableRow className="dark:border-gray-700">
+              {onSelectionChange && (
+                <TableHead className="w-[40px]">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    title="Seleccionar todos en esta página"
+                  />
+                </TableHead>
+              )}
               <TableHead className="w-[60px] sm:w-[80px] text-xs sm:text-sm dark:text-gray-300">Imagen</TableHead>
               <TableHead className="hidden md:table-cell w-[80px] sm:w-[100px] text-xs sm:text-sm dark:text-gray-300">Código</TableHead>
               <TableHead className="text-xs sm:text-sm dark:text-gray-300">Nombre</TableHead>
@@ -226,9 +272,19 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
             {currentProductos.map((producto) => (
               <TableRow 
                 key={typeof producto.id === 'number' ? producto.id : String(producto.id)}
-                className={`dark:border-gray-700 ${getBgColorByStock(producto.stock)} cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors`}
+                className={`dark:border-gray-700 ${getBgColorByStock(producto.stock)} cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedIds.includes(typeof producto.id === 'number' ? producto.id : parseInt(String(producto.id), 10)) ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
                 onClick={() => onView(producto)}
               >
+                {onSelectionChange && (
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(typeof producto.id === 'number' ? producto.id : parseInt(String(producto.id), 10))}
+                      onChange={() => toggleSelect(producto.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </TableCell>
+                )}
                 <TableCell>
                   <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-md overflow-hidden border dark:border-gray-600 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                     {productImages[String(producto.id)] ? (
@@ -267,17 +323,17 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 <TableCell className="text-right text-xs sm:text-sm dark:text-gray-300">
                   {typeof producto.price === 'number' ? (
                     <div>
-                      <span className="font-semibold">{formatCurrency(producto.price)}</span>
-                      {producto.compare_price && producto.compare_price > producto.price && (
+                      <span className="font-semibold">{formatPrecioTabla(producto.price)}</span>
+                      {typeof producto.compare_price === 'number' && producto.compare_price > producto.price && (
                         <>
-                          <span className="block text-xs text-gray-400 line-through">{formatCurrency(producto.compare_price)}</span>
+                          <span className="block text-xs text-gray-400 line-through">{formatPrecioTabla(producto.compare_price)}</span>
                           <span className="text-xs text-red-500 font-medium">-{Math.round((1 - producto.price / producto.compare_price) * 100)}%</span>
                         </>
                       )}
                     </div>
                   ) : '-'}
                 </TableCell>
-                <TableCell className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">{typeof producto.cost === 'number' ? formatCurrency(producto.cost) : '-'}</TableCell>
+                <TableCell className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">{typeof producto.cost === 'number' ? formatPrecioTabla(producto.cost) : '-'}</TableCell>
                 <TableCell className="text-center text-xs sm:text-sm">
                   <span className={`font-semibold ${producto.stock && producto.stock <= 0 ? 'text-red-500' : 'dark:text-gray-200'}`}>{producto.stock || 0}</span>
                 </TableCell>

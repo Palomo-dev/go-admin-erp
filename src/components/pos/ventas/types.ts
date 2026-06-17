@@ -43,6 +43,12 @@ export interface SaleWithDetails extends Sale {
   sale_number?: string;
   seller_name?: string;
   branch_name?: string;
+  _source?: 'pos' | 'web';
+  delivery_fee?: number;
+  tip_amount?: number;
+  delivery_type?: string;
+  delivery_address?: any;
+  coupon_code?: string;
 }
 
 export interface SalesFilter {
@@ -54,6 +60,7 @@ export interface SalesFilter {
   customer_id?: string;
   user_id?: string;
   branch_id?: number;
+  source_type?: 'all' | 'pos' | 'web';
 }
 
 export interface DailySummary {

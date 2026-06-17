@@ -17,3 +17,4 @@ export { VentasKPIs } from './VentasKPIs';
 export { VentasPorDiaChart, VentasPorSucursalChart, PagosPorMetodoChart } from './VentasCharts';
 export { VentasTopProductos, VentasTopClientes } from './VentasTopLists';
 export { VentasTable } from './VentasTable';
+export { WebTopProductosCard, WebConversionCard } from './WebSalesCards';

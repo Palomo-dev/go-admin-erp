@@ -150,6 +150,7 @@ export function VentasTable({
         <TableHeader>
           <TableRow className="dark:border-gray-700">
             <TableHead className="dark:text-gray-400">Fecha</TableHead>
+            <TableHead className="dark:text-gray-400">Origen</TableHead>
             <TableHead className="dark:text-gray-400">ID</TableHead>
             <TableHead className="dark:text-gray-400">Cliente</TableHead>
             <TableHead className="dark:text-gray-400 text-right">Total</TableHead>
@@ -178,8 +179,19 @@ export function VentasTable({
                   </p>
                 </div>
               </TableCell>
+              <TableCell>
+                {sale._source === 'web' ? (
+                  <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0">
+                    Web
+                  </Badge>
+                ) : (
+                  <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-0">
+                    POS
+                  </Badge>
+                )}
+              </TableCell>
               <TableCell className="font-mono text-sm dark:text-gray-300">
-                {sale.id.slice(0, 8)}...
+                {sale.invoice_number || sale.id.slice(0, 8) + '...'}
               </TableCell>
               <TableCell className="dark:text-gray-300">
                 {sale.customer ? (

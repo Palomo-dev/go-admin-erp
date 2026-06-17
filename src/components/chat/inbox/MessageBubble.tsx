@@ -20,6 +20,15 @@ interface Message {
     file_name?: string;
     file_type?: string;
     file_size?: number;
+    products?: Array<{
+      id: number;
+      name: string;
+      price: number;
+      comparePrice?: number | null;
+      imageUrl?: string | null;
+      stock?: number | null;
+    }>;
+    order_action?: any;
   };
 }
 
@@ -247,6 +256,46 @@ export default function MessageBubble({ message, showAvatar = false, senderName 
 
         {/* Contenido del mensaje */}
         {renderContent()}
+
+        {/* Product Cards */}
+        {message.metadata?.products && message.metadata.products.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {message.metadata.products.map((product) => (
+              <div
+                key={product.id}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg p-2 border',
+                  isAgent
+                    ? 'bg-blue-500/30 border-blue-400/30'
+                    : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                )}
+              >
+                {product.imageUrl && (
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+                    loading="lazy"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className={cn(
+                    'text-xs font-medium leading-tight truncate',
+                    isAgent ? 'text-white' : 'text-gray-900 dark:text-white'
+                  )}>
+                    {product.name}
+                  </p>
+                  <p className={cn(
+                    'text-xs font-bold mt-0.5',
+                    isAgent ? 'text-green-200' : 'text-green-600 dark:text-green-400'
+                  )}>
+                    ${product.price?.toLocaleString('es-CO')}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Timestamp y estado */}
         <div

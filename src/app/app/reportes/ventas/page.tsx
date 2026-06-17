@@ -46,6 +46,8 @@ import {
   VentasTopProductos,
   VentasTopClientes,
   VentasTable,
+  WebTopProductosCard,
+  WebConversionCard,
 } from '@/components/reportes/ventas';
 
 function getDefaultFilters(): VentasFilters {
@@ -375,6 +377,22 @@ export default function ReportesVentasPage() {
             <VentasTopProductos data={topProductos} isLoading={isLoading} />
             <VentasTopClientes data={topClientes} isLoading={isLoading} />
           </div>
+
+          {/* Ventas Web: Top Productos + Conversión */}
+          {organization?.id && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <WebTopProductosCard
+                organizationId={organization.id}
+                dateFrom={filters.dateFrom}
+                dateTo={filters.dateTo}
+              />
+              <WebConversionCard
+                organizationId={organization.id}
+                dateFrom={filters.dateFrom}
+                dateTo={filters.dateTo}
+              />
+            </div>
+          )}
 
           {/* Tabla de detalle */}
           <VentasTable

@@ -130,24 +130,37 @@ export const ventasReportService = {
     organizationId: number,
     filters: VentasFilters
   ): Promise<VentasKPI> {
-    const { data, error } = await buildSalesQuery(organizationId, filters)
-      .neq('status', 'cancelled')
-      .select('total, subtotal, tax_total, discount_total, payment_status');
+    const [posRes, webRes] = await Promise.all([
+      buildSalesQuery(organizationId, filters)
+        .neq('status', 'cancelled')
+        .select('total, subtotal, tax_total, discount_total, payment_status'),
+      supabase
+        .from('web_orders')
+        .select('total, subtotal, tax_total, discount_total, payment_status')
+        .eq('organization_id', organizationId)
+        .neq('status', 'cancelled')
+        .gte('created_at', filters.dateFrom)
+        .lte('created_at', filters.dateTo + 'T23:59:59.999Z'),
+    ]);
 
-    if (error || !data) {
+    const posData = posRes.data || [];
+    const webData = webRes.data || [];
+    const allData = [...posData, ...webData];
+
+    if (allData.length === 0) {
       return {
         totalVentas: 0, cantidadVentas: 0, ticketPromedio: 0,
         totalImpuestos: 0, totalDescuentos: 0, ventasPagadas: 0, ventasPendientes: 0,
       };
     }
 
-    const totalVentas = data.reduce((s, r) => s + (Number(r.total) || 0), 0);
-    const cantidadVentas = data.length;
+    const totalVentas = allData.reduce((s, r) => s + (Number(r.total) || 0), 0);
+    const cantidadVentas = allData.length;
     const ticketPromedio = cantidadVentas > 0 ? totalVentas / cantidadVentas : 0;
-    const totalImpuestos = data.reduce((s, r) => s + (Number(r.tax_total) || 0), 0);
-    const totalDescuentos = data.reduce((s, r) => s + (Number(r.discount_total) || 0), 0);
-    const ventasPagadas = data.filter((r) => r.payment_status === 'paid').length;
-    const ventasPendientes = data.filter((r) => r.payment_status === 'pending').length;
+    const totalImpuestos = allData.reduce((s, r) => s + (Number(r.tax_total) || 0), 0);
+    const totalDescuentos = allData.reduce((s, r) => s + (Number(r.discount_total) || 0), 0);
+    const ventasPagadas = allData.filter((r) => r.payment_status === 'paid').length;
+    const ventasPendientes = allData.filter((r) => r.payment_status === 'pending').length;
 
     return {
       totalVentas, cantidadVentas, ticketPromedio,
@@ -162,24 +175,38 @@ export const ventasReportService = {
     organizationId: number,
     filters: VentasFilters
   ): Promise<VentaPorDia[]> {
-    const { data, error } = await buildSalesQuery(organizationId, filters)
-      .neq('status', 'cancelled')
-      .select('sale_date, total')
-      .order('sale_date', { ascending: true });
-
-    if (error || !data) return [];
+    const [posRes, webRes] = await Promise.all([
+      buildSalesQuery(organizationId, filters)
+        .neq('status', 'cancelled')
+        .select('sale_date, total')
+        .order('sale_date', { ascending: true }),
+      supabase
+        .from('web_orders')
+        .select('created_at, total')
+        .eq('organization_id', organizationId)
+        .neq('status', 'cancelled')
+        .gte('created_at', filters.dateFrom)
+        .lte('created_at', filters.dateTo + 'T23:59:59.999Z')
+        .order('created_at', { ascending: true }),
+    ]);
 
     const grouped: Record<string, { total: number; cantidad: number }> = {};
-    for (const sale of data) {
+    for (const sale of posRes.data || []) {
       const fecha = new Date(sale.sale_date).toISOString().split('T')[0];
       if (!grouped[fecha]) grouped[fecha] = { total: 0, cantidad: 0 };
       grouped[fecha].total += Number(sale.total) || 0;
       grouped[fecha].cantidad += 1;
     }
+    for (const order of webRes.data || []) {
+      const fecha = new Date(order.created_at).toISOString().split('T')[0];
+      if (!grouped[fecha]) grouped[fecha] = { total: 0, cantidad: 0 };
+      grouped[fecha].total += Number(order.total) || 0;
+      grouped[fecha].cantidad += 1;
+    }
 
-    return Object.entries(grouped).map(([fecha, v]) => ({
-      fecha, total: v.total, cantidad: v.cantidad,
-    }));
+    return Object.entries(grouped)
+      .map(([fecha, v]) => ({ fecha, total: v.total, cantidad: v.cantidad }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
   },
 
   /**
@@ -231,21 +258,34 @@ export const ventasReportService = {
     organizationId: number,
     filters: VentasFilters
   ): Promise<VentaPorMetodoPago[]> {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('method, amount')
-      .eq('organization_id', organizationId)
-      .eq('status', 'completed')
-      .gte('created_at', filters.dateFrom)
-      .lte('created_at', filters.dateTo + 'T23:59:59.999Z');
-
-    if (error || !data) return [];
+    const [pagosRes, webRes] = await Promise.all([
+      supabase
+        .from('payments')
+        .select('method, amount')
+        .eq('organization_id', organizationId)
+        .eq('status', 'completed')
+        .gte('created_at', filters.dateFrom)
+        .lte('created_at', filters.dateTo + 'T23:59:59.999Z'),
+      supabase
+        .from('web_orders')
+        .select('payment_method, total')
+        .eq('organization_id', organizationId)
+        .neq('status', 'cancelled')
+        .gte('created_at', filters.dateFrom)
+        .lte('created_at', filters.dateTo + 'T23:59:59.999Z'),
+    ]);
 
     const grouped: Record<string, { total: number; count: number }> = {};
-    for (const p of data) {
+    for (const p of pagosRes.data || []) {
       const method = p.method || 'Otro';
       if (!grouped[method]) grouped[method] = { total: 0, count: 0 };
       grouped[method].total += Number(p.amount) || 0;
+      grouped[method].count += 1;
+    }
+    for (const wo of webRes.data || []) {
+      const method = wo.payment_method || 'Web';
+      if (!grouped[method]) grouped[method] = { total: 0, count: 0 };
+      grouped[method].total += Number(wo.total) || 0;
       grouped[method].count += 1;
     }
 
@@ -262,61 +302,90 @@ export const ventasReportService = {
     filters: VentasFilters,
     limit: number = 10
   ): Promise<TopProductoVenta[]> {
-    // Obtener IDs de ventas filtradas
+    // Agrupar por producto (POS + Web)
+    const grouped: Record<number, { name: string; sku: string; quantity: number; revenue: number; category_name: string | null }> = {};
+
+    // POS sales
     const { data: salesData } = await buildSalesQuery(organizationId, filters)
       .neq('status', 'cancelled')
       .select('id');
 
-    if (!salesData || salesData.length === 0) return [];
-
-    const saleIds = salesData.map((s) => s.id);
-
-    // Obtener items (batches de 100 para evitar límites)
-    const allItems: any[] = [];
-    for (let i = 0; i < saleIds.length; i += 100) {
-      const batch = saleIds.slice(i, i + 100);
-      const { data: items } = await supabase
-        .from('sale_items')
-        .select('product_id, quantity, total')
-        .in('sale_id', batch);
-      if (items) allItems.push(...items);
+    if (salesData && salesData.length > 0) {
+      const saleIds = salesData.map((s) => s.id);
+      const allItems: any[] = [];
+      for (let i = 0; i < saleIds.length; i += 100) {
+        const batch = saleIds.slice(i, i + 100);
+        const { data: items } = await supabase
+          .from('sale_items')
+          .select('product_id, quantity, total')
+          .in('sale_id', batch);
+        if (items) allItems.push(...items);
+      }
+      for (const item of allItems) {
+        const pid = item.product_id;
+        if (!pid) continue;
+        if (!grouped[pid]) grouped[pid] = { name: '', sku: '', quantity: 0, revenue: 0, category_name: null };
+        grouped[pid].quantity += Number(item.quantity) || 0;
+        grouped[pid].revenue += Number(item.total) || 0;
+      }
     }
 
-    if (allItems.length === 0) return [];
+    // Web orders
+    const { data: webOrders } = await supabase
+      .from('web_orders')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .neq('status', 'cancelled')
+      .gte('created_at', filters.dateFrom)
+      .lte('created_at', filters.dateTo + 'T23:59:59.999Z');
 
-    // Agrupar por producto
-    const grouped: Record<number, { quantity: number; revenue: number }> = {};
-    for (const item of allItems) {
-      const pid = item.product_id;
-      if (!pid) continue;
-      if (!grouped[pid]) grouped[pid] = { quantity: 0, revenue: 0 };
-      grouped[pid].quantity += Number(item.quantity) || 0;
-      grouped[pid].revenue += Number(item.total) || 0;
+    if (webOrders && webOrders.length > 0) {
+      const webIds = webOrders.map((o) => o.id);
+      const allWebItems: any[] = [];
+      for (let i = 0; i < webIds.length; i += 100) {
+        const batch = webIds.slice(i, i + 100);
+        const { data: items } = await supabase
+          .from('web_order_items')
+          .select('product_id, product_name, quantity, total')
+          .in('web_order_id', batch);
+        if (items) allWebItems.push(...items);
+      }
+      for (const item of allWebItems) {
+        const pid = item.product_id || 0;
+        if (!pid) continue;
+        if (!grouped[pid]) grouped[pid] = { name: item.product_name || 'Producto Web', sku: '', quantity: 0, revenue: 0, category_name: null };
+        grouped[pid].quantity += Number(item.quantity) || 0;
+        grouped[pid].revenue += Number(item.total) || 0;
+      }
     }
 
-    const productIds = Object.keys(grouped).map(Number);
-    const { data: products } = await supabase
-      .from('products')
-      .select('id, name, sku, category_id, categories(name)')
-      .in('id', productIds);
+    if (Object.keys(grouped).length === 0) return [];
 
-    const prodMap: Record<number, { name: string; sku: string; category_name: string | null }> = {};
-    for (const p of products || []) {
-      prodMap[p.id] = {
-        name: p.name || 'Sin nombre',
-        sku: p.sku || '',
-        category_name: (p.categories as any)?.name || null,
-      };
+    // Obtener nombres de productos
+    const productIds = Object.keys(grouped).map(Number).filter((id) => id > 0);
+    if (productIds.length > 0) {
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name, sku, category_id, categories(name)')
+        .in('id', productIds);
+
+      for (const p of products || []) {
+        if (grouped[p.id]) {
+          grouped[p.id].name = p.name || grouped[p.id].name;
+          grouped[p.id].sku = p.sku || '';
+          grouped[p.id].category_name = (p.categories as any)?.name || null;
+        }
+      }
     }
 
     return Object.entries(grouped)
       .map(([pid, v]) => ({
         product_id: Number(pid),
-        name: prodMap[Number(pid)]?.name || `Producto #${pid}`,
-        sku: prodMap[Number(pid)]?.sku || '',
+        name: v.name || `Producto #${pid}`,
+        sku: v.sku,
         quantity: v.quantity,
         revenue: v.revenue,
-        category_name: prodMap[Number(pid)]?.category_name || null,
+        category_name: v.category_name,
       }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, limit);
@@ -330,42 +399,58 @@ export const ventasReportService = {
     filters: VentasFilters,
     limit: number = 10
   ): Promise<TopClienteVenta[]> {
-    const { data, error } = await supabase
-      .from('sales')
-      .select('customer_id, total')
-      .eq('organization_id', organizationId)
-      .gte('sale_date', filters.dateFrom)
-      .lte('sale_date', filters.dateTo + 'T23:59:59.999Z')
-      .neq('status', 'cancelled')
-      .not('customer_id', 'is', null);
+    const [posRes, webRes] = await Promise.all([
+      supabase
+        .from('sales')
+        .select('customer_id, total')
+        .eq('organization_id', organizationId)
+        .gte('sale_date', filters.dateFrom)
+        .lte('sale_date', filters.dateTo + 'T23:59:59.999Z')
+        .neq('status', 'cancelled')
+        .not('customer_id', 'is', null),
+      supabase
+        .from('web_orders')
+        .select('customer_id, customer_name, total')
+        .eq('organization_id', organizationId)
+        .neq('status', 'cancelled')
+        .gte('created_at', filters.dateFrom)
+        .lte('created_at', filters.dateTo + 'T23:59:59.999Z'),
+    ]);
 
-    if (error || !data || data.length === 0) return [];
+    const grouped: Record<string, { total: number; count: number; name?: string }> = {};
 
-    const grouped: Record<string, { total: number; count: number }> = {};
-    for (const s of data) {
+    for (const s of posRes.data || []) {
       if (!s.customer_id) continue;
       if (!grouped[s.customer_id]) grouped[s.customer_id] = { total: 0, count: 0 };
       grouped[s.customer_id].total += Number(s.total) || 0;
       grouped[s.customer_id].count += 1;
     }
+    for (const wo of webRes.data || []) {
+      const key = wo.customer_id || wo.customer_name || 'web-anonymous';
+      if (!grouped[key]) grouped[key] = { total: 0, count: 0, name: wo.customer_name || undefined };
+      grouped[key].total += Number(wo.total) || 0;
+      grouped[key].count += 1;
+    }
 
-    const customerIds = Object.keys(grouped);
-    if (customerIds.length === 0) return [];
+    if (Object.keys(grouped).length === 0) return [];
 
-    const { data: customers } = await supabase
-      .from('customers')
-      .select('id, full_name, first_name, last_name')
-      .in('id', customerIds);
-
+    // Obtener nombres de clientes con UUID
+    const customerIds = Object.keys(grouped).filter((id) => id.includes('-') && id.length > 30);
     const nameMap: Record<string, string> = {};
-    for (const c of customers || []) {
-      nameMap[c.id] = c.full_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Sin nombre';
+    if (customerIds.length > 0) {
+      const { data: customers } = await supabase
+        .from('customers')
+        .select('id, full_name, first_name, last_name')
+        .in('id', customerIds);
+      for (const c of customers || []) {
+        nameMap[c.id] = c.full_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Sin nombre';
+      }
     }
 
     return Object.entries(grouped)
       .map(([cid, v]) => ({
         customer_id: cid,
-        name: nameMap[cid] || 'Cliente sin nombre',
+        name: nameMap[cid] || v.name || 'Cliente sin nombre',
         total: v.total,
         count: v.count,
       }))

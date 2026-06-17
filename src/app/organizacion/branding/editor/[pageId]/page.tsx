@@ -452,6 +452,7 @@ export default function PageEditorPage() {
               onUpdate={handleUpdatePageSEO}
             />
           }
+          organizationId={organizationId}
         />
 
         {/* Right Preview */}

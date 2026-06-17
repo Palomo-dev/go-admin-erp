@@ -103,7 +103,7 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     { name: 'Historial', path: '/app/clientes/historial', icon: Calendar }
   ],
   'pos': [
-    { name: 'Punto de Venta', path: '/app/pos', icon: ShoppingCart },
+    { name: 'Ventas', path: '/app/pos', icon: ShoppingCart },
     { name: 'Cajas', path: '/app/pos/cajas', icon: Package },
     { name: 'Carritos', path: '/app/pos/carritos', icon: ShoppingCart },
     { name: 'Configuración', path: '/app/pos/configuracion', icon: Settings },

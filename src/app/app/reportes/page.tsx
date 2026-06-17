@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -11,7 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BarChart3, RefreshCw, Download, Star, StarOff } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { BarChart3, RefreshCw, Download, Star, StarOff, CalendarDays } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 
 import {
@@ -26,6 +32,7 @@ import {
   ReportesOcupacion,
   ReportesActividad,
 } from '@/components/reportes';
+import { WebTopProductosCard, WebConversionCard } from '@/components/reportes/ventas';
 
 export default function ReportesPage() {
   const { organization } = useOrganization();
@@ -35,6 +42,8 @@ export default function ReportesPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<ReportesDashboardData | null>(null);
   const [periodo, setPeriodo] = useState('30');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
 
   // Cargar favorito desde localStorage
@@ -44,12 +53,48 @@ export default function ReportesPage() {
     }
   }, []);
 
+  const getDias = useCallback((): number => {
+    if (periodo === '0') return 0; // hoy
+    if (periodo === '1') return 1; // ayer
+    if (periodo === 'custom') return 30; // fallback
+    return Number(periodo);
+  }, [periodo]);
+
+  const getDateRange = useCallback((): { from?: string; to?: string } => {
+    if (periodo === 'custom' && customFrom && customTo) {
+      return { from: customFrom, to: customTo };
+    }
+    // Usar fecha local (no UTC) para evitar desfases de zona horaria
+    const toLocalDate = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    if (periodo === '0') {
+      const hoy = toLocalDate(new Date());
+      return { from: hoy, to: hoy };
+    }
+    if (periodo === '1') {
+      const ayer = new Date();
+      ayer.setDate(ayer.getDate() - 1);
+      return { from: toLocalDate(ayer), to: toLocalDate(ayer) };
+    }
+    return {};
+  }, [periodo, customFrom, customTo]);
+
   const loadDashboardData = useCallback(async () => {
     if (!organization?.id) return;
 
     setIsLoading(true);
     try {
-      const data = await reportesService.getDashboardData(organization.id, Number(periodo));
+      const range = getDateRange();
+      const data = await reportesService.getDashboardData(
+        organization.id,
+        getDias(),
+        range.from,
+        range.to
+      );
       setDashboardData(data);
     } catch (error) {
       console.error('Error cargando datos del dashboard:', error);
@@ -61,7 +106,7 @@ export default function ReportesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, periodo, toast]);
+  }, [organization?.id, periodo, getDias, getDateRange, toast]);
 
   useEffect(() => {
     loadDashboardData();
@@ -125,16 +170,58 @@ export default function ReportesPage() {
 
           <div className="flex items-center gap-2 print:hidden">
             <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="w-[140px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
+              <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="0">Hoy</SelectItem>
+                <SelectItem value="1">Ayer</SelectItem>
                 <SelectItem value="7">Últimos 7 días</SelectItem>
                 <SelectItem value="15">Últimos 15 días</SelectItem>
                 <SelectItem value="30">Últimos 30 días</SelectItem>
                 <SelectItem value="90">Últimos 90 días</SelectItem>
+                <SelectItem value="custom">Personalizado</SelectItem>
               </SelectContent>
             </Select>
+
+            {periodo === 'custom' && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-700">
+                    <CalendarDays className="h-4 w-4 mr-1" />
+                    {customFrom && customTo ? `${customFrom} - ${customTo}` : 'Rango'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-4 space-y-3" align="end">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Desde</label>
+                    <Input
+                      type="date"
+                      value={customFrom}
+                      onChange={(e) => setCustomFrom(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Hasta</label>
+                    <Input
+                      type="date"
+                      value={customTo}
+                      onChange={(e) => setCustomTo(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    disabled={!customFrom || !customTo}
+                    onClick={() => handleRefresh()}
+                  >
+                    Aplicar
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            )}
 
             <Button
               variant="outline"
@@ -206,6 +293,22 @@ export default function ReportesPage() {
           isLoading={isLoading}
         />
       </div>
+
+      {/* Ventas Web */}
+      {organization?.id && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <WebTopProductosCard
+            organizationId={organization.id}
+            dateFrom={getDateRange().from || new Date(Date.now() - getDias() * 86400000).toISOString().split('T')[0]}
+            dateTo={getDateRange().to || new Date().toISOString().split('T')[0]}
+          />
+          <WebConversionCard
+            organizationId={organization.id}
+            dateFrom={getDateRange().from || new Date(Date.now() - getDias() * 86400000).toISOString().split('T')[0]}
+            dateTo={getDateRange().to || new Date().toISOString().split('T')[0]}
+          />
+        </div>
+      )}
 
       {/* Actividad reciente */}
       <ReportesActividad

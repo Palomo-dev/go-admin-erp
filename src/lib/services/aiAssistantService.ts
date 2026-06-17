@@ -64,7 +64,7 @@ const ASSISTANT_SYSTEM_PROMPT = `Eres GO Assistant, el asistente de IA interno d
 ## CONOCIMIENTO DEL SISTEMA GO Admin ERP
 
 ### Módulos del Sistema:
-1. **POS (Punto de Venta)**: Ventas, caja, facturación, descuentos
+1. **Ventas**: Ventas, caja, facturación, descuentos
 2. **Inventario**: Productos, stock, categorías, proveedores, ajustes, transferencias
 3. **CRM**: Clientes, oportunidades, seguimiento, comunicación
 4. **HRM**: Empleados, turnos, asistencia, nómina

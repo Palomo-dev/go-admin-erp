@@ -39,6 +39,7 @@ interface OrganizationTax {
   description: string | null;
   is_default: boolean;
   is_active: boolean;
+  tax_included?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -268,13 +269,14 @@ const TaxesTable = () => {
                   <TableHead className="font-medium text-xs sm:text-sm hidden md:table-cell">Descripción</TableHead>
                   <TableHead className="font-medium text-xs sm:text-sm hidden lg:table-cell">Estado</TableHead>
                   <TableHead className="font-medium text-xs sm:text-sm hidden sm:table-cell">Predeterminado</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm hidden sm:table-cell">Incluido en precio</TableHead>
                   <TableHead className="font-medium text-xs sm:text-sm text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center dark:border-gray-700">
+                    <TableCell colSpan={7} className="h-24 text-center dark:border-gray-700">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <RefreshCcw className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
                         <span className="text-sm dark:text-gray-300">Cargando impuestos...</span>
@@ -283,7 +285,7 @@ const TaxesTable = () => {
                   </TableRow>
                 ) : paginatedTaxes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center dark:border-gray-700">
+                    <TableCell colSpan={7} className="h-24 text-center dark:border-gray-700">
                       <div className="flex flex-col items-center justify-center gap-2 py-4">
                         <p className="text-sm text-gray-600 dark:text-gray-400">No hay impuestos disponibles</p>
                         <Button 
@@ -303,12 +305,22 @@ const TaxesTable = () => {
                     <TableRow key={tax.id} className="dark:border-gray-700">
                       <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-300">{tax.name}</TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={tax.rate > 0 ? "default" : "outline"} 
-                          className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-                        >
-                          {formatPercent(tax.rate)}
-                        </Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge 
+                            variant={tax.rate > 0 ? "default" : "outline"} 
+                            className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                          >
+                            {formatPercent(tax.rate)}
+                          </Badge>
+                          {tax.tax_included && (
+                            <Badge 
+                              variant="outline" 
+                              className="text-[0.65rem] bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800"
+                            >
+                              Incluido
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs sm:text-sm dark:text-gray-400 hidden md:table-cell">{tax.description || '-'}</TableCell>
                       <TableCell className="hidden lg:table-cell">
@@ -330,6 +342,16 @@ const TaxesTable = () => {
                             className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800"
                           >
                             Predeterminado
+                          </Badge>
+                        ) : <span className="text-xs sm:text-sm dark:text-gray-500">-</span>}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {tax.tax_included ? (
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800"
+                          >
+                            Incluido
                           </Badge>
                         ) : <span className="text-xs sm:text-sm dark:text-gray-500">-</span>}
                       </TableCell>

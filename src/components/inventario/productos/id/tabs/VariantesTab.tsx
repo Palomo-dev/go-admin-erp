@@ -41,7 +41,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { formatCurrency } from '@/utils/Utils';
+
+interface VariantTypeOption {
+  id: number;
+  name: string;
+}
+
+interface VariantValueOption {
+  id: number;
+  variant_type_id: number;
+  value: string;
+}
 
 interface VariantesTabProps {
   producto: any;
@@ -75,6 +93,155 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
   const [editingVariante, setEditingVariante] = useState<Variante | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
+  const [availableTypes, setAvailableTypes] = useState<VariantTypeOption[]>([]);
+  const [availableValues, setAvailableValues] = useState<VariantValueOption[]>([]);
+  const [newAttrName, setNewAttrName] = useState<string>('');
+
+  // Cargar catálogo de tipos/valores de variantes (incluye globales + org + variant_data)
+  const loadVariantCatalog = async () => {
+    if (!organization?.id) return;
+    try {
+      // Tipos del catálogo: organización actual + globales (org_id = 0)
+      const { data: catalogTypes } = await supabase
+        .from('variant_types')
+        .select('id, name')
+        .or(`organization_id.eq.${organization.id},organization_id.eq.0`)
+        .order('name');
+
+      // Tipos reales desde variant_data de productos existentes
+      const { data: products } = await supabase
+        .from('products')
+        .select('variant_data')
+        .eq('organization_id', organization.id)
+        .not('variant_data', 'is', null)
+        .not('parent_product_id', 'is', null);
+
+      // Combinar tipos: catálogo + variant_data
+      const typeNamesSet = new Set<string>();
+      let syntheticId = 5000;
+      (catalogTypes || []).forEach((t) => typeNamesSet.add(t.name));
+      (products || []).forEach((p) => {
+        if (p.variant_data && typeof p.variant_data === 'object') {
+          Object.keys(p.variant_data as Record<string, unknown>).forEach((key) => {
+            if (key.trim()) typeNamesSet.add(key.trim());
+          });
+        }
+      });
+
+      const combinedTypes: { id: number; name: string }[] = Array.from(typeNamesSet)
+        .sort()
+        .map((name, idx) => {
+          const catalogEntry = (catalogTypes || []).find((t) => t.name === name);
+          return { id: catalogEntry?.id || syntheticId + idx, name };
+        });
+      setAvailableTypes(combinedTypes);
+
+      // Valores del catálogo
+      const catalogIds = (catalogTypes || []).map((t) => t.id);
+      let allValues: { id: number; variant_type_id: number; value: string }[] = [];
+      if (catalogIds.length > 0) {
+        const { data: catalogValues } = await supabase
+          .from('variant_values')
+          .select('id, variant_type_id, value')
+          .in('variant_type_id', catalogIds)
+          .order('display_order');
+        allValues = catalogValues || [];
+      }
+
+      // Valores reales desde variant_data
+      const valuesByType: Record<string, Set<string>> = {};
+      (products || []).forEach((p) => {
+        if (p.variant_data && typeof p.variant_data === 'object') {
+          Object.entries(p.variant_data as Record<string, unknown>).forEach(([key, val]) => {
+            if (!key.trim() || !val || !String(val).trim()) return;
+            if (!valuesByType[key.trim()]) valuesByType[key.trim()] = new Set();
+            valuesByType[key.trim()].add(String(val).trim());
+          });
+        }
+      });
+      combinedTypes.forEach((type) => {
+        const vals = valuesByType[type.name];
+        if (vals) {
+          vals.forEach((v) => {
+            const exists = allValues.some(
+              (av) => av.variant_type_id === type.id && av.value === v
+            );
+            if (!exists) {
+              allValues.push({ id: syntheticId++, variant_type_id: type.id, value: v });
+            }
+          });
+        }
+      });
+
+      setAvailableValues(allValues);
+    } catch (error) {
+      console.error('Error cargando catálogo de variantes:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadVariantCatalog();
+  }, [organization?.id]);
+
+  // Crea (o reutiliza) un tipo de variante en el catálogo y devuelve su id
+  const createTypeInCatalog = async (name: string): Promise<number | null> => {
+    if (!organization?.id) return null;
+    const clean = name.trim();
+    if (!clean) return null;
+    const { data: existing } = await supabase
+      .from('variant_types')
+      .select('id')
+      .eq('organization_id', organization.id)
+      .ilike('name', clean)
+      .maybeSingle();
+    if (existing) return existing.id;
+    const { data: created } = await supabase
+      .from('variant_types')
+      .insert({ organization_id: organization.id, name: clean })
+      .select('id')
+      .single();
+    return created?.id || null;
+  };
+
+  // Guarda un valor en el catálogo (variant_values) para reutilizarlo
+  const createValueInCatalog = async (typeName: string, value: string) => {
+    const clean = value.trim();
+    if (!clean) return;
+    const typeId = await createTypeInCatalog(typeName);
+    if (!typeId) return;
+    const { data: existing } = await supabase
+      .from('variant_values')
+      .select('id')
+      .eq('variant_type_id', typeId)
+      .ilike('value', clean)
+      .maybeSingle();
+    if (!existing) {
+      await supabase
+        .from('variant_values')
+        .insert({ variant_type_id: typeId, value: clean, display_order: 0 });
+    }
+    await loadVariantCatalog();
+    toast({ title: 'Valor guardado', description: `"${clean}" agregado a ${typeName}` });
+  };
+
+  // Agrega un atributo (tipo) a la variante en edición y lo persiste en el catálogo
+  const addAttributeToVariante = async (typeName: string) => {
+    const clean = typeName.trim();
+    if (!clean || !editingVariante) return;
+    const newData = { ...(editingVariante.variant_data || {}), [clean]: '' };
+    handleVarianteChange('variant_data', newData);
+    await createTypeInCatalog(clean);
+    await loadVariantCatalog();
+  };
+
+  // Valores sugeridos para un tipo de variante
+  const getValuesForType = (typeName: string): string[] => {
+    const type = availableTypes.find((t) => t.name.toLowerCase() === typeName.toLowerCase());
+    if (!type) return [];
+    return availableValues
+      .filter((v) => v.variant_type_id === type.id)
+      .map((v) => v.value);
+  };
   
   // Cargar variantes al montar el componente
   // Las variantes son productos hijos en tabla products con parent_product_id
@@ -551,46 +718,131 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             {editingVariante?.variant_data && typeof editingVariante.variant_data === 'object' && Object.keys(editingVariante.variant_data).length > 0 && (
               <div className="space-y-2">
                 <Label>Atributos</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {Object.entries(editingVariante.variant_data).map(([key, val]) => (
-                    <div key={key} className="space-y-1">
-                      <Label className="text-xs text-gray-500 dark:text-gray-400">{key}</Label>
-                      <Input
-                        value={String(val || '')}
-                        onChange={(e) => {
-                          const newData = { ...editingVariante.variant_data, [key]: e.target.value };
-                          handleVarianteChange('variant_data', newData);
-                        }}
-                        placeholder={key}
-                        className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
-                      />
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 gap-3">
+                  {Object.entries(editingVariante.variant_data).map(([key, val]) => {
+                    const suggestions = getValuesForType(key);
+                    return (
+                      <div key={key} className="space-y-1">
+                        <Label className="text-xs text-gray-500 dark:text-gray-400">{key}</Label>
+                        <div className="flex gap-1">
+                          <Input
+                            value={String(val || '')}
+                            onChange={(e) => {
+                              const newData = { ...editingVariante.variant_data, [key]: e.target.value };
+                              handleVarianteChange('variant_data', newData);
+                            }}
+                            placeholder={key}
+                            list={`vt-suggestions-${key}`}
+                            className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="shrink-0 h-9 w-9"
+                            title="Guardar este valor en el catálogo"
+                            disabled={!String(val || '').trim()}
+                            onClick={() => createValueInCatalog(key, String(val || ''))}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {suggestions.length > 0 && (() => {
+                          const MAX_BUTTONS = 12;
+                          const MAX_CHAR_LENGTH = 25;
+                          const shortSuggestions = suggestions.filter((s) => s.length <= MAX_CHAR_LENGTH);
+                          const visibleSuggestions = shortSuggestions.slice(0, MAX_BUTTONS);
+                          const hiddenCount = suggestions.length - visibleSuggestions.length;
+                          return (
+                            <>
+                              <datalist id={`vt-suggestions-${key}`}>
+                                {suggestions.map((s) => (
+                                  <option key={s} value={s} />
+                                ))}
+                              </datalist>
+                              <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                                {visibleSuggestions.map((s) => (
+                                  <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => {
+                                      const newData = { ...editingVariante.variant_data, [key]: s };
+                                      handleVarianteChange('variant_data', newData);
+                                    }}
+                                    className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                                      String(val || '') === s
+                                        ? 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-600 dark:text-indigo-300'
+                                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400'
+                                    }`}
+                                  >
+                                    {s}
+                                  </button>
+                                ))}
+                                {hiddenCount > 0 && (
+                                  <span className="text-[10px] text-gray-400 self-center ml-1">
+                                    +{hiddenCount} más (escribe para buscar)
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Agregar nuevo atributo */}
-            {dialogMode === 'edit' && (
-              <div className="space-y-2">
+            {/* Agregar/crear tipo de atributo (disponible en crear y editar) */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                <Tags className="h-3 w-3" /> Agregar atributo
+              </Label>
+              <div className="flex gap-2">
+                {availableTypes.length > 0 && (
+                  <Select
+                    value=""
+                    onValueChange={(val) => { if (val) addAttributeToVariante(val); }}
+                  >
+                    <SelectTrigger className={`flex-1 text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}>
+                      <SelectValue placeholder="Tipo existente..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTypes
+                        .filter((t) => !Object.keys(editingVariante?.variant_data || {}).some((k) => k.toLowerCase() === t.name.toLowerCase()))
+                        .map((t) => (
+                          <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Input
+                  value={newAttrName}
+                  onChange={(e) => setNewAttrName(e.target.value)}
+                  placeholder="Nuevo tipo..."
+                  className={`w-36 text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addAttributeToVariante(newAttrName);
+                      setNewAttrName('');
+                    }
+                  }}
+                />
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => {
-                    const attrName = prompt('Nombre del atributo (ej: Color, Talla, Material)');
-                    if (attrName && attrName.trim()) {
-                      const newData = { ...(editingVariante?.variant_data || {}), [attrName.trim()]: '' };
-                      handleVarianteChange('variant_data', newData);
-                    }
-                  }}
+                  size="icon"
+                  className="shrink-0 h-9 w-9"
+                  title="Crear tipo y guardarlo en el catálogo"
+                  disabled={!newAttrName.trim()}
+                  onClick={() => { addAttributeToVariante(newAttrName); setNewAttrName(''); }}
                 >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Agregar atributo
+                  <Plus className="h-4 w-4" />
                 </Button>
               </div>
-            )}
+            </div>
             
             <div className="space-y-2">
               <Label htmlFor="stock">Stock Inicial</Label>

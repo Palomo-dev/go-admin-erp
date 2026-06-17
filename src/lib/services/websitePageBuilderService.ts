@@ -414,6 +414,17 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestras Marcas' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'layout', label: 'Distribución', type: 'select', options: [
+        { value: 'carousel', label: 'Carrusel' },
+        { value: 'grid', label: 'Grid' },
+        { value: 'flex', label: 'Fluido (wrap)' },
+      ]},
+      { key: 'logo_size', label: 'Tamaño de logos', type: 'select', options: [
+        { value: 'sm', label: 'Pequeño' },
+        { value: 'md', label: 'Mediano' },
+        { value: 'lg', label: 'Grande' },
+      ]},
+      { key: 'grayscale', label: 'Efecto blanco y negro', type: 'boolean' },
     ],
   },
   {
@@ -644,6 +655,205 @@ class WebsitePageBuilderService {
       .eq('id', sectionId);
 
     if (error) throw error;
+  }
+
+  // ---- SEED DEFAULT PAGES ----
+
+  /**
+   * Crea las páginas estándar según el tipo de negocio con la estructura correcta:
+   * Hero (minimal) + sección de contenido (sin título duplicado).
+   * @param typeId - ID del tipo de organización (1=restaurant, 2=hotel, 3=retail, 4=services, 5=gym, 6=parking, 7=transport)
+   */
+  async seedDefaultPages(organizationId: number, typeId?: number): Promise<void> {
+    const pages = this.getDefaultPagesForType(typeId || 3);
+    const contactPage = {
+      title: 'Contacto',
+      slug: 'contacto',
+      show_in_header: true,
+      header_order: 10,
+      sections: [
+        { section_type: 'hero', section_variant: 'minimal', content: { title: 'Contáctanos', subtitle: 'Estamos aquí para ayudarte' }, sort_order: 0 },
+        { section_type: 'contact_form', section_variant: 'split', content: {}, sort_order: 1 },
+        { section_type: 'map', section_variant: 'full_width', content: { title: 'Encuéntranos', subtitle: 'Visítanos en nuestra sede' }, sort_order: 2 },
+      ],
+    };
+
+    const allPages = [...pages, contactPage];
+
+    for (const pageDef of allPages) {
+      // Verificar si la página ya existe
+      const { data: existing } = await supabase
+        .from('website_pages')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('slug', pageDef.slug)
+        .maybeSingle();
+
+      if (existing) continue; // No duplicar
+
+      // Crear página
+      const { data: page, error: pageError } = await supabase
+        .from('website_pages')
+        .insert({
+          organization_id: organizationId,
+          title: pageDef.title,
+          slug: pageDef.slug,
+          page_type: 'builtin',
+          show_in_header: pageDef.show_in_header,
+          header_order: pageDef.header_order,
+          is_published: true,
+        })
+        .select()
+        .single();
+
+      if (pageError || !page) {
+        console.error(`Error creating page ${pageDef.slug}:`, pageError);
+        continue;
+      }
+
+      // Crear secciones
+      const sectionsToInsert = pageDef.sections.map((s) => ({
+        page_id: page.id,
+        organization_id: organizationId,
+        section_type: s.section_type,
+        section_variant: s.section_variant,
+        content: s.content,
+        settings: {},
+        sort_order: s.sort_order,
+        is_visible: true,
+      }));
+
+      const { error: sectionsError } = await supabase
+        .from('website_page_sections')
+        .insert(sectionsToInsert);
+
+      if (sectionsError) {
+        console.error(`Error creating sections for ${pageDef.slug}:`, sectionsError);
+      }
+    }
+  }
+
+  /**
+   * Retorna el set de páginas por defecto según el tipo de negocio.
+   */
+  private getDefaultPagesForType(typeId: number) {
+    const pageSets: Record<number, Array<{ title: string; slug: string; show_in_header: boolean; header_order: number; sections: Array<{ section_type: string; section_variant: string; content: Record<string, any>; sort_order: number }> }>> = {
+      // Restaurant
+      1: [
+        {
+          title: 'Menú', slug: 'menu', show_in_header: true, header_order: 1,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Nuestro Menú', subtitle: 'Descubre nuestros platos' }, sort_order: 0 },
+            { section_type: 'menu_preview', section_variant: 'tabs', content: {}, sort_order: 1 },
+          ],
+        },
+        {
+          title: 'Ofertas', slug: 'ofertas', show_in_header: true, header_order: 2,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Ofertas Especiales', subtitle: 'Aprovecha nuestras promociones' }, sort_order: 0 },
+            { section_type: 'offers', section_variant: 'grid', content: {}, sort_order: 1 },
+          ],
+        },
+      ],
+      // Hotel
+      2: [
+        {
+          title: 'Habitaciones', slug: 'espacios', show_in_header: true, header_order: 1,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Nuestras Habitaciones', subtitle: 'Comodidad y descanso para ti' }, sort_order: 0 },
+            { section_type: 'room_types', section_variant: 'cards', content: {}, sort_order: 1 },
+          ],
+        },
+        {
+          title: 'Servicios', slug: 'servicios', show_in_header: true, header_order: 2,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Nuestros Servicios', subtitle: 'Todo lo que necesitas para tu estancia' }, sort_order: 0 },
+            { section_type: 'services_list', section_variant: 'cards', content: {}, sort_order: 1 },
+          ],
+        },
+      ],
+      // Retail
+      3: [
+        {
+          title: 'Productos', slug: 'productos', show_in_header: true, header_order: 1,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Nuestros Productos', subtitle: 'Descubre todo lo que tenemos para ti' }, sort_order: 0 },
+            { section_type: 'products_grid', section_variant: 'grid', content: {}, sort_order: 1 },
+          ],
+        },
+        {
+          title: 'Categorías', slug: 'categorias', show_in_header: true, header_order: 2,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Categorías', subtitle: 'Explora nuestros productos por categoría' }, sort_order: 0 },
+            { section_type: 'categories_grid', section_variant: 'grid', content: {}, sort_order: 1 },
+          ],
+        },
+        {
+          title: 'Ofertas', slug: 'ofertas', show_in_header: true, header_order: 3,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Ofertas Especiales', subtitle: 'Aprovecha nuestros mejores descuentos' }, sort_order: 0 },
+            { section_type: 'offers', section_variant: 'grid', content: {}, sort_order: 1 },
+            { section_type: 'featured_products', section_variant: 'carousel', content: { title: 'Productos Destacados', subtitle: 'Lo más popular de nuestra tienda' }, sort_order: 2 },
+          ],
+        },
+      ],
+      // Services
+      4: [
+        {
+          title: 'Servicios', slug: 'servicios', show_in_header: true, header_order: 1,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Nuestros Servicios', subtitle: 'Conoce todo lo que podemos hacer por ti' }, sort_order: 0 },
+            { section_type: 'services_list', section_variant: 'cards', content: {}, sort_order: 1 },
+          ],
+        },
+      ],
+      // Gym
+      5: [
+        {
+          title: 'Membresías', slug: 'membresias', show_in_header: true, header_order: 1,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Nuestros Planes', subtitle: 'Elige el plan perfecto para ti' }, sort_order: 0 },
+            { section_type: 'membership_plans', section_variant: 'pricing_table', content: {}, sort_order: 1 },
+          ],
+        },
+        {
+          title: 'Servicios', slug: 'servicios', show_in_header: true, header_order: 2,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Clases y Servicios', subtitle: 'Entrena con los mejores' }, sort_order: 0 },
+            { section_type: 'services_list', section_variant: 'cards', content: {}, sort_order: 1 },
+          ],
+        },
+      ],
+      // Parking
+      6: [
+        {
+          title: 'Tarifas', slug: 'productos', show_in_header: true, header_order: 1,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Tarifas', subtitle: 'Consulta nuestras tarifas de estacionamiento' }, sort_order: 0 },
+            { section_type: 'products_grid', section_variant: 'grid', content: {}, sort_order: 1 },
+          ],
+        },
+        {
+          title: 'Pases', slug: 'pases', show_in_header: true, header_order: 2,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Pases de Estacionamiento', subtitle: 'Obtén tu pase mensual o anual' }, sort_order: 0 },
+            { section_type: 'membership_plans', section_variant: 'pricing_table', content: {}, sort_order: 1 },
+          ],
+        },
+      ],
+      // Transport
+      7: [
+        {
+          title: 'Viajes', slug: 'viajes', show_in_header: true, header_order: 1,
+          sections: [
+            { section_type: 'hero', section_variant: 'minimal', content: { title: 'Viajes Disponibles', subtitle: 'Encuentra tu próximo destino' }, sort_order: 0 },
+            { section_type: 'products_grid', section_variant: 'grid', content: {}, sort_order: 1 },
+          ],
+        },
+      ],
+    };
+
+    return pageSets[typeId] || pageSets[3]; // Fallback a retail
   }
 
   // ---- PREVIEW URL ----

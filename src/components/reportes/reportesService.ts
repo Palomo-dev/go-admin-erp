@@ -88,26 +88,43 @@ function daysAgo(n: number): string {
   return d.toISOString();
 }
 
+/** Convierte fecha 'YYYY-MM-DD' a ISO en hora local (no UTC) */
+function toLocalISO(dateStr: string, endOfDay = false): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const local = new Date(y, m - 1, d, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+  return local.toISOString();
+}
+
 // ─── Servicio ────────────────────────────────────────────────────────────────
 
 export const reportesService = {
   /**
    * Obtiene los KPIs principales del dashboard
    */
-  async getKPIs(organizationId: number, dias: number = 30): Promise<KPIData> {
+  async getKPIs(organizationId: number, dias: number = 30, dateFrom?: string, dateTo?: string): Promise<KPIData> {
     const today = startOfToday();
-    const periodoStart = daysAgo(dias);
+    const periodoStart = dateFrom ? toLocalISO(dateFrom) : daysAgo(dias);
+    const periodoEnd = dateTo ? toLocalISO(dateTo, true) : undefined;
 
-    // Ejecutar queries en paralelo
+    // Helpers para aplicar rango
+    const applyRange = (q: any, field: string) => {
+      let query = q.gte(field, periodoStart);
+      if (periodoEnd) query = query.lte(field, periodoEnd);
+      return query;
+    };
+
+    // Ejecutar queries en paralelo (POS + Web)
     const [
       ventasHoyRes,
       ventasPeriodoRes,
+      webVentasHoyRes,
+      webVentasPeriodoRes,
       facturasRes,
       reservasRes,
       productosRes,
       pagosPeriodoRes,
     ] = await Promise.all([
-      // Ventas de hoy
+      // Ventas POS de hoy
       supabase
         .from('sales')
         .select('total')
@@ -115,20 +132,42 @@ export const reportesService = {
         .gte('sale_date', today)
         .neq('status', 'cancelled'),
 
-      // Ventas del período
+      // Ventas POS del período
+      applyRange(
+        supabase
+          .from('sales')
+          .select('total')
+          .eq('organization_id', organizationId)
+          .neq('status', 'cancelled'),
+        'sale_date'
+      ),
+
+      // Ventas Web de hoy
       supabase
-        .from('sales')
+        .from('web_orders')
         .select('total')
         .eq('organization_id', organizationId)
-        .gte('sale_date', periodoStart)
+        .gte('created_at', today)
         .neq('status', 'cancelled'),
 
+      // Ventas Web del período
+      applyRange(
+        supabase
+          .from('web_orders')
+          .select('total, payment_status')
+          .eq('organization_id', organizationId)
+          .neq('status', 'cancelled'),
+        'created_at'
+      ),
+
       // Total facturas del período
-      supabase
-        .from('invoice_sales')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .gte('issue_date', periodoStart),
+      applyRange(
+        supabase
+          .from('invoice_sales')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organizationId),
+        'issue_date'
+      ),
 
       // Reservas activas
       supabase
@@ -145,40 +184,54 @@ export const reportesService = {
         .eq('status', 'active'),
 
       // Pagos recibidos del período
-      supabase
-        .from('payments')
-        .select('amount')
-        .eq('organization_id', organizationId)
-        .eq('status', 'completed')
-        .gte('created_at', periodoStart),
+      applyRange(
+        supabase
+          .from('payments')
+          .select('amount')
+          .eq('organization_id', organizationId)
+          .eq('status', 'completed'),
+        'created_at'
+      ),
     ]);
 
-    const ventasHoyTotal = (ventasHoyRes.data || []).reduce(
-      (sum, s) => sum + (Number(s.total) || 0),
-      0
+    // Sumar POS + Web
+    const ventasHoyPOS = (ventasHoyRes.data || []).reduce(
+      (sum, s) => sum + (Number(s.total) || 0), 0
     );
-    const ventasPeriodoArr = ventasPeriodoRes.data || [];
-    const ventasPeriodoTotal = ventasPeriodoArr.reduce(
-      (sum, s) => sum + (Number(s.total) || 0),
-      0
+    const ventasHoyWeb = (webVentasHoyRes.data || []).reduce(
+      (sum, s) => sum + (Number(s.total) || 0), 0
     );
-    const ticketPromedio =
-      ventasPeriodoArr.length > 0 ? ventasPeriodoTotal / ventasPeriodoArr.length : 0;
+    const ventasHoyTotal = ventasHoyPOS + ventasHoyWeb;
+
+    const ventasPeriodoPOS = ventasPeriodoRes.data || [];
+    const ventasPeriodoWeb = webVentasPeriodoRes.data || [];
+    const ventasPeriodoTotal =
+      ventasPeriodoPOS.reduce((sum: number, s: any) => sum + (Number(s.total) || 0), 0) +
+      ventasPeriodoWeb.reduce((sum: number, s: any) => sum + (Number(s.total) || 0), 0);
+    const totalTransacciones = ventasPeriodoPOS.length + ventasPeriodoWeb.length;
+    const ticketPromedio = totalTransacciones > 0 ? ventasPeriodoTotal / totalTransacciones : 0;
 
     const pagosPeriodoTotal = (pagosPeriodoRes.data || []).reduce(
-      (sum, p) => sum + (Number(p.amount) || 0),
-      0
+      (sum: number, p: any) => sum + (Number(p.amount) || 0), 0
     );
+    // Pagos web confirmados (payment_status = 'paid' o status = 'delivered')
+    const webPagados = (webVentasPeriodoRes.data || []).filter(
+      (wo: any) => wo.payment_status === 'paid' || wo.status === 'delivered'
+    );
+    const webPagosTotal = webPagados.reduce(
+      (sum: number, s: any) => sum + (Number(s.total) || 0), 0
+    );
+    const totalPagosRecibidos = pagosPeriodoTotal + webPagosTotal;
 
     return {
       ventasHoy: ventasHoyTotal,
       ventasMes: ventasPeriodoTotal,
-      ingresosNetosMes: pagosPeriodoTotal,
+      ingresosNetosMes: ventasPeriodoTotal,
       ticketPromedio,
       totalFacturas: facturasRes.count ?? 0,
       reservasActivas: reservasRes.count ?? 0,
       productosActivos: productosRes.count ?? 0,
-      pagosRecibidosMes: pagosPeriodoTotal,
+      pagosRecibidosMes: totalPagosRecibidos,
     };
   },
 
@@ -187,34 +240,47 @@ export const reportesService = {
    */
   async getVentasDiarias(
     organizationId: number,
-    dias: number = 30
+    dias: number = 30,
+    dateFrom?: string
   ): Promise<VentaDiaria[]> {
-    const desde = daysAgo(dias);
+    const desde = dateFrom ? toLocalISO(dateFrom) : daysAgo(dias);
 
-    const { data, error } = await supabase
-      .from('sales')
-      .select('sale_date, total')
-      .eq('organization_id', organizationId)
-      .gte('sale_date', desde)
-      .neq('status', 'cancelled')
-      .order('sale_date', { ascending: true });
+    const [posRes, webRes] = await Promise.all([
+      supabase
+        .from('sales')
+        .select('sale_date, total')
+        .eq('organization_id', organizationId)
+        .gte('sale_date', desde)
+        .neq('status', 'cancelled')
+        .order('sale_date', { ascending: true }),
+      supabase
+        .from('web_orders')
+        .select('created_at, total')
+        .eq('organization_id', organizationId)
+        .gte('created_at', desde)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: true }),
+    ]);
 
-    if (error || !data) return [];
-
-    // Agrupar por fecha
+    // Agrupar por fecha local (no UTC)
+    const toLocalDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const grouped: Record<string, { total: number; cantidad: number }> = {};
-    for (const sale of data) {
-      const fecha = new Date(sale.sale_date).toISOString().split('T')[0];
+    for (const sale of posRes.data || []) {
+      const fecha = toLocalDateStr(new Date(sale.sale_date));
       if (!grouped[fecha]) grouped[fecha] = { total: 0, cantidad: 0 };
       grouped[fecha].total += Number(sale.total) || 0;
       grouped[fecha].cantidad += 1;
     }
+    for (const order of webRes.data || []) {
+      const fecha = toLocalDateStr(new Date(order.created_at));
+      if (!grouped[fecha]) grouped[fecha] = { total: 0, cantidad: 0 };
+      grouped[fecha].total += Number(order.total) || 0;
+      grouped[fecha].cantidad += 1;
+    }
 
-    return Object.entries(grouped).map(([fecha, v]) => ({
-      fecha,
-      total: v.total,
-      cantidad: v.cantidad,
-    }));
+    return Object.entries(grouped)
+      .map(([fecha, v]) => ({ fecha, total: v.total, cantidad: v.cantidad }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
   },
 
   /**
@@ -222,24 +288,37 @@ export const reportesService = {
    */
   async getPagosPorMetodo(
     organizationId: number,
-    dias: number = 30
+    dias: number = 30,
+    dateFrom?: string
   ): Promise<PagoMetodo[]> {
-    const desde = daysAgo(dias);
+    const desde = dateFrom ? toLocalISO(dateFrom) : daysAgo(dias);
 
-    const { data, error } = await supabase
-      .from('payments')
-      .select('method, amount')
-      .eq('organization_id', organizationId)
-      .eq('status', 'completed')
-      .gte('created_at', desde);
-
-    if (error || !data) return [];
+    const [pagosRes, webRes] = await Promise.all([
+      supabase
+        .from('payments')
+        .select('method, amount')
+        .eq('organization_id', organizationId)
+        .eq('status', 'completed')
+        .gte('created_at', desde),
+      supabase
+        .from('web_orders')
+        .select('payment_method, total')
+        .eq('organization_id', organizationId)
+        .neq('status', 'cancelled')
+        .gte('created_at', desde),
+    ]);
 
     const grouped: Record<string, { total: number; count: number }> = {};
-    for (const p of data) {
+    for (const p of pagosRes.data || []) {
       const method = p.method || 'Otro';
       if (!grouped[method]) grouped[method] = { total: 0, count: 0 };
       grouped[method].total += Number(p.amount) || 0;
+      grouped[method].count += 1;
+    }
+    for (const wo of webRes.data || []) {
+      const method = wo.payment_method || 'Web';
+      if (!grouped[method]) grouped[method] = { total: 0, count: 0 };
+      grouped[method].total += Number(wo.total) || 0;
       grouped[method].count += 1;
     }
 
@@ -254,10 +333,12 @@ export const reportesService = {
   async getTopProductos(
     organizationId: number,
     limit: number = 5,
-    dias: number = 30
+    dias: number = 30,
+    dateFrom?: string
   ): Promise<TopProducto[]> {
-    const periodoStart = daysAgo(dias);
+    const periodoStart = dateFrom ? toLocalISO(dateFrom) : daysAgo(dias);
 
+    // POS sales
     const { data: salesData } = await supabase
       .from('sales')
       .select('id')
@@ -265,32 +346,55 @@ export const reportesService = {
       .gte('sale_date', periodoStart)
       .neq('status', 'cancelled');
 
-    if (!salesData || salesData.length === 0) return [];
-
-    const saleIds = salesData.map((s) => s.id);
-
-    const { data: items } = await supabase
-      .from('sale_items')
-      .select('product_id, quantity, total, products(name)')
-      .in('sale_id', saleIds);
-
-    if (!items) return [];
-
     const grouped: Record<
       string,
       { name: string; quantity: number; revenue: number }
     > = {};
 
-    for (const item of items) {
-      const pid = item.product_id;
-      if (!pid) continue;
-      if (!grouped[pid]) {
-        const productName =
-          (item.products as any)?.name || 'Producto sin nombre';
-        grouped[pid] = { name: productName, quantity: 0, revenue: 0 };
+    if (salesData && salesData.length > 0) {
+      const saleIds = salesData.map((s) => s.id);
+      const { data: items } = await supabase
+        .from('sale_items')
+        .select('product_id, quantity, total, products(name)')
+        .in('sale_id', saleIds);
+
+      for (const item of items || []) {
+        const pid = item.product_id;
+        if (!pid) continue;
+        if (!grouped[pid]) {
+          const productName =
+            (item.products as any)?.name || 'Producto sin nombre';
+          grouped[pid] = { name: productName, quantity: 0, revenue: 0 };
+        }
+        grouped[pid].quantity += Number(item.quantity) || 0;
+        grouped[pid].revenue += Number(item.total) || 0;
       }
-      grouped[pid].quantity += Number(item.quantity) || 0;
-      grouped[pid].revenue += Number(item.total) || 0;
+    }
+
+    // Web orders
+    const { data: webOrders } = await supabase
+      .from('web_orders')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .gte('created_at', periodoStart)
+      .neq('status', 'cancelled');
+
+    if (webOrders && webOrders.length > 0) {
+      const webIds = webOrders.map((o) => o.id);
+      const { data: webItems } = await supabase
+        .from('web_order_items')
+        .select('product_id, product_name, quantity, total')
+        .in('web_order_id', webIds);
+
+      for (const item of webItems || []) {
+        const pid = String(item.product_id || item.product_name);
+        if (!pid) continue;
+        if (!grouped[pid]) {
+          grouped[pid] = { name: item.product_name || 'Producto Web', quantity: 0, revenue: 0 };
+        }
+        grouped[pid].quantity += Number(item.quantity) || 0;
+        grouped[pid].revenue += Number(item.total) || 0;
+      }
     }
 
     return Object.entries(grouped)
@@ -309,9 +413,10 @@ export const reportesService = {
    */
   async getTopSucursales(
     organizationId: number,
-    dias: number = 30
+    dias: number = 30,
+    dateFrom?: string
   ): Promise<TopSucursal[]> {
-    const periodoStart = daysAgo(dias);
+    const periodoStart = dateFrom ? toLocalISO(dateFrom) : daysAgo(dias);
 
     const { data: salesData } = await supabase
       .from('sales')
@@ -432,7 +537,9 @@ export const reportesService = {
    */
   async getDashboardData(
     organizationId: number,
-    dias: number = 30
+    dias: number = 30,
+    dateFrom?: string,
+    dateTo?: string
   ): Promise<ReportesDashboardData> {
     const [
       kpis,
@@ -443,11 +550,11 @@ export const reportesService = {
       ocupacion,
       actividadReciente,
     ] = await Promise.all([
-      this.getKPIs(organizationId, dias),
-      this.getVentasDiarias(organizationId, dias),
-      this.getPagosPorMetodo(organizationId, dias),
-      this.getTopProductos(organizationId, 5, dias),
-      this.getTopSucursales(organizationId, dias),
+      this.getKPIs(organizationId, dias, dateFrom, dateTo),
+      this.getVentasDiarias(organizationId, dias, dateFrom),
+      this.getPagosPorMetodo(organizationId, dias, dateFrom),
+      this.getTopProductos(organizationId, 5, dias, dateFrom),
+      this.getTopSucursales(organizationId, dias, dateFrom),
       this.getOcupacion(organizationId),
       this.getActividadReciente(organizationId),
     ]);

@@ -31,6 +31,7 @@ export function VentasFilters({ filters, onFiltersChange, onClearFilters }: Vent
     filters.search || 
     (filters.status && filters.status !== 'all') || 
     (filters.payment_status && filters.payment_status !== 'all') ||
+    (filters.source_type && filters.source_type !== 'all') ||
     filters.date_from ||
     filters.date_to;
 
@@ -49,6 +50,21 @@ export function VentasFilters({ filters, onFiltersChange, onClearFilters }: Vent
             />
           </div>
         </form>
+
+        {/* Origen */}
+        <Select
+          value={filters.source_type || 'all'}
+          onValueChange={(value) => onFiltersChange({ ...filters, source_type: value as SalesFilter['source_type'] })}
+        >
+          <SelectTrigger className="w-full md:w-[150px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+            <SelectValue placeholder="Origen" />
+          </SelectTrigger>
+          <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+            <SelectItem value="all" className="dark:text-white dark:hover:bg-gray-700">Todos</SelectItem>
+            <SelectItem value="pos" className="dark:text-white dark:hover:bg-gray-700">POS</SelectItem>
+            <SelectItem value="web" className="dark:text-white dark:hover:bg-gray-700">Página Web</SelectItem>
+          </SelectContent>
+        </Select>
 
         {/* Estado */}
         <Select

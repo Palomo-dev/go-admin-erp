@@ -63,6 +63,7 @@ export interface CartItem {
   discount_amount?: number;
   tax_amount?: number;
   tax_rate?: number;
+  tax_excluded?: boolean;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -102,6 +103,8 @@ export interface Sale {
   status: 'pending' | 'completed' | 'cancelled';
   payment_status: 'pending' | 'paid' | 'partial' | 'refunded';
   sale_date: string;
+  invoice_number?: string;
+  payment_method?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -211,6 +214,7 @@ export interface OrganizationTax {
   description?: string;
   is_default: boolean;
   is_active: boolean;
+  tax_included?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -17,7 +17,9 @@ import {
   Grid3X3,
   ChevronUp,
   ChevronDown,
-  Scan
+  Scan,
+  Tag,
+  Percent
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -195,158 +197,148 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       {/* Header con filtros mejorado - RESPONSIVE */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-950 dark:to-gray-900 shrink-0">
         <CardHeader className="p-3 sm:p-4 pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg shrink-0">
-                <Package className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <CardTitle className="text-base sm:text-lg md:text-xl font-bold text-blue-600 dark:text-blue-400 truncate">
-                  Catálogo
-                </CardTitle>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                  {productsData.total} productos
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Control de límites - Oculto en móvil pequeño */}
-              <div className="hidden sm:flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400 hidden md:inline">Mostrar:</span>
-                  <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white dark:bg-gray-800 text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-600 min-w-[28px] sm:min-w-[32px] text-center">
-                    {getCurrentLimit()}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-3.5 sm:h-4 w-4 sm:w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                    title="Aumentar productos por página"
-                    onClick={() => {
-                      if (gridSize === 'small') {
-                        setSmallGridLimitIndex((prev) => 
-                          prev < smallGridLimits.length - 1 ? prev + 1 : 0
-                        );
-                      } else {
-                        setLargeGridLimitIndex((prev) => 
-                          prev < largeGridLimits.length - 1 ? prev + 1 : 0
-                        );
-                      }
-                    }}
-                  >
-                    <ChevronUp className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-blue-600 dark:text-blue-400" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-3.5 sm:h-4 w-4 sm:w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                    title="Disminuir productos por página"
-                    onClick={() => {
-                      if (gridSize === 'small') {
-                        setSmallGridLimitIndex((prev) => 
-                          prev > 0 ? prev - 1 : smallGridLimits.length - 1
-                        );
-                      } else {
-                        setLargeGridLimitIndex((prev) => 
-                          prev > 0 ? prev - 1 : largeGridLimits.length - 1
-                        );
-                      }
-                    }}
-                  >
-                    <ChevronDown className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-blue-600 dark:text-blue-400" />
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Botones de vista - Responsive */}
+          {/* Buscador prominente - siempre primero en móvil */}
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 dark:text-blue-400 h-4 w-4 sm:h-5 sm:w-5" />
+            <Input
+              type="text"
+              placeholder="Buscar productos, SKU o código de barras..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 sm:pl-11 pr-20 sm:pr-24 h-11 sm:h-10 bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-sm sm:text-sm ring-1 ring-blue-100 dark:ring-blue-900/50 focus:ring-2 focus:ring-blue-400 rounded-xl"
+            />
+            <div className="absolute right-1.5 top-1/2 transform -translate-y-1/2 flex gap-0.5 sm:gap-1">
               <Button
-                variant={gridSize === 'small' ? 'default' : 'outline'}
+                variant="ghost"
                 size="sm"
-                onClick={() => setGridSize('small')}
-                className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white border-gray-300 text-gray-600 hover:text-gray-900"
-                title="Vista compacta"
+                onClick={() => setShowScanner(true)}
+                className="h-8 w-8 sm:h-8 sm:w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                title="Escanear código de barras"
               >
-                <Grid3X3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <Scan className="h-4 w-4 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
               </Button>
-              <Button
-                variant={gridSize === 'large' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setGridSize('large')}
-                className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white border-gray-300 text-gray-600 hover:text-gray-900"
-                title="Vista amplia"
-              >
-                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </Button>
-            </div>
-          </div>
-          
-          {/* Filtros - Responsive */}
-          <div className="flex flex-col gap-2 sm:gap-3 mt-3 sm:mt-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <Input
-                type="text"
-                placeholder="Buscar productos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 sm:pl-10 pr-16 sm:pr-20 h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-500 text-sm"
-              />
-              <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-0.5 sm:gap-1">
+              {searchTerm && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowScanner(true)}
-                  className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                  title="Escanear código de barras"
+                  onClick={() => setSearchTerm('')}
+                  className="h-8 w-8 sm:h-8 sm:w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900/50"
+                  title="Limpiar búsqueda"
                 >
-                  <Scan className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
-                </Button>
-                {searchTerm && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSearchTerm('')}
-                    className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900/50"
-                    title="Limpiar búsqueda"
-                  >
-                    <X className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-600 dark:text-red-400" />
-                  </Button>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex gap-2 sm:gap-3">
-              <Select 
-                value={selectedCategory?.toString() || 'all'} 
-                onValueChange={(value) => setSelectedCategory(value === 'all' ? null : parseInt(value))}
-              >
-                <SelectTrigger className="flex-1 sm:flex-none sm:w-[180px] h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 text-sm">
-                  <SelectValue placeholder="Categorías" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
-                  <SelectItem value="all">Todas las categorías</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id.toString()} className="dark:text-gray-200 text-gray-800">
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {hasFilters && (
-                <Button 
-                  variant="outline" 
-                  onClick={clearFilters} 
-                  size="sm" 
-                  className="shrink-0 h-9 sm:h-10 px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white border-gray-300 text-gray-700 hover:bg-gray-100"
-                >
-                  <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Limpiar</span>
+                  <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                 </Button>
               )}
             </div>
+          </div>
+
+          {/* Categorías + Vista + Controles - segunda fila */}
+          <div className="flex items-center gap-2 mt-2 sm:mt-3">
+            <Select 
+              value={selectedCategory?.toString() || 'all'} 
+              onValueChange={(value) => setSelectedCategory(value === 'all' ? null : parseInt(value))}
+            >
+              <SelectTrigger className="flex-1 sm:w-[180px] sm:flex-none h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 text-sm shrink-0">
+                <SelectValue placeholder="Categorías" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
+                <SelectItem value="all">Todas las categorías</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id.toString()} className="dark:text-gray-200 text-gray-800">
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {hasFilters && (
+              <Button 
+                variant="outline" 
+                onClick={clearFilters} 
+                size="sm" 
+                className="shrink-0 h-9 sm:h-10 px-2 sm:px-3 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white border-gray-300 text-gray-700 hover:bg-gray-100"
+              >
+                <X className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Limpiar</span>
+              </Button>
+            )}
+
+            {/* Separador flexible para empujar vista a la derecha */}
+            <div className="flex-1 hidden sm:block" />
+
+            {/* Control de límites - Oculto en móvil */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-medium text-blue-600 dark:text-blue-400 hidden md:inline">Mostrar:</span>
+                <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white dark:bg-gray-800 text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-600 min-w-[28px] sm:min-w-[32px] text-center">
+                  {getCurrentLimit()}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-3.5 sm:h-4 w-4 sm:w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                  title="Aumentar productos por página"
+                  onClick={() => {
+                    if (gridSize === 'small') {
+                      setSmallGridLimitIndex((prev) => 
+                        prev < smallGridLimits.length - 1 ? prev + 1 : 0
+                      );
+                    } else {
+                      setLargeGridLimitIndex((prev) => 
+                        prev < largeGridLimits.length - 1 ? prev + 1 : 0
+                      );
+                    }
+                  }}
+                >
+                  <ChevronUp className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-blue-600 dark:text-blue-400" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-3.5 sm:h-4 w-4 sm:w-5 p-0 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                  title="Disminuir productos por página"
+                  onClick={() => {
+                    if (gridSize === 'small') {
+                      setSmallGridLimitIndex((prev) => 
+                        prev > 0 ? prev - 1 : smallGridLimits.length - 1
+                      );
+                    } else {
+                      setLargeGridLimitIndex((prev) => 
+                        prev > 0 ? prev - 1 : largeGridLimits.length - 1
+                      );
+                    }
+                  }}
+                >
+                  <ChevronDown className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-blue-600 dark:text-blue-400" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Botones de vista */}
+            <Button
+              variant={gridSize === 'small' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setGridSize('small')}
+              className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white border-gray-300 text-gray-600 hover:text-gray-900"
+              title="Vista compacta"
+            >
+              <Grid3X3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </Button>
+            <Button
+              variant={gridSize === 'large' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setGridSize('large')}
+              className="h-8 w-8 sm:h-9 sm:w-9 p-0 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white border-gray-300 text-gray-600 hover:text-gray-900"
+              title="Vista amplia"
+            >
+              <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </Button>
+
+            {/* Contador de productos - solo desktop */}
+            <span className="hidden md:inline text-xs text-gray-500 dark:text-gray-400 ml-1">
+              {productsData.total} prod.
+            </span>
           </div>
         </CardHeader>
       </Card>
@@ -452,59 +444,72 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       {/* Badge de categoría */}
                       {product.category && (
                         <Badge 
-                          className="absolute top-2 left-2 bg-white/90 text-gray-700 hover:bg-white text-xs"
+                          className="absolute top-2 left-2 bg-white/90 text-gray-700 hover:bg-white text-[0.6rem] sm:text-xs z-10"
                           variant="secondary"
                         >
                           {product.category.name}
                         </Badge>
                       )}
+
+                      {/* Badge de descuento % sobre la imagen (esquina derecha) */}
+                      {product.compare_price && Number(product.compare_price) > Number(product.price) && (
+                        <Badge className="absolute top-2 right-2 bg-red-500 text-white hover:bg-red-600 text-[0.65rem] sm:text-xs px-1.5 py-0.5 rounded-full z-10">
+                          -{Math.round((1 - Number(product.price) / Number(product.compare_price)) * 100)}%
+                        </Badge>
+                      )}
                       
-                      {/* Badge de variantes */}
+                      {/* Badge de variantes (debajo del descuento si existe) */}
                       {product.has_variants && product.variant_count > 0 && (
                         <Badge 
-                          className="absolute top-2 right-2 bg-purple-600 text-white hover:bg-purple-700 text-xs"
+                          className={cn(
+                            "absolute right-2 bg-purple-600 text-white hover:bg-purple-700 text-[0.6rem] sm:text-xs z-10",
+                            product.compare_price && Number(product.compare_price) > Number(product.price) ? "top-8 sm:top-9" : "top-2"
+                          )}
                         >
-                          {product.variant_count} variantes
+                          {product.variant_count} var.
                         </Badge>
                       )}
                     </div>
                     
                     {/* Información del producto - RESPONSIVE */}
-                    <div className="p-2 sm:p-2.5 md:p-3 space-y-1.5 sm:space-y-2">
+                    <div className="p-2 sm:p-2.5 md:p-3 space-y-1 sm:space-y-1.5">
                       <h3 className={cn(
-                        "font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight",
+                        "font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 leading-tight",
                         gridSize === 'large' ? "text-xs sm:text-sm" : "text-[0.7rem] sm:text-xs"
                       )}>
                         {product.name}
                       </h3>
                       
                       {gridSize === 'large' && product.description && (
-                        <p className="text-[0.65rem] sm:text-xs text-gray-600 dark:text-gray-400 line-clamp-2 leading-tight hidden sm:block">
+                        <p className="text-[0.6rem] sm:text-[0.65rem] text-gray-500 dark:text-gray-400 line-clamp-1 leading-tight">
                           {product.description}
                         </p>
                       )}
-                      
-                      {/* Precio de venta - RESPONSIVE */}
+
+                      {/* Precios: compare_price tachado al lado del precio actual */}
                       {product.price && (
-                        <div className="flex items-center justify-center my-1 sm:my-1.5">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          {product.compare_price && Number(product.compare_price) > Number(product.price) && (
+                            <span className={cn(
+                              "line-through text-gray-400 dark:text-gray-500",
+                              gridSize === 'large' ? "text-[0.65rem] sm:text-xs" : "text-[0.6rem]"
+                            )}>
+                              {formatCurrency(Number(product.compare_price))}
+                            </span>
+                          )}
                           <span className={cn(
-                            "font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded",
+                            "font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-1.5 sm:px-2 py-0.5 rounded",
                             gridSize === 'large' ? "text-xs sm:text-sm" : "text-[0.7rem] sm:text-xs"
                           )}>
                             {formatCurrency(Number(product.price))}
                           </span>
                         </div>
                       )}
-                      
-                      <div className="flex items-center justify-between text-[0.65rem] sm:text-xs text-gray-500 dark:text-gray-400 gap-1">
-                        <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 sm:px-1.5 py-0.5 rounded truncate">
+
+                      <div className="flex items-center justify-between text-[0.6rem] sm:text-[0.65rem] text-gray-500 dark:text-gray-400 gap-1">
+                        <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded truncate">
                           {product.sku}
                         </span>
-                        {product.barcode && gridSize === 'large' && (
-                          <span className="truncate ml-1 hidden md:inline">
-                            {product.barcode}
-                          </span>
-                        )}
                       </div>
                       
                       <Button 

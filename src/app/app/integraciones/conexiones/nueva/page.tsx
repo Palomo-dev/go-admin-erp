@@ -197,6 +197,35 @@ export default function NuevaConexionPage() {
           const connector = connectorsData.find((c) => c.id === connection.connector_id);
           const provider = connector ? providersData.find((p) => p.id === connector.provider_id) : null;
 
+          // Cargar credenciales existentes de la conexión
+          let loadedSecretRef = '{}';
+          let loadedPurpose: 'primary' | 'backup' | 'rotation' | 'legacy' = 'primary';
+          let loadedExpiresAt: string | undefined;
+
+          const existingCreds = await integrationsService.getCredentials(connection.id);
+          if (existingCreds.length > 0) {
+            // Proveedores con múltiples credenciales separadas (purpose como clave)
+            const multiKeyProviders = ['wompi', 'mercadopago', 'payu', 'stripe', 'paypal', 'sendgrid', 'whatsapp', 'booking', 'expedia'];
+            const providerCode = provider?.code || '';
+
+            if (multiKeyProviders.includes(providerCode)) {
+              // Reconstruir el JSON a partir de registros individuales
+              // Para estos proveedores, 'purpose' actúa como el nombre del campo
+              const secretObj: Record<string, string> = {};
+              for (const cred of existingCreds) {
+                // El purpose contiene el nombre del campo (public_key, private_key, etc.)
+                secretObj[cred.purpose] = cred.secret_ref;
+              }
+              loadedSecretRef = JSON.stringify(secretObj);
+            } else {
+              // Proveedor genérico: un solo registro con JSON en secret_ref
+              const primaryCred = existingCreds.find(c => c.purpose === 'primary') || existingCreds[0];
+              loadedSecretRef = primaryCred.secret_ref || '{}';
+              loadedPurpose = primaryCred.purpose;
+              loadedExpiresAt = primaryCred.expires_at;
+            }
+          }
+
           // Cargar datos en el wizard
           setWizardData({
             connectionId: mode === 'edit' ? connection.id : undefined,
@@ -213,8 +242,9 @@ export default function NuevaConexionPage() {
             },
             credentials: {
               credential_type: provider?.auth_type || 'api_key',
-              secret_ref: '{}',
-              purpose: 'primary',
+              secret_ref: loadedSecretRef,
+              purpose: loadedPurpose,
+              expires_at: loadedExpiresAt,
             },
           });
         }

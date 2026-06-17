@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Package, PlusCircle, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
+import { Package, PlusCircle, FileSpreadsheet, Download, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +17,7 @@ interface ProductosPageHeaderProps {
   onImportarClick?: () => void; 
   onExportarClick?: () => void;
   onRefreshClick?: () => void;
+  onScrapingClick?: () => void;
   isRefreshing?: boolean;
   totalProducts?: number;
 }
@@ -29,6 +30,7 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
   onImportarClick = () => {},
   onExportarClick = () => {},
   onRefreshClick,
+  onScrapingClick,
   isRefreshing = false,
   totalProducts
 }) => {
@@ -68,6 +70,17 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
           </Button>
         )}
 
+        {/* Botón Importar con IA */}
+        {onScrapingClick && (
+          <Button 
+            onClick={onScrapingClick}
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Importar con IA
+          </Button>
+        )}
+
         {/* Botón Nuevo Producto */}
         <Link href="/app/inventario/productos/nuevo" prefetch={true}>
           <Button 
@@ -97,6 +110,15 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
               <FileSpreadsheet className="mr-2 h-4 w-4" />
               <span>Importar desde CSV</span>
             </DropdownMenuItem>
+            {onScrapingClick && (
+              <DropdownMenuItem 
+                onClick={onScrapingClick}
+                className="cursor-pointer"
+              >
+                <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
+                <span>Importar desde web (IA)</span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={onExportarClick}

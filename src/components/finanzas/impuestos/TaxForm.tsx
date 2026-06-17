@@ -36,6 +36,7 @@ interface OrganizationTax {
   description: string | null;
   is_default: boolean;
   is_active: boolean;
+  tax_included?: boolean;
 }
 
 interface TaxFormProps {
@@ -59,6 +60,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
   const [description, setDescription] = useState('');
   const [isDefault, setIsDefault] = useState(false);
   const [isActive, setIsActive] = useState(true);
+  const [taxIncluded, setTaxIncluded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<TaxTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
@@ -113,6 +115,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
       setDescription(tax.description || '');
       setIsDefault(tax.is_default);
       setIsActive(tax.is_active);
+      setTaxIncluded(tax.tax_included || false);
       setSelectedTemplate(tax.template_id);
       setUseTemplate(!!tax.template_id);
     } else {
@@ -122,6 +125,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
       setDescription('');
       setIsDefault(false);
       setIsActive(true);
+      setTaxIncluded(false);
       setSelectedTemplate(null);
       setUseTemplate(false);
     }
@@ -182,7 +186,8 @@ const TaxForm: React.FC<TaxFormProps> = ({
         p_is_default: isDefault,
         p_is_active: isActive,
         p_template_id: useTemplate ? selectedTemplate : null,
-        p_id: editMode && tax ? tax.id : null
+        p_id: editMode && tax ? tax.id : null,
+        p_tax_included: taxIncluded
       });
 
       if (error) {
@@ -380,6 +385,23 @@ const TaxForm: React.FC<TaxFormProps> = ({
               Impuesto predeterminado
             </Label>
           </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch 
+              id="taxIncluded" 
+              checked={taxIncluded} 
+              onCheckedChange={setTaxIncluded}
+              className="data-[state=checked]:bg-blue-600 dark:data-[state=checked]:bg-blue-700"
+            />
+            <Label htmlFor="taxIncluded" className="text-sm dark:text-gray-300 cursor-pointer">
+              Impuesto incluido en el precio
+            </Label>
+          </div>
+          {taxIncluded && (
+            <p className="text-xs text-blue-600 dark:text-blue-400 -mt-2 ml-10">
+              El precio del producto ya incluye este impuesto. No se sumará al total.
+            </p>
+          )}
         </div>
 
         <DialogFooter className="px-4 sm:px-6 flex-col sm:flex-row gap-2">

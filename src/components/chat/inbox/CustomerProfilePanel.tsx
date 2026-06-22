@@ -469,7 +469,7 @@ export default function CustomerProfilePanel({
       <div className="pt-4">
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
           onClick={() => window.open(`/app/crm/clientes/${linkedCustomer?.id || customer.id}`, '_blank')}
         >
           <ExternalLink className="h-4 w-4 mr-2" />

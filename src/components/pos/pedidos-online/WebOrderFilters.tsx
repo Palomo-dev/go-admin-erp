@@ -121,11 +121,11 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
             className="pl-9"
           />
         </div>
-        <Button onClick={handleSearchSubmit}>
+        <Button onClick={handleSearchSubmit} className="dark:text-white">
           Buscar
         </Button>
         {hasActiveFilters && (
-          <Button variant="outline" onClick={clearFilters} className="dark:border-gray-600">
+          <Button variant="outline" onClick={clearFilters} className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
             <X className="h-4 w-4 mr-1 dark:text-gray-300" />
             Limpiar
           </Button>
@@ -142,7 +142,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
               variant={isActive ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleStatusToggle(option.value)}
-              className={`gap-1 flex-shrink-0 whitespace-nowrap ${!isActive ? 'dark:border-gray-600' : ''}`}
+              className={`gap-1 flex-shrink-0 whitespace-nowrap ${isActive ? 'dark:text-white' : 'dark:border-gray-600'}`}
             >
               {option.icon}
               {option.label}
@@ -157,7 +157,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
           variant={activeFilters.is_scheduled ? 'default' : 'outline'}
           size="sm"
           onClick={handleScheduledToggle}
-          className={`gap-1 flex-shrink-0 whitespace-nowrap ${!activeFilters.is_scheduled ? 'dark:border-gray-600' : ''}`}
+          className={`gap-1 flex-shrink-0 whitespace-nowrap ${activeFilters.is_scheduled ? 'dark:text-white' : 'dark:border-gray-600'}`}
         >
           <CalendarClock className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
           Programados
@@ -174,7 +174,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
               variant={isActive ? 'secondary' : 'ghost'}
               size="sm"
               onClick={() => handleDeliveryTypeChange(option.value)}
-              className="gap-1 flex-shrink-0 whitespace-nowrap"
+              className={`gap-1 flex-shrink-0 whitespace-nowrap ${isActive ? 'dark:bg-gray-700 dark:text-gray-200' : 'dark:text-gray-300'}`}
             >
               {option.icon}
               {option.label}

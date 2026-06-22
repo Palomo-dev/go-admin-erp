@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   Table,
   TableBody,
@@ -47,6 +48,8 @@ export function EtiquetasPage() {
   const [etiquetas, setEtiquetas] = useState<ProductTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState<ProductTag | null>(null);
   const [saving, setSaving] = useState(false);
@@ -160,6 +163,22 @@ export function EtiquetasPage() {
     e.name.toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  const totalPages = Math.ceil(etiquetasFiltradas.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const etiquetasPaginadas = useMemo(
+    () => etiquetasFiltradas.slice(startIndex, startIndex + pageSize),
+    [etiquetasFiltradas, startIndex, pageSize]
+  );
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [busqueda]);
+
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
@@ -242,7 +261,7 @@ export function EtiquetasPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {etiquetasFiltradas.map(etiqueta => (
+                {etiquetasPaginadas.map(etiqueta => (
                   <TableRow key={etiqueta.id} className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                     <TableCell>
                       <div 
@@ -297,6 +316,16 @@ export function EtiquetasPage() {
               </TableBody>
             </Table>
           )}
+
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={etiquetasFiltradas.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
         </CardContent>
       </Card>
 

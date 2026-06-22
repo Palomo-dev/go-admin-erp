@@ -330,7 +330,7 @@ const AuditoriaTab: React.FC<AuditoriaTabProps> = ({ producto }) => {
     <div className="space-y-6">
       {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between gap-4">
-        <h3 className="text-lg font-medium">
+        <h3 className="text-lg font-medium dark:text-white">
           Historial de Cambios ({logs.length})
         </h3>
       </div>
@@ -341,29 +341,29 @@ const AuditoriaTab: React.FC<AuditoriaTabProps> = ({ producto }) => {
           <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
         </div>
       ) : logs.length === 0 ? (
-        <div className={`p-8 text-center rounded-md border ${theme === 'dark' ? 'border-gray-800 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
+        <div className="p-8 text-center rounded-md border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
           <History className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium">Sin historial</h3>
+          <h3 className="mt-2 text-lg font-medium dark:text-white">Sin historial</h3>
           <p className="mt-1 text-gray-500 dark:text-gray-400">
             No se encontraron registros de auditoría para este producto.
             Los cambios futuros se registrarán aquí.
           </p>
         </div>
       ) : (
-        <div className={`border rounded-md ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+        <div className="border rounded-md border-gray-200 dark:border-gray-800">
           <Table>
             <TableHeader>
-              <TableRow className={theme === 'dark' ? 'border-gray-800 hover:bg-gray-900' : ''}>
-                <TableHead className="w-[180px]">Fecha</TableHead>
-                <TableHead>Usuario</TableHead>
-                <TableHead className="w-[100px]">Acción</TableHead>
-                <TableHead>Cambios</TableHead>
+              <TableRow className="dark:border-gray-800 dark:hover:bg-gray-900">
+                <TableHead className="w-[180px] dark:text-gray-300">Fecha</TableHead>
+                <TableHead className="dark:text-gray-300">Usuario</TableHead>
+                <TableHead className="w-[100px] dark:text-gray-300">Acción</TableHead>
+                <TableHead className="dark:text-gray-300">Cambios</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logs.map((log) => (
-                <TableRow key={log.id} className={theme === 'dark' ? 'border-gray-800 hover:bg-gray-900' : ''}>
-                  <TableCell className="font-medium">
+                <TableRow key={log.id} className="dark:border-gray-800 dark:hover:bg-gray-900">
+                  <TableCell className="font-medium dark:text-gray-200">
                     {formatDate(log.created_at)}
                   </TableCell>
                   <TableCell>
@@ -372,19 +372,19 @@ const AuditoriaTab: React.FC<AuditoriaTabProps> = ({ producto }) => {
                         {log.user_avatar ? (
                           <AvatarImage src={log.user_avatar} alt={log.user_name} />
                         ) : (
-                          <AvatarFallback className={theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}>
+                          <AvatarFallback className="bg-gray-200 dark:bg-gray-800">
                             {log.user_name?.charAt(0) || 'U'}
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      <span>{log.user_name}</span>
+                      <span className="dark:text-gray-200">{log.user_name}</span>
                     </div>
                   </TableCell>
                   <TableCell>
                     {getActionBadge(log.action_type)}
                   </TableCell>
                   <TableCell>
-                    <div className="max-w-md truncate" title={formatChanges(log.changes)}>
+                    <div className="max-w-md truncate dark:text-gray-200" title={formatChanges(log.changes)}>
                       {formatChanges(log.changes)}
                     </div>
                   </TableCell>
@@ -396,12 +396,8 @@ const AuditoriaTab: React.FC<AuditoriaTabProps> = ({ producto }) => {
       )}
       
       {/* Información sobre auditoría */}
-      <div className={`rounded-md border p-4 ${
-        theme === 'dark' 
-          ? 'bg-gray-900 border-gray-700 text-gray-300' 
-          : 'bg-gray-50 border-gray-200'
-      }`}>
-        <h4 className="text-sm font-medium mb-2">
+      <div className="rounded-md border p-4 bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-300">
+        <h4 className="text-sm font-medium mb-2 dark:text-gray-200">
           <FileText className="h-4 w-4 inline mr-2" />
           Acerca de la Auditoría
         </h4>

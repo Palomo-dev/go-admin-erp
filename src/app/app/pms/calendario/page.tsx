@@ -356,7 +356,7 @@ export default function CalendarioPage() {
   }, [chartData.reservations, chartData.blocks, toast]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <TapeChartHeader
         startDate={startDate}
         daysToShow={daysToShow}

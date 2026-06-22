@@ -152,13 +152,13 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
   };
 
   return (
-    <div className={`flex flex-col gap-6 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+    <div className="flex flex-col gap-6 text-gray-900 dark:text-gray-100">
       {/* Navegación de regreso */}
       <div className="flex">
         <Button
           variant="ghost"
           size="sm"
-          className={`flex items-center gap-1 ${theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
+          className="flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-800"
           onClick={() => router.push('/app/inventario/productos')}
         >
           <ArrowLeft className="h-4 w-4" /> Volver al catálogo
@@ -215,10 +215,10 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
               <Trash2 className="h-4 w-4 mr-2" /> Eliminar
             </Button>
           </AlertDialogTrigger>
-          <AlertDialogContent className={theme === 'dark' ? 'bg-gray-900 border-gray-800 text-gray-100' : 'bg-white'}>
+          <AlertDialogContent className="bg-white dark:bg-gray-900 dark:border-gray-800 dark:text-gray-100">
             <AlertDialogHeader>
               <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-              <AlertDialogDescription className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+              <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
                 Esta acción marcará el producto como eliminado y dejará de aparecer en los listados regulares.
               </AlertDialogDescription>
               <div className="mt-4 flex items-center p-3 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
@@ -227,7 +227,7 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
               </div>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className={theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : ''}>
+              <AlertDialogCancel className="dark:bg-gray-800 dark:hover:bg-gray-700">
                 Cancelar
               </AlertDialogCancel>
               <AlertDialogAction 
@@ -246,16 +246,16 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
         {/* Pestañas de producto */}
         <div className="mt-6">
           <Tabs defaultValue="detalles" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-9">
-              <TabsTrigger value="detalles">Detalles</TabsTrigger>
-              <TabsTrigger value="variantes">Variantes</TabsTrigger>
-              <TabsTrigger value="stock">Stock</TabsTrigger>
-              <TabsTrigger value="imagenes">Imágenes</TabsTrigger>
-              <TabsTrigger value="precios">Precios</TabsTrigger>
-              <TabsTrigger value="proveedores">Proveedores</TabsTrigger>
-              <TabsTrigger value="etiquetas">Etiquetas</TabsTrigger>
-              <TabsTrigger value="notas">Notas</TabsTrigger>
-              <TabsTrigger value="auditoria">Auditoría</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-9 h-auto gap-1.5 md:gap-1 p-1.5 md:p-1 dark:bg-gray-800 dark:border-gray-700">
+              <TabsTrigger value="detalles" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Detalles</TabsTrigger>
+              <TabsTrigger value="variantes" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Variantes</TabsTrigger>
+              <TabsTrigger value="stock" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Stock</TabsTrigger>
+              <TabsTrigger value="imagenes" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Imágenes</TabsTrigger>
+              <TabsTrigger value="precios" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Precios</TabsTrigger>
+              <TabsTrigger value="proveedores" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Proveedores</TabsTrigger>
+              <TabsTrigger value="etiquetas" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Etiquetas</TabsTrigger>
+              <TabsTrigger value="notas" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Notas</TabsTrigger>
+              <TabsTrigger value="auditoria" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Auditoría</TabsTrigger>
             </TabsList>
             
             {/* Contenido de pestañas con Suspense para manejar la carga dinámica */}

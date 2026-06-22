@@ -453,7 +453,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     type="date"
                     value={formData.start_date?.split('T')[0] || ''}
                     onChange={(e) => handleChange('start_date', e.target.value)}
-                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
                   />
                 </div>
                 <div>
@@ -462,7 +462,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     type="date"
                     value={formData.end_date?.split('T')[0] || ''}
                     onChange={(e) => handleChange('end_date', e.target.value || undefined)}
-                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
                   />
                 </div>
               </div>

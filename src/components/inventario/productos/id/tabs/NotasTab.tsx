@@ -402,21 +402,21 @@ const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
   return (
     <div className="space-y-6">
       {/* Editor de nueva nota */}
-      <Card className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+      <Card className="dark:bg-gray-900 dark:border-gray-800">
         <CardHeader className="pb-3">
-          <CardTitle>Nueva Nota</CardTitle>
+          <CardTitle className="dark:text-white">Nueva Nota</CardTitle>
         </CardHeader>
         <CardContent>
           <Textarea
             placeholder="Escribe una nota o comentario sobre este producto..."
             value={newNota}
             onChange={(e) => setNewNota(e.target.value)}
-            className={`min-h-24 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
+            className="min-h-24 dark:bg-gray-800 dark:border-gray-700"
           />
           
           {selectedFiles && selectedFiles.length > 0 && (
-            <div className={`mt-3 p-2 rounded-md ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}`}>
-              <p className="text-sm font-medium mb-2">Archivos seleccionados:</p>
+            <div className="mt-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
+              <p className="text-sm font-medium mb-2 dark:text-gray-200">Archivos seleccionados:</p>
               <ul className="space-y-1">
                 {Array.from(selectedFiles).map((file, index) => (
                   <li key={index} className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
@@ -433,7 +433,7 @@ const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
             <Button 
               variant="outline" 
               size="sm"
-              className={theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : ''}
+              className="dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
             >
               <label htmlFor="file-upload" className="flex items-center cursor-pointer">
                 <Paperclip className="mr-2 h-4 w-4" />
@@ -470,7 +470,7 @@ const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
       
       {/* Lista de notas */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium">
+        <h3 className="text-lg font-medium dark:text-white">
           Historial de Notas ({notas.length})
         </h3>
         
@@ -479,9 +479,9 @@ const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
         ) : notas.length === 0 ? (
-          <div className={`p-8 text-center rounded-md border ${theme === 'dark' ? 'border-gray-800 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
+          <div className="p-8 text-center rounded-md border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-lg font-medium">Sin notas</h3>
+            <h3 className="mt-2 text-lg font-medium dark:text-white">Sin notas</h3>
             <p className="mt-1 text-gray-500 dark:text-gray-400">
               Este producto no tiene notas ni documentos.
               Agregue una nota o adjunte un archivo para comenzar.
@@ -489,7 +489,7 @@ const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
           </div>
         ) : (
           notas.map((nota) => (
-            <Card key={nota.id} className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+            <Card key={nota.id} className="dark:bg-gray-900 dark:border-gray-800">
               <CardHeader className="pb-2 flex flex-row items-start justify-between">
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 relative w-10 h-10 overflow-hidden rounded-full">
@@ -531,15 +531,15 @@ const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
                       <span className="sr-only">Eliminar</span>
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+                  <AlertDialogContent className="dark:bg-gray-900 dark:border-gray-800">
                     <AlertDialogHeader>
                       <AlertDialogTitle>¿Eliminar nota?</AlertDialogTitle>
-                      <AlertDialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+                      <AlertDialogDescription className="dark:text-gray-400">
                         Esta acción eliminará la nota y todos sus archivos adjuntos permanentemente.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel className={theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : ''}>
+                      <AlertDialogCancel className="dark:bg-gray-800 dark:hover:bg-gray-700">
                         Cancelar
                       </AlertDialogCancel>
                       <AlertDialogAction
@@ -554,19 +554,19 @@ const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
               </CardHeader>
               
               <CardContent>
-                <p className="whitespace-pre-wrap">{nota.content}</p>
+                <p className="whitespace-pre-wrap dark:text-gray-200">{nota.content}</p>
                 
                 {/* Archivos adjuntos */}
                 {nota.files && nota.files.length > 0 && (
-                  <div className={`mt-4 p-3 rounded-md ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                    <p className="text-sm font-medium mb-2">Archivos adjuntos:</p>
+                  <div className="mt-4 p-3 rounded-md bg-gray-50 dark:bg-gray-800">
+                    <p className="text-sm font-medium mb-2 dark:text-gray-200">Archivos adjuntos:</p>
                     <ul className="space-y-2">
                       {nota.files.map((file) => (
                         <li 
                           key={file.id} 
                           className="text-sm flex items-center justify-between rounded-md p-2 hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
-                          <span className="flex items-center">
+                          <span className="flex items-center dark:text-gray-200">
                             <FileText className="h-4 w-4 mr-2 text-blue-500" />
                             {file.name} ({formatFileSize(file.size)})
                           </span>

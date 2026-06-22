@@ -21,18 +21,18 @@ export function EspaciosPageHeader({
 }: EspaciosPageHeaderProps) {
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 shadow-sm">
-      <div className="container mx-auto px-6 py-4">
-        <div className="flex items-center justify-between">
+      <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
               Inventario de Espacios
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               Gestiona habitaciones, cabañas y otros espacios
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
@@ -40,7 +40,7 @@ export function EspaciosPageHeader({
               disabled={isLoading}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Actualizar
+              <span className="hidden sm:inline">Actualizar</span>
             </Button>
             
             <Button
@@ -50,7 +50,7 @@ export function EspaciosPageHeader({
               disabled={!canExport}
             >
               <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
+              <span className="hidden sm:inline">Exportar CSV</span>
             </Button>
             
             <Button size="sm" onClick={onNew}>

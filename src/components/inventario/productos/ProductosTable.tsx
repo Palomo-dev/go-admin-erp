@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   BadgeCheck, 
   Loader2, 
@@ -217,11 +218,39 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
 
   if (loading) {
     return (
-      <div className="rounded-lg border p-6 sm:p-8 text-center bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
-        <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-blue-600 dark:text-blue-400" />
-        <p className="mt-2 text-sm sm:text-base text-gray-500 dark:text-gray-400">
-          Cargando productos...
-        </p>
+      <div className="rounded-lg border shadow-sm overflow-hidden bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+        {/* Skeleton header */}
+        <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-20 hidden md:block" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-24 hidden lg:block" />
+            <Skeleton className="h-4 w-16 ml-auto" />
+            <Skeleton className="h-4 w-16 hidden xl:block" />
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-20 hidden sm:block" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        </div>
+        {/* Skeleton rows */}
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-4 w-4 shrink-0" />
+              <Skeleton className="h-12 w-12 sm:h-14 sm:w-14 rounded-md shrink-0" />
+              <Skeleton className="h-4 w-20 hidden md:block" />
+              <Skeleton className="h-4 w-40 sm:w-48" />
+              <Skeleton className="h-4 w-24 hidden lg:block" />
+              <Skeleton className="h-4 w-16 ml-auto" />
+              <Skeleton className="h-4 w-16 hidden xl:block" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-4 w-20 hidden sm:block" />
+              <Skeleton className="h-8 w-8 rounded-md shrink-0" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

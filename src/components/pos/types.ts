@@ -87,6 +87,8 @@ export interface Cart {
   created_at: string;
   updated_at: string;
   hold_reason?: string;
+  tax_included?: boolean;
+  applied_tax_ids?: string[];
 }
 
 export interface Sale {
@@ -108,6 +110,10 @@ export interface Sale {
   notes?: string;
   created_at: string;
   updated_at: string;
+  delivery_fee?: number;
+  tip_amount?: number;
+  tax_included?: boolean;
+  tax_breakdown?: { name: string; amount: number }[];
 }
 
 export interface SaleItem {
@@ -202,6 +208,7 @@ export interface CheckoutData {
   tax_included?: boolean;
   tip_amount?: number;
   tip_server_id?: string;
+  tax_breakdown?: { name: string; amount: number }[];
 }
 
 // Para impuestos

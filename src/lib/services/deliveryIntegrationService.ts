@@ -140,7 +140,9 @@ class DeliveryIntegrationService {
       delivery_contact_name: webOrder.customer_name,
       delivery_contact_phone: webOrder.customer_phone,
       delivery_instructions: (addr.instructions || webOrder.customer_notes || '') as string,
-      expected_delivery_date: webOrder.estimated_delivery_at || null,
+      expected_delivery_date: webOrder.estimated_delivery_at
+        ? new Date(webOrder.estimated_delivery_at).toISOString().split('T')[0]
+        : null,
       status: 'pending' as const,
       notes: `Pedido web: ${webOrder.order_number}`,
       metadata: {

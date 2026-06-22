@@ -201,7 +201,7 @@ export default function CanalesPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <CanalesHeader
         totalChannels={channels.length}
         activeCount={activeCount}

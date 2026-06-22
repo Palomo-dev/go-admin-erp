@@ -332,7 +332,7 @@ export function DayView({
         </div>
 
         {/* Panel derecho - Lista de eventos */}
-        <div className="w-80 flex-shrink-0 flex flex-col bg-gray-50 dark:bg-gray-950 overflow-hidden hidden lg:flex">
+        <div className="w-80 flex-shrink-0 flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden hidden lg:flex">
           <div className="p-4 border-b border-gray-200 dark:border-gray-800">
             <h3 className="font-semibold text-gray-900 dark:text-white">
               Eventos del día

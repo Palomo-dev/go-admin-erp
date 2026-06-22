@@ -89,6 +89,7 @@ import {
   History,
   Palette,
   Radio,
+  FolderKanban,
 } from 'lucide-react';
 import ProfileDropdownMenu from '../ProfileDropdownMenu';
 import { NavItem } from './NavItem';
@@ -127,7 +128,6 @@ const SidebarNavigationComponent = ({
           moduleCode: 'crm',
           submenu: [
             { name: "Dashboard", href: "/app/crm", icon: <Home size={16} /> },
-            { name: "Bandeja", href: "/app/crm/bandeja", icon: <Inbox size={16} /> },
             { name: "Clientes", href: "/app/crm/clientes", icon: <Users size={16} /> },
             { name: "Pipeline", href: "/app/crm/pipeline", icon: <Target size={16} /> },
             { name: "Oportunidades", href: "/app/crm/oportunidades", icon: <TrendingUp size={16} /> },
@@ -209,6 +209,18 @@ const SidebarNavigationComponent = ({
             { name: "Proveedores", href: "/app/inventario/proveedores", icon: <Truck size={16} /> },
             { name: "Órdenes de Compra", href: "/app/inventario/ordenes-compra", icon: <ClipboardList size={16} /> },
             { name: "Reportes", href: "/app/inventario/reportes", icon: <BarChart3 size={16} /> }
+          ]
+        },
+        { 
+          name: 'Proyectos', 
+          href: "/app/pm", 
+          icon: <FolderKanban size={18} />,
+          moduleCode: 'pm',
+          submenu: [
+            { name: "Dashboard", href: "/app/pm", icon: <Home size={16} /> },
+            { name: "Proyectos", href: "/app/pm/proyectos", icon: <FolderKanban size={16} /> },
+            { name: "Metas", href: "/app/pm/metas", icon: <Target size={16} /> },
+            { name: "Tareas", href: "/app/pm/tareas", icon: <ClipboardList size={16} /> },
           ]
         },
       ]

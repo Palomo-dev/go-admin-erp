@@ -357,7 +357,7 @@ export function PlantillaEditorDialog({
           {showPreview ? (
             <div className="space-y-3">
               {needsHtml && previewHtml ? (
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-950">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900">
                   <p className="text-xs text-gray-400 mb-2">HTML Preview</p>
                   <div
                     className="prose prose-sm dark:prose-invert max-w-none text-sm"
@@ -365,7 +365,7 @@ export function PlantillaEditorDialog({
                   />
                 </div>
               ) : (
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-950">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
                   <p className="text-xs text-gray-400 mb-2">Text Preview</p>
                   <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                     {previewText}

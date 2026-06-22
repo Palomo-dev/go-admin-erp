@@ -5,6 +5,7 @@ export { default as ConversationItemCompact } from './ConversationItemCompact';
 export { default as ConversationList } from './ConversationList';
 export { default as ChatView } from './ChatView';
 export { default as ChatInput } from './ChatInput';
+export { ConversationSkeletonList } from './ConversationSkeleton';
 export { default as MessageBubble } from './MessageBubble';
 export { default as FullScreenChatDialog } from './FullScreenChatDialog';
 export { default as CustomerProfileDrawer } from './CustomerProfileDrawer';

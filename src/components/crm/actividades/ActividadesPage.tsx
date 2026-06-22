@@ -223,6 +223,7 @@ export function ActividadesPage() {
             size="icon"
             onClick={loadData}
             disabled={isLoading}
+            className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
@@ -288,7 +289,7 @@ export function ActividadesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-200 dark:border-gray-700">
+            <AlertDialogCancel className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction

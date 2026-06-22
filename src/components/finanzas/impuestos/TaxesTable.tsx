@@ -264,13 +264,13 @@ const TaxesTable = () => {
             <Table>
               <TableHeader>
                 <TableRow className="dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <TableHead className="font-medium text-xs sm:text-sm">Nombre</TableHead>
-                  <TableHead className="font-medium text-xs sm:text-sm">Tasa</TableHead>
-                  <TableHead className="font-medium text-xs sm:text-sm hidden md:table-cell">Descripción</TableHead>
-                  <TableHead className="font-medium text-xs sm:text-sm hidden lg:table-cell">Estado</TableHead>
-                  <TableHead className="font-medium text-xs sm:text-sm hidden sm:table-cell">Predeterminado</TableHead>
-                  <TableHead className="font-medium text-xs sm:text-sm hidden sm:table-cell">Incluido en precio</TableHead>
-                  <TableHead className="font-medium text-xs sm:text-sm text-right">Acciones</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm text-gray-700 dark:text-gray-300">Nombre</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm text-gray-700 dark:text-gray-300">Tasa</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">Descripción</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden lg:table-cell">Estado</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">Predeterminado</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">Incluido en precio</TableHead>
+                  <TableHead className="font-medium text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

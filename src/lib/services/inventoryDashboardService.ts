@@ -87,14 +87,17 @@ class InventoryDashboardService {
           avg_cost,
           products!inner(organization_id, status, is_parent)
         `)
-        .eq('products.organization_id', organizationId)
-        .or('products.is_parent.is.null,products.is_parent.eq.false');
+        .eq('products.organization_id', organizationId);
 
       if (branchId) {
         stockQuery = stockQuery.eq('branch_id', branchId);
       }
 
-      const { data: stockData } = await stockQuery;
+      const { data: stockData, error: stockError } = await stockQuery;
+
+      if (stockError) {
+        console.error('Error consultando stock_levels:', stockError);
+      }
 
       // Calcular productos bajo mínimo y sin stock
       let lowStockProducts = 0;
@@ -103,6 +106,10 @@ class InventoryDashboardService {
 
       if (stockData) {
         stockData.forEach((item) => {
+          const product = item.products as any;
+          // Filtrar productos padre en JavaScript (no en la consulta)
+          if (product?.is_parent === true) return;
+
           const qty = Number(item.qty_on_hand) || 0;
           const minLevel = Number(item.min_level) || 0;
           const avgCost = Number(item.avg_cost) || 0;
@@ -166,20 +173,25 @@ class InventoryDashboardService {
         `)
         .eq('products.organization_id', organizationId)
         .eq('products.status', 'active')
-        .or('products.is_parent.is.null,products.is_parent.eq.false')
         .gt('min_level', 0);
 
       if (branchId) {
         lowStockQuery = lowStockQuery.eq('branch_id', branchId);
       }
 
-      const { data: lowStockData } = await lowStockQuery;
+      const { data: lowStockData, error: lowStockError } = await lowStockQuery;
+
+      if (lowStockError) {
+        console.error('Error consultando alertas de stock bajo:', lowStockError);
+      }
 
       if (lowStockData) {
         lowStockData.forEach((item) => {
+          const product = item.products as any;
+          if (product?.is_parent === true) return;
+
           const qty = Number(item.qty_on_hand) || 0;
           const minLevel = Number(item.min_level) || 0;
-          const product = item.products as any;
           const branch = item.branches as any;
 
           if (qty <= 0) {
@@ -407,7 +419,7 @@ class InventoryDashboardService {
       const summaries: BranchSummary[] = [];
 
       for (const branch of branches) {
-        const { data: stockData } = await supabase
+        const { data: stockData, error: stockError } = await supabase
           .from('stock_levels')
           .select(`
             qty_on_hand,
@@ -416,8 +428,11 @@ class InventoryDashboardService {
             products!inner(organization_id, status, is_parent)
           `)
           .eq('branch_id', branch.id)
-          .eq('products.organization_id', organizationId)
-          .or('products.is_parent.is.null,products.is_parent.eq.false');
+          .eq('products.organization_id', organizationId);
+
+        if (stockError) {
+          console.error(`Error consultando stock para branch ${branch.id}:`, stockError);
+        }
 
         let totalStock = 0;
         let lowStockCount = 0;
@@ -426,6 +441,10 @@ class InventoryDashboardService {
 
         if (stockData) {
           stockData.forEach((item) => {
+            const product = item.products as any;
+            // Filtrar productos padre en JavaScript (no en la consulta)
+            if (product?.is_parent === true) return;
+
             const qty = Number(item.qty_on_hand) || 0;
             const minLevel = Number(item.min_level) || 0;
             const avgCost = Number(item.avg_cost) || 0;

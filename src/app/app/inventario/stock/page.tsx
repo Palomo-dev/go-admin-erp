@@ -203,7 +203,7 @@ export default function StockPage() {
   }
 
   return (
-    <div className={`flex flex-col gap-6 p-6 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+    <div className="flex flex-col gap-6 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <StockHeader
         onExport={handleExport}

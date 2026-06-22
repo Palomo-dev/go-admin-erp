@@ -188,7 +188,7 @@ export default function ParkingDashboardPage() {
   // Si no hay branch para esta organización
   if (organization && branchId === null && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
         <div className="max-w-md mx-auto mt-20">
           <Card>
             <CardContent className="pt-6 text-center">
@@ -236,7 +236,7 @@ export default function ParkingDashboardPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-950 min-h-screen">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <ParkingHeader
         onRefresh={loadData}
         onExport={handleExport}

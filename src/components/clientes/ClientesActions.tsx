@@ -122,7 +122,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               size="sm"
               disabled={!selectedCustomers.length}
               onClick={() => setIsTagDialogOpen(true)}
-              className="text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
+              className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
             >
               <Tag className="w-4 h-4 sm:mr-1" />
               <span className="hidden sm:inline">Etiquetar</span>
@@ -138,7 +138,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               size="sm"
               disabled={!selectedCustomers.length}
               onClick={() => setIsMergeDialogOpen(true)}
-              className="text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm hidden md:flex"
+              className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
             >
               <Users className="w-4 h-4 sm:mr-1" />
               <span className="hidden lg:inline">Unificar</span>
@@ -153,7 +153,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               variant="outline"
               size="sm"
               onClick={onExportCSV}
-              className="text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
+              className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
             >
               <Download className="w-4 h-4 sm:mr-1" />
               <span className="hidden sm:inline">Exportar</span>

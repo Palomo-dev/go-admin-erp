@@ -196,7 +196,7 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
           <Button
             variant="outline"
             onClick={() => setIsFormOpen(true)}
-            className="border-gray-200 dark:border-gray-700"
+            className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
             <Edit className="h-4 w-4 mr-2" />
             Editar
@@ -204,7 +204,7 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
           <Button
             variant="outline"
             onClick={() => setShowDeleteDialog(true)}
-            className="border-red-200 dark:border-red-900 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+            className="border-red-200 dark:border-red-900 dark:bg-gray-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Eliminar
@@ -377,7 +377,7 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-200 dark:border-gray-700">
+            <AlertDialogCancel className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction

@@ -318,7 +318,7 @@ const EtiquetasTab: React.FC<EtiquetasTabProps> = ({ producto }) => {
     <div className="space-y-6">
       {/* Cabecera */}
       <div className="flex flex-col md:flex-row justify-between gap-4">
-        <h3 className="text-lg font-medium">
+        <h3 className="text-lg font-medium dark:text-white">
           Etiquetas del Producto ({productTags.length})
         </h3>
       </div>
@@ -335,13 +335,11 @@ const EtiquetasTab: React.FC<EtiquetasTabProps> = ({ producto }) => {
                 placeholder="Escriba para buscar etiquetas existentes..."
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                className="dark:bg-gray-800 dark:border-gray-700"
               />
               {searchValue && (
                 <button
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full ${
-                    theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                  }`}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => setSearchValue('')}
                 >
                   <X className="h-4 w-4" />
@@ -350,25 +348,17 @@ const EtiquetasTab: React.FC<EtiquetasTabProps> = ({ producto }) => {
               
               {/* Resultados de búsqueda */}
               {filteredTags.length > 0 && (
-                <div className={`absolute z-10 mt-1 w-full rounded-md border shadow-lg ${
-                  theme === 'dark' 
-                    ? 'bg-gray-900 border-gray-700' 
-                    : 'bg-white border-gray-200'
-                }`}>
+                <div className="absolute z-10 mt-1 w-full rounded-md border shadow-lg bg-white border-gray-200 dark:bg-gray-900 dark:border-gray-700">
                   <ul className="max-h-60 overflow-y-auto rounded-md py-1">
                     {filteredTags.map((tag) => (
                       <li
                         key={tag.id}
-                        className={`flex items-center justify-between px-3 py-2 cursor-pointer ${
-                          theme === 'dark' 
-                            ? 'hover:bg-gray-800' 
-                            : 'hover:bg-gray-100'
-                        }`}
+                        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
                         onClick={() => addTagToProduct(tag)}
                       >
                         <div className="flex items-center">
                           <div className={`h-3 w-3 rounded-full ${tag.color || 'bg-gray-500'} mr-2`} />
-                          <span>{tag.name}</span>
+                          <span className="dark:text-gray-200">{tag.name}</span>
                         </div>
                         <Plus className="h-4 w-4" />
                       </li>
@@ -388,7 +378,7 @@ const EtiquetasTab: React.FC<EtiquetasTabProps> = ({ producto }) => {
                 placeholder="Nombre de nueva etiqueta..."
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
-                className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                className="dark:bg-gray-800 dark:border-gray-700"
               />
               <Button
                 onClick={createNewTag}
@@ -418,9 +408,9 @@ const EtiquetasTab: React.FC<EtiquetasTabProps> = ({ producto }) => {
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
         ) : productTags.length === 0 ? (
-          <div className={`p-8 text-center rounded-md border ${theme === 'dark' ? 'border-gray-800 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
+          <div className="p-8 text-center rounded-md border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <Tag className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-lg font-medium">Sin etiquetas</h3>
+            <h3 className="mt-2 text-lg font-medium dark:text-white">Sin etiquetas</h3>
             <p className="mt-1 text-gray-500 dark:text-gray-400">
               Este producto no tiene etiquetas asignadas.
               Busque o cree etiquetas para categorizar este producto.
@@ -431,20 +421,12 @@ const EtiquetasTab: React.FC<EtiquetasTabProps> = ({ producto }) => {
             {productTags.map((tag) => (
               <div
                 key={tag.id}
-                className={`flex items-center gap-1 rounded-full border px-3 py-1 ${
-                  theme === 'dark' 
-                    ? 'border-gray-700 bg-gray-800' 
-                    : 'border-gray-200 bg-gray-50'
-                }`}
+                className="flex items-center gap-1 rounded-full border px-3 py-1 border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
               >
                 <div className={`h-2 w-2 rounded-full ${tag.color || 'bg-gray-500'}`} />
-                <span className="text-sm">{tag.name}</span>
+                <span className="text-sm dark:text-gray-200">{tag.name}</span>
                 <button
-                  className={`ml-1 rounded-full p-0.5 ${
-                    theme === 'dark' 
-                      ? 'hover:bg-gray-700' 
-                      : 'hover:bg-gray-200'
-                  }`}
+                  className="ml-1 rounded-full p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700"
                   onClick={() => removeTagFromProduct(tag)}
                   disabled={saving}
                 >
@@ -457,12 +439,8 @@ const EtiquetasTab: React.FC<EtiquetasTabProps> = ({ producto }) => {
       </div>
       
       {/* Información de uso de etiquetas */}
-      <div className={`rounded-md border p-4 ${
-        theme === 'dark' 
-          ? 'bg-gray-900 border-gray-700 text-gray-300' 
-          : 'bg-gray-50 border-gray-200'
-      }`}>
-        <h4 className="text-sm font-medium mb-2 flex items-center">
+      <div className="rounded-md border p-4 bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-300">
+        <h4 className="text-sm font-medium mb-2 flex items-center dark:text-gray-200">
           <Check className="h-4 w-4 mr-2 text-green-500" />
           ¿Para qué sirven las etiquetas?
         </h4>

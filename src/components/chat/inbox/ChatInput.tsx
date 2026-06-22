@@ -237,7 +237,7 @@ export default function ChatInput({
   // UI de grabación
   if (isRecording) {
     return (
-      <div className="border-t dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+      <div className="border-t dark:border-gray-700 bg-white dark:bg-gray-900 p-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-4 bg-red-50 dark:bg-red-900/20 rounded-2xl p-4">
           <div className="flex items-center gap-3">
             <div className="h-3 w-3 bg-red-500 rounded-full animate-pulse" />
@@ -268,7 +268,7 @@ export default function ChatInput({
   }
 
   return (
-    <div className="border-t dark:border-gray-700 bg-white dark:bg-gray-900 p-2 sm:p-4">
+    <div className="border-t dark:border-gray-700 bg-white dark:bg-gray-900 p-2 sm:p-4 flex-shrink-0">
       {/* Respuestas rápidas popup */}
       {showQuickReplies && filteredReplies.length > 0 && (
         <div className="mb-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">

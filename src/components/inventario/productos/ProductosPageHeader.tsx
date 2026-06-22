@@ -56,7 +56,7 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
       </div>
       
       {/* Acciones */}
-      <div className="flex items-center gap-2 self-start md:self-auto">
+      <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
         {/* Botón Refrescar */}
         {onRefreshClick && (
           <Button 
@@ -74,7 +74,7 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
         {onScrapingClick && (
           <Button 
             onClick={onScrapingClick}
-            className="bg-purple-600 hover:bg-purple-700 text-white"
+            className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 text-white dark:text-white whitespace-nowrap"
           >
             <Sparkles className="mr-2 h-4 w-4" />
             Importar con IA
@@ -85,7 +85,7 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
         <Link href="/app/inventario/productos/nuevo" prefetch={true}>
           <Button 
             onClick={onCrearClick}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap"
           >
             <PlusCircle className="mr-2 h-4 w-4" />
             Nuevo Producto

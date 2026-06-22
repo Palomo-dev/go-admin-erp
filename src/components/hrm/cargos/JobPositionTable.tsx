@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -30,6 +30,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export interface JobPositionRow {
   id: string;
@@ -69,6 +70,25 @@ export function JobPositionTable({
     return `Hasta ${formatCurrency(max!)}`;
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalPages = Math.ceil(positions.length / pageSize);
+
+  const paginatedPositions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return positions.slice(start, start + pageSize);
+  }, [positions, currentPage, pageSize]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
+
   if (positions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
@@ -99,7 +119,7 @@ export function JobPositionTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {positions.map((position) => (
+          {paginatedPositions.map((position) => (
             <TableRow
               key={position.id}
               className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
@@ -201,6 +221,14 @@ export function JobPositionTable({
         </TableBody>
       </Table>
       </div>
+      <DataTablePagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={positions.length}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
     </div>
   );
 }

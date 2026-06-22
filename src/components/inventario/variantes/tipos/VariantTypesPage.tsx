@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   Table,
   TableBody,
@@ -57,6 +58,8 @@ export function VariantTypesPage() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -187,6 +190,22 @@ export function VariantTypesPage() {
     t.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const totalPages = Math.ceil(tiposFiltrados.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const tiposPaginados = useMemo(
+    () => tiposFiltrados.slice(startIndex, startIndex + pageSize),
+    [tiposFiltrados, startIndex, pageSize]
+  );
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
@@ -302,7 +321,7 @@ export function VariantTypesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tiposFiltrados.map(tipo => (
+                {tiposPaginados.map(tipo => (
                   <TableRow key={tipo.id} className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                     <TableCell className="font-medium dark:text-white">
                       {tipo.name}
@@ -341,6 +360,16 @@ export function VariantTypesPage() {
               </TableBody>
             </Table>
           )}
+
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={tiposFiltrados.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
         </CardContent>
       </Card>
 

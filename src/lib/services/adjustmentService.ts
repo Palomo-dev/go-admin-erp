@@ -44,7 +44,7 @@ export interface AdjustmentItem {
   };
   lots?: {
     id: number;
-    lot_number: string;
+    lot_code: string;
   };
   // Campos calculados
   system_qty?: number;
@@ -191,9 +191,12 @@ class AdjustmentService {
         `)
         .eq('id', adjustmentId)
         .eq('organization_id', organizationId)
-        .single();
+        .maybeSingle();
 
       if (adjustmentError) throw adjustmentError;
+      if (!adjustment) {
+        return { data: null, error: new Error('Ajuste no encontrado') };
+      }
 
       // Obtener items del ajuste
       const { data: items, error: itemsError } = await supabase

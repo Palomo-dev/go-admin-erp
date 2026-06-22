@@ -104,7 +104,7 @@ export class TransferenciasService {
         if (item.lot_id) {
           const { data: lot } = await supabase
             .from('lots')
-            .select('id, lot_number, expiry_date')
+            .select('id, lot_code, expiry_date')
             .eq('id', item.lot_id)
             .single();
           return { ...item, lot };
@@ -407,14 +407,14 @@ export class TransferenciasService {
   static async obtenerLotesProducto(
     productId: number, 
     branchId: number
-  ): Promise<{ id: number; lot_number: string; qty_available: number; expiry_date?: string }[]> {
+  ): Promise<{ id: number; lot_code: string; qty_available: number; expiry_date?: string }[]> {
     const { data, error } = await supabase
       .from('stock_levels')
       .select(`
         lot_id,
         qty_on_hand,
         qty_reserved,
-        lots!inner(id, lot_number, expiry_date)
+        lots!inner(id, lot_code, expiry_date)
       `)
       .eq('branch_id', branchId)
       .eq('product_id', productId)
@@ -428,7 +428,7 @@ export class TransferenciasService {
 
     return (data || []).map((item: any) => ({
       id: item.lots.id,
-      lot_number: item.lots.lot_number,
+      lot_code: item.lots.lot_code,
       qty_available: Math.max(0, (item.qty_on_hand || 0) - (item.qty_reserved || 0)),
       expiry_date: item.lots.expiry_date
     }));

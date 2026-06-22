@@ -164,7 +164,7 @@ export default function ServiciosPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <ServiciosPageHeader
         totalCount={services.length}
         activeCount={activeCount}

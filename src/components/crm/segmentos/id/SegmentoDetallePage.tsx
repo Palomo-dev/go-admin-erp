@@ -245,16 +245,16 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                 <>
                   <div className="space-y-2">
                     <Label>Nombre</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-gray-50 dark:bg-gray-900" />
+                    <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200" />
                   </div>
                   <div className="space-y-2">
                     <Label>Descripción</Label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="bg-gray-50 dark:bg-gray-900" />
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200" />
                   </div>
                   <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900 dark:text-gray-100">Segmento dinámico</p>
-                      <p className="text-sm text-gray-500">Se recalcula automáticamente</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Se recalcula automáticamente</p>
                     </div>
                     <Switch checked={isDynamic} onCheckedChange={setIsDynamic} />
                   </div>
@@ -293,7 +293,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
             </CardHeader>
             <CardContent>
               {filters.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">Sin reglas definidas</p>
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8">Sin reglas definidas</p>
               ) : (
                 <div className="space-y-3">
                   {filters.map((filter, index) => {
@@ -306,21 +306,21 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                       return (
                         <div key={index} className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                           <Select value={filter.field} onValueChange={(v) => updateFilter(index, { field: v })}>
-                            <SelectTrigger className="w-36 bg-white dark:bg-gray-800"><SelectValue /></SelectTrigger>
-                            <SelectContent>
+                            <SelectTrigger className="w-36 bg-white dark:bg-gray-800 dark:text-gray-200"><SelectValue /></SelectTrigger>
+                            <SelectContent className="border-gray-200 dark:border-gray-700">
                               {FILTER_FIELDS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
                           <Select value={filter.operator} onValueChange={(v) => updateFilter(index, { operator: v as any })}>
-                            <SelectTrigger className="w-32 bg-white dark:bg-gray-800"><SelectValue /></SelectTrigger>
-                            <SelectContent>
+                            <SelectTrigger className="w-32 bg-white dark:bg-gray-800 dark:text-gray-200"><SelectValue /></SelectTrigger>
+                            <SelectContent className="border-gray-200 dark:border-gray-700">
                               {operators.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
                           {!['is_empty', 'is_not_empty'].includes(filter.operator) && (
-                            <Input value={String(filter.value)} onChange={(e) => updateFilter(index, { value: e.target.value })} className="flex-1 min-w-[100px] bg-white dark:bg-gray-800" />
+                            <Input value={String(filter.value)} onChange={(e) => updateFilter(index, { value: e.target.value })} className="flex-1 min-w-[100px] bg-white dark:bg-gray-800 dark:text-gray-200" />
                           )}
-                          <Button variant="ghost" size="icon" onClick={() => removeFilter(index)} className="text-red-600"><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => removeFilter(index)} className="text-red-600 dark:text-red-400"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       );
                     }
@@ -328,7 +328,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                     return (
                       <div key={index} className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                         <span className="font-medium text-gray-900 dark:text-gray-100">{fieldLabel}</span>
-                        <span className="mx-2 text-gray-500">{opLabel}</span>
+                        <span className="mx-2 text-gray-500 dark:text-gray-400">{opLabel}</span>
                         {!['is_empty', 'is_not_empty'].includes(filter.operator) && (
                           <span className="text-blue-600 font-medium">&quot;{String(filter.value)}&quot;</span>
                         )}
@@ -351,14 +351,14 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
           </CardHeader>
           <CardContent>
             {customers.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No hay clientes en este segmento</p>
+              <p className="text-center text-gray-500 dark:text-gray-400 py-8">No hay clientes en este segmento</p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {customers.map((customer) => (
                   <Link key={customer.id} href={`/app/crm/clientes/${customer.id}`}>
                     <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
                       <p className="font-medium text-gray-900 dark:text-gray-100">{customer.full_name || 'Sin nombre'}</p>
-                      <p className="text-sm text-gray-500">{customer.email || customer.phone || 'Sin contacto'}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{customer.email || customer.phone || 'Sin contacto'}</p>
                     </div>
                   </Link>
                 ))}

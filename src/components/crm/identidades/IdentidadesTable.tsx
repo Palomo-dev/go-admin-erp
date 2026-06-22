@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Phone, Mail, MessageSquare, CheckCircle, XCircle, MoreVertical, Edit, Trash2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/utils/Utils';
 import type { ChannelIdentity } from './types';
+import { IdentidadesPagination } from './IdentidadesPagination';
 
 interface IdentidadesTableProps {
   identities: ChannelIdentity[];
@@ -70,6 +71,8 @@ const getTypeColor = (type: string) => {
   }
 };
 
+const ITEMS_PER_PAGE = 25;
+
 export function IdentidadesTable({ 
   identities, 
   loading, 
@@ -77,6 +80,23 @@ export function IdentidadesTable({
   onEdit, 
   onDelete 
 }: IdentidadesTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE);
+
+  const paginatedIdentities = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return identities.slice(start, start + itemsPerPage);
+  }, [identities, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg">
@@ -115,7 +135,7 @@ export function IdentidadesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {identities.map((identity) => {
+          {paginatedIdentities.map((identity) => {
             const Icon = getTypeIcon(identity.identity_type);
             const colorClass = getTypeColor(identity.identity_type);
 
@@ -215,6 +235,13 @@ export function IdentidadesTable({
         </TableBody>
       </Table>
       </div>
+      <IdentidadesPagination
+        totalItems={identities.length}
+        currentPage={currentPage}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
+        onItemsPerPageChange={handleItemsPerPageChange}
+      />
     </div>
   );
 }

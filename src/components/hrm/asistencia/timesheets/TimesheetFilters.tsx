@@ -39,28 +39,30 @@ export function TimesheetFilters({
   const hasActiveFilters = dateFrom || dateTo || status !== 'all' || branchId !== 'all';
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-2">
-        <Calendar className="h-4 w-4 text-gray-400" />
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => onDateFromChange(e.target.value)}
-          className="w-[150px] bg-white dark:bg-gray-900"
-          placeholder="Desde"
-        />
-        <span className="text-gray-400">-</span>
+    <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => onDateFromChange(e.target.value)}
+            className="w-full sm:w-[150px] bg-white dark:bg-gray-900 dark:[color-scheme:dark]"
+            placeholder="Desde"
+          />
+        </div>
+        <span className="text-gray-400 shrink-0 hidden sm:block">-</span>
         <Input
           type="date"
           value={dateTo}
           onChange={(e) => onDateToChange(e.target.value)}
-          className="w-[150px] bg-white dark:bg-gray-900"
+          className="w-full sm:w-[150px] bg-white dark:bg-gray-900 dark:[color-scheme:dark]"
           placeholder="Hasta"
         />
       </div>
 
       <Select value={status} onValueChange={onStatusChange}>
-        <SelectTrigger className="w-[150px] bg-white dark:bg-gray-900">
+        <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-900">
           <SelectValue placeholder="Estado" />
         </SelectTrigger>
         <SelectContent>
@@ -74,7 +76,7 @@ export function TimesheetFilters({
       </Select>
 
       <Select value={branchId} onValueChange={onBranchChange}>
-        <SelectTrigger className="w-[180px] bg-white dark:bg-gray-900">
+        <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-900">
           <SelectValue placeholder="Sede" />
         </SelectTrigger>
         <SelectContent>

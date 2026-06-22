@@ -232,14 +232,14 @@ export function CouponForm({ open, onOpenChange, coupon, onSuccess }: CouponForm
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="dark:text-gray-200">Fecha Inicio</Label>
               <Input
                 type="date"
                 value={formData.start_date || ''}
                 onChange={(e) => handleChange('start_date', e.target.value || undefined)}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
                 disabled={loading}
               />
             </div>
@@ -249,7 +249,7 @@ export function CouponForm({ open, onOpenChange, coupon, onSuccess }: CouponForm
                 type="date"
                 value={formData.end_date || ''}
                 onChange={(e) => handleChange('end_date', e.target.value || undefined)}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
                 disabled={loading}
               />
             </div>

@@ -78,6 +78,7 @@ import {
   Wrench,
   CalendarClock,
   Radio,
+  FolderKanban,
 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
@@ -115,7 +116,6 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     icon: <Users size={18} />,
     submenu: [
       { name: "Dashboard", href: "/app/crm", icon: <Home size={16} /> },
-      { name: "Bandeja", href: "/app/crm/bandeja", icon: <Inbox size={16} /> },
       { name: "Clientes", href: "/app/crm/clientes", icon: <Users size={16} /> },
       { name: "Pipeline", href: "/app/crm/pipeline", icon: <Target size={16} /> },
       { name: "Oportunidades", href: "/app/crm/oportunidades", icon: <TrendingUp size={16} /> },
@@ -242,6 +242,18 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Channel Manager", href: "/app/pms/channel-manager", icon: <Radio size={16} /> },
       { name: "Parquedero", href: "/app/pms/parking", icon: <ParkingCircle size={16} /> },
       { name: "Configuración", href: "/app/pms/configuracion", icon: <Settings size={16} /> },
+    ]
+  },
+  { 
+    name: "Proyectos", 
+    href: "/app/pm", 
+    icon: <FolderKanban size={18} />,
+    moduleCode: 'pm',
+    submenu: [
+      { name: "Dashboard", href: "/app/pm", icon: <Home size={16} /> },
+      { name: "Proyectos", href: "/app/pm/proyectos", icon: <FolderKanban size={16} /> },
+      { name: "Metas", href: "/app/pm/metas", icon: <Target size={16} /> },
+      { name: "Tareas", href: "/app/pm/tareas", icon: <ClipboardList size={16} /> },
     ]
   },
   { 
@@ -1116,7 +1128,7 @@ export const AppLayout = ({
         
         {/* Contenido principal con scroll */}
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 overscroll-contain">
-          <div className="min-h-full">
+          <div className="h-full">
             {children}
           </div>
         </div>

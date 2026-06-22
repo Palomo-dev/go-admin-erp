@@ -138,7 +138,7 @@ export function ActividadesTable({
                 </TableCell>
                 <TableCell className="py-2 sm:py-3">
                   <div>
-                    <Badge variant="outline" className={`mb-1 text-[10px] sm:text-xs ${config.color}`}>
+                    <Badge variant="outline" className={`mb-1 text-[10px] sm:text-xs ${config.color} dark:border-gray-600`}>
                       {config.label}
                     </Badge>
                     <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
@@ -176,27 +176,27 @@ export function ActividadesTable({
                 <TableCell className="py-2 sm:py-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700">
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewDetail(activity); }}>
+                    <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <DropdownMenuItem className="text-gray-700 dark:text-gray-300 focus:bg-gray-100 dark:focus:bg-gray-700" onClick={(e) => { e.stopPropagation(); handleViewDetail(activity); }}>
                         <Eye className="h-4 w-4 mr-2" />
                         Ver detalle
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(activity); }}>
+                      <DropdownMenuItem className="text-gray-700 dark:text-gray-300 focus:bg-gray-100 dark:focus:bg-gray-700" onClick={(e) => { e.stopPropagation(); onEdit(activity); }}>
                         <Edit className="h-4 w-4 mr-2" />
                         Editar
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicate(activity); }}>
+                      <DropdownMenuItem className="text-gray-700 dark:text-gray-300 focus:bg-gray-100 dark:focus:bg-gray-700" onClick={(e) => { e.stopPropagation(); onDuplicate(activity); }}>
                         <Copy className="h-4 w-4 mr-2" />
                         Duplicar
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-700" />
                       <DropdownMenuItem
                         onClick={(e) => { e.stopPropagation(); onDelete(activity); }}
-                        className="text-red-600 dark:text-red-400"
+                        className="text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-900/30"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Eliminar

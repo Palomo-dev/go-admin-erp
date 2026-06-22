@@ -127,7 +127,7 @@ export function RecurringEventsList({
 
         {/* Acciones */}
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onRefresh}>
+          <Button variant="outline" size="sm" onClick={onRefresh} className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700">
             <RefreshCw className="h-4 w-4 mr-1" />
             Actualizar
           </Button>

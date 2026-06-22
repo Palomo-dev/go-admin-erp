@@ -21,7 +21,7 @@ import {
   LockClosedIcon,
   KeyIcon
 } from '@heroicons/react/24/outline';
-import { Dumbbell, ParkingCircle } from 'lucide-react';
+import { Dumbbell, ParkingCircle, FolderKanban } from 'lucide-react';
 
 interface Module {
   name: string;
@@ -87,6 +87,14 @@ const modules: Module[] = [
     icon: BuildingStorefrontIcon,
     description: 'Property Management',
     color: 'from-teal-500 to-teal-600',
+    category: 'business'
+  },
+  {
+    name: 'PM',
+    path: '/app/pm',
+    icon: FolderKanban,
+    description: 'Gestión de proyectos',
+    color: 'from-indigo-500 to-indigo-600',
     category: 'business'
   },
   {

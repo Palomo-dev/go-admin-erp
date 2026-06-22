@@ -138,7 +138,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
   };
 
   return (
-    <div className={`rounded-lg border p-4 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+    <div className="rounded-lg border p-4 bg-white border-gray-200 dark:bg-gray-900 dark:border-gray-800">
       <div className="flex flex-col md:flex-row gap-6">
         {/* Mini galería */}
         <div className="w-full md:w-1/4">
@@ -248,40 +248,40 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
             <div className="flex items-center gap-3">
               {renderEstado(producto.status)}
               
-              <h1 className="text-2xl font-bold">{producto.name}</h1>
+              <h1 className="text-2xl font-bold dark:text-white">{producto.name}</h1>
             </div>
 
             <div className="flex flex-wrap gap-y-2">
               <div className="flex items-center mr-6">
                 <Tag className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm font-medium text-gray-500 dark:text-gray-400">SKU:</span>
-                <span className="ml-1 font-mono">{producto.sku}</span>
+                <span className="ml-1 font-mono dark:text-gray-200">{producto.sku}</span>
               </div>
               
               <div className="flex items-center mr-6">
                 <Badge className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Categoría:</span>
-                <span className="ml-1">{producto.categories?.name || 'Sin categoría'}</span>
+                <span className="ml-1 dark:text-gray-200">{producto.categories?.name || 'Sin categoría'}</span>
               </div>
 
               <div className="flex items-center mr-6">
                 <InfoIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Unidad:</span>
-                <span className="ml-1">{producto.unit_code || 'N/A'}</span>
+                <span className="ml-1 dark:text-gray-200">{producto.unit_code || 'N/A'}</span>
               </div>
               
               {producto.supplier_id && (
                 <div className="flex items-center">
                   <InfoIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
                   <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Proveedor:</span>
-                  <span className="ml-1">{producto.suppliers?.name || 'Sin proveedor'}</span>
+                  <span className="ml-1 dark:text-gray-200">{producto.suppliers?.name || 'Sin proveedor'}</span>
                 </div>
               )}
             </div>
 
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <TooltipProvider>
-                <div className={`rounded-md border p-3 ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+                <div className="rounded-md border p-3 border-gray-200 dark:border-gray-800">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                       Precio de venta
@@ -307,7 +307,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                     return (
                       <div className="mt-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-2xl font-semibold">
+                          <p className="text-2xl font-semibold dark:text-white">
                             {formatCurrency(price)}
                           </p>
                           {hasDiscount && (
@@ -328,7 +328,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
               </TooltipProvider>
 
               <TooltipProvider>
-                <div className={`rounded-md border p-3 ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+                <div className="rounded-md border p-3 border-gray-200 dark:border-gray-800">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                       Costo
@@ -342,7 +342,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <p className="mt-1 text-2xl font-semibold">
+                  <p className="mt-1 text-2xl font-semibold dark:text-white">
                     {formatCurrency(
                       producto.product_costs && producto.product_costs.length > 0
                         ? producto.product_costs.reduce((prev: any, current: any) =>
@@ -355,7 +355,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
               </TooltipProvider>
 
               <TooltipProvider>
-                <div className={`rounded-md border p-3 ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+                <div className="rounded-md border p-3 border-gray-200 dark:border-gray-800">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                       Stock
@@ -369,7 +369,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <p className="mt-1 text-2xl font-semibold">
+                  <p className="mt-1 text-2xl font-semibold dark:text-white">
                     {loadingStock ? 
                       <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : 
                       totalStock.total
@@ -384,7 +384,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                 <h3 className="mb-1 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Descripción
                 </h3>
-                <p className={`text-sm rounded-md p-2 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                <p className="text-sm rounded-md p-2 bg-gray-50 dark:bg-gray-800 dark:text-gray-300">
                   {producto.description}
                 </p>
               </div>

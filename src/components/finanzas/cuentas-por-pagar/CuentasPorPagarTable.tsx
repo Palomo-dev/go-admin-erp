@@ -21,11 +21,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-import { 
+import {
   AlertCircle,
   Calendar,
-  ChevronLeft,
-  ChevronRight,
   CreditCard,
   Eye,
   MoreHorizontal,
@@ -35,6 +33,7 @@ import {
   FileText,
   Clock
 } from 'lucide-react';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -47,7 +46,9 @@ interface CuentasPorPagarTableProps {
   currentPage: number;
   totalPages: number;
   totalRecords: number;
+  pageSize: number;
   onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
   onProgramarPago: (cuenta: AccountPayable) => void;
   onRegistrarPago: (cuenta: AccountPayable) => void;
   onSeleccionarCuentas: (cuentasIds: string[]) => void;
@@ -60,7 +61,9 @@ export function CuentasPorPagarTable({
   currentPage,
   totalPages,
   totalRecords,
+  pageSize,
   onPageChange,
+  onPageSizeChange,
   onProgramarPago,
   onRegistrarPago,
   onSeleccionarCuentas,
@@ -364,58 +367,16 @@ export function CuentasPorPagarTable({
         </div>
 
         {/* Paginación */}
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-              Mostrando {((currentPage - 1) * 10) + 1} a {Math.min(currentPage * 10, totalRecords)} de {totalRecords}
-            </div>
-            
-            <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Anterior</span>
-              </Button>
-              
-              <div className="flex items-center gap-1 flex-1 sm:flex-none justify-center">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const page = i + 1;
-                  return (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => onPageChange(page)}
-                      className={`w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm ${
-                        currentPage === page 
-                          ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white' 
-                          : 'dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {page}
-                    </Button>
-                  );
-                })}
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                <span className="hidden sm:inline">Siguiente</span>
-                <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:ml-1" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <div className="px-3 sm:px-6 border-t border-gray-200 dark:border-gray-700">
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={totalRecords}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
+        </div>
       </CardContent>
     </Card>
   );

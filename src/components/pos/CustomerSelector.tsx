@@ -87,7 +87,13 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
   const searchCustomers = async (term: string) => {
     setIsLoading(true);
     try {
-      // 1. Buscar espacios ocupados
+      // 1. Buscar espacios ocupados (solo de la organización actual)
+      if (!organization?.id) {
+        setOccupiedSpaces([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data: reservations, error: roomsError } = await supabase
         .from('reservations')
         .select(`
@@ -112,6 +118,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
             id
           )
         `)
+        .eq('organization_id', organization.id)
         .in('status', ['confirmed', 'checked_in'])
         .order('checkin', { ascending: false })
         .limit(20);

@@ -131,43 +131,43 @@ export default function ParkingPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <ParkingHeader onNewEntry={handleNewEntry} />
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-6">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
               Total Sesiones
             </p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2">
+            <p className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1 sm:mt-2">
               {stats.total_sessions}
             </p>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-6">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
               Sesiones Activas
             </p>
-            <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
+            <p className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400 mt-1 sm:mt-2">
               {stats.active_sessions}
             </p>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-6">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
               Completadas Hoy
             </p>
-            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
+            <p className="text-xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1 sm:mt-2">
               {stats.completed_today}
             </p>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-6">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">
               Ingresos Hoy
             </p>
-            <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
+            <p className="text-xl sm:text-3xl font-bold text-green-600 dark:text-green-400 mt-1 sm:mt-2">
               ${stats.revenue_today.toLocaleString()}
             </p>
           </div>

@@ -106,7 +106,7 @@ export default function ActivityList({ activities, loading }: ActivityListProps)
         <div className="space-y-6">
           {Object.entries(groupedActivities).map(([date, items]) => (
             <div key={date}>
-              <div className="sticky top-0 z-10 py-2 bg-gray-50 dark:bg-gray-950">
+              <div className="sticky top-0 z-10 py-2 bg-gray-50 dark:bg-gray-900">
                 <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 capitalize">
                   {date}
                 </h3>

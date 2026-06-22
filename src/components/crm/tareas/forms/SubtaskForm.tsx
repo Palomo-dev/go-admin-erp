@@ -19,7 +19,7 @@ import { Separator } from '@/components/ui/separator';
 const subtaskSchema = z.object({
   title: z.string().min(3, { message: 'El título debe tener al menos 3 caracteres' }),
   description: z.string(),
-  type: z.enum(['llamada', 'reunion', 'email', 'visita']),
+  type: z.enum(['llamada', 'reunion', 'email', 'visita', 'tarea', 'seguimiento', 'revision', 'entrega', 'investigacion', 'documento', 'bug', 'feature']),
   priority: z.enum(['low', 'med', 'high']),
   due_date: z.string().min(1, { message: 'La fecha límite es requerida' }),
   assigned_to: z.string().nullable().optional(),
@@ -53,7 +53,7 @@ const SubtaskForm: React.FC<SubtaskFormProps> = ({
     defaultValues: {
       title: '',
       description: '',
-      type: 'llamada',
+      type: 'tarea',
       priority: parentTask.priority || 'med',
       due_date: '',
       assigned_to: parentTask.assigned_to,
@@ -130,6 +130,14 @@ const SubtaskForm: React.FC<SubtaskFormProps> = ({
       case 'reunion': return 'Reunión';
       case 'email': return 'Email';
       case 'visita': return 'Visita';
+      case 'tarea': return 'Tarea';
+      case 'seguimiento': return 'Seguimiento';
+      case 'revision': return 'Revisión';
+      case 'entrega': return 'Entrega';
+      case 'investigacion': return 'Investigación';
+      case 'documento': return 'Documento';
+      case 'bug': return 'Bug';
+      case 'feature': return 'Feature';
       default: return type;
     }
   };
@@ -245,6 +253,14 @@ const SubtaskForm: React.FC<SubtaskFormProps> = ({
                           <SelectItem value="reunion">🤝 Reunión</SelectItem>
                           <SelectItem value="email">📧 Email</SelectItem>
                           <SelectItem value="visita">🏢 Visita</SelectItem>
+                          <SelectItem value="tarea">📋 Tarea</SelectItem>
+                          <SelectItem value="seguimiento">👁 Seguimiento</SelectItem>
+                          <SelectItem value="revision">✅ Revisión</SelectItem>
+                          <SelectItem value="entrega">📦 Entrega</SelectItem>
+                          <SelectItem value="investigacion">🔍 Investigación</SelectItem>
+                          <SelectItem value="documento">📄 Documento</SelectItem>
+                          <SelectItem value="bug">🐛 Bug</SelectItem>
+                          <SelectItem value="feature">✨ Feature</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

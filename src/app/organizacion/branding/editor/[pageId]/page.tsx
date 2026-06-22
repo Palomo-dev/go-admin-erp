@@ -380,7 +380,7 @@ export default function PageEditorPage() {
   // ---- LOADING STATE ----
   if (isLoading || !organization) {
     return (
-      <div className="h-screen flex items-center justify-center bg-white dark:bg-gray-950">
+      <div className="h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
           <p className="text-sm text-gray-500 dark:text-gray-400">Cargando editor...</p>
@@ -391,7 +391,7 @@ export default function PageEditorPage() {
 
   if (!currentPage) {
     return (
-      <div className="h-screen flex items-center justify-center bg-white dark:bg-gray-950">
+      <div className="h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center space-y-3">
           <p className="text-lg text-gray-800 dark:text-white">Página no encontrada</p>
           <p className="text-sm text-gray-500 dark:text-gray-400">

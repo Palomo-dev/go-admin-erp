@@ -32,7 +32,7 @@ interface ItemTransferencia {
   product_name: string;
   quantity: number;
   lot_id?: number | null;
-  lot_number?: string;
+  lot_code?: string;
   stock_disponible: number;
 }
 

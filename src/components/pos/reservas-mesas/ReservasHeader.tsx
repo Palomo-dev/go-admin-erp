@@ -133,14 +133,14 @@ export function ReservasHeader({
           type="date"
           value={dateFrom}
           onChange={(e) => onDateFromChange(e.target.value)}
-          className="w-[150px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+          className="w-[150px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 dark:[color-scheme:dark]"
         />
         <span className="text-gray-400">—</span>
         <Input
           type="date"
           value={dateTo}
           onChange={(e) => onDateToChange(e.target.value)}
-          className="w-[150px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+          className="w-[150px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 dark:[color-scheme:dark]"
         />
       </div>
     </div>

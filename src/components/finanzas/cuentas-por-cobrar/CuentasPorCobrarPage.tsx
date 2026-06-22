@@ -164,7 +164,7 @@ export function CuentasPorCobrarPage() {
 
         {/* Tabs de navegación */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 dark:bg-gray-800 dark:border-gray-700">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2 p-2 h-auto sm:h-9 dark:bg-gray-800 dark:border-gray-700 mb-6">
             <TabsTrigger value="cuentas" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3 dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
               <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Cuentas</span>

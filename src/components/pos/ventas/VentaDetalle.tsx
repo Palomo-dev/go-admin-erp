@@ -98,14 +98,20 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!sale) return;
+    const { business, branch } = await PrintService.getBusinessAndBranch(sale.organization_id);
     PrintService.smartPrint(
       sale,
       sale.items || [],
       sale.customer,
       sale.payments || [],
-      { name: organization?.name || 'Mi Empresa' }
+      business || { name: organization?.name || 'Mi Empresa', logoUrl: organization?.logo_url },
+      sale.seller_name ? { name: sale.seller_name } : undefined,
+      branch,
+      Array.isArray((sale as any).tax_breakdown) && (sale as any).tax_breakdown.length > 0
+        ? (sale as any).tax_breakdown
+        : undefined
     );
   };
 
@@ -142,6 +148,11 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
         text: 'text-green-700 dark:text-green-400',
         icon: <CheckCircle className="h-4 w-4" />
       },
+      paid: { 
+        bg: 'bg-green-100 dark:bg-green-900/30', 
+        text: 'text-green-700 dark:text-green-400',
+        icon: <CheckCircle className="h-4 w-4" />
+      },
       pending: { 
         bg: 'bg-yellow-100 dark:bg-yellow-900/30', 
         text: 'text-yellow-700 dark:text-yellow-400',
@@ -156,10 +167,16 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
 
     const style = styles[status] || styles.pending;
 
+    const label =
+      status === 'completed' || status === 'paid' ? 'Completada'
+      : status === 'pending' ? 'Pendiente'
+      : status === 'cancelled' ? 'Anulada'
+      : status;
+
     return (
       <Badge className={cn(style.bg, style.text, 'border-0 flex items-center gap-1')}>
         {style.icon}
-        {status === 'completed' ? 'Completada' : status === 'pending' ? 'Pendiente' : 'Anulada'}
+        {label}
       </Badge>
     );
   };
@@ -196,18 +213,18 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white break-words">
                 {sale._source === 'web' ? `Pedido ${sale.invoice_number || '#' + sale.id.slice(0, 8)}` : `Venta #${sale.id.slice(0, 8)}`}
               </h1>
               {sale._source === 'web' ? (
-                <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 flex items-center gap-1">
+                <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 flex items-center gap-1 shrink-0">
                   <Globe className="h-3.5 w-3.5" />
                   Web
                 </Badge>
               ) : (
-                <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-0 flex items-center gap-1">
+                <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-0 flex items-center gap-1 shrink-0">
                   <ShoppingCart className="h-3.5 w-3.5" />
                   POS
                 </Badge>
@@ -222,7 +239,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                 />
               )}
             </div>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {formatDate(sale.sale_date || sale.created_at)} a las{' '}
               {new Date(sale.sale_date || sale.created_at).toLocaleTimeString('es-ES', {
                 hour: '2-digit',
@@ -233,32 +250,32 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handlePrint} className="dark:border-gray-700">
-            <Printer className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={handlePrint} className="dark:border-gray-700">
+            <Printer className="h-4 w-4 mr-1.5" />
             Imprimir
           </Button>
-          <Button variant="outline" onClick={handleDuplicate} className="dark:border-gray-700">
-            <Copy className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={handleDuplicate} className="dark:border-gray-700">
+            <Copy className="h-4 w-4 mr-1.5" />
             Duplicar
           </Button>
           {sale.status === 'completed' && (
-            <Button variant="outline" onClick={handleCreateReturn} className="dark:border-gray-700">
-              <RotateCcw className="h-4 w-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={handleCreateReturn} className="dark:border-gray-700">
+              <RotateCcw className="h-4 w-4 mr-1.5" />
               Devolución
             </Button>
           )}
           {sale.status !== 'cancelled' && (
-            <Button variant="destructive" onClick={handleCancel}>
-              <XCircle className="h-4 w-4 mr-2" />
+            <Button variant="destructive" size="sm" onClick={handleCancel}>
+              <XCircle className="h-4 w-4 mr-1.5" />
               Anular
             </Button>
           )}
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         {/* Info principal */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 lg:space-y-6">
           {/* Items */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader className="pb-3">
@@ -268,6 +285,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="dark:border-gray-700">
@@ -280,9 +298,9 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                 <TableBody>
                   {(sale.items || []).map((item: any) => (
                     <TableRow key={item.id} className="dark:border-gray-700">
-                      <TableCell className="dark:text-gray-300">
-                        <div>
-                          <p className="font-medium">
+                      <TableCell className="dark:text-gray-300 min-w-[180px]">
+                        <div className="space-y-0.5">
+                          <p className="font-medium text-sm leading-snug break-words">
                             {item.products?.name || item.notes?.product_name || 'Producto'}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -303,6 +321,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
 
@@ -347,7 +366,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
         </div>
 
         {/* Panel lateral */}
-        <div className="space-y-6">
+        <div className="space-y-4 lg:space-y-6">
           {/* Cliente */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader className="pb-3">
@@ -397,10 +416,21 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                 <span>Subtotal</span>
                 <span>{formatCurrency(sale.subtotal || 0)}</span>
               </div>
-              <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                <span>Impuestos</span>
-                <span>{formatCurrency(sale.tax_total || 0)}</span>
-              </div>
+              {Array.isArray((sale as any).tax_breakdown) && (sale as any).tax_breakdown.length > 0 ? (
+                (sale as any).tax_breakdown.map((tax: { name: string; amount: number }, idx: number) => (
+                  <div key={idx} className="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span>{tax.name}{(sale as any).tax_included ? ' (incluido)' : ''}</span>
+                    <span>{formatCurrency(tax.amount || 0)}</span>
+                  </div>
+                ))
+              ) : (
+                (sale.tax_total || 0) > 0 && (
+                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span>{(sale as any).tax_included ? 'Impuestos (incluidos)' : 'Impuestos'}</span>
+                    <span>{formatCurrency(sale.tax_total || 0)}</span>
+                  </div>
+                )
+              )}
               {Number(sale.discount_total) > 0 && (
                 <div className="flex justify-between text-green-600 dark:text-green-400">
                   <span>Descuentos</span>

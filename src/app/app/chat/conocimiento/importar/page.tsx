@@ -190,7 +190,7 @@ export default function ImportPage() {
 
   if (loading && sources.length === 0) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
@@ -200,7 +200,7 @@ export default function ImportPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <ImportHeader onBack={() => router.push('/app/chat/conocimiento')} />
 
       <div className="flex-1 overflow-y-auto p-6">

@@ -134,7 +134,7 @@ export default function NotificacionesPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <NotificacionesHeader onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 

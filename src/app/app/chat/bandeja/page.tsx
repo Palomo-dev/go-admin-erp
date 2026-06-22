@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Menu, Settings, Plus, Radio, Loader2 } from 'lucide-react';
+import { Search, Filter, Settings, Plus, Radio, Loader2, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
@@ -14,8 +14,10 @@ import ConversationsService, {
 } from '@/lib/services/conversationsService';
 import {
   ConversationItemCompact,
-  ChatView
+  ChatView,
+  ConversationSkeletonList
 } from '@/components/chat/inbox';
+import { SearchSelect } from '@/components/ui/search-select';
 
 const PAGE_SIZE = 20;
 
@@ -32,9 +34,16 @@ export default function ChatBandejaPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showMobileChat, setShowMobileChat] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalConversations, setTotalConversations] = useState(0);
+  const [channels, setChannels] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [tags, setTags] = useState<Array<{ id: string; name: string; color: string }>>([]);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const listRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -42,6 +51,8 @@ export default function ChatBandejaPage() {
 
   useEffect(() => {
     if (organizationId) {
+      loadChannels();
+      loadTags();
       loadData();
       
       // Suscripción realtime para actualizar lista sin spinner
@@ -86,13 +97,47 @@ export default function ChatBandejaPage() {
     }
   }, [searchTerm, conversations]);
 
+  const loadChannels = async () => {
+    if (!organizationId) return;
+    try {
+      const { data } = await supabase
+        .from('channels')
+        .select('id, name, type')
+        .eq('organization_id', organizationId)
+        .eq('status', 'active')
+        .order('name');
+      if (data) setChannels(data);
+    } catch (error) {
+      console.error('Error cargando canales:', error);
+    }
+  };
+
+  const loadTags = async () => {
+    if (!organizationId) return;
+    try {
+      const service = new ConversationsService(organizationId);
+      const data = await service.getTags();
+      if (data) setTags(data);
+    } catch (error) {
+      console.error('Error cargando etiquetas:', error);
+    }
+  };
+
+  const buildFilters = (): Filters | undefined => {
+    const filters: Filters = {};
+    if (statusFilter !== 'all') filters.status = statusFilter;
+    if (priorityFilter !== 'all') filters.priority = priorityFilter;
+    if (channelFilter !== 'all') filters.channel = channelFilter;
+    if (tagFilter !== 'all') filters.tag_id = tagFilter;
+    return Object.keys(filters).length > 0 ? filters : undefined;
+  };
+
   const loadData = async () => {
     if (!organizationId) return;
 
     try {
-      setLoading(true);
       const service = new ConversationsService(organizationId);
-      const result = await service.getConversationsPaginated(undefined, { limit: PAGE_SIZE, offset: 0 });
+      const result = await service.getConversationsPaginated(buildFilters(), { limit: PAGE_SIZE, offset: 0 });
       setConversations(result.data);
       setFilteredConversations(result.data);
       setHasMore(result.hasMore);
@@ -117,7 +162,7 @@ export default function ChatBandejaPage() {
       setLoadingMore(true);
       const service = new ConversationsService(organizationId);
       const result = await service.getConversationsPaginated(
-        undefined, 
+        buildFilters(),
         { limit: PAGE_SIZE, offset: conversations.length }
       );
       
@@ -146,7 +191,7 @@ export default function ChatBandejaPage() {
     try {
       const service = new ConversationsService(organizationId);
       const result = await service.getConversationsPaginated(
-        undefined, 
+        buildFilters(),
         { limit: Math.max(conversations.length, PAGE_SIZE), offset: 0 }
       );
       setConversations(result.data);
@@ -183,6 +228,12 @@ export default function ChatBandejaPage() {
       }
     };
   }, [hasMore, loadingMore, loadMore, searchTerm]);
+
+  useEffect(() => {
+    if (organizationId) {
+      loadData();
+    }
+  }, [statusFilter, priorityFilter, channelFilter, tagFilter]);
 
   const handleConversationSelect = async (conversation: Conversation) => {
     setSelectedConversation(conversation);
@@ -305,12 +356,41 @@ export default function ChatBandejaPage() {
     }
   };
 
+  const handleStatusChange = async (conversationId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+      if (error) throw error;
+
+      setConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, status: newStatus } : c
+      ));
+      setFilteredConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, status: newStatus } : c
+      ));
+      setSelectedConversation(prev => prev ? { ...prev, status: newStatus } : prev);
+
+      toast({
+        title: newStatus === 'closed' ? 'Conversación cerrada' : newStatus === 'pending' ? 'Conversación pendiente' : 'Conversación reabierta',
+      });
+    } catch (error) {
+      console.error('Error cambiando estado:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo cambiar el estado',
+        variant: 'destructive'
+      });
+    }
+  };
+
   return (
-    <div className="h-[calc(100vh-64px)] flex overflow-hidden bg-white dark:bg-gray-900">
+    <div className="h-full flex overflow-hidden bg-white dark:bg-gray-900">
       {/* Columna izquierda - Lista de conversaciones */}
       <div className={`
         ${showMobileChat ? 'hidden' : 'flex'} 
-        lg:flex flex-col 
+        lg:flex flex-col min-h-0 overflow-hidden
         ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden' : 'w-full lg:w-[380px] xl:w-[420px]'}
         border-r dark:border-gray-800 bg-white dark:bg-gray-900
         transition-all duration-300 ease-in-out
@@ -340,14 +420,27 @@ export default function ChatBandejaPage() {
               >
                 <Radio className="h-5 w-5" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant={showFilters ? 'default' : 'ghost'}
+                size="icon"
                 className="h-9 w-9"
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                title={sidebarCollapsed ? 'Expandir lista' : 'Colapsar lista'}
+                onClick={() => setShowFilters(!showFilters)}
+                title="Filtros"
               >
-                <Menu className="h-5 w-5" />
+                <Filter className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 hidden lg:flex"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                title={sidebarCollapsed ? 'Mostrar lista' : 'Ocultar lista'}
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeftOpen className="h-5 w-5" />
+                ) : (
+                  <PanelLeftClose className="h-5 w-5" />
+                )}
               </Button>
             </div>
           </div>
@@ -362,14 +455,71 @@ export default function ChatBandejaPage() {
               className="pl-9 bg-gray-50 dark:bg-gray-800 border-0"
             />
           </div>
+
+          {/* Filtros con buscador */}
+          {showFilters && (
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <SearchSelect
+                options={[
+                  { value: 'open', label: 'Abiertas' },
+                  { value: 'pending', label: 'Pendientes' },
+                  { value: 'closed', label: 'Cerradas' },
+                ]}
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+                placeholder="Estado"
+                searchPlaceholder="Buscar estado..."
+                emptyText="No se encontraron estados"
+                noneLabel="Todos"
+                noneValue="all"
+                className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
+              />
+              <SearchSelect
+                options={[
+                  { value: 'low', label: 'Baja' },
+                  { value: 'normal', label: 'Normal' },
+                  { value: 'high', label: 'Alta' },
+                  { value: 'urgent', label: 'Urgente' },
+                ]}
+                value={priorityFilter}
+                onValueChange={setPriorityFilter}
+                placeholder="Prioridad"
+                searchPlaceholder="Buscar prioridad..."
+                emptyText="No se encontraron prioridades"
+                noneLabel="Todas"
+                noneValue="all"
+                className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
+              />
+              <SearchSelect
+                options={channels.map((ch) => ({ value: ch.id, label: ch.name, sublabel: ch.type }))}
+                value={channelFilter}
+                onValueChange={setChannelFilter}
+                placeholder="Canal"
+                searchPlaceholder="Buscar canal..."
+                emptyText="No se encontraron canales"
+                noneLabel="Todos"
+                noneValue="all"
+                className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
+              />
+              <SearchSelect
+                options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
+                value={tagFilter}
+                onValueChange={setTagFilter}
+                placeholder="Etiqueta"
+                searchPlaceholder="Buscar etiqueta..."
+                emptyText="No se encontraron etiquetas"
+                noneLabel="Todas"
+                noneValue="all"
+                className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
+              />
+            </div>
+          )}
         </div>
 
         {/* Lista de conversaciones */}
         <div ref={listRef} className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-            </div>
+            <ConversationSkeletonList count={6} />
           ) : filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center px-4">
               <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -414,7 +564,7 @@ export default function ChatBandejaPage() {
       {/* Columna derecha - Chat */}
       <div className={`
         ${showMobileChat ? 'flex' : 'hidden'} 
-        lg:flex flex-1 flex-col
+        lg:flex flex-1 flex-col min-h-0 overflow-hidden
       `}>
         <ChatView
           conversation={selectedConversation}
@@ -423,6 +573,7 @@ export default function ChatBandejaPage() {
           organizationId={organizationId}
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           sidebarCollapsed={sidebarCollapsed}
+          onStatusChange={handleStatusChange}
         />
       </div>
     </div>

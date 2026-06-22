@@ -98,7 +98,7 @@ export function ActividadesFiltros({
               placeholder="Buscar en notas..."
               value={filters.search || ''}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+              className="pl-10 bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
             />
           </div>
         </div>
@@ -109,10 +109,10 @@ export function ActividadesFiltros({
             value={filters.activity_type || 'all'}
             onValueChange={handleTypeChange}
           >
-            <SelectTrigger className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+            <SelectTrigger className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <SelectItem value="all">Todos los tipos</SelectItem>
               {Object.entries(ACTIVITY_TYPE_CONFIG).map(([key, config]) => (
                 <SelectItem key={key} value={key}>
@@ -129,10 +129,10 @@ export function ActividadesFiltros({
             value={filters.user_id || 'all'}
             onValueChange={handleUserChange}
           >
-            <SelectTrigger className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+            <SelectTrigger className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
               <SelectValue placeholder="Usuario" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <SelectItem value="all">Todos los usuarios</SelectItem>
               {users.map((user) => (
                 <SelectItem key={user.id} value={user.id}>
@@ -148,13 +148,13 @@ export function ActividadesFiltros({
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              className="w-full lg:w-40 justify-start text-left font-normal bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+              className="w-full lg:w-40 justify-start text-left font-normal bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <Calendar className="mr-2 h-4 w-4" />
               {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Desde'}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700" align="start">
             <CalendarComponent
               mode="single"
               selected={dateFrom}
@@ -170,13 +170,13 @@ export function ActividadesFiltros({
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              className="w-full lg:w-40 justify-start text-left font-normal bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+              className="w-full lg:w-40 justify-start text-left font-normal bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <Calendar className="mr-2 h-4 w-4" />
               {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Hasta'}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700" align="start">
             <CalendarComponent
               mode="single"
               selected={dateTo}
@@ -193,7 +193,7 @@ export function ActividadesFiltros({
             variant="ghost"
             size="icon"
             onClick={clearFilters}
-            className="text-gray-500 hover:text-red-600"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
           >
             <X className="h-4 w-4" />
           </Button>

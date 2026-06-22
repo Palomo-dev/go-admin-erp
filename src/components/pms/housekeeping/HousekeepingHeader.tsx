@@ -16,18 +16,18 @@ export function HousekeepingHeader({
   onNewTask,
 }: HousekeepingHeaderProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex items-center justify-between">
+    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Gestión de Limpieza
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
             Control de tareas de limpieza y ama de llaves
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* View Mode Toggle */}
           <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
             <Button
@@ -40,8 +40,8 @@ export function HousekeepingHeader({
                   : 'text-gray-600 dark:text-gray-400'
               }
             >
-              <List className="h-4 w-4 mr-2" />
-              Lista
+              <List className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Lista</span>
             </Button>
             <Button
               variant={viewMode === 'kanban' ? 'default' : 'ghost'}
@@ -53,13 +53,13 @@ export function HousekeepingHeader({
                   : 'text-gray-600 dark:text-gray-400'
               }
             >
-              <LayoutGrid className="h-4 w-4 mr-2" />
-              Kanban
+              <LayoutGrid className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Kanban</span>
             </Button>
           </div>
 
           {/* New Task Button */}
-          <Button onClick={onNewTask} className="bg-blue-600 hover:bg-blue-700">
+          <Button size="sm" onClick={onNewTask} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
             Nueva Tarea
           </Button>

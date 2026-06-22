@@ -414,13 +414,13 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
       </Card>
 
       {/* Paginación */}
-      {resultado.total_pages > 1 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mt-4 px-4 sm:px-0">
-          <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-            Mostrando {((resultado.page_number - 1) * resultado.page_size) + 1} a{' '}
-            {Math.min(resultado.page_number * resultado.page_size, resultado.total_count)} de{' '}
-            {resultado.total_count} registros
-          </div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mt-4 px-4 sm:px-0">
+        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+          Mostrando {((resultado.page_number - 1) * resultado.page_size) + 1} a{' '}
+          {Math.min(resultado.page_number * resultado.page_size, resultado.total_count)} de{' '}
+          {resultado.total_count} registros
+        </div>
+        {resultado.total_pages > 1 && (
           <Pagination>
             <PaginationContent>
               <PaginationItem>
@@ -467,8 +467,8 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Modales */}
       {selectedAccount && (

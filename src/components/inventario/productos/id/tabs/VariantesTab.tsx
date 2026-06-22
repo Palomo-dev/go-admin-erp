@@ -490,7 +490,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
     <div className="space-y-6">
       {/* Cabecera */}
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Variantes de Producto</h3>
+        <h3 className="text-lg font-medium dark:text-white">Variantes de Producto</h3>
         <Button onClick={handleNewVariante}>
           <Plus className="h-4 w-4 mr-2" />
           Nueva Variante
@@ -535,17 +535,17 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
       })()}
 
       {/* Tabla de variantes */}
-      <div className={`rounded-md border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+      <div className="rounded-md border border-gray-200 dark:border-gray-800">
         <Table>
-          <TableHeader className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}>
+          <TableHeader className="bg-gray-50 dark:bg-gray-900">
             <TableRow>
-              <TableHead className="w-[100px]">SKU</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Atributos</TableHead>
-              <TableHead className="text-right">Precio</TableHead>
-              <TableHead className="text-right">Costo</TableHead>
-              <TableHead className="text-center">Stock</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="w-[100px] dark:text-gray-300">SKU</TableHead>
+              <TableHead className="dark:text-gray-300">Nombre</TableHead>
+              <TableHead className="dark:text-gray-300">Atributos</TableHead>
+              <TableHead className="dark:text-gray-300 text-right">Precio</TableHead>
+              <TableHead className="dark:text-gray-300 text-right">Costo</TableHead>
+              <TableHead className="dark:text-gray-300 text-center">Stock</TableHead>
+              <TableHead className="dark:text-gray-300 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -564,7 +564,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                       variant="outline" 
                       size="sm" 
                       onClick={handleNewVariante}
-                      className={theme === 'dark' ? 'border-gray-800 hover:bg-gray-800' : ''}
+                      className="dark:border-gray-800 dark:hover:bg-gray-800"
                     >
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Crear primera variante
@@ -575,8 +575,8 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             ) : (
               variantes.map((variante) => (
                 <TableRow key={variante.id}>
-                  <TableCell className="font-mono text-xs">{variante.sku}</TableCell>
-                  <TableCell className="font-medium">{variante.name}</TableCell>
+                  <TableCell className="font-mono text-xs dark:text-gray-200">{variante.sku}</TableCell>
+                  <TableCell className="font-medium dark:text-white">{variante.name}</TableCell>
                   <TableCell>
                     {variante.variant_data && typeof variante.variant_data === 'object' ? (
                       <div className="flex flex-wrap gap-1">
@@ -594,12 +594,12 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-gray-400 text-xs">—</span>
+                      <span className="text-gray-400 text-xs dark:text-gray-500">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">{formatCurrency(variante.price || 0)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(variante.cost || 0)}</TableCell>
-                  <TableCell className="text-center">{variante.stock || 0}</TableCell>
+                  <TableCell className="text-right dark:text-gray-200">{formatCurrency(variante.price || 0)}</TableCell>
+                  <TableCell className="text-right dark:text-gray-200">{formatCurrency(variante.cost || 0)}</TableCell>
+                  <TableCell className="text-center dark:text-gray-200">{variante.stock || 0}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -622,15 +622,15 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                             <span className="sr-only">Eliminar</span>
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+                        <AlertDialogContent className="dark:bg-gray-900 dark:border-gray-800">
                           <AlertDialogHeader>
                             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                            <AlertDialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+                            <AlertDialogDescription className="dark:text-gray-400">
                               Esta acción eliminará la variante permanentemente y no se puede deshacer.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel className={theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : ''}>
+                            <AlertDialogCancel className="dark:bg-gray-800 dark:hover:bg-gray-700">
                               Cancelar
                             </AlertDialogCancel>
                             <AlertDialogAction
@@ -653,12 +653,12 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
       
       {/* Diálogo para crear/editar variantes */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className={`sm:max-w-md ${theme === 'dark' ? 'bg-gray-900 border-gray-800 text-gray-100' : ''}`}>
+        <DialogContent className="sm:max-w-md dark:bg-gray-900 dark:border-gray-800 dark:text-gray-100">
           <DialogHeader>
             <DialogTitle>
               {dialogMode === 'create' ? 'Crear nueva variante' : 'Editar variante'}
             </DialogTitle>
-            <DialogDescription className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
               {dialogMode === 'create'
                 ? 'Completa los datos para crear una variante del producto'
                 : 'Modifica los datos de la variante'}
@@ -673,7 +673,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                 value={editingVariante?.sku || ''}
                 onChange={(e) => handleVarianteChange('sku', e.target.value)}
                 placeholder="SKU único para esta variante"
-                className={`font-mono ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
+                className="font-mono dark:bg-gray-800 dark:border-gray-700"
               />
             </div>
             
@@ -684,7 +684,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                 value={editingVariante?.name || ''}
                 onChange={(e) => handleVarianteChange('name', e.target.value)}
                 placeholder="Nombre descriptivo"
-                className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                className="dark:bg-gray-800 dark:border-gray-700"
               />
             </div>
             
@@ -697,7 +697,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                   step="0.01"
                   value={editingVariante?.price || 0}
                   onChange={(e) => handleVarianteChange('price', parseFloat(e.target.value))}
-                  className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                  className="dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
               
@@ -709,7 +709,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                   step="0.01"
                   value={editingVariante?.cost || 0}
                   onChange={(e) => handleVarianteChange('cost', parseFloat(e.target.value))}
-                  className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                  className="dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
             </div>
@@ -733,7 +733,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                             }}
                             placeholder={key}
                             list={`vt-suggestions-${key}`}
-                            className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                            className="dark:bg-gray-800 dark:border-gray-700"
                           />
                           <Button
                             type="button"
@@ -805,7 +805,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                     value=""
                     onValueChange={(val) => { if (val) addAttributeToVariante(val); }}
                   >
-                    <SelectTrigger className={`flex-1 text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}>
+                    <SelectTrigger className="flex-1 text-sm dark:bg-gray-800 dark:border-gray-700">
                       <SelectValue placeholder="Tipo existente..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -821,7 +821,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                   value={newAttrName}
                   onChange={(e) => setNewAttrName(e.target.value)}
                   placeholder="Nuevo tipo..."
-                  className={`w-36 text-sm ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
+                  className="w-36 text-sm dark:bg-gray-800 dark:border-gray-700"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -851,11 +851,11 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                 type="number"
                 value={editingVariante?.stock || 0}
                 onChange={(e) => handleVarianteChange('stock', parseInt(e.target.value, 10))}
-                className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                className="dark:bg-gray-800 dark:border-gray-700"
                 disabled={dialogMode === 'edit'}
               />
               {dialogMode === 'edit' && (
-                <p className="text-xs text-gray-500">El stock se gestiona desde movimientos de inventario</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">El stock se gestiona desde movimientos de inventario</p>
               )}
             </div>
             
@@ -866,14 +866,14 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                 value={editingVariante?.barcode || ''}
                 onChange={(e) => handleVarianteChange('barcode', e.target.value)}
                 placeholder="Código de barras específico"
-                className={`font-mono ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
+                className="font-mono dark:bg-gray-800 dark:border-gray-700"
               />
             </div>
           </div>
           
           <DialogFooter className="sm:justify-between">
             <DialogClose asChild>
-              <Button variant="outline" className={theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : ''}>
+              <Button variant="outline" className="dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
                 Cancelar
               </Button>
             </DialogClose>

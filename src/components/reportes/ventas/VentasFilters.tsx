@@ -81,14 +81,14 @@ export function VentasFilters({
       </div>
 
       {/* Fila principal: fechas + sucursal */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div>
           <label className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 block">Desde</label>
           <Input
             type="date"
             value={filters.dateFrom}
             onChange={(e) => handleChange('dateFrom', e.target.value)}
-            className="h-9 text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+            className="h-9 text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 dark:[color-scheme:dark]"
             disabled={isLoading}
           />
         </div>
@@ -98,7 +98,7 @@ export function VentasFilters({
             type="date"
             value={filters.dateTo}
             onChange={(e) => handleChange('dateTo', e.target.value)}
-            className="h-9 text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+            className="h-9 text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 dark:[color-scheme:dark]"
             disabled={isLoading}
           />
         </div>
@@ -144,7 +144,7 @@ export function VentasFilters({
 
       {/* Fila expandida */}
       {expanded && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
           <div>
             <label className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 block">Estado pago</label>
             <Select

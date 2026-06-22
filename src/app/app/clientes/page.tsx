@@ -664,6 +664,7 @@ export default function ClientesPage() {
             size="icon" 
             onClick={() => organizationId && loadCustomers(organizationId)}
             disabled={isLoading}
+            className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>

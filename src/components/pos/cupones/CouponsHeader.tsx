@@ -147,8 +147,8 @@ export function CouponsHeader({
           {/* Filtros */}
           <Card className="md:col-span-2 dark:bg-gray-800 dark:border-gray-700">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
+              <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2">
+                <div className="relative flex-1 sm:min-w-[180px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     value={filters.search || ''}
@@ -161,7 +161,7 @@ export function CouponsHeader({
                   value={filters.is_active === undefined ? 'all' : filters.is_active ? 'active' : 'inactive'}
                   onValueChange={handleStatusChange}
                 >
-                  <SelectTrigger className="w-[130px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                  <SelectTrigger className="w-full sm:w-[130px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -174,7 +174,7 @@ export function CouponsHeader({
                   value={filters.discount_type || 'all'}
                   onValueChange={handleTypeChange}
                 >
-                  <SelectTrigger className="w-[140px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                  <SelectTrigger className="w-full sm:w-[140px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -189,7 +189,7 @@ export function CouponsHeader({
                   size="icon"
                   onClick={onRefresh}
                   disabled={loading}
-                  className="dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600 w-full sm:w-auto"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </Button>

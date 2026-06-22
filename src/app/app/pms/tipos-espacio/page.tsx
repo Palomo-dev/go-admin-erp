@@ -203,7 +203,7 @@ export default function TiposEspacioPage() {
   const hasFilters = searchTerm !== '' || categoryFilter !== 'all' || statusFilter !== 'all';
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <SpaceTypesHeader
         onRefresh={loadData}
@@ -213,6 +213,9 @@ export default function TiposEspacioPage() {
         }}
         isLoading={isLoading}
       />
+
+      {/* Content */}
+      <div className="p-4 sm:p-6 space-y-6">
 
       {/* Stats */}
       {!isLoading && spaceTypes.length > 0 && (
@@ -263,6 +266,7 @@ export default function TiposEspacioPage() {
             )}
           </>
         )}
+      </div>
       </div>
 
       {/* Dialog */}

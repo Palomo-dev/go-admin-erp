@@ -46,6 +46,7 @@ import {
   MapPin,
   BedDouble,
   Key,
+  FolderKanban,
   LogOut as LogOutIcon,
   Sparkles,
   ParkingCircle,
@@ -171,6 +172,10 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Vista General': <CalendarDays size={16} />,
     'Recurrencias': <GitMerge size={16} />,
     'Importar': <Upload size={16} />,
+    
+    // PM (Gestión de Proyectos)
+    'Proyectos': <FolderKanban size={16} />,
+    'Metas': <Target size={16} />,
     
     // PMS
     'Calendario': <CalendarDays size={16} />,

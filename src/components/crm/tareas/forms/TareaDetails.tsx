@@ -5,7 +5,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UseFormReturn } from 'react-hook-form';
-import { Phone, Users, Mail, MapPin } from 'lucide-react';
+import { Phone, Users, Mail, MapPin, ListTodo, Eye, ClipboardCheck, PackageCheck, Search, FileText, Bug, Sparkles } from 'lucide-react';
 
 interface TareaDetailsProps {
   form: UseFormReturn<any>;
@@ -13,10 +13,21 @@ interface TareaDetailsProps {
 
 const TareaDetails: React.FC<TareaDetailsProps> = ({ form }) => {
   const tiposTarea = [
+    // CRM
     { value: 'llamada', label: 'Llamada', icon: <Phone className="h-4 w-4" /> },
     { value: 'reunion', label: 'Reunión', icon: <Users className="h-4 w-4" /> },
     { value: 'email', label: 'Email', icon: <Mail className="h-4 w-4" /> },
-    { value: 'visita', label: 'Visita', icon: <MapPin className="h-4 w-4" /> }
+    { value: 'visita', label: 'Visita', icon: <MapPin className="h-4 w-4" /> },
+    // PM
+    { value: 'tarea', label: 'Tarea', icon: <ListTodo className="h-4 w-4" /> },
+    { value: 'seguimiento', label: 'Seguimiento', icon: <Eye className="h-4 w-4" /> },
+    { value: 'revision', label: 'Revisión', icon: <ClipboardCheck className="h-4 w-4" /> },
+    { value: 'entrega', label: 'Entrega', icon: <PackageCheck className="h-4 w-4" /> },
+    // Dev/General
+    { value: 'investigacion', label: 'Investigación', icon: <Search className="h-4 w-4" /> },
+    { value: 'documento', label: 'Documento', icon: <FileText className="h-4 w-4" /> },
+    { value: 'bug', label: 'Bug', icon: <Bug className="h-4 w-4" /> },
+    { value: 'feature', label: 'Feature', icon: <Sparkles className="h-4 w-4" /> },
   ];
 
   const prioridades = [

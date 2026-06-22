@@ -263,7 +263,7 @@ export default function ReportesVentasPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header sticky */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 print:hidden">
         <div className="px-4 sm:px-6 py-4">
@@ -292,7 +292,7 @@ export default function ReportesVentasPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setSaveDialogOpen(true)}
-                className="border-gray-300 dark:border-gray-700"
+                className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <Save className="h-4 w-4 mr-2" />
                 Guardar
@@ -301,7 +301,7 @@ export default function ReportesVentasPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleExportCSV}
-                className="border-gray-300 dark:border-gray-700"
+                className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 CSV
@@ -310,7 +310,7 @@ export default function ReportesVentasPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleExportPDF}
-                className="border-gray-300 dark:border-gray-700"
+                className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <Download className="h-4 w-4 mr-2" />
                 PDF
@@ -320,7 +320,7 @@ export default function ReportesVentasPage() {
                 size="sm"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="border-gray-300 dark:border-gray-700"
+                className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
                 Actualizar

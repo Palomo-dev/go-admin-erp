@@ -11,7 +11,7 @@ export default function AjusteDetallePage() {
   const adjustmentId = parseInt(params.id as string);
 
   return (
-    <div className={`p-6 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+    <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <AjusteDetalle adjustmentId={adjustmentId} />
     </div>
   );

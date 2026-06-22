@@ -183,7 +183,7 @@ export function ReportesPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1 dark:bg-gray-900 dark:border-gray-600"
+                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
               />
             </div>
             <div>
@@ -192,7 +192,7 @@ export function ReportesPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1 dark:bg-gray-900 dark:border-gray-600"
+                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
               />
             </div>
             <div>
@@ -369,27 +369,27 @@ export function ReportesPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-              <p className="text-sm text-emerald-600 dark:text-emerald-400">Ventas</p>
-              <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+            <div className="p-3 sm:p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+              <p className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">Ventas</p>
+              <p className="text-lg sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300 break-all">
                 {formatCurrency(cashReport?.totalVentas || 0)}
               </p>
             </div>
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-              <p className="text-sm text-green-600 dark:text-green-400">+ Ingresos</p>
-              <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+            <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+              <p className="text-xs sm:text-sm text-green-600 dark:text-green-400">+ Ingresos</p>
+              <p className="text-lg sm:text-2xl font-bold text-green-700 dark:text-green-300 break-all">
                 {formatCurrency(cashReport?.totalIngresos || 0)}
               </p>
             </div>
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-              <p className="text-sm text-red-600 dark:text-red-400">- Egresos</p>
-              <p className="text-2xl font-bold text-red-700 dark:text-red-300">
+            <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">- Egresos</p>
+              <p className="text-lg sm:text-2xl font-bold text-red-700 dark:text-red-300 break-all">
                 {formatCurrency(cashReport?.totalEgresos || 0)}
               </p>
             </div>
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-blue-600 dark:text-blue-400">= Balance Total</p>
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+            <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">= Balance Total</p>
+              <p className="text-lg sm:text-2xl font-bold text-blue-700 dark:text-blue-300 break-all">
                 {formatCurrency(cashReport?.balance || 0)}
               </p>
             </div>

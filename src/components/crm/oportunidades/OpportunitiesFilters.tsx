@@ -77,14 +77,14 @@ export function OpportunitiesFilters({
               placeholder="Buscar oportunidades..."
               value={filters.search || ''}
               onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
-              className="pl-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              className="pl-9 bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
             />
           </div>
           <Button
             variant="outline"
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
-              'border-gray-200 dark:border-gray-700',
+              'border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200',
               showFilters && 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
             )}
           >
@@ -104,7 +104,7 @@ export function OpportunitiesFilters({
               variant="outline"
               size="sm"
               onClick={onExport}
-              className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 h-9 text-xs sm:text-sm"
+              className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 h-9 text-xs sm:text-sm"
             >
               <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               <span className="hidden xs:inline">Exportar</span>
@@ -115,7 +115,7 @@ export function OpportunitiesFilters({
               variant="outline"
               size="sm"
               onClick={onImport}
-              className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 h-9 text-xs sm:text-sm"
+              className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 h-9 text-xs sm:text-sm"
             >
               <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               <span className="hidden xs:inline">Importar</span>
@@ -148,10 +148,10 @@ export function OpportunitiesFilters({
                   })
                 }
               >
-                <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectTrigger className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                   <SelectValue placeholder="Todos los pipelines" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800">
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                   <SelectItem value="all">Todos los pipelines</SelectItem>
                   {pipelines.map((pipeline) => (
                     <SelectItem key={pipeline.id} value={pipeline.id}>
@@ -173,10 +173,10 @@ export function OpportunitiesFilters({
                   onFiltersChange({ ...filters, stageId: value === 'all' ? undefined : value })
                 }
               >
-                <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectTrigger className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                   <SelectValue placeholder="Todas las etapas" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800">
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                   <SelectItem value="all">Todas las etapas</SelectItem>
                   {filteredStages.map((stage) => (
                     <SelectItem key={stage.id} value={stage.id}>
@@ -207,10 +207,10 @@ export function OpportunitiesFilters({
                   })
                 }
               >
-                <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectTrigger className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                   <SelectValue placeholder="Todos los estados" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800">
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                   <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="open">Abierta</SelectItem>
                   <SelectItem value="won">Ganada</SelectItem>
@@ -230,10 +230,10 @@ export function OpportunitiesFilters({
                   onFiltersChange({ ...filters, customerId: value === 'all' ? undefined : value })
                 }
               >
-                <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectTrigger className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                   <SelectValue placeholder="Todos los clientes" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 max-h-60">
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 max-h-60">
                   <SelectItem value="all">Todos los clientes</SelectItem>
                   {customers.map((customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
@@ -254,8 +254,8 @@ export function OpportunitiesFilters({
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700',
-                      !filters.dateFrom && 'text-gray-500'
+                      'w-full justify-start text-left font-normal bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700',
+                      !filters.dateFrom && 'text-gray-500 dark:text-gray-500'
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -264,7 +264,7 @@ export function OpportunitiesFilters({
                       : 'Seleccionar fecha'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800">
+                <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                   <Calendar
                     mode="single"
                     selected={filters.dateFrom ? new Date(filters.dateFrom) : undefined}
@@ -290,8 +290,8 @@ export function OpportunitiesFilters({
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700',
-                      !filters.dateTo && 'text-gray-500'
+                      'w-full justify-start text-left font-normal bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700',
+                      !filters.dateTo && 'text-gray-500 dark:text-gray-500'
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -300,7 +300,7 @@ export function OpportunitiesFilters({
                       : 'Seleccionar fecha'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800">
+                <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                   <Calendar
                     mode="single"
                     selected={filters.dateTo ? new Date(filters.dateTo) : undefined}

@@ -17,6 +17,8 @@ import {
   BarChart3,
   Fingerprint,
 } from 'lucide-react';
+import { useOptimizedModules } from '@/hooks/useOptimizedModules';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 
 interface QuickNavItem {
   label: string;
@@ -29,7 +31,7 @@ interface QuickNavItem {
 const navItems: QuickNavItem[] = [
   {
     label: 'Bandeja',
-    href: '/app/crm/bandeja',
+    href: '/app/chat/bandeja',
     icon: <MessageSquare className="h-5 w-5" />,
     description: 'Conversaciones',
     color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
@@ -114,9 +116,17 @@ const navItems: QuickNavItem[] = [
 ];
 
 export function CRMQuickNav() {
+  const { organization } = useOrganization();
+  const { canAccessModule } = useOptimizedModules(organization?.id);
+  const hasChatModule = canAccessModule('chat');
+
+  const visibleItems = navItems.filter(item =>
+    item.href !== '/app/chat/bandeja' || hasChatModule
+  );
+
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2 sm:gap-3">
-      {navItems.map((item) => (
+      {visibleItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className="group p-2.5 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer h-full">
             <div className="flex flex-col items-center text-center gap-2">
@@ -140,15 +150,21 @@ export function CRMQuickNav() {
 }
 
 export function CRMQuickActions() {
+  const { organization } = useOrganization();
+  const { canAccessModule } = useOptimizedModules(organization?.id);
+  const hasChatModule = canAccessModule('chat');
+
   return (
     <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
-      <Link href="/app/crm/bandeja">
-        <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white">
-          <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
-          <span className="hidden xs:inline">Bandeja</span>
-          <ArrowRight className="h-4 w-4 ml-1 sm:ml-2" />
-        </Button>
-      </Link>
+      {hasChatModule && (
+        <Link href="/app/chat/bandeja">
+          <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white">
+            <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Bandeja</span>
+            <ArrowRight className="h-4 w-4 ml-1 sm:ml-2" />
+          </Button>
+        </Link>
+      )}
       <Link href="/app/crm/oportunidades/nuevo">
         <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
           <DollarSign className="h-4 w-4 mr-1 sm:mr-2" />

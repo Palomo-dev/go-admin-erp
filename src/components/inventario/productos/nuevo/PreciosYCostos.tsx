@@ -21,7 +21,7 @@ export default function PreciosYCostos({ formData, updateFormData }: PreciosYCos
     : '0.00'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-hidden">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
           <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -36,7 +36,7 @@ export default function PreciosYCostos({ formData, updateFormData }: PreciosYCos
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 max-w-full">
         {/* Precio de Venta */}
         <div className="space-y-2">
           <Label htmlFor="price" className="text-gray-700 dark:text-gray-300">

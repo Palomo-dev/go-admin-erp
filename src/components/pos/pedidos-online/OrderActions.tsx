@@ -9,7 +9,8 @@ import {
   Truck, 
   Printer,
   Receipt,
-  Loader2
+  Loader2,
+  DollarSign,
 } from 'lucide-react';
 import type { WebOrder, WebOrderStatus } from '@/lib/services/webOrdersService';
 
@@ -24,6 +25,7 @@ interface OrderActionsProps {
   onCancel?: () => void;
   onConvertToSale?: () => void;
   onPrint?: () => void;
+  onMarkAsPaid?: () => void;
   isLoading?: boolean;
   variant?: 'full' | 'compact';
 }
@@ -39,6 +41,7 @@ export function OrderActions({
   onCancel,
   onConvertToSale,
   onPrint,
+  onMarkAsPaid,
   isLoading = false,
   variant = 'full',
 }: OrderActionsProps) {
@@ -150,6 +153,23 @@ export function OrderActions({
             <CheckCircle className="h-4 w-4 mr-2" />
           )}
           Marcar como entregado
+        </Button>
+      )}
+
+      {/* Marcar como pagado (si no está pagado) */}
+      {order.payment_status !== 'paid' && onMarkAsPaid && !isPending && (
+        <Button
+          variant="outline"
+          className="w-full border-green-600 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+          onClick={onMarkAsPaid}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <DollarSign className="h-4 w-4 mr-2" />
+          )}
+          Marcar como pagado
         </Button>
       )}
 

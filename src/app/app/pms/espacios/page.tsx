@@ -399,7 +399,7 @@ export default function EspaciosPage() {
   const hasFilters = searchTerm !== '' || statusFilter !== 'all' || zoneFilter !== 'all' || typeFilter !== 'all';
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <EspaciosPageHeader
         onRefresh={loadData}

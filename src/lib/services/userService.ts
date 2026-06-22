@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { UserData } from '@/components/app-layout/types';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 /**
  * Obtiene el nombre de usuario a partir de su ID
@@ -179,19 +180,35 @@ export const getUserData = async (userId: string, organizationId?: number): Prom
  * Obtiene la lista de usuarios disponibles para asignación
  * @returns Lista de usuarios con su id y nombre
  */
-export const getAssignableUsers = async (): Promise<Array<{id: string, nombre: string, full_name?: string, email: string}>> => {
+export const getAssignableUsers = async (organizationId?: number): Promise<Array<{id: string, nombre: string, full_name?: string, email: string}>> => {
   try {
+    const orgId = organizationId || getOrganizationId();
+    if (!orgId) {
+      console.error('No se pudo determinar la organización');
+      return [];
+    }
+
     const { data, error } = await supabase
-      .from('profiles')
-      .select('id, first_name, last_name, email')
-      .order('first_name', { ascending: true });
+      .from('organization_members')
+      .select(`
+        user_id,
+        profiles!inner(
+          id,
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .eq('organization_id', orgId)
+      .eq('is_active', true);
       
     if (error) {
       console.error('Error al obtener usuarios asignables:', error);
       return [];
     }
     
-    return data.map(user => {
+    return (data || []).map((member: any) => {
+      const user = member.profiles;
       const fullName = user.first_name && user.last_name 
         ? `${user.first_name} ${user.last_name}` 
         : null;

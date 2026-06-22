@@ -16,6 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   RefreshCw, 
   Bell, 
@@ -34,7 +35,9 @@ import {
   Truck,
   Calendar,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft,
+  ShoppingBag
 } from 'lucide-react';
 import { WebOrderCard } from '@/components/pos/pedidos-online/WebOrderCard';
 import { WebOrderFilters } from '@/components/pos/pedidos-online/WebOrderFilters';
@@ -94,10 +97,11 @@ export default function PedidosOnlinePage() {
     orderId: null 
   });
   const [rejectReason, setRejectReason] = useState('');
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; orderId: string | null }>({ 
-    open: false, 
-    orderId: null 
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; orderId: string | null }>({
+    open: false,
+    orderId: null
   });
+  const [markAsPaid, setMarkAsPaid] = useState(false);
   const [estimatedMinutes, setEstimatedMinutes] = useState(30);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -209,14 +213,16 @@ export default function PedidosOnlinePage() {
       const order = await webOrdersService.getOrderById(confirmDialog.orderId);
       if (!order) throw new Error('Pedido no encontrado');
 
-      const result = await webOrderConfirmationService.confirmOrder(order, estimatedMinutes);
+      const result = await webOrderConfirmationService.confirmOrder(order, estimatedMinutes, markAsPaid);
       const parts = ['Venta creada', 'Comanda enviada a cocina', `${estimatedMinutes} min`];
+      if (markAsPaid) parts.push('Marcado como pagado');
       if (result.couponRedemptionId) parts.push('Cupón redimido');
       toast({
         title: 'Pedido confirmado',
         description: parts.join(' · '),
       });
       setConfirmDialog({ open: false, orderId: null });
+      setMarkAsPaid(false);
       loadOrders();
     } catch (error: any) {
       console.error('Error confirmando pedido:', error);
@@ -349,14 +355,24 @@ export default function PedidosOnlinePage() {
   const showMoreKanban = (key: string) => setKanbanPages(prev => ({ ...prev, [key]: (prev[key] || 1) + 1 }));
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold dark:text-gray-100">Pedidos Online</h1>
-          <p className="text-sm text-muted-foreground dark:text-gray-400">
-            Gestiona los pedidos recibidos desde el sitio web
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <a href="/app/pos">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </a>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              Pedidos Online
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">POS / Pedidos Online</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center border dark:border-gray-700 rounded-md overflow-hidden">
@@ -414,7 +430,7 @@ export default function PedidosOnlinePage() {
       <WebOrderStats stats={stats} isLoading={loading} datePreset={datePreset} />
 
       {/* Filtro de fechas */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
@@ -457,7 +473,7 @@ export default function PedidosOnlinePage() {
       </Card>
 
       {/* Filtros */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="p-4">
           <WebOrderFilters 
             activeFilters={filters}
@@ -472,19 +488,19 @@ export default function PedidosOnlinePage() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground dark:text-gray-400" />
         </div>
       ) : orders.length === 0 ? (
-        <Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="p-8 sm:p-12 text-center">
             <p className="text-muted-foreground dark:text-gray-300">No hay pedidos que mostrar</p>
           </CardContent>
         </Card>
       ) : viewMode === 'list' ? (
         /* ─── Vista Lista ─── */
-        <Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[640px]">
                 <thead>
-                  <tr className="border-b dark:border-gray-700 bg-muted/50">
+                  <tr className="border-b dark:border-gray-700 bg-muted/50 dark:bg-gray-800/50">
                     <th className="text-left p-3 font-medium dark:text-gray-100">Pedido</th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Cliente</th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Estado</th>
@@ -536,7 +552,7 @@ export default function PedidosOnlinePage() {
                               <Button
                                 size="sm"
                                 variant="default"
-                                className="h-7 text-xs"
+                                className="h-7 text-xs dark:text-white"
                                 onClick={() => setConfirmDialog({ open: true, orderId: order.id })}
                               >
                                 <CheckCircle className="h-3 w-3 mr-1 dark:text-white" />
@@ -556,7 +572,7 @@ export default function PedidosOnlinePage() {
                             <Button
                               size="sm"
                               variant="default"
-                              className="h-7 text-xs"
+                              className="h-7 text-xs dark:text-white"
                               onClick={() => handleUpdateStatus(order.id, 'preparing')}
                             >
                               Preparar
@@ -566,7 +582,7 @@ export default function PedidosOnlinePage() {
                             <Button
                               size="sm"
                               variant="default"
-                              className="h-7 text-xs"
+                              className="h-7 text-xs dark:text-white"
                               onClick={() => handleUpdateStatus(order.id, 'ready')}
                             >
                               Listo
@@ -576,7 +592,7 @@ export default function PedidosOnlinePage() {
                             <Button
                               size="sm"
                               variant="default"
-                              className="h-7 text-xs"
+                              className="h-7 text-xs dark:text-white"
                               onClick={() => handleUpdateStatus(order.id, 'delivered')}
                             >
                               Entregado
@@ -586,7 +602,7 @@ export default function PedidosOnlinePage() {
                             <Button
                               size="sm"
                               variant="default"
-                              className="h-7 text-xs"
+                              className="h-7 text-xs dark:text-white"
                               onClick={() => handleUpdateStatus(order.id, 'in_delivery')}
                             >
                               Enviar
@@ -596,7 +612,7 @@ export default function PedidosOnlinePage() {
                             <Button
                               size="sm"
                               variant="default"
-                              className="h-7 text-xs"
+                              className="h-7 text-xs dark:text-white"
                               onClick={() => handleUpdateStatus(order.id, 'delivered')}
                             >
                               Entregado
@@ -762,35 +778,50 @@ export default function PedidosOnlinePage() {
 
       {/* Dialog: Confirmar pedido */}
       <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, orderId: open ? confirmDialog.orderId : null })}>
-        <DialogContent>
+        <DialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle className="dark:text-gray-100">Confirmar pedido</DialogTitle>
             <DialogDescription className="dark:text-gray-400">
               Indica el tiempo estimado de preparación
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="estimated-time" className="dark:text-gray-200">Tiempo estimado (minutos)</Label>
-            <Input
-              id="estimated-time"
-              type="number"
-              value={estimatedMinutes}
-              onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
-              min={5}
-              max={120}
-              className="mt-2"
-            />
+          <div className="py-4 space-y-4">
+            <div>
+              <Label htmlFor="estimated-time" className="dark:text-gray-200">Tiempo estimado (minutos)</Label>
+              <Input
+                id="estimated-time"
+                type="number"
+                value={estimatedMinutes}
+                onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
+                min={5}
+                max={120}
+                className="mt-2"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="mark-as-paid"
+                checked={markAsPaid}
+                onCheckedChange={(checked) => setMarkAsPaid(checked === true)}
+              />
+              <Label htmlFor="mark-as-paid" className="text-sm font-medium cursor-pointer dark:text-gray-200">
+                Marcar como pagado
+              </Label>
+            </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setConfirmDialog({ open: false, orderId: null })}
-              className="dark:border-gray-600"
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmDialog({ open: false, orderId: null });
+                setMarkAsPaid(false);
+              }}
+              className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               Cancelar
             </Button>
-            <Button onClick={handleConfirmOrder} disabled={actionLoading}>
-              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button onClick={handleConfirmOrder} disabled={actionLoading} className="dark:text-white">
+              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin dark:text-white" />}
               Confirmar pedido
             </Button>
           </DialogFooter>
@@ -799,7 +830,7 @@ export default function PedidosOnlinePage() {
 
       {/* Dialog: Rechazar pedido */}
       <Dialog open={rejectDialog.open} onOpenChange={(open) => setRejectDialog({ open, orderId: open ? rejectDialog.orderId : null })}>
-        <DialogContent>
+        <DialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle className="dark:text-gray-100">Rechazar pedido</DialogTitle>
             <DialogDescription className="dark:text-gray-400">
@@ -824,7 +855,7 @@ export default function PedidosOnlinePage() {
                 setRejectDialog({ open: false, orderId: null });
                 setRejectReason('');
               }}
-              className="dark:border-gray-600"
+              className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               Cancelar
             </Button>
@@ -832,8 +863,9 @@ export default function PedidosOnlinePage() {
               variant="destructive" 
               onClick={handleRejectOrder} 
               disabled={actionLoading || !rejectReason.trim()}
+              className="dark:text-white"
             >
-              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin dark:text-white" />}
               Rechazar pedido
             </Button>
           </DialogFooter>

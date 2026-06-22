@@ -110,10 +110,10 @@ export function ActividadForm({
               Tipo de actividad *
             </Label>
             <Select value={activityType} onValueChange={(v) => setActivityType(v as ActivityType)}>
-              <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectTrigger className="bg-gray-50 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 {Object.entries(ACTIVITY_TYPE_CONFIG)
                   .filter(([key]) => key !== 'system')
                   .map(([key, config]) => (
@@ -134,13 +134,13 @@ export function ActividadForm({
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-left font-normal bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                  className="w-full justify-start text-left font-normal bg-gray-50 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {format(occurredAt, "PPP 'a las' HH:mm", { locale: es })}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700" align="start">
                 <Calendar
                   mode="single"
                   selected={occurredAt}
@@ -158,7 +158,7 @@ export function ActividadForm({
                       newDate.setHours(parseInt(hours), parseInt(minutes));
                       setOccurredAt(newDate);
                     }}
-                    className="bg-gray-50 dark:bg-gray-800"
+                    className="bg-gray-50 dark:bg-gray-800 dark:text-gray-200"
                   />
                 </div>
               </PopoverContent>
@@ -178,10 +178,10 @@ export function ActividadForm({
                   setRelatedId('');
                 }}
               >
-                <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectTrigger className="bg-gray-50 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                   <SelectValue placeholder="Ninguno" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                   <SelectItem value="none">Ninguno</SelectItem>
                   <SelectItem value="customer">Cliente</SelectItem>
                   <SelectItem value="opportunity">Oportunidad</SelectItem>
@@ -195,10 +195,10 @@ export function ActividadForm({
                   {relatedType === 'customer' ? 'Cliente' : 'Oportunidad'}
                 </Label>
                 <Select value={relatedId} onValueChange={setRelatedId}>
-                  <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectTrigger className="bg-gray-50 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                     <SelectValue placeholder="Seleccionar..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     {relatedType === 'customer'
                       ? customers.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
@@ -226,7 +226,7 @@ export function ActividadForm({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Describe la actividad..."
               rows={4}
-              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              className="bg-gray-50 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
             />
           </div>
 
@@ -236,6 +236,7 @@ export function ActividadForm({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
+              className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
             >
               Cancelar
             </Button>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   Package2,
   Plus,
@@ -75,6 +76,8 @@ export function LotesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<string>('all');
   const [filtroProducto, setFiltroProducto] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -233,6 +236,23 @@ export function LotesPage() {
     return <Badge variant="secondary">Sin vencimiento</Badge>;
   };
 
+  // Paginación
+  const totalPages = Math.ceil(lotes.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const lotesPaginados = useMemo(
+    () => lotes.slice(startIndex, startIndex + pageSize),
+    [lotes, startIndex, pageSize]
+  );
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filtroEstado, filtroProducto]);
+
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
@@ -388,7 +408,7 @@ export function LotesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lotes.map(lote => (
+                {lotesPaginados.map(lote => (
                   <TableRow key={lote.id} className={`dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${lote.is_expired ? 'bg-red-50 dark:bg-red-900/10' : ''}`}>
                     <TableCell className="font-mono font-medium dark:text-white">
                       {lote.lot_code}
@@ -437,6 +457,16 @@ export function LotesPage() {
               </TableBody>
             </Table>
           )}
+
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={lotes.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
         </CardContent>
       </Card>
 

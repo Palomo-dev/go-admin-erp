@@ -21,7 +21,10 @@ import {
   UserPlus,
   CreditCard,
   Grid3X3,
-  Settings
+  Settings,
+  FolderKanban,
+  Target,
+  ClipboardList
 } from 'lucide-react';
 
 export const moduleIcons: Record<string, React.ComponentType<any>> = {
@@ -43,7 +46,8 @@ export const moduleIcons: Record<string, React.ComponentType<any>> = {
   'integrations': LinkIcon,
   'transport': Bus,
   'calendar': Calendar,
-  'operations': Activity
+  'operations': Activity,
+  'pm': FolderKanban
 };
 
 export const moduleRoutes: Record<string, string> = {
@@ -65,7 +69,8 @@ export const moduleRoutes: Record<string, string> = {
   'integrations': '/app/integraciones',
   'transport': '/app/transporte',
   'calendar': '/app/calendario',
-  'operations': '/app/timeline'
+  'operations': '/app/timeline',
+  'pm': '/app/pm'
 };
 
 export interface ModuleSubroute {
@@ -142,5 +147,11 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     { name: 'Impuestos', path: '/app/finanzas/impuestos', icon: BarChart3 },
     { name: 'Métodos de Pago', path: '/app/finanzas/metodos-pago', icon: CreditCard },
     { name: 'Monedas', path: '/app/finanzas/monedas', icon: BarChart3 }
+  ],
+  'pm': [
+    { name: 'Dashboard', path: '/app/pm', icon: FolderKanban },
+    { name: 'Proyectos', path: '/app/pm/proyectos', icon: FolderKanban },
+    { name: 'Metas', path: '/app/pm/metas', icon: Target },
+    { name: 'Tareas', path: '/app/pm/tareas', icon: ClipboardList }
   ]
 };

@@ -38,7 +38,7 @@ export function FacturasCompraPage() {
   ]);
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <PageHeader />
       
       {/* Stats Cards */}
@@ -61,7 +61,7 @@ export function FacturasCompraPage() {
       {/* Navegación Rápida */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <Link href={backPath}>
               <Button variant="outline" size="sm">
                 ← Volver a {isInventario ? 'Inventario' : 'Finanzas'}

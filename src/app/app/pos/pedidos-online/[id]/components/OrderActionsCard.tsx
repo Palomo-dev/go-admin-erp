@@ -16,6 +16,7 @@ interface OrderActionsCardProps {
   onCancel: () => void;
   onConvertToSale: () => void;
   onPrint?: () => void;
+  onMarkAsPaid?: () => void;
   isLoading?: boolean;
 }
 
@@ -30,6 +31,7 @@ export function OrderActionsCard({
   onCancel,
   onConvertToSale,
   onPrint,
+  onMarkAsPaid,
   isLoading = false,
 }: OrderActionsCardProps) {
   return (
@@ -52,6 +54,7 @@ export function OrderActionsCard({
           onCancel={onCancel}
           onConvertToSale={onConvertToSale}
           onPrint={onPrint}
+          onMarkAsPaid={onMarkAsPaid}
           isLoading={isLoading}
         />
       </CardContent>

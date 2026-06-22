@@ -518,6 +518,7 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
           size="sm"
           onClick={() => setRefreshTrigger((prev) => prev + 1)}
           disabled={isLoading}
+          className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
         >
           <RefreshCw className={cn("h-4 w-4 mr-1", { "animate-spin": isLoading })} />
           Actualizar

@@ -79,10 +79,10 @@ export function ActividadesPagination({
             value={pageSize.toString()}
             onValueChange={(value) => onPageSizeChange(parseInt(value))}
           >
-            <SelectTrigger className="w-[70px] h-9 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+            <SelectTrigger className="w-[70px] h-9 bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <SelectItem value="10">10</SelectItem>
               <SelectItem value="20">20</SelectItem>
               <SelectItem value="30">30</SelectItem>
@@ -114,7 +114,7 @@ export function ActividadesPagination({
             size="sm"
             onClick={() => onPageChange(1)}
             disabled={currentPage === 1}
-            className="h-9 w-9 p-0 border-gray-200 dark:border-gray-700 disabled:opacity-40"
+            className="h-9 w-9 p-0 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-40"
             title="Primera página"
           >
             <ChevronsLeft className="h-4 w-4" />
@@ -126,7 +126,7 @@ export function ActividadesPagination({
             size="sm"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="h-9 w-9 p-0 border-gray-200 dark:border-gray-700 disabled:opacity-40"
+            className="h-9 w-9 p-0 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-40"
             title="Página anterior"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -158,7 +158,7 @@ export function ActividadesPagination({
                   className={`h-9 w-9 p-0 ${
                     isActive
                       ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600'
-                      : 'border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      : 'border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
                   {pageNum}
@@ -180,7 +180,7 @@ export function ActividadesPagination({
             size="sm"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages || totalPages === 0}
-            className="h-9 w-9 p-0 border-gray-200 dark:border-gray-700 disabled:opacity-40"
+            className="h-9 w-9 p-0 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-40"
             title="Página siguiente"
           >
             <ChevronRight className="h-4 w-4" />
@@ -192,7 +192,7 @@ export function ActividadesPagination({
             size="sm"
             onClick={() => onPageChange(totalPages)}
             disabled={currentPage === totalPages || totalPages === 0}
-            className="h-9 w-9 p-0 border-gray-200 dark:border-gray-700 disabled:opacity-40"
+            className="h-9 w-9 p-0 border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-40"
             title="Última página"
           >
             <ChevronsRight className="h-4 w-4" />

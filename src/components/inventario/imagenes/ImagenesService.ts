@@ -30,8 +30,9 @@ export class ImagenesService {
         // Generar URL pública
         let publicUrl = '';
         if (img.storage_path) {
+          const bucket = img.storage_path.startsWith('products/') ? 'product-images' : 'organization_images';
           const { data: urlData } = supabase.storage
-            .from('product-images')
+            .from(bucket)
             .getPublicUrl(img.storage_path);
           publicUrl = urlData?.publicUrl || '';
         }
@@ -86,9 +87,9 @@ export class ImagenesService {
     const fileName = `${Date.now()}-${file.name}`;
     const storagePath = `${organizationId}/${fileName}`;
 
-    // Subir archivo a Storage
+    // Subir archivo a Storage (usar organization_images para imágenes compartidas)
     const { error: uploadError } = await supabase.storage
-      .from('product-images')
+      .from('organization_images')
       .upload(storagePath, file);
 
     if (uploadError) throw uploadError;
@@ -167,8 +168,9 @@ export class ImagenesService {
 
     // Eliminar archivo de Storage
     if (img?.storage_path) {
+      const bucket = img.storage_path.startsWith('products/') ? 'product-images' : 'organization_images';
       await supabase.storage
-        .from('product-images')
+        .from(bucket)
         .remove([img.storage_path]);
     }
 

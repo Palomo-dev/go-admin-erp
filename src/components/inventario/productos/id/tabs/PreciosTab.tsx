@@ -354,10 +354,10 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
     <div className="space-y-6">
       {/* Precio actual y botón de actualización */}
       <div className="flex flex-col md:flex-row justify-between gap-4">
-        <Card className={`w-full md:w-1/3 ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}`}>
+        <Card className="w-full md:w-1/3 dark:bg-gray-900 dark:border-gray-800">
           <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-lg">Precio Actual</CardTitle>
-            <CardDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+            <CardTitle className="text-lg dark:text-white">Precio Actual</CardTitle>
+            <CardDescription className="dark:text-gray-400">
               Último precio establecido
             </CardDescription>
           </CardHeader>
@@ -370,7 +370,7 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
               return (
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-3xl font-semibold">{formatCurrency(currentPrice)}</p>
+                    <p className="text-3xl font-semibold dark:text-white">{formatCurrency(currentPrice)}</p>
                     {hasDiscount && (
                       <span className="px-1.5 py-0.5 text-xs font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded">
                         -{discountPercent}%
@@ -394,10 +394,10 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                 Actualizar Precio
               </Button>
             </DialogTrigger>
-            <DialogContent className={`sm:max-w-md ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}`}>
+            <DialogContent className="sm:max-w-md dark:bg-gray-900 dark:border-gray-800">
               <DialogHeader>
                 <DialogTitle>Actualizar precio</DialogTitle>
-                <DialogDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+                <DialogDescription className="dark:text-gray-400">
                   Ingrese el nuevo precio de venta del producto.
                   El cambio quedará registrado en el historial.
                 </DialogDescription>
@@ -410,7 +410,7 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                     id="current-price"
                     value={formatCurrency(producto.price || 0)}
                     disabled
-                    className={`bg-gray-100 dark:bg-gray-800 ${theme === 'dark' ? 'border-gray-700' : ''}`}
+                    className="bg-gray-100 dark:bg-gray-800 dark:border-gray-700"
                   />
                 </div>
                 
@@ -422,7 +422,7 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                     step="0.01"
                     value={newPrice}
                     onChange={(e) => setNewPrice(e.target.value)}
-                    className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                    className="dark:bg-gray-800 dark:border-gray-700"
                   />
                 </div>
                 
@@ -435,16 +435,16 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                     placeholder="Precio anterior o de lista"
                     value={newComparePrice}
                     onChange={(e) => setNewComparePrice(e.target.value)}
-                    className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                    className="dark:bg-gray-800 dark:border-gray-700"
                   />
-                  <p className="text-xs text-gray-500">Si es mayor al precio de venta, se mostrará como descuento</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Si es mayor al precio de venta, se mostrará como descuento</p>
                 </div>
               </div>
               
               <DialogFooter className="sm:justify-between">
                 <Button 
                   variant="outline" 
-                  className={theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : ''}
+                  className="dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                   onClick={() => setIsDialogOpen(false)}
                 >
                   Cancelar
@@ -470,9 +470,9 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
       
       {/* Gráfico de evolución de precios */}
       {chartData.length > 0 && (
-        <Card className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+        <Card className="dark:bg-gray-900 dark:border-gray-800">
           <CardHeader className="p-4 pb-0">
-            <CardTitle className="text-lg">Evolución de Precios</CardTitle>
+            <CardTitle className="text-lg dark:text-white">Evolución de Precios</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
             <div className="h-64 w-full">
@@ -481,22 +481,20 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                   data={chartData}
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#444' : '#ccc'} />
+                  <CartesianGrid strokeDasharray="3 3" className="dark:stroke-gray-700" stroke="#ccc" />
                   <XAxis 
                     dataKey="date" 
-                    stroke={theme === 'dark' ? '#aaa' : '#666'}
+                    className="dark:stroke-gray-500" stroke="#666"
                   />
                   <YAxis 
-                    stroke={theme === 'dark' ? '#aaa' : '#666'}
+                    className="dark:stroke-gray-500" stroke="#666"
                     tickFormatter={(value) => formatCurrency(value).replace('$', '')}
                   />
                   <Tooltip 
                     formatter={(value: number) => [formatCurrency(value), 'Precio']}
                     labelFormatter={(label: string) => `Fecha: ${label}`}
-                    contentStyle={theme === 'dark' 
-                      ? { backgroundColor: '#333', borderColor: '#555', color: '#fff' }
-                      : { backgroundColor: '#fff', borderColor: '#ddd' }
-                    }
+                    contentStyle={{ backgroundColor: '#fff', borderColor: '#ddd', color: '#333' }}
+                    wrapperClassName="dark:[&_.recharts-tooltip-wrapper]:!bg-gray-800 dark:[&_.recharts-default-tooltip]:!bg-gray-800 dark:[&_.recharts-default-tooltip]:!border-gray-700 dark:[&_.recharts-default-tooltip]:!text-gray-200"
                   />
                   <Line 
                     type="monotone" 
@@ -513,16 +511,16 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
         </Card>
       )}
       {/* Tabla de historial de precios */}
-      <div className={`rounded-md border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+      <div className="rounded-md border border-gray-200 dark:border-gray-800">
         <Table>
-          <TableHeader className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}>
+          <TableHeader className="bg-gray-50 dark:bg-gray-900">
             <TableRow>
-              <TableHead>Válido Desde</TableHead>
-              <TableHead>Válido Hasta</TableHead>
-              <TableHead>Precio</TableHead>
-              <TableHead>Comparación</TableHead>
-              <TableHead>Descuento</TableHead>
-              <TableHead>Cambio %</TableHead>
+              <TableHead className="dark:text-gray-300">Válido Desde</TableHead>
+              <TableHead className="dark:text-gray-300">Válido Hasta</TableHead>
+              <TableHead className="dark:text-gray-300">Precio</TableHead>
+              <TableHead className="dark:text-gray-300">Comparación</TableHead>
+              <TableHead className="dark:text-gray-300">Descuento</TableHead>
+              <TableHead className="dark:text-gray-300">Cambio %</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -532,13 +530,13 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                   <div className="flex justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                   </div>
-                  <p className="mt-2 text-sm text-gray-500">Cargando historial...</p>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Cargando historial...</p>
                 </TableCell>
               </TableRow>
             ) : priceHistory.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-4">
-                  <p className="text-sm text-gray-500">No hay registro de cambios de precio</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No hay registro de cambios de precio</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -547,24 +545,24 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                 const discount = hasDiscount ? Math.round((1 - item.price / item.compare_price) * 100) : 0;
                 return (
                   <TableRow key={item.id}>
-                    <TableCell className="font-mono">
+                    <TableCell className="font-mono dark:text-gray-200">
                       <div className="flex items-center">
                         <CalendarIcon className="h-3 w-3 mr-1 text-gray-400" />
                         {formatDate(item.effective_from)}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="dark:text-gray-200">
                       {item.effective_to ? formatDate(item.effective_to) : 'Vigente'}
                     </TableCell>
-                    <TableCell className="font-semibold">{formatCurrency(item.price)}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-semibold dark:text-white">{formatCurrency(item.price)}</TableCell>
+                    <TableCell className="dark:text-gray-200">
                       {item.compare_price ? (
                         <span className="text-gray-400 line-through">{formatCurrency(item.compare_price)}</span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="dark:text-gray-200">
                       {hasDiscount ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
                           -{discount}%
@@ -573,7 +571,7 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
                         <span className="text-gray-400">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="dark:text-gray-200">
                       <span 
                         className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
                           ${item.percentage_change > 0 

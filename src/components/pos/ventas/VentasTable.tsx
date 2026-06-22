@@ -57,6 +57,7 @@ export function VentasTable({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
+      case 'paid':
         return (
           <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0">
             <CheckCircle className="h-3 w-3 mr-1" />

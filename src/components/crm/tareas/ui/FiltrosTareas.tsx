@@ -237,6 +237,14 @@ export default function FiltrosTareas({ onFiltrosChange, mostrarFiltros = false,
               <SelectItem value="reunion" className="text-gray-900 dark:text-gray-100">Reunión</SelectItem>
               <SelectItem value="email" className="text-gray-900 dark:text-gray-100">Email</SelectItem>
               <SelectItem value="visita" className="text-gray-900 dark:text-gray-100">Visita</SelectItem>
+              <SelectItem value="tarea" className="text-gray-900 dark:text-gray-100">Tarea</SelectItem>
+              <SelectItem value="seguimiento" className="text-gray-900 dark:text-gray-100">Seguimiento</SelectItem>
+              <SelectItem value="revision" className="text-gray-900 dark:text-gray-100">Revisión</SelectItem>
+              <SelectItem value="entrega" className="text-gray-900 dark:text-gray-100">Entrega</SelectItem>
+              <SelectItem value="investigacion" className="text-gray-900 dark:text-gray-100">Investigación</SelectItem>
+              <SelectItem value="documento" className="text-gray-900 dark:text-gray-100">Documento</SelectItem>
+              <SelectItem value="bug" className="text-gray-900 dark:text-gray-100">Bug</SelectItem>
+              <SelectItem value="feature" className="text-gray-900 dark:text-gray-100">Feature</SelectItem>
             </SelectContent>
           </Select>
           

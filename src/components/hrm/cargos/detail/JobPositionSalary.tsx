@@ -26,22 +26,22 @@ export function JobPositionSalary({ minSalary, maxSalary }: JobPositionSalaryPro
       <CardContent>
         {hasRange ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">
                   <TrendingDown className="h-4 w-4 text-green-500" />
                   Mínimo
                 </div>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">
+                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white break-all">
                   {minSalary !== null ? formatCurrency(minSalary) : '-'}
                 </p>
               </div>
-              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
+              <div className="p-3 sm:p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">
                   <TrendingUp className="h-4 w-4 text-blue-500" />
                   Máximo
                 </div>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">
+                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white break-all">
                   {maxSalary !== null ? formatCurrency(maxSalary) : '-'}
                 </p>
               </div>

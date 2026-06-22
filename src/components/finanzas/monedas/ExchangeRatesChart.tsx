@@ -26,6 +26,7 @@ import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { ExchangeRateHistoryPagination } from './ExchangeRateHistoryPagination';
 import {
   LineChart,
   Line,
@@ -80,6 +81,8 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [updatingRates, setUpdatingRates] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [logsCurrentPage, setLogsCurrentPage] = useState(1);
+  const [logsPageSize, setLogsPageSize] = useState(10);
   const { toast } = useToast();
 
   // Cargar monedas al iniciar
@@ -391,7 +394,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
         .from('exchange_rates_logs')
         .select('*')
         .order('execution_date', { ascending: false })
-        .limit(10);
+        .limit(100);
 
       if (error) throw error;
       
@@ -499,6 +502,12 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
     tooltipText: isDarkMode ? '#f3f4f6' : '#111827',
   };
 
+  const logsTotalPages = Math.max(1, Math.ceil(logs.length / logsPageSize));
+  const paginatedLogs = logs.slice(
+    (logsCurrentPage - 1) * logsPageSize,
+    logsCurrentPage * logsPageSize
+  );
+
   // Componente para mostrar estado de error
   const ErrorState = ({ message }: { message: string | null }) => {
     if (!message) return null;
@@ -536,9 +545,9 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Tabs defaultValue="chart">
           <div className="flex flex-col sm:flex-row sm:justify-between gap-3 sm:gap-0 mb-4">
-            <TabsList className="dark:bg-gray-800">
-              <TabsTrigger value="chart" className="text-xs sm:text-sm dark:data-[state=active]:bg-gray-700">Gráfico Histórico</TabsTrigger>
-              <TabsTrigger value="logs" className="text-xs sm:text-sm dark:data-[state=active]:bg-gray-700">Logs de Actualización</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-auto gap-1 dark:bg-gray-800">
+              <TabsTrigger value="chart" className="text-xs sm:text-sm py-2 dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Gráfico Histórico</TabsTrigger>
+              <TabsTrigger value="logs" className="text-xs sm:text-sm py-2 dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Logs de Actualización</TabsTrigger>
             </TabsList>
           </div>
 
@@ -548,7 +557,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                   <h3 className="text-base sm:text-lg font-medium dark:text-gray-300">Evolución de Tasas - Últimos 30 días</h3>
                   {/* Estado de depuración */}
-                  <div className="hidden sm:inline-flex text-xs bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-1.5 py-0.5 rounded">
+                  <div className="hidden sm:inline-flex text-xs bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 dark:text-green-400 px-1.5 py-0.5 rounded">
                     {currencies.length} monedas | {selectedCurrency || 'ninguna'} seleccionada
                   </div>
                 </div>
@@ -745,7 +754,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {logs.map(log => (
+                    {paginatedLogs.map(log => (
                       <TableRow key={log.id} className="dark:border-gray-700">
                         <TableCell className="text-xs sm:text-sm dark:text-gray-300">
                           <span className="hidden sm:inline">{format(new Date(log.execution_date), 'dd/MM/yyyy HH:mm:ss', { locale: es })}</span>
@@ -768,6 +777,17 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
                     ))}
                   </TableBody>
                 </Table>
+                <ExchangeRateHistoryPagination
+                  currentPage={logsCurrentPage}
+                  totalPages={logsTotalPages}
+                  pageSize={logsPageSize}
+                  totalItems={logs.length}
+                  onPageChange={setLogsCurrentPage}
+                  onPageSizeChange={(size) => {
+                    setLogsPageSize(size);
+                    setLogsCurrentPage(1);
+                  }}
+                />
               </div>
             )}
           </div>

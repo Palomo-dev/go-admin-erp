@@ -324,19 +324,19 @@ export default function MarcacionPage() {
       {/* Filters */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
+              <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
               <Input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-[160px] bg-white dark:bg-gray-900"
+                className="w-full sm:w-[160px] bg-white dark:bg-gray-900 dark:[color-scheme:dark]"
               />
             </div>
             <Select value={branchFilter} onValueChange={setBranchFilter}>
-              <SelectTrigger className="w-[180px] bg-white dark:bg-gray-900">
-                <Building2 className="h-4 w-4 mr-2 text-gray-400" />
+              <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-900">
+                <Building2 className="h-4 w-4 mr-2 text-gray-400 shrink-0" />
                 <SelectValue placeholder="Sede" />
               </SelectTrigger>
               <SelectContent>
@@ -349,7 +349,7 @@ export default function MarcacionPage() {
               </SelectContent>
             </Select>
             <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
-              <SelectTrigger className="w-[150px] bg-white dark:bg-gray-900">
+              <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-900">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -359,7 +359,7 @@ export default function MarcacionPage() {
                 <SelectItem value="break_start">Descansos</SelectItem>
               </SelectContent>
             </Select>
-            <div className="relative flex-1 min-w-[200px]">
+            <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Buscar empleado..."

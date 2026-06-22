@@ -36,6 +36,8 @@ export default function WebOrderDetailPage() {
     setCancelReason,
     estimatedMinutes,
     setEstimatedMinutes,
+    markAsPaid,
+    setMarkAsPaid,
     handleConfirmOrder,
     handleRejectOrder,
     handleStartPreparing,
@@ -45,6 +47,7 @@ export default function WebOrderDetailPage() {
     handleCancelOrder,
     handleConvertToSale,
     handleCreateShipment,
+    handleMarkAsPaid,
     loadOrder,
   } = useWebOrderDetail(orderId);
 
@@ -83,6 +86,7 @@ export default function WebOrderDetailPage() {
             onMarkDelivered={handleMarkDelivered}
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
+            onMarkAsPaid={handleMarkAsPaid}
             isLoading={actionLoading}
           />
           <OrderCustomerCard order={order} />
@@ -107,6 +111,8 @@ export default function WebOrderDetailPage() {
         estimatedMinutes={estimatedMinutes}
         onEstimatedMinutesChange={setEstimatedMinutes}
         onConfirm={handleConfirmOrder}
+        markAsPaid={markAsPaid}
+        onMarkAsPaidChange={setMarkAsPaid}
         isLoading={actionLoading}
       />
 

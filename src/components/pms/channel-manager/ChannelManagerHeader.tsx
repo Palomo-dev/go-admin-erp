@@ -29,24 +29,24 @@ export function ChannelManagerHeader({
 }: ChannelManagerHeaderProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Radio className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
+              <Radio className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
                 Channel Manager
               </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 Sincroniza disponibilidad con Airbnb, Booking.com y otros canales
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -54,7 +54,7 @@ export function ChannelManagerHeader({
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualizar
+            <span className="hidden sm:inline">Actualizar</span>
           </Button>
           <Button
             size="sm"
@@ -63,7 +63,8 @@ export function ChannelManagerHeader({
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Sincronizando...' : 'Sincronizar Todo'}
+            <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
+            <span className="sm:hidden">{isSyncing ? 'Sync...' : 'Sync'}</span>
           </Button>
           {onConnectBookingApi && (
             <Button
@@ -73,7 +74,8 @@ export function ChannelManagerHeader({
               className="border-[#003580] text-[#003580] hover:bg-[#003580] hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white"
             >
               <Zap className="h-4 w-4 mr-2" />
-              Booking.com API
+              <span className="hidden md:inline">Booking.com API</span>
+              <span className="md:hidden">Booking</span>
             </Button>
           )}
           {onConnectExpediaApi && (
@@ -84,7 +86,8 @@ export function ChannelManagerHeader({
               className="border-[#FBAD18] text-[#FBAD18] hover:bg-[#FBAD18] hover:text-white dark:border-yellow-400 dark:text-yellow-400 dark:hover:bg-yellow-600 dark:hover:text-white"
             >
               <Zap className="h-4 w-4 mr-2" />
-              Expedia Group API
+              <span className="hidden md:inline">Expedia Group API</span>
+              <span className="md:hidden">Expedia</span>
             </Button>
           )}
           <Button
@@ -93,27 +96,28 @@ export function ChannelManagerHeader({
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Nueva Conexión
+            <span className="hidden sm:inline">Nueva Conexión</span>
+            <span className="sm:hidden">Conexión</span>
           </Button>
         </div>
       </div>
 
       {/* Stats rápidas */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Conexiones Activas</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+            <p className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
               {stats.active_connections}
             </p>
           </div>
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Bloqueos Importados</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+            <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
               {stats.total_blocks}
             </p>
           </div>
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Canales</p>
             <div className="flex gap-1 mt-1 flex-wrap">
               {stats.channels_used.length > 0 ? stats.channels_used.map(ch => (
@@ -123,14 +127,14 @@ export function ChannelManagerHeader({
               )}
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Errores de Sync</p>
             <div className="flex items-center gap-2 mt-1">
-              <p className={`text-2xl font-bold ${stats.sync_errors > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+              <p className={`text-lg sm:text-2xl font-bold ${stats.sync_errors > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                 {stats.sync_errors}
               </p>
               {stats.sync_errors > 0 && (
-                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
               )}
             </div>
           </div>

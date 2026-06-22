@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { POSService } from '@/lib/services/posService';
+import { supabase } from '@/lib/supabase/config';
 import { PrintService, BusinessInfo, CashierInfo, BranchInfo } from '@/lib/services/printService';
 import { Cart, PaymentMethod, CheckoutData, Sale, Currency, SaleItem } from './types';
 import { formatCurrency } from '@/utils/Utils';
@@ -65,12 +66,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // Estados para manejo de impuestos
   const [organizationTaxes, setOrganizationTaxes] = useState<TaxUtilOrganizationTax[]>([]);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
-  const [taxIncluded, setTaxIncluded] = useState(false);
+  const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
   const [calculatedTotals, setCalculatedTotals] = useState({
     subtotal: 0,
     totalTaxAmount: 0,
     finalTotal: 0
   });
+  // Desglose de impuestos por nombre (IVA, ICA, etc.) para el recibo
+  const [taxBreakdown, setTaxBreakdown] = useState<{ name: string; amount: number }[]>([]);
   
   // Estados para propina
   const [tipAmount, setTipAmount] = useState(0);
@@ -92,6 +95,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       loadPaymentData();
       loadTaxData();
       loadServers();
+      // Sincronizar impuestos incluidos con el carrito
+      setTaxIncluded(cart.tax_included ?? false);
       // Agregar primer método de pago por defecto
       if (payments.length === 0) {
         addPayment();
@@ -165,10 +170,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       
       setOrganizationTaxes(orgTaxes);
       
-      // Inicializar impuestos aplicados con los predeterminados
+      // Inicializar impuestos aplicados: usar los del carrito si existen, sino los predeterminados
+      const cartTaxIds = cart.applied_tax_ids;
       const initialAppliedTaxes: {[key: string]: boolean} = {};
       orgTaxes.forEach((tax) => {
-        initialAppliedTaxes[tax.id] = tax.is_default;
+        initialAppliedTaxes[tax.id] = cartTaxIds
+          ? cartTaxIds.includes(tax.id)
+          : tax.is_default;
       });
       setAppliedTaxes(initialAppliedTaxes);
       
@@ -186,6 +194,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     let combinedSubtotal = 0;
     let combinedTaxAmount = 0;
     let combinedFinalTotal = 0;
+    const combinedBreakdown: { [taxId: string]: { name: string; amount: number } } = {};
 
     // Procesar cada ítem del carrito
     for (const item of cart.items) {
@@ -238,6 +247,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         combinedSubtotal += result.subtotal;
         combinedTaxAmount += result.totalTaxAmount;
         combinedFinalTotal += result.finalTotal;
+
+        // Acumular desglose por nombre de impuesto (IVA, ICA, etc.)
+        result.taxBreakdown.forEach(tax => {
+          if (combinedBreakdown[tax.taxId]) {
+            combinedBreakdown[tax.taxId].amount += tax.taxAmount;
+          } else {
+            combinedBreakdown[tax.taxId] = { name: tax.name, amount: tax.taxAmount };
+          }
+        });
         
       } catch (error) {
         console.error('Error calculating taxes for item:', item, error);
@@ -254,6 +272,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       totalTaxAmount: Math.round(combinedTaxAmount * 100) / 100,
       finalTotal: Math.round(combinedFinalTotal * 100) / 100
     });
+    setTaxBreakdown(
+      Object.values(combinedBreakdown).map(t => ({
+        name: t.name,
+        amount: Math.round(t.amount * 100) / 100
+      }))
+    );
   };
 
   const addPayment = () => {
@@ -318,7 +342,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         total_paid: totalPaid,
         tax_included: taxIncluded,
         tip_amount: tipAmount,
-        tip_server_id: serverId && serverId !== '__none__' ? serverId : undefined
+        tip_server_id: serverId && serverId !== '__none__' ? serverId : undefined,
+        tax_breakdown: taxBreakdown.length > 0 ? taxBreakdown : undefined
       };
 
       const sale = await POSService.checkout(checkoutData);
@@ -336,7 +361,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (completedSale) {
       // Convertir items del carrito a formato SaleItem para impresión
       const saleItems = cart.items.map(item => ({
@@ -360,41 +385,58 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         amount: p.amount
       }));
 
-      // Datos del negocio para el ticket
-      const businessInfo: BusinessInfo = {
-        name: organization?.name || 'GO Admin ERP',
-        legalName: organization?.legal_name,
-        nit: organization?.nit,
-        taxId: organization?.tax_id,
-        address: organization?.address,
-        city: organization?.city,
-        phone: organization?.phone,
-        email: organization?.email
+      // Datos del negocio y sucursal desde la BD (nombre, logo, NIT, teléfono, correo, dirección)
+      const { business, branch: branchInfo } = await PrintService.getBusinessAndBranch(completedSale.organization_id);
+      const businessInfo: BusinessInfo = business || {
+        name: organization?.name || 'Mi Empresa',
+        logoUrl: organization?.logo_url
       };
 
-      // Datos del cajero
+      // Datos del cajero (quien facturó en el POS)
+      let cashierName = currentUser?.name;
+      let cashierEmail = currentUser?.email;
+      if (!cashierName) {
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          const authUser = authData?.user;
+          if (authUser) {
+            cashierEmail = cashierEmail || authUser.email;
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('id', authUser.id)
+              .maybeSingle();
+            const fullName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim();
+            if (fullName) cashierName = fullName;
+          }
+        } catch (e) {
+          console.warn('No se pudo obtener el cajero:', e);
+        }
+      }
       const cashierInfo: CashierInfo = {
-        name: currentUser?.name || 'Sistema POS',
-        email: currentUser?.email
+        name: cashierName || 'Sistema POS',
+        email: cashierEmail
       };
 
-      // Datos de la sucursal
-      const branchInfo: BranchInfo = branch ? {
-        name: branch.name,
-        address: branch.address,
-        city: branch.city,
-        phone: branch.phone
-      } : undefined as any;
+      // Venta con impuestos calculados y marca de IVA incluido / origen POS
+      const saleForPrint = {
+        ...completedSale,
+        subtotal: calculatedTotals.subtotal || completedSale.subtotal,
+        tax_total: calculatedTotals.totalTaxAmount || completedSale.tax_total,
+        tax_included: taxIncluded,
+        _source: 'pos',
+      } as any;
 
       // Usar PrintService para generar e imprimir el ticket formateado
       PrintService.printTicket(
-        completedSale,
+        saleForPrint,
         saleItems as any,
         cart.customer as any,
         paymentsList as any,
         businessInfo,
         cashierInfo,
-        branchInfo
+        branchInfo as any,
+        taxBreakdown.length > 0 ? taxBreakdown : undefined
       );
     }
   };

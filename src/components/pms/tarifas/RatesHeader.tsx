@@ -11,28 +11,28 @@ interface RatesHeaderProps {
 
 export function RatesHeader({ onNewRate, onImport }: RatesHeaderProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="flex items-center justify-between">
+    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-            <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex-shrink-0">
+            <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
               Gestor de Tarifas
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
               Administración de precios, planes y temporadas
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={onImport}>
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <Button variant="outline" size="sm" onClick={onImport}>
             <Upload className="h-4 w-4 mr-2" />
-            Importar
+            <span className="hidden sm:inline">Importar</span>
           </Button>
-          <Button onClick={onNewRate} className="bg-blue-600 hover:bg-blue-700">
+          <Button size="sm" onClick={onNewRate} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
             Nueva Tarifa
           </Button>

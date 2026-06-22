@@ -35,6 +35,7 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
 import { actualizarTasasDeCambioGlobal } from '@/lib/services/openexchangerates';
+import { ExchangeRateHistoryPagination } from './ExchangeRateHistoryPagination';
 
 interface ExchangeRateRecord {
   id: string;
@@ -60,6 +61,8 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
   const [selectedCurrency, setSelectedCurrency] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -68,6 +71,7 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
 
   useEffect(() => {
     filterRates();
+    setCurrentPage(1);
   }, [rates, selectedCurrency, dateFrom, dateTo]);
 
   const loadExchangeRates = async () => {
@@ -221,13 +225,19 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
 
   const stats = getStats();
 
+  const totalPages = Math.max(1, Math.ceil(filteredRates.length / pageSize));
+  const paginatedRates = filteredRates.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   return (
     <Card className="dark:bg-gray-800/50 dark:border-gray-700">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg dark:text-gray-100">
           <History className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Histórico de Tasas de Cambio
-          <Badge variant="outline" className="ml-2 text-xs font-normal">
+          <Badge variant="outline" className="ml-2 text-xs font-normal dark:border-gray-600 dark:text-gray-300">
             <Globe className="h-3 w-3 mr-1" />
             OpenExchangeRates
           </Badge>
@@ -238,16 +248,16 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
             size="sm" 
             onClick={handleUpdateRates} 
             disabled={isUpdating}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white"
           >
             <Globe className={`h-4 w-4 mr-1 ${isUpdating ? 'animate-pulse' : ''}`} />
             {isUpdating ? 'Actualizando...' : 'Actualizar desde API'}
           </Button>
-          <Button variant="outline" size="sm" onClick={loadExchangeRates} disabled={isLoading}>
+          <Button variant="outline" size="sm" onClick={loadExchangeRates} disabled={isLoading} className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
             <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
             Recargar
           </Button>
-          <Button variant="outline" size="sm" onClick={exportToCSV} disabled={filteredRates.length === 0}>
+          <Button variant="outline" size="sm" onClick={exportToCSV} disabled={filteredRates.length === 0} className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
             <Download className="h-4 w-4 mr-1" />
             Exportar
           </Button>
@@ -257,42 +267,42 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
         {/* Filtros */}
         <div className="flex flex-wrap gap-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500" />
+            <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtros:</span>
           </div>
           
           <div className="flex items-center gap-2">
-            <Label className="text-sm">Moneda:</Label>
+            <Label className="text-sm dark:text-gray-200">Moneda:</Label>
             <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-              <SelectTrigger className="w-32 h-8 text-sm dark:bg-gray-800 dark:border-gray-600">
+              <SelectTrigger className="w-32 h-8 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
-              <SelectContent className="dark:bg-gray-800">
-                <SelectItem value="all">Todas</SelectItem>
+              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                <SelectItem value="all" className="dark:text-gray-200 dark:focus:bg-gray-700">Todas</SelectItem>
                 {currencies.map(currency => (
-                  <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                  <SelectItem key={currency} value={currency} className="dark:text-gray-200 dark:focus:bg-gray-700">{currency}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex items-center gap-2">
-            <Label className="text-sm">Desde:</Label>
+            <Label className="text-sm dark:text-gray-200">Desde:</Label>
             <Input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-36 h-8 text-sm dark:bg-gray-800 dark:border-gray-600"
+              className="w-36 h-8 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:[color-scheme:dark]"
             />
           </div>
 
           <div className="flex items-center gap-2">
-            <Label className="text-sm">Hasta:</Label>
+            <Label className="text-sm dark:text-gray-200">Hasta:</Label>
             <Input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-36 h-8 text-sm dark:bg-gray-800 dark:border-gray-600"
+              className="w-36 h-8 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:[color-scheme:dark]"
             />
           </div>
 
@@ -305,6 +315,7 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
                 setDateFrom('');
                 setDateTo('');
               }}
+              className="dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Limpiar filtros
             </Button>
@@ -320,13 +331,13 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
                 className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <Badge variant="outline" className="font-mono">{currency}</Badge>
-                  <span className="text-xs text-gray-500">{data.count} registros</span>
+                  <Badge variant="outline" className="font-mono dark:border-gray-600 dark:text-gray-300">{currency}</Badge>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{data.count} registros</span>
                 </div>
                 <div className="text-lg font-bold text-gray-900 dark:text-white">
                   {formatRate(data.latest)}
                 </div>
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
                   <span>Min: {formatRate(data.min)}</span>
                   <span>Max: {formatRate(data.max)}</span>
                 </div>
@@ -338,11 +349,11 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
         {/* Tabla de histórico */}
         {isLoading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         ) : filteredRates.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            <History className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <History className="h-12 w-12 mx-auto mb-3 opacity-50 dark:text-gray-600" />
             <p>No hay registros de tasas de cambio</p>
           </div>
         ) : (
@@ -350,18 +361,19 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50 dark:bg-gray-800">
-                  <TableHead className="font-semibold">Fecha Efectiva</TableHead>
-                  <TableHead className="font-semibold">Par</TableHead>
-                  <TableHead className="font-semibold text-right">Tasa</TableHead>
-                  <TableHead className="font-semibold text-center">Variación</TableHead>
-                  <TableHead className="font-semibold">Fuente</TableHead>
-                  <TableHead className="font-semibold">Registro</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Fecha Efectiva</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Par</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300 text-right">Tasa</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300 text-center">Variación</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Fuente</TableHead>
+                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Registro</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRates.slice(0, 50).map((rate, index) => {
+                {paginatedRates.map((rate, index) => {
+                  const globalIndex = (currentPage - 1) * pageSize + index;
                   const prevRate = filteredRates.find(
-                    (r, i) => i > index && 
+                    (r, i) => i > globalIndex && 
                     r.code === rate.code && 
                     r.rate_date < rate.rate_date
                   );
@@ -371,18 +383,18 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
 
                   return (
                     <TableRow key={rate.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <TableCell>
+                      <TableCell className="dark:text-gray-300">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
+                          <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                           {formatDate(rate.rate_date)}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="font-mono">
+                        <Badge variant="secondary" className="font-mono dark:bg-gray-700 dark:text-gray-200">
                           {rate.base_currency_code || 'USD'}/{rate.code}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono font-medium">
+                      <TableCell className="text-right font-mono font-medium dark:text-gray-200">
                         {formatRate(rate.rate)}
                       </TableCell>
                       <TableCell className="text-center">
@@ -404,12 +416,12 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
                       <TableCell>
                         <Badge 
                           variant={rate.source === 'openexchangerates' ? 'default' : 'outline'}
-                          className="text-xs"
+                          className="text-xs dark:border-gray-600 dark:text-gray-300"
                         >
                           {rate.source === 'openexchangerates' ? 'API' : rate.source || 'Manual'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-gray-500 text-sm">
+                      <TableCell className="text-gray-500 dark:text-gray-400 text-sm">
                         {new Date(rate.created_at).toLocaleString('es-CO', {
                           day: '2-digit',
                           month: '2-digit',
@@ -422,11 +434,17 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
                 })}
               </TableBody>
             </Table>
-            {filteredRates.length > 50 && (
-              <div className="p-3 text-center text-sm text-gray-500 border-t dark:border-gray-700">
-                Mostrando 50 de {filteredRates.length} registros
-              </div>
-            )}
+            <ExchangeRateHistoryPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={filteredRates.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+            />
           </div>
         )}
       </CardContent>

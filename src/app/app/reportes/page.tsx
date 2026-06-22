@@ -170,7 +170,7 @@ export default function ReportesPage() {
 
           <div className="flex items-center gap-2 print:hidden">
             <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
+              <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +187,7 @@ export default function ReportesPage() {
             {periodo === 'custom' && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-700">
+                  <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
                     <CalendarDays className="h-4 w-4 mr-1" />
                     {customFrom && customTo ? `${customFrom} - ${customTo}` : 'Rango'}
                   </Button>
@@ -227,7 +227,7 @@ export default function ReportesPage() {
               variant="outline"
               size="sm"
               onClick={handleToggleFavorite}
-              className="border-gray-300 dark:border-gray-700"
+              className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               {isFavorite ? (
                 <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
@@ -240,7 +240,7 @@ export default function ReportesPage() {
               variant="outline"
               size="sm"
               onClick={handleExportPDF}
-              className="border-gray-300 dark:border-gray-700"
+              className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               <Download className="h-4 w-4 mr-2" />
               Exportar
@@ -251,7 +251,7 @@ export default function ReportesPage() {
               size="sm"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="border-gray-300 dark:border-gray-700"
+              className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
               Actualizar

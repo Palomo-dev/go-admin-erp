@@ -177,7 +177,7 @@ export function SegmentoNuevoPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej: Clientes VIP de Bogotá"
-                  className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                  className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                 />
               </div>
               <div className="space-y-2">
@@ -187,7 +187,7 @@ export function SegmentoNuevoPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe el propósito del segmento..."
                   rows={3}
-                  className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                  className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                 />
               </div>
               <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
@@ -237,10 +237,10 @@ export function SegmentoNuevoPage() {
                         value={filter.field}
                         onValueChange={(value) => updateFilter(index, { field: value, operator: 'contains', value: '' })}
                       >
-                        <SelectTrigger className="w-40 bg-white dark:bg-gray-800">
+                        <SelectTrigger className="w-40 bg-white dark:bg-gray-800 dark:text-gray-200">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="border-gray-200 dark:border-gray-700">
                           {FILTER_FIELDS.map((field) => (
                             <SelectItem key={field.value} value={field.value}>
                               {field.label}
@@ -253,10 +253,10 @@ export function SegmentoNuevoPage() {
                         value={filter.operator}
                         onValueChange={(value) => updateFilter(index, { operator: value as any })}
                       >
-                        <SelectTrigger className="w-36 bg-white dark:bg-gray-800">
+                        <SelectTrigger className="w-36 bg-white dark:bg-gray-800 dark:text-gray-200">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="border-gray-200 dark:border-gray-700">
                           {operators.map((op) => (
                             <SelectItem key={op.value} value={op.value}>
                               {op.label}
@@ -270,7 +270,7 @@ export function SegmentoNuevoPage() {
                           value={String(filter.value)}
                           onChange={(e) => updateFilter(index, { value: e.target.value })}
                           placeholder="Valor"
-                          className="flex-1 min-w-[120px] bg-white dark:bg-gray-800"
+                          className="flex-1 min-w-[120px] bg-white dark:bg-gray-800 dark:text-gray-200"
                         />
                       )}
 

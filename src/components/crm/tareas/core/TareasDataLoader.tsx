@@ -231,7 +231,7 @@ export function useTareasDataLoader() {
 
       
       // Si el filtro es tipo UI (en español) o tipo BD
-      const valoresTipoValidos = ['llamada', 'reunion', 'email', 'visita'];
+      const valoresTipoValidos = ['llamada', 'reunion', 'email', 'visita', 'tarea', 'seguimiento', 'revision', 'entrega', 'investigacion', 'documento', 'bug', 'feature'];
       const tipoValido = valoresTipoValidos.includes(filtrosFinales.type);
       
       if (tipoValido) {

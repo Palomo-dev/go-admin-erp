@@ -152,7 +152,7 @@ export default function Etiquetas({ formData, updateFormData }: EtiquetasProps) 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-hidden">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-teal-100 dark:bg-teal-900/20 rounded-lg">

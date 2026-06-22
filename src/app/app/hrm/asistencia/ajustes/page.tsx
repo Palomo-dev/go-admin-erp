@@ -265,28 +265,30 @@ export default function AjustesPage() {
       {/* Filters */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-[150px] bg-white dark:bg-gray-900"
-                placeholder="Desde"
-              />
-              <span className="text-gray-400">-</span>
+          <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full sm:w-[150px] bg-white dark:bg-gray-900 dark:[color-scheme:dark]"
+                  placeholder="Desde"
+                />
+              </div>
+              <span className="text-gray-400 shrink-0 hidden sm:block">-</span>
               <Input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-[150px] bg-white dark:bg-gray-900"
+                className="w-full sm:w-[150px] bg-white dark:bg-gray-900 dark:[color-scheme:dark]"
                 placeholder="Hasta"
               />
             </div>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px] bg-white dark:bg-gray-900">
+              <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-900">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>

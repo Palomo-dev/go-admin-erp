@@ -172,7 +172,7 @@ export default function ConversationFilesPage() {
   const canDelete = userRole === 'admin' || userRole === 'owner' || userRole === 'Administrador';
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <FilesHeader
         conversationId={conversationId}
         stats={stats}

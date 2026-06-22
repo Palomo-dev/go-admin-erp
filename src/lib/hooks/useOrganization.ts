@@ -187,7 +187,7 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
     // Paso 1: Obtener el miembro de la organización
     const { data: memberData, error: memberError } = await supabase
       .from("organization_members")
-      .select("id, organization_id, role, role_id")
+      .select("id, organization_id, role_id")
       .eq("user_id", userId)
       .eq("is_active", true);
 
@@ -216,7 +216,7 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
     // Paso 2: Obtener datos de la organización
     const { data: orgData, error: orgError } = await supabase
       .from("organizations")
-      .select("id, name, created_at, country_code, type_id, subdomain")
+      .select("id, name, created_at, country_code, type_id, subdomain, logo_url")
       .eq("id", member.organization_id)
       .single();
 

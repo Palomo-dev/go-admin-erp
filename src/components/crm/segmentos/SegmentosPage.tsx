@@ -218,7 +218,7 @@ export function SegmentosPage() {
                 <TableCell colSpan={5} className="text-center py-8">
                   <div className="flex items-center justify-center gap-2">
                     <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
-                    <span className="text-gray-500">Cargando...</span>
+                    <span className="text-gray-500 dark:text-gray-400">Cargando...</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -350,7 +350,7 @@ export function SegmentosPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-200 dark:border-gray-700">
+            <AlertDialogCancel className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction

@@ -67,20 +67,20 @@ export function BancosPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <TabsList className="grid w-full grid-cols-2 h-auto gap-1 p-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <TabsTrigger 
             value="cuentas"
-            className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
+            className="text-xs sm:text-sm py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
           >
-            <Landmark className="h-4 w-4 mr-2" />
-            Cuentas Bancarias
+            <Landmark className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+            <span className="truncate">Cuentas Bancarias</span>
           </TabsTrigger>
           <TabsTrigger 
             value="conciliacion"
-            className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
+            className="text-xs sm:text-sm py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
           >
-            <ArrowRightLeft className="h-4 w-4 mr-2" />
-            Conciliación Bancaria
+            <ArrowRightLeft className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+            <span className="truncate">Conciliación Bancaria</span>
           </TabsTrigger>
         </TabsList>
 

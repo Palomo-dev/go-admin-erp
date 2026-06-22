@@ -17,7 +17,7 @@ export interface Product {
 
 export interface Lot {
   id: number;
-  lot_number: string;
+  lot_code: string;
   expiry_date?: string;
   product_id: number;
 }

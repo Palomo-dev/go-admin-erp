@@ -1118,7 +1118,7 @@ export default function NuevaConexionPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
@@ -1130,7 +1130,7 @@ export default function NuevaConexionPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header Sticky */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
         <div className="px-4 sm:px-6 py-4">

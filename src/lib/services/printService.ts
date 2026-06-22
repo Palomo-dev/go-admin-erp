@@ -1,5 +1,6 @@
 import { Sale, SaleItem, Customer, Payment } from '../../components/pos/types';
 import { formatCurrency } from '@/utils/Utils';
+import { supabase } from '@/lib/supabase/config';
 
 // Interfaz para datos del negocio/organización
 export interface BusinessInfo {
@@ -11,6 +12,7 @@ export interface BusinessInfo {
   city?: string;
   phone?: string;
   email?: string;
+  logoUrl?: string;
 }
 
 // Interfaz para datos de la sucursal
@@ -25,6 +27,12 @@ export interface BranchInfo {
 export interface CashierInfo {
   name: string;
   email?: string;
+}
+
+// Línea de impuesto para desglose dinámico en el recibo (IVA, ICA, etc.)
+export interface TaxLine {
+  name: string;
+  amount: number;
 }
 
 // Traducción de métodos de pago a español
@@ -50,6 +58,56 @@ const translatePaymentMethod = (method: string): string => {
 
 export class PrintService {
   /**
+   * Obtiene la información del negocio y la sucursal principal desde Supabase
+   */
+  static async getBusinessAndBranch(
+    organizationId: number
+  ): Promise<{ business?: BusinessInfo; branch?: BranchInfo }> {
+    try {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('id, name, legal_name, nit, tax_id, phone, email, address, city, logo_url')
+        .eq('id', organizationId)
+        .maybeSingle();
+
+      const { data: branch } = await supabase
+        .from('branches')
+        .select('name, address, city, phone')
+        .eq('organization_id', organizationId)
+        .eq('is_main', true)
+        .maybeSingle();
+
+      const business: BusinessInfo | undefined = org
+        ? {
+            name: org.name || 'Mi Empresa',
+            legalName: org.legal_name || undefined,
+            nit: org.nit || undefined,
+            taxId: org.tax_id || undefined,
+            address: org.address || undefined,
+            city: org.city || undefined,
+            phone: org.phone || undefined,
+            email: org.email || undefined,
+            logoUrl: org.logo_url || undefined,
+          }
+        : undefined;
+
+      const branchInfo: BranchInfo | undefined = branch
+        ? {
+            name: branch.name || undefined,
+            address: branch.address || undefined,
+            city: branch.city || undefined,
+            phone: branch.phone || undefined,
+          }
+        : undefined;
+
+      return { business, branch: branchInfo };
+    } catch (e) {
+      console.warn('Error obteniendo datos de negocio/sucursal:', e);
+      return {};
+    }
+  }
+
+  /**
    * Generar HTML del ticket para impresión
    */
   static generateTicketHTML(
@@ -59,7 +117,8 @@ export class PrintService {
     payments: Payment[] = [],
     business?: BusinessInfo,
     cashier?: CashierInfo,
-    branch?: BranchInfo
+    branch?: BranchInfo,
+    taxLines?: TaxLine[]
   ): string {
     const businessName = business?.name || 'Mi Empresa';
     const businessAddress = business?.address || '';
@@ -194,24 +253,28 @@ export class PrintService {
 </head>
 <body>
     <div class="header">
-        <div class="business-name">${businessName}</div>
-        ${business?.legalName ? `<div class="business-legal">${business.legalName}</div>` : ''}
+        ${business?.logoUrl
+          ? `<img src="${business.logoUrl}" alt="${businessName}" style="max-height: 70px; max-width: 100%; margin: 0 auto 8px; display: block;" />`
+          : `<div class="business-name">${businessName}</div>
+        ${business?.legalName && business.legalName !== businessName ? `<div class="business-legal">${business.legalName}</div>` : ''}`}
         ${business?.nit ? `<div class="business-nit"><strong>NIT:</strong> ${business.nit}</div>` : ''}
         ${business?.taxId && !business?.nit ? `<div class="business-nit"><strong>ID Fiscal:</strong> ${business.taxId}</div>` : ''}
         ${businessAddress ? `<div class="business-address">${businessAddress}</div>` : ''}
         ${business?.city ? `<div class="business-address">${business.city}</div>` : ''}
         ${business?.phone ? `<div class="business-address">Tel: ${business.phone}</div>` : ''}
-        ${branch?.name ? `<div class="business-address" style="margin-top: 5px; font-weight: bold;">Sucursal: ${branch.name}</div>` : ''}
-        ${branch?.address ? `<div class="business-address">${branch.address}</div>` : ''}
+        ${business?.email ? `<div class="business-address">${business.email}</div>` : ''}
+        ${branch?.address ? `<div class="business-address" style="margin-top: 5px;">${branch.address}</div>` : ''}
         ${branch?.city ? `<div class="business-address">${branch.city}</div>` : ''}
-        ${branch?.phone ? `<div class="business-address">Tel Sucursal: ${branch.phone}</div>` : ''}
+        ${branch?.phone ? `<div class="business-address">Tel: ${branch.phone}</div>` : ''}
     </div>
 
     <div class="sale-info">
         <div><strong>Ticket:</strong> ${sale.id}</div>
         <div><strong>Fecha:</strong> ${dateStr}</div>
         <div><strong>Hora:</strong> ${timeStr}</div>
-        <div><strong>Cajero:</strong> ${cashier?.name || 'Sistema POS'}</div>
+        ${(sale as any)._source === 'web'
+          ? `<div><strong>Origen:</strong> Facturado por la web</div>`
+          : `<div><strong>Cajero:</strong> ${cashier?.name || (sale as any).seller_name || 'Sistema POS'}</div>`}
     </div>
 
     ${customerName ? `
@@ -263,7 +326,7 @@ export class PrintService {
         </div>
         <div class="item-details">
             ${item.quantity} × ${formatCurrency(item.unit_price)}
-            ${item.tax_amount && item.tax_amount > 0 ? ` (IVA: ${formatCurrency(item.tax_amount)})` : ''}
+            ${item.tax_amount && item.tax_amount > 0 ? ` (Imp.: ${formatCurrency(item.tax_amount)})` : ''}
             ${item.discount_amount && item.discount_amount > 0 ? ` (Desc: ${formatCurrency(item.discount_amount)})` : ''}
         </div>
     </div>
@@ -281,10 +344,29 @@ export class PrintService {
             <span>-${formatCurrency(sale.discount_total)}</span>
         </div>
         ` : ''}
-        ${sale.tax_total > 0 ? `
+        ${taxLines && taxLines.length > 0
+          ? taxLines.map(t => `
         <div class="total-line">
-            <span>Impuestos:</span>
+            <span>${t.name}${(sale as any).tax_included ? ' (incluido)' : ''}:</span>
+            <span>${formatCurrency(t.amount)}</span>
+        </div>
+        `).join('')
+          : (sale.tax_total > 0 ? `
+        <div class="total-line">
+            <span>${(sale as any).tax_included ? 'Impuestos (incluidos):' : 'Impuestos:'}</span>
             <span>${formatCurrency(sale.tax_total)}</span>
+        </div>
+        ` : '')}
+        ${Number(sale.delivery_fee) > 0 ? `
+        <div class="total-line">
+            <span>Envío:</span>
+            <span>${formatCurrency(sale.delivery_fee)}</span>
+        </div>
+        ` : ''}
+        ${Number(sale.tip_amount) > 0 ? `
+        <div class="total-line">
+            <span>Propina:</span>
+            <span>${formatCurrency(sale.tip_amount)}</span>
         </div>
         ` : ''}
         <div class="total-line total-final">
@@ -313,7 +395,7 @@ export class PrintService {
 
     <div class="footer">
         <div>¡Gracias por su compra!</div>
-        <div>Sistema POS - ${dateStr}</div>
+        <div>${businessName} - ${dateStr}</div>
     </div>
 </body>
 </html>
@@ -330,7 +412,8 @@ export class PrintService {
     payments: Payment[] = [],
     business?: BusinessInfo,
     cashier?: CashierInfo,
-    branch?: BranchInfo
+    branch?: BranchInfo,
+    taxLines?: TaxLine[]
   ): void {
     const html = this.generateTicketHTML(
       sale, 
@@ -339,25 +422,55 @@ export class PrintService {
       payments, 
       business, 
       cashier,
-      branch
+      branch,
+      taxLines
     );
 
     const printWindow = window.open('', '_blank', 'width=300,height=600');
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
-      
-      // Usar setTimeout para evitar problemas con callbacks obsoletos
-      setTimeout(() => {
-        try {
-          if (printWindow && !printWindow.closed) {
-            printWindow.focus();
-            printWindow.print();
-          }
-        } catch (e) {
-          console.warn('Error al imprimir:', e);
+      this.printWhenReady(printWindow);
+    }
+  }
+
+  /**
+   * Espera a que las imágenes (logo) carguen antes de imprimir, con fallback.
+   */
+  private static printWhenReady(printWindow: Window): void {
+    let printed = false;
+    const triggerPrint = () => {
+      if (printed) return;
+      printed = true;
+      try {
+        if (printWindow && !printWindow.closed) {
+          printWindow.focus();
+          printWindow.print();
         }
-      }, 500);
+      } catch (e) {
+        console.warn('Error al imprimir:', e);
+      }
+    };
+
+    const imgs = Array.from(printWindow.document.images || []);
+    if (imgs.length > 0) {
+      let pending = imgs.length;
+      const onDone = () => {
+        pending -= 1;
+        if (pending <= 0) triggerPrint();
+      };
+      imgs.forEach((img) => {
+        if (img.complete) {
+          onDone();
+        } else {
+          img.addEventListener('load', onDone);
+          img.addEventListener('error', onDone);
+        }
+      });
+      // Fallback por si alguna imagen nunca dispara load/error
+      setTimeout(triggerPrint, 3000);
+    } else {
+      setTimeout(triggerPrint, 300);
     }
   }
 
@@ -371,7 +484,8 @@ export class PrintService {
     payments: Payment[] = [],
     business?: BusinessInfo,
     cashier?: CashierInfo,
-    branch?: BranchInfo
+    branch?: BranchInfo,
+    taxLines?: TaxLine[]
   ): void {
     const html = this.generateTicketHTML(
       sale, 
@@ -380,7 +494,8 @@ export class PrintService {
       payments, 
       business, 
       cashier,
-      branch
+      branch,
+      taxLines
     );
 
     const blob = new Blob([html], { type: 'text/html' });
@@ -451,6 +566,7 @@ export class PrintService {
   @media print{body{width:100%}@page{size:80mm auto;margin:0}}
 </style></head><body>
   <div class="header">
+    ${business?.logoUrl ? `<img src="${business.logoUrl}" alt="${businessName}" style="max-height:50px;max-width:100%;margin:0 auto 6px;display:block" />` : ''}
     <div class="business-name">${businessName}</div>
     ${business?.nit ? `<div class="business-address"><strong>NIT:</strong> ${business.nit}</div>` : ''}
     ${businessAddress ? `<div class="business-address">${businessAddress}</div>` : ''}
@@ -480,16 +596,7 @@ export class PrintService {
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
-      setTimeout(() => {
-        try {
-          if (printWindow && !printWindow.closed) {
-            printWindow.focus();
-            printWindow.print();
-          }
-        } catch (e) {
-          console.warn('Error al imprimir pre-cuenta:', e);
-        }
-      }, 500);
+      this.printWhenReady(printWindow);
     }
   }
 
@@ -524,13 +631,14 @@ export class PrintService {
     payments: Payment[] = [],
     business?: BusinessInfo,
     cashier?: CashierInfo,
-    branch?: BranchInfo
+    branch?: BranchInfo,
+    taxLines?: TaxLine[]
   ): void {
     if (this.canPrint()) {
-      this.printTicket(sale, saleItems, customer, payments, business, cashier, branch);
+      this.printTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines);
     } else {
       // Fallback: descargar como HTML
-      this.downloadTicket(sale, saleItems, customer, payments, business, cashier, branch);
+      this.downloadTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines);
       alert('La impresión directa no está disponible. El ticket se descargará como archivo HTML.');
     }
   }

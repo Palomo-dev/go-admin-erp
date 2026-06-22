@@ -251,7 +251,7 @@ export default function TarifasPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <RatesHeader onNewRate={handleNewRate} onImport={handleImport} />
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">

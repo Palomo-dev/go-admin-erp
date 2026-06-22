@@ -102,7 +102,7 @@ export function RulesTable({
             >
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">{countryFlags[rule.country_code] || '🌍'}</span>
+                  <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 text-xl shrink-0">{countryFlags[rule.country_code] || '🌍'}</span>
                   <div>
                     <div className="font-medium text-gray-900 dark:text-white">
                       {countryNames[rule.country_code] || rule.country_code}

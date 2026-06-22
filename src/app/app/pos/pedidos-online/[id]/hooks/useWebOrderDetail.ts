@@ -25,6 +25,8 @@ interface UseWebOrderDetailReturn {
   setCancelReason: (reason: string) => void;
   estimatedMinutes: number;
   setEstimatedMinutes: (minutes: number) => void;
+  markAsPaid: boolean;
+  setMarkAsPaid: (value: boolean) => void;
   // Actions
   handleConfirmOrder: () => Promise<void>;
   handleRejectOrder: () => Promise<void>;
@@ -35,6 +37,7 @@ interface UseWebOrderDetailReturn {
   handleCancelOrder: () => Promise<void>;
   handleConvertToSale: () => Promise<void>;
   handleCreateShipment: () => Promise<void>;
+  handleMarkAsPaid: () => Promise<void>;
   loadOrder: () => Promise<void>;
 }
 
@@ -53,6 +56,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   const [assignDeliveryOpen, setAssignDeliveryOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [estimatedMinutes, setEstimatedMinutes] = useState(30);
+  const [markAsPaid, setMarkAsPaid] = useState(false);
 
   const loadOrder = useCallback(async () => {
     try {
@@ -122,14 +126,16 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     if (!order) return;
     setActionLoading(true);
     try {
-      const result = await webOrderConfirmationService.confirmOrder(order, estimatedMinutes);
+      const result = await webOrderConfirmationService.confirmOrder(order, estimatedMinutes, markAsPaid);
       const parts = [`Venta creada · Comanda enviada a cocina · ${estimatedMinutes} min`];
+      if (markAsPaid) parts.push('· Marcado como pagado');
       if (result.shipmentId) parts.push('· Envío creado');
       toast({
         title: 'Pedido confirmado',
         description: parts.join(' '),
       });
       setConfirmDialogOpen(false);
+      setMarkAsPaid(false);
       loadOrder();
     } catch (error: any) {
       console.error('Error confirmando pedido:', error);
@@ -266,6 +272,48 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     }
   };
 
+  const handleMarkAsPaid = async () => {
+    if (!order) return;
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('web_orders')
+        .update({
+          payment_status: 'paid',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', orderId)
+        .eq('organization_id', organizationId);
+
+      if (error) throw error;
+
+      // Si hay sale_id vinculado, actualizar el sale también
+      if (order.sale_id) {
+        await supabase
+          .from('sales')
+          .update({
+            payment_status: 'paid',
+            balance: 0,
+            status: 'paid',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', order.sale_id);
+      }
+
+      toast({ title: 'Pedido marcado como pagado' });
+      loadOrder();
+    } catch (error: any) {
+      console.error('Error marking as paid:', error);
+      toast({
+        title: 'Error',
+        description: error?.message || 'No se pudo marcar como pagado',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return {
     order,
     loading,
@@ -281,6 +329,8 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setCancelReason,
     estimatedMinutes,
     setEstimatedMinutes,
+    markAsPaid,
+    setMarkAsPaid,
     handleConfirmOrder,
     handleRejectOrder,
     handleStartPreparing,
@@ -290,6 +340,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     handleCancelOrder,
     handleConvertToSale,
     handleCreateShipment,
+    handleMarkAsPaid,
     loadOrder,
   };
 }

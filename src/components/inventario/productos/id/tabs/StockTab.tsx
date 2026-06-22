@@ -169,39 +169,39 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
         <>
           {/* Resumen de Stock */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            <Card className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+            <Card className="dark:bg-gray-900 dark:border-gray-800">
               <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-lg">Stock Total</CardTitle>
-                <CardDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+                <CardTitle className="text-lg dark:text-white">Stock Total</CardTitle>
+                <CardDescription className="dark:text-gray-400">
                   En todas las sucursales
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <p className="text-3xl font-semibold">{totalStock.total}</p>
+                <p className="text-3xl font-semibold dark:text-white">{totalStock.total}</p>
               </CardContent>
             </Card>
             
-            <Card className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+            <Card className="dark:bg-gray-900 dark:border-gray-800">
               <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-lg">Reservado</CardTitle>
-                <CardDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+                <CardTitle className="text-lg dark:text-white">Reservado</CardTitle>
+                <CardDescription className="dark:text-gray-400">
                   En procesos de venta
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <p className="text-3xl font-semibold">{totalStock.reserved}</p>
+                <p className="text-3xl font-semibold dark:text-white">{totalStock.reserved}</p>
               </CardContent>
             </Card>
             
-            <Card className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+            <Card className="dark:bg-gray-900 dark:border-gray-800">
               <CardHeader className="p-4 pb-2">
-                <CardTitle className="text-lg">Disponible</CardTitle>
-                <CardDescription className={theme === 'dark' ? 'text-gray-400' : ''}>
+                <CardTitle className="text-lg dark:text-white">Disponible</CardTitle>
+                <CardDescription className="dark:text-gray-400">
                   Para la venta
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <p className="text-3xl font-semibold">{totalStock.available}</p>
+                <p className="text-3xl font-semibold dark:text-white">{totalStock.available}</p>
               </CardContent>
             </Card>
           </div>
@@ -218,22 +218,22 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
               Registrar Salida
             </Button>
             
-            <Button variant="outline" onClick={handleViewHistory} className={theme === 'dark' ? 'border-gray-800 hover:bg-gray-800' : ''}>
+            <Button variant="outline" onClick={handleViewHistory} className="dark:border-gray-800 dark:hover:bg-gray-800">
               <History className="h-4 w-4 mr-2" />
               Ver Historial
             </Button>
           </div>
           
           {/* Tabla de Stock por Sucursal */}
-          <div className={`rounded-md border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+          <div className="rounded-md border border-gray-200 dark:border-gray-800">
             <Table>
-              <TableHeader className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}>
+              <TableHeader className="bg-gray-50 dark:bg-gray-900">
                 <TableRow>
-                  <TableHead>Sucursal</TableHead>
-                  <TableHead className="text-right">En Existencia</TableHead>
-                  <TableHead className="text-right">Reservado</TableHead>
-                  <TableHead className="text-right">Disponible</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="dark:text-gray-300">Sucursal</TableHead>
+                  <TableHead className="dark:text-gray-300 text-right">En Existencia</TableHead>
+                  <TableHead className="dark:text-gray-300 text-right">Reservado</TableHead>
+                  <TableHead className="dark:text-gray-300 text-right">Disponible</TableHead>
+                  <TableHead className="dark:text-gray-300 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -245,17 +245,17 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
                   </TableRow>
                 ) : stockLevels.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-gray-500">
+                    <TableCell colSpan={5} className="h-24 text-center text-gray-500 dark:text-gray-400">
                       No hay sucursales configuradas para mostrar stock
                     </TableCell>
                   </TableRow>
                 ) : (
                   stockLevels.map((stock) => (
                     <TableRow key={stock.branch_id}>
-                      <TableCell>{stock.branch_name}</TableCell>
-                      <TableCell className="text-right">{stock.qty_on_hand}</TableCell>
-                      <TableCell className="text-right">{stock.qty_reserved}</TableCell>
-                      <TableCell className="text-right">{stock.qty_available}</TableCell>
+                      <TableCell className="dark:text-gray-200">{stock.branch_name}</TableCell>
+                      <TableCell className="text-right dark:text-gray-200">{stock.qty_on_hand}</TableCell>
+                      <TableCell className="text-right dark:text-gray-200">{stock.qty_reserved}</TableCell>
+                      <TableCell className="text-right dark:text-gray-200">{stock.qty_available}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button

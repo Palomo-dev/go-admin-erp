@@ -257,7 +257,7 @@ export default function ReportesProgramadosPage() {
   const inactiveCount = schedules.filter((s) => !s.is_active).length;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
         <div className="px-4 sm:px-6 py-4">
@@ -279,10 +279,10 @@ export default function ReportesProgramadosPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleImportJSON} className="border-gray-300 dark:border-gray-700">
+              <Button variant="outline" size="sm" onClick={handleImportJSON} className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
                 <Upload className="h-4 w-4 mr-2" /> Importar
               </Button>
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="border-gray-300 dark:border-gray-700">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
                 <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} /> Actualizar
               </Button>
               <Button size="sm" onClick={handleNew} className="bg-blue-600 hover:bg-blue-700 text-white">

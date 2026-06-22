@@ -267,8 +267,8 @@ export default function NuevoProductoForm() {
             direction: 'in',
             qty: stock.qty_on_hand,
             unit_cost: stock.avg_cost,
-            source: 'adjustment',
-            source_id: product.id.toString(),
+            source: 'initial',
+            source_id: null,
             note: 'Stock inicial'
           }))
 
@@ -403,8 +403,8 @@ export default function NuevoProductoForm() {
                 direction: 'in',
                 qty: stock.qty_on_hand,
                 unit_cost: variant.cost,
-                source: 'adjustment',
-                source_id: variantProduct.id.toString(),
+                source: 'initial',
+                source_id: null,
                 note: `Stock inicial variante ${variant.sku}`
               }))
 

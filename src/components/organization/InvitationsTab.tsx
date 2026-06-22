@@ -427,25 +427,25 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const getStatusBadge = (invitation: InvitationProps) => {
     if (invitation.status === 'revoked' || invitation.revoked) {
       return (
-        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
           {t('statusRevoked')}
         </span>
       );
     } else if (invitation.status === 'used' || invitation.used) {
       return (
-        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
           {t('statusAccepted')}
         </span>
       );
     } else if (new Date(invitation.expires_at || '') < new Date()) {
       return (
-        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
           {t('statusExpired')}
         </span>
       );
     } else {
       return (
-        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
           {t('statusPending')}
         </span>
       );
@@ -489,16 +489,16 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
     ].filter(Boolean).length;
     
     return (
-      <div className="mb-6 bg-white border rounded-lg shadow-sm overflow-hidden">
+      <div className="mb-6 bg-white dark:bg-gray-900 dark:border-gray-800 border rounded-lg shadow-sm overflow-hidden">
         {/* Encabezado de filtros */}
-        <div className="bg-gradient-to-r from-blue-50 to-white p-4 border-b flex justify-between items-center">
+        <div className="bg-gradient-to-r from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-900 p-4 border-b dark:border-gray-800 flex justify-between items-center">
           <div className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
             </svg>
-            <h3 className="font-medium text-gray-700">{t('filterInvitations')}</h3>
+            <h3 className="font-medium text-gray-700 dark:text-gray-200">{t('filterInvitations')}</h3>
             {activeFiltersCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 rounded-full">
                 {activeFiltersCount} {activeFiltersCount === 1 ? t('activeFilter') : t('activeFilters')}
               </span>
             )}
@@ -512,7 +512,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 setRoleFilter('');
                 setStatusFilter('all');
               }}
-              className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors flex items-center border border-blue-200"
+              className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors flex items-center border border-blue-200"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -527,10 +527,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Filtro por email */}
             <div className="relative">
-              <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
+              <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('emailLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
@@ -540,13 +540,13 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   value={emailFilter}
                   onChange={(e) => setEmailFilter(e.target.value)}
                   placeholder={t('emailPlaceholder')}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
                 {emailFilter && (
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     <button 
                       onClick={() => setEmailFilter('')}
-                      className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                      className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 focus:outline-none"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -559,10 +559,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por rol */}
             <div>
-              <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('roleLabel')}</label>
+              <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('roleLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
@@ -570,7 +570,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   id="role-filter"
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
                   <option value="">{t('allRoles')}</option>
                   {uniqueRoles.map((role: string) => (
@@ -582,10 +582,10 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por estado */}
             <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('statusLabel')}</label>
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('statusLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -593,7 +593,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   id="status-filter"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
                   <option value="all">{t('allStatuses')}</option>
                   <option value="pending">{t('pendingStatus')}</option>
@@ -617,23 +617,23 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       {/* Sección de filtros */}
       {renderFilters()}
       
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 shadow overflow-hidden sm:rounded-lg">
 
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">{t('sendNewTitle')}</h3>
+          <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">{t('sendNewTitle')}</h3>
 
           {/* Banner de límite de usuarios */}
           {maxUsers && (
             <div className={`mt-3 p-3 rounded-md border ${
               (currentMemberCount + pendingInvitationsCount) >= maxUsers
-                ? 'bg-red-50 border-red-200'
-                : 'bg-blue-50 border-blue-200'
+                ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
             }`}>
               <div className="flex items-center justify-between">
                 <p className={`text-sm font-medium ${
                   (currentMemberCount + pendingInvitationsCount) >= maxUsers
-                    ? 'text-red-800'
-                    : 'text-blue-800'
+                    ? 'text-red-800 dark:text-red-400'
+                    : 'text-blue-800 dark:text-blue-400'
                 }`}>
                   {t('usersCount', { current: currentMemberCount, max: maxUsers })}
                   {pendingInvitationsCount > 0 && (
@@ -645,14 +645,14 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 {(currentMemberCount + pendingInvitationsCount) >= maxUsers && (
                   <a
                     href="/app/organizacion/plan"
-                    className="text-xs font-medium text-red-700 hover:text-red-900 underline"
+                    className="text-xs font-medium text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 underline"
                   >
                     {t('upgradePlan')}
                   </a>
                 )}
               </div>
               {(currentMemberCount + pendingInvitationsCount) >= maxUsers && (
-                <p className="text-xs text-red-600 mt-1">
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
                   {t('userLimitMessage')}
                 </p>
               )}
@@ -660,38 +660,38 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           )}
           
           {error && (
-            <div className="mt-2 bg-red-50 border-l-4 border-red-500 p-4">
+            <div className="mt-2 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
                 </div>
               </div>
             </div>
           )}
           
           {success && (
-            <div className="mt-2 bg-green-50 border-l-4 border-green-500 p-4">
+            <div className="mt-2 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-5 w-5 text-green-500 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-green-700">{success}</p>
+                  <p className="text-sm text-green-700 dark:text-green-300">{success}</p>
                 </div>
               </div>
             </div>
           )}
           
-          <form onSubmit={handleSendInvitation} className="space-y-4 mt-4 bg-gray-50 p-4 rounded-lg">
+          <form onSubmit={handleSendInvitation} className="space-y-4 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 {t('emailField')}
               </label>
               <input
@@ -701,14 +701,14 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="mt-1 block w-full border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
                 placeholder={t('emailFieldPlaceholder')}
                 required
               />
             </div>
             
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 {t('roleField')}
               </label>
               <select
@@ -717,7 +717,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 value={roleId}
                 onChange={(e) => setRoleId(e.target.value)}
                 disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
-                className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
                 required
               >
                 <option value="" disabled>{t('selectRole')}</option>
@@ -743,13 +743,13 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       </div>
       
       {/* Invitations List */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="bg-white dark:bg-gray-900 dark:border dark:border-gray-800 shadow overflow-hidden sm:rounded-md">
         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
           <div>
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
               {t('invitationsTitle')}
             </h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
               {t('invitationsDesc')}
               {invitations.length > 0 && filteredInvitations.length !== invitations.length && 
                 ` (${filteredInvitations.length} de ${invitations.length})`}
@@ -760,7 +760,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           <button 
             type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             {showFilters ? (
               <>
@@ -781,35 +781,35 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         </div>
         
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('thEmail')}
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('thRole')}
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('thStatus')}
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('thSentDate')}
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('thExpirationDate')}
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('thActions')}
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredInvitations.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-6 py-10 text-center text-sm font-medium text-gray-500"
+                    className="px-6 py-10 text-center text-sm font-medium text-gray-500 dark:text-gray-400"
                   >
                     {invitations.length === 0 ? 
                       t('noInvitations') : 
@@ -819,19 +819,19 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
               ) : (
                 filteredInvitations.map((invitation) => (
                   <tr key={invitation.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {invitation.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {invitation.role_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(invitation)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {invitation.created_at}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {invitation.expires_at}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -839,13 +839,13 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                         <>
                           <button
                             onClick={() => resendInvitation(invitation.id, invitation.email)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-4"
                           >
                             {t('resend')}
                           </button>
                           <button
                             onClick={() => revokeInvitation(invitation.id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                           >
                             {t('revoke')}
                           </button>

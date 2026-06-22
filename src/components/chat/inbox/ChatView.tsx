@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, MoreVertical, Phone, Video, Search, ArrowLeft, Maximize2, PanelLeftOpen, PanelLeftClose, User, ArrowDown } from 'lucide-react';
+import { Loader2, MoreVertical, Phone, Video, Search, ArrowLeft, Maximize2, PanelLeftOpen, PanelLeftClose, User, ArrowDown, XCircle, Clock, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -55,11 +55,12 @@ interface ChatViewProps {
   organizationId?: number;
   onToggleSidebar?: () => void;
   sidebarCollapsed?: boolean;
+  onStatusChange?: (conversationId: string, status: string) => Promise<void>;
 }
 
 const MESSAGES_PAGE_SIZE = 10;
 
-export default function ChatView({ conversation, onBack, onSendMessage, organizationId, onToggleSidebar, sidebarCollapsed }: ChatViewProps) {
+export default function ChatView({ conversation, onBack, onSendMessage, organizationId, onToggleSidebar, sidebarCollapsed, onStatusChange }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -78,6 +79,11 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
 
   const handleOpenFullView = () => {
     setShowFullScreen(true);
+  };
+
+  const handleChangeStatus = async (newStatus: string) => {
+    if (!conversation || !onStatusChange) return;
+    await onStatusChange(conversation.id, newStatus);
   };
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -296,7 +302,22 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
 
   if (!conversation) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 relative">
+        {onToggleSidebar && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleSidebar}
+            className="hidden lg:flex absolute top-3 left-3 z-10"
+            title={sidebarCollapsed ? 'Mostrar lista' : 'Ocultar lista'}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="h-5 w-5" />
+            ) : (
+              <PanelLeftClose className="h-5 w-5" />
+            )}
+          </Button>
+        )}
         <div className="text-center">
           <div className="mx-auto h-24 w-24 text-gray-300 dark:text-gray-700 mb-4">
             <svg
@@ -458,9 +479,24 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
                 Buscar en conversación
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">
-                Cerrar conversación
-              </DropdownMenuItem>
+              {conversation.status !== 'closed' && (
+                <DropdownMenuItem onClick={() => handleChangeStatus('closed')} className="text-red-600">
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cerrar conversación
+                </DropdownMenuItem>
+              )}
+              {conversation.status !== 'pending' && (
+                <DropdownMenuItem onClick={() => handleChangeStatus('pending')} className="text-yellow-600">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Dejar pendiente
+                </DropdownMenuItem>
+              )}
+              {conversation.status !== 'open' && (
+                <DropdownMenuItem onClick={() => handleChangeStatus('open')} className="text-green-600">
+                  <Circle className="h-4 w-4 mr-2" />
+                  Reabrir conversación
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -469,7 +505,7 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
       {/* Mensajes */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 bg-gray-50 dark:bg-gray-950 relative"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 sm:p-4 bg-gray-50 dark:bg-gray-900 relative"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}

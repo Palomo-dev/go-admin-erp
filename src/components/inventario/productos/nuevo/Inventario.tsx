@@ -73,7 +73,7 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-hidden">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">

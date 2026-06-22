@@ -340,7 +340,7 @@ export default function PipelineView() {
         .limit(1)
         .single();
 
-      if (firstError) {
+      if (firstError && firstError.code !== "PGRST116") {
         console.error("Error al cargar el primer pipeline:", firstError);
       } else if (firstPipeline) {
         setCurrentPipelineId(firstPipeline.id);

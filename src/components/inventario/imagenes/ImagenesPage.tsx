@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   ImageIcon,
   Plus,
@@ -59,6 +59,8 @@ export function ImagenesPage() {
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroVisibilidad, setFiltroVisibilidad] = useState<'all' | 'public' | 'private'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(24);
 
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
@@ -212,6 +214,23 @@ export function ImagenesPage() {
       setImageToDelete(null);
     }
   };
+
+  // Paginación
+  const totalPages = Math.ceil(imagenes.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const imagenesPaginadas = useMemo(
+    () => imagenes.slice(startIndex, startIndex + pageSize),
+    [imagenes, startIndex, pageSize]
+  );
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filtroVisibilidad]);
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -400,19 +419,19 @@ export function ImagenesPage() {
               </Button>
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {imagenes.map(img => (
+              {imagenesPaginadas.map(img => (
                 <div
                   key={img.id}
                   className="group relative bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden aspect-square"
                 >
                   {img.public_url ? (
-                    <Image
+                    <img
                       src={img.public_url}
                       alt={img.file_name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
+                      className="h-full w-full object-cover"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -465,6 +484,16 @@ export function ImagenesPage() {
                 </div>
               ))}
             </div>
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={imagenes.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={handlePageSizeChange}
+              pageSizeOptions={[12, 24, 48, 96]}
+            />
+            </>
           )}
         </CardContent>
       </Card>
@@ -539,11 +568,10 @@ export function ImagenesPage() {
           </DialogHeader>
           <div className="relative aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
             {previewImage?.public_url && (
-              <Image
+              <img
                 src={previewImage.public_url}
                 alt={previewImage.file_name}
-                fill
-                className="object-contain"
+                className="h-full w-full object-contain"
               />
             )}
           </div>

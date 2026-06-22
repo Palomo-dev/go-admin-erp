@@ -128,7 +128,7 @@ export function AlertaDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800">
+      <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
         <SheetHeader className="pb-4">
           <div className="flex items-start gap-3">
             <div className={cn('p-2.5 rounded-xl', sev.color)}>

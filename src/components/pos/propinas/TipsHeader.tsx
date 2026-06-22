@@ -232,7 +232,7 @@ export function TipsHeader({
               value={filters.dateFrom || ''}
               onChange={(e) => handleDateChange('dateFrom', e.target.value)}
               placeholder="Desde"
-              className="w-[150px] dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-[150px] dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
             />
 
             <Input
@@ -240,7 +240,7 @@ export function TipsHeader({
               value={filters.dateTo || ''}
               onChange={(e) => handleDateChange('dateTo', e.target.value)}
               placeholder="Hasta"
-              className="w-[150px] dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="w-[150px] dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
             />
 
             <Button

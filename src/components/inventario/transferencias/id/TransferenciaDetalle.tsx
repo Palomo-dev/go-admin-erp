@@ -370,7 +370,7 @@ export function TransferenciaDetalle({ transferenciaId }: TransferenciaDetallePr
                           </div>
                         </TableCell>
                         <TableCell className="dark:text-gray-300">
-                          {item.lot?.lot_number || '-'}
+                          {item.lot?.lot_code || '-'}
                         </TableCell>
                         <TableCell className="text-center dark:text-gray-300">
                           {item.quantity}

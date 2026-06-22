@@ -110,7 +110,7 @@ export function CalendarFilters({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 p-4 bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+    <div className="flex flex-wrap items-center gap-2 p-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
       {/* Filtro por sucursal */}
       <Select
         value={filters.branchId?.toString() || 'all'}

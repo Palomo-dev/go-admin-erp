@@ -302,7 +302,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
       {/* Cabecera */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-medium">Proveedores del Producto</h3>
+          <h3 className="text-lg font-medium dark:text-white">Proveedores del Producto</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Gestiona los proveedores y sus condiciones comerciales
           </p>
@@ -314,17 +314,17 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
       </div>
 
       {/* Tabla de proveedores */}
-      <div className={`rounded-md border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
+      <div className="rounded-md border border-gray-200 dark:border-gray-800">
         <Table>
-          <TableHeader className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}>
+          <TableHeader className="bg-gray-50 dark:bg-gray-900">
             <TableRow>
-              <TableHead>Proveedor</TableHead>
-              <TableHead className="text-right">Costo</TableHead>
-              <TableHead className="text-center">Días Entrega</TableHead>
-              <TableHead className="text-center">Pedido Mín.</TableHead>
-              <TableHead>SKU Proveedor</TableHead>
-              <TableHead className="text-center">Preferido</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="dark:text-gray-300">Proveedor</TableHead>
+              <TableHead className="dark:text-gray-300 text-right">Costo</TableHead>
+              <TableHead className="dark:text-gray-300 text-center">Días Entrega</TableHead>
+              <TableHead className="dark:text-gray-300 text-center">Pedido Mín.</TableHead>
+              <TableHead className="dark:text-gray-300">SKU Proveedor</TableHead>
+              <TableHead className="dark:text-gray-300 text-center">Preferido</TableHead>
+              <TableHead className="dark:text-gray-300 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -357,10 +357,10 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(prov.cost)}</TableCell>
-                  <TableCell className="text-center">{prov.lead_time_days} días</TableCell>
-                  <TableCell className="text-center">{prov.min_order_qty}</TableCell>
-                  <TableCell className="font-mono text-xs">{prov.supplier_sku || '—'}</TableCell>
+                  <TableCell className="text-right font-medium dark:text-white">{formatCurrency(prov.cost)}</TableCell>
+                  <TableCell className="text-center dark:text-gray-200">{prov.lead_time_days} días</TableCell>
+                  <TableCell className="text-center dark:text-gray-200">{prov.min_order_qty}</TableCell>
+                  <TableCell className="font-mono text-xs dark:text-gray-200">{prov.supplier_sku || '—'}</TableCell>
                   <TableCell className="text-center">
                     <Button
                       variant="ghost"
@@ -390,7 +390,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className={theme === 'dark' ? 'bg-gray-900 border-gray-800' : ''}>
+                        <AlertDialogContent className="dark:bg-gray-900 dark:border-gray-800">
                           <AlertDialogHeader>
                             <AlertDialogTitle>¿Eliminar proveedor?</AlertDialogTitle>
                             <AlertDialogDescription>
@@ -419,12 +419,12 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
 
       {/* Dialog crear/editar */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className={`sm:max-w-lg ${theme === 'dark' ? 'bg-gray-900 border-gray-800 text-gray-100' : ''}`}>
+        <DialogContent className="sm:max-w-lg dark:bg-gray-900 dark:border-gray-800 dark:text-gray-100">
           <DialogHeader>
             <DialogTitle>
               {dialogMode === 'create' ? 'Agregar Proveedor' : 'Editar Proveedor'}
             </DialogTitle>
-            <DialogDescription className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
               {dialogMode === 'create'
                 ? 'Selecciona un proveedor y define las condiciones comerciales'
                 : 'Modifica las condiciones comerciales del proveedor'}
@@ -442,7 +442,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
                     setEditingItem(prev => prev ? { ...prev, supplier_id: parseInt(val) } : null)
                   }
                 >
-                  <SelectTrigger className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
+                  <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700">
                     <SelectValue placeholder="Seleccionar proveedor" />
                   </SelectTrigger>
                   <SelectContent>
@@ -459,7 +459,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
             {dialogMode === 'edit' && (
               <div className="space-y-1">
                 <Label className="text-gray-500 dark:text-gray-400">Proveedor</Label>
-                <p className="font-medium">{editingItem?.supplier_name}</p>
+                <p className="font-medium dark:text-white">{editingItem?.supplier_name}</p>
               </div>
             )}
 
@@ -473,7 +473,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
                   onChange={(e) =>
                     setEditingItem(prev => prev ? { ...prev, cost: parseFloat(e.target.value) || 0 } : null)
                   }
-                  className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                  className="dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
               <div className="space-y-2">
@@ -484,7 +484,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
                   onChange={(e) =>
                     setEditingItem(prev => prev ? { ...prev, lead_time_days: parseInt(e.target.value) || 0 } : null)
                   }
-                  className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                  className="dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
             </div>
@@ -499,7 +499,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
                   onChange={(e) =>
                     setEditingItem(prev => prev ? { ...prev, min_order_qty: parseFloat(e.target.value) || 1 } : null)
                   }
-                  className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                  className="dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
               <div className="space-y-2">
@@ -510,7 +510,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
                     setEditingItem(prev => prev ? { ...prev, supplier_sku: e.target.value } : null)
                   }
                   placeholder="SKU opcional"
-                  className={`font-mono ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
+                  className="font-mono dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
             </div>
@@ -523,7 +523,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
                   setEditingItem(prev => prev ? { ...prev, notes: e.target.value } : null)
                 }
                 placeholder="Notas sobre este proveedor..."
-                className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+                className="dark:bg-gray-800 dark:border-gray-700"
                 rows={2}
               />
             </div>
@@ -531,7 +531,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
 
           <DialogFooter className="sm:justify-between">
             <DialogClose asChild>
-              <Button variant="outline" className={theme === 'dark' ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : ''}>
+              <Button variant="outline" className="dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
                 Cancelar
               </Button>
             </DialogClose>

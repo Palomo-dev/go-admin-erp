@@ -43,6 +43,7 @@ interface TaxSummaryProps {
   cart: Cart;
   taxIncluded: boolean;
   onTaxIncludedChange: (included: boolean) => void;
+  onAppliedTaxesChange?: (taxIds: string[]) => void;
   className?: string;
 }
 
@@ -50,6 +51,7 @@ export function TaxSummary({
   cart, 
   taxIncluded, 
   onTaxIncludedChange, 
+  onAppliedTaxesChange,
   className 
 }: TaxSummaryProps) {
   const [organizationTaxes, setOrganizationTaxes] = useState<OrganizationTax[]>([]);
@@ -72,12 +74,20 @@ export function TaxSummary({
         const taxes = await POSService.getOrganizationTaxes();
         setOrganizationTaxes(taxes);
         
-        // Inicializar impuestos aplicados con los predeterminados
+        // Inicializar impuestos aplicados: usar los del carrito si existen, sino los predeterminados
         const initialAppliedTaxes: {[key: string]: boolean} = {};
+        const cartTaxIds = cart.applied_tax_ids;
         taxes.forEach((tax: OrganizationTax) => {
-          initialAppliedTaxes[tax.id] = tax.is_default;
+          initialAppliedTaxes[tax.id] = cartTaxIds && cartTaxIds.length >= 0
+            ? cartTaxIds.includes(tax.id)
+            : tax.is_default;
         });
         setAppliedTaxes(initialAppliedTaxes);
+        // Si el carrito aún no tiene selección, persistir los predeterminados
+        if (!cartTaxIds) {
+          const defaultIds = taxes.filter((t: OrganizationTax) => t.is_default).map((t: OrganizationTax) => t.id);
+          onAppliedTaxesChange?.(defaultIds);
+        }
         
       } catch (error) {
         console.error('Error loading organization taxes:', error);
@@ -343,10 +353,10 @@ export function TaxSummary({
                         <div
                           key={tax.id}
                           onClick={() => {
-                            setAppliedTaxes(prev => ({
-                              ...prev,
-                              [tax.id]: !prev[tax.id]
-                            }));
+                            const next = { ...appliedTaxes, [tax.id]: !appliedTaxes[tax.id] };
+                            setAppliedTaxes(next);
+                            const selectedIds = Object.keys(next).filter(id => next[id]);
+                            onAppliedTaxesChange?.(selectedIds);
                           }}
                           className="flex items-center space-x-2 px-2 py-2 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         >

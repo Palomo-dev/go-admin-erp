@@ -95,7 +95,7 @@ export default function ConfiguracionPage() {
 
   if (isLoading || !settings) {
     return (
-      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="animate-pulse space-y-6">
             <div className="h-16 bg-gray-200 dark:bg-gray-800 rounded-lg" />
@@ -112,7 +112,7 @@ export default function ConfiguracionPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <SettingsHeader
           onSave={handleSave}

@@ -227,7 +227,7 @@ export function ReservaFormDialog({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="dark:bg-gray-900 dark:border-gray-600"
+                className="dark:bg-gray-900 dark:border-gray-600 dark:[color-scheme:dark]"
               />
             </div>
             <div className="space-y-1.5">

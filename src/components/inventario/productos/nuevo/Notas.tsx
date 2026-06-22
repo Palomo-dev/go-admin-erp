@@ -11,7 +11,7 @@ interface NotasProps {
 
 export default function Notas({ formData, updateFormData }: NotasProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-hidden">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-amber-100 dark:bg-amber-900/20 rounded-lg">
           <FileText className="h-5 w-5 text-amber-600 dark:text-amber-400" />

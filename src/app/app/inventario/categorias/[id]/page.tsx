@@ -107,7 +107,7 @@ export default function CategoriaDetallePage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
           <Skeleton className="h-8 w-64" />
         </div>
@@ -121,7 +121,7 @@ export default function CategoriaDetallePage({ params }: PageProps) {
 
   if (!category) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <FolderTree className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
           <p className="text-lg font-medium text-gray-900 dark:text-white">Categoría no encontrada</p>
@@ -134,7 +134,7 @@ export default function CategoriaDetallePage({ params }: PageProps) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <CategoryDetailHeader
         category={category}
         onToggleActive={handleToggleActive}

@@ -32,7 +32,7 @@ export interface StockLevel {
   };
   lots?: {
     id: number;
-    lot_number: string;
+    lot_code: string;
     expiry_date?: string;
   };
 }
@@ -65,7 +65,7 @@ export interface StockMovement {
   };
   lots?: {
     id: number;
-    lot_number: string;
+    lot_code: string;
   };
   profiles?: {
     id: string;
@@ -150,7 +150,7 @@ class StockService {
           ),
           lots (
             id,
-            lot_number,
+            lot_code,
             expiry_date
           )
         `, { count: 'exact' })
@@ -333,7 +333,7 @@ class StockService {
           ),
           lots (
             id,
-            lot_number
+            lot_code
           )
         `, { count: 'exact' })
         .eq('organization_id', organizationId);

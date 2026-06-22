@@ -17,7 +17,8 @@ import {
   XCircle as XCircleIcon,
   PlayCircle as PlayCircleIcon,
   InfoIcon,
-  ExternalLink
+  ExternalLink,
+  ListTodo, Eye, ClipboardCheck, PackageCheck, Search, FileText, Bug, Sparkles
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -58,6 +59,14 @@ const iconosPorTipo: Record<string, React.ReactNode> = {
   reunion: <TargetIcon className="h-4 w-4 mr-1" />,
   email: <ExternalLink className="h-4 w-4 mr-1" />,
   visita: <UserIcon className="h-4 w-4 mr-1" />,
+  tarea: <ListTodo className="h-4 w-4 mr-1" />,
+  seguimiento: <Eye className="h-4 w-4 mr-1" />,
+  revision: <ClipboardCheck className="h-4 w-4 mr-1" />,
+  entrega: <PackageCheck className="h-4 w-4 mr-1" />,
+  investigacion: <Search className="h-4 w-4 mr-1" />,
+  documento: <FileText className="h-4 w-4 mr-1" />,
+  bug: <Bug className="h-4 w-4 mr-1" />,
+  feature: <Sparkles className="h-4 w-4 mr-1" />,
 };
 
 // Mapeo de íconos según estado

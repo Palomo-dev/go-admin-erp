@@ -116,8 +116,7 @@ export default function ClientsPagination({
         <Button
           variant="outline"
           size="icon"
-          className="h-9 w-9 hidden sm:flex border-gray-300 dark:border-gray-600"
-          onClick={() => onPageChange(1)}
+          className="h-9 w-9 hidden sm:flex border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           disabled={currentPage === 1}
         >
           <ChevronsLeft className="h-4 w-4" />
@@ -127,8 +126,7 @@ export default function ClientsPagination({
         <Button
           variant="outline"
           size="icon"
-          className="h-9 w-9 border-gray-300 dark:border-gray-600"
-          onClick={() => onPageChange(currentPage - 1)}
+          className="h-9 w-9 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           disabled={currentPage === 1}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -152,7 +150,7 @@ export default function ClientsPagination({
                 className={`h-9 w-9 ${
                   currentPage === page
                     ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    : "border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`}
                 onClick={() => onPageChange(page as number)}
               >
@@ -171,8 +169,7 @@ export default function ClientsPagination({
         <Button
           variant="outline"
           size="icon"
-          className="h-9 w-9 border-gray-300 dark:border-gray-600"
-          onClick={() => onPageChange(currentPage + 1)}
+          className="h-9 w-9 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           disabled={currentPage === totalPages}
         >
           <ChevronRight className="h-4 w-4" />
@@ -182,8 +179,7 @@ export default function ClientsPagination({
         <Button
           variant="outline"
           size="icon"
-          className="h-9 w-9 hidden sm:flex border-gray-300 dark:border-gray-600"
-          onClick={() => onPageChange(totalPages)}
+          className="h-9 w-9 hidden sm:flex border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           disabled={currentPage === totalPages}
         >
           <ChevronsRight className="h-4 w-4" />

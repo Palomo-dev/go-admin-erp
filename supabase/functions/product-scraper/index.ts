@@ -35,15 +35,6 @@ interface ScrapedProduct {
   variants?: { name: string; values: string[] }[];
 }
 
-function cleanHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<svg[\s\S]*?<\/svg>/gi, "")
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
-}
-
 function extractJsonLd(html: string): string[] {
   const results: string[] = [];
   const regex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
@@ -60,21 +51,78 @@ function extractJsonLd(html: string): string[] {
   return results;
 }
 
+// Extrae bloques JSON embebidos por frameworks SPA (Next.js __NEXT_DATA__, application/json)
+// que suelen contener el catálogo aunque el HTML visible no lo tenga
+function extractInlineJson(html: string): string[] {
+  const results: string[] = [];
+  const regex = /<script[^>]*(?:id=["']__NEXT_DATA__["']|type=["']application\/json["'])[^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = regex.exec(html)) !== null) {
+    const raw = m[1].trim();
+    if (raw.length < 50) continue;
+    if (/(price|product|name|sku|variant|image|title)/i.test(raw)) {
+      results.push(raw.substring(0, 40000));
+    }
+    if (results.length >= 3) break;
+  }
+  return results;
+}
+
+// Patrones de imágenes que NO son fotos de producto (íconos, logos, placeholders, medios de pago, redes, etc.)
+const IMAGE_BLOCKLIST = /(logo|icon|sprite|banner|flag|payment|favicon|placeholder|no[-_]?image|noimage|sin[-_]?imagen|default|blank|loader|loading|spinner|pixel|transparent|swatch|social|whatsapp|facebook|instagram|twitter|tiktok|youtube|visa|mastercard|amex|paypal|pse|addi|sistecredito|nequi|baloto|efecty|badge|sello|seal|garantia|envio|shipping|cintillo|empty|blur|skeleton)/i;
+// Tamaños diminutos típicos de íconos (16x16 ... 64x64), no de fotos de producto
+const IMAGE_TINY_SIZE = /[_\-\/](?:16|24|32|40|48|56|64)x(?:16|24|32|40|48|56|64)[_\-\/.]/;
+// Enlaces que apuntan a la página de detalle de un producto (formato común en e-commerce)
+const PRODUCT_LINK_RE = /\/(?:product|products|producto|productos|item|items|dp|sku|p)\//i;
+
+function isProductImage(url: string): boolean {
+  if (!url || url.startsWith("data:")) return false;
+  if (IMAGE_BLOCKLIST.test(url)) return false;
+  if (IMAGE_TINY_SIZE.test(url)) return false;
+  return true;
+}
+
+// Obtiene la mejor URL de imagen de una etiqueta <img>, entendiendo lazy-load y srcset.
+// Muchos sitios ponen un placeholder gris en src y la foto real en data-src/srcset.
+function pickImgUrl(tag: string): string | null {
+  const attr = (name: string): string | null => {
+    const mm = tag.match(new RegExp(`${name}=["']([^"']+)["']`, "i"));
+    return mm ? mm[1] : null;
+  };
+  // Prioriza atributos de carga diferida (la foto real)
+  let src = attr("data-src") || attr("data-lazy-src") || attr("data-original") || attr("data-image");
+  if (!src) {
+    const plain = attr("src");
+    if (plain && !plain.startsWith("data:")) src = plain;
+  }
+  // srcset: tomar el último candidato (normalmente el de mayor resolución)
+  if (!src) {
+    const srcset = attr("data-srcset") || attr("srcset");
+    if (srcset) {
+      const parts = srcset.split(",").map((s) => s.trim().split(/\s+/)[0]).filter(Boolean);
+      if (parts.length) src = parts[parts.length - 1];
+    }
+  }
+  return src || null;
+}
+
 function extractImages(content: string, baseUrl: string): string[] {
   const imgs = new Set<string>();
-  const htmlRegex = /<img[^>]+(?:src|data-src|data-lazy-src)=["']([^"']+)["']/gi;
+  const tagRegex = /<img[^>]*>/gi;
   let m;
-  while ((m = htmlRegex.exec(content)) !== null) {
+  while ((m = tagRegex.exec(content)) !== null) {
+    const raw = pickImgUrl(m[0]);
+    if (!raw) continue;
     try {
-      const url = new URL(m[1], baseUrl).href;
-      if (/\.(jpg|jpeg|png|webp|avif)/i.test(url) && !/(logo|icon|sprite|banner|flag|payment|favicon)/i.test(url)) {
+      const url = new URL(raw, baseUrl).href;
+      if (/\.(jpg|jpeg|png|webp|avif)/i.test(url) && isProductImage(url)) {
         imgs.add(url);
       }
     } catch (_) { /* ignore */ }
   }
   const mdRegex = /https?:\/\/[^\s\)\]"']+\.(?:jpg|jpeg|png|webp|avif)[^\s\)\]"']*/gi;
   while ((m = mdRegex.exec(content)) !== null) {
-    if (!/(logo|icon|sprite|banner|flag|payment|favicon)/i.test(m[0])) {
+    if (isProductImage(m[0])) {
       imgs.add(m[0]);
     }
   }
@@ -95,16 +143,90 @@ const BROWSER_HEADERS = {
   "Upgrade-Insecure-Requests": "1",
 };
 
-async function fetchWithJina(url: string): Promise<string | null> {
+// Peso mínimo (bytes) para considerar una imagen como foto real y no un placeholder gris/1x1
+const MIN_IMAGE_BYTES = 2500;
+
+// Verifica que una URL devuelva REALMENTE una foto que carga (descarta rotas y placeholders grises)
+async function urlIsImage(u: string): Promise<boolean> {
+  // URLs con plantillas sin resolver nunca cargan
+  if (/\{|\}/.test(u)) return false;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 7000);
   try {
-    const jinaUrl = `https://r.jina.ai/${url}`;
-    const res = await fetch(jinaUrl, {
-      headers: {
-        "Accept": "text/plain",
-        "X-With-Images-Summary": "true",
-        "X-With-Links-Summary": "true",
-      },
+    const res = await fetch(u, {
+      headers: { "User-Agent": BROWSER_HEADERS["User-Agent"], "Range": "bytes=0-0" },
+      signal: ctrl.signal,
     });
+    if (!res.ok && res.status !== 206) return false;
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.startsWith("image/")) return false;
+    // Tamaño total real: preferir Content-Range (bytes 0-0/TOTAL), si no Content-Length
+    let total = 0;
+    const range = res.headers.get("content-range");
+    if (range) {
+      const mm = range.match(/\/(\d+)\s*$/);
+      if (mm) total = Number(mm[1]);
+    }
+    if (!total) total = Number(res.headers.get("content-length") || "0");
+    // Si conocemos el tamaño y es minúsculo, es un placeholder gris -> descartar
+    if (total > 0 && total < MIN_IMAGE_BYTES) return false;
+    return true;
+  } catch (_) {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Filtra una lista de imágenes dejando solo las que cargan (probando hasta `check` candidatas)
+async function filterWorkingImages(urls: string[], max = 8, check = 8): Promise<string[]> {
+  const candidates = urls.slice(0, check);
+  const results = await Promise.all(
+    candidates.map(async (u) => ((await urlIsImage(u)) ? u : null)),
+  );
+  return results.filter((u): u is string => !!u).slice(0, max);
+}
+
+// Valores placeholder que la IA a veces deja por error y no deben importarse
+const PLACEHOLDER_VALUES = new Set(["null", "undefined", "texto", "valor", "...", "n/a", "na", "-"]);
+function limpiarPlaceholder(v?: string): string | undefined {
+  if (!v) return undefined;
+  return PLACEHOLDER_VALUES.has(v.trim().toLowerCase()) ? undefined : v;
+}
+function sanitizeProduct(p: ScrapedProduct): ScrapedProduct {
+  p.brand = limpiarPlaceholder(p.brand);
+  p.category = limpiarPlaceholder(p.category);
+  p.sku = limpiarPlaceholder(p.sku);
+  return p;
+}
+
+// Valida las imágenes de todos los productos por lotes (concurrencia controlada)
+async function validateProductsImages(products: ScrapedProduct[], max = 6, check = 10): Promise<ScrapedProduct[]> {
+  const BATCH = 8;
+  for (let i = 0; i < products.length; i += BATCH) {
+    const slice = products.slice(i, i + BATCH);
+    await Promise.all(
+      slice.map(async (p) => {
+        sanitizeProduct(p);
+        if (p.images && p.images.length > 0) {
+          p.images = await filterWorkingImages(p.images, max, check);
+        }
+      }),
+    );
+  }
+  return products;
+}
+
+async function jinaRequest(url: string, useBrowser: boolean): Promise<string | null> {
+  try {
+    const headers: Record<string, string> = {
+      "Accept": "text/plain",
+      "X-With-Images-Summary": "true",
+      "X-With-Links-Summary": "true",
+    };
+    // Motor de navegador real: más lento pero atraviesa sitios con JS pesado / anti-bots
+    if (useBrowser) headers["X-Engine"] = "browser";
+    const res = await fetch(`https://r.jina.ai/${url}`, { headers });
     if (!res.ok) return null;
     const text = await res.text();
     return text.length > 200 ? text : null;
@@ -113,8 +235,18 @@ async function fetchWithJina(url: string): Promise<string | null> {
   }
 }
 
-async function fetchPage(url: string): Promise<{ content: string; isMarkdown: boolean }> {
-  // Intentar ambos en paralelo para velocidad
+async function fetchWithJina(url: string): Promise<string | null> {
+  // Intento rápido (motor por defecto)
+  const fast = await jinaRequest(url, false);
+  if (fast && fast.length > 1000) return fast;
+  // Reintento con motor de navegador para páginas que devuelven poco contenido (SPA/anti-bot)
+  const browser = await jinaRequest(url, true);
+  return browser || fast;
+}
+
+// Obtiene AMBAS fuentes en paralelo y las devuelve sin descartar ninguna,
+// para poder extraer productos de la que más contenido aporte (HTML con JSON-LD o Jina con JS renderizado)
+async function fetchSources(url: string): Promise<{ direct: string | null; jina: string | null }> {
   const [directResult, jinaResult] = await Promise.allSettled([
     fetch(url, { headers: BROWSER_HEADERS }).then(async (res) => {
       if (!res.ok) return null;
@@ -127,22 +259,13 @@ async function fetchPage(url: string): Promise<{ content: string; isMarkdown: bo
     fetchWithJina(url),
   ]);
 
-  const directHtml = directResult.status === "fulfilled" ? directResult.value : null;
-  const jinaText = jinaResult.status === "fulfilled" ? jinaResult.value : null;
+  const direct = directResult.status === "fulfilled" ? directResult.value : null;
+  const jina = jinaResult.status === "fulfilled" ? jinaResult.value : null;
 
-  // Preferir Jina si tiene contenido sustancial (renderiza JS, más productos)
-  if (jinaText && jinaText.length > 1000) {
-    return { content: jinaText, isMarkdown: true };
+  if (!direct && !jina) {
+    throw new Error("No se pudo acceder a la página (bloqueo anti-bots o sitio caído). Intente con otra URL.");
   }
-  // Fallback a HTML directo
-  if (directHtml) {
-    return { content: directHtml, isMarkdown: false };
-  }
-  // Si ninguno funcionó pero Jina tiene algo
-  if (jinaText) {
-    return { content: jinaText, isMarkdown: true };
-  }
-  throw new Error("No se pudo acceder a la página (bloqueo anti-bots o sitio caído). Intente con otra URL.");
+  return { direct, jina };
 }
 
 async function callOpenAI(prompt: string): Promise<any> {
@@ -155,7 +278,7 @@ async function callOpenAI(prompt: string): Promise<any> {
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.1,
+      temperature: 0,
       max_tokens: 16000,
       response_format: { type: "json_object" },
     }),
@@ -168,26 +291,125 @@ async function callOpenAI(prompt: string): Promise<any> {
   return JSON.parse(aiData.choices?.[0]?.message?.content || "{}");
 }
 
-function buildContext(content: string, isMarkdown: boolean, maxChars = 60000): string {
+function buildContext(content: string, isMarkdown: boolean, maxChars = 60000, baseUrl = ""): string {
   if (isMarkdown) {
     return `CONTENIDO DE LA PÁGINA (markdown):\n${content.substring(0, maxChars)}`;
   }
   const jsonLd = extractJsonLd(content);
-  const cleaned = cleanHtml(content)
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .substring(0, maxChars);
+  const cleaned = htmlToStructuredText(content, baseUrl).substring(0, maxChars);
   return jsonLd.length > 0
-    ? `DATOS ESTRUCTURADOS JSON-LD:\n${jsonLd.join("\n").substring(0, 20000)}\n\nTEXTO DE LA PÁGINA:\n${cleaned.substring(0, maxChars - 20000)}`
-    : `TEXTO DE LA PÁGINA:\n${cleaned}`;
+    ? `DATOS ESTRUCTURADOS JSON-LD:\n${jsonLd.join("\n").substring(0, 20000)}\n\nTEXTO DE LA PÁGINA (con marcadores [IMG:url]):\n${cleaned.substring(0, maxChars - 20000)}`
+    : `TEXTO DE LA PÁGINA (con marcadores [IMG:url]):\n${cleaned}`;
 }
 
-async function extractWithAI(content: string, url: string, isMarkdown: boolean): Promise<ScrapedProduct[]> {
-  const images = extractImages(content, url);
-  // Para listados usamos menos contexto para velocidad
-  const context = buildContext(content, isMarkdown, 50000);
-  const imgList = images.slice(0, 60).join("\n");
+// Convierte HTML a texto CONSERVANDO la imagen y el enlace de cada producto en línea,
+// para que la IA asocie correctamente nombre↔precio↔imagen↔URL. Genérico para cualquier sitio.
+function htmlToStructuredText(html: string, baseUrl: string): string {
+  let s = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    // NO eliminar el contenido de <noscript>: ahí suele estar la imagen REAL
+    // de los productos con carga diferida (lazy-load). Solo quitamos las etiquetas.
+    .replace(/<\/?noscript[^>]*>/gi, " ");
 
+  // Imagen de producto en línea: [IMG:url] (entiende lazy-load/srcset; descarta logos/íconos/placeholders)
+  s = s.replace(/<img[^>]*>/gi, (tag) => {
+    const raw = pickImgUrl(tag);
+    if (!raw) return " ";
+    try {
+      const abs = new URL(raw, baseUrl).href;
+      return isProductImage(abs) ? ` [IMG:${abs}] ` : " ";
+    } catch (_) {
+      return " ";
+    }
+  });
+
+  // Enlace en línea: SOLO enlaces de detalle de producto (evita inflar con menús/footer)
+  s = s.replace(/<a[^>]*?href=["']([^"']+)["'][^>]*>/gi, (_m, href) => {
+    try {
+      const abs = new URL(href, baseUrl).href;
+      return PRODUCT_LINK_RE.test(abs) ? ` (LINK:${abs}) ` : " ";
+    } catch (_) {
+      return " ";
+    }
+  });
+
+  return s
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&[a-z#0-9]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Texto de la página, listo para trocear (conserva imágenes/enlaces en HTML)
+function getCleanedText(content: string, isMarkdown: boolean, baseUrl = ""): string {
+  if (isMarkdown) return content;
+  return htmlToStructuredText(content, baseUrl);
+}
+
+// Divide una cadena en trozos con solapamiento, para no cortar tarjetas de producto a la mitad
+function chunkString(str: string, size: number, maxChunks: number, overlap = 0): string[] {
+  const chunks: string[] = [];
+  const step = Math.max(1, size - overlap);
+  for (let i = 0; i < str.length && chunks.length < maxChunks; i += step) {
+    chunks.push(str.substring(i, i + size));
+  }
+  return chunks;
+}
+
+function productKey(p: ScrapedProduct): string {
+  const u = (p.url || "").toLowerCase().trim();
+  if (u) return u.split("?")[0].replace(/\/$/, "");
+  return (p.name || "").toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+// Fusiona productos duplicados (mismo producto visto en varias fuentes o fragmentos)
+// combinando los mejores datos: conserva imágenes y precios de la fuente que sí los tenga.
+function mergeProducts(products: ScrapedProduct[]): ScrapedProduct[] {
+  const map = new Map<string, ScrapedProduct>();
+  for (const p of products) {
+    if (!p?.name) continue;
+    const key = productKey(p);
+    const cur = map.get(key);
+    if (!cur) {
+      map.set(key, { ...p });
+      continue;
+    }
+    // Imágenes: quedarse con la lista más completa
+    if ((p.images?.length || 0) > (cur.images?.length || 0)) cur.images = p.images;
+    // Precio: preferir un valor positivo
+    if (!(cur.price && cur.price > 0) && p.price && p.price > 0) cur.price = p.price;
+    if (!(cur.compare_price && cur.compare_price > 0) && p.compare_price && p.compare_price > 0) cur.compare_price = p.compare_price;
+    if (!cur.url && p.url) cur.url = p.url;
+    if (!cur.brand && p.brand) cur.brand = p.brand;
+    if (!cur.category && p.category) cur.category = p.category;
+    if ((p.variants?.length || 0) > (cur.variants?.length || 0)) cur.variants = p.variants;
+    if ((p.name?.length || 0) > (cur.name?.length || 0)) cur.name = p.name;
+  }
+  return [...map.values()].map(normalizePrices).slice(0, 150);
+}
+
+// El precio de comparación SIEMPRE debe ser el mayor (precio anterior/tachado).
+// Si la IA los invirtió, se corrigen; si son iguales, se elimina compare_price.
+function normalizePrices(p: ScrapedProduct): ScrapedProduct {
+  if (p.price && p.compare_price && p.price > 0 && p.compare_price > 0) {
+    if (p.compare_price < p.price) {
+      const menor = p.compare_price;
+      p.compare_price = p.price;
+      p.price = menor;
+    } else if (p.compare_price === p.price) {
+      p.compare_price = undefined;
+    }
+  }
+  return p;
+}
+
+// Extrae productos de un único trozo de contexto
+async function extractChunk(context: string, url: string, imgList: string): Promise<ScrapedProduct[]> {
   const prompt = `Extrae TODOS los productos de esta página e-commerce: ${url}
 
 ${context}
@@ -195,21 +417,87 @@ ${context}
 IMÁGENES DISPONIBLES:
 ${imgList}
 
-JSON con formato:
-{"products":[{"name":"...","price":123456,"compare_price":150000,"brand":"...","category":"...","images":["url1"],"url":"https://enlace-detalle","variants":[{"name":"Color","values":["Rojo"]}]}]}
+JSON con formato (los valores aquí son SOLO ejemplos de estructura, NO los copies):
+{"products":[{"name":"texto","price":null,"compare_price":null,"brand":"texto","category":"texto","images":["url"],"url":"url-detalle","variants":[{"name":"Color","values":["valor"]}]}]}
 
-Reglas:
-- Extrae TODOS los productos visibles, hasta 80. No omitas ninguno.
-- url: enlace ABSOLUTO a la página de detalle (MUY IMPORTANTE)
-- price/compare_price: números sin símbolos
-- brand: infiere del dominio o nombre
-- category: categoría corta en español
-- images: solo de la lista proporcionada
-- Si no hay un dato, omítelo
-- description: OMITIR en este paso (se obtiene después)`;
+El CONTENIDO incluye marcadores en línea junto a cada producto:
+- [IMG:url] = imagen que aparece junto a ese producto en la página.
+- (LINK:url) = enlace de detalle que aparece junto a ese producto.
 
-  const parsed = await callOpenAI(prompt);
-  return parsed.products || [];
+Reglas CRÍTICAS sobre precios:
+- Cada producto tiene su PROPIO precio que aparece junto a su nombre en el texto. Toma EXACTAMENTE ese número.
+- NUNCA copies el precio de otro producto ni inventes un número. PROHIBIDO usar los números del ejemplo de arriba.
+- Si NO encuentras el precio real de un producto, pon price: null y compare_price: null. Es mejor null que un número inventado.
+- FORMATO DE PRECIO (Colombia/Latinoamérica): el punto "." y la coma "," son separadores de MILES, NO decimales. Los precios NO tienen decimales.
+  Conserva TODOS los dígitos eliminando puntos y comas. Ejemplos: "$119.900" → 119900, "1.299.900" → 1299900, "79.902" → 79902, "$199.947" → 199947.
+  NUNCA recortes dígitos: "119.900" son 119900, no 119.
+- price = precio de VENTA actual (el menor si hay precio tachado). compare_price = precio anterior/tachado (mayor).
+
+Otras reglas:
+- Extrae TODOS los productos presentes en este fragmento, hasta 100. No omitas ninguno.
+- images: usa los [IMG:url] que aparecen JUNTO a cada producto (asócialos por cercanía). Incluye TODAS las imágenes cercanas a ese producto, no solo una. Si no hay [IMG:...] cercano, usa de IMÁGENES DISPONIBLES la que corresponda. NUNCA logos, íconos, banners, medios de pago, placeholders ni grises.
+- url: usa el (LINK:url) más cercano al producto (enlace ABSOLUTO a su detalle). Es clave para no mezclar datos.
+- brand: marca mostrada. category: categoría corta en español.
+- Si no hay un dato, pon null u omítelo.
+- description: NO la incluyas en este paso (se obtiene después).
+- Si el fragmento no contiene productos, devuelve {"products":[]}`;
+
+  try {
+    const parsed = await callOpenAI(prompt);
+    return parsed.products || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+// Procesa TODO el contenido troceándolo en varios fragmentos (en paralelo) y fusiona resultados
+async function extractProductsFromContent(content: string, url: string, isMarkdown: boolean): Promise<ScrapedProduct[]> {
+  const images = extractImages(content, url);
+  const imgList = images.slice(0, 80).join("\n");
+  const jsonLd = isMarkdown ? [] : extractJsonLd(content);
+  const inlineJson = isMarkdown ? [] : extractInlineJson(content);
+  const text = getCleanedText(content, isMarkdown, url);
+
+  const CHUNK_SIZE = 45000;
+  const OVERLAP = 6000; // solapamiento para no cortar tarjetas de producto
+  const MAX_CHUNKS = 5;
+  const chunks = chunkString(text, CHUNK_SIZE, MAX_CHUNKS, OVERLAP);
+
+  const tasks: Promise<ScrapedProduct[]>[] = chunks.map((chunk, i) => {
+    const context = `CONTENIDO (${isMarkdown ? "markdown" : "texto"}) parte ${i + 1}/${chunks.length}:\n${chunk}`;
+    return extractChunk(context, url, imgList);
+  });
+
+  // Llamada DEDICADA a los datos estructurados completos (JSON-LD / SPA), troceados aparte.
+  // Son la fuente más fiable de precio + imagen por producto y NO deben truncarse junto al texto.
+  const structuredBlobs = [...jsonLd, ...inlineJson];
+  if (structuredBlobs.length > 0) {
+    const structuredText = structuredBlobs.join("\n");
+    const structuredChunks = chunkString(structuredText, CHUNK_SIZE, 3, OVERLAP);
+    for (let i = 0; i < structuredChunks.length; i++) {
+      const context = `DATOS ESTRUCTURADOS (JSON-LD / SPA) parte ${i + 1}/${structuredChunks.length} — contienen los productos con precio e imagen:\n${structuredChunks[i]}`;
+      tasks.push(extractChunk(context, url, imgList));
+    }
+  }
+
+  const results = await Promise.all(tasks);
+  return mergeProducts(results.flat());
+}
+
+// Obtiene productos de AMBAS fuentes (HTML directo y Jina) y FUSIONA la unión.
+// Así el conteo es estable entre intentos y las imágenes/precios provienen de la fuente que sí los tenga.
+async function extractWithAI(direct: string | null, jina: string | null, url: string): Promise<ScrapedProduct[]> {
+  const sources: { content: string; isMarkdown: boolean }[] = [];
+  if (jina && jina.length > 500) sources.push({ content: jina, isMarkdown: true });
+  if (direct && direct.length > 1000) sources.push({ content: direct, isMarkdown: false });
+  if (sources.length === 0) return [];
+
+  const all = await Promise.all(
+    sources.map((s) => extractProductsFromContent(s.content, url, s.isMarkdown))
+  );
+  const merged = mergeProducts(all.flat());
+  // Validar que las imágenes carguen de verdad: descarta URLs rotas/placeholders (grises)
+  return await validateProductsImages(merged);
 }
 
 async function enrichProduct(url: string): Promise<ScrapedProduct | null> {
@@ -241,8 +529,12 @@ async function enrichProduct(url: string): Promise<ScrapedProduct | null> {
     isMarkdown = true;
   }
 
+  // Si la página vino casi vacía (bloqueo/redirección), no enriquecer para evitar datos inventados
+  const cleanedLen = getCleanedText(content, isMarkdown, url).length;
+  if (cleanedLen < 400) return null;
+
   const images = extractImages(content, url);
-  const context = buildContext(content, isMarkdown, 40000);
+  const context = buildContext(content, isMarkdown, 40000, url);
   const imgList = images.slice(0, 30).join("\n");
 
   const prompt = `Extrae los datos del producto en: ${url}
@@ -252,19 +544,26 @@ ${context}
 IMÁGENES:
 ${imgList}
 
-JSON:
-{"product":{"name":"...","description":"descripción completa en español","price":123456,"compare_price":150000,"sku":"...","brand":"...","category":"...","tags":["..."],"images":["url1","url2"],"variants":[{"name":"Color","values":["Negro","Blanco"]},{"name":"Talla","values":["7","8"]}]}}
+JSON (los valores son SOLO ejemplos de estructura, NO los copies):
+{"product":{"name":"texto","description":"texto","price":null,"compare_price":null,"sku":"texto","brand":"texto","category":"texto","tags":["texto"],"images":["url"],"variants":[{"name":"Color","values":["valor"]}]}}
 
 Reglas:
 - description: completa con materiales, tecnología, beneficios (3-4 oraciones)
-- images: del producto (máx 8)
-- variants: todas las opciones disponibles
-- sku: código/referencia si aparece
-- price/compare_price: números sin símbolos
-- Omite campos sin dato`;
+- images: TODAS las fotos REALES del producto que encuentres (incluye las de [IMG:url], hasta 10). Más imágenes es mejor. NUNCA logos, íconos, banners, medios de pago, placeholders ni grises.
+- variants: todas las opciones reales (color, talla, capacidad...)
+- sku: código/referencia real si aparece
+- price/compare_price: toma EXACTAMENTE los números reales de esta página. NUNCA inventes ni uses los del ejemplo. Si no aparece, pon null (nunca 0). compare_price debe ser el precio anterior/mayor.
+- FORMATO DE PRECIO (Colombia): el punto y la coma son separadores de MILES, NO decimales; los precios NO tienen decimales. Conserva TODOS los dígitos quitando puntos/comas. Ejemplos: "$119.900" → 119900, "1.299.900" → 1299900. NUNCA recortes dígitos.
+- Pon null en los campos sin dato real`;
 
   const parsed = await callOpenAI(prompt);
-  return parsed.product || null;
+  if (!parsed.product) return null;
+  const prod = sanitizeProduct(normalizePrices(parsed.product));
+  // Conservar solo imágenes que realmente cargan (evita grises/rotas)
+  if (prod.images && prod.images.length > 0) {
+    prod.images = await filterWorkingImages(prod.images, 10, 12);
+  }
+  return prod;
 }
 
 async function uploadImage(imageUrl: string, productId: number, index: number): Promise<string | null> {
@@ -321,7 +620,9 @@ function dedupeImages(urls: string[]): string[] {
 }
 
 async function uploadProductImages(productId: number, imageUrls: string[], altText: string): Promise<void> {
-  const urls = dedupeImages(imageUrls).slice(0, MAX_IMAGES_PER_PRODUCT);
+  // Descarta logos/íconos/placeholders aunque la IA los haya seleccionado
+  const filtered = (imageUrls || []).filter(isProductImage);
+  const urls = dedupeImages(filtered).slice(0, MAX_IMAGES_PER_PRODUCT);
   const uploads = await Promise.all(urls.map((u, i) => uploadImage(u, productId, i)));
   let isPrimary = true;
   for (let i = 0; i < uploads.length; i++) {
@@ -756,8 +1057,8 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const { content, isMarkdown } = await fetchPage(url);
-      const products = await extractWithAI(content, url, isMarkdown);
+      const { direct, jina } = await fetchSources(url);
+      const products = await extractWithAI(direct, jina, url);
       return new Response(JSON.stringify({ products }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -787,7 +1088,7 @@ Deno.serve(async (req: Request) => {
       }
       const mode: DuplicateMode = ["skip", "update", "create"].includes(duplicate_mode) ? duplicate_mode : "skip";
       const results = [];
-      for (const p of products.slice(0, 80)) {
+      for (const p of products.slice(0, 150)) {
         results.push(await importProduct(p, organization_id, branch_id || null, source_url || "", mode));
       }
       const exitosos = results.filter((r) => r.ok).length;

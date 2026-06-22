@@ -101,6 +101,7 @@ export function StepDates({
               min={today}
               onChange={(e) => onCheckinChange(e.target.value)}
               required
+              className="dark:[color-scheme:dark]"
             />
           </div>
 
@@ -113,6 +114,7 @@ export function StepDates({
               min={minCheckout}
               onChange={(e) => onCheckoutChange(e.target.value)}
               required
+              className="dark:[color-scheme:dark]"
             />
           </div>
 

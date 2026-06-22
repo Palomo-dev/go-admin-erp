@@ -141,7 +141,7 @@ const CustomerDetailsModal: React.FC<CustomerDetailsModalProps> = ({
           )}
         </div>
 
-        <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-950 pt-3 pb-1 mt-4 border-t border-gray-100 dark:border-gray-800">
+        <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-900 pt-3 pb-1 mt-4 border-t border-gray-100 dark:border-gray-800">
           <Button variant="outline" onClick={onClose}>
             Cerrar
           </Button>

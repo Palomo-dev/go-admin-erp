@@ -31,20 +31,20 @@ interface WebOrderCardProps {
 }
 
 const STATUS_CONFIG: Record<WebOrderStatus, { label: string; color: string; icon: React.ReactNode }> = {
-  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', icon: <Clock className="h-3 w-3" /> },
-  confirmed: { label: 'Confirmado', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', icon: <CheckCircle className="h-3 w-3" /> },
-  preparing: { label: 'Preparando', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200', icon: <ChefHat className="h-3 w-3" /> },
-  ready: { label: 'Listo', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: <Package className="h-3 w-3" /> },
-  in_delivery: { label: 'En camino', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', icon: <Truck className="h-3 w-3" /> },
-  delivered: { label: 'Entregado', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200', icon: <CheckCircle className="h-3 w-3" /> },
-  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <XCircle className="h-3 w-3" /> },
-  rejected: { label: 'Rechazado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200', icon: <XCircle className="h-3 w-3" /> },
+  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', icon: <Clock className="h-3 w-3 dark:text-yellow-200" /> },
+  confirmed: { label: 'Confirmado', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', icon: <CheckCircle className="h-3 w-3 dark:text-blue-200" /> },
+  preparing: { label: 'Preparando', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200', icon: <ChefHat className="h-3 w-3 dark:text-orange-200" /> },
+  ready: { label: 'Listo', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: <Package className="h-3 w-3 dark:text-green-200" /> },
+  in_delivery: { label: 'En camino', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', icon: <Truck className="h-3 w-3 dark:text-purple-200" /> },
+  delivered: { label: 'Entregado', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200', icon: <CheckCircle className="h-3 w-3 dark:text-emerald-200" /> },
+  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <XCircle className="h-3 w-3 dark:text-red-200" /> },
+  rejected: { label: 'Rechazado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200', icon: <XCircle className="h-3 w-3 dark:text-gray-200" /> },
 };
 
 const DELIVERY_TYPE_CONFIG: Record<DeliveryType, { label: string; icon: React.ReactNode }> = {
-  pickup: { label: 'Retiro en tienda', icon: <Store className="h-4 w-4" /> },
-  delivery_own: { label: 'Delivery propio', icon: <Bike className="h-4 w-4" /> },
-  delivery_third_party: { label: 'Delivery tercero', icon: <Truck className="h-4 w-4" /> },
+  pickup: { label: 'Retiro en tienda', icon: <Store className="h-4 w-4 dark:text-gray-300" /> },
+  delivery_own: { label: 'Delivery propio', icon: <Bike className="h-4 w-4 dark:text-gray-300" /> },
+  delivery_third_party: { label: 'Delivery tercero', icon: <Truck className="h-4 w-4 dark:text-gray-300" /> },
 };
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -124,7 +124,7 @@ export function WebOrderCard({
   const isUrgent = isPending && (Date.now() - new Date(order.created_at).getTime()) > 10 * 60000; // 10 min
 
   return (
-    <Card className={`overflow-hidden transition-all hover:shadow-md ${isUrgent ? 'ring-2 ring-red-500' : ''}`}>
+    <Card className={`overflow-hidden transition-all hover:shadow-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 ${isUrgent ? 'ring-2 ring-red-500' : ''}`}>
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3 gap-2">
@@ -168,7 +168,7 @@ export function WebOrderCard({
 
         {/* Cliente */}
         <div className="space-y-1 mb-3">
-          <p className="flex items-center gap-2 text-sm">
+          <p className="flex items-center gap-2 text-sm dark:text-gray-200">
             <User className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
             <span className="font-medium dark:text-gray-100">{order.customer_name || order.customer?.full_name || 'Cliente anónimo'}</span>
           </p>
@@ -181,7 +181,7 @@ export function WebOrderCard({
         </div>
 
         {/* Tipo de entrega + Método de pago + Estado de pago */}
-        <div className="flex items-center gap-2 mb-1 p-2 bg-muted/50 rounded-lg">
+        <div className="flex items-center gap-2 mb-1 p-2 bg-muted/50 dark:bg-gray-900/50 rounded-lg">
           {deliveryConfig.icon}
           <span className="text-sm font-medium dark:text-gray-100">{deliveryConfig.label}</span>
           {order.payment_method && (
@@ -249,9 +249,9 @@ export function WebOrderCard({
                 className="flex-1"
                 onClick={() => onConfirm?.(order.id)}
               >
-                <CheckCircle className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Confirmar</span>
-                <span className="sm:hidden">Ok</span>
+                <CheckCircle className="h-4 w-4 mr-1 dark:text-white" />
+                <span className="hidden sm:inline dark:text-white">Confirmar</span>
+                <span className="sm:hidden dark:text-white">Ok</span>
               </Button>
               <Button 
                 size="sm" 
@@ -259,7 +259,7 @@ export function WebOrderCard({
                 className="px-2 sm:px-3"
                 onClick={() => onReject?.(order.id)}
               >
-                <XCircle className="h-4 w-4" />
+                <XCircle className="h-4 w-4 dark:text-white" />
               </Button>
             </>
           )}
@@ -270,9 +270,9 @@ export function WebOrderCard({
               className="flex-1"
               onClick={() => onUpdateStatus?.(order.id, 'preparing')}
             >
-              <ChefHat className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Iniciar preparación</span>
-              <span className="sm:hidden">Preparar</span>
+              <ChefHat className="h-4 w-4 mr-1 dark:text-white" />
+              <span className="hidden sm:inline dark:text-white">Iniciar preparación</span>
+              <span className="sm:hidden dark:text-white">Preparar</span>
             </Button>
           )}
 
@@ -282,9 +282,9 @@ export function WebOrderCard({
               className="flex-1"
               onClick={() => onUpdateStatus?.(order.id, 'ready')}
             >
-              <Package className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Marcar listo</span>
-              <span className="sm:hidden">Listo</span>
+              <Package className="h-4 w-4 mr-1 dark:text-white" />
+              <span className="hidden sm:inline dark:text-white">Marcar listo</span>
+              <span className="sm:hidden dark:text-white">Listo</span>
             </Button>
           )}
 
@@ -294,9 +294,9 @@ export function WebOrderCard({
               className="flex-1"
               onClick={() => onUpdateStatus?.(order.id, 'in_delivery')}
             >
-              <Truck className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Enviar a domicilio</span>
-              <span className="sm:hidden">Enviar</span>
+              <Truck className="h-4 w-4 mr-1 dark:text-white" />
+              <span className="hidden sm:inline dark:text-white">Enviar a domicilio</span>
+              <span className="sm:hidden dark:text-white">Enviar</span>
             </Button>
           )}
 
@@ -306,9 +306,9 @@ export function WebOrderCard({
               className="flex-1"
               onClick={() => onUpdateStatus?.(order.id, 'delivered')}
             >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Marcar entregado</span>
-              <span className="sm:hidden">Entregado</span>
+              <CheckCircle className="h-4 w-4 mr-1 dark:text-white" />
+              <span className="hidden sm:inline dark:text-white">Marcar entregado</span>
+              <span className="sm:hidden dark:text-white">Entregado</span>
             </Button>
           ) : null}
 

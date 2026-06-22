@@ -126,7 +126,7 @@ export const ClientesPagination: React.FC<ClientesPaginationProps> = ({
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+          className="h-8 w-8 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200 disabled:opacity-50"
           onClick={() => onPageChange(0)}
           disabled={!canGoPrevious}
           title="Primera página"
@@ -138,7 +138,7 @@ export const ClientesPagination: React.FC<ClientesPaginationProps> = ({
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+          className="h-8 w-8 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200 disabled:opacity-50"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={!canGoPrevious}
           title="Página anterior"
@@ -157,7 +157,7 @@ export const ClientesPagination: React.FC<ClientesPaginationProps> = ({
                 className={`h-8 w-8 text-xs font-medium ${
                   page === currentPage
                     ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600'
-                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
                 }`}
                 onClick={() => onPageChange(page)}
               >
@@ -180,7 +180,7 @@ export const ClientesPagination: React.FC<ClientesPaginationProps> = ({
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+          className="h-8 w-8 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200 disabled:opacity-50"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={!canGoNext}
           title="Página siguiente"
@@ -192,7 +192,7 @@ export const ClientesPagination: React.FC<ClientesPaginationProps> = ({
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+          className="h-8 w-8 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200 disabled:opacity-50"
           onClick={() => onPageChange(totalPages - 1)}
           disabled={!canGoNext}
           title="Última página"

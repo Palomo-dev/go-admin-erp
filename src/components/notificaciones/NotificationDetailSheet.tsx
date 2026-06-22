@@ -332,7 +332,7 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-md w-full overflow-y-auto bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800">
+      <SheetContent side="right" className="sm:max-w-md w-full overflow-y-auto bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
         {/* Header */}
         <SheetHeader className="pb-4">
           <div className="flex items-start gap-3">

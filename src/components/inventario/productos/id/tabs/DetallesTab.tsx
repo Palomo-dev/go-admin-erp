@@ -15,13 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SearchSelect } from '@/components/ui/search-select';
 
 interface DetallesTabProps {
   producto: any;
@@ -198,7 +192,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Nombre del producto"
-              className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
+              className="dark:bg-gray-800 dark:border-gray-700"
             />
           </div>
           
@@ -210,7 +204,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
               value={formData.sku}
               onChange={handleInputChange}
               placeholder="SKU único"
-              className={`font-mono ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
+              className="font-mono dark:bg-gray-800 dark:border-gray-700"
             />
           </div>
           
@@ -222,74 +216,50 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
               value={formData.barcode}
               onChange={handleInputChange}
               placeholder="Código de barras (opcional)"
-              className={`font-mono ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
+              className="font-mono dark:bg-gray-800 dark:border-gray-700"
             />
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="category_id">Categoría</Label>
-            <Select
+            <SearchSelect
+              options={categorias.map((cat) => ({ value: cat.id.toString(), label: cat.name }))}
               value={formData.category_id?.toString() || 'none'}
               onValueChange={(value) => handleSelectChange('category_id', value)}
-            >
-              <SelectTrigger 
-                className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
-              >
-                <SelectValue placeholder="Seleccionar categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin categoría</SelectItem>
-                {categorias.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id.toString()}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar categoría"
+              searchPlaceholder="Buscar categoría..."
+              emptyText="No se encontraron categorías"
+              noneLabel="Sin categoría"
+              className="dark:bg-gray-800 dark:border-gray-700"
+            />
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="unit_code">Unidad de Medida</Label>
-            <Select
+            <SearchSelect
+              options={unidades.map((unit) => ({ value: unit.code, label: unit.name, sublabel: unit.code }))}
               value={formData.unit_code || 'none'}
               onValueChange={(value) => handleSelectChange('unit_code', value)}
-            >
-              <SelectTrigger 
-                className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
-              >
-                <SelectValue placeholder="Seleccionar unidad" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin unidad</SelectItem>
-                {unidades.map((unit) => (
-                  <SelectItem key={unit.code} value={unit.code}>
-                    {unit.name} ({unit.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar unidad"
+              searchPlaceholder="Buscar unidad..."
+              emptyText="No se encontraron unidades"
+              noneLabel="Sin unidad"
+              className="dark:bg-gray-800 dark:border-gray-700"
+            />
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="supplier_id">Proveedor</Label>
-            <Select
+            <SearchSelect
+              options={proveedores.map((prov) => ({ value: prov.id.toString(), label: prov.name }))}
               value={formData.supplier_id?.toString() || 'none'}
               onValueChange={(value) => handleSelectChange('supplier_id', value)}
-            >
-              <SelectTrigger 
-                className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}
-              >
-                <SelectValue placeholder="Seleccionar proveedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin proveedor</SelectItem>
-                {proveedores.map((prov) => (
-                  <SelectItem key={prov.id} value={prov.id.toString()}>
-                    {prov.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar proveedor"
+              searchPlaceholder="Buscar proveedor..."
+              emptyText="No se encontraron proveedores"
+              noneLabel="Sin proveedor"
+              className="dark:bg-gray-800 dark:border-gray-700"
+            />
           </div>
         </div>
         
@@ -301,7 +271,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
             value={formData.description}
             onChange={handleInputChange}
             placeholder="Descripción detallada del producto"
-            className={`min-h-24 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
+            className="min-h-24 dark:bg-gray-800 dark:border-gray-700"
           />
         </div>
         

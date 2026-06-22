@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Task, NewTask, TaskPriority, TaskPriorityUI, TaskStatus, TaskStatusUI, RelatedType } from '@/types/task';
+import { Task, NewTask, TaskType, TaskPriority, TaskPriorityUI, TaskStatus, TaskStatusUI, RelatedType } from '@/types/task';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { useToast } from '@/components/ui/use-toast';
@@ -26,7 +26,7 @@ import TareaCancellation from './TareaCancellation';
 // Esquema de validación
 const formSchema = z.object({
   title: z.string().min(3, { message: 'El título debe tener al menos 3 caracteres' }),
-  type: z.enum(['llamada', 'reunion', 'email', 'visita']),
+  type: z.enum(['llamada', 'reunion', 'email', 'visita', 'tarea', 'seguimiento', 'revision', 'entrega', 'investigacion', 'documento', 'bug', 'feature']),
   priority: z.enum(['low', 'med', 'high']),
   due_date: z.string().min(1, { message: 'La fecha límite es requerida' }),
   assigned_to: z.string().nullable().optional(),
@@ -43,7 +43,7 @@ const formSchema = z.object({
 
 type FormValues = {
   title: string;
-  type: 'llamada' | 'reunion' | 'email' | 'visita';
+  type: NonNullable<TaskType>;
   priority: 'low' | 'med' | 'high';
   due_date: string;
   assigned_to?: string | null;

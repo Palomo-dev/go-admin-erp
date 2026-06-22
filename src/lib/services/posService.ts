@@ -604,6 +604,31 @@ export class POSService {
     }
   }
 
+  static async updateCartTaxSettings(
+    cartId: string,
+    settings: { tax_included?: boolean; applied_tax_ids?: string[] }
+  ): Promise<Cart> {
+    try {
+      const carts = await this.getActiveCarts();
+      const cartIndex = carts.findIndex(c => c.id === cartId);
+
+      if (cartIndex === -1) throw new Error('Carrito no encontrado');
+
+      const cart = carts[cartIndex];
+      if (settings.tax_included !== undefined) cart.tax_included = settings.tax_included;
+      if (settings.applied_tax_ids !== undefined) cart.applied_tax_ids = settings.applied_tax_ids;
+      cart.updated_at = new Date().toISOString();
+
+      carts[cartIndex] = cart;
+      this.saveCartsToStorage(carts);
+
+      return cart;
+    } catch (error) {
+      console.error('Error updating cart tax settings:', error);
+      throw error;
+    }
+  }
+
   static async holdCart(cartId: string, reason?: string): Promise<Cart> {
     try {
       const carts = await this.getActiveCarts();
@@ -994,6 +1019,8 @@ export class POSService {
           balance: Math.max(0, cart.total - checkoutData.total_paid),
           status: checkoutData.total_paid >= cart.total ? 'paid' : 'pending',
           payment_status: checkoutData.total_paid >= cart.total ? 'paid' : 'partial',
+          tax_included: checkoutData.tax_included || false,
+          tax_breakdown: checkoutData.tax_breakdown || null,
           sale_date: new Date().toISOString()
         })
         .select()

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   Table,
   TableBody,
@@ -43,6 +44,8 @@ export function UnidadesPage() {
   const [unidades, setUnidades] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState<Unit | null>(null);
   const [saving, setSaving] = useState(false);
@@ -165,6 +168,22 @@ export function UnidadesPage() {
     u.code.toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  const totalPages = Math.ceil(unidadesFiltradas.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const unidadesPaginadas = useMemo(
+    () => unidadesFiltradas.slice(startIndex, startIndex + pageSize),
+    [unidadesFiltradas, startIndex, pageSize]
+  );
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [busqueda]);
+
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
@@ -248,7 +267,7 @@ export function UnidadesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {unidadesFiltradas.map(unidad => (
+                {unidadesPaginadas.map(unidad => (
                   <TableRow key={unidad.code} className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                     <TableCell>
                       <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 font-mono text-sm font-medium">
@@ -298,6 +317,16 @@ export function UnidadesPage() {
               </TableBody>
             </Table>
           )}
+
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={unidadesFiltradas.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
         </CardContent>
       </Card>
 

@@ -12,6 +12,7 @@ import {
 } from '@/lib/services/adjustmentService';
 import { AjustesHeader, AjustesStats, AjustesFilters, AjustesTable } from '@/components/inventario/ajustes';
 import { Loader2 } from 'lucide-react';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,7 +47,7 @@ export default function AjustesPage() {
 
   // Estados de paginación
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 50;
+  const [pageSize, setPageSize] = useState(50);
 
   // Estados de UI
   const [isLoading, setIsLoading] = useState(true);
@@ -115,6 +116,11 @@ export default function AjustesPage() {
       setIsRefreshing(false);
     }
   }, [organization?.id, branchId, type, status, currentPage, pageSize]);
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
 
   // Efecto para cargar datos iniciales
   useEffect(() => {
@@ -255,7 +261,7 @@ export default function AjustesPage() {
   }
 
   return (
-    <div className={`flex flex-col gap-6 p-6 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+    <div className="flex flex-col gap-6 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <AjustesHeader
         onRefresh={refreshData}
@@ -290,6 +296,17 @@ export default function AjustesPage() {
         onApply={(adj) => setApplyDialog({ open: true, adjustment: adj })}
         onCancel={(adj) => setCancelDialog({ open: true, adjustment: adj })}
         onDelete={(adj) => setDeleteDialog({ open: true, adjustment: adj })}
+      />
+
+      {/* Paginación */}
+      <DataTablePagination
+        currentPage={currentPage}
+        totalPages={Math.ceil(totalCount / pageSize)}
+        pageSize={pageSize}
+        totalItems={totalCount}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={handlePageSizeChange}
+        pageSizeOptions={[10, 25, 50, 100]}
       />
 
       {/* Diálogo de aplicar */}

@@ -10,7 +10,7 @@ import {
   CalendarIcon, CheckCircleIcon, ClockIcon, PhoneIcon, VideoIcon, MailIcon, 
   UserIcon, MoreVertical, Edit, Check, ChevronRight, UserCircle2,
   UserIcon as User, Clock as Clock8, Play, CheckCircle2, XCircle, Eye,
-  FileIcon
+  FileIcon, ListTodo, ClipboardCheck, PackageCheck, Search, FileText, Bug, Sparkles
 } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { formatDate } from '@/utils/Utils';
@@ -37,6 +37,14 @@ const iconosPorTipo: Record<Exclude<TaskType, null>, React.ReactNode> = {
   reunion: <VideoIcon className="h-4 w-4 mr-1" />,
   email: <MailIcon className="h-4 w-4 mr-1" />,
   visita: <UserIcon className="h-4 w-4 mr-1" />,
+  tarea: <ListTodo className="h-4 w-4 mr-1" />,
+  seguimiento: <Eye className="h-4 w-4 mr-1" />,
+  revision: <ClipboardCheck className="h-4 w-4 mr-1" />,
+  entrega: <PackageCheck className="h-4 w-4 mr-1" />,
+  investigacion: <Search className="h-4 w-4 mr-1" />,
+  documento: <FileText className="h-4 w-4 mr-1" />,
+  bug: <Bug className="h-4 w-4 mr-1" />,
+  feature: <Sparkles className="h-4 w-4 mr-1" />,
 };
 
 // Mapeo de nombres de tipos para UI
@@ -45,6 +53,14 @@ const nombresPorTipo: Record<Exclude<TaskType, null>, string> = {
   reunion: 'Reunión',
   email: 'Email',
   visita: 'Visita',
+  tarea: 'Tarea',
+  seguimiento: 'Seguimiento',
+  revision: 'Revisión',
+  entrega: 'Entrega',
+  investigacion: 'Investigación',
+  documento: 'Documento',
+  bug: 'Bug',
+  feature: 'Feature',
 };
 
 // Función para mapear valores de BD a valores en español para la UI

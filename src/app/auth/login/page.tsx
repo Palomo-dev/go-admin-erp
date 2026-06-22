@@ -464,12 +464,6 @@ function LoginContent() {
           </div>
           
           <div className="text-center mt-3 sm:mt-4">
-            <Link href="/auth/forgot-password" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
-              {t('forgotPassword')}
-            </Link>
-          </div>
-          
-          <div className="text-center mt-3 sm:mt-4">
             <p className="text-xs sm:text-sm text-gray-600">
               {t('noAccount')}{' '}
               <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">

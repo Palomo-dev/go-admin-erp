@@ -118,14 +118,14 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <CardContent className="pt-3 sm:pt-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total por Pagar</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Total por Pagar</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   {formatCurrency(total)}
                 </p>
               </div>
@@ -134,31 +134,31 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
         </Card>
 
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+          <CardContent className="pt-3 sm:pt-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-red-100 dark:bg-red-900/30 rounded-lg flex-shrink-0">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 dark:text-red-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Vencidas</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Vencidas</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   {formatCurrency(montoVencidas)}
                 </p>
-                <p className="text-xs text-red-500">{vencidas.length} facturas</p>
+                <p className="text-[10px] sm:text-xs text-red-500">{vencidas.length} facturas</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <CardContent className="pt-3 sm:pt-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex-shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Críticas ≤3d</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Críticas ≤3d</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
                   {criticas.length}
                 </p>
               </div>
@@ -167,14 +167,14 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
         </Card>
 
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <FileText className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+          <CardContent className="pt-3 sm:pt-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex-shrink-0">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Próximas ≤7d</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Próximas ≤7d</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
                   {proximas.length}
                 </p>
               </div>
@@ -185,13 +185,13 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
 
       {/* Lista de Facturas */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-600" />
-              Facturas Próximas a Vencer
+        <CardHeader className="pb-2 sm:pb-3">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm sm:text-base text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 flex-shrink-0" />
+              <span className="truncate">Facturas Próximas a Vencer</span>
               {facturas.length > 0 && (
-                <span className="text-sm font-normal text-gray-500">({facturas.length})</span>
+                <span className="text-xs sm:text-sm font-normal text-gray-500 flex-shrink-0">({facturas.length})</span>
               )}
             </CardTitle>
             {facturas.length > 5 && (
@@ -199,7 +199,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                 variant="ghost"
                 size="sm"
                 onClick={() => setMostrarTodas(!mostrarTodas)}
-                className="text-blue-600 dark:text-blue-400"
+                className="text-blue-600 dark:text-blue-400 flex-shrink-0 text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3"
               >
                 {mostrarTodas ? 'Ver menos' : `Ver todas`}
               </Button>
@@ -222,15 +222,15 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                 return (
                   <div
                     key={factura.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className="flex items-center justify-between p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors gap-2"
                   >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className={`p-2 rounded-full ${
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <div className={`p-1.5 sm:p-2 rounded-full flex-shrink-0 ${
                         color === 'red' ? 'bg-red-100 dark:bg-red-900/30' :
                         color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/30' :
                         'bg-blue-100 dark:bg-blue-900/30'
                       }`}>
-                        <AlertTriangle className={`h-4 w-4 ${
+                        <AlertTriangle className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${
                           color === 'red' ? 'text-red-600 dark:text-red-400' :
                           color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
                           'text-blue-600 dark:text-blue-400'
@@ -238,16 +238,16 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                       </div>
                       
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                           {factura.number_ext}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                           {factura.supplier?.name}
                         </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                        <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500">
                           Vence: {factura.due_date && formatDate(new Date(factura.due_date))}
                           {diasVencimiento !== null && (
-                            <span className={`ml-2 font-medium ${
+                            <span className={`ml-1 sm:ml-2 font-medium ${
                               color === 'red' ? 'text-red-600' :
                               color === 'amber' ? 'text-amber-600' :
                               'text-blue-600'
@@ -259,33 +259,33 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900 dark:text-white">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                      <div className="text-right hidden xs:block sm:hidden md:block">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
                           {formatCurrency(factura.balance, factura.currency)}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-[10px] sm:text-xs text-gray-500">
                           de {formatCurrency(factura.total, factura.currency)}
                         </p>
                       </div>
                       
-                      <div className="flex gap-1">
+                      <div className="flex gap-0.5 sm:gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleVerFactura(factura.id)}
-                          className="h-8 w-8 p-0"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           title="Ver factura"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           title="Registrar Pago"
                         >
-                          <CreditCard className="h-4 w-4" />
+                          <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>

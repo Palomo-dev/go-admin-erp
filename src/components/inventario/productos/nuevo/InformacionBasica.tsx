@@ -6,7 +6,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchSelect } from '@/components/ui/search-select'
 import { Package, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -150,7 +150,7 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-hidden">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
           <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -165,7 +165,7 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-full">
         {/* SKU */}
         <div className="space-y-2">
           <Label htmlFor="sku" className="text-gray-700 dark:text-gray-300">
@@ -269,22 +269,15 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
             </div>
           ) : (
-            <Select
+            <SearchSelect
+              options={categories.map((cat) => ({ value: cat.id.toString(), label: cat.name }))}
               value={formData.category_id?.toString() || 'none'}
               onValueChange={(value) => updateFormData('category_id', value === 'none' ? null : parseInt(value))}
-            >
-              <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
-                <SelectValue placeholder="Seleccionar categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin categoría</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id.toString()}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar categoría"
+              searchPlaceholder="Buscar categoría..."
+              emptyText="No se encontraron categorías"
+              noneLabel="Sin categoría"
+            />
           )}
         </div>
 
@@ -298,21 +291,15 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
             </div>
           ) : (
-            <Select
-              value={formData.unit_code}
-              onValueChange={(value) => updateFormData('unit_code', value)}
-            >
-              <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
-                <SelectValue placeholder="Seleccionar unidad" />
-              </SelectTrigger>
-              <SelectContent>
-                {units.map((unit) => (
-                  <SelectItem key={unit.code} value={unit.code}>
-                    {unit.name} ({unit.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchSelect
+              options={units.map((unit) => ({ value: unit.code, label: unit.name, sublabel: unit.code }))}
+              value={formData.unit_code || 'none'}
+              onValueChange={(value) => updateFormData('unit_code', value === 'none' ? '' : value)}
+              placeholder="Seleccionar unidad"
+              searchPlaceholder="Buscar unidad..."
+              emptyText="No se encontraron unidades"
+              noneLabel="Sin unidad"
+            />
           )}
         </div>
 
@@ -326,22 +313,15 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
             </div>
           ) : (
-            <Select
+            <SearchSelect
+              options={taxes.map((tax) => ({ value: tax.id, label: tax.name, sublabel: `${tax.rate}%` }))}
               value={formData.tax_id || 'none'}
               onValueChange={(value) => updateFormData('tax_id', value === 'none' ? null : value)}
-            >
-              <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
-                <SelectValue placeholder="Seleccionar impuesto" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin impuesto</SelectItem>
-                {taxes.map((tax) => (
-                  <SelectItem key={tax.id} value={tax.id}>
-                    {tax.name} ({tax.rate}%)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar impuesto"
+              searchPlaceholder="Buscar impuesto..."
+              emptyText="No se encontraron impuestos"
+              noneLabel="Sin impuesto"
+            />
           )}
         </div>
 
@@ -355,22 +335,15 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
             </div>
           ) : (
-            <Select
+            <SearchSelect
+              options={suppliers.map((supplier) => ({ value: supplier.id.toString(), label: supplier.name }))}
               value={formData.supplier_id?.toString() || 'none'}
               onValueChange={(value) => updateFormData('supplier_id', value === 'none' ? null : parseInt(value))}
-            >
-              <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
-                <SelectValue placeholder="Seleccionar proveedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin proveedor</SelectItem>
-                {suppliers.map((supplier) => (
-                  <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                    {supplier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar proveedor"
+              searchPlaceholder="Buscar proveedor..."
+              emptyText="No se encontraron proveedores"
+              noneLabel="Sin proveedor"
+            />
           )}
         </div>
       </div>

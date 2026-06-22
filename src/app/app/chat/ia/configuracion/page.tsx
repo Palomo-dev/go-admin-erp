@@ -231,7 +231,7 @@ export default function AIConfiguracionPage() {
 
   if (loading && !settings) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           <p className="text-gray-500 dark:text-gray-400">Cargando configuración...</p>
@@ -241,7 +241,7 @@ export default function AIConfiguracionPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <div className="p-4 sm:p-6 pb-0">
         <IANavTabs />
       </div>

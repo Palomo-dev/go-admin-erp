@@ -51,7 +51,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
 
   // Estados de filtros
   const [filtros, setFiltros] = useState<FiltrosCuentasPorPagar>({
@@ -81,11 +81,16 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
   // Efectos
   useEffect(() => {
     cargarDatos();
-  }, [filtros, currentPage]);
+  }, [filtros, currentPage, pageSize]);
 
   useEffect(() => {
     cargarResumen();
   }, []);
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
 
   // Funciones de carga
   const cargarDatos = async () => {
@@ -307,33 +312,35 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
 
       {/* Contenido principal con tabs */}
       <Tabs value={tabActivo} onValueChange={setTabActivo} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-0 dark:bg-gray-800 dark:border-gray-700">
-          <TabsTrigger value="todas" className="text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto gap-1.5 sm:gap-1 p-1.5 sm:p-1 dark:bg-gray-800 dark:border-gray-700">
+          <TabsTrigger value="todas" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
             <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             <span>Todas</span>
           </TabsTrigger>
-          <TabsTrigger value="vencidas" className="text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+          <TabsTrigger value="vencidas" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
             <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             <span>Vencidas</span>
           </TabsTrigger>
-          <TabsTrigger value="proximas" className="text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+          <TabsTrigger value="proximas" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
             <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             <span>Próximas</span>
           </TabsTrigger>
-          <TabsTrigger value="pendientes" className="text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
+          <TabsTrigger value="pendientes" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">
             <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             <span>Pendientes</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="todas" className="mt-4 sm:mt-6">
+        <TabsContent value="todas" className="mt-8 sm:mt-6">
           <CuentasPorPagarTable
             cuentas={cuentas}
             loading={loading}
             currentPage={currentPage}
             totalPages={totalPages}
             totalRecords={totalRecords}
+            pageSize={pageSize}
             onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
             onProgramarPago={(cuenta: AccountPayable) => {
               setCuentaSeleccionada(cuenta);
               setMostrarModalProgramar(true);
@@ -347,14 +354,16 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           />
         </TabsContent>
 
-        <TabsContent value="vencidas" className="mt-4 sm:mt-6">
+        <TabsContent value="vencidas" className="mt-8 sm:mt-6">
           <CuentasPorPagarTable
             cuentas={cuentas.filter(c => c.days_overdue && c.days_overdue > 0)}
             loading={loading}
             currentPage={currentPage}
             totalPages={totalPages}
             totalRecords={totalRecords}
+            pageSize={pageSize}
             onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
             onProgramarPago={(cuenta: AccountPayable) => {
               setCuentaSeleccionada(cuenta);
               setMostrarModalProgramar(true);
@@ -368,7 +377,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           />
         </TabsContent>
 
-        <TabsContent value="proximas" className="mt-4 sm:mt-6">
+        <TabsContent value="proximas" className="mt-8 sm:mt-6">
           <CuentasPorPagarTable
             cuentas={cuentas.filter(c => {
               if (!c.due_date) return false;
@@ -382,7 +391,9 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
             currentPage={currentPage}
             totalPages={totalPages}
             totalRecords={totalRecords}
+            pageSize={pageSize}
             onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
             onProgramarPago={(cuenta: AccountPayable) => {
               setCuentaSeleccionada(cuenta);
               setMostrarModalProgramar(true);
@@ -396,14 +407,16 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           />
         </TabsContent>
 
-        <TabsContent value="pendientes" className="mt-4 sm:mt-6">
+        <TabsContent value="pendientes" className="mt-8 sm:mt-6">
           <CuentasPorPagarTable
             cuentas={cuentas.filter(c => c.status === 'pending')}
             loading={loading}
             currentPage={currentPage}
             totalPages={totalPages}
             totalRecords={totalRecords}
+            pageSize={pageSize}
             onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
             onProgramarPago={(cuenta: AccountPayable) => {
               setCuentaSeleccionada(cuenta);
               setMostrarModalProgramar(true);

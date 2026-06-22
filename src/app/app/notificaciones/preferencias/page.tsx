@@ -114,7 +114,7 @@ export default function PreferenciasPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <PreferenciasHeader
         isLoading={isLoading}
         isRefreshing={isRefreshing}

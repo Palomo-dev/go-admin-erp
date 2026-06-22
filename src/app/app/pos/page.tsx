@@ -13,7 +13,6 @@ import { CartView } from '@/components/pos/CartView';
 import { CartTabs } from '@/components/pos/CartTabs';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { POSService } from '@/lib/services/posService';
-import { PrintService } from '@/lib/services/printService';
 import { useOrganization, getCurrentBranchIdWithFallback, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { Product, Customer, Cart, Sale } from '@/components/pos/types';
 import { formatCurrency, cn } from '@/utils/Utils';
@@ -156,31 +155,9 @@ export default function POSPage() {
 
   const handleCheckoutComplete = async (sale: Sale) => {
     try {
-      // Obtener datos para impresión
-      const saleItems = checkoutCart?.items.map(item => ({
-        id: crypto.randomUUID(),
-        sale_id: sale.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total: item.total,
-        tax_amount: item.tax_amount,
-        tax_rate: item.tax_rate,
-        discount_amount: item.discount_amount,
-        notes: { product_name: item.product.name },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })) || [];
-
-      // Imprimir ticket automáticamente
-      PrintService.smartPrint(
-        sale,
-        saleItems,
-        checkoutCart?.customer,
-        [], // payments se obtendrían de la BD en implementación completa
-        organization?.name || 'Mi Empresa',
-        'Dirección de la sucursal'
-      );
+      // La impresión del recibo la realiza el botón "Imprimir Recibo" del diálogo
+      // (PrintService con datos completos del negocio). No imprimir aquí para evitar
+      // duplicados y datos incompletos.
 
       // Remover el carrito completado
       if (checkoutCart) {
@@ -240,7 +217,7 @@ export default function POSPage() {
   }
 
   return (
-    <div className="min-h-screen h-screen dark:bg-gray-950 bg-gray-50 p-2 sm:p-4">
+    <div className="min-h-screen h-screen dark:bg-gray-900 bg-gray-50 p-2 sm:p-4">
       <div className="w-full h-full flex flex-col space-y-2 sm:space-y-3">
         {/* Header - Responsive con estado de caja y accesos rápidos */}
         <Card className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 shadow-sm">

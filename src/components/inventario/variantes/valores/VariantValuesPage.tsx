@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -43,6 +43,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   ListTree,
   Plus,
@@ -74,6 +75,8 @@ export function VariantValuesPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroTipo, setFiltroTipo] = useState<string>(tipoIdParam || 'all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -212,8 +215,25 @@ export function VariantValuesPage() {
     v.value.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Paginación
+  const totalPages = Math.ceil(valoresFiltrados.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const valoresPaginados = useMemo(
+    () => valoresFiltrados.slice(startIndex, startIndex + pageSize),
+    [valoresFiltrados, startIndex, pageSize]
+  );
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filtroTipo]);
+
   // Agrupar valores por tipo para mostrar
-  const valoresAgrupados = valoresFiltrados.reduce((acc, valor) => {
+  const valoresAgrupados = valoresPaginados.reduce((acc, valor) => {
     const tipoId = valor.variant_type_id?.toString() || 'sin-tipo';
     const tipoName = valor.variant_type?.name || 'Sin tipo';
     if (!acc[tipoId]) {
@@ -476,6 +496,16 @@ export function VariantValuesPage() {
               </div>
             </DragDropContext>
           )}
+
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={valoresFiltrados.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
         </CardContent>
       </Card>
 

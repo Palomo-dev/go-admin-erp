@@ -181,7 +181,7 @@ export function CuentasPorCobrarFiltros({
                 type="date"
                 value={filtros.fechaDesde}
                 onChange={(e) => handleInputChange('fechaDesde', e.target.value)}
-                className="h-8 sm:h-10 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                className="h-8 sm:h-10 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:[color-scheme:dark]"
               />
             </div>
 
@@ -194,7 +194,7 @@ export function CuentasPorCobrarFiltros({
                 type="date"
                 value={filtros.fechaHasta}
                 onChange={(e) => handleInputChange('fechaHasta', e.target.value)}
-                className="h-8 sm:h-10 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                className="h-8 sm:h-10 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:[color-scheme:dark]"
               />
             </div>
           </div>

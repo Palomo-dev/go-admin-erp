@@ -374,7 +374,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej: Venta de equipos para oficina"
-                  className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                  className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                   required
                 />
               </div>
@@ -398,10 +398,10 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                   Etapa inicial *
                 </Label>
                 <Select value={stageId} onValueChange={setStageId}>
-                  <SelectTrigger className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                  <SelectTrigger className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                     <SelectValue placeholder="Selecciona una etapa" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-gray-800">
+                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     {stages.map((stage) => (
                       <SelectItem key={stage.id} value={stage.id}>
                         <div className="flex items-center gap-2">
@@ -436,8 +436,8 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                     <Button
                       variant="outline"
                       className={cn(
-                        'w-full justify-start text-left font-normal bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700',
-                        !expectedCloseDate && 'text-gray-500'
+                        'w-full justify-start text-left font-normal bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700',
+                        !expectedCloseDate && 'text-gray-500 dark:text-gray-500'
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -446,7 +446,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                         : 'Seleccionar fecha'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800">
+                  <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     <Calendar
                       mode="single"
                       selected={expectedCloseDate}
@@ -471,7 +471,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0"
-                    className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                    className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                   />
                 </div>
                 <div>
@@ -479,10 +479,10 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                     Moneda
                   </Label>
                   <Select value={currency} onValueChange={setCurrency}>
-                    <SelectTrigger className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                    <SelectTrigger className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-gray-800">
+                    <SelectContent className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
                       <SelectItem value="COP">COP - Peso Colombiano</SelectItem>
                       <SelectItem value="USD">USD - Dólar</SelectItem>
                       <SelectItem value="EUR">EUR - Euro</SelectItem>
@@ -497,7 +497,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
         {/* Productos y Espacios - columna derecha */}
         <div className="lg:col-span-1 space-y-6">
           {/* Productos cotizados */}
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-gray-900 dark:text-white text-base">Productos</CardTitle>
               <Button
@@ -505,7 +505,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                 variant="outline"
                 size="sm"
                 onClick={addProductLine}
-                className="border-gray-200 dark:border-gray-700"
+                className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Agregar
@@ -553,7 +553,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                             updateProductLine(index, 'quantity', Number(e.target.value))
                           }
                           min={1}
-                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                         />
                       </div>
                       <div>
@@ -564,7 +564,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                           onChange={(e) =>
                             updateProductLine(index, 'unit_price', Number(e.target.value))
                           }
-                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                         />
                       </div>
                     </div>
@@ -578,7 +578,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
           </Card>
 
           {/* Espacios (PMS) */}
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-gray-900 dark:text-white text-base">Espacios (PMS)</CardTitle>
               <Button
@@ -586,7 +586,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                 variant="outline"
                 size="sm"
                 onClick={addSpaceLine}
-                className="border-gray-200 dark:border-gray-700"
+                className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Agregar
@@ -634,7 +634,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                             updateSpaceLine(index, 'nights', Number(e.target.value))
                           }
                           min={1}
-                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                         />
                       </div>
                       <div>
@@ -645,7 +645,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                           onChange={(e) =>
                             updateSpaceLine(index, 'unit_price', Number(e.target.value))
                           }
-                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                         />
                       </div>
                     </div>
@@ -659,7 +659,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
           </Card>
 
           {/* Conceptos Personalizados */}
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <Card className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-gray-900 dark:text-white text-base">Otros Conceptos</CardTitle>
               <Button
@@ -667,7 +667,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                 variant="outline"
                 size="sm"
                 onClick={addCustomLine}
-                className="border-gray-200 dark:border-gray-700"
+                className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Agregar
@@ -690,7 +690,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                           placeholder="Descripción del concepto..."
                           value={line.concept}
                           onChange={(e) => updateCustomLine(index, 'concept', e.target.value)}
-                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                         />
                       </div>
                       <Button
@@ -713,7 +713,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                             updateCustomLine(index, 'quantity', Number(e.target.value))
                           }
                           min={1}
-                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                         />
                       </div>
                       <div>
@@ -724,7 +724,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
                           onChange={(e) =>
                             updateCustomLine(index, 'unit_price', Number(e.target.value))
                           }
-                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                         />
                       </div>
                     </div>
@@ -759,7 +759,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
           type="button"
           variant="outline"
           onClick={handleCancel}
-          className="border-gray-200 dark:border-gray-700"
+          className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
         >
           Cancelar
         </Button>

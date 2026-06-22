@@ -12,6 +12,7 @@ import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
 
 // Importar los mismos componentes que se usan en el formulario de creación
@@ -38,6 +39,7 @@ const productoSchema = z.object({
   // Precios y costos
   cost: z.number().min(0).optional(),
   price: z.number().min(0).optional(),
+  compare_price: z.number().min(0).optional(),
   
   // Inventario
   track_stock: z.boolean(),
@@ -51,6 +53,13 @@ const productoSchema = z.object({
       min_level: z.number().min(0).optional() // Stock mínimo
     })
   ).optional(),
+  
+  // Campos adicionales usados por los componentes hijos
+  images: z.array(z.any()).optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.number()).optional(),
+  has_variants: z.boolean().optional(),
+  variants: z.array(z.any()).optional(),
 });
 
 // Define una interfaz para la estructura de stockItem
@@ -95,7 +104,13 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       price: 0,
       track_stock: true,
       status: 'active',
-      stock_inicial: []
+      stock_inicial: [],
+      images: [],
+      compare_price: 0,
+      notes: '',
+      tags: [],
+      has_variants: false,
+      variants: []
     }
   });
 
@@ -164,20 +179,97 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         
         console.log("Stock inicial mapeado:", stockInicial);
         
-        // 3. Configurar valores iniciales en el formulario
+        // 3. Cargar precio actual del producto
+        const { data: priceData } = await supabase
+          .from('product_prices')
+          .select('price, compare_price')
+          .eq('product_id', producto.id)
+          .order('effective_from', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // 4. Cargar costo actual del producto
+        const { data: costData } = await supabase
+          .from('product_costs')
+          .select('cost')
+          .eq('product_id', producto.id)
+          .order('effective_from', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // 5. Cargar impuesto asignado al producto
+        const { data: taxData } = await supabase
+          .from('product_tax_relations')
+          .select('tax_id')
+          .eq('product_id', producto.id)
+          .maybeSingle();
+
+        // 6. Cargar notas del producto
+        const { data: notesData } = await supabase
+          .from('product_notes')
+          .select('note')
+          .eq('product_id', producto.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // 7. Cargar etiquetas del producto
+        const { data: tagsData } = await supabase
+          .from('product_tag_relations')
+          .select('tag_id')
+          .eq('product_id', producto.id);
+        
+        const tagIds = tagsData?.map((t: any) => t.tag_id) || [];
+
+        // 8. Cargar proveedor principal del producto
+        const { data: supplierData } = await supabase
+          .from('product_suppliers')
+          .select('supplier_id')
+          .eq('product_id', producto.id)
+          .eq('is_preferred', true)
+          .maybeSingle();
+
+        // 9. Cargar imágenes existentes del producto
+        const { data: imagesData } = await supabase
+          .from('product_images')
+          .select('id, storage_path, is_primary, alt_text')
+          .eq('product_id', producto.id)
+          .order('display_order', { ascending: true });
+
+        const images = (imagesData || []).map((img: any) => {
+          const bucket = img.storage_path?.startsWith('products/') ? 'product-images' : 'organization_images';
+          const { data: urlData } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(img.storage_path);
+          return {
+            id: img.id,
+            url: urlData?.publicUrl || '/placeholder-image.png',
+            storagePath: img.storage_path,
+            is_primary: img.is_primary || false
+          };
+        });
+
+        // 10. Configurar valores iniciales en el formulario
         form.reset({
           sku: producto.sku,
           barcode: producto.barcode || '',
           name: producto.name,
           description: producto.description || '',
           category_id: producto.category_id,
-          unit_code: producto.unit_code,
-          supplier_id: producto.supplier_id,
-          cost: producto.cost || 0,
-          price: producto.price || 0,
-          track_stock: producto.track_stock,
-          status: producto.status,
-          stock_inicial: stockInicial
+          unit_code: producto.unit_code?.trim() || '',
+          supplier_id: supplierData?.supplier_id || undefined,
+          cost: costData?.cost || 0,
+          price: priceData?.price || 0,
+          compare_price: priceData?.compare_price || 0,
+          tax_id: taxData?.tax_id || '',
+          track_stock: true,
+          status: producto.status || 'active',
+          stock_inicial: stockInicial,
+          images,
+          notes: notesData?.note || '',
+          tags: tagIds,
+          has_variants: producto.is_parent || false,
+          variants: []
         });
         
       } catch (error: any) {
@@ -335,17 +427,53 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
   };
 
   return (
-    <Card className="w-full">
-      <CardContent className="p-4">
+    <Card className="w-full overflow-hidden">
+      <CardContent className="p-3 sm:p-4">
         {initialLoading ? (
-          <div className="flex justify-center items-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <span className="ml-2">Cargando datos del producto...</span>
+          <div className="space-y-6">
+            {/* Skeleton header */}
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+            {/* Skeleton grid de inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              ))}
+            </div>
+            {/* Skeleton sección de precios */}
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              ))}
+            </div>
+            {/* Skeleton botones */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-32" />
+            </div>
           </div>
         ) : (
           <Form {...form}>
             <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-4">
-              <div className="grid gap-4">
+              <div className="grid gap-4 max-w-full overflow-hidden">
                 <InformacionBasica formData={formData} updateFormData={updateFormData} />
                 <PrecionyCostos formData={formData} updateFormData={updateFormData} />
                 <Inventario formData={formData} updateFormData={updateFormData} />
@@ -364,7 +492,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
                   </div>
                 )}
                 
-                <div className="flex justify-end space-x-4 mt-8">
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:space-x-4 mt-8">
                   <Button 
                     type="button" 
                     variant="outline" 

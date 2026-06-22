@@ -65,7 +65,7 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
           return (
             <code
               className={cn(
-                'block bg-gray-900 dark:bg-gray-950 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto my-2',
+                'block bg-gray-900 dark:bg-gray-900 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto my-2',
                 codeClassName
               )}
               {...props}

@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { 
-  Phone, Users, Mail, MapPin, User, MoreVertical, PenSquare, XCircle, Eye 
+  Phone, Users, Mail, MapPin, User, MoreVertical, PenSquare, XCircle, Eye,
+  ListTodo, ClipboardCheck, PackageCheck, Search, FileText, Bug, Sparkles
 } from 'lucide-react';
 import { getColorByPrioridad, getColorByTipoTarea, traducirTipoTarea } from '../core/TareasUtils';
 
@@ -40,8 +41,24 @@ const TareasTableRow: React.FC<TareasTableRowProps> = ({
         return <Mail className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
       case 'visita':
         return <MapPin className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+      case 'tarea':
+        return <ListTodo className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+      case 'seguimiento':
+        return <Eye className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+      case 'revision':
+        return <ClipboardCheck className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+      case 'entrega':
+        return <PackageCheck className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+      case 'investigacion':
+        return <Search className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+      case 'documento':
+        return <FileText className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+      case 'bug':
+        return <Bug className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+      case 'feature':
+        return <Sparkles className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
       default:
-        return <Phone className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+        return <ListTodo className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
     }
   };
 

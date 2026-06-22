@@ -186,7 +186,7 @@ export function traducirTipoTarea(tipo?: TaskType | null): string {
 
   
   switch (tipo) {
-    // Valores reales utilizados en la aplicación
+    // CRM
     case 'llamada':
       return 'Llamada';
     case 'reunion':
@@ -195,9 +195,25 @@ export function traducirTipoTarea(tipo?: TaskType | null): string {
       return 'Email';
     case 'visita':
       return 'Visita';
-    // Ya no incluimos compatibilidad con valores en inglés porque no son parte de TaskType
+    // PM
+    case 'tarea':
+      return 'Tarea';
+    case 'seguimiento':
+      return 'Seguimiento';
+    case 'revision':
+      return 'Revisión';
+    case 'entrega':
+      return 'Entrega';
+    // Dev/General
+    case 'investigacion':
+      return 'Investigación';
+    case 'documento':
+      return 'Documento';
+    case 'bug':
+      return 'Bug';
+    case 'feature':
+      return 'Feature';
     default:
-      console.warn(`⚠️ Tipo de tarea no reconocido: [${tipo}]`);
       return tipo || 'Tarea';
   }
 }

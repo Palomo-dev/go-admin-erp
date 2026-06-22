@@ -1,7 +1,11 @@
-// Definición de tipos para el módulo de tareas del CRM
+// Definición de tipos para el módulo de tareas del CRM y PM
 
-// Tipos de tareas soportados
-export type TaskType = 'llamada' | 'reunion' | 'email' | 'visita' | null;
+// Tipos de tareas soportados (CRM + PM)
+export type TaskType =
+  | 'llamada' | 'reunion' | 'email' | 'visita'           // CRM
+  | 'tarea' | 'seguimiento' | 'revision' | 'entrega'     // PM
+  | 'investigacion' | 'documento' | 'bug' | 'feature'    // Dev/General
+  | null;
 
 // Estados posibles de una tarea
 export type TaskStatusUI = 'pendiente' | 'en_progreso' | 'completada' | 'cancelada';
@@ -58,7 +62,20 @@ export interface Task {
   customer_id: string | null; // ID del cliente (si aplica)
   customer?: TaskCustomer | null; // Datos del cliente obtenidos del JOIN
   parent_task_id: string | null; // ID de la tarea padre (para subtareas)
-  
+
+  // Campos PM (columnas en BD)
+  project_id: string | null;      // FK → projects
+  milestone_id: string | null;    // FK → milestones
+  goal_id: string | null;         // FK → goals
+  estimated_hours: number | null;
+  actual_hours: number | null;
+  tags: string[];                 // TEXT[] en BD
+
+  // Datos de JOIN opcionales (no en BD)
+  project?: { id: string; name: string } | null;
+  milestone?: { id: string; title: string } | null;
+  goal?: { id: string; title: string } | null;
+
   // Campos calculados para jerarquía de subtareas (no están en BD)
   subtasks?: Task[]; // Array de subtareas
   subtask_count?: number; // Contador de subtareas
@@ -91,6 +108,12 @@ export interface TaskFilter {
   include_subtasks?: boolean;                  // Incluir subtareas en los resultados
   only_parent_tasks?: boolean;                 // Solo mostrar tareas padre (sin subtareas)
   only_subtasks?: boolean;                     // Solo mostrar subtareas
+
+  // Campos para filtros PM
+  project_id?: string | null;                 // Filtrar por proyecto
+  milestone_id?: string | null;               // Filtrar por hito
+  goal_id?: string | null;                    // Filtrar por meta
+  tags?: string[];                            // Filtrar por etiquetas
 }
 
 // Interfaz para nueva tarea
@@ -111,6 +134,12 @@ export interface NewTask {
   remind_push: boolean;
   type: TaskType;
   parent_task_id?: string | null; // Para crear subtareas
+  project_id?: string | null;
+  milestone_id?: string | null;
+  goal_id?: string | null;
+  estimated_hours?: number | null;
+  actual_hours?: number | null;
+  tags?: string[];
 }
 
 // Interfaz para jerarquía de tareas

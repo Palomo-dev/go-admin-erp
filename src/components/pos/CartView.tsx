@@ -29,7 +29,23 @@ interface CartViewProps {
 export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: CartViewProps) {
   const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [holdReason, setHoldReason] = useState('');
-  const [taxIncluded, setTaxIncluded] = useState(false);
+  const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
+
+  // Sincronizar el flag con el carrito (memoria + storage) para que persista y el diálogo de pago lo refleje
+  const handleTaxIncludedChange = (value: boolean) => {
+    setTaxIncluded(value);
+    onCartUpdate({ ...cart, tax_included: value });
+    POSService.updateCartTaxSettings(cart.id, { tax_included: value }).catch(err =>
+      console.error('Error persistiendo tax_included:', err)
+    );
+  };
+
+  const handleAppliedTaxesChange = (taxIds: string[]) => {
+    onCartUpdate({ ...cart, applied_tax_ids: taxIds });
+    POSService.updateCartTaxSettings(cart.id, { applied_tax_ids: taxIds }).catch(err =>
+      console.error('Error persistiendo applied_tax_ids:', err)
+    );
+  };
   
   // Estados para Hold with Debt
   const [showHoldWithDebtDialog, setShowHoldWithDebtDialog] = useState(false);
@@ -463,7 +479,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
               <TaxSummary 
                 cart={cart}
                 taxIncluded={taxIncluded}
-                onTaxIncludedChange={setTaxIncluded}
+                onTaxIncludedChange={handleTaxIncludedChange}
+                onAppliedTaxesChange={handleAppliedTaxesChange}
                 className="-mx-1"
               />
 

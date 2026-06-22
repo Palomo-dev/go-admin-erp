@@ -198,9 +198,22 @@ export class VentasService {
           .eq('source', 'sale')
           .eq('source_id', saleId);
 
+        // Resolver el nombre de quien facturó (cajero/vendedor)
+        let sellerName: string | undefined;
+        if (data.user_id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', data.user_id)
+            .maybeSingle();
+          const fullName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim();
+          if (fullName) sellerName = fullName;
+        }
+
         return {
           ...data,
           _source: 'pos' as const,
+          seller_name: sellerName,
           customer,
           items: itemsWithProducts,
           payments: payments || []

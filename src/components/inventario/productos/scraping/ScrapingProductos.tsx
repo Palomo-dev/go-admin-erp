@@ -51,6 +51,46 @@ interface ScrapedProduct {
   variants?: { name: string; values: string[] }[];
 }
 
+// Tokeniza un nombre de producto a palabras significativas (sin tildes ni signos)
+const tokenizarNombre = (s: string): Set<string> =>
+  new Set(
+    (s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 2)
+  );
+
+// Garantiza que el precio de comparación sea el mayor (precio anterior/tachado).
+// Si quedaron invertidos al combinar listado + detalle, los corrige.
+const normalizarPrecios = (p: ScrapedProduct): ScrapedProduct => {
+  const venta = p.price;
+  const comparacion = p.compare_price;
+  if (venta && comparacion && venta > 0 && comparacion > 0) {
+    if (comparacion < venta) {
+      return { ...p, price: comparacion, compare_price: venta };
+    }
+    if (comparacion === venta) {
+      return { ...p, compare_price: undefined };
+    }
+  }
+  return p;
+};
+
+// Determina si dos nombres corresponden al mismo producto (solape de palabras clave)
+const nombresCorresponden = (a: string, b: string): boolean => {
+  const A = tokenizarNombre(a);
+  const B = tokenizarNombre(b);
+  if (A.size === 0 || B.size === 0) return true; // sin datos suficientes, no bloquear
+  let comunes = 0;
+  A.forEach((w) => {
+    if (B.has(w)) comunes += 1;
+  });
+  return comunes / Math.min(A.size, B.size) >= 0.3;
+};
+
 interface ScrapingProductosProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -102,7 +142,10 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
         setProductos((prev) =>
           prev.map((p, i) => {
             if (i !== index) return p;
-            return {
+            // Si el detalle no corresponde al producto del listado (URL equivocada),
+            // descartar el enriquecimiento para no contaminar con datos de otro producto.
+            if (e.name && !nombresCorresponden(p.name, e.name)) return p;
+            const combinado: ScrapedProduct = {
               ...p,
               description:
                 e.description && e.description.length > (p.description?.length || 0)
@@ -117,10 +160,13 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
               brand: e.brand || p.brand,
               sku: e.sku || p.sku,
               barcode: e.barcode || p.barcode,
-              price: p.price ?? e.price,
-              compare_price: p.compare_price ?? e.compare_price,
+              price: p.price && p.price > 0 ? p.price : e.price,
+              compare_price: p.compare_price && p.compare_price > 0 ? p.compare_price : e.compare_price,
               tags: e.tags && e.tags.length > (p.tags?.length || 0) ? e.tags : p.tags,
             };
+            // Al combinar listado + detalle el precio de venta/comparación puede quedar
+            // invertido; se re-normaliza para garantizar que comparación sea el mayor.
+            return normalizarPrecios(combinado);
           })
         );
       }

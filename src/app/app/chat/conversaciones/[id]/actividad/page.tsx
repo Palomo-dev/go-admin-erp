@@ -119,7 +119,7 @@ export default function ConversationActivityPage() {
   const canExport = userRole === 'admin' || userRole === 'owner' || userRole === 'Administrador';
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <ActivityHeader
         conversationId={conversationId}
         stats={stats}

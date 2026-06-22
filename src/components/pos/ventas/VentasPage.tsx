@@ -18,6 +18,7 @@ import { VentasTable } from './VentasTable';
 import { VentasFilters } from './VentasFilters';
 import { SaleWithDetails, SalesFilter } from './types';
 import { PrintService } from '@/lib/services/printService';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export function VentasPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export function VentasPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<SalesFilter>({});
-  const limit = 20;
+  const [limit, setLimit] = useState(20);
 
   const loadSales = useCallback(async () => {
     if (!organization?.id) return;
@@ -81,13 +82,18 @@ export function VentasPage() {
     try {
       const fullSale = await VentasService.getSaleById(sale.id);
       if (fullSale) {
+        const { business, branch } = await PrintService.getBusinessAndBranch(fullSale.organization_id);
         PrintService.smartPrint(
           fullSale,
           fullSale.items || [],
           fullSale.customer,
           fullSale.payments || [],
-          organization?.name || 'Mi Empresa',
-          ''
+          business || { name: organization?.name || 'Mi Empresa', logoUrl: organization?.logo_url },
+          fullSale.seller_name ? { name: fullSale.seller_name } : undefined,
+          branch,
+          Array.isArray((fullSale as any).tax_breakdown) && (fullSale as any).tax_breakdown.length > 0
+            ? (fullSale as any).tax_breakdown
+            : undefined
         );
       }
     } catch (error) {
@@ -181,36 +187,17 @@ export function VentasPage() {
       </Card>
 
       {/* Paginación */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Mostrando {((currentPage - 1) * limit) + 1} - {Math.min(currentPage * limit, totalSales)} de {totalSales}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="dark:border-gray-700 dark:text-gray-300"
-            >
-              Anterior
-            </Button>
-            <span className="flex items-center px-3 text-sm dark:text-gray-300">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="dark:border-gray-700 dark:text-gray-300"
-            >
-              Siguiente
-            </Button>
-          </div>
-        </div>
-      )}
+      <DataTablePagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={limit}
+        totalItems={totalSales}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(size) => {
+          setLimit(size);
+          setCurrentPage(1);
+        }}
+      />
     </div>
   );
 }

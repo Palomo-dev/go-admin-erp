@@ -199,12 +199,12 @@ export function ChargesHeader({
       {/* Filtros */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-3">
             <Select 
               value={filters.is_active === undefined ? 'all' : filters.is_active ? 'active' : 'inactive'}
               onValueChange={handleStatusChange}
             >
-              <SelectTrigger className="w-[140px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <SelectTrigger className="w-full sm:w-[140px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -218,7 +218,7 @@ export function ChargesHeader({
               value={filters.branch_id?.toString() || 'all'}
               onValueChange={handleBranchChange}
             >
-              <SelectTrigger className="w-[180px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <SelectTrigger className="w-full sm:w-[180px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <SelectValue placeholder="Sucursal" />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -235,11 +235,10 @@ export function ChargesHeader({
               value={filters.applies_to || 'all'}
               onValueChange={handleAppliesToChange}
             >
-              <SelectTrigger className="w-[150px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <SelectTrigger className="w-full sm:w-[150px] dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <SelectValue placeholder="Aplica a" />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                <SelectItem value="all">Todos</SelectItem>
                 {Object.entries(APPLIES_TO_LABELS).map(([key, label]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
@@ -251,7 +250,7 @@ export function ChargesHeader({
               size="icon"
               onClick={onRefresh}
               disabled={loading}
-              className="dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
+              className="dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600 w-full sm:w-auto"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>

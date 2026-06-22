@@ -125,7 +125,7 @@ export function OpportunitiesTable({
     <Button
       variant="ghost"
       onClick={() => handleSort(field)}
-      className="h-auto p-0 font-medium hover:bg-transparent"
+      className="h-auto p-0 font-medium hover:bg-transparent dark:text-gray-300"
     >
       {children}
       <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -240,7 +240,7 @@ export function OpportunitiesTable({
                 <TableCell className="py-2 sm:py-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
+                      <Button variant="ghost" className="h-8 w-8 p-0 dark:text-gray-400 dark:hover:bg-gray-700">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -257,7 +257,7 @@ export function OpportunitiesTable({
                           e.stopPropagation();
                           onView?.(opportunity.id);
                         }}
-                        className="text-gray-700 dark:text-gray-300 cursor-pointer"
+                        className="text-gray-700 dark:text-gray-300 cursor-pointer focus:bg-gray-100 dark:focus:bg-gray-700"
                       >
                         <Eye className="mr-2 h-4 w-4" />
                         Ver detalle
@@ -267,7 +267,7 @@ export function OpportunitiesTable({
                           e.stopPropagation();
                           onEdit?.(opportunity.id);
                         }}
-                        className="text-gray-700 dark:text-gray-300 cursor-pointer"
+                        className="text-gray-700 dark:text-gray-300 cursor-pointer focus:bg-gray-100 dark:focus:bg-gray-700"
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Editar
@@ -277,7 +277,7 @@ export function OpportunitiesTable({
                           e.stopPropagation();
                           onDuplicate?.(opportunity.id);
                         }}
-                        className="text-gray-700 dark:text-gray-300 cursor-pointer"
+                        className="text-gray-700 dark:text-gray-300 cursor-pointer focus:bg-gray-100 dark:focus:bg-gray-700"
                       >
                         <Copy className="mr-2 h-4 w-4" />
                         Duplicar
@@ -290,7 +290,7 @@ export function OpportunitiesTable({
                               e.stopPropagation();
                               onMarkWon?.(opportunity.id);
                             }}
-                            className="text-green-600 dark:text-green-400 cursor-pointer"
+                            className="text-green-600 dark:text-green-400 cursor-pointer focus:bg-green-50 dark:focus:bg-green-900/20"
                           >
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Marcar ganada
@@ -300,7 +300,7 @@ export function OpportunitiesTable({
                               e.stopPropagation();
                               onMarkLost?.(opportunity.id);
                             }}
-                            className="text-red-600 dark:text-red-400 cursor-pointer"
+                            className="text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 dark:focus:bg-red-900/20"
                           >
                             <XCircle className="mr-2 h-4 w-4" />
                             Marcar perdida
@@ -313,7 +313,7 @@ export function OpportunitiesTable({
                           e.stopPropagation();
                           onDelete?.(opportunity.id);
                         }}
-                        className="text-red-600 dark:text-red-400 cursor-pointer"
+                        className="text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 dark:focus:bg-red-900/20"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Eliminar

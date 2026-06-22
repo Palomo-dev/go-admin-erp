@@ -33,7 +33,8 @@ class WebOrderConfirmationService {
    */
   async confirmOrder(
     order: WebOrder,
-    estimatedMinutes: number = 30
+    estimatedMinutes: number = 30,
+    markAsPaid: boolean = false
   ): Promise<ConfirmOrderResult> {
     const userId = await getCurrentUserId();
     if (!userId) throw new Error('No se pudo obtener el usuario actual');
@@ -41,8 +42,12 @@ class WebOrderConfirmationService {
     const now = new Date().toISOString();
     const estimatedReadyAt = new Date(Date.now() + estimatedMinutes * 60000).toISOString();
 
+    // Si se marca como pagado, sobrescribir payment_status del pedido
+    const effectivePaymentStatus = markAsPaid ? 'paid' : order.payment_status;
+    const orderForSale = markAsPaid ? { ...order, payment_status: 'paid' as const } : order;
+
     // 1. Crear sale (venta POS)
-    const saleId = await this.createSale(order, userId);
+    const saleId = await this.createSale(orderForSale, userId);
 
     // 2. Crear sale_items y obtener los IDs insertados
     const insertedSaleItems = await this.createSaleItems(order, saleId);
@@ -84,6 +89,7 @@ class WebOrderConfirmationService {
       .update({
         sale_id: saleId,
         status: 'confirmed',
+        payment_status: effectivePaymentStatus,
         confirmed_at: now,
         confirmed_by: userId,
         estimated_ready_at: estimatedReadyAt,

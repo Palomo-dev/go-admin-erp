@@ -10,6 +10,7 @@ import { TransferenciasFiltros } from './TransferenciasFiltros';
 import { TransferenciasService } from './TransferenciasService';
 import { InventoryTransfer, FiltrosTransferencias } from './types';
 import { useToast } from '@/components/ui/use-toast';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export function TransferenciasPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export function TransferenciasPage() {
   const [transferencias, setTransferencias] = useState<InventoryTransfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [filtros, setFiltros] = useState<FiltrosTransferencias>({
@@ -30,7 +32,7 @@ export function TransferenciasPage() {
 
   useEffect(() => {
     cargarTransferencias();
-  }, [filtros, currentPage]);
+  }, [filtros, currentPage, pageSize]);
 
   const cargarTransferencias = async () => {
     try {
@@ -38,7 +40,7 @@ export function TransferenciasPage() {
       const response = await TransferenciasService.obtenerTransferencias(
         filtros,
         currentPage,
-        10
+        pageSize
       );
       setTransferencias(response.transferencias);
       setTotal(response.total);
@@ -108,6 +110,11 @@ export function TransferenciasPage() {
     setCurrentPage(1);
   };
 
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+  };
+
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
@@ -158,36 +165,15 @@ export function TransferenciasPage() {
         />
 
         {/* Paginación */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t dark:border-gray-700">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Mostrando {transferencias.length} de {total} transferencias
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="dark:border-gray-600 dark:text-gray-300"
-              >
-                Anterior
-              </Button>
-              <span className="flex items-center px-3 text-sm dark:text-gray-300">
-                Página {currentPage} de {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="dark:border-gray-600 dark:text-gray-300"
-              >
-                Siguiente
-              </Button>
-            </div>
-          </div>
-        )}
+        <DataTablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={total}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={handlePageSizeChange}
+          pageSizeOptions={[10, 25, 50, 100]}
+        />
       </Card>
     </div>
   );

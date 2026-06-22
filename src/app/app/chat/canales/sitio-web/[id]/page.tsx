@@ -433,7 +433,7 @@ export default function WebsiteChannelSettingsPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
@@ -486,7 +486,7 @@ export default function WebsiteChannelSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <WebsiteSettingsHeader
         channel={channel}
         widgetStats={widgetStats}

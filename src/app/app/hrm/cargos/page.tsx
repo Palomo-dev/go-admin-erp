@@ -11,6 +11,8 @@ import DepartmentsService from '@/lib/services/departmentsService';
 import {
   JobPositionFiltersComponent,
   JobPositionTable,
+  JobPositionPageSkeleton,
+  JobPositionTableSkeleton,
 } from '@/components/hrm/cargos';
 import type { JobPositionFilters } from '@/components/hrm/cargos';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +35,7 @@ import {
   Upload,
   ShieldAlert,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 
 interface DepartmentOption {
@@ -223,11 +226,7 @@ export default function CargosPage() {
   };
 
   if (orgLoading || permissionsLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    );
+    return <JobPositionPageSkeleton />;
   }
 
   // Verificar permiso de visualización
@@ -300,34 +299,70 @@ export default function CargosPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {stats.total}
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Total cargos</p>
+            {isLoading ? (
+              <>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {stats.total}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Total cargos</p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {stats.active}
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Activos</p>
+            {isLoading ? (
+              <>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {stats.active}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Activos</p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-gray-400">
-              {stats.inactive}
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Inactivos</p>
+            {isLoading ? (
+              <>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-gray-400">
+                  {stats.inactive}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Inactivos</p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.withEmployees}
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Con empleados</p>
+            {isLoading ? (
+              <>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {stats.withEmployees}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Con empleados</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -352,9 +387,7 @@ export default function CargosPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-            </div>
+            <JobPositionTableSkeleton />
           ) : (
             <JobPositionTable
               positions={positions}

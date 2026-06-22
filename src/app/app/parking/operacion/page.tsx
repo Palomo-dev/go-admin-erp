@@ -502,7 +502,7 @@ export default function ParkingOperacionPage() {
   // Si no hay branch
   if (organization && branchId === null && !isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
         <div className="max-w-md mx-auto mt-20">
           <Card>
             <CardContent className="pt-6 text-center">
@@ -537,7 +537,7 @@ export default function ParkingOperacionPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-950 min-h-screen">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <OperacionHeader onRefresh={loadData} isLoading={isLoading} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

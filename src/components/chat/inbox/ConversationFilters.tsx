@@ -4,13 +4,7 @@ import React from 'react';
 import { Search, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SearchSelect } from '@/components/ui/search-select';
 import { Badge } from '@/components/ui/badge';
 import { ConversationFilters as Filters } from '@/lib/services/conversationsService';
 
@@ -49,87 +43,69 @@ export default function ConversationFilters({
       {/* Filtros principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Estado */}
-        <Select
+        <SearchSelect
+          options={[
+            { value: 'open', label: 'Abiertas' },
+            { value: 'pending', label: 'Pendientes' },
+            { value: 'closed', label: 'Cerradas' },
+          ]}
           value={filters.status || 'all'}
           onValueChange={(value) =>
             onFilterChange({ ...filters, status: value === 'all' ? undefined : value })
           }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los estados</SelectItem>
-            <SelectItem value="open">Abiertas</SelectItem>
-            <SelectItem value="pending">Pendientes</SelectItem>
-            <SelectItem value="closed">Cerradas</SelectItem>
-          </SelectContent>
-        </Select>
+          placeholder="Estado"
+          searchPlaceholder="Buscar estado..."
+          emptyText="No se encontraron estados"
+          noneLabel="Todos los estados"
+          noneValue="all"
+        />
 
         {/* Prioridad */}
-        <Select
+        <SearchSelect
+          options={[
+            { value: 'low', label: 'Baja' },
+            { value: 'normal', label: 'Normal' },
+            { value: 'high', label: 'Alta' },
+            { value: 'urgent', label: 'Urgente' },
+          ]}
           value={filters.priority || 'all'}
           onValueChange={(value) =>
             onFilterChange({ ...filters, priority: value === 'all' ? undefined : value })
           }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Prioridad" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las prioridades</SelectItem>
-            <SelectItem value="low">Baja</SelectItem>
-            <SelectItem value="normal">Normal</SelectItem>
-            <SelectItem value="high">Alta</SelectItem>
-            <SelectItem value="urgent">Urgente</SelectItem>
-          </SelectContent>
-        </Select>
+          placeholder="Prioridad"
+          searchPlaceholder="Buscar prioridad..."
+          emptyText="No se encontraron prioridades"
+          noneLabel="Todas las prioridades"
+          noneValue="all"
+        />
 
         {/* Canal */}
-        <Select
+        <SearchSelect
+          options={channels.map((channel) => ({ value: channel.id, label: channel.name, sublabel: channel.type }))}
           value={filters.channel || 'all'}
           onValueChange={(value) =>
             onFilterChange({ ...filters, channel: value === 'all' ? undefined : value })
           }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Canal" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los canales</SelectItem>
-            {channels.map((channel) => (
-              <SelectItem key={channel.id} value={channel.id}>
-                {channel.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Canal"
+          searchPlaceholder="Buscar canal..."
+          emptyText="No se encontraron canales"
+          noneLabel="Todos los canales"
+          noneValue="all"
+        />
 
         {/* Etiqueta */}
-        <Select
+        <SearchSelect
+          options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
           value={filters.tag_id || 'all'}
           onValueChange={(value) =>
             onFilterChange({ ...filters, tag_id: value === 'all' ? undefined : value })
           }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Etiqueta" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las etiquetas</SelectItem>
-            {tags.map((tag) => (
-              <SelectItem key={tag.id} value={tag.id}>
-                <div className="flex items-center space-x-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: tag.color }}
-                  />
-                  <span>{tag.name}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Etiqueta"
+          searchPlaceholder="Buscar etiqueta..."
+          emptyText="No se encontraron etiquetas"
+          noneLabel="Todas las etiquetas"
+          noneValue="all"
+        />
       </div>
 
       {/* Filtros adicionales */}

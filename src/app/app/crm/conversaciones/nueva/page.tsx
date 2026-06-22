@@ -205,14 +205,14 @@ export default function NuevaConversacionCRMPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -220,7 +220,7 @@ export default function NuevaConversacionCRMPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push('/app/crm/bandeja')}
+              onClick={() => router.push('/app/chat/bandeja')}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>

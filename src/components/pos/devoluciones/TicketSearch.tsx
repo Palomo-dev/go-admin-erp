@@ -122,7 +122,7 @@ export function TicketSearch({ onSaleSelect }: TicketSearchProps) {
                 placeholder="Fecha desde"
                 value={filters.dateFrom || ''}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:[color-scheme:dark]"
               />
             </div>
             <div className="flex space-x-2">

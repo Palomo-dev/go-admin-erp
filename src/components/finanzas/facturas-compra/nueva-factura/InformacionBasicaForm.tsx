@@ -288,7 +288,7 @@ export function InformacionBasicaForm({
               type="date"
               value={formData.issue_date}
               onChange={handleIssueDateChange}
-              className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:[color-scheme:dark]"
             />
             {errors.issue_date && (
               <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">{errors.issue_date}</p>
@@ -346,7 +346,7 @@ export function InformacionBasicaForm({
               type="date"
               value={formData.due_date}
               onChange={handleDueDateChange}
-              className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:[color-scheme:dark]"
             />
           </div>
         </div>

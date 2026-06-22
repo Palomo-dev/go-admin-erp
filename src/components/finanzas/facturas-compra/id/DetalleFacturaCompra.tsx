@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -38,6 +39,9 @@ import { InfoProveedorFactura } from './InfoProveedorFactura';
 import { CuentaPorPagarInfo } from './CuentaPorPagarInfo';
 import { HistorialPagos } from './HistorialPagos';
 import { formatCurrency, formatDate, cn } from '@/utils/Utils';
+import { PDFService, InvoiceDataForPDF } from '@/lib/services/pdfService';
+import { supabase } from '@/lib/supabase/config';
+import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 interface DetalleFacturaCompraProps {
   facturaId: string;
@@ -62,10 +66,43 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   const [pagos, setPagos] = useState<any[]>([]);
   const [loadingCuentaPorPagar, setLoadingCuentaPorPagar] = useState(false);
   const [loadingPagos, setLoadingPagos] = useState(false);
+  const [organizationData, setOrganizationData] = useState<{ name: string; tax_id?: string; address?: string; phone?: string; email?: string; logo_url?: string } | null>(null);
 
   useEffect(() => {
     cargarFactura();
+    cargarOrganizacion();
   }, [facturaId]);
+
+  const cargarOrganizacion = async () => {
+    try {
+      const org = obtenerOrganizacionActiva();
+      if (!org?.id) return;
+
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('name, tax_id, nit, address, phone, email, logo_url')
+        .eq('id', org.id)
+        .single();
+
+      if (error) {
+        console.error('Error cargando organización:', error);
+        return;
+      }
+
+      if (data) {
+        setOrganizationData({
+          name: data.name || 'Mi Empresa',
+          tax_id: data.tax_id || data.nit,
+          address: data.address,
+          phone: data.phone,
+          email: data.email,
+          logo_url: data.logo_url
+        });
+      }
+    } catch (error) {
+      console.error('Error cargando datos de organización:', error);
+    }
+  };
 
   const cargarFactura = async () => {
     try {
@@ -158,14 +195,73 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   };
   
   const handleImprimir = () => {
-    window.print();
+    if (!factura) return;
+    const pdfData: InvoiceDataForPDF = {
+      id: factura.id,
+      number: factura.number_ext,
+      issue_date: factura.issue_date || '',
+      due_date: factura.due_date || '',
+      status: factura.status,
+      currency: factura.currency,
+      subtotal: factura.subtotal,
+      tax_total: factura.tax_total,
+      total: factura.total,
+      balance: factura.balance,
+      notes: factura.notes,
+      organization: organizationData || undefined,
+      customer: factura.supplier ? {
+        full_name: factura.supplier.name,
+        email: factura.supplier.email,
+        phone: factura.supplier.phone,
+        tax_id: factura.supplier.nit,
+        address: [factura.supplier.address, factura.supplier.city, factura.supplier.country].filter(Boolean).join(', ')
+      } : undefined,
+      items: (factura.items || []).map(item => ({
+        description: item.description,
+        qty: item.qty,
+        unit_price: item.unit_price,
+        tax_rate: item.tax_rate,
+        total_line: item.total_line
+      }))
+    };
+    PDFService.printPurchaseInvoiceHTML(pdfData);
   };
   
   const handleDescargarPDF = () => {
-    // TODO: Implementar generación de PDF
-    console.log('Descargando PDF de factura:', facturaId);
-    // Por ahora, usar la función de imprimir como alternativa
-    window.print();
+    if (!factura) return;
+    const pdfData: InvoiceDataForPDF = {
+      id: factura.id,
+      number: factura.number_ext,
+      issue_date: factura.issue_date || '',
+      due_date: factura.due_date || '',
+      status: factura.status,
+      currency: factura.currency,
+      subtotal: factura.subtotal,
+      tax_total: factura.tax_total,
+      total: factura.total,
+      balance: factura.balance,
+      notes: factura.notes,
+      organization: organizationData || undefined,
+      customer: factura.supplier ? {
+        full_name: factura.supplier.name,
+        email: factura.supplier.email,
+        phone: factura.supplier.phone,
+        tax_id: factura.supplier.nit,
+        address: [factura.supplier.address, factura.supplier.city, factura.supplier.country].filter(Boolean).join(', ')
+      } : undefined,
+      items: (factura.items || []).map(item => ({
+        description: item.description,
+        qty: item.qty,
+        unit_price: item.unit_price,
+        tax_rate: item.tax_rate,
+        total_line: item.total_line
+      }))
+    };
+    PDFService.downloadPurchaseInvoicePDF(pdfData);
+    toast({
+      title: 'PDF Generado',
+      description: `La factura de compra ${factura.number_ext} está lista para descargar.`
+    });
   };
 
   const handleConfirmarFactura = async () => {
@@ -213,9 +309,28 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4">
-        <div className="flex justify-center items-center h-48 sm:h-64">
-          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 max-w-7xl space-y-4 sm:space-y-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 w-20" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-6 sm:h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-32" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
         </div>
       </div>
     );
@@ -256,7 +371,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
             className="p-2 h-auto dark:hover:bg-gray-700 dark:text-gray-300"
           >
             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" />
-            <span className="hidden sm:inline">Volver</span>
+            <span>Volver</span>
           </Button>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
@@ -278,7 +393,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
             title="Imprimir factura"
           >
             <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1" />
-            <span className="hidden sm:inline">Imprimir</span>
+            <span>Imprimir</span>
           </Button>
           
           <Button
@@ -289,7 +404,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
             title="Descargar PDF"
           >
             <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1" />
-            <span className="hidden sm:inline">PDF</span>
+            <span>PDF</span>
           </Button>
           
           {['draft', 'confirmed', 'partial'].includes(factura.status) && (
@@ -303,14 +418,12 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
               {recepcionando ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
-                  <span className="hidden sm:inline">Recepcionando...</span>
-                  <span className="sm:hidden">...</span>
+                  <span>Recepcionando...</span>
                 </>
               ) : (
                 <>
                   <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Recepcionar Inventario</span>
-                  <span className="sm:hidden">Recep.</span>
+                  <span>Recepcionar Inventario</span>
                 </>
               )}
             </Button>
@@ -319,8 +432,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
           {factura.status === 'received' && (
             <Badge variant="outline" className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm border-green-500 text-green-600 dark:border-green-400 dark:text-green-400 flex items-center gap-1">
               <CheckCircle className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Inventario Recibido</span>
-              <span className="sm:hidden">Recibido</span>
+              <span>Inventario Recibido</span>
             </Badge>
           )}
           
@@ -332,8 +444,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
               className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Registrar Pago</span>
-              <span className="sm:hidden">Pago</span>
+              <span>Registrar Pago</span>
             </Button>
           )}
           
@@ -347,8 +458,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
               title="Registrar Pago (Factura en Borrador)"
             >
               <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Registrar Pago</span>
-              <span className="sm:hidden">Pago</span>
+              <span>Registrar Pago</span>
             </Button>
           )}
           
@@ -359,8 +469,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                 className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white whitespace-nowrap"
               >
                 <Send className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1 sm:mr-1.5" />
-                <span className="hidden sm:inline">Confirmar Factura</span>
-                <span className="sm:hidden">Confirmar</span>
+                <span>Confirmar Factura</span>
               </Button>
               <Button
                 onClick={handleEditar}
@@ -368,7 +477,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                 className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm bg-gray-600 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700 text-white"
               >
                 <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Editar</span>
+                <span>Editar</span>
               </Button>
             </>
           )}

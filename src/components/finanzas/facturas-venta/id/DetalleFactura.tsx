@@ -100,6 +100,7 @@ interface OrganizationPDFData {
   address?: string;
   phone?: string;
   email?: string;
+  logo_url?: string;
 }
 
 export default function DetalleFactura({ factura }: { factura: any }) {
@@ -123,7 +124,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
 
         const { data, error } = await supabase
           .from('organizations')
-          .select('name, tax_id, nit, address, phone, email')
+          .select('name, tax_id, nit, address, phone, email, logo_url')
           .eq('id', org.id)
           .single();
 
@@ -138,7 +139,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             tax_id: data.tax_id || data.nit,
             address: data.address,
             phone: data.phone,
-            email: data.email
+            email: data.email,
+            logo_url: data.logo_url
           });
         }
       } catch (error) {
@@ -392,8 +394,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         address: factura.customers.address,
         tax_id: factura.customers.tax_id
       } : undefined,
-      items: factura.invoice_items?.map((item: any) => ({
-        description: item.description,
+      items: (factura.items || factura.invoice_items || [])?.map((item: any) => ({
+        description: item.description || item.products?.name || '',
         qty: item.qty,
         unit_price: item.unit_price,
         tax_rate: item.tax_rate,
@@ -414,10 +416,10 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const saldoPendiente = factura.balance || 0;
   
   // Determinar si la factura está completamente pagada
-  const isPagada = factura.status === 'paid';
+  const isPagada = facturaActual.status === 'paid';
   
   // Determinar si la factura está en estado borrador
-  const isDraft = factura.status === 'draft';
+  const isDraft = facturaActual.status === 'draft';
   
   // Función para emitir la factura (cambiar de draft a issued)
   const emitirFactura = async () => {
@@ -524,7 +526,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
             >
               <Send className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline">Emitir</span>
+              <span>Emitir</span>
             </Button>
           )}
           {!isDraft && (
@@ -535,7 +537,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100"
             >
               <Printer className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline">Imprimir</span>
+              <span>Imprimir</span>
             </Button>
           )}
           <Button 
@@ -546,7 +548,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             title="Descargar PDF"
           >
             <Download size={14} />
-            <span className="hidden sm:inline">PDF</span>
+            <span>PDF</span>
           </Button>
           <Button 
             variant="outline" 
@@ -556,7 +558,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             title="Enviar por Email"
           >
             <Mail size={14} />
-            <span className="hidden sm:inline">Email</span>
+            <span>Email</span>
           </Button>
           <Button 
             variant="outline" 
@@ -566,7 +568,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             title="Enviar por WhatsApp"
           >
             <Send size={14} />
-            <span className="hidden sm:inline">WhatsApp</span>
+            <span>WhatsApp</span>
           </Button>
           {!isDraft && facturaActual.status !== 'void' && (
             <SendToFactusButton
@@ -588,7 +590,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             title="Duplicar factura"
           >
             <Copy size={14} />
-            <span className="hidden sm:inline">Duplicar</span>
+            <span>Duplicar</span>
           </Button>
           
           {facturaActual.status !== 'paid' && facturaActual.status !== 'void' && (
@@ -600,7 +602,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                 onClick={() => setDialogNotaCreditoOpen(true)}
               >
                 <FileOutput className="h-3.5 w-3.5 sm:mr-1" />
-                <span className="hidden md:inline">Nota Crédito</span>
+                <span>Nota Crédito</span>
               </Button>
               <Button 
                 onClick={() => {
@@ -611,7 +613,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                 className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 h-8 px-2 sm:px-3 text-xs"
               >
                 <CreditCard className="h-3.5 w-3.5 sm:mr-1" />
-                <span className="hidden md:inline">Registrar Abono</span>
+                <span>Registrar Abono</span>
               </Button>
               <Button 
                 onClick={marcarComoPagada}
@@ -620,7 +622,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                 className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                <span className="hidden lg:inline">Marcar Pagada</span>
+                <span>Marcar Pagada</span>
               </Button>
             </>
           )}

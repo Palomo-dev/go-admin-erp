@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; color: #333; }
           .invoice { max-width: 800px; margin: 0 auto; padding: 40px; }
           .header { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #2563eb; }
-          .logo { font-size: 28px; font-weight: bold; color: #2563eb; }
+          .logo-section { display: flex; align-items: center; gap: 12px; }
+          .logo-img { max-height: 60px; max-width: 180px; object-fit: contain; }
+          .logo-text { font-size: 28px; font-weight: bold; color: #2563eb; }
           .invoice-title { text-align: right; }
           .invoice-title h1 { font-size: 32px; color: #1f2937; margin-bottom: 5px; }
           .invoice-number { font-size: 16px; color: #6b7280; }
@@ -80,7 +82,9 @@ export async function POST(request: NextRequest) {
       <body>
         <div class="invoice">
           <div class="header">
-            <div class="logo">${data.organization?.name || 'Mi Empresa'}</div>
+            <div class="logo-section">
+              ${data.organization?.logo_url ? `<img src="${data.organization.logo_url}" alt="Logo" class="logo-img" />` : `<div class="logo-text">${data.organization?.name || 'Mi Empresa'}</div>`}
+            </div>
             <div class="invoice-title">
               <h1>FACTURA</h1>
               <div class="invoice-number">${data.number}</div>

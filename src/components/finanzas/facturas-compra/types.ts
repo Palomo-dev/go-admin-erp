@@ -8,6 +8,10 @@ export interface SupplierBase {
   contact?: string;
   phone?: string;
   email?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  logo_url?: string;
   notes?: string;
   created_at?: string;
   updated_at?: string;

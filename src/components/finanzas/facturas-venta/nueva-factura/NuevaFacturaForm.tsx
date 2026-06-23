@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from "@/components/ui/button";
@@ -352,6 +352,14 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const handleItemsChange = (newItems: InvoiceItem[]) => {
     setItems(newItems);
   };
+
+  // Memoizar códigos de impuestos iniciales para edición (evita loop infinito)
+  const initialAppliedTaxCodes = useMemo(() => {
+    if (esEdicion && facturaInicial?.items) {
+      return [...new Set(facturaInicial.items.map((item: any) => item.tax_code).filter(Boolean))];
+    }
+    return undefined;
+  }, [esEdicion, facturaInicial]);
 
   // Función para guardar la factura
   const handleSaveInvoice = async () => {
@@ -887,6 +895,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         organizationId={organizationId}
         items={items}
         taxIncluded={taxIncluded}
+        initialAppliedTaxCodes={initialAppliedTaxCodes}
         onTaxIncludedChange={(value) => {
           setTaxIncluded(value);
           

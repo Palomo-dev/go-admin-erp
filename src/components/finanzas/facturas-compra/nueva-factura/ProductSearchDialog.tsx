@@ -205,12 +205,20 @@ export function ProductSearchDialog({
           {/* Lista de productos */}
           <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1 pb-2">
             {isLoading ? (
-              <div className="flex items-center justify-center py-8 sm:py-12">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-3"></div>
-                  <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">Cargando productos...</p>
-                </div>
-              </div>
+              <>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                        <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                        <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                      </div>
+                      <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </>
             ) : filteredProducts.length > 0 ? (
               filteredProducts.map((product) => {
                 const isSelected = selectedProductIds.includes(product.id);
@@ -220,7 +228,7 @@ export function ProductSearchDialog({
                     key={product.id} 
                     className={`cursor-pointer transition-all hover:shadow-md ${
                       isSelected 
-                        ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700' 
+                        ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700' 
                         : 'hover:border-blue-300 dark:hover:border-blue-600 dark:bg-gray-800/50 dark:border-gray-700'
                     }`}
                     onClick={() => !isSelected && handleSelectProduct(product)}
@@ -254,7 +262,7 @@ export function ProductSearchDialog({
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 sm:gap-4">
                               <div>
-                                <div className="text-base sm:text-lg font-bold text-green-600 dark:text-green-500">
+                                <div className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-500">
                                   {formatCurrency(product.cost, currency)}
                                 </div>
                                 <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
@@ -282,7 +290,7 @@ export function ProductSearchDialog({
                               size="sm"
                               disabled
                               variant="secondary"
-                              className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                              className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
                             >
                               ✓ Seleccionado
                             </Button>
@@ -293,7 +301,7 @@ export function ProductSearchDialog({
                                 e.stopPropagation();
                                 handleSelectProduct(product);
                               }}
-                              className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white"
+                              className="w-full sm:w-auto h-8 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
                             >
                               <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
                               Agregar

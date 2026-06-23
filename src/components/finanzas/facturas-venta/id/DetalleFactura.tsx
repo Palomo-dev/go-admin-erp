@@ -418,7 +418,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   };
   
   // Calcular el saldo pendiente
-  const saldoPendiente = factura.balance || 0;
+  const saldoPendiente = Number(factura.balance) || 0;
   
   // Determinar si la factura está completamente pagada
   const isPagada = facturaActual.status === 'paid';
@@ -759,7 +759,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             <div className="flex justify-between items-center">
               <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pagado:</span>
               <span className="text-sm sm:text-base font-semibold text-green-600 dark:text-green-400">
-                {formatCurrency((factura.total || 0) - (factura.balance || 0))}
+                {formatCurrency(Number(factura.total || 0) - Number(factura.balance || 0))}
               </span>
             </div>
             

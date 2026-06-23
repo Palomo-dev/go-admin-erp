@@ -81,8 +81,11 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
       setSaving(true);
 
       // Calcular el balance: total nuevo - pagos ya realizados
-      const pagosRealizados = (factura.total || 0) - (factura.balance || 0);
-      const nuevoBalance = datosFactura.total - pagosRealizados;
+      // Usar Number() para asegurar aritmética correcta (Supabase devuelve numeric como string)
+      const totalActual = Number(factura.total) || 0;
+      const balanceActual = Number(factura.balance) || 0;
+      const pagosRealizados = totalActual - balanceActual;
+      const nuevoBalance = Number(datosFactura.total) - pagosRealizados;
 
       const { error: updateError } = await supabase
         .from('invoice_sales')
@@ -93,13 +96,13 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
           issue_date: datosFactura.issue_date,
           due_date: datosFactura.due_date,
           currency: datosFactura.currency,
-          payment_terms: datosFactura.payment_terms,
+          payment_terms: Number(datosFactura.payment_terms) || 0,
           payment_method: datosFactura.payment_method,
           notes: datosFactura.notes,
           tax_included: datosFactura.tax_included,
-          subtotal: datosFactura.subtotal,
-          tax_total: datosFactura.tax_total,
-          total: datosFactura.total,
+          subtotal: Number(datosFactura.subtotal) || 0,
+          tax_total: Number(datosFactura.tax_total) || 0,
+          total: Number(datosFactura.total) || 0,
           balance: nuevoBalance
         })
         .eq('id', factura.id);
@@ -166,9 +169,9 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
           .update({
             customer_id: datosFactura.customer_id,
             branch_id: datosFactura.branch_id,
-            subtotal: datosFactura.subtotal,
-            tax_total: datosFactura.tax_total,
-            total: datosFactura.total,
+            subtotal: Number(datosFactura.subtotal) || 0,
+            tax_total: Number(datosFactura.tax_total) || 0,
+            total: Number(datosFactura.total) || 0,
             balance: nuevoBalance
           })
           .eq('id', factura.sale_id);

@@ -291,7 +291,7 @@ export class FacturasCompraService {
   /**
    * Actualiza una factura de compra existente
    */
-  static async actualizarFactura(facturaId: string, formData: NuevaFacturaCompraForm): Promise<InvoicePurchase> {
+  static async actualizarFactura(facturaId: string, formData: NuevaFacturaCompraForm & { _calculatedTotals?: { subtotal: number; taxTotal: number; total: number } }): Promise<InvoicePurchase> {
     try {
       console.log('Actualizando factura:', facturaId, formData);
 
@@ -316,19 +316,37 @@ export class FacturasCompraService {
         throw new Error(`No se puede editar una factura en estado "${facturaExistente.status}"`);
       }
 
-      // Calcular totales
-      let subtotal = 0;
-      let tax_total = 0;
+      // Usar totales calculados del formulario si están disponibles, sino calcular básico
+      let subtotal: number, tax_total: number, total: number;
       
-      formData.items.forEach(item => {
-        const itemSubtotal = item.qty * item.unit_price - (item.discount_amount || 0);
-        subtotal += itemSubtotal;
-        if (!formData.tax_included) {
-          tax_total += (itemSubtotal * (item.tax_rate || 0)) / 100;
-        }
-      });
+      if (formData._calculatedTotals) {
+        subtotal = formData._calculatedTotals.subtotal;
+        tax_total = formData._calculatedTotals.taxTotal;
+        total = formData._calculatedTotals.total;
+      } else {
+        subtotal = 0;
+        tax_total = 0;
+        
+        formData.items.forEach(item => {
+          const itemSubtotal = item.qty * item.unit_price - (item.discount_amount || 0);
+          subtotal += itemSubtotal;
+          if (!formData.tax_included) {
+            tax_total += (itemSubtotal * (item.tax_rate || 0)) / 100;
+          }
+        });
+        
+        total = formData.tax_included ? subtotal : subtotal + tax_total;
+      }
+
+      // Obtener balance actual para preservar pagos ya realizados
+      const { data: facturaActual } = await supabase
+        .from('invoice_purchase')
+        .select('total, balance')
+        .eq('id', facturaId)
+        .single();
       
-      const total = formData.tax_included ? subtotal : subtotal + tax_total;
+      const pagosRealizados = facturaActual ? (Number(facturaActual.total) - Number(facturaActual.balance)) : 0;
+      const nuevoBalance = total - pagosRealizados;
 
       // Actualizar factura principal
       const { data: factura, error: facturaError } = await supabase
@@ -342,7 +360,7 @@ export class FacturasCompraService {
           subtotal: subtotal,
           tax_total: tax_total,
           total: total,
-          balance: total, // Resetear balance al total (puede cambiar si hay pagos)
+          balance: nuevoBalance,
           notes: formData.notes,
           payment_terms: formData.payment_terms,
           tax_included: formData.tax_included,
@@ -405,6 +423,7 @@ export class FacturasCompraService {
         .from('accounts_payable')
         .update({
           amount: total,
+          balance: nuevoBalance,
           due_date: formData.due_date,
           updated_at: new Date().toISOString()
         })

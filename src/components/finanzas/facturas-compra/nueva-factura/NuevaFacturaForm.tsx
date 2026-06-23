@@ -338,7 +338,15 @@ export function NuevaFacturaForm({
       
       if (esEdicion && onSubmit) {
         // Modo edición: usar la función onSubmit proporcionada
-        await onSubmit(formData);
+        const { subtotal: calculatedSubtotal, taxTotal: calculatedTaxTotal, total: calculatedTotal } = calcularTotales();
+        await onSubmit({
+          ...formData,
+          _calculatedTotals: {
+            subtotal: calculatedSubtotal,
+            taxTotal: calculatedTaxTotal,
+            total: calculatedTotal
+          }
+        });
       } else {
         // Modo creación: crear nueva factura usando totales calculados
         const { subtotal: calculatedSubtotal, taxTotal: calculatedTaxTotal, total: calculatedTotal } = calcularTotales();

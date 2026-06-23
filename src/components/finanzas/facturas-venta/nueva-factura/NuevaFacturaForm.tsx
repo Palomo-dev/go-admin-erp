@@ -887,6 +887,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         organizationId={organizationId}
         items={items}
         taxIncluded={taxIncluded}
+        initialAppliedTaxCodes={esEdicion && facturaInicial?.items 
+          ? [...new Set(facturaInicial.items.map((item: any) => item.tax_code).filter(Boolean))]
+          : undefined
+        }
         onTaxIncludedChange={(value) => {
           setTaxIncluded(value);
           

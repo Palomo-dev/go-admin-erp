@@ -33,6 +33,7 @@ interface ImpuestosFacturaProps {
   onSubtotalCalculated: (subtotal: number) => void;
   onTaxTotalCalculated: (taxTotal: number) => void;
   onTotalCalculated: (total: number) => void;
+  initialAppliedTaxCodes?: string[];
 }
 
 export function ImpuestosFactura({
@@ -44,7 +45,8 @@ export function ImpuestosFactura({
   onTaxTotalsChange,
   onSubtotalCalculated,
   onTaxTotalCalculated,
-  onTotalCalculated
+  onTotalCalculated,
+  initialAppliedTaxCodes
 }: ImpuestosFacturaProps) {
   // Estados para impuestos
   const [organizationTaxes, setOrganizationTaxes] = useState<OrganizationTax[]>([]);
@@ -213,12 +215,25 @@ export function ImpuestosFactura({
   useEffect(() => {
     const initialAppliedTaxes: {[key: string]: boolean} = {};
     organizationTaxes.forEach(tax => {
-      // Solo aplicamos automáticamente el impuesto por defecto
-      initialAppliedTaxes[tax.code] = tax.is_default;
+      // Si tenemos códigos de impuestos iniciales (modo edición), usarlos
+      if (initialAppliedTaxCodes && initialAppliedTaxCodes.length > 0) {
+        initialAppliedTaxes[tax.code] = initialAppliedTaxCodes.includes(tax.code);
+      } else {
+        // Solo aplicamos automáticamente el impuesto por defecto
+        initialAppliedTaxes[tax.code] = tax.is_default;
+      }
     });
     setAppliedTaxes(initialAppliedTaxes);
     onAppliedTaxesChange(initialAppliedTaxes);
-  }, [organizationTaxes, onAppliedTaxesChange]);
+    
+    // Si hay impuestos iniciales, también actualizar applyDefaultTax
+    if (initialAppliedTaxCodes && initialAppliedTaxCodes.length > 0) {
+      const defaultTaxItem = organizationTaxes.find(tax => tax.is_default);
+      if (defaultTaxItem) {
+        setApplyDefaultTax(initialAppliedTaxCodes.includes(defaultTaxItem.code));
+      }
+    }
+  }, [organizationTaxes, onAppliedTaxesChange, initialAppliedTaxCodes]);
   
   // Usamos useRef para almacenar los valores anteriores sin causar re-renders
   const prevValuesRef = useRef({

@@ -150,8 +150,19 @@ export class FacturasCompraService {
       // Agregar items a la factura
       const facturaCompleta = {
         ...data,
-        items: items || []
+        items: items || [],
+        applied_taxes: []
       };
+
+      // Cargar impuestos aplicados
+      const { data: appliedTaxesData, error: appliedTaxesError } = await supabase
+        .from('invoice_purchase_applied_taxes')
+        .select('tax_code, tax_rate, is_applied')
+        .eq('invoice_id', id);
+
+      if (!appliedTaxesError && appliedTaxesData) {
+        facturaCompleta.applied_taxes = appliedTaxesData;
+      }
 
       console.log('Factura encontrada:', facturaCompleta);
       return facturaCompleta;
@@ -164,7 +175,7 @@ export class FacturasCompraService {
   /**
    * Crea una nueva factura de compra
    */
-  static async crearFactura(formData: NuevaFacturaCompraForm & { _calculatedTotals?: { subtotal: number; taxTotal: number; total: number } }): Promise<InvoicePurchase> {
+  static async crearFactura(formData: NuevaFacturaCompraForm & { _calculatedTotals?: { subtotal: number; taxTotal: number; total: number }; appliedTaxes?: {[key: string]: boolean} }): Promise<InvoicePurchase> {
     try {
       const currentUserId = await getCurrentUserId();
       
@@ -256,6 +267,23 @@ export class FacturasCompraService {
         }
       }
 
+      // Guardar impuestos aplicados
+      if (formData.appliedTaxes) {
+        const appliedTaxCodes = Object.keys(formData.appliedTaxes).filter(code => formData.appliedTaxes![code]);
+        if (appliedTaxCodes.length > 0) {
+          const taxRows = appliedTaxCodes.map(code => ({
+            invoice_id: factura.id,
+            tax_code: code,
+            tax_rate: 0,
+            is_applied: true
+          }));
+          const { error: taxInsertError } = await supabase
+            .from('invoice_purchase_applied_taxes')
+            .insert(taxRows);
+          if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
+        }
+      }
+
       // Crear cuenta por pagar
       const { error: accountError } = await supabase
         .from('accounts_payable')
@@ -291,7 +319,7 @@ export class FacturasCompraService {
   /**
    * Actualiza una factura de compra existente
    */
-  static async actualizarFactura(facturaId: string, formData: NuevaFacturaCompraForm & { _calculatedTotals?: { subtotal: number; taxTotal: number; total: number } }): Promise<InvoicePurchase> {
+  static async actualizarFactura(facturaId: string, formData: NuevaFacturaCompraForm & { _calculatedTotals?: { subtotal: number; taxTotal: number; total: number }; appliedTaxes?: {[key: string]: boolean} }): Promise<InvoicePurchase> {
     try {
       console.log('Actualizando factura:', facturaId, formData);
 
@@ -415,6 +443,28 @@ export class FacturasCompraService {
         if (itemsError) {
           console.error('Error creando nuevos items:', itemsError);
           throw itemsError;
+        }
+      }
+
+      // Guardar impuestos aplicados (reemplazar los anteriores)
+      if (formData.appliedTaxes) {
+        await supabase
+          .from('invoice_purchase_applied_taxes')
+          .delete()
+          .eq('invoice_id', facturaId);
+
+        const appliedTaxCodes = Object.keys(formData.appliedTaxes).filter(code => formData.appliedTaxes![code]);
+        if (appliedTaxCodes.length > 0) {
+          const taxRows = appliedTaxCodes.map(code => ({
+            invoice_id: facturaId,
+            tax_code: code,
+            tax_rate: 0,
+            is_applied: true
+          }));
+          const { error: taxInsertError } = await supabase
+            .from('invoice_purchase_applied_taxes')
+            .insert(taxRows);
+          if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
         }
       }
 

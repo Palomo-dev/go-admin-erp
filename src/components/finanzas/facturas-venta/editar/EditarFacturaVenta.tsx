@@ -80,6 +80,10 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
     try {
       setSaving(true);
 
+      // Calcular el balance: total nuevo - pagos ya realizados
+      const pagosRealizados = (factura.total || 0) - (factura.balance || 0);
+      const nuevoBalance = datosFactura.total - pagosRealizados;
+
       const { error: updateError } = await supabase
         .from('invoice_sales')
         .update({
@@ -95,7 +99,8 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
           tax_included: datosFactura.tax_included,
           subtotal: datosFactura.subtotal,
           tax_total: datosFactura.tax_total,
-          total: datosFactura.total
+          total: datosFactura.total,
+          balance: nuevoBalance
         })
         .eq('id', factura.id);
 
@@ -125,6 +130,8 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
       for (const item of datosFactura.items) {
         const itemData = {
           invoice_sales_id: factura.id,
+          invoice_id: factura.id,
+          invoice_type: 'sale',
           product_id: item.product_id || null,
           description: item.description,
           qty: item.qty,
@@ -162,7 +169,7 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
             subtotal: datosFactura.subtotal,
             tax_total: datosFactura.tax_total,
             total: datosFactura.total,
-            balance: datosFactura.total
+            balance: nuevoBalance
           })
           .eq('id', factura.sale_id);
 

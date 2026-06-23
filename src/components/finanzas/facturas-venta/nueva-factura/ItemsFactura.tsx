@@ -395,7 +395,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                         text-gray-900 dark:text-gray-100
                       "
                       value={item.qty}
-                      onChange={(e) => updateItem(index, 'qty', parseFloat(e.target.value))}
+                      onChange={(e) => updateItem(index, 'qty', parseFloat(e.target.value) || 0)}
                     />
                   </TableCell>
                   <TableCell>
@@ -410,7 +410,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                         text-gray-900 dark:text-gray-100
                       "
                       value={item.unit_price}
-                      onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
+                      onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
                     />
                   </TableCell>
                   <TableCell className="text-center">

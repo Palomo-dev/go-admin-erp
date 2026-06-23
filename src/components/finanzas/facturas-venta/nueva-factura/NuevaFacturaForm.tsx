@@ -202,14 +202,14 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         const itemsFormateados = facturaInicial.items.map((item: any) => ({
           id: item.id,
           product_id: item.product_id,
-          description: item.description,
-          qty: item.qty,
-          unit_price: item.unit_price,
+          description: item.description || '',
+          qty: Number(item.qty) || 0,
+          unit_price: Number(item.unit_price) || 0,
           tax_code: item.tax_code,
-          tax_rate: item.tax_rate,
+          tax_rate: Number(item.tax_rate) || 0,
           tax_included: item.tax_included || false,
-          total_line: item.total_line,
-          discount_amount: item.discount_amount || 0
+          total_line: Number(item.total_line) || 0,
+          discount_amount: Number(item.discount_amount) || 0
         }));
         setItems(itemsFormateados);
       }

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 import DetalleFactura from './id/DetalleFactura';
 import { PagosFactura } from './PagosFactura';
 import { ElectronicInvoiceStatus } from '@/components/finanzas/facturacion-electronica';
@@ -131,12 +131,12 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
       
       // Filtro de fecha de emisión
       if (filtros.fechaInicio) {
-        const fechaEmision = new Date(factura.issue_date);
+        const fechaEmision = parseLocalDate(factura.issue_date);
         if (fechaEmision < filtros.fechaInicio) return false;
       }
       
       if (filtros.fechaFin) {
-        const fechaEmision = new Date(factura.issue_date);
+        const fechaEmision = parseLocalDate(factura.issue_date);
         if (fechaEmision > filtros.fechaFin) return false;
       }
       

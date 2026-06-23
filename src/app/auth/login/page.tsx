@@ -69,7 +69,9 @@ function LoginContent() {
       // Clear any stored credentials to prevent auto-login
       localStorage.removeItem('rememberMe');
       localStorage.removeItem('userEmail');
+      localStorage.removeItem('userPassword');
       setEmail('');
+      setPassword('');
       setRememberMe(false);
       
       // Show a message about the expired session
@@ -107,7 +109,18 @@ function LoginContent() {
     e.preventDefault();
     // Resetear estado de email no confirmado
     setEmailNotConfirmed(false);
-    
+
+    // Guardar o eliminar credenciales segun rememberMe
+    if (rememberMe) {
+      localStorage.setItem('userEmail', btoa(email).split('').reverse().join(''));
+      localStorage.setItem('userPassword', btoa(password).split('').reverse().join(''));
+      localStorage.setItem('rememberMe', 'true');
+    } else {
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userPassword');
+      localStorage.removeItem('rememberMe');
+    }
+
     await handleEmailLogin({
       email,
       password,
@@ -199,6 +212,17 @@ function LoginContent() {
       } catch (e) {
         // Si hay un error al decodificar, limpiar el valor corrupto
         localStorage.removeItem('userEmail');
+      }
+    }
+
+    // Cargar contraseña guardada si rememberMe estaba activo
+    const savedPassword = localStorage.getItem('userPassword');
+    if (savedPassword) {
+      try {
+        const decodedPassword = atob(savedPassword.split('').reverse().join(''));
+        setPassword(decodedPassword);
+      } catch (e) {
+        localStorage.removeItem('userPassword');
       }
     }
     

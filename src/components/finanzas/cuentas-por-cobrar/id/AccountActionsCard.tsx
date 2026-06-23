@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { CuentaPorCobrarDetalle, AccountActions } from './types';
 import { CuentaPorCobrarDetailService } from './service';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 
 interface Installment {
   id: string;
@@ -179,7 +179,7 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
 
 Le recordamos que tiene una cuenta pendiente por valor de ${formatCurrency(account.balance)} con ${account.days_overdue} días de atraso.
 
-Fecha de vencimiento: ${new Date(account.due_date).toLocaleDateString('es-CO')}
+Fecha de vencimiento: ${parseLocalDate(account.due_date).toLocaleDateString('es-CO')}
 
 Le agradecemos realizar el pago lo antes posible.
 
@@ -507,7 +507,7 @@ Saludos cordiales.`;
               <div className="flex justify-between">
                 <span>Último recordatorio:</span>
                 <span className="font-medium">
-                  {new Date(account.last_reminder_date).toLocaleDateString('es-CO')}
+                  {parseLocalDate(account.last_reminder_date).toLocaleDateString('es-CO')}
                 </span>
               </div>
             )}

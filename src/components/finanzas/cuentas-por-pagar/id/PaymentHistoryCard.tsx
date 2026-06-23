@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CuentaPorPagarDetailService } from './service';
 import { PaymentRecord } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 
 interface PaymentHistoryCardProps {
   accountId: string;
@@ -58,7 +58,7 @@ export function PaymentHistoryCard({ accountId, onUpdate }: PaymentHistoryCardPr
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
+    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

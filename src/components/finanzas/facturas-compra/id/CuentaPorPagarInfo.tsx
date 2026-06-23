@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   CheckCircle 
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
 
 interface CuentaPorPagar {
   id: string;
@@ -121,7 +121,7 @@ export function CuentaPorPagarInfo({
 
   const calcularDiasVencimiento = () => {
     if (!cuentaPorPagar.due_date) return null;
-    const vencimiento = new Date(cuentaPorPagar.due_date);
+    const vencimiento = parseLocalDate(cuentaPorPagar.due_date);
     const hoy = new Date();
     return Math.ceil((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
   };
@@ -166,7 +166,7 @@ export function CuentaPorPagarInfo({
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Fecha de Vencimiento</p>
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                 <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                  {formatDate(new Date(cuentaPorPagar.due_date))}
+                  {formatDate(parseLocalDate(cuentaPorPagar.due_date))}
                 </p>
                 {diasVencimiento !== null && cuentaPorPagar.balance > 0 && (
                   <Badge 

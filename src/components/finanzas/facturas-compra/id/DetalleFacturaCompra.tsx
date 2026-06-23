@@ -38,7 +38,7 @@ import { ResumenTotalesFactura } from './ResumenTotalesFactura';
 import { InfoProveedorFactura } from './InfoProveedorFactura';
 import { CuentaPorPagarInfo } from './CuentaPorPagarInfo';
 import { HistorialPagos } from './HistorialPagos';
-import { formatCurrency, formatDate, cn } from '@/utils/Utils';
+import { formatCurrency, formatDate, cn, parseLocalDate } from '@/utils/Utils';
 import { PDFService, InvoiceDataForPDF } from '@/lib/services/pdfService';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
@@ -66,7 +66,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   const [pagos, setPagos] = useState<any[]>([]);
   const [loadingCuentaPorPagar, setLoadingCuentaPorPagar] = useState(false);
   const [loadingPagos, setLoadingPagos] = useState(false);
-  const [organizationData, setOrganizationData] = useState<{ name: string; tax_id?: string; address?: string; phone?: string; email?: string; logo_url?: string } | null>(null);
+  const [organizationData, setOrganizationData] = useState<{ name: string; tax_id?: string; address?: string; phone?: string; email?: string; logo_url?: string; primary_color?: string; secondary_color?: string } | null>(null);
 
   useEffect(() => {
     cargarFactura();
@@ -80,7 +80,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
 
       const { data, error } = await supabase
         .from('organizations')
-        .select('name, tax_id, nit, address, phone, email, logo_url')
+        .select('name, tax_id, nit, address, phone, email, logo_url, primary_color, secondary_color')
         .eq('id', org.id)
         .single();
 
@@ -96,7 +96,9 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
           address: data.address,
           phone: data.phone,
           email: data.email,
-          logo_url: data.logo_url
+          logo_url: data.logo_url,
+          primary_color: data.primary_color,
+          secondary_color: data.secondary_color
         });
       }
     } catch (error) {
@@ -302,7 +304,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
 
   const calcularDiasVencimiento = () => {
     if (!factura?.due_date) return null;
-    const vencimiento = new Date(factura.due_date);
+    const vencimiento = parseLocalDate(factura.due_date);
     const hoy = new Date();
     return Math.ceil((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
   };
@@ -510,7 +512,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                   <div className="min-w-0">
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Fecha Emisión</p>
                     <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                      {factura.issue_date ? formatDate(new Date(factura.issue_date)) : '-'}
+                      {factura.issue_date ? formatDate(parseLocalDate(factura.issue_date)) : '-'}
                     </p>
                   </div>
                 </div>
@@ -521,7 +523,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Vencimiento</p>
                     <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                       <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                        {factura.due_date ? formatDate(new Date(factura.due_date)) : '-'}
+                        {factura.due_date ? formatDate(parseLocalDate(factura.due_date)) : '-'}
                       </p>
                       {diasVencimiento !== null && factura.balance > 0 && (
                         <Badge 

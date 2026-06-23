@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { parseLocalDate } from '@/utils/Utils';
 
 export interface KPIData {
   ingresos: number;
@@ -286,7 +287,7 @@ class FinanzasDashboardService {
     };
     
     data.forEach((item: any) => {
-      const dueDate = new Date(item.due_date);
+      const dueDate = parseLocalDate(item.due_date);
       const diasVencido = Math.floor((hoy.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
       const balance = Number(item.balance) || 0;
       
@@ -377,7 +378,7 @@ class FinanzasDashboardService {
         id: `factura-${f.id}`,
         tipo: 'factura_vencer',
         titulo: 'Factura por vencer',
-        descripcion: `${f.customers?.full_name || 'Cliente'} - Vence: ${new Date(f.due_date).toLocaleDateString('es-CO')}`,
+        descripcion: `${f.customers?.full_name || 'Cliente'} - Vence: ${parseLocalDate(f.due_date).toLocaleDateString('es-CO')}`,
         prioridad: 'media',
         fecha: f.due_date,
         enlace: `/app/finanzas/cuentas-por-cobrar/${f.id}`

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Bell, Send, Calendar, AlertTriangle, RefreshCw, Mail, Phone } from 'lucide-react';
 import { Recordatorio } from './types';
 import { CuentasPorCobrarService } from './service';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 import { toast } from 'sonner';
 
 interface RecordatoriosPanelProps {
@@ -257,12 +257,12 @@ export function RecordatoriosPanel({ onRefresh }: RecordatoriosPanelProps) {
                             </div>
                             <div>
                               <span className="text-gray-500 dark:text-gray-400">Vence:</span>
-                              <p className="font-medium text-gray-900 dark:text-white">{new Date(recordatorio.due_date).toLocaleDateString('es-ES')}</p>
+                              <p className="font-medium text-gray-900 dark:text-white">{parseLocalDate(recordatorio.due_date).toLocaleDateString('es-ES')}</p>
                             </div>
                             <div>
                               <span className="text-gray-500 dark:text-gray-400">Último:</span>
                               <p className="font-medium text-gray-900 dark:text-white">
-                                {recordatorio.last_reminder_date ? new Date(recordatorio.last_reminder_date).toLocaleDateString('es-ES') : 'Nunca'}
+                                {recordatorio.last_reminder_date ? parseLocalDate(recordatorio.last_reminder_date).toLocaleDateString('es-ES') : 'Nunca'}
                               </p>
                             </div>
                           </div>
@@ -333,7 +333,7 @@ export function RecordatoriosPanel({ onRefresh }: RecordatoriosPanelProps) {
                         <TableCell className="dark:text-gray-300">
                           <div className="flex items-center text-xs">
                             <Calendar className="h-2.5 w-2.5 mr-1 dark:text-gray-400" />
-                            {new Date(recordatorio.due_date).toLocaleDateString('es-ES')}
+                            {parseLocalDate(recordatorio.due_date).toLocaleDateString('es-ES')}
                           </div>
                         </TableCell>
                         <TableCell className="dark:text-gray-300">

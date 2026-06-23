@@ -50,7 +50,9 @@ const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
   
   // Función para mostrar un indicador de cumplimiento con color según el porcentaje
   const getCumplimientoIndicator = (cumplimiento: number | undefined) => {
-    if (cumplimiento === undefined) return null;
+    if (cumplimiento === undefined) {
+      return <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">Sin datos</span>;
+    }
     
     let color;
     if (cumplimiento >= 80) {

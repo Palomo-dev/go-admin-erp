@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { CuentaPorPagarDetalle, PaymentRecord, AgingInfo, AccountActions, APInstallment } from './types';
+import { parseLocalDate } from '@/utils/Utils';
 
 export class CuentaPorPagarDetailService {
   private static getOrganizationId(): number {
@@ -44,8 +45,8 @@ export class CuentaPorPagarDetailService {
 
       if (!data) return null;
 
-      // Obtener historial de pagos
-      const { data: payments, error: paymentsError } = await supabase
+      // Obtener historial de pagos directos a la cuenta por pagar
+      const { data: directPayments, error: directPaymentsError } = await supabase
         .from('payments')
         .select(`
           id,
@@ -60,11 +61,40 @@ export class CuentaPorPagarDetailService {
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
 
-      if (paymentsError) {
-        console.error('Error obteniendo pagos:', paymentsError);
+      if (directPaymentsError) {
+        console.error('Error obteniendo pagos directos:', directPaymentsError);
       }
 
-      const paymentHistory: PaymentRecord[] = (payments || []).map((p: any) => ({
+      // Obtener pagos registrados desde la factura de compra vinculada
+      let invoicePayments: any[] = [];
+      if (data.invoice_id) {
+        const { data: invPayments, error: invPaymentsError } = await supabase
+          .from('payments')
+          .select(`
+            id,
+            amount,
+            method,
+            reference,
+            status,
+            created_at
+          `)
+          .eq('source', 'invoice_purchase')
+          .eq('source_id', data.invoice_id)
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false });
+
+        if (invPaymentsError) {
+          console.error('Error obteniendo pagos de factura:', invPaymentsError);
+        }
+
+        invoicePayments = invPayments || [];
+      }
+
+      // Combinar ambos origenes de pagos y ordenar por fecha
+      const allPayments = [...(directPayments || []), ...invoicePayments]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      const paymentHistory: PaymentRecord[] = allPayments.map((p: any) => ({
         id: p.id,
         amount: parseFloat(p.amount),
         method: p.method,
@@ -74,7 +104,7 @@ export class CuentaPorPagarDetailService {
       }));
 
       // Calcular días vencidos
-      const dueDate = new Date(data.due_date);
+      const dueDate = parseLocalDate(data.due_date);
       const today = new Date();
       const daysOverdue = dueDate < today 
         ? Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { FacturasCompraService } from './FacturasCompraService';
 import { InvoicePurchase, FiltrosFacturasCompra } from './types';
-import { formatCurrency, formatDate, cn } from '@/utils/Utils';
+import { formatCurrency, formatDate, cn, parseLocalDate } from '@/utils/Utils';
 import { Pagination } from '@/components/ui/pagination';
 import { RegistrarPagoModal } from './RegistrarPagoModal';
 
@@ -128,7 +128,7 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
     }
     
     if (factura.due_date && factura.balance > 0) {
-      const vencimiento = new Date(factura.due_date);
+      const vencimiento = parseLocalDate(factura.due_date);
       const hoy = new Date();
       const diasVencimiento = Math.ceil((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
       
@@ -249,7 +249,7 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                   <TableCell className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-200 py-2 sm:py-3">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate max-w-[120px] sm:max-w-none">{factura.number_ext}</span>
-                      {factura.due_date && factura.balance > 0 && new Date(factura.due_date) < new Date() && (
+                      {factura.due_date && factura.balance > 0 && parseLocalDate(factura.due_date) < new Date() && (
                         <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
                       )}
                     </div>
@@ -263,10 +263,10 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3 hidden md:table-cell whitespace-nowrap">
-                    {factura.issue_date ? formatDate(new Date(factura.issue_date)) : '-'}
+                    {factura.issue_date ? formatDate(parseLocalDate(factura.issue_date)) : '-'}
                   </TableCell>
                   <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3 hidden lg:table-cell whitespace-nowrap">
-                    {factura.due_date ? formatDate(new Date(factura.due_date)) : '-'}
+                    {factura.due_date ? formatDate(parseLocalDate(factura.due_date)) : '-'}
                   </TableCell>
                   <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3 text-right font-medium whitespace-nowrap">
                     {formatCurrency(factura.total, factura.currency)}

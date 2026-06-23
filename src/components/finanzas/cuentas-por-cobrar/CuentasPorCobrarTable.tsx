@@ -48,7 +48,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CuentaPorCobrar, ResultadoPaginado } from './types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
 import { AplicarAbonoModal } from './AplicarAbonoModal';
 import { EnviarRecordatorioModal } from './EnviarRecordatorioModal';
 import { cn } from '@/utils/Utils';
@@ -235,7 +235,7 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                       <div>
                         <span className="text-gray-500 dark:text-gray-400">Vencimiento:</span>
                         <p className="font-medium text-gray-900 dark:text-white text-[10px]">
-                          {new Date(cuenta.due_date).toLocaleDateString('es-ES')}
+                          {parseLocalDate(cuenta.due_date).toLocaleDateString('es-ES')}
                         </p>
                       </div>
                       <div>
@@ -357,7 +357,7 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                       <TableCell className="dark:text-gray-300">
                         <div className="flex items-center text-xs">
                           <Calendar className="h-2.5 w-2.5 mr-1 dark:text-gray-400" />
-                          {new Date(cuenta.due_date).toLocaleDateString('es-ES')}
+                          {parseLocalDate(cuenta.due_date).toLocaleDateString('es-ES')}
                         </div>
                       </TableCell>
                       <TableCell>

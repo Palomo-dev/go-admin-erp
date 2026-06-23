@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { PaymentRecord } from './types';
 import { CuentaPorCobrarDetailService } from './service';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 
 interface PaymentHistoryCardProps {
   accountId: string;
@@ -99,7 +99,7 @@ export function PaymentHistoryCard({ accountId, organizationId, onUpdate }: Paym
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
+    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

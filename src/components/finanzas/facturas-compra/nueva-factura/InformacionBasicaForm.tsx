@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { parseLocalDate } from '@/utils/Utils';
 import {
   Select,
   SelectContent,
@@ -187,7 +188,7 @@ export function InformacionBasicaForm({
   // Función para actualizar fecha de vencimiento basada en los días
   const updateDueDate = (days: number) => {
     if (formData.issue_date) {
-      const issueDate = new Date(formData.issue_date);
+      const issueDate = parseLocalDate(formData.issue_date);
       const newDueDate = new Date(issueDate);
       newDueDate.setDate(newDueDate.getDate() + days);
       onInputChange('due_date', newDueDate.toISOString().split('T')[0]);

@@ -82,6 +82,45 @@ const CatalogoProveedores: React.FC = () => {
           console.error('❌ Error al cargar proveedores:', error);
           throw error;
         }
+
+        // Obtener IDs de proveedores para consultar órdenes de compra
+        const supplierIds = data.map((p: any) => p.id);
+
+        // Consultar estadísticas de órdenes de compra por proveedor
+        let cumplimientoMap: Record<number, number | undefined> = {};
+        if (supplierIds.length > 0) {
+          const { data: ordenesData } = await supabase
+            .from('purchase_orders')
+            .select('supplier_id, status, expected_date, updated_at')
+            .in('supplier_id', supplierIds)
+            .not('expected_date', 'is', null)
+            .in('status', ['received', 'sent']);
+
+          if (ordenesData && ordenesData.length > 0) {
+            // Agrupar por supplier_id y calcular cumplimiento
+            const statsBySupplier: Record<number, { onTime: number; total: number }> = {};
+            for (const ord of ordenesData) {
+              if (!statsBySupplier[ord.supplier_id]) {
+                statsBySupplier[ord.supplier_id] = { onTime: 0, total: 0 };
+              }
+              statsBySupplier[ord.supplier_id].total++;
+              if (ord.status === 'received' && ord.expected_date && ord.updated_at) {
+                const fechaEsperada = new Date(ord.expected_date + 'T00:00:00');
+                const fechaActualizacion = new Date(ord.updated_at);
+                if (fechaActualizacion <= fechaEsperada) {
+                  statsBySupplier[ord.supplier_id].onTime++;
+                }
+              }
+            }
+
+            // Calcular porcentaje: entregadas a tiempo / total de órdenes evaluables
+            for (const [sid, stats] of Object.entries(statsBySupplier)) {
+              cumplimientoMap[Number(sid)] = stats.total > 0
+                ? Math.round((stats.onTime / stats.total) * 100)
+                : undefined;
+            }
+          }
+        }
         
         // Transformar los datos a nuestro formato de interfaz
         const proveedoresData = data.map((p: any): Proveedor => ({
@@ -96,13 +135,12 @@ const CatalogoProveedores: React.FC = () => {
           notes: p.notes || '',
           created_at: p.created_at,
           updated_at: p.updated_at,
-          // Datos de ejemplo para UI - en producción estos vendrían de otras tablas
           condiciones_pago: {
-            dias_credito: 30,
+            dias_credito: p.credit_days || 30,
             limite_credito: 5000000,
-            metodo_pago_preferido: 'Transferencia'
+            metodo_pago_preferido: p.payment_terms || 'Transferencia'
           },
-          cumplimiento: Math.floor(Math.random() * 100) // Solo para demostración
+          cumplimiento: cumplimientoMap[p.id]
         }));
         
         setProveedores(proveedoresData);

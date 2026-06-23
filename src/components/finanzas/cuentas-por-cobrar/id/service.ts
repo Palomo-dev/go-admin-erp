@@ -308,7 +308,7 @@ export class CuentaPorCobrarDetailService {
       const installments = [];
 
       for (let i = 1; i <= numberOfInstallments; i++) {
-        const dueDate = new Date(startDate);
+        const dueDate = parseLocalDate(startDate);
         dueDate.setMonth(dueDate.getMonth() + (i - 1));
 
         // Ajustar la última cuota para cubrir diferencias de redondeo

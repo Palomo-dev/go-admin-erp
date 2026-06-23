@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { FacturasCompraService } from './FacturasCompraService';
 import { InvoicePurchase } from './types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
 import { useRouter, usePathname } from 'next/navigation';
 
 interface FacturasProximasVencerProps {
@@ -53,7 +53,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
   };
 
   const calcularDiasVencimiento = (dueDate: string) => {
-    const vencimiento = new Date(dueDate);
+    const vencimiento = parseLocalDate(dueDate);
     const hoy = new Date();
     return Math.ceil((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
   };
@@ -245,7 +245,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                           {factura.supplier?.name}
                         </p>
                         <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500">
-                          Vence: {factura.due_date && formatDate(new Date(factura.due_date))}
+                          Vence: {factura.due_date && formatDate(parseLocalDate(factura.due_date))}
                           {diasVencimiento !== null && (
                             <span className={`ml-1 sm:ml-2 font-medium ${
                               color === 'red' ? 'text-red-600' :

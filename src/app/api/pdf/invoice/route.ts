@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
       'void': 'Anulada'
     };
 
+    const primaryColor = data.organization?.primary_color || '#2563eb';
+    const secondaryColor = data.organization?.secondary_color || '#1e40af';
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -39,16 +42,16 @@ export async function POST(request: NextRequest) {
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; color: #333; }
           .invoice { max-width: 800px; margin: 0 auto; padding: 40px; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #2563eb; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid ${primaryColor}; }
           .logo-section { display: flex; align-items: center; gap: 12px; }
           .logo-img { max-height: 60px; max-width: 180px; object-fit: contain; }
-          .logo-text { font-size: 28px; font-weight: bold; color: #2563eb; }
+          .logo-text { font-size: 28px; font-weight: bold; color: ${primaryColor}; }
           .invoice-title { text-align: right; }
           .invoice-title h1 { font-size: 32px; color: #1f2937; margin-bottom: 5px; }
           .invoice-number { font-size: 16px; color: #6b7280; }
           .status { display: inline-block; padding: 6px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 8px; }
           .status-draft { background: #fef3c7; color: #92400e; }
-          .status-issued { background: #dbeafe; color: #1e40af; }
+          .status-issued { background: #dbeafe; color: ${secondaryColor}; }
           .status-paid { background: #d1fae5; color: #065f46; }
           .status-partial { background: #ede9fe; color: #5b21b6; }
           .status-void { background: #f3f4f6; color: #374151; }
@@ -62,7 +65,7 @@ export async function POST(request: NextRequest) {
           .dates label { font-size: 11px; color: #6b7280; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
           .dates span { font-weight: 700; font-size: 14px; color: #111827; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-          th { background: #2563eb; color: white; padding: 14px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+          th { background: ${primaryColor}; color: white; padding: 14px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
           th:last-child { text-align: right; }
           td { padding: 14px 12px; border-bottom: 1px solid #e5e7eb; }
           td:last-child { text-align: right; font-weight: 500; }
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
           .totals { margin-left: auto; width: 300px; }
           .totals div { display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; }
           .totals .subtotal { border-bottom: 1px solid #e5e7eb; }
-          .totals .total { font-size: 18px; font-weight: bold; border-top: 3px solid #2563eb; padding-top: 15px; margin-top: 5px; color: #111827; }
+          .totals .total { font-size: 18px; font-weight: bold; border-top: 3px solid ${primaryColor}; padding-top: 15px; margin-top: 5px; color: #111827; }
           .totals .balance { color: #dc2626; font-weight: 600; }
           .notes { margin-top: 30px; padding: 20px; background: #fef3c7; border-radius: 10px; border-left: 4px solid #f59e0b; }
           .notes h4 { font-size: 12px; text-transform: uppercase; color: #92400e; margin-bottom: 10px; letter-spacing: 0.5px; }

@@ -89,6 +89,8 @@ import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { SubMenuPanel } from './Sidebar/SubMenuPanel';
 import AIAssistantPanel from './Header/AIAssistantPanel';
 import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { useTheme } from 'next-themes';
+import { themeService } from '@/lib/services/themeService';
 import { usePathname, useRouter } from 'next/navigation';
 import { NavItemProps } from './types';
 import type { AssistantContext } from '@/lib/services/aiAssistantService';
@@ -467,10 +469,10 @@ export const AppLayout = ({
   // Detectar módulo activo para Multi-Column Layout
   const activeModule = useMemo(() => getActiveModule(pathname), [pathname]);
   
-  // Estados para gestión de datos de usuario y tema
+  // Estados para gestión de datos de usuario
   const [loading, setLoading] = useState(false);
   const [orgName, setOrgName] = useState<string>('');
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const { theme: nextTheme, setTheme: setNextTheme } = useTheme();
   const [userData, setUserData] = useState<{
     name?: string;
     email?: string;
@@ -863,44 +865,24 @@ export const AppLayout = ({
     setupProfileSubscription();
   }, [loadUserProfileOptimized, profileRefresh]);
   
-  // Inicializar tema desde localStorage o preferencia del sistema
+  // Sincronizar tema desde Supabase (preferencia del usuario) al cargar
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Verificar preferencia guardada
-      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-      
-      if (savedTheme) {
-        setTheme(savedTheme);
-        if (savedTheme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      } else {
-        // Usar preferencia del sistema
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setTheme(prefersDark ? 'dark' : 'light');
-        
-        if (prefersDark) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-        
-        // Guardar la preferencia
-        localStorage.setItem('theme', prefersDark ? 'dark' : 'light');
-      }
-      
-      // Obtener nombre de organización
-      const storedOrgName = localStorage.getItem('currentOrganizationName');
-      if (storedOrgName) {
-        setOrgName(storedOrgName);
-      }
-      
-      // Obtener ID de organización
-      const storedOrgId = localStorage.getItem('currentOrganizationId');
-      setOrgId(storedOrgId);
+    if (typeof window === 'undefined') return;
+
+    // Sincronizar tema desde Supabase en background
+    themeService.syncTheme().then((syncedTheme) => {
+      setNextTheme(syncedTheme);
+    });
+
+    // Obtener nombre de organización
+    const storedOrgName = localStorage.getItem('currentOrganizationName');
+    if (storedOrgName) {
+      setOrgName(storedOrgName);
     }
+    
+    // Obtener ID de organización
+    const storedOrgId = localStorage.getItem('currentOrganizationId');
+    setOrgId(storedOrgId);
   }, []);
   
   // Importación dinámica de la función signOut (memoizada)
@@ -954,12 +936,14 @@ export const AppLayout = ({
     }
   }, [signOut]);
 
-  // Función para alternar el tema (memoizada)
+  // Función para alternar el tema (memoizada) - usa next-themes + sync Supabase
   const toggleTheme = useCallback(() => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-  }, [theme]);
+    const currentResolved = nextTheme === 'dark' ? 'dark' : 'light';
+    const newTheme = currentResolved === 'light' ? 'dark' : 'light';
+    setNextTheme(newTheme);
+    // Guardar en Supabase (persistencia entre dispositivos) - fire and forget
+    themeService.setRemoteTheme(newTheme);
+  }, [nextTheme, setNextTheme]);
 
   // Función para invalidar cache manualmente
   const invalidateUserCache = useCallback(() => {
@@ -1115,7 +1099,7 @@ export const AppLayout = ({
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header del panel de administración */}
         <AppHeader 
-          theme={theme}
+          theme={nextTheme === 'dark' ? 'dark' : 'light'}
           toggleTheme={toggleTheme}
           userData={userData}
           orgId={orgId}

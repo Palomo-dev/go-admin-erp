@@ -125,6 +125,8 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
       for (const item of datosFactura.items) {
         const itemData = {
           invoice_sales_id: factura.id,
+          invoice_id: factura.id,
+          invoice_type: 'sale',
           product_id: item.product_id || null,
           description: item.description,
           qty: item.qty,

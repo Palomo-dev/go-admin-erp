@@ -112,7 +112,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   };
 
   const accountTypeLabel = (val?: string) => {
-    const map: Record<string, string> = { ahorros: 'Ahorros', corriente: 'Corriente' };
+    const map: Record<string, string> = { savings: 'Ahorros', checking: 'Corriente', other: 'Otro' };
     return val ? map[val] || val : 'No definido';
   };
 

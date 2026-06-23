@@ -418,8 +418,8 @@
       "description": "Manage all organizations you own"
     },
     "branding": {
-      "title": "Branding & Website",
-      "description": "Configure the branding and public website of your organization",
+      "title": "Website",
+      "description": "Configure the public website of your organization",
       "refresh": "Refresh",
       "published": "Published",
       "draft": "Draft",
@@ -1503,7 +1503,7 @@
     "chat": "Chat",
     "myOrganization": "My Organization",
     "information": "Information",
-    "branding": "Branding",
+    "branding": "Website",
     "domains": "Domains",
     "members": "Members",
     "invitations": "Invitations",

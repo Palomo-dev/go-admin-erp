@@ -19,6 +19,7 @@ import { Save, FileCheck, ArrowLeft, RefreshCw, Coins } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
+import { toLocalDateString, parseLocalDate } from '@/utils/Utils';
 
 // Tipo para un ítem de factura
 export type InvoiceItem = {
@@ -62,7 +63,14 @@ interface Invoice {
   created_by?: string; // ID del usuario que crea la factura
 };
 
-export function NuevaFacturaForm() {
+interface NuevaFacturaFormProps {
+  facturaInicial?: any;
+  onSubmit?: (datosFactura: any) => Promise<void>;
+  saving?: boolean;
+  esEdicion?: boolean;
+}
+
+export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }: NuevaFacturaFormProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const organizationId = getOrganizationId();
@@ -170,8 +178,45 @@ export function NuevaFacturaForm() {
     loadCurrencies();
   }, [loadCurrencies]);
 
-  // Cargar datos de factura a duplicar
+  // Cargar datos de factura para edición
   useEffect(() => {
+    if (esEdicion && facturaInicial) {
+      setInvoiceNumber(facturaInicial.number || '');
+      setSelectedCustomerId(facturaInicial.customer_id || null);
+      setCurrency(facturaInicial.currency || 'COP');
+      setPaymentTerms(facturaInicial.payment_terms || 30);
+      setPaymentMethodCode(facturaInicial.payment_method || '');
+      setNotes(facturaInicial.notes || '');
+      setTaxIncluded(facturaInicial.tax_included || false);
+      setBranchId(facturaInicial.branch_id || getCurrentBranchIdWithFallback());
+
+      if (facturaInicial.issue_date) {
+        setIssueDate(parseLocalDate(facturaInicial.issue_date));
+      }
+      if (facturaInicial.due_date) {
+        setDueDate(parseLocalDate(facturaInicial.due_date));
+      }
+
+      // Cargar items de la factura
+      if (facturaInicial.items && facturaInicial.items.length > 0) {
+        const itemsFormateados = facturaInicial.items.map((item: any) => ({
+          id: item.id,
+          product_id: item.product_id,
+          description: item.description,
+          qty: item.qty,
+          unit_price: item.unit_price,
+          tax_code: item.tax_code,
+          tax_rate: item.tax_rate,
+          tax_included: item.tax_included || false,
+          total_line: item.total_line,
+          discount_amount: item.discount_amount || 0
+        }));
+        setItems(itemsFormateados);
+      }
+      return;
+    }
+
+    // Cargar datos de factura a duplicar
     const cargarDatosDuplicacion = async () => {
       if (!duplicarId || !organizationId) return;
       
@@ -231,12 +276,18 @@ export function NuevaFacturaForm() {
     
     setIsValidatingNumber(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('invoice_sales')
         .select('id')
         .eq('organization_id', organizationId)
-        .eq('number', number)
-        .limit(1);
+        .eq('number', number);
+      
+      // En modo edición, excluir la factura actual de la validación
+      if (esEdicion && facturaInicial?.id) {
+        query = query.neq('id', facturaInicial.id);
+      }
+      
+      const { data, error } = await query.limit(1);
         
       if (error) throw error;
       
@@ -262,13 +313,15 @@ export function NuevaFacturaForm() {
   }, [organizationId]);
 
   useEffect(() => {
-    if (organizationId) {
+    if (organizationId && !esEdicion) {
       generateInvoiceNumber();
     }
-  }, [organizationId]);
+  }, [organizationId, esEdicion]);
 
   // Efecto para validar el número de factura cuando cambia
   useEffect(() => {
+    // En modo edición, no validar automáticamente al cargar
+    if (esEdicion) return;
     // Usar un timer para no validar con cada pulsación
     const timer = setTimeout(() => {
       if (invoiceNumber && invoiceNumber.trim() !== '') {
@@ -277,7 +330,7 @@ export function NuevaFacturaForm() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [invoiceNumber, checkDuplicateInvoiceNumber]);
+  }, [invoiceNumber, checkDuplicateInvoiceNumber, esEdicion]);
 
   // Función para generar número de factura
   const generateInvoiceNumber = async () => {
@@ -351,12 +404,47 @@ export function NuevaFacturaForm() {
       return;
     }
     
-    // Verificar si el número de factura está duplicado antes de guardar
-    const isDuplicate = await checkDuplicateInvoiceNumber(invoiceNumber);
-    if (isDuplicate) {
-      return; // No continuar si el número está duplicado
+    // En modo edición, omitir validación de duplicado (es el mismo número)
+    if (!esEdicion) {
+      const isDuplicate = await checkDuplicateInvoiceNumber(invoiceNumber);
+      if (isDuplicate) {
+        return;
+      }
     }
-    
+
+    // Si estamos en modo edición, delegar al onSubmit del padre
+    if (esEdicion && onSubmit) {
+      const datosFactura = {
+        number: invoiceNumber,
+        customer_id: selectedCustomerId,
+        branch_id: branchId,
+        issue_date: issueDate ? toLocalDateString(issueDate) : null,
+        due_date: dueDate ? toLocalDateString(dueDate) : null,
+        currency,
+        payment_terms: paymentTerms,
+        payment_method: paymentMethodCode || null,
+        notes: notes || null,
+        tax_included: taxIncluded,
+        subtotal,
+        tax_total: taxTotal,
+        total,
+        items: items.map(item => ({
+          id: item.id,
+          product_id: item.product_id,
+          description: item.description,
+          qty: item.qty,
+          unit_price: item.unit_price,
+          tax_code: item.tax_code,
+          tax_rate: item.tax_rate,
+          tax_included: item.tax_included || false,
+          total_line: item.total_line,
+          discount_amount: item.discount_amount || 0
+        }))
+      };
+      await onSubmit(datosFactura);
+      return;
+    }
+
     try {
       setIsLoading(true);
       
@@ -416,8 +504,8 @@ export function NuevaFacturaForm() {
         customer_id: selectedCustomerId || null,
         sale_id: saleData.id, // Vinculamos con la venta creada
         number: invoiceNumber,
-        issue_date: issueDate?.toISOString().split('T')[0] || null,
-        due_date: dueDate?.toISOString().split('T')[0] || null,
+        issue_date: issueDate ? toLocalDateString(issueDate) : null,
+        due_date: dueDate ? toLocalDateString(dueDate) : null,
         currency: currency, // Moneda seleccionada por el usuario
         subtotal: subtotal,
         tax_total: taxTotal,
@@ -537,6 +625,7 @@ export function NuevaFacturaForm() {
                 if (invoiceNumber) {
                   checkDuplicateInvoiceNumber(invoiceNumber);
                 }
+                // En modo edición, resetear isDuplicateNumber si la validación pasa
               }}
               placeholder="Ej: FACT-00001"
               required
@@ -841,7 +930,7 @@ export function NuevaFacturaForm() {
         <Button
           size="sm"
           onClick={handleSaveInvoice}
-          disabled={isLoading}
+          disabled={isLoading || saving}
           className="
             w-full sm:w-auto
             bg-blue-600 hover:bg-blue-700
@@ -851,7 +940,7 @@ export function NuevaFacturaForm() {
           "
         >
           <Save className="w-4 h-4 mr-2 flex-shrink-0" />
-          <span className="text-sm">{isLoading ? 'Guardando...' : 'Guardar Factura'}</span>
+          <span className="text-sm">{(isLoading || saving) ? 'Guardando...' : esEdicion ? 'Guardar Cambios' : 'Guardar Factura'}</span>
         </Button>
       </div>
     </div>

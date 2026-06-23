@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle, ChevronDown, ChevronRight, CreditCard, FileText } from 'lucide-react';
+import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle, ChevronDown, ChevronRight, CreditCard, FileText, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -585,6 +585,22 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                       <Eye className="mr-2 h-4 w-4 flex-shrink-0" />
                       <span>Ver</span>
                     </DropdownMenuItem>
+                    {factura.status === 'draft' && (
+                      <DropdownMenuItem
+                        className="
+                          cursor-pointer text-sm
+                          text-gray-700 dark:text-gray-200 
+                          hover:bg-gray-100 dark:hover:bg-gray-700
+                          focus:bg-gray-100 dark:focus:bg-gray-700
+                        "
+                        onClick={() => {
+                          router.push(`/app/finanzas/facturas-venta/${factura.id}/editar`);
+                        }}
+                      >
+                        <Pencil className="mr-2 h-4 w-4 flex-shrink-0" />
+                        <span>Editar</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem 
                       className="
                         cursor-pointer text-sm

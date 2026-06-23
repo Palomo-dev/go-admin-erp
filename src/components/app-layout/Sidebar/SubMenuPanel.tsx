@@ -212,7 +212,7 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Mi Plan': <CreditCard size={16} />,
     'Módulos': <Package size={16} />,
     'Dominios': <Globe size={16} />,
-    'Branding': <Palette size={16} />,
+    'Sitio Web': <Palette size={16} />,
     'Sucursales': <MapPin size={16} />,
     'Mis Organizaciones': <Building2 size={16} />,
     

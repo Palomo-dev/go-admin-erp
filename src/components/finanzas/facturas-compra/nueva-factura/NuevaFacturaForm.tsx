@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { FacturasCompraService } from '../FacturasCompraService';
-import { parseLocalDate } from '@/utils/Utils';
+import { parseLocalDate, toLocalDateString } from '@/utils/Utils';
 import { 
   NuevaFacturaCompraForm, 
   InvoiceItemForm, 
@@ -67,7 +67,7 @@ export function NuevaFacturaForm({
       return {
         supplier_id: facturaInicial.supplier_id,
         number_ext: facturaInicial.number_ext,
-        issue_date: facturaInicial.issue_date ? facturaInicial.issue_date.split('T')[0] : new Date().toISOString().split('T')[0],
+        issue_date: facturaInicial.issue_date ? facturaInicial.issue_date.split('T')[0] : toLocalDateString(new Date()),
         due_date: facturaInicial.due_date ? facturaInicial.due_date.split('T')[0] : '',
         currency: facturaInicial.currency || 'COP',
         payment_terms: facturaInicial.payment_terms || 30,
@@ -86,7 +86,7 @@ export function NuevaFacturaForm({
     return {
       supplier_id: null,
       number_ext: '',
-      issue_date: new Date().toISOString().split('T')[0],
+      issue_date: toLocalDateString(new Date()),
       due_date: '',
       currency: 'COP',
       payment_terms: 30,
@@ -128,7 +128,7 @@ export function NuevaFacturaForm({
     if (formData.issue_date && formData.payment_terms) {
       const fechaEmision = parseLocalDate(formData.issue_date);
       fechaEmision.setDate(fechaEmision.getDate() + formData.payment_terms);
-      const fechaVencimiento = fechaEmision.toISOString().split('T')[0];
+      const fechaVencimiento = toLocalDateString(fechaEmision);
       
       setFormData(prev => ({ ...prev, due_date: fechaVencimiento }));
     }

@@ -418,8 +418,8 @@
       "description": "Gérez toutes les organisations dont vous êtes propriétaire"
     },
     "branding": {
-      "title": "Branding & Site Web",
-      "description": "Configurez le branding et le site web public de votre organisation",
+      "title": "Site Web",
+      "description": "Configurez le site web public de votre organisation",
       "refresh": "Actualiser",
       "published": "Publié",
       "draft": "Brouillon",
@@ -1503,7 +1503,7 @@
     "chat": "Chat",
     "myOrganization": "Mon Organisation",
     "information": "Information",
-    "branding": "Branding",
+    "branding": "Site Web",
     "domains": "Domaines",
     "members": "Membres",
     "invitations": "Invitations",

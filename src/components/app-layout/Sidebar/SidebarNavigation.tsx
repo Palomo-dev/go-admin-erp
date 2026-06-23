@@ -398,7 +398,7 @@ const SidebarNavigationComponent = ({
           icon: <Building2 size={18} />,
           submenu: [
             { name: "Información", href: "/app/organizacion/informacion", icon: <Building2 size={16} /> },
-            { name: "Branding", href: "/app/organizacion/branding", icon: <Palette size={16} /> },
+            { name: "Sitio Web", href: "/app/organizacion/branding", icon: <Palette size={16} /> },
             { name: "Dominios", href: "/app/organizacion/dominios", icon: <Globe size={16} /> },
             { name: "Miembros", href: "/app/organizacion/miembros", icon: <Users size={16} /> },
             { name: "Invitaciones", href: "/app/organizacion/invitaciones", icon: <Plus size={16} /> },

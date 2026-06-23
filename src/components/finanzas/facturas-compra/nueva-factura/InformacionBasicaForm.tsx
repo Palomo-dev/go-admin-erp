@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
-import { parseLocalDate } from '@/utils/Utils';
+import { parseLocalDate, toLocalDateString } from '@/utils/Utils';
 import {
   Select,
   SelectContent,
@@ -191,7 +191,7 @@ export function InformacionBasicaForm({
       const issueDate = parseLocalDate(formData.issue_date);
       const newDueDate = new Date(issueDate);
       newDueDate.setDate(newDueDate.getDate() + days);
-      onInputChange('due_date', newDueDate.toISOString().split('T')[0]);
+      onInputChange('due_date', toLocalDateString(newDueDate));
     }
   };
   

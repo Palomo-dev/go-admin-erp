@@ -2,13 +2,13 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  FileText, 
-  ArrowLeft, 
-  Calendar, 
-  User, 
-  CreditCard, 
-  Receipt, 
+import {
+  FileText,
+  ArrowLeft,
+  Calendar,
+  User,
+  CreditCard,
+  Receipt,
   Info,
   FileEdit,
   FileOutput,
@@ -17,7 +17,8 @@ import {
   Send,
   Download,
   Printer,
-  Copy
+  Copy,
+  Pencil
 } from 'lucide-react';
 import { 
   Card,
@@ -523,15 +524,26 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         
         <div className="flex gap-1.5 sm:gap-2 flex-wrap w-full sm:w-auto">
           {isDraft && (
-            <Button 
-              variant="default" 
-              size="sm"
-              onClick={emitirFactura}
-              className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
-            >
-              <Send className="h-3.5 w-3.5" />
-              <span>Emitir</span>
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/app/finanzas/facturas-venta/${facturaActual.id}/editar`)}
+                className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                <span>Editar</span>
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={emitirFactura}
+                className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>Emitir</span>
+              </Button>
+            </>
           )}
           {!isDraft && (
             <Button 

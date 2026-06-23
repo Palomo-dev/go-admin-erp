@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { CuentasPorPagarTable } from './CuentasPorPagarTable';
@@ -381,7 +381,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           <CuentasPorPagarTable
             cuentas={cuentas.filter(c => {
               if (!c.due_date) return false;
-              const dueDate = new Date(c.due_date);
+              const dueDate = parseLocalDate(c.due_date);
               const today = new Date();
               const in15Days = new Date();
               in15Days.setDate(today.getDate() + 15);

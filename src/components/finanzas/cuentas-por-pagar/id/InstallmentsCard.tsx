@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { CuentaPorPagarDetailService } from './service';
 import { APInstallment } from './types';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 
 interface InstallmentsCardProps {
   accountId: string;
@@ -78,7 +78,7 @@ export function InstallmentsCard({ accountId, totalAmount, onUpdate }: Installme
       // Marcar cuotas vencidas
       const today = new Date();
       const processedData = data.map(inst => {
-        const dueDate = new Date(inst.due_date);
+        const dueDate = parseLocalDate(inst.due_date);
         if (dueDate < today && inst.status === 'pending') {
           return { ...inst, status: 'overdue' as const };
         }
@@ -199,7 +199,7 @@ export function InstallmentsCard({ accountId, totalAmount, onUpdate }: Installme
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
+    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

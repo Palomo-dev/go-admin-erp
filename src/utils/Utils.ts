@@ -13,6 +13,24 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 /**
+ * Parsea una fecha evitando el offset de zona horaria.
+ * Las fechas en formato YYYY-MM-DD (sin hora) son interpretadas por new Date() como UTC medianoche,
+ * lo que en zonas horarias negativas (America) muestra un dia menos.
+ * Esta funcion anade T00:00:00 para forzar interpretacion como hora local.
+ *
+ * @param dateString - String de fecha (YYYY-MM-DD o ISO con timestamp)
+ * @returns Date object en hora local
+ */
+export function parseLocalDate(dateString: string): Date {
+  if (!dateString) return new Date(NaN);
+  // Si la fecha es solo YYYY-MM-DD (sin hora), anadir T00:00:00 para evitar offset UTC
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return new Date(dateString + 'T00:00:00');
+  }
+  return new Date(dateString);
+}
+
+/**
  * Formatea un valor decimal como una cadena de moneda
  * 
  * @param value - Monto a formatear
@@ -54,7 +72,7 @@ export function formatDate(date: Date | string | null | undefined, locale: strin
   
   // Convertir string a Date si es necesario
   if (typeof date === 'string') {
-    dateObject = new Date(date);
+    dateObject = parseLocalDate(date);
   } else {
     dateObject = date;
   }

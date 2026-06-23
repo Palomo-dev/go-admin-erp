@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, CreditCard, Plus, Loader2, Trash2, DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 import { CuentaPorCobrarDetailService } from './service';
 import {
   Dialog,
@@ -193,7 +193,7 @@ export function InstallmentsCard({ accountId, totalAmount, accountStatus, onUpda
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
+    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

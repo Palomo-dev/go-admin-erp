@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { parseLocalDate } from '@/utils/Utils';
 import { Loader2, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -83,7 +84,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
         if (data) {
           // Procesar los datos para incluir días restantes
           const facturasConDiasRestantes = data.map((factura: any) => {
-            const dueDate = new Date(factura.due_date);
+            const dueDate = parseLocalDate(factura.due_date);
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Normalizar la hora actual
             
@@ -194,7 +195,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
                       {factura.customer_name}
                     </div>
                     <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-500 mt-1">
-                      Vence: {format(new Date(factura.due_date), "d 'de' MMM, yyyy", { locale: es })}
+                      Vence: {format(parseLocalDate(factura.due_date), "d 'de' MMM, yyyy", { locale: es })}
                     </div>
                   </div>
                   

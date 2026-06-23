@@ -41,7 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 import { ItemsDetalle } from './ItemsDetalle';
 import { PagosDetalle } from './PagosDetalle';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
@@ -101,6 +101,8 @@ interface OrganizationPDFData {
   phone?: string;
   email?: string;
   logo_url?: string;
+  primary_color?: string;
+  secondary_color?: string;
 }
 
 export default function DetalleFactura({ factura }: { factura: any }) {
@@ -124,7 +126,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
 
         const { data, error } = await supabase
           .from('organizations')
-          .select('name, tax_id, nit, address, phone, email, logo_url')
+          .select('name, tax_id, nit, address, phone, email, logo_url, primary_color, secondary_color')
           .eq('id', org.id)
           .single();
 
@@ -140,7 +142,9 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             address: data.address,
             phone: data.phone,
             email: data.email,
-            logo_url: data.logo_url
+            logo_url: data.logo_url,
+            primary_color: data.primary_color,
+            secondary_color: data.secondary_color
           });
         }
       } catch (error) {
@@ -236,7 +240,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'PPP', { locale: es });
+      return format(parseLocalDate(dateString), 'PPP', { locale: es });
     } catch (error) {
       return 'Fecha inválida';
     }
@@ -681,7 +685,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                     factura.payment_terms === 0 ? 'Contado' : 
                     (() => {
                       if (factura.issue_date && factura.payment_terms > 0) {
-                        const fechaEmision = new Date(factura.issue_date);
+                        const fechaEmision = parseLocalDate(factura.issue_date);
                         const fechaVencimiento = new Date(fechaEmision);
                         fechaVencimiento.setDate(fechaVencimiento.getDate() + factura.payment_terms);
                         const hoy = new Date();

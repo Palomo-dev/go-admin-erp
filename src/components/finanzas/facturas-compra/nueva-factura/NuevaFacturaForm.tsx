@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { FacturasCompraService } from '../FacturasCompraService';
+import { parseLocalDate } from '@/utils/Utils';
 import { 
   NuevaFacturaCompraForm, 
   InvoiceItemForm, 
@@ -125,7 +126,7 @@ export function NuevaFacturaForm({
 
   const calcularFechaVencimiento = () => {
     if (formData.issue_date && formData.payment_terms) {
-      const fechaEmision = new Date(formData.issue_date);
+      const fechaEmision = parseLocalDate(formData.issue_date);
       fechaEmision.setDate(fechaEmision.getDate() + formData.payment_terms);
       const fechaVencimiento = fechaEmision.toISOString().split('T')[0];
       

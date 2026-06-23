@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { CuentaPorCobrar, FiltrosCuentasPorCobrar, AgingBucket, Recordatorio, Abono, EstadisticasCxC, ResultadoPaginado } from './types';
+import { parseLocalDate } from '@/utils/Utils';
 
 export class CuentasPorCobrarService {
   private static getOrganizationId(): number {
@@ -102,7 +103,7 @@ export class CuentasPorCobrarService {
       if (filtros.aging !== 'todos') {
         const today = new Date();
         filteredData = filteredData.filter((item: any) => {
-          const dueDate = new Date(item.due_date);
+          const dueDate = parseLocalDate(item.due_date);
           const daysDiff = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
           
           switch (filtros.aging) {
@@ -200,7 +201,7 @@ export class CuentasPorCobrarService {
         // Solo procesar cuentas con saldo pendiente
         if (balance <= 0) return;
         
-        const dueDate = new Date(item.due_date);
+        const dueDate = parseLocalDate(item.due_date);
         const daysDiff = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
 
         if (!customerMap.has(customerId)) {

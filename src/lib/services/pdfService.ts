@@ -28,6 +28,8 @@ export interface InvoiceDataForPDF {
     phone?: string;
     email?: string;
     logo_url?: string;
+    primary_color?: string;
+    secondary_color?: string;
   };
   items: {
     description: string;
@@ -98,6 +100,9 @@ export class PDFService {
 
   // Generar HTML para el PDF (alternativa usando window.print con estilos)
   static generateInvoiceHTML(data: InvoiceDataForPDF): string {
+    const primaryColor = data.organization?.primary_color || '#2563eb';
+    const secondaryColor = data.organization?.secondary_color || '#1e40af';
+
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleDateString('es-CO', {
         year: 'numeric',
@@ -124,16 +129,16 @@ export class PDFService {
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; color: #333; }
           .invoice { max-width: 800px; margin: 0 auto; padding: 20px; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #2563eb; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid ${primaryColor}; }
           .logo-section { display: flex; align-items: center; gap: 12px; }
           .logo-img { max-height: 60px; max-width: 180px; object-fit: contain; }
-          .logo-text { font-size: 24px; font-weight: bold; color: #2563eb; }
+          .logo-text { font-size: 24px; font-weight: bold; color: ${primaryColor}; }
           .invoice-title { text-align: right; }
           .invoice-title h1 { font-size: 28px; color: #333; margin-bottom: 5px; }
           .invoice-number { font-size: 14px; color: #666; }
           .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-top: 5px; }
           .status-draft { background: #fef3c7; color: #92400e; }
-          .status-issued { background: #dbeafe; color: #1e40af; }
+          .status-issued { background: #dbeafe; color: ${secondaryColor}; }
           .status-paid { background: #d1fae5; color: #065f46; }
           .status-partial { background: #ede9fe; color: #5b21b6; }
           .status-void { background: #f3f4f6; color: #374151; }
@@ -147,14 +152,14 @@ export class PDFService {
           .dates label { font-size: 11px; color: #6b7280; display: block; margin-bottom: 4px; }
           .dates span { font-weight: 600; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-          th { background: #2563eb; color: white; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; }
+          th { background: ${primaryColor}; color: white; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; }
           th:last-child { text-align: right; }
           td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
           td:last-child { text-align: right; }
           .totals { margin-left: auto; width: 280px; }
           .totals div { display: flex; justify-content: space-between; padding: 8px 0; }
           .totals .subtotal { border-bottom: 1px solid #e5e7eb; }
-          .totals .total { font-size: 16px; font-weight: bold; border-top: 2px solid #2563eb; padding-top: 12px; margin-top: 4px; }
+          .totals .total { font-size: 16px; font-weight: bold; border-top: 2px solid ${primaryColor}; padding-top: 12px; margin-top: 4px; }
           .totals .balance { color: #dc2626; }
           .notes { margin-top: 30px; padding: 15px; background: #f9fafb; border-radius: 8px; }
           .notes h4 { font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
@@ -288,6 +293,9 @@ export class PDFService {
 
   // Generar HTML para PDF de factura de compra
   static generatePurchaseInvoiceHTML(data: InvoiceDataForPDF): string {
+    const primaryColor = data.organization?.primary_color || '#2563eb';
+    const secondaryColor = data.organization?.secondary_color || '#1e40af';
+
     const formatDate = (dateString: string) => {
       if (!dateString) return '-';
       return new Date(dateString).toLocaleDateString('es-CO', {
@@ -316,16 +324,16 @@ export class PDFService {
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; color: #333; }
           .invoice { max-width: 800px; margin: 0 auto; padding: 20px; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #2563eb; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid ${primaryColor}; }
           .logo-section { display: flex; align-items: center; gap: 12px; }
           .logo-img { max-height: 60px; max-width: 180px; object-fit: contain; }
-          .logo-text { font-size: 24px; font-weight: bold; color: #2563eb; }
+          .logo-text { font-size: 24px; font-weight: bold; color: ${primaryColor}; }
           .invoice-title { text-align: right; }
           .invoice-title h1 { font-size: 28px; color: #333; margin-bottom: 5px; }
           .invoice-number { font-size: 14px; color: #666; }
           .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-top: 5px; }
           .status-draft { background: #fef3c7; color: #92400e; }
-          .status-received { background: #dbeafe; color: #1e40af; }
+          .status-received { background: #dbeafe; color: ${secondaryColor}; }
           .status-paid { background: #d1fae5; color: #065f46; }
           .status-partial { background: #ede9fe; color: #5b21b6; }
           .status-void { background: #f3f4f6; color: #374151; }
@@ -339,14 +347,14 @@ export class PDFService {
           .dates label { font-size: 11px; color: #6b7280; display: block; margin-bottom: 4px; }
           .dates span { font-weight: 600; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-          th { background: #2563eb; color: white; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; }
+          th { background: ${primaryColor}; color: white; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; }
           th:last-child { text-align: right; }
           td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
           td:last-child { text-align: right; }
           .totals { margin-left: auto; width: 280px; }
           .totals div { display: flex; justify-content: space-between; padding: 8px 0; }
           .totals .subtotal { border-bottom: 1px solid #e5e7eb; }
-          .totals .total { font-size: 16px; font-weight: bold; border-top: 2px solid #2563eb; padding-top: 12px; margin-top: 4px; }
+          .totals .total { font-size: 16px; font-weight: bold; border-top: 2px solid ${primaryColor}; padding-top: 12px; margin-top: 4px; }
           .totals .balance { color: #dc2626; }
           .notes { margin-top: 30px; padding: 15px; background: #f9fafb; border-radius: 8px; }
           .notes h4 { font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }

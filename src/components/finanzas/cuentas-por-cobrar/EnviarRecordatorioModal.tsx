@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Mail, User, Calendar, AlertTriangle, Clock } from 'lucide-react';
 import { CuentaPorCobrar } from './types';
 import { CuentasPorCobrarService } from './service';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 import { toast } from 'sonner';
 
 interface EnviarRecordatorioModalProps {
@@ -29,7 +29,7 @@ export function EnviarRecordatorioModal({ open, onOpenChange, cuenta, onSuccess 
 Le recordamos que tiene una cuenta pendiente de pago con nosotros:
 
 - Monto: ${formatCurrency(cuenta.balance)}
-- Fecha de vencimiento: ${new Date(cuenta.due_date).toLocaleDateString('es-ES')}
+- Fecha de vencimiento: ${parseLocalDate(cuenta.due_date).toLocaleDateString('es-ES')}
 - Días vencidos: ${cuenta.days_overdue}
 
 Le solicitamos realizar el pago lo antes posible para evitar inconvenientes.
@@ -132,7 +132,7 @@ Equipo de Cobranzas`;
                   <Label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Último Recordatorio</Label>
                   <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
                     {cuenta.last_reminder_date 
-                      ? new Date(cuenta.last_reminder_date).toLocaleDateString('es-ES')
+                      ? parseLocalDate(cuenta.last_reminder_date).toLocaleDateString('es-ES')
                       : 'Nunca'
                     }
                   </p>
@@ -150,7 +150,7 @@ Equipo de Cobranzas`;
                   <div>
                     <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Fecha de vencimiento</p>
                     <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                      {new Date(cuenta.due_date).toLocaleDateString('es-ES')}
+                      {parseLocalDate(cuenta.due_date).toLocaleDateString('es-ES')}
                     </p>
                   </div>
                 </div>

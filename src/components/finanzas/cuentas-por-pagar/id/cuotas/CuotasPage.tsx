@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { CuentaPorPagarDetailService } from '../service';
 import { CuentaPorPagarDetalle, APInstallment } from '../types';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 
 interface CuotasPageProps {
   accountId: string;
@@ -114,7 +114,7 @@ export function CuotasPage({ accountId }: CuotasPageProps) {
       // Marcar cuotas vencidas
       const today = new Date();
       const processedInstallments = installmentsData.map(inst => {
-        const dueDate = new Date(inst.due_date);
+        const dueDate = parseLocalDate(inst.due_date);
         if (dueDate < today && inst.status === 'pending') {
           return { ...inst, status: 'overdue' as const };
         }
@@ -257,7 +257,7 @@ export function CuotasPage({ accountId }: CuotasPageProps) {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
+    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

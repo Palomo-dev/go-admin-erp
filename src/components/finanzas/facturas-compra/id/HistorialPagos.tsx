@@ -20,7 +20,7 @@ import {
   XCircle,
   Clock
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
 
 interface Payment {
   id: string;
@@ -198,10 +198,10 @@ export function HistorialPagos({
                           <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500 hidden sm:block" />
                           <div>
                             <div className="text-xs sm:text-sm font-medium">
-                              {formatDate(new Date(pago.created_at))}
+                              {formatDate(parseLocalDate(pago.created_at))}
                             </div>
                             <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                              {new Date(pago.created_at).toLocaleTimeString('es-CO', {
+                              {parseLocalDate(pago.created_at).toLocaleTimeString('es-CO', {
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })}

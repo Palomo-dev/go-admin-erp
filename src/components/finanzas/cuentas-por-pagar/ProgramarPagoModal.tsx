@@ -36,7 +36,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { CuentasPorPagarService } from './CuentasPorPagarService';
 import { AccountPayable, ProgramarPagoForm } from './types';
 import { OrganizationPaymentMethod } from '../facturas-compra/types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
 
 interface ProgramarPagoModalProps {
   cuenta: AccountPayable;
@@ -204,7 +204,7 @@ export function ProgramarPagoModal({
   const getDiasHastaVencimiento = () => {
     if (!cuenta.due_date) return null;
     
-    const vencimiento = new Date(cuenta.due_date);
+    const vencimiento = parseLocalDate(cuenta.due_date);
     const hoy = new Date();
     const diffTime = vencimiento.getTime() - hoy.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

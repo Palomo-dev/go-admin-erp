@@ -12,6 +12,7 @@ import {
   PaymentApproval
 } from './types';
 import { SupplierBase, OrganizationPaymentMethod, OrganizationCurrency } from '../facturas-compra/types';
+import { parseLocalDate } from '@/utils/Utils';
 
 export class CuentasPorPagarService {
   
@@ -132,8 +133,8 @@ export class CuentasPorPagarService {
       // Calcular días vencidos
       const cuentasConVencimiento = (data || []).map(cuenta => ({
         ...cuenta,
-        days_overdue: cuenta.due_date && new Date(cuenta.due_date) < hoy 
-          ? Math.floor((hoy.getTime() - new Date(cuenta.due_date).getTime()) / (1000 * 60 * 60 * 24))
+        days_overdue: cuenta.due_date && parseLocalDate(cuenta.due_date) < hoy 
+          ? Math.floor((hoy.getTime() - parseLocalDate(cuenta.due_date).getTime()) / (1000 * 60 * 60 * 24))
           : 0
       }));
 

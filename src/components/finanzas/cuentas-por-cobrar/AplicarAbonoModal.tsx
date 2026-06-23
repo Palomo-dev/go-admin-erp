@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreditCard, DollarSign, User, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { CuentaPorCobrar } from './types';
 import { CuentasPorCobrarService } from './service';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -248,7 +248,7 @@ export function AplicarAbonoModal({ open, onOpenChange, cuenta, onSuccess }: Apl
                 <div>
                   <Label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Fecha Vencimiento</Label>
                   <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-                    {new Date(cuenta.due_date).toLocaleDateString('es-ES')}
+                    {parseLocalDate(cuenta.due_date).toLocaleDateString('es-ES')}
                   </p>
                 </div>
               </div>

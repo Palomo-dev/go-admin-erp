@@ -38,7 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 
 import { AccountPayable } from './types';
-import { formatCurrency, formatDate } from '@/utils/Utils';
+import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
 
 interface CuentasPorPagarTableProps {
   cuentas: AccountPayable[];
@@ -106,7 +106,7 @@ export function CuentasPorPagarTable({
       return 'text-red-600 dark:text-red-400';
     }
 
-    const due = new Date(dueDate);
+    const due = parseLocalDate(dueDate);
     const today = new Date();
     const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 

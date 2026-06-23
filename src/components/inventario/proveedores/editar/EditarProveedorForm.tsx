@@ -333,8 +333,9 @@ export function EditarProveedorForm({ supplierUuid }: EditarProveedorFormProps) 
                     <Select value={formData.account_type || ''} onValueChange={(v) => handleChange('account_type', v)}>
                       <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ahorros">Ahorros</SelectItem>
-                        <SelectItem value="corriente">Corriente</SelectItem>
+                        <SelectItem value="savings">Ahorros</SelectItem>
+                        <SelectItem value="checking">Corriente</SelectItem>
+                        <SelectItem value="other">Otro</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

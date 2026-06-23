@@ -13,6 +13,21 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 /**
+ * Convierte un Date a string YYYY-MM-DD usando componentes de fecha local.
+ * A diferencia de toISOString().split('T')[0], este metodo no convierte a UTC,
+ * evitando que la fecha cambie de dia segun la zona horaria del navegador.
+ *
+ * @param date - Objeto Date a convertir
+ * @returns String en formato YYYY-MM-DD
+ */
+export function toLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Parsea una fecha evitando el offset de zona horaria.
  * Las fechas en formato YYYY-MM-DD (sin hora) son interpretadas por new Date() como UTC medianoche,
  * lo que en zonas horarias negativas (America) muestra un dia menos.
@@ -26,6 +41,13 @@ export function parseLocalDate(dateString: string): Date {
   // Si la fecha es solo YYYY-MM-DD (sin hora), anadir T00:00:00 para evitar offset UTC
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
     return new Date(dateString + 'T00:00:00');
+  }
+  // Si la fecha viene con timestamp y zona horaria (ej: 2026-06-17T00:00:00+00:00),
+  // extraer solo la parte de fecha YYYY-MM-DD e interpretarla como hora local
+  // para evitar que el offset UTC desplace la fecha un dia en zonas horarias negativas
+  const dateOnly = dateString.split('T')[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+    return new Date(dateOnly + 'T00:00:00');
   }
   return new Date(dateString);
 }

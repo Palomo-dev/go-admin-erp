@@ -355,8 +355,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
 
   // Memoizar códigos de impuestos iniciales para edición (evita loop infinito)
   const initialAppliedTaxCodes = useMemo(() => {
-    if (esEdicion && facturaInicial?.items) {
-      return [...new Set(facturaInicial.items.map((item: any) => item.tax_code).filter(Boolean))];
+    if (esEdicion && facturaInicial?.applied_taxes) {
+      return facturaInicial.applied_taxes
+        .filter((t: any) => t.is_applied)
+        .map((t: any) => t.tax_code);
     }
     return undefined;
   }, [esEdicion, facturaInicial]);
@@ -436,6 +438,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         subtotal,
         tax_total: taxTotal,
         total,
+        appliedTaxes,
         items: items.map(item => ({
           id: item.id,
           product_id: item.product_id,
@@ -562,6 +565,21 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       // Verificar si alguna promesa tuvo error
       const itemsError = itemsResults.find(result => result.error);
       if (itemsError) throw itemsError.error;
+      
+      // 6.5. Guardar impuestos aplicados en invoice_applied_taxes
+      const appliedTaxCodes = Object.keys(appliedTaxes).filter(code => appliedTaxes[code]);
+      if (appliedTaxCodes.length > 0) {
+        const taxRows = appliedTaxCodes.map(code => ({
+          invoice_id: invoiceData.id,
+          tax_code: code,
+          tax_rate: appliedTaxTotals[code]?.rate || 0,
+          is_applied: true
+        }));
+        const { error: taxInsertError } = await supabase
+          .from('invoice_applied_taxes')
+          .insert(taxRows);
+        if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
+      }
       
       // 7. Si está activada la opción de factura electrónica, enviar a DIAN
       if (sendToFactus) {

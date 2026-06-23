@@ -33,6 +33,7 @@ interface ImpuestosFacturaCompraProps {
   onTaxIncludedChange: (included: boolean) => void;
   onTaxCalculationChange: (calculation: TaxCalculationResult & { appliedTaxes: {[key: string]: boolean} }) => void;
   className?: string;
+  initialAppliedTaxCodes?: string[];
 }
 
 export function ImpuestosFacturaCompra({ 
@@ -41,7 +42,8 @@ export function ImpuestosFacturaCompra({
   taxIncluded, 
   onTaxIncludedChange,
   onTaxCalculationChange,
-  className = ''
+  className = '',
+  initialAppliedTaxCodes
 }: ImpuestosFacturaCompraProps) {
   const [organizationTaxes, setOrganizationTaxes] = useState<OrganizationTax[]>([]);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
@@ -89,12 +91,16 @@ export function ImpuestosFacturaCompra({
 
           setOrganizationTaxes(formattedTaxes);
 
-          // Inicializar impuestos aplicados con los predeterminados
-          const initialAppliedTaxes: {[key: string]: boolean} = {};
+          // Inicializar impuestos aplicados
+          const initialApplied: {[key: string]: boolean} = {};
           formattedTaxes.forEach(tax => {
-            initialAppliedTaxes[tax.id] = tax.is_default;
+            if (initialAppliedTaxCodes && initialAppliedTaxCodes.length > 0) {
+              initialApplied[tax.id] = initialAppliedTaxCodes.includes(tax.id);
+            } else {
+              initialApplied[tax.id] = tax.is_default;
+            }
           });
-          setAppliedTaxes(initialAppliedTaxes);
+          setAppliedTaxes(initialApplied);
         }
       } catch (error) {
         console.error('Error al cargar impuestos:', error);
@@ -104,7 +110,7 @@ export function ImpuestosFacturaCompra({
     };
 
     loadOrganizationTaxes();
-  }, []);
+  }, [initialAppliedTaxCodes]);
 
   // Recalcular impuestos cuando cambien los items, impuestos aplicados o configuración
   useEffect(() => {

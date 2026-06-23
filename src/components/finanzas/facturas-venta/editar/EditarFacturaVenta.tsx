@@ -62,9 +62,18 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
 
       if (itemsError) throw itemsError;
 
+      // Cargar impuestos aplicados
+      const { data: appliedTaxesData, error: appliedTaxesError } = await supabase
+        .from('invoice_applied_taxes')
+        .select('tax_code, tax_rate, is_applied')
+        .eq('invoice_id', facturaId);
+
+      if (appliedTaxesError) console.warn('Error cargando impuestos aplicados:', appliedTaxesError);
+
       setFactura({
         ...facturaData,
-        items: itemsData || []
+        items: itemsData || [],
+        applied_taxes: appliedTaxesData || []
       });
     } catch (error: any) {
       console.error('Error cargando factura:', error);
@@ -160,6 +169,28 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
             .insert(itemData);
 
           if (insertItemError) throw insertItemError;
+        }
+      }
+
+      // Guardar impuestos aplicados (reemplazar los anteriores)
+      if (datosFactura.appliedTaxes) {
+        await supabase
+          .from('invoice_applied_taxes')
+          .delete()
+          .eq('invoice_id', factura.id);
+
+        const appliedTaxCodes = Object.keys(datosFactura.appliedTaxes).filter(code => datosFactura.appliedTaxes[code]);
+        if (appliedTaxCodes.length > 0) {
+          const taxRows = appliedTaxCodes.map(code => ({
+            invoice_id: factura.id,
+            tax_code: code,
+            tax_rate: 0,
+            is_applied: true
+          }));
+          const { error: taxInsertError } = await supabase
+            .from('invoice_applied_taxes')
+            .insert(taxRows);
+          if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
         }
       }
 

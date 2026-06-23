@@ -341,6 +341,7 @@ export function NuevaFacturaForm({
         const { subtotal: calculatedSubtotal, taxTotal: calculatedTaxTotal, total: calculatedTotal } = calcularTotales();
         await onSubmit({
           ...formData,
+          appliedTaxes,
           _calculatedTotals: {
             subtotal: calculatedSubtotal,
             taxTotal: calculatedTaxTotal,
@@ -399,6 +400,16 @@ export function NuevaFacturaForm({
       product_id: item.product_id || 0 // Valor por defecto si no hay product_id
     })), [formData.items]
   );
+
+  // Memoizar códigos de impuestos iniciales para edición
+  const initialAppliedTaxCodes = useMemo(() => {
+    if (esEdicion && facturaInicial?.applied_taxes) {
+      return facturaInicial.applied_taxes
+        .filter((t: any) => t.is_applied)
+        .map((t: any) => t.tax_code);
+    }
+    return undefined;
+  }, [esEdicion, facturaInicial]);
 
   return (
     <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6 space-y-4 sm:space-y-6 max-w-7xl">
@@ -466,6 +477,7 @@ export function NuevaFacturaForm({
           taxIncluded={formData.tax_included}
           onTaxIncludedChange={handleTaxIncludedChange}
           onTaxCalculationChange={handleTaxCalculationChange}
+          initialAppliedTaxCodes={initialAppliedTaxCodes}
         />
 
         {/* Resumen con desglose de impuestos */}

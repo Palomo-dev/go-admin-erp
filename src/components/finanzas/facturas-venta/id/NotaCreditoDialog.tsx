@@ -102,18 +102,25 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
 
   // Actualizar monto total cuando cambian las selecciones o cantidades
   useEffect(() => {
+    const facturaSubtotal = Math.abs(Number(factura.subtotal) || 0);
+    const facturaTaxTotal = Math.abs(Number(factura.tax_total) || 0);
+    const tasaEfectiva = facturaSubtotal > 0 ? (facturaTaxTotal / facturaSubtotal) * 100 : 0;
+
     let total = 0;
     
     items.forEach(item => {
       if (itemsSeleccionados[item.id]) {
         const cantidad = Math.min(cantidades[item.id] || 0, item.qty);
         const precioUnitario = item.unit_price || 0;
-        total += cantidad * precioUnitario;
+        const lineaTotal = cantidad * precioUnitario;
+        const impuestoTasa = item.tax_rate != null ? Number(item.tax_rate) : tasaEfectiva;
+        const impuestoMonto = (lineaTotal * impuestoTasa) / 100;
+        total += lineaTotal + impuestoMonto;
       }
     });
     
     setMontoTotal(total);
-  }, [itemsSeleccionados, cantidades, items]);
+  }, [itemsSeleccionados, cantidades, items, factura]);
 
   // Manejar cambio en la selección de un item
   const handleItemToggle = (itemId: string, checked: boolean) => {
@@ -238,6 +245,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       const currentUserId = user?.id;
 
       // 2. Crear la nota de crédito (es una factura con tipo credit_note)
+      const taxIncluded = factura.tax_included || false;
       const { data: creditNoteData, error: creditNoteError } = await supabase
         .from('invoice_sales')
         .insert({
@@ -248,11 +256,12 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
           issue_date: new Date().toISOString(),
           due_date: new Date().toISOString(),
           currency: factura.currency || 'COP',
-          subtotal: -montoTotal,  // Negativo para nota de crédito
+          subtotal: -montoTotal,  // Se actualizará después con el desglose correcto
           tax_total: 0,  // Se calculará después
           total: -montoTotal,  // Negativo para nota de crédito
           balance: 0,  // Notas de crédito comienzan en 0 porque se aplican directamente
           status: 'issued',
+          tax_included: taxIncluded, // Heredar de factura original
           description: `Nota de crédito para factura ${factura.number}. Motivo: ${motivo}`,
           related_invoice_id: factura.id,
           document_type: 'credit_note',
@@ -274,21 +283,41 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       const itemsNotaCredito = [];
       let subtotal = 0;
       let taxTotal = 0;
-      
+
+      // Calcular tasa efectiva de impuesto de la factura original
+      const facturaSubtotal = Math.abs(Number(factura.subtotal) || 0);
+      const facturaTaxTotal = Math.abs(Number(factura.tax_total) || 0);
+      const tasaEfectiva = facturaSubtotal > 0 ? (facturaTaxTotal / facturaSubtotal) * 100 : 0;
+
       for (const itemId of Object.keys(itemsSeleccionados)) {
         if (itemsSeleccionados[itemId] && cantidades[itemId] > 0) {
           const item = items.find(i => i.id === itemId);
           if (item) {
             const cantidad = cantidades[itemId];
             const precioUnitario = item.unit_price || 0;
-            const impuestoTasa = item.tax_rate || 0;
+            // Usar tax_rate del item si existe, si no, usar tasa efectiva de la factura
+            const impuestoTasa = item.tax_rate != null ? Number(item.tax_rate) : tasaEfectiva;
             const lineaTotal = cantidad * precioUnitario;
-            
-            const impuestoMonto = (lineaTotal * impuestoTasa) / 100;
-            
+
+            let baseImponible = lineaTotal;
+            let impuestoMonto = 0;
+
+            if (taxIncluded && impuestoTasa > 0) {
+              // Precios con impuesto incluido: extraer la base del precio total
+              baseImponible = lineaTotal / (1 + impuestoTasa / 100);
+              baseImponible = Math.round(baseImponible * 100) / 100;
+              impuestoMonto = lineaTotal - baseImponible;
+            } else if (!taxIncluded && impuestoTasa > 0) {
+              // Precios sin impuesto: calcular impuesto sobre la base
+              impuestoMonto = (lineaTotal * impuestoTasa) / 100;
+              impuestoMonto = Math.round(impuestoMonto * 100) / 100;
+            }
+
+            const totalLinea = taxIncluded ? lineaTotal : (lineaTotal + impuestoMonto);
+
             itemsNotaCredito.push({
-              invoice_id: notaCreditoId, // Campo obligatorio NOT NULL
-              invoice_sales_id: notaCreditoId, // Campo para política RLS
+              invoice_id: notaCreditoId,
+              invoice_sales_id: notaCreditoId,
               invoice_type: 'sale',
               product_id: item.product_id,
               description: item.description,
@@ -296,12 +325,12 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
               unit_price: precioUnitario,
               tax_code: item.tax_code,
               tax_rate: impuestoTasa,
-              tax_included: item.tax_included || false,
-              total_line: -lineaTotal, // Negativo para nota de crédito
+              tax_included: taxIncluded,
+              total_line: -totalLinea, // Negativo
               discount_amount: item.discount_amount || 0
             });
-            
-            subtotal += lineaTotal;
+
+            subtotal += baseImponible;
             taxTotal += impuestoMonto;
           }
         }
@@ -327,9 +356,27 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
         
       if (updateError) throw updateError;
       
+      // 3.5 Copiar impuestos aplicados de la factura original a la nota crédito
+      const { data: originalAppliedTaxes } = await supabase
+        .from('invoice_applied_taxes')
+        .select('tax_code, is_applied')
+        .eq('invoice_id', factura.id);
+
+      if (originalAppliedTaxes && originalAppliedTaxes.length > 0) {
+        const appliedTaxesNota = originalAppliedTaxes.map(t => ({
+          invoice_id: notaCreditoId,
+          tax_code: t.tax_code,
+          is_applied: t.is_applied,
+        }));
+        const { error: taxError } = await supabase
+          .from('invoice_applied_taxes')
+          .insert(appliedTaxesNota);
+        if (taxError) console.error('Error al copiar impuestos aplicados:', taxError);
+      }
+      
       // 4. Actualizar saldo de la factura original
       const nuevoSaldo = Math.max(0, factura.balance - (subtotal + taxTotal));
-      const nuevoEstado = nuevoSaldo <= 0 ? 'paid' : nuevoSaldo < factura.total ? 'partial' : factura.status;
+      const nuevoEstado = nuevoSaldo <= 0 ? 'void' : nuevoSaldo < factura.total ? 'partial' : factura.status;
       
       const { error: facturaUpdateError } = await supabase
         .from('invoice_sales')

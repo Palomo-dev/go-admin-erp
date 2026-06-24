@@ -37,6 +37,7 @@ export interface InvoiceDataForPDF {
     unit_price: number;
     tax_rate?: number;
     total_line: number;
+    sku?: string;
   }[];
 }
 
@@ -230,7 +231,7 @@ export class PDFService {
             <tbody>
               ${data.items.map(item => `
                 <tr>
-                  <td>${item.description}</td>
+                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}</td>
                   <td>${item.qty}</td>
                   <td>${formatCurrency(item.unit_price)}</td>
                   <td>${item.tax_rate ? `${item.tax_rate}%` : '-'}</td>
@@ -425,7 +426,7 @@ export class PDFService {
             <tbody>
               ${data.items.map(item => `
                 <tr>
-                  <td>${item.description}</td>
+                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}</td>
                   <td>${item.qty}</td>
                   <td>${formatCurrency(item.unit_price)}</td>
                   <td>${item.tax_rate ? `${item.tax_rate}%` : '-'}</td>

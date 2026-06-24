@@ -61,19 +61,25 @@ export function parseLocalDate(dateString: string): Date {
  */
 // Esta función queda obsoleta y solo redirige al servicio
 // Se mantiene por compatibilidad con el código existente
-export function formatCurrency(value: number, currency: string = "COP"): string {
-  // Importar el servicio causaría un error de dependencia circular
-  // así que implementamos el formato aquí
+export function formatCurrency(value: number | string | null | undefined, currency: string = "COP"): string {
+  const num = Number(value);
+  if (isNaN(num) || value === null || value === undefined) {
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(0);
+  }
   try {
     return new Intl.NumberFormat("es-CO", {
       style: "currency",
       currency: currency,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(value);
+    }).format(num);
   } catch (error) {
-    // Si hay error con el formato (ej: moneda inválida), usar formato simple
-    return `${currency} ${value.toFixed(2)}`;
+    return `${currency} ${num.toFixed(2)}`;
   }
 }
 

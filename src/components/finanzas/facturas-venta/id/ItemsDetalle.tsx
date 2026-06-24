@@ -15,6 +15,12 @@ interface Item {
   tax_included?: boolean;
   total_line: number;
   discount_amount?: number | null;
+  code_reference?: string | null;
+  products?: {
+    id: number;
+    name: string;
+    sku?: string;
+  };
   taxes?: {
     name: string;
     rate: number;
@@ -22,12 +28,20 @@ interface Item {
   };
 }
 
+interface OrganizationTax {
+  id: string;
+  name: string;
+  rate: number;
+  is_default?: boolean;
+}
+
 interface ItemsDetalleProps {
   items: Item[];
   taxIncluded?: boolean;
+  organizationTaxes?: OrganizationTax[];
 }
 
-export function ItemsDetalle({ items, taxIncluded = false }: ItemsDetalleProps) {
+export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [] }: ItemsDetalleProps) {
   if (!items || items.length === 0) {
     return (
       <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-500 dark:text-gray-400">
@@ -35,6 +49,20 @@ export function ItemsDetalle({ items, taxIncluded = false }: ItemsDetalleProps) 
       </div>
     );
   }
+
+  const resolveTaxName = (item: Item): string => {
+    if (item.taxes?.name) return item.taxes.name;
+    if (item.tax_code) {
+      const found = organizationTaxes.find(t => t.id === item.tax_code || t.name === item.tax_code);
+      if (found) return found.name;
+    }
+    const rate = Number(item.tax_rate);
+    if (!isNaN(rate) && rate > 0) {
+      const found = organizationTaxes.find(t => Number(t.rate) === rate);
+      if (found) return found.name;
+    }
+    return 'Impuesto';
+  };
 
   return (
     <div className="overflow-x-auto -mx-2 sm:mx-0">
@@ -56,22 +84,41 @@ export function ItemsDetalle({ items, taxIncluded = false }: ItemsDetalleProps) 
                 <TableCell className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">{index + 1}</TableCell>
                 <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">
                   <div className="max-w-[200px] sm:max-w-none">
-                    {item.description}
+                    {(() => {
+                      const sku = item.products?.sku || item.code_reference;
+                      if (sku) {
+                        return (
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
+                            <span className="line-clamp-2">{item.description}</span>
+                          </div>
+                        );
+                      }
+                      return <span className="line-clamp-2">{item.description}</span>;
+                    })()}
                   </div>
                 </TableCell>
-                <TableCell className="text-right text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">{item.qty.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">{Number(item.qty).toLocaleString()}</TableCell>
                 <TableCell className="text-right text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3 hidden sm:table-cell">{formatCurrency(item.unit_price)}</TableCell>
                 <TableCell className="text-right text-xs sm:text-sm py-2 sm:py-3 hidden md:table-cell">
-                  {item.tax_rate ? (
-                    <div className="flex flex-col items-end">
-                      <span className="text-gray-900 dark:text-gray-100">{item.taxes?.name || `${item.tax_code}`}</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        ({item.tax_rate.toFixed(2)}%)
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-500 dark:text-gray-400">N/A</span>
-                  )}
+                  {(() => {
+                    const rate = Number(item.tax_rate);
+                    const hasTaxCode = item.tax_code != null && item.tax_code !== '';
+                    if (hasTaxCode && !isNaN(rate) && rate > 0) {
+                      const taxName = resolveTaxName(item);
+                      const isIncluded = item.tax_included ?? taxIncluded;
+                      const nameHasRate = /\d+/.test(taxName);
+                      return (
+                        <div className="flex flex-col items-end">
+                          <span className="text-gray-700 dark:text-gray-200">{taxName}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {nameHasRate ? (isIncluded ? 'Incluido' : 'Adicional') : `${rate.toFixed(2)}% ${isIncluded ? '(incl.)' : '(+imp.)'}`}
+                          </span>
+                        </div>
+                      );
+                    }
+                    return <span className="text-gray-400 dark:text-gray-500">N/A</span>;
+                  })()}
                 </TableCell>
                 <TableCell className="text-right font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">
                   {formatCurrency(item.total_line)}
@@ -82,9 +129,13 @@ export function ItemsDetalle({ items, taxIncluded = false }: ItemsDetalleProps) 
         </Table>
       </div>
       
-      {taxIncluded && (
+      {taxIncluded ? (
         <div className="mt-2 sm:mt-3 text-right text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic px-2 sm:px-0">
           * Los precios incluyen impuestos
+        </div>
+      ) : (
+        <div className="mt-2 sm:mt-3 text-right text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic px-2 sm:px-0">
+          * Los impuestos se calculan sobre el subtotal
         </div>
       )}
     </div>

@@ -20,8 +20,7 @@ const statusLabels: Record<string, { label: string; class: string }> = {
   issued: { label: 'Emitida', class: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },
   paid: { label: 'Pagada', class: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
   overdue: { label: 'Vencida', class: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
-  cancelled: { label: 'Anulada', class: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
-  voided: { label: 'Anulada', class: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
+  void: { label: 'Anulada', class: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
   partial: { label: 'Parcial', class: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' },
 };
 

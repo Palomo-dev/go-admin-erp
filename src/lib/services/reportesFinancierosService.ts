@@ -93,7 +93,7 @@ class ReportesFinancierosService {
         .eq('organization_id', organizationId)
         .gte('issue_date', dateRange.from)
         .lte('issue_date', dateRange.to)
-        .neq('status', 'voided');
+        .neq('status', 'void');
 
       // Obtener costos (facturas de compra)
       const { data: compras } = await supabase
@@ -102,7 +102,7 @@ class ReportesFinancierosService {
         .eq('organization_id', organizationId)
         .gte('issue_date', dateRange.from)
         .lte('issue_date', dateRange.to)
-        .neq('status', 'voided');
+        .neq('status', 'void');
 
       const ingresos = ventas?.reduce((sum, v) => sum + Number(v.total || 0), 0) || 0;
       const costos = compras?.reduce((sum, c) => sum + Number(c.total || 0), 0) || 0;
@@ -241,7 +241,7 @@ class ReportesFinancierosService {
         .eq('organization_id', organizationId)
         .gte('issue_date', dateRange.from)
         .lte('issue_date', dateRange.to)
-        .neq('status', 'voided');
+        .neq('status', 'void');
 
       // IVA de compras
       const { data: compras } = await supabase
@@ -250,7 +250,7 @@ class ReportesFinancierosService {
         .eq('organization_id', organizationId)
         .gte('issue_date', dateRange.from)
         .lte('issue_date', dateRange.to)
-        .neq('status', 'voided');
+        .neq('status', 'void');
 
       const ivaRecaudado = ventas?.reduce((sum, v) => sum + Number(v.tax_total || 0), 0) || 0;
       const ivaPagado = compras?.reduce((sum, c) => sum + Number(c.tax_total || 0), 0) || 0;

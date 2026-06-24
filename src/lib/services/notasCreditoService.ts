@@ -36,21 +36,29 @@ export interface NotaCredito {
     id: string;
     number: string;
     total: number;
+    subtotal?: number;
+    tax_total?: number;
+    issue_date?: string;
+    status?: string;
+    applied_taxes?: { tax_code: string; is_applied: boolean }[];
   };
   items?: NotaCreditoItem[];
+  applied_taxes?: { tax_code: string; is_applied: boolean }[];
+  tax_included?: boolean;
 }
 
 export interface NotaCreditoItem {
   id: string;
   invoice_id: string;
-  product_id?: string;
+  product_id?: number | null;
   description: string;
-  quantity: number;
+  qty: number;
   unit_price: number;
-  tax_rate: number;
-  tax_amount: number;
-  subtotal: number;
-  total: number;
+  tax_code?: string | null;
+  tax_rate?: number | null;
+  tax_included?: boolean;
+  total_line: number;
+  discount_amount?: number | null;
 }
 
 export interface EInvoiceJob {
@@ -117,7 +125,27 @@ class NotasCreditoService {
       return [];
     }
 
-    return data || [];
+    if (!data || data.length === 0) return [];
+
+    // Cargar facturas relacionadas (auto-referencia, no se puede con JOIN anidado)
+    const relatedIds = data.map(n => n.related_invoice_id).filter(Boolean);
+    if (relatedIds.length > 0) {
+      const { data: relatedInvoices } = await supabase
+        .from('invoice_sales')
+        .select('id, number, total, issue_date, status')
+        .in('id', relatedIds);
+
+      if (relatedInvoices) {
+        const invoiceMap = new Map(relatedInvoices.map(inv => [inv.id, inv]));
+        data.forEach(nota => {
+          if (nota.related_invoice_id && invoiceMap.has(nota.related_invoice_id)) {
+            nota.related_invoice = invoiceMap.get(nota.related_invoice_id);
+          }
+        });
+      }
+    }
+
+    return data;
   }
 
   /**
@@ -147,20 +175,38 @@ class NotasCreditoService {
     if (data) {
       const { data: items } = await supabase
         .from('invoice_items')
-        .select('*')
+        .select('*, products(id, name, sku)')
         .eq('invoice_id', id);
       
       data.items = items || [];
+
+      // Obtener impuestos aplicados a la nota crédito
+      const { data: appliedTaxes } = await supabase
+        .from('invoice_applied_taxes')
+        .select('tax_code, is_applied')
+        .eq('invoice_id', id);
+      
+      data.applied_taxes = appliedTaxes || [];
 
       // Obtener factura relacionada si existe
       if (data.related_invoice_id) {
         const { data: relatedInvoice } = await supabase
           .from('invoice_sales')
-          .select('id, number, total, issue_date, status')
+          .select('id, number, total, subtotal, tax_total, issue_date, status')
           .eq('id', data.related_invoice_id)
           .single();
         
         data.related_invoice = relatedInvoice || null;
+
+        // Obtener impuestos aplicados a la factura original
+        if (relatedInvoice) {
+          const { data: originalAppliedTaxes } = await supabase
+            .from('invoice_applied_taxes')
+            .select('tax_code, is_applied')
+            .eq('invoice_id', data.related_invoice_id);
+          
+          data.related_invoice.applied_taxes = originalAppliedTaxes || [];
+        }
       }
     }
 

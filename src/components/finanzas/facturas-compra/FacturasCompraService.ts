@@ -138,7 +138,8 @@ export class FacturasCompraService {
           unit_price,
           total_line,
           tax_rate,
-          discount_amount
+          discount_amount,
+          products(id, name, sku)
         `)
         .eq('invoice_purchase_id', id);
         

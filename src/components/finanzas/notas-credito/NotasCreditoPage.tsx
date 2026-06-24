@@ -351,7 +351,7 @@ export function NotasCreditoPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-semibold text-red-600 dark:text-red-400">
-                      -{formatCurrency(nota.total)}
+                      {formatCurrency(Number(nota.total))}
                     </TableCell>
                     <TableCell>
                       <Badge className={`${statusColors[nota.status]} flex items-center gap-1 w-fit`}>

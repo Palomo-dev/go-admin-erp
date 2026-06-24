@@ -26,22 +26,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ItemsDetalle } from '@/components/finanzas/facturas-venta/id/ItemsDetalle';
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/utils/Utils';
-import { 
-  notasCreditoService, 
-  NotaCredito, 
+import {
+  notasCreditoService,
+  NotaCredito,
   EInvoiceJob,
-  EInvoiceEvent 
+  EInvoiceEvent
 } from '@/lib/services/notasCreditoService';
+import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 interface NotaCreditoDetalleProps {
   id: string;
@@ -92,6 +87,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
   const [eInvoiceEvents, setEInvoiceEvents] = useState<EInvoiceEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [organizationTaxes, setOrganizationTaxes] = useState<{ id: string; name: string; rate: number; is_default?: boolean }[]>([]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -106,6 +102,17 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
         if (job) {
           const events = await notasCreditoService.getEInvoiceEvents(job.id);
           setEInvoiceEvents(events);
+        }
+
+        // Cargar impuestos de la organización para resolver nombres
+        const orgId = getOrganizationId();
+        if (orgId) {
+          const { data: taxes } = await supabase
+            .from('organization_taxes')
+            .select('id, name, rate, is_default')
+            .eq('organization_id', orgId)
+            .eq('is_active', true);
+          if (taxes) setOrganizationTaxes(taxes);
         }
       }
     } catch (error) {
@@ -265,7 +272,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                   <div className="text-right">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Total Factura</p>
                     <p className="font-semibold text-gray-900 dark:text-white">
-                      {formatCurrency(nota.related_invoice.total)}
+                      {formatCurrency(Number(nota.related_invoice.total))}
                     </p>
                   </div>
                   <Link href={`/app/finanzas/facturas-venta/${nota.related_invoice_id}`}>
@@ -287,62 +294,64 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                 Detalle de Items
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="dark:border-gray-700">
-                    <TableHead className="dark:text-gray-400">Descripción</TableHead>
-                    <TableHead className="dark:text-gray-400 text-right">Cant.</TableHead>
-                    <TableHead className="dark:text-gray-400 text-right">Precio</TableHead>
-                    <TableHead className="dark:text-gray-400 text-right">IVA</TableHead>
-                    <TableHead className="dark:text-gray-400 text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {nota.items && nota.items.length > 0 ? (
-                    nota.items.map((item) => (
-                      <TableRow key={item.id} className="dark:border-gray-700">
-                        <TableCell className="text-gray-900 dark:text-white">
-                          {item.description}
-                        </TableCell>
-                        <TableCell className="text-right text-gray-600 dark:text-gray-300">
-                          {item.quantity}
-                        </TableCell>
-                        <TableCell className="text-right text-gray-600 dark:text-gray-300">
-                          {formatCurrency(item.unit_price)}
-                        </TableCell>
-                        <TableCell className="text-right text-gray-600 dark:text-gray-300">
-                          {formatCurrency(item.tax_amount)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-gray-900 dark:text-white">
-                          {formatCurrency(item.total)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4 text-gray-500 dark:text-gray-400">
-                        No hay items
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+            <CardContent className="pt-0">
+              <ItemsDetalle items={nota.items || []} taxIncluded={nota.tax_included || false} organizationTaxes={organizationTaxes} />
 
               {/* Totals */}
-              <div className="border-t dark:border-gray-700 p-4 space-y-2">
+              <div className="border-t dark:border-gray-700 p-4 space-y-2 mt-4">
                 <div className="flex justify-between text-gray-600 dark:text-gray-300">
                   <span>Subtotal</span>
-                  <span>{formatCurrency(nota.subtotal)}</span>
+                  <span>{formatCurrency(Number(nota.subtotal))}</span>
                 </div>
-                <div className="flex justify-between text-gray-600 dark:text-gray-300">
-                  <span>IVA</span>
-                  <span>{formatCurrency(nota.tax_total)}</span>
-                </div>
+                {(() => {
+                  const taxTotal = Number(nota.tax_total) || 0;
+                  if (taxTotal === 0) return null;
+
+                  // Agrupar impuestos por tasa desde los items
+                  const taxGroups: Record<string, { rate: number; amount: number; name: string }> = {};
+                  (nota.items || []).forEach(item => {
+                    const rate = Number(item.tax_rate) || 0;
+                    if (rate <= 0) return;
+                    const key = rate.toString();
+                    if (!taxGroups[key]) {
+                      const orgTax = organizationTaxes.find(t => Number(t.rate) === rate);
+                      taxGroups[key] = { rate, amount: 0, name: orgTax?.name || `Impuesto ${rate}%` };
+                    }
+                    // Calcular monto del impuesto de este item
+                    const lineTotal = Math.abs(Number(item.total_line) || 0);
+                    const isIncluded = item.tax_included ?? nota.tax_included;
+                    if (isIncluded) {
+                      taxGroups[key].amount += lineTotal - (lineTotal / (1 + rate / 100));
+                    } else {
+                      taxGroups[key].amount += (lineTotal * rate) / 100;
+                    }
+                  });
+
+                  const groups = Object.values(taxGroups);
+                  if (groups.length === 0) {
+                    return (
+                      <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                        <span>Impuestos {nota.tax_included ? '(incluidos)' : '(adicionales)'}</span>
+                        <span>{formatCurrency(taxTotal)}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-1">
+                      {groups.map(g => (
+                        <div key={g.rate} className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>{g.name} {nota.tax_included ? '(incl.)' : '(+imp.)'}</span>
+                          <span>-{formatCurrency(g.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
                 <Separator className="dark:bg-gray-700" />
                 <div className="flex justify-between text-lg font-bold text-red-600 dark:text-red-400">
                   <span>Total Nota Crédito</span>
-                  <span>-{formatCurrency(nota.total)}</span>
+                  <span>{formatCurrency(Number(nota.total))}</span>
                 </div>
               </div>
             </CardContent>
@@ -484,7 +493,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
             <CardContent className="pt-6">
               <p className="text-red-100 text-sm">Total Nota Crédito</p>
               <p className="text-3xl font-bold mt-1">
-                -{formatCurrency(nota.total)}
+                {formatCurrency(Number(nota.total))}
               </p>
               <p className="text-red-100 text-sm mt-2">
                 {formatDate(nota.issue_date)}

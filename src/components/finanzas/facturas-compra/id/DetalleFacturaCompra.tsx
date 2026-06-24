@@ -223,7 +223,8 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
         qty: item.qty,
         unit_price: item.unit_price,
         tax_rate: item.tax_rate,
-        total_line: item.total_line
+        total_line: item.total_line,
+        sku: item.products?.sku
       }))
     };
     PDFService.printPurchaseInvoiceHTML(pdfData);
@@ -256,7 +257,8 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
         qty: item.qty,
         unit_price: item.unit_price,
         tax_rate: item.tax_rate,
-        total_line: item.total_line
+        total_line: item.total_line,
+        sku: item.products?.sku
       }))
     };
     PDFService.downloadPurchaseInvoicePDF(pdfData);
@@ -587,7 +589,18 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                   {factura.items?.map((item, index) => (
                     <TableRow key={item.id || index} className="dark:border-gray-800 border-b border-gray-100">
                       <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3">
-                        <span className="line-clamp-2">{item.description}</span>
+                        {(() => {
+                          const sku = item.products?.sku;
+                          if (sku) {
+                            return (
+                              <div className="flex flex-col">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
+                                <span className="line-clamp-2">{item.description}</span>
+                              </div>
+                            );
+                          }
+                          return <span className="line-clamp-2">{item.description}</span>;
+                        })()}
                       </TableCell>
                       <TableCell className="text-xs sm:text-sm text-right text-gray-900 dark:text-gray-300 py-2 sm:py-3 whitespace-nowrap">
                         {item.qty}

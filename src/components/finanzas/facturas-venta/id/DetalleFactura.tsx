@@ -404,7 +404,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         qty: item.qty,
         unit_price: item.unit_price,
         tax_rate: item.tax_rate,
-        total_line: item.total_line
+        total_line: item.total_line,
+        sku: item.products?.sku || item.code_reference
       })) || []
     };
 

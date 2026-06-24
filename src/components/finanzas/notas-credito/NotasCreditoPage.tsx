@@ -57,7 +57,7 @@ const statusColors: Record<string, string> = {
   sent: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   accepted: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  voided: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  void: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   paid: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
 };
 
@@ -67,7 +67,7 @@ const statusLabels: Record<string, string> = {
   sent: 'Enviada',
   accepted: 'Aceptada DIAN',
   rejected: 'Rechazada',
-  voided: 'Anulada',
+  void: 'Anulada',
   paid: 'Pagada',
 };
 
@@ -77,7 +77,7 @@ const statusIcons: Record<string, React.ReactNode> = {
   sent: <CheckCircle className="h-3 w-3" />,
   accepted: <CheckCircle className="h-3 w-3" />,
   rejected: <AlertCircle className="h-3 w-3" />,
-  voided: <XCircle className="h-3 w-3" />,
+  void: <XCircle className="h-3 w-3" />,
   paid: <CheckCircle className="h-3 w-3" />,
 };
 
@@ -280,7 +280,7 @@ export function NotasCreditoPage() {
             <SelectItem value="sent">Enviada</SelectItem>
             <SelectItem value="accepted">Aceptada</SelectItem>
             <SelectItem value="rejected">Rechazada</SelectItem>
-            <SelectItem value="voided">Anulada</SelectItem>
+            <SelectItem value="void">Anulada</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" onClick={loadData} className="dark:border-gray-700">
@@ -374,7 +374,7 @@ export function NotasCreditoPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             Ver Detalle
                           </DropdownMenuItem>
-                          {nota.status !== 'voided' && nota.status !== 'accepted' && (
+                          {nota.status !== 'void' && nota.status !== 'accepted' && (
                             <>
                               <DropdownMenuSeparator className="dark:bg-gray-700" />
                               <DropdownMenuItem

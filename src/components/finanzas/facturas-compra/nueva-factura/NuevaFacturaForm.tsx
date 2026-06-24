@@ -403,10 +403,18 @@ export function NuevaFacturaForm({
 
   // Memoizar códigos de impuestos iniciales para edición
   const initialAppliedTaxCodes = useMemo(() => {
-    if (esEdicion && facturaInicial?.applied_taxes) {
-      return facturaInicial.applied_taxes
-        .filter((t: any) => t.is_applied)
-        .map((t: any) => t.tax_code);
+    if (esEdicion && facturaInicial) {
+      // Prioridad 1: impuestos guardados en invoice_purchase_applied_taxes
+      if (facturaInicial.applied_taxes && facturaInicial.applied_taxes.length > 0) {
+        return facturaInicial.applied_taxes
+          .filter((t: any) => t.is_applied)
+          .map((t: any) => t.tax_code);
+      }
+      // Fallback para facturas viejas: usar tax_code de los items
+      if (facturaInicial.items) {
+        const taxCodes = [...new Set(facturaInicial.items.map((item: any) => item.tax_code).filter(Boolean))];
+        if (taxCodes.length > 0) return taxCodes;
+      }
     }
     return undefined;
   }, [esEdicion, facturaInicial]);

@@ -216,14 +216,14 @@ class NotasCreditoService {
       return { success: false, error: 'Nota de crédito no encontrada' };
     }
 
-    if (nota.status === 'cancelled' || nota.status === 'voided') {
+    if (nota.status === 'void') {
       return { success: false, error: 'La nota de crédito ya está anulada' };
     }
 
     const { error } = await supabase
       .from('invoice_sales')
       .update({
-        status: 'voided',
+        status: 'void',
         notes: nota.notes 
           ? `${nota.notes}\n\nANULADA: ${reason || 'Sin motivo'}`
           : `ANULADA: ${reason || 'Sin motivo'}`,
@@ -234,6 +234,41 @@ class NotasCreditoService {
     if (error) {
       console.error('Error anulando nota credito:', error);
       return { success: false, error: error.message };
+    }
+
+    // Restaurar el balance de la factura original
+    if (nota.related_invoice_id) {
+      const montoNota = Math.abs(Number(nota.total));
+      const { data: facturaOriginal } = await supabase
+        .from('invoice_sales')
+        .select('id, balance, total, status')
+        .eq('id', nota.related_invoice_id)
+        .single();
+
+      if (facturaOriginal) {
+        const balanceActual = Number(facturaOriginal.balance);
+        const totalActual = Number(facturaOriginal.total);
+        const nuevoBalance = balanceActual + montoNota;
+
+        // Determinar el nuevo status de la factura original
+        let nuevoStatus = facturaOriginal.status;
+        if (nuevoBalance >= totalActual) {
+          nuevoStatus = 'issued';
+        } else if (nuevoBalance > 0) {
+          nuevoStatus = 'partial';
+        } else {
+          nuevoStatus = 'paid';
+        }
+
+        await supabase
+          .from('invoice_sales')
+          .update({
+            balance: nuevoBalance,
+            status: nuevoStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', nota.related_invoice_id);
+      }
     }
 
     return { success: true };
@@ -262,7 +297,7 @@ class NotasCreditoService {
       .select('total, issue_date, status')
       .eq('organization_id', organizationId)
       .eq('document_type', 'credit_note')
-      .neq('status', 'voided');
+      .neq('status', 'void');
 
     if (error || !data) {
       return { total: 0, count: 0, thisMonth: 0, pending: 0 };

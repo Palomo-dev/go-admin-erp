@@ -102,8 +102,8 @@ export const finanzasReportService = {
     for (const inv of invoices || []) {
       facturasEmitidas++;
       if (inv.status === 'paid') facturasPagadas++;
-      else if (inv.status === 'cancelled' || inv.status === 'voided') facturasAnuladas++;
-      if (inv.status !== 'cancelled' && inv.status !== 'voided') {
+      else if (inv.status === 'void') facturasAnuladas++;
+      if (inv.status !== 'void') {
         totalFacturado += Number(inv.total) || 0;
         totalBalance += Number(inv.balance) || 0;
       }

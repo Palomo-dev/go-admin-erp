@@ -407,7 +407,7 @@ function LoginContent() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none"
+                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none bg-white text-gray-900 placeholder:text-gray-400"
                   placeholder={t('emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -427,7 +427,7 @@ function LoginContent() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none"
+                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none bg-white text-gray-900 placeholder:text-gray-400"
                   placeholder={t('passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

@@ -114,15 +114,15 @@ export default function AuditFiltersComponent({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Desde:</span>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Desde:</span>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-[150px] justify-start text-left font-normal bg-white dark:bg-gray-800"
+                  className="flex-1 sm:flex-initial sm:w-[150px] justify-start text-left font-normal bg-white dark:bg-gray-800"
                 >
-                  <Calendar className="mr-2 h-4 w-4" />
+                  <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
                   {filters.dateFrom ? format(new Date(filters.dateFrom), 'dd/MM/yyyy') : 'Fecha'}
                 </Button>
               </PopoverTrigger>
@@ -137,15 +137,15 @@ export default function AuditFiltersComponent({
             </Popover>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Hasta:</span>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Hasta:</span>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-[150px] justify-start text-left font-normal bg-white dark:bg-gray-800"
+                  className="flex-1 sm:flex-initial sm:w-[150px] justify-start text-left font-normal bg-white dark:bg-gray-800"
                 >
-                  <Calendar className="mr-2 h-4 w-4" />
+                  <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
                   {filters.dateTo ? format(new Date(filters.dateTo), 'dd/MM/yyyy') : 'Fecha'}
                 </Button>
               </PopoverTrigger>
@@ -165,7 +165,7 @@ export default function AuditFiltersComponent({
               variant="ghost"
               size="sm"
               onClick={onClearFilters}
-              className="text-gray-500"
+              className="text-gray-500 flex-shrink-0"
             >
               <X className="h-4 w-4 mr-1" />
               Limpiar filtros

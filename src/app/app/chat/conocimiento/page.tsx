@@ -321,7 +321,7 @@ export default function ConocimientoPage() {
 
       <div className="flex-1 overflow-hidden">
         {viewingSource ? (
-          <div className="p-6 h-full overflow-y-auto">
+          <div className="p-4 sm:p-6 h-full overflow-y-auto">
             <FragmentsList
               fragments={fragments}
               loading={loading}
@@ -336,7 +336,7 @@ export default function ConocimientoPage() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <div className="px-6 pt-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <div className="px-4 sm:px-6 pt-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
               <TabsList className="bg-gray-100 dark:bg-gray-800">
                 <TabsTrigger value="sources" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700">
                   <Database className="h-4 w-4" />
@@ -349,7 +349,7 @@ export default function ConocimientoPage() {
               </TabsList>
             </div>
 
-            <TabsContent value="sources" className="flex-1 p-6 overflow-y-auto mt-0">
+            <TabsContent value="sources" className="flex-1 p-4 sm:p-6 overflow-y-auto mt-0">
               <SourcesList
                 sources={sources}
                 loading={loading}
@@ -360,7 +360,7 @@ export default function ConocimientoPage() {
               />
             </TabsContent>
 
-            <TabsContent value="fragments" className="flex-1 p-6 overflow-y-auto mt-0">
+            <TabsContent value="fragments" className="flex-1 p-4 sm:p-6 overflow-y-auto mt-0">
               <FragmentsList
                 fragments={fragments}
                 loading={loading}

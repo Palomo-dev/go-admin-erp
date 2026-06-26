@@ -62,24 +62,24 @@ export default function WidgetCodeSection({
   return (
     <Card className="dark:bg-gray-800 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Code className="h-5 w-5 text-blue-600" />
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <Code className="h-5 w-5 text-blue-600 flex-shrink-0" />
           Código de Instalación
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
           Copia este código y pégalo antes de &lt;/body&gt; en tu sitio web
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Widget Code */}
         <div className="relative">
-          <pre className="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto max-h-48">
+          <pre className="p-3 sm:p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto max-h-48">
             <code>{widgetCode}</code>
           </pre>
           <Button
             size="sm"
             variant="secondary"
-            className="absolute top-2 right-2"
+            className="absolute top-2 right-2 h-7 px-2"
             onClick={handleCopyCode}
           >
             {copied ? (
@@ -97,16 +97,16 @@ export default function WidgetCodeSection({
         </div>
 
         {/* Public Key */}
-        <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <div className="min-w-0">
             <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
               Clave Pública
             </p>
-            <code className="text-xs bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded font-mono">
+            <code className="text-xs bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded font-mono break-all">
               {channel.public_key}
             </code>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
             <Button size="sm" variant="outline" onClick={handleCopyKey}>
               {copiedKey ? (
                 <Check className="h-4 w-4 text-green-500" />

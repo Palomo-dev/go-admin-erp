@@ -117,7 +117,7 @@ export interface WebOrderFilters {
   status?: WebOrderStatus[];
   delivery_type?: DeliveryType;
   source?: OrderSource;
-  payment_status?: PaymentStatus;
+  payment_status?: PaymentStatus[];
   date_from?: string;
   date_to?: string;
   search?: string;
@@ -166,8 +166,8 @@ class WebOrdersService {
         query = query.eq('source', filters.source);
       }
 
-      if (filters?.payment_status) {
-        query = query.eq('payment_status', filters.payment_status);
+      if (filters?.payment_status && filters.payment_status.length > 0) {
+        query = query.in('payment_status', filters.payment_status);
       }
 
       if (filters?.branch_id) {

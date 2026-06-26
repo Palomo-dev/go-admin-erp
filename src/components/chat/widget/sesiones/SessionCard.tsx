@@ -61,7 +61,7 @@ export default function SessionCard({ session, onViewDetails, onBlock, onUnblock
             {getStatusBadge()}
           </div>
 
-          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 sm:gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
             <div className="flex items-center gap-1">
               <DeviceIcon type={session.device_type} />
               <span>{session.device_type || 'Desktop'}</span>
@@ -75,13 +75,13 @@ export default function SessionCard({ session, onViewDetails, onBlock, onUnblock
           </div>
 
           {session.customer ? (
-            <div className="flex items-center gap-2 mt-2 text-sm">
-              <User className="h-4 w-4 text-blue-500" />
+            <div className="flex items-center gap-2 mt-2 text-sm flex-wrap">
+              <User className="h-4 w-4 text-blue-500 flex-shrink-0" />
               <span className="text-gray-900 dark:text-white font-medium">
                 {session.customer.full_name}
               </span>
               {session.customer.email && (
-                <span className="text-gray-500 dark:text-gray-400">
+                <span className="text-gray-500 dark:text-gray-400 truncate">
                   ({session.customer.email})
                 </span>
               )}
@@ -124,7 +124,7 @@ export default function SessionCard({ session, onViewDetails, onBlock, onUnblock
         </DropdownMenu>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
           <span>

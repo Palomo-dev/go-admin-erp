@@ -27,13 +27,13 @@ export function ConfigNavTabs() {
   const pathname = usePathname();
 
   return (
-    <div className="flex space-x-2 mb-6">
+    <div className="flex space-x-2 mb-6 overflow-x-auto pb-1">
       {configTabs.map((tab) => (
         <Link
           key={tab.name}
           href={tab.href}
           className={cn(
-            'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+            'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap',
             pathname === tab.href
               ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
               : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'

@@ -160,8 +160,9 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
               brand: e.brand || p.brand,
               sku: e.sku || p.sku,
               barcode: e.barcode || p.barcode,
-              price: p.price && p.price > 0 ? p.price : e.price,
-              compare_price: p.compare_price && p.compare_price > 0 ? p.compare_price : e.compare_price,
+              // El enriquecimiento trae el precio DETERMINISTA del detalle (JSON-LD/meta): tiene prioridad
+              price: e.price && e.price > 0 ? e.price : p.price,
+              compare_price: e.compare_price && e.compare_price > 0 ? e.compare_price : p.compare_price,
               tags: e.tags && e.tags.length > (p.tags?.length || 0) ? e.tags : p.tags,
             };
             // Al combinar listado + detalle el precio de venta/comparación puede quedar
@@ -181,11 +182,14 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     }
   };
 
-  // Enriquecer todos los productos con URL de detalle (concurrencia limitada)
+  // Enriquecer SOLO los productos incompletos con URL de detalle (los de API nativa ya vienen completos)
   const enrichAll = async (prods: ScrapedProduct[]) => {
+    const incompleto = (p: ScrapedProduct) =>
+      !p.price || p.price <= 0 || !(p.images && p.images.length > 0);
     const pendientes = prods
-      .map((p, i) => ({ i, url: p.url }))
-      .filter((x): x is { i: number; url: string } => !!x.url);
+      .map((p, i) => ({ i, url: p.url, p }))
+      .filter((x): x is { i: number; url: string; p: ScrapedProduct } => !!x.url && incompleto(x.p))
+      .map(({ i, url }) => ({ i, url }));
     if (pendientes.length === 0) return;
     setEnriqueciendoTodo(true);
     try {
@@ -218,9 +222,19 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
 
     setAnalizando(true);
     try {
-      const { data, error } = await supabase.functions.invoke('product-scraper', {
-        body: { action: 'preview', url },
-      });
+      // Timeout de seguridad: si el sitio es muy pesado/bloqueado, no dejar la UI colgada
+      const TIMEOUT_MS = 120000;
+      const { data, error } = await Promise.race([
+        supabase.functions.invoke('product-scraper', {
+          body: { action: 'preview', url },
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('El análisis tardó demasiado. El sitio puede ser muy pesado o bloquear el acceso. Intente con una categoría más específica.')),
+            TIMEOUT_MS,
+          ),
+        ),
+      ]) as Awaited<ReturnType<typeof supabase.functions.invoke>>;
 
       if (error) {
         let msg = error.message || 'Error al analizar la página';
@@ -478,6 +492,12 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
                   </div>
                   {/* Badges informativos */}
                   <div className="flex items-center gap-2 flex-wrap">
+                    {!enriqueciendo.has(i) && !enriqueciendoTodo &&
+                      ((!p.price || p.price <= 0) || !(p.images && p.images.length > 0)) && (
+                      <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-600 dark:text-amber-400">
+                        Datos incompletos
+                      </Badge>
+                    )}
                     {p.brand && (
                       <Badge variant="outline" className="text-[10px]">
                         {p.brand}

@@ -46,22 +46,22 @@ export default function KnowledgeHeader({ stats, loading, onCreateSource, onImpo
   ];
 
   return (
-    <div className="p-6 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
             <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate">
               Base de Conocimiento
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
               Gestiona las fuentes de información para el asistente de IA
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {onAISettings && (
             <Button
               onClick={onAISettings}
@@ -92,21 +92,21 @@ export default function KnowledgeHeader({ stats, loading, onCreateSource, onImpo
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         {statItems.map((item) => (
           <Card
             key={item.label}
-            className="p-4 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+            className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
           >
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${item.bgColor}`}>
-                <item.icon className={`h-5 w-5 ${item.color}`} />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className={`p-1.5 sm:p-2 rounded-lg ${item.bgColor} flex-shrink-0`}>
+                <item.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${item.color}`} />
               </div>
-              <div>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="text-lg sm:text-2xl font-semibold text-gray-900 dark:text-white tabular-nums">
                   {loading ? '-' : item.value}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {item.label}
                 </p>
               </div>

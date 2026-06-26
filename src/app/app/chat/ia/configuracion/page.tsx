@@ -256,7 +256,7 @@ export default function AIConfiguracionPage() {
 
       <div className="flex-1 overflow-y-auto">
         <Tabs defaultValue="model" className="h-full flex flex-col">
-          <div className="px-6 pt-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+          <div className="px-4 sm:px-6 pt-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
             <TabsList className="bg-gray-100 dark:bg-gray-800">
               <TabsTrigger value="model" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700">
                 <Cpu className="h-4 w-4" />
@@ -273,7 +273,7 @@ export default function AIConfiguracionPage() {
             </TabsList>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="max-w-4xl mx-auto">
               <TabsContent value="model" className="mt-0">
                 <ModelSettings

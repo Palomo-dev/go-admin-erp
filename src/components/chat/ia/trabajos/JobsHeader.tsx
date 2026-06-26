@@ -44,7 +44,7 @@ export default function JobsHeader({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="icon"
@@ -65,13 +65,13 @@ export default function JobsHeader({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
           {statItems.map((item) => (
             <Card
               key={item.label}
-              className={`p-3 ${item.bgColor} border-0`}
+              className={`p-2 sm:p-3 ${item.bgColor} border-0`}
             >
-              <p className={`text-2xl font-bold ${item.color}`}>
+              <p className={`text-lg sm:text-2xl font-bold ${item.color}`}>
                 {loading ? '-' : item.value}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

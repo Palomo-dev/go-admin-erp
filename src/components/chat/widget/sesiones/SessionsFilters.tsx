@@ -40,64 +40,66 @@ export default function SessionsFilters({
           />
         </div>
 
-        <Select
-          value={filters.status || 'all'}
-          onValueChange={(v) => onFiltersChange({ ...filters, status: v === 'all' ? undefined : v as any })}
-        >
-          <SelectTrigger className="w-[150px] bg-white dark:bg-gray-800">
-            <SelectValue placeholder="Estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="active">En línea</SelectItem>
-            <SelectItem value="expired">Expiradas</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={filters.channelId || 'all'}
-          onValueChange={(v) => onFiltersChange({ ...filters, channelId: v === 'all' ? undefined : v })}
-        >
-          <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800">
-            <SelectValue placeholder="Canal" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los canales</SelectItem>
-            {channels.map((ch) => (
-              <SelectItem key={ch.id} value={ch.id}>
-                {ch.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={filters.hasCustomer === undefined ? 'all' : filters.hasCustomer ? 'yes' : 'no'}
-          onValueChange={(v) => onFiltersChange({ 
-            ...filters, 
-            hasCustomer: v === 'all' ? undefined : v === 'yes' 
-          })}
-        >
-          <SelectTrigger className="w-[150px] bg-white dark:bg-gray-800">
-            <SelectValue placeholder="Cliente" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="yes">Con cliente</SelectItem>
-            <SelectItem value="no">Anónimas</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {hasFilters && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClearFilters}
-            className="text-gray-500"
+        <div className="flex flex-wrap gap-3">
+          <Select
+            value={filters.status || 'all'}
+            onValueChange={(v) => onFiltersChange({ ...filters, status: v === 'all' ? undefined : v as any })}
           >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
+            <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-800">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="active">En línea</SelectItem>
+              <SelectItem value="expired">Expiradas</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.channelId || 'all'}
+            onValueChange={(v) => onFiltersChange({ ...filters, channelId: v === 'all' ? undefined : v })}
+          >
+            <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-800">
+              <SelectValue placeholder="Canal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los canales</SelectItem>
+              {channels.map((ch) => (
+                <SelectItem key={ch.id} value={ch.id}>
+                  {ch.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.hasCustomer === undefined ? 'all' : filters.hasCustomer ? 'yes' : 'no'}
+            onValueChange={(v) => onFiltersChange({ 
+              ...filters, 
+              hasCustomer: v === 'all' ? undefined : v === 'yes' 
+            })}
+          >
+            <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-800">
+              <SelectValue placeholder="Cliente" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="yes">Con cliente</SelectItem>
+              <SelectItem value="no">Anónimas</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClearFilters}
+              className="text-gray-500 flex-shrink-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

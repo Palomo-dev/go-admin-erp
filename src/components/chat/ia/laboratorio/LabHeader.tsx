@@ -46,7 +46,7 @@ export default function LabHeader({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Button
               variant="outline"
               onClick={onSettings}
@@ -60,48 +60,48 @@ export default function LabHeader({
               size="icon"
               onClick={onRefresh}
               disabled={loading}
-              className="border-gray-300 dark:border-gray-700"
+              className="border-gray-300 dark:border-gray-700 flex-shrink-0"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mt-4">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 sm:p-3">
             <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-xs mb-1">
               <Database className="h-3 w-3" />
               Total
             </div>
-            <p className="text-xl font-semibold text-gray-900 dark:text-white">
+            <p className="text-base sm:text-xl font-semibold text-gray-900 dark:text-white">
               {stats.total}
             </p>
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 sm:p-3">
             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Activos</div>
-            <p className="text-xl font-semibold text-green-600 dark:text-green-400">
+            <p className="text-base sm:text-xl font-semibold text-green-600 dark:text-green-400">
               {stats.active}
             </p>
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 sm:p-3">
             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Inactivos</div>
-            <p className="text-xl font-semibold text-gray-600 dark:text-gray-400">
+            <p className="text-base sm:text-xl font-semibold text-gray-600 dark:text-gray-400">
               {stats.inactive}
             </p>
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 sm:p-3">
             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Con Embeddings</div>
-            <p className="text-xl font-semibold text-blue-600 dark:text-blue-400">
+            <p className="text-base sm:text-xl font-semibold text-blue-600 dark:text-blue-400">
               {stats.withEmbeddings}
             </p>
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 sm:p-3">
             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Prioridad Prom.</div>
-            <p className="text-xl font-semibold text-purple-600 dark:text-purple-400">
+            <p className="text-base sm:text-xl font-semibold text-purple-600 dark:text-purple-400">
               {stats.avgPriority}
             </p>
           </div>

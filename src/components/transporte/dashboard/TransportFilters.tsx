@@ -118,12 +118,12 @@ export function TransportFilters({
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardContent className="p-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
           {/* Filtro por Sucursal */}
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-gray-500" />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Building2 className="h-4 w-4 text-gray-500 flex-shrink-0" />
             <Select value={localFilters.branchId} onValueChange={handleBranchChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Sucursal" />
               </SelectTrigger>
               <SelectContent>
@@ -138,10 +138,10 @@ export function TransportFilters({
           </div>
 
           {/* Filtro por Transportadora */}
-          <div className="flex items-center gap-2">
-            <Truck className="h-4 w-4 text-gray-500" />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Truck className="h-4 w-4 text-gray-500 flex-shrink-0" />
             <Select value={localFilters.carrierId} onValueChange={handleCarrierChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Transportadora" />
               </SelectTrigger>
               <SelectContent>
@@ -156,14 +156,14 @@ export function TransportFilters({
           </div>
 
           {/* Filtro por Fecha Desde */}
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4 text-gray-500" />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <CalendarIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[140px] justify-start text-left font-normal',
+                    'w-full sm:w-[140px] justify-start text-left font-normal',
                     !localFilters.dateFrom && 'text-muted-foreground'
                   )}
                 >
@@ -187,14 +187,14 @@ export function TransportFilters({
           </div>
 
           {/* Filtro por Fecha Hasta */}
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500">-</span>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-gray-500 flex-shrink-0">-</span>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-[140px] justify-start text-left font-normal',
+                    'w-full sm:w-[140px] justify-start text-left font-normal',
                     !localFilters.dateTo && 'text-muted-foreground'
                   )}
                 >
@@ -218,10 +218,10 @@ export function TransportFilters({
           </div>
 
           {/* Separador flexible */}
-          <div className="flex-1" />
+          <div className="hidden sm:block flex-1" />
 
           {/* Botones de acción */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
             {hasActiveFilters && (
               <Button
                 variant="ghost"

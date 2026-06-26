@@ -44,25 +44,25 @@ export default function SessionsHeader({
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-6">
-          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4 mt-6">
+          <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
           </div>
-          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.active}</p>
+          <div className="p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <p className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{stats.active}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">En línea</p>
           </div>
-          <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.expired}</p>
+          <div className="p-2 sm:p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <p className="text-lg sm:text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.expired}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Expiradas</p>
           </div>
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.withCustomer}</p>
+          <div className="p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.withCustomer}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Con cliente</p>
           </div>
-          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.anonymous}</p>
+          <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <p className="text-lg sm:text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.anonymous}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Anónimas</p>
           </div>
         </div>

@@ -459,59 +459,71 @@ export default function ChatBandejaPage() {
           {/* Filtros con buscador */}
           {showFilters && (
             <div className="grid grid-cols-2 gap-2 mt-2">
-              <SearchSelect
-                options={[
-                  { value: 'open', label: 'Abiertas' },
-                  { value: 'pending', label: 'Pendientes' },
-                  { value: 'closed', label: 'Cerradas' },
-                ]}
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-                placeholder="Estado"
-                searchPlaceholder="Buscar estado..."
-                emptyText="No se encontraron estados"
-                noneLabel="Todos"
-                noneValue="all"
-                className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
-              />
-              <SearchSelect
-                options={[
-                  { value: 'low', label: 'Baja' },
-                  { value: 'normal', label: 'Normal' },
-                  { value: 'high', label: 'Alta' },
-                  { value: 'urgent', label: 'Urgente' },
-                ]}
-                value={priorityFilter}
-                onValueChange={setPriorityFilter}
-                placeholder="Prioridad"
-                searchPlaceholder="Buscar prioridad..."
-                emptyText="No se encontraron prioridades"
-                noneLabel="Todas"
-                noneValue="all"
-                className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
-              />
-              <SearchSelect
-                options={channels.map((ch) => ({ value: ch.id, label: ch.name, sublabel: ch.type }))}
-                value={channelFilter}
-                onValueChange={setChannelFilter}
-                placeholder="Canal"
-                searchPlaceholder="Buscar canal..."
-                emptyText="No se encontraron canales"
-                noneLabel="Todos"
-                noneValue="all"
-                className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
-              />
-              <SearchSelect
-                options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
-                value={tagFilter}
-                onValueChange={setTagFilter}
-                placeholder="Etiqueta"
-                searchPlaceholder="Buscar etiqueta..."
-                emptyText="No se encontraron etiquetas"
-                noneLabel="Todas"
-                noneValue="all"
-                className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
-              />
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Estado</label>
+                <SearchSelect
+                  options={[
+                    { value: 'open', label: 'Abiertas' },
+                    { value: 'pending', label: 'Pendientes' },
+                    { value: 'closed', label: 'Cerradas' },
+                  ]}
+                  value={statusFilter}
+                  onValueChange={setStatusFilter}
+                  placeholder="Estado"
+                  searchPlaceholder="Buscar estado..."
+                  emptyText="No se encontraron estados"
+                  noneLabel="Todos"
+                  noneValue="all"
+                  className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Prioridad</label>
+                <SearchSelect
+                  options={[
+                    { value: 'low', label: 'Baja' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'high', label: 'Alta' },
+                    { value: 'urgent', label: 'Urgente' },
+                  ]}
+                  value={priorityFilter}
+                  onValueChange={setPriorityFilter}
+                  placeholder="Prioridad"
+                  searchPlaceholder="Buscar prioridad..."
+                  emptyText="No se encontraron prioridades"
+                  noneLabel="Todas"
+                  noneValue="all"
+                  className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Canal</label>
+                <SearchSelect
+                  options={channels.map((ch) => ({ value: ch.id, label: ch.name, sublabel: ch.type }))}
+                  value={channelFilter}
+                  onValueChange={setChannelFilter}
+                  placeholder="Canal"
+                  searchPlaceholder="Buscar canal..."
+                  emptyText="No se encontraron canales"
+                  noneLabel="Todos"
+                  noneValue="all"
+                  className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Etiqueta</label>
+                <SearchSelect
+                  options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
+                  value={tagFilter}
+                  onValueChange={setTagFilter}
+                  placeholder="Etiqueta"
+                  searchPlaceholder="Buscar etiqueta..."
+                  emptyText="No se encontraron etiquetas"
+                  noneLabel="Todas"
+                  noneValue="all"
+                  className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
+                />
+              </div>
             </div>
           )}
         </div>

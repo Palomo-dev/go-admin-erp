@@ -33,26 +33,26 @@ export default function WebsiteSettingsHeader({
             variant="ghost"
             size="icon"
             onClick={() => router.push('/app/chat/channels')}
-            className="h-9 w-9"
+            className="h-9 w-9 flex-shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-blue-600" />
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Globe className="h-5 w-5 text-blue-600 flex-shrink-0" />
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                 {channel.name}
               </h1>
-              <Badge variant={channel.status === 'active' ? 'default' : 'secondary'}>
+              <Badge variant={channel.status === 'active' ? 'default' : 'secondary'} className="flex-shrink-0">
                 {channel.status === 'active' ? 'Activo' : 'Inactivo'}
               </Badge>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
               Configuración del widget de chat para sitio web
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">
               {channel.status === 'active' ? 'Widget activo' : 'Widget inactivo'}
             </span>
             <Switch
@@ -65,16 +65,16 @@ export default function WebsiteSettingsHeader({
 
         {/* Stats Cards */}
         {widgetStats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-              <CardContent className="p-3">
+              <CardContent className="p-2 sm:p-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
+                  <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-800 rounded-lg flex-shrink-0">
                     <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <div>
-                    <p className="text-xs text-blue-600 dark:text-blue-400">Sesiones</p>
-                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                  <div className="min-w-0">
+                    <p className="text-xs text-blue-600 dark:text-blue-400 truncate">Sesiones</p>
+                    <p className="text-base sm:text-lg font-bold text-blue-700 dark:text-blue-300 tabular-nums">
                       {widgetStats.totalSessions}
                     </p>
                   </div>
@@ -83,14 +83,14 @@ export default function WebsiteSettingsHeader({
             </Card>
 
             <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-              <CardContent className="p-3">
+              <CardContent className="p-2 sm:p-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 bg-green-100 dark:bg-green-800 rounded-lg">
+                  <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-800 rounded-lg flex-shrink-0">
                     <Power className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
-                  <div>
-                    <p className="text-xs text-green-600 dark:text-green-400">Activas</p>
-                    <p className="text-lg font-bold text-green-700 dark:text-green-300">
+                  <div className="min-w-0">
+                    <p className="text-xs text-green-600 dark:text-green-400 truncate">Activas</p>
+                    <p className="text-base sm:text-lg font-bold text-green-700 dark:text-green-300 tabular-nums">
                       {widgetStats.activeSessions}
                     </p>
                   </div>
@@ -99,14 +99,14 @@ export default function WebsiteSettingsHeader({
             </Card>
 
             <Card className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
-              <CardContent className="p-3">
+              <CardContent className="p-2 sm:p-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
+                  <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-800 rounded-lg flex-shrink-0">
                     <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   </div>
-                  <div>
-                    <p className="text-xs text-purple-600 dark:text-purple-400">Visitantes</p>
-                    <p className="text-lg font-bold text-purple-700 dark:text-purple-300">
+                  <div className="min-w-0">
+                    <p className="text-xs text-purple-600 dark:text-purple-400 truncate">Visitantes</p>
+                    <p className="text-base sm:text-lg font-bold text-purple-700 dark:text-purple-300 tabular-nums">
                       {widgetStats.uniqueVisitors}
                     </p>
                   </div>
@@ -115,18 +115,18 @@ export default function WebsiteSettingsHeader({
             </Card>
 
             <Card className="bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
-              <CardContent className="p-3">
+              <CardContent className="p-2 sm:p-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 bg-orange-100 dark:bg-orange-800 rounded-lg">
+                  <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-800 rounded-lg flex-shrink-0">
                     {(widgetStats.deviceBreakdown.mobile || 0) > (widgetStats.deviceBreakdown.desktop || 0) ? (
                       <Smartphone className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                     ) : (
                       <Monitor className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                     )}
                   </div>
-                  <div>
-                    <p className="text-xs text-orange-600 dark:text-orange-400">Dispositivo</p>
-                    <p className="text-lg font-bold text-orange-700 dark:text-orange-300">
+                  <div className="min-w-0">
+                    <p className="text-xs text-orange-600 dark:text-orange-400 truncate">Dispositivo</p>
+                    <p className="text-base sm:text-lg font-bold text-orange-700 dark:text-orange-300">
                       {(widgetStats.deviceBreakdown.mobile || 0) > (widgetStats.deviceBreakdown.desktop || 0)
                         ? 'Móvil'
                         : 'Desktop'}

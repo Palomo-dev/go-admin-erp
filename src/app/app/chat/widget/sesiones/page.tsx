@@ -172,7 +172,7 @@ export default function WidgetSessionsPage() {
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <ChatNavTabs />
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       <SessionsHeader
         stats={stats}
         loading={isLoading}
@@ -201,7 +201,7 @@ export default function WidgetSessionsPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
             {paginatedSessions.map((session) => (
               <SessionCard
                 key={session.id}

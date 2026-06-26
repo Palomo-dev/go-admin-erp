@@ -34,13 +34,13 @@ export default function TagsHeader({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <Button
               variant="outline"
               size="icon"
               onClick={onRefresh}
               disabled={loading}
-              className="border-gray-300 dark:border-gray-700"
+              className="border-gray-300 dark:border-gray-700 flex-shrink-0"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>

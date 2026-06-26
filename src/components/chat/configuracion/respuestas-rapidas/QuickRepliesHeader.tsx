@@ -39,14 +39,14 @@ export default function QuickRepliesHeader({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <div className="relative flex-1 sm:flex-initial">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Buscar..."
-                className="pl-10 w-[200px] bg-white dark:bg-gray-800"
+                className="pl-10 w-full sm:w-[200px] bg-white dark:bg-gray-800"
               />
             </div>
             <Button
@@ -54,7 +54,7 @@ export default function QuickRepliesHeader({
               size="icon"
               onClick={onRefresh}
               disabled={loading}
-              className="border-gray-300 dark:border-gray-700"
+              className="border-gray-300 dark:border-gray-700 flex-shrink-0"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>

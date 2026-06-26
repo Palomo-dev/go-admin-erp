@@ -76,11 +76,11 @@ export function WebOrderStats({ stats, isLoading, datePreset = 'today' }: WebOrd
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="animate-pulse bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardContent className="p-4">
-              <div className="h-10 w-10 bg-muted dark:bg-gray-700 rounded-lg mb-2" />
+            <CardContent className="p-3 sm:p-4">
+              <div className="h-9 w-9 sm:h-10 sm:w-10 bg-muted dark:bg-gray-700 rounded-lg mb-2" />
               <div className="h-4 w-16 bg-muted dark:bg-gray-700 rounded mb-1" />
               <div className="h-6 w-12 bg-muted dark:bg-gray-700 rounded" />
             </CardContent>
@@ -91,18 +91,18 @@ export function WebOrderStats({ stats, isLoading, datePreset = 'today' }: WebOrd
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
       {statItems.map((item, index) => (
         <Card 
           key={index} 
           className={`transition-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 ${item.highlight ? 'ring-2 ring-yellow-500 shadow-lg' : ''}`}
         >
-          <CardContent className="p-4">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${item.color}`}>
+          <CardContent className="p-3 sm:p-4">
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center mb-2 ${item.color}`}>
               {item.icon}
             </div>
-            <p className="text-sm text-muted-foreground dark:text-gray-400">{item.label}</p>
-            <p className="text-2xl font-bold dark:text-gray-100">{item.value}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400 truncate">{item.label}</p>
+            <p className="text-lg sm:text-2xl font-bold dark:text-gray-100 tabular-nums">{item.value}</p>
           </CardContent>
         </Card>
       ))}

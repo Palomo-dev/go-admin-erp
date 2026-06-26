@@ -51,7 +51,7 @@ export default function AISettingsHeader({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
             {onViewLab && (
               <Button
                 variant="outline"
@@ -59,7 +59,7 @@ export default function AISettingsHeader({
                 className="border-gray-300 dark:border-gray-700 gap-2"
               >
                 <FlaskConical className="h-4 w-4" />
-                Laboratorio
+                <span className="hidden sm:inline">Laboratorio</span>
               </Button>
             )}
             {onViewJobs && (
@@ -69,11 +69,11 @@ export default function AISettingsHeader({
                 className="border-gray-300 dark:border-gray-700 gap-2"
               >
                 <Briefcase className="h-4 w-4" />
-                Trabajos
+                <span className="hidden sm:inline">Trabajos</span>
               </Button>
             )}
-            <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                 IA {isActive ? 'Activada' : 'Desactivada'}
               </span>
               <Switch
@@ -87,7 +87,7 @@ export default function AISettingsHeader({
               size="icon"
               onClick={onRefresh}
               disabled={loading}
-              className="border-gray-300 dark:border-gray-700"
+              className="border-gray-300 dark:border-gray-700 flex-shrink-0"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>

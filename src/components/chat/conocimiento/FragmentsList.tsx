@@ -20,11 +20,11 @@ import {
   Tag,
   CheckCircle,
   XCircle,
-  Loader2,
   ThumbsUp,
   ThumbsDown,
   ArrowLeft
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { KnowledgeFragment, KnowledgeSource } from '@/lib/services/knowledgeService';
 import { useState } from 'react';
 
@@ -77,15 +77,15 @@ export default function FragmentsList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           {onBack && (
-            <Button variant="ghost" size="icon" onClick={onBack}>
+            <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={onBack}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
               {source ? `Fragmentos de "${source.name}"` : 'Todos los Fragmentos'}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -93,19 +93,19 @@ export default function FragmentsList({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Buscar fragmentos..."
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-9 w-64 bg-white dark:bg-gray-800"
+              className="pl-9 w-full sm:w-64 bg-white dark:bg-gray-800"
             />
           </div>
           <Button
             onClick={onCreateFragment}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
           >
             Nuevo Fragmento
           </Button>
@@ -143,8 +143,24 @@ export default function FragmentsList({
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="p-4 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <div className="flex items-center gap-4 pt-2">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <Skeleton className="h-8 w-8 rounded-md flex-shrink-0" />
+              </div>
+            </Card>
+          ))}
         </div>
       ) : filteredFragments.length === 0 ? (
         <div className="text-center py-12">

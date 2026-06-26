@@ -68,6 +68,125 @@ function extractInlineJson(html: string): string[] {
   return results;
 }
 
+// Convierte un precio en texto/número a entero, respetando el formato latinoamericano.
+// "79900.00" -> 79900 | "79.902" -> 79902 | "1.299.900" -> 1299900 | "$799,50" -> 800
+function parsePrice(raw: unknown): number | null {
+  if (raw == null) return null;
+  if (typeof raw === "number") return raw > 0 ? Math.round(raw) : null;
+  let s = String(raw).trim().replace(/[^\d.,]/g, "");
+  if (!s) return null;
+  // Si termina en separador + 1-2 dígitos, eso es decimal; el resto son miles
+  const decMatch = s.match(/[.,](\d{1,2})$/);
+  if (decMatch) {
+    const sep = decMatch[0][0];
+    const idx = s.lastIndexOf(sep);
+    const intPart = s.slice(0, idx).replace(/[.,]/g, "");
+    const val = Number(`${intPart}.${decMatch[1]}`);
+    return val > 0 ? Math.round(val) : null;
+  }
+  // Si no hay decimales, los separadores son de miles -> eliminarlos
+  const val = Number(s.replace(/[.,]/g, ""));
+  return val > 0 ? Math.round(val) : null;
+}
+
+// Normaliza el campo "image" de JSON-LD (string | array | objetos {url})
+function normalizeJsonLdImages(img: unknown, baseUrl: string): string[] {
+  const out: string[] = [];
+  const push = (u: unknown) => {
+    if (typeof u === "string") {
+      try {
+        const abs = new URL(u, baseUrl).href;
+        if (isProductImage(abs)) out.push(abs);
+      } catch (_) { /* ignore */ }
+    } else if (u && typeof u === "object" && typeof (u as any).url === "string") {
+      push((u as any).url);
+    }
+  };
+  if (Array.isArray(img)) img.forEach(push);
+  else push(img);
+  return out;
+}
+
+// Recorre recursivamente JSON-LD buscando nodos de tipo Product
+function findProductNodes(node: any, acc: any[]): void {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node)) { node.forEach((n) => findProductNodes(n, acc)); return; }
+  const t = node["@type"];
+  const isProduct = (typeof t === "string" && /product/i.test(t)) ||
+    (Array.isArray(t) && t.some((x) => typeof x === "string" && /product/i.test(x)));
+  if (isProduct) acc.push(node);
+  if (node["@graph"]) findProductNodes(node["@graph"], acc);
+}
+
+interface DetailData {
+  price?: number;
+  compare_price?: number;
+  images: string[];
+  sku?: string;
+  brand?: string;
+  name?: string;
+}
+
+// Extrae de forma DETERMINISTA (sin IA) los datos estructurales del detalle de un producto.
+// Fuentes: JSON-LD (Product/offers), meta og:image/price, y cross-check de precios Shopify (en centavos).
+function parseProductDetail(html: string, baseUrl: string): DetailData {
+  const data: DetailData = { images: [] };
+  const productNodes: any[] = [];
+  const ldRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = ldRegex.exec(html)) !== null) {
+    try { findProductNodes(JSON.parse(m[1]), productNodes); } catch (_) { /* ignore */ }
+  }
+  for (const node of productNodes) {
+    if (!data.name && typeof node.name === "string") data.name = node.name;
+    if (!data.sku && (typeof node.sku === "string" || typeof node.sku === "number")) data.sku = String(node.sku);
+    if (!data.brand) {
+      const b = node.brand;
+      if (typeof b === "string") data.brand = b;
+      else if (b && typeof b === "object" && typeof b.name === "string") data.brand = b.name;
+    }
+    if (node.image) data.images.push(...normalizeJsonLdImages(node.image, baseUrl));
+    const offers = Array.isArray(node.offers) ? node.offers[0] : node.offers;
+    if (offers && typeof offers === "object") {
+      const p = parsePrice(offers.price ?? offers.lowPrice);
+      if (p && !data.price) data.price = p;
+      const hi = parsePrice(offers.highPrice);
+      if (hi && !data.compare_price) data.compare_price = hi;
+    }
+  }
+
+  // meta og:image como imagen principal
+  const og = html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i);
+  if (og) {
+    try {
+      const abs = new URL(og[1], baseUrl).href;
+      if (isProductImage(abs)) data.images.unshift(abs);
+    } catch (_) { /* ignore */ }
+  }
+  // meta de precio (Open Graph / itemprop) como respaldo
+  if (!data.price) {
+    const mp = html.match(/<meta[^>]+(?:property|name)=["'](?:og:price:amount|product:price:amount)["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/itemprop=["']price["'][^>]*content=["']([^"']+)["']/i);
+    if (mp) data.price = parsePrice(mp[1]) || undefined;
+  }
+
+  // Cross-check Shopify: price/compare_at_price suelen venir en CENTAVOS en el JSON embebido.
+  // Si los centavos/100 coinciden con el precio del JSON-LD, derivamos el compare_price con seguridad.
+  const priceCents = html.match(/"price"\s*:\s*(\d{3,})/);
+  const compareCents = html.match(/"compare_at_price"\s*:\s*(\d{3,})/);
+  if (data.price && compareCents) {
+    const cents = Number(compareCents[1]);
+    if (priceCents && Math.round(Number(priceCents[1]) / 100) === data.price) {
+      const comp = Math.round(cents / 100);
+      if (comp > data.price) data.compare_price = comp;
+    }
+  }
+
+  // dedupe imágenes conservando orden (principal primero)
+  data.images = [...new Set(data.images)];
+  return data;
+}
+
 // Patrones de imágenes que NO son fotos de producto (íconos, logos, placeholders, medios de pago, redes, etc.)
 const IMAGE_BLOCKLIST = /(logo|icon|sprite|banner|flag|payment|favicon|placeholder|no[-_]?image|noimage|sin[-_]?imagen|default|blank|loader|loading|spinner|pixel|transparent|swatch|social|whatsapp|facebook|instagram|twitter|tiktok|youtube|visa|mastercard|amex|paypal|pse|addi|sistecredito|nequi|baloto|efecty|badge|sello|seal|garantia|envio|shipping|cintillo|empty|blur|skeleton)/i;
 // Tamaños diminutos típicos de íconos (16x16 ... 64x64), no de fotos de producto
@@ -178,6 +297,34 @@ async function urlIsImage(u: string): Promise<boolean> {
   }
 }
 
+// Igual que urlIsImage pero devuelve el tamaño total en bytes (0 si no es una imagen válida)
+async function imageByteSize(u: string): Promise<number> {
+  if (/\{|\}/.test(u)) return 0;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 7000);
+  try {
+    const res = await fetch(u, {
+      headers: { "User-Agent": BROWSER_HEADERS["User-Agent"], "Range": "bytes=0-0" },
+      signal: ctrl.signal,
+    });
+    if (!res.ok && res.status !== 206) return 0;
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.startsWith("image/")) return 0;
+    let total = 0;
+    const range = res.headers.get("content-range");
+    if (range) {
+      const mm = range.match(/\/(\d+)\s*$/);
+      if (mm) total = Number(mm[1]);
+    }
+    if (!total) total = Number(res.headers.get("content-length") || "0");
+    return total;
+  } catch (_) {
+    return 0;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Filtra una lista de imágenes dejando solo las que cargan (probando hasta `check` candidatas)
 async function filterWorkingImages(urls: string[], max = 8, check = 8): Promise<string[]> {
   const candidates = urls.slice(0, check);
@@ -224,8 +371,12 @@ async function jinaRequest(url: string, useBrowser: boolean): Promise<string | n
       "X-With-Images-Summary": "true",
       "X-With-Links-Summary": "true",
     };
-    // Motor de navegador real: más lento pero atraviesa sitios con JS pesado / anti-bots
-    if (useBrowser) headers["X-Engine"] = "browser";
+    // Motor de navegador real: más lento pero atraviesa sitios con JS pesado / anti-bots.
+    // X-Timeout deja que el SPA termine de cargar el catálogo (XHR) antes de capturar.
+    if (useBrowser) {
+      headers["X-Engine"] = "browser";
+      headers["X-Timeout"] = "30";
+    }
     const res = await fetch(`https://r.jina.ai/${url}`, { headers });
     if (!res.ok) return null;
     const text = await res.text();
@@ -235,13 +386,25 @@ async function jinaRequest(url: string, useBrowser: boolean): Promise<string | n
   }
 }
 
+// Heurística de "riqueza" de un render: cuántas señales de producto contiene (enlaces e imágenes)
+function jinaRichness(text: string | null): number {
+  if (!text) return 0;
+  const links = (text.match(/\]\(https?:\/\//g) || []).length;
+  const imgs = (text.match(/!\[/g) || []).length;
+  return links + imgs + Math.floor(text.length / 4000);
+}
+
 async function fetchWithJina(url: string): Promise<string | null> {
   // Intento rápido (motor por defecto)
   const fast = await jinaRequest(url, false);
-  if (fast && fast.length > 1000) return fast;
-  // Reintento con motor de navegador para páginas que devuelven poco contenido (SPA/anti-bot)
+  // En SPAs el render rápido devuelve un "cascarón" (chrome + carrusel) con pocos productos.
+  // Si tiene pocas señales de producto, forzamos el motor de navegador con espera de render
+  // y nos quedamos con la fuente MÁS RICA de las dos.
+  if (fast && jinaRichness(fast) >= 40) return fast;
   const browser = await jinaRequest(url, true);
-  return browser || fast;
+  if (!browser) return fast;
+  if (!fast) return browser;
+  return jinaRichness(browser) >= jinaRichness(fast) ? browser : fast;
 }
 
 // Obtiene AMBAS fuentes en paralelo y las devuelve sin descartar ninguna,
@@ -266,6 +429,373 @@ async function fetchSources(url: string): Promise<{ direct: string | null; jina:
     throw new Error("No se pudo acceder a la página (bloqueo anti-bots o sitio caído). Intente con otra URL.");
   }
   return { direct, jina };
+}
+
+// ───────────────────────── CATÁLOGO NATIVO (sin IA) ─────────────────────────
+// Cuando el sitio expone una API de catálogo (Shopify / VTEX), la usamos directamente:
+// devuelve TODOS los productos con precio/imágenes/variantes EXACTOS y paginados.
+
+// Decodifica las entidades HTML más comunes y numéricas
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+}
+
+// Convierte HTML de descripción a texto plano legible
+function htmlToPlain(html: string, maxLen = 1200): string {
+  const text = decodeEntities(
+    (html || "")
+      .replace(/<\/(p|div|li|ul|ol|h[1-6]|br)>/gi, "\n")
+      .replace(/<li[^>]*>/gi, "• ")
+      .replace(/<[^>]+>/g, " "),
+  ).replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").trim();
+  return text.length > maxLen ? `${text.slice(0, maxLen).trim()}…` : text;
+}
+
+// Shopify: /collections/<handle>/products.json?limit=250&page=N (catálogo completo)
+async function fetchShopifyCatalog(url: string): Promise<ScrapedProduct[] | null> {
+  let origin = "", path = "";
+  try {
+    const u = new URL(url);
+    origin = u.origin;
+    path = u.pathname.replace(/\/$/, "");
+  } catch (_) { return null; }
+
+  // Base del endpoint: colección concreta o catálogo global
+  const colMatch = path.match(/\/collections\/[^/]+/);
+  const base = colMatch ? `${origin}${colMatch[0]}/products.json` : `${origin}/products.json`;
+
+  const out: ScrapedProduct[] = [];
+  for (let page = 1; page <= 20; page++) {
+    let data: any;
+    try {
+      const res = await fetch(`${base}?limit=250&page=${page}`, { headers: BROWSER_HEADERS });
+      if (!res.ok) break;
+      const ct = res.headers.get("content-type") || "";
+      if (!ct.includes("json")) break;
+      data = await res.json();
+    } catch (_) { break; }
+    const products: any[] = data?.products || [];
+    if (products.length === 0) break;
+    for (const p of products) {
+      const variant = (p.variants && p.variants[0]) || {};
+      const price = parsePrice(variant.price);
+      const compare = parsePrice(variant.compare_at_price);
+      const images: string[] = Array.isArray(p.images)
+        ? p.images.map((im: any) => im?.src).filter((s: any): s is string => !!s)
+        : [];
+      const variants = (p.options || [])
+        .filter((o: any) => o?.name && !/^title$/i.test(o.name) && !(o.values?.length === 1 && /default title/i.test(o.values[0])))
+        .map((o: any) => ({ name: o.name, values: o.values || [] }));
+      out.push({
+        name: p.title,
+        description: htmlToPlain(p.body_html || ""),
+        price: price || undefined,
+        compare_price: compare && price && compare > price ? compare : undefined,
+        sku: variant.sku || undefined,
+        brand: p.vendor || undefined,
+        category: p.product_type || undefined,
+        tags: Array.isArray(p.tags) ? p.tags.slice(0, 10) : undefined,
+        images,
+        variants: variants.length ? variants : undefined,
+        url: `${origin}/products/${p.handle}`,
+      });
+    }
+    if (products.length < 250) break;
+  }
+  return out.length ? out : null;
+}
+
+// VTEX: /api/catalog_system/pub/products/search/<path>?_from=F&_to=T (responde 206 + paginado)
+async function fetchVtexCatalog(url: string): Promise<ScrapedProduct[] | null> {
+  let origin = "", path = "";
+  try {
+    const u = new URL(url);
+    origin = u.origin;
+    path = u.pathname.replace(/^\/|\/$/g, "");
+  } catch (_) { return null; }
+
+  const out: ScrapedProduct[] = [];
+  const STEP = 50;
+  for (let from = 0; from < 2500; from += STEP) {
+    const to = from + STEP - 1;
+    const endpoint = `${origin}/api/catalog_system/pub/products/search/${path}?_from=${from}&_to=${to}`;
+    let arr: any[];
+    try {
+      const res = await fetch(endpoint, { headers: { ...BROWSER_HEADERS, "Accept": "application/json" } });
+      // VTEX devuelve 200 o 206 (rango parcial); cualquier otra cosa = no es VTEX o fin
+      if (res.status !== 200 && res.status !== 206) break;
+      const ct = res.headers.get("content-type") || "";
+      if (!ct.includes("json")) break;
+      arr = await res.json();
+    } catch (_) { break; }
+    if (!Array.isArray(arr) || arr.length === 0) break;
+    for (const p of arr) {
+      const item = (p.items && p.items[0]) || {};
+      const offer = (item.sellers && item.sellers[0]?.commertialOffer) || {};
+      const price = parsePrice(offer.Price);
+      const compare = parsePrice(offer.ListPrice);
+      const images: string[] = Array.isArray(item.images)
+        ? item.images.map((im: any) => im?.imageUrl).filter((s: any): s is string => !!s)
+        : [];
+      out.push({
+        name: p.productName,
+        description: htmlToPlain(p.description || p.metaTagDescription || ""),
+        price: price || undefined,
+        compare_price: compare && price && compare > price ? compare : undefined,
+        sku: item.itemId || p.productReference || undefined,
+        brand: p.brand || undefined,
+        category: Array.isArray(p.categories) && p.categories[0]
+          ? p.categories[0].split("/").filter(Boolean).pop()
+          : undefined,
+        images,
+        url: p.link || undefined,
+      });
+    }
+    if (arr.length < STEP) break;
+  }
+  return out.length ? out : null;
+}
+
+// ── Algolia (común en SAP Commerce y muchos retailers): el listado se sirve por su API ──
+interface AlgoliaCfg { appId: string; apiKey: string; indexName: string; categoryAttribute: string }
+
+// Extrae las credenciales públicas de Algolia embebidas en el HTML de la página
+function extractAlgoliaConfig(html: string): AlgoliaCfg | null {
+  const pick = (key: string) =>
+    html.match(new RegExp(`["']?${key}["']?\\s*:\\s*["']([^"']{3,80})["']`, "i"))?.[1];
+  const appId = pick("appId") || pick("applicationId");
+  // La apiKey de Algolia es un hash hex de 32 chars. Hay que evitar capturar otras claves del HTML
+  // (p. ej. la de Google/Firebase "AIzaSy..."), que suelen aparecer antes en la página.
+  const pickAlgoliaKey = (): string | undefined => {
+    const hex = html.match(/(?:api[_-]?key|searchApiKey)["']?\s*:\s*["']([a-f0-9]{32})["']/i)?.[1];
+    if (hex) return hex;
+    const re = /(?:api[_-]?key|searchApiKey)["']?\s*:\s*["']([^"']{16,80})["']/ig;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html))) {
+      if (!/^AIza/i.test(m[1])) return m[1];
+    }
+    return undefined;
+  };
+  const apiKey = pickAlgoliaKey();
+  const indexName = pick("indexName");
+  if (!appId || !apiKey || !indexName) return null;
+  const categoryAttribute = pick("categoryAttribute") || "hierarchicalcategory_string_mv.lvl0";
+  return { appId, apiKey, indexName, categoryAttribute };
+}
+
+// Limpia un título de categoría: quita prefijos comerciales ("Compra un...") y el nombre del sitio tras "|" o "-"
+function cleanCategoryTitle(raw: string): string {
+  return decodeEntities(raw)
+    .replace(/\s*[|\u00bb].*$/s, "")
+    .replace(/^\s*compra(?:r)?\s+(?:un[ao]?|el|la|los|las|tu[s]?)?\s*/i, "")
+    .trim();
+}
+
+// Nombre de la categoría: JSON-LD (@type Category), og:title, <h1> o <title> (en ese orden de fiabilidad)
+function extractCategoryName(html: string): string | null {
+  const ld = html.match(/@type"\s*:\s*"Category"[\s\S]{0,160}?"name"\s*:\s*"([^"]+)"/i)?.[1];
+  if (ld && ld.trim()) return cleanCategoryTitle(ld);
+  const og = html.match(/property=["']og:title["'][^>]*content=["']([^"']+)["']/i)?.[1]
+    || html.match(/content=["']([^"']+)["'][^>]*property=["']og:title["']/i)?.[1];
+  if (og && og.trim()) return cleanCategoryTitle(og);
+  const h1 = html.match(/<h1[^>]*>\s*([^<]{2,80})\s*</i)?.[1];
+  if (h1 && h1.trim()) return cleanCategoryTitle(h1);
+  const title = html.match(/<title[^>]*>\s*([^<]{2,120})\s*<\/title>/i)?.[1];
+  if (title && title.trim()) return cleanCategoryTitle(title);
+  return null;
+}
+
+// Plantilla de imagen del sitio (p. ej. .../products/{code}/{code}-001.webp) para derivar por objectID
+function extractImageTemplate(html: string): ((code: string) => string) | null {
+  const m = html.match(/(https?:\/\/[^"'\\\s]+\/products\/)\d+\/\d+(-0*1)?\.(webp|jpg|jpeg|png)/i);
+  if (!m) return null;
+  // El JSON-LD a veces concatena dos URLs (https://dominiohttps://cdn...): tomamos el último esquema válido
+  let base = m[1];
+  const lastScheme = Math.max(base.lastIndexOf("https://"), base.lastIndexOf("http://"));
+  if (lastScheme > 0) base = base.slice(lastScheme);
+  const suffix = m[2] || "-001";
+  const ext = m[3];
+  return (code: string) => `${base}${code}/${code}${suffix}.${ext}`;
+}
+
+// Plantilla parametrizada por índice (1..N) para derivar TODA la galería: {code}-001, {code}-002, ...
+function extractGalleryTemplate(html: string): ((code: string, n: number) => string) | null {
+  const m = html.match(/(https?:\/\/[^"'\\\s]+\/products\/)\d+\/\d+-0*\d+\.(webp|jpg|jpeg|png)/i)
+    || html.match(/(https?:\/\/[^"'\\\s]+\/products\/)\d+\/\d+\.(webp|jpg|jpeg|png)/i);
+  if (!m) return null;
+  let base = m[1];
+  const lastScheme = Math.max(base.lastIndexOf("https://"), base.lastIndexOf("http://"));
+  if (lastScheme > 0) base = base.slice(lastScheme);
+  const ext = m[2];
+  return (code: string, n: number) => `${base}${code}/${code}-${String(n).padStart(3, "0")}.${ext}`;
+}
+
+// Deriva la galería real desde la plantilla por código. El CDN sirve un placeholder de tamaño
+// CONSTANTE para los índices inexistentes, así que descartamos los tamaños que se repiten.
+async function deriveGallery(
+  galleryFor: (code: string, n: number) => string,
+  code: string,
+  candidates = 10,
+  keep = 6,
+): Promise<string[]> {
+  const urls = Array.from({ length: candidates }, (_, i) => galleryFor(code, i + 1));
+  const sizes = await Promise.all(urls.map((u) => imageByteSize(u)));
+  const count = new Map<number, number>();
+  for (const s of sizes) if (s >= MIN_IMAGE_BYTES) count.set(s, (count.get(s) || 0) + 1);
+  const result: string[] = [];
+  for (let i = 0; i < urls.length; i++) {
+    const s = sizes[i];
+    if (s < MIN_IMAGE_BYTES) continue;
+    if ((count.get(s) || 0) >= 2) continue; // tamaño repetido = placeholder "sin imagen" del CDN
+    result.push(urls[i]);
+    if (result.length >= keep) break;
+  }
+  return result;
+}
+
+async function algoliaQuery(cfg: AlgoliaCfg, params: string): Promise<any | null> {
+  try {
+    const res = await fetch(`https://${cfg.appId}-dsn.algolia.net/1/indexes/${cfg.indexName}/query`, {
+      method: "POST",
+      headers: {
+        "X-Algolia-API-Key": cfg.apiKey,
+        "X-Algolia-Application-Id": cfg.appId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ params }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (_) { return null; }
+}
+
+// Resuelve el facetFilter jerárquico (atributo + valor) cuyo último segmento coincide con la categoría
+async function resolveAlgoliaCategory(cfg: AlgoliaCfg, categoryName: string): Promise<string | null> {
+  const baseAttr = cfg.categoryAttribute.replace(/\.lvl\d+$/i, "");
+  const levels = [`${baseAttr}.lvl2`, `${baseAttr}.lvl1`, `${baseAttr}.lvl0`];
+  const facetsParam = encodeURIComponent(JSON.stringify(levels));
+  const data = await algoliaQuery(cfg, `hitsPerPage=0&maxValuesPerFacet=1000&facets=${facetsParam}&query=`);
+  const facets = data?.facets;
+  if (!facets) return null;
+  const target = categoryName.trim().toLowerCase();
+  for (const attr of levels) {
+    const values = facets[attr];
+    if (!values) continue;
+    for (const value of Object.keys(values)) {
+      const last = value.split(">").pop()?.trim().toLowerCase();
+      if (last === target) return `${attr}:${value}`;
+    }
+  }
+  return null;
+}
+
+// Conector Algolia: trae el catálogo COMPLETO de la categoría, paginado y exacto, sin IA.
+async function fetchAlgoliaCatalog(url: string): Promise<ScrapedProduct[] | null> {
+  let html = "";
+  try {
+    const res = await fetch(url, { headers: BROWSER_HEADERS });
+    if (!res.ok) return null;
+    html = await res.text();
+  } catch (_) { return null; }
+
+  const cfg = extractAlgoliaConfig(html);
+  if (!cfg) return null;
+  const categoryName = extractCategoryName(html);
+  if (!categoryName) return null;
+  const facetFilter = await resolveAlgoliaCategory(cfg, categoryName);
+  if (!facetFilter) return null;
+
+  const imageFor = extractImageTemplate(html);
+  const galleryFor = extractGalleryTemplate(html);
+  let origin = "";
+  try { origin = new URL(url).origin; } catch (_) { /* noop */ }
+  const ff = encodeURIComponent(JSON.stringify([[facetFilter]]));
+  const attrs = encodeURIComponent(JSON.stringify([
+    "name_text_es", "pricevalue_cop_double", "discountprice_double",
+    "url_es_string", "objectID", "brand_string_mv", "description_text_es",
+    "keyfeatures_string_mv", "color_string_mv", "variantdescriptor_string",
+  ]));
+
+  const out: ScrapedProduct[] = [];
+  const PAGE_SIZE = 200;
+  for (let page = 0; page < 13; page++) {
+    const data = await algoliaQuery(
+      cfg,
+      `hitsPerPage=${PAGE_SIZE}&page=${page}&facetFilters=${ff}&attributesToRetrieve=${attrs}&query=`,
+    );
+    const hits: any[] = data?.hits || [];
+    if (hits.length === 0) break;
+    for (const h of hits) {
+      const venta = h.discountprice_double && h.discountprice_double > 0
+        ? h.discountprice_double : h.pricevalue_cop_double;
+      const price = parsePrice(venta);
+      const compare = parsePrice(h.pricevalue_cop_double);
+      const code = h.objectID ? String(h.objectID) : "";
+      const brand = Array.isArray(h.brand_string_mv) ? h.brand_string_mv[0] : h.brand_string_mv;
+      const rel = h.url_es_string || "";
+      // Descripción: características clave del índice (quitando el prefijo "N=") + color/tamaño
+      const features: string[] = Array.isArray(h.keyfeatures_string_mv)
+        ? h.keyfeatures_string_mv.map((f: any) => String(f).replace(/^\s*\d+\s*=\s*/, "").trim()).filter(Boolean)
+        : [];
+      const colors: string[] = Array.isArray(h.color_string_mv)
+        ? h.color_string_mv.map((c: any) => String(c).trim()).filter(Boolean) : [];
+      const descParts: string[] = [];
+      if (h.description_text_es) descParts.push(htmlToPlain(h.description_text_es));
+      if (features.length) descParts.push(features.join(". "));
+      if (colors.length) descParts.push(`Color: ${colors.join(", ")}`);
+      if (typeof h.variantdescriptor_string === "string" && h.variantdescriptor_string.includes(":")) {
+        const idx = h.variantdescriptor_string.indexOf(":");
+        const lbl = h.variantdescriptor_string.slice(0, idx).trim();
+        const val = h.variantdescriptor_string.slice(idx + 1).trim();
+        if (lbl && val) descParts.push(`${lbl.charAt(0).toUpperCase()}${lbl.slice(1)}: ${val}`);
+      }
+      const description = descParts.join(". ").replace(/\s*\.\s*\.+/g, ".").trim() || undefined;
+      out.push({
+        name: h.name_text_es,
+        description,
+        price: price || undefined,
+        compare_price: compare && price && compare > price ? compare : undefined,
+        sku: code || undefined,
+        brand: brand || undefined,
+        category: categoryName,
+        // Solo creamos variantes cuando hay varios valores reales (evita hijos espurios de 1 sola opción)
+        variants: colors.length > 1 ? [{ name: "Color", values: colors }] : undefined,
+        images: imageFor && code ? [imageFor(code)] : [],
+        url: rel ? (rel.startsWith("http") ? rel : `${origin}${rel}`) : undefined,
+      });
+    }
+    const nbPages = data?.nbPages ?? 1;
+    if (page + 1 >= nbPages) break;
+  }
+
+  // Galería completa: derivar y validar por lotes (sin IA) cuando la plataforma usa plantilla por código
+  if (galleryFor) {
+    const BATCH = 12;
+    for (let i = 0; i < out.length; i += BATCH) {
+      await Promise.all(out.slice(i, i + BATCH).map(async (p) => {
+        if (!p.sku) return;
+        const imgs = await deriveGallery(galleryFor, p.sku);
+        if (imgs.length) p.images = imgs;
+      }));
+    }
+  }
+  return out.length ? out : null;
+}
+
+// Intenta obtener el catálogo desde la API nativa de la plataforma (Shopify / VTEX / Algolia).
+// Devuelve null si el sitio no expone ninguna conocida (se usa entonces el scraping con IA).
+async function fetchNativeCatalog(url: string): Promise<ScrapedProduct[] | null> {
+  const shopify = await fetchShopifyCatalog(url);
+  if (shopify && shopify.length) return shopify;
+  const vtex = await fetchVtexCatalog(url);
+  if (vtex && vtex.length) return vtex;
+  const algolia = await fetchAlgoliaCatalog(url);
+  if (algolia && algolia.length) return algolia;
+  return null;
 }
 
 async function callOpenAI(prompt: string): Promise<any> {
@@ -359,6 +889,60 @@ function chunkString(str: string, size: number, maxChunks: number, overlap = 0):
     chunks.push(str.substring(i, i + size));
   }
   return chunks;
+}
+
+// Tokeniza un texto en palabras significativas (sin tildes, sin palabras cortas)
+function tokenizar(s: string): Set<string> {
+  return new Set(
+    (s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2),
+  );
+}
+
+// B: recolecta todas las URLs de detalle de producto presentes en el contenido (HTML o markdown)
+function collectDetailUrls(content: string, baseUrl: string): string[] {
+  const urls = new Set<string>();
+  const add = (raw: string) => {
+    try {
+      const abs = new URL(raw, baseUrl).href.split("?")[0].replace(/\/$/, "");
+      if (PRODUCT_LINK_RE.test(abs)) urls.add(abs);
+    } catch (_) { /* ignore */ }
+  };
+  let m: RegExpExecArray | null;
+  const hrefRe = /href=["']([^"']+)["']/gi;
+  while ((m = hrefRe.exec(content)) !== null) add(m[1]);
+  const mdRe = /\]\((https?:\/\/[^\s)]+)\)/gi;
+  while ((m = mdRe.exec(content)) !== null) add(m[1]);
+  return [...urls];
+}
+
+// B: asigna una URL de detalle a los productos que no la tienen, por coincidencia nombre↔slug
+function assignMissingUrls(products: ScrapedProduct[], urls: string[]): void {
+  if (urls.length === 0) return;
+  const urlTokens = urls.map((u) => {
+    const seg = u.split("/").filter(Boolean).pop() || "";
+    return { url: u, tokens: tokenizar(seg.replace(/[-_]+/g, " ")) };
+  });
+  for (const p of products) {
+    if (p.url || !p.name) continue;
+    const nameTokens = tokenizar(p.name);
+    if (nameTokens.size === 0) continue;
+    let best: string | null = null;
+    let bestScore = 0;
+    for (const { url, tokens } of urlTokens) {
+      if (tokens.size === 0) continue;
+      let comunes = 0;
+      nameTokens.forEach((t) => { if (tokens.has(t)) comunes += 1; });
+      const score = comunes / Math.min(nameTokens.size, tokens.size);
+      if (score > bestScore) { bestScore = score; best = url; }
+    }
+    if (best && bestScore >= 0.5) p.url = best;
+  }
 }
 
 function productKey(p: ScrapedProduct): string {
@@ -460,7 +1044,7 @@ async function extractProductsFromContent(content: string, url: string, isMarkdo
 
   const CHUNK_SIZE = 45000;
   const OVERLAP = 6000; // solapamiento para no cortar tarjetas de producto
-  const MAX_CHUNKS = 5;
+  const MAX_CHUNKS = 10;
   const chunks = chunkString(text, CHUNK_SIZE, MAX_CHUNKS, OVERLAP);
 
   const tasks: Promise<ScrapedProduct[]>[] = chunks.map((chunk, i) => {
@@ -496,6 +1080,10 @@ async function extractWithAI(direct: string | null, jina: string | null, url: st
     sources.map((s) => extractProductsFromContent(s.content, url, s.isMarkdown))
   );
   const merged = mergeProducts(all.flat());
+  // B: asegurar URL de detalle para los productos que no la captaron (por similitud nombre↔slug),
+  // así TODOS pasan por el enriquecimiento determinista.
+  const detailUrls = sources.flatMap((s) => collectDetailUrls(s.content, url));
+  assignMissingUrls(merged, [...new Set(detailUrls)]);
   // Validar que las imágenes carguen de verdad: descarta URLs rotas/placeholders (grises)
   return await validateProductsImages(merged);
 }
@@ -558,12 +1146,36 @@ Reglas:
 
   const parsed = await callOpenAI(prompt);
   if (!parsed.product) return null;
-  const prod = sanitizeProduct(normalizePrices(parsed.product));
-  // Conservar solo imágenes que realmente cargan (evita grises/rotas)
-  if (prod.images && prod.images.length > 0) {
-    prod.images = await filterWorkingImages(prod.images, 10, 12);
+  const prod = sanitizeProduct(parsed.product);
+
+  // A: datos DETERMINISTAS del detalle (JSON-LD/meta) tienen prioridad sobre lo que infiere la IA
+  const detail: DetailData = isMarkdown ? { images: [] } : parseProductDetail(content, url);
+  if (detail.price) prod.price = detail.price;
+  if (detail.compare_price) prod.compare_price = detail.compare_price;
+  if (detail.sku && !prod.sku) prod.sku = detail.sku;
+  if (detail.brand && !prod.brand) prod.brand = detail.brand;
+
+  // C: si aún no hay precio, último recurso por regex sobre el texto del detalle
+  if (!prod.price || prod.price <= 0) {
+    const fallback = regexPriceFromText(getCleanedText(content, isMarkdown, url));
+    if (fallback) prod.price = fallback;
   }
-  return prod;
+
+  // D: galería con imagen principal (og:image / JSON-LD) primero, luego las que halló la IA
+  const galeria = [...detail.images, ...(prod.images || [])];
+  const candidatas = [...new Set(galeria)];
+  prod.images = candidatas.length > 0 ? await filterWorkingImages(candidatas, 10, 14) : prod.images;
+
+  return normalizePrices(prod);
+}
+
+// C: extrae un precio del texto como último recurso (montos con $ o COP). Devuelve el menor mostrado (precio de venta).
+function regexPriceFromText(text: string): number | null {
+  const matches = [...text.matchAll(/(?:\$|COP)\s*([\d][\d.,]{3,})/gi)]
+    .map((x) => parsePrice(x[1]))
+    .filter((n): n is number => !!n && n >= 1000);
+  if (matches.length === 0) return null;
+  return Math.min(...matches);
 }
 
 async function uploadImage(imageUrl: string, productId: number, index: number): Promise<string | null> {
@@ -1057,6 +1669,14 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // 1) Intentar API nativa de la plataforma (Shopify/VTEX): catálogo COMPLETO y exacto, sin IA
+      const native = await fetchNativeCatalog(url);
+      if (native && native.length) {
+        return new Response(JSON.stringify({ products: native }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // 2) Fallback: scraping del HTML/markdown con IA
       const { direct, jina } = await fetchSources(url);
       const products = await extractWithAI(direct, jina, url);
       return new Response(JSON.stringify({ products }), {

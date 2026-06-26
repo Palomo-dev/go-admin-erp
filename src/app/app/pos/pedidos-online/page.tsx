@@ -37,12 +37,21 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
-  ShoppingBag
+  ShoppingBag,
+  MapPin,
+  Phone,
+  CalendarClock,
+  Coins,
+  Download,
+  Printer,
+  Package,
+  X
 } from 'lucide-react';
 import { WebOrderCard } from '@/components/pos/pedidos-online/WebOrderCard';
 import { WebOrderFilters } from '@/components/pos/pedidos-online/WebOrderFilters';
 import { WebOrderStats } from '@/components/pos/pedidos-online/WebOrderStats';
 import { PaymentStatusBadge } from '@/components/pos/pedidos-online/PaymentStatusBadge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   webOrdersService, 
   type WebOrder, 
@@ -57,7 +66,7 @@ interface LocalFilters {
   status?: WebOrderStatus[];
   delivery_type?: DeliveryType;
   source?: OrderSource;
-  payment_status?: PaymentStatus;
+  payment_status?: PaymentStatus[];
   search?: string;
   is_scheduled?: boolean;
   date_from?: string;
@@ -85,11 +94,13 @@ export default function PedidosOnlinePage() {
   const [filters, setFilters] = useState<LocalFilters>({});
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('list');
   const [datePreset, setDatePreset] = useState<DatePreset>('today');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // Dialogs
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; orderId: string | null }>({ 
@@ -275,6 +286,161 @@ export default function PedidosOnlinePage() {
         variant: 'destructive',
       });
     }
+  };
+
+  const toggleSelectOrder = (orderId: string) => {
+    setSelectedOrders(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const pageOrders = orders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const allSelected = pageOrders.length > 0 && pageOrders.every(o => selectedOrders.has(o.id));
+    setSelectedOrders(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        pageOrders.forEach(o => next.delete(o.id));
+      } else {
+        pageOrders.forEach(o => next.add(o.id));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedOrders(new Set());
+
+  const getSelectedOrders = () => orders.filter(o => selectedOrders.has(o.id));
+
+  const handleBulkStatusChange = async (status: WebOrderStatus) => {
+    const selected = getSelectedOrders();
+    if (selected.length === 0) return;
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(selected.map(o => webOrdersService.updateOrderStatus(o.id, status)));
+      toast({
+        title: 'Acción masiva completada',
+        description: `${selected.length} pedido(s) marcado(s) como ${getStatusLabel(status)}`,
+      });
+      clearSelection();
+      loadOrders();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudieron actualizar todos los pedidos',
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkMarkPaid = async () => {
+    const selected = getSelectedOrders();
+    if (selected.length === 0) return;
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(selected.map(o => webOrdersService.updatePaymentStatus(o.id, 'paid')));
+      toast({
+        title: 'Acción masiva completada',
+        description: `${selected.length} pedido(s) marcado(s) como pagado(s)`,
+      });
+      clearSelection();
+      loadOrders();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudieron actualizar todos los pagos',
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkPrint = () => {
+    const selected = getSelectedOrders();
+    if (selected.length === 0) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const html = selected.map(order => `
+      <div style="page-break-after: always; padding: 20px; font-family: sans-serif;">
+        <h2 style="margin:0 0 8px;">${order.order_number}</h2>
+        <p style="margin:0 0 4px;color:#555;">${new Date(order.created_at).toLocaleString('es-CO')}</p>
+        <hr style="margin:8px 0;"/>
+        <p style="margin:0 0 4px;"><strong>Cliente:</strong> ${order.customer_name || order.customer?.full_name || 'N/A'}</p>
+        <p style="margin:0 0 4px;"><strong>Teléfono:</strong> ${order.customer_phone || order.customer?.phone || 'N/A'}</p>
+        <p style="margin:0 0 4px;"><strong>Entrega:</strong> ${order.delivery_type === 'pickup' ? 'Retiro en tienda' : order.delivery_type === 'delivery_own' ? 'Delivery propio' : 'Delivery tercero'}</p>
+        ${order.delivery_type !== 'pickup' && order.delivery_address?.address ? `<p style="margin:0 0 4px;"><strong>Dirección:</strong> ${order.delivery_address.address}</p>` : ''}
+        ${order.delivery_address?.city ? `<p style="margin:0 0 4px;"><strong>Ciudad:</strong> ${order.delivery_address.city}</p>` : ''}
+        <hr style="margin:8px 0;"/>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid #ddd;text-align:left;">
+              <th style="padding:4px 0;">Producto</th>
+              <th style="padding:4px 8px;text-align:center;">Cant.</th>
+              <th style="padding:4px 8px;text-align:right;">Precio</th>
+              <th style="padding:4px 0;text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(order.items || []).map(item => `
+              <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:4px 0;">${item.product_name}</td>
+                <td style="padding:4px 8px;text-align:center;">${item.quantity}</td>
+                <td style="padding:4px 8px;text-align:right;">$${Number(item.unit_price || 0).toLocaleString()}</td>
+                <td style="padding:4px 0;text-align:right;">$${Number(item.total || 0).toLocaleString()}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div style="text-align:right;margin-top:8px;">
+          <strong style="font-size:18px;">Total: $${order.total.toLocaleString()}</strong>
+        </div>
+        ${order.customer_notes ? `<div style="margin-top:8px;padding:8px;background:#fffbea;border-radius:4px;"><strong>Notas:</strong> ${order.customer_notes}</div>` : ''}
+        <p style="margin-top:12px;color:#999;font-size:12px;">Método de pago: ${getPaymentLabel(order.payment_method)} · ${order.payment_status}</p>
+      </div>
+    `).join('');
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Pedidos - Imprimir</title></head><body>${html}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 500);
+    toast({
+      title: 'Preparando impresión',
+      description: `${selected.length} pedido(s) listos para imprimir`,
+    });
+  };
+
+  const handleBulkExport = () => {
+    const selected = getSelectedOrders();
+    if (selected.length === 0) return;
+    const headers = ['Pedido', 'Cliente', 'Email', 'Telefono', 'Estado', 'Entrega', 'Total', 'Metodo Pago', 'Fecha'];
+    const rows = selected.map(o => [
+      o.order_number,
+      o.customer_name || o.customer?.full_name || '',
+      o.customer_email || o.customer?.email || '',
+      o.customer_phone || o.customer?.phone || '',
+      getStatusLabel(o.status),
+      o.delivery_type === 'pickup' ? 'Retiro' : o.delivery_type === 'delivery_own' ? 'Propio' : 'Tercero',
+      o.total.toString(),
+      getPaymentLabel(o.payment_method),
+      new Date(o.created_at).toLocaleString('es-CO'),
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pedidos_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({
+      title: 'Exportación completada',
+      description: `${selected.length} pedido(s) exportado(s) a CSV`,
+    });
   };
 
   const getStatusLabel = (status: WebOrderStatus): string => {
@@ -484,9 +650,76 @@ export default function PedidosOnlinePage() {
 
       {/* Vista de pedidos */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground dark:text-gray-400" />
-        </div>
+        viewMode === 'list' ? (
+          /* ─── Skeleton Vista Lista ─── */
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[900px]">
+                  <thead>
+                    <tr className="border-b dark:border-gray-700 bg-muted/50 dark:bg-gray-800/50">
+                      {['', 'Pedido', 'Cliente', 'Estado', 'Entrega', 'Items', 'Pago', 'Total', 'Tiempo', 'Acciones'].map((h, idx) => (
+                        <th key={idx} className="text-left p-3 font-medium dark:text-gray-100">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <tr key={i} className="border-b dark:border-gray-700">
+                        <td className="p-3"><Skeleton className="h-4 w-4" /></td>
+                        <td className="p-3"><Skeleton className="h-4 w-28" /></td>
+                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-4 w-24" /><Skeleton className="h-3 w-20" /></div></td>
+                        <td className="p-3"><Skeleton className="h-5 w-20 rounded-full" /></td>
+                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-3 w-16" /><Skeleton className="h-3 w-20" /></div></td>
+                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-3 w-20" /><Skeleton className="h-3 w-24" /></div></td>
+                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-4 w-16 rounded-full" /><Skeleton className="h-3 w-20" /></div></td>
+                        <td className="p-3"><Skeleton className="h-4 w-16" /></td>
+                        <td className="p-3"><div className="space-y-1"><Skeleton className="h-3 w-24" /><Skeleton className="h-3 w-12" /></div></td>
+                        <td className="p-3"><div className="flex justify-center gap-1"><Skeleton className="h-7 w-20" /><Skeleton className="h-7 w-7" /></div></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          /* ─── Skeleton Vista Kanban ─── */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {['Pendientes', 'Confirmados', 'Preparando', 'Listos'].map((col) => (
+              <div key={col} className="space-y-3 sm:space-y-4">
+                <div className="flex items-center gap-2 p-2 bg-muted/50 dark:bg-gray-800/50 rounded-lg">
+                  <Skeleton className="w-3 h-3 rounded-full" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex justify-between">
+                        <Skeleton className="h-5 w-28" />
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                      </div>
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-8 w-full rounded-lg" />
+                      <div className="space-y-1">
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-3/4" />
+                      </div>
+                      <div className="flex justify-between border-t dark:border-gray-700 pt-3">
+                        <Skeleton className="h-4 w-12" />
+                        <Skeleton className="h-5 w-20" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Skeleton className="h-8 flex-1" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ))}
+          </div>
+        )
       ) : orders.length === 0 ? (
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="p-8 sm:p-12 text-center">
@@ -495,39 +728,207 @@ export default function PedidosOnlinePage() {
         </Card>
       ) : viewMode === 'list' ? (
         /* ─── Vista Lista ─── */
+        <div className="space-y-3">
+          {/* Barra de acciones masivas */}
+          {selectedOrders.size > 0 && (
+            <div className="flex items-center justify-between gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium dark:text-blue-200">{selectedOrders.size} seleccionado(s)</span>
+                <Button variant="ghost" size="sm" className="h-7 px-2 dark:text-gray-300" onClick={clearSelection}>
+                  <X className="h-3 w-3 mr-1" />
+                  Limpiar
+                </Button>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 text-xs dark:text-white"
+                  disabled={bulkActionLoading}
+                  onClick={() => handleBulkStatusChange('confirmed')}
+                >
+                  <CheckCircle className="h-3 w-3 mr-1 dark:text-white" />
+                  Confirmar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 text-xs dark:text-white"
+                  disabled={bulkActionLoading}
+                  onClick={() => handleBulkStatusChange('preparing')}
+                >
+                  <Clock className="h-3 w-3 mr-1 dark:text-white" />
+                  En proceso
+                </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 text-xs dark:text-white"
+                  disabled={bulkActionLoading}
+                  onClick={() => handleBulkStatusChange('ready')}
+                >
+                  <Package className="h-3 w-3 mr-1 dark:text-white" />
+                  Listos
+                </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 text-xs dark:text-white"
+                  disabled={bulkActionLoading}
+                  onClick={() => handleBulkStatusChange('delivered')}
+                >
+                  <CheckCircle className="h-3 w-3 mr-1 dark:text-white" />
+                  Entregados
+                </Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 text-xs dark:text-white"
+                  disabled={bulkActionLoading}
+                  onClick={handleBulkMarkPaid}
+                >
+                  <Coins className="h-3 w-3 mr-1 dark:text-white" />
+                  Marcar pagados
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs dark:border-gray-600 dark:text-gray-200"
+                  onClick={handleBulkPrint}
+                >
+                  <Printer className="h-3 w-3 mr-1 dark:text-gray-300" />
+                  Imprimir
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs dark:border-gray-600 dark:text-gray-200"
+                  onClick={handleBulkExport}
+                >
+                  <Download className="h-3 w-3 mr-1 dark:text-gray-300" />
+                  Exportar CSV
+                </Button>
+              </div>
+            </div>
+          )}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[640px]">
+              <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr className="border-b dark:border-gray-700 bg-muted/50 dark:bg-gray-800/50">
+                    <th className="text-left p-3 w-10">
+                      <Checkbox
+                        checked={(() => {
+                          const pageOrders = orders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+                          return pageOrders.length > 0 && pageOrders.every(o => selectedOrders.has(o.id));
+                        })()}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Pedido</th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Cliente</th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Estado</th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Entrega</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100">Items</th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Pago</th>
                     <th className="text-right p-3 font-medium dark:text-gray-100">Total</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100">Fecha</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100">Tiempo</th>
                     <th className="text-center p-3 font-medium dark:text-gray-100">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(order => (
-                    <tr key={order.id} className="border-b dark:border-gray-700 hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="p-3 font-medium dark:text-gray-100">{order.order_number}</td>
-                      <td className="p-3 dark:text-gray-300">{order.customer_name || order.customer?.full_name || '—'}</td>
+                  {orders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(order => {
+                    const minutesSince = Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000);
+                    const timeSince = minutesSince < 60 ? `${minutesSince} min` : `${Math.floor(minutesSince / 60)}h ${minutesSince % 60}min`;
+                    return (
+                    <tr key={order.id} className={`border-b dark:border-gray-700 hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-colors ${selectedOrders.has(order.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}>
+                      <td className="p-3">
+                        <Checkbox
+                          checked={selectedOrders.has(order.id)}
+                          onCheckedChange={() => toggleSelectOrder(order.id)}
+                        />
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium dark:text-gray-100">{order.order_number}</span>
+                            {order.is_scheduled && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                                <CalendarClock className="h-3 w-3" />
+                                Programado
+                              </span>
+                            )}
+                            {order.tip_amount > 0 && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                                <Coins className="h-3 w-3" />
+                                Propina
+                              </span>
+                            )}
+                          </div>
+                          {order.customer_notes && (
+                            <span className="text-xs text-yellow-700 dark:text-yellow-300 line-clamp-1 max-w-[180px]" title={order.customer_notes}>
+                              📝 {order.customer_notes}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="dark:text-gray-300">{order.customer_name || order.customer?.full_name || '—'}</span>
+                          {(order.customer_phone || order.customer?.phone) && (
+                            <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {order.customer_phone || order.customer?.phone}
+                            </span>
+                          )}
+                          {(order.customer_email || order.customer?.email) && (
+                            <span className="text-xs text-muted-foreground dark:text-gray-400 truncate max-w-[150px]" title={order.customer_email || order.customer?.email}>
+                              {order.customer_email || order.customer?.email}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                           {getStatusLabel(order.status)}
                         </span>
                       </td>
                       <td className="p-3">
-                        <span className="flex items-center gap-1 text-xs dark:text-gray-300">
-                          {order.delivery_type === 'pickup' && <Store className="h-3 w-3 dark:text-gray-400" />}
-                          {order.delivery_type === 'delivery_own' && <Bike className="h-3 w-3 dark:text-gray-400" />}
-                          {order.delivery_type === 'delivery_third_party' && <Truck className="h-3 w-3 dark:text-gray-400" />}
-                          {order.delivery_type === 'pickup' ? 'Retiro' : order.delivery_type === 'delivery_own' ? 'Propio' : 'Tercero'}
-                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1 text-xs dark:text-gray-300">
+                            {order.delivery_type === 'pickup' && <Store className="h-3 w-3 dark:text-gray-400" />}
+                            {order.delivery_type === 'delivery_own' && <Bike className="h-3 w-3 dark:text-gray-400" />}
+                            {order.delivery_type === 'delivery_third_party' && <Truck className="h-3 w-3 dark:text-gray-400" />}
+                            {order.delivery_type === 'pickup' ? 'Retiro' : order.delivery_type === 'delivery_own' ? 'Propio' : 'Tercero'}
+                          </span>
+                          {order.delivery_type !== 'pickup' && order.delivery_address?.address && (
+                            <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1 max-w-[120px] truncate" title={order.delivery_address.address}>
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{order.delivery_address.address}</span>
+                            </span>
+                          )}
+                          {order.delivery_type !== 'pickup' && order.delivery_address?.city && (
+                            <span className="text-xs text-muted-foreground dark:text-gray-400">
+                              {order.delivery_address.city}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-medium dark:text-gray-200">{order.items?.length || 0} producto(s)</span>
+                          <div className="text-xs text-muted-foreground dark:text-gray-400 space-y-0.5 max-w-[160px]">
+                            {order.items?.slice(0, 2).map((item, idx) => (
+                              <div key={idx} className="flex justify-between gap-1">
+                                <span className="truncate">{item.quantity}x {item.product_name}</span>
+                              </div>
+                            ))}
+                            {(order.items?.length || 0) > 2 && (
+                              <span className="text-xs">+{order.items!.length - 2} más...</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="p-3">
                         <div className="flex flex-col gap-1">
@@ -540,10 +941,15 @@ export default function PedidosOnlinePage() {
                       </td>
                       <td className="p-3 text-right font-semibold dark:text-gray-100">${order.total.toLocaleString()}</td>
                       <td className="p-3 text-xs text-muted-foreground dark:text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 dark:text-gray-400" />
-                          {new Date(order.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 dark:text-gray-400" />
+                            {new Date(order.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className="font-medium text-muted-foreground dark:text-gray-400">
+                            {timeSince}
+                          </span>
+                        </div>
                       </td>
                       <td className="p-3">
                         <div className="flex items-center justify-center gap-1">
@@ -575,6 +981,7 @@ export default function PedidosOnlinePage() {
                               className="h-7 text-xs dark:text-white"
                               onClick={() => handleUpdateStatus(order.id, 'preparing')}
                             >
+                              <Clock className="h-3 w-3 mr-1 dark:text-white" />
                               Preparar
                             </Button>
                           )}
@@ -629,7 +1036,8 @@ export default function PedidosOnlinePage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -666,6 +1074,7 @@ export default function PedidosOnlinePage() {
             )}
           </CardContent>
         </Card>
+        </div>
       ) : (
         /* ─── Vista Kanban ─── */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

@@ -13,7 +13,7 @@ import {
   Bike,
   CheckCircle,
   XCircle,
-  ChefHat,
+  Timer,
   Package,
   Eye,
   CalendarClock,
@@ -33,7 +33,7 @@ interface WebOrderCardProps {
 const STATUS_CONFIG: Record<WebOrderStatus, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', icon: <Clock className="h-3 w-3 dark:text-yellow-200" /> },
   confirmed: { label: 'Confirmado', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', icon: <CheckCircle className="h-3 w-3 dark:text-blue-200" /> },
-  preparing: { label: 'Preparando', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200', icon: <ChefHat className="h-3 w-3 dark:text-orange-200" /> },
+  preparing: { label: 'Preparando', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200', icon: <Timer className="h-3 w-3 dark:text-orange-200" /> },
   ready: { label: 'Listo', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: <Package className="h-3 w-3 dark:text-green-200" /> },
   in_delivery: { label: 'En camino', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', icon: <Truck className="h-3 w-3 dark:text-purple-200" /> },
   delivered: { label: 'Entregado', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200', icon: <CheckCircle className="h-3 w-3 dark:text-emerald-200" /> },
@@ -270,7 +270,7 @@ export function WebOrderCard({
               className="flex-1"
               onClick={() => onUpdateStatus?.(order.id, 'preparing')}
             >
-              <ChefHat className="h-4 w-4 mr-1 dark:text-white" />
+              <Timer className="h-4 w-4 mr-1 dark:text-white" />
               <span className="hidden sm:inline dark:text-white">Iniciar preparación</span>
               <span className="sm:hidden dark:text-white">Preparar</span>
             </Button>

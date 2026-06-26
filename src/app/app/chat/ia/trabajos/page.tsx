@@ -226,7 +226,7 @@ export default function TrabajosPage() {
         hasFilters={hasFilters}
       />
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <JobsTable
             jobs={jobs}

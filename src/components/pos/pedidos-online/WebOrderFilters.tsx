@@ -17,13 +17,15 @@ import {
   X,
   Clock,
   CheckCircle,
-  ChefHat,
   Package,
   Truck,
   XCircle,
   Store,
   Bike,
-  CalendarClock
+  CalendarClock,
+  DollarSign,
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 import type { WebOrderStatus, DeliveryType, PaymentStatus, OrderSource } from '@/lib/services/webOrdersService';
 
@@ -32,7 +34,7 @@ interface WebOrderFiltersProps {
     status?: WebOrderStatus[];
     delivery_type?: DeliveryType;
     source?: OrderSource;
-    payment_status?: PaymentStatus;
+    payment_status?: PaymentStatus[];
     search?: string;
     is_scheduled?: boolean;
   }) => void;
@@ -40,7 +42,7 @@ interface WebOrderFiltersProps {
     status?: WebOrderStatus[];
     delivery_type?: DeliveryType;
     source?: OrderSource;
-    payment_status?: PaymentStatus;
+    payment_status?: PaymentStatus[];
     search?: string;
     is_scheduled?: boolean;
   };
@@ -49,11 +51,18 @@ interface WebOrderFiltersProps {
 const STATUS_OPTIONS: { value: WebOrderStatus; label: string; icon: React.ReactNode }[] = [
   { value: 'pending', label: 'Pendientes', icon: <Clock className="h-4 w-4 text-yellow-500 dark:text-yellow-400" /> },
   { value: 'confirmed', label: 'Confirmados', icon: <CheckCircle className="h-4 w-4 text-blue-500 dark:text-blue-400" /> },
-  { value: 'preparing', label: 'Preparando', icon: <ChefHat className="h-4 w-4 text-orange-500 dark:text-orange-400" /> },
+  { value: 'preparing', label: 'Preparando', icon: <Clock className="h-4 w-4 text-orange-500 dark:text-orange-400" /> },
   { value: 'ready', label: 'Listos', icon: <Package className="h-4 w-4 text-green-500 dark:text-green-400" /> },
   { value: 'in_delivery', label: 'En camino', icon: <Truck className="h-4 w-4 text-purple-500 dark:text-purple-400" /> },
   { value: 'delivered', label: 'Entregados', icon: <CheckCircle className="h-4 w-4 text-emerald-500 dark:text-emerald-400" /> },
   { value: 'cancelled', label: 'Cancelados', icon: <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" /> },
+];
+
+const PAYMENT_STATUS_OPTIONS: { value: PaymentStatus; label: string; icon: React.ReactNode }[] = [
+  { value: 'paid', label: 'Pagados', icon: <DollarSign className="h-4 w-4 text-green-500 dark:text-green-400" /> },
+  { value: 'pending', label: 'Pago pendiente', icon: <Clock className="h-4 w-4 text-yellow-500 dark:text-yellow-400" /> },
+  { value: 'failed', label: 'Pago fallido', icon: <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400" /> },
+  { value: 'refunded', label: 'Reembolsados', icon: <RotateCcw className="h-4 w-4 text-blue-500 dark:text-blue-400" /> },
 ];
 
 const DELIVERY_TYPE_OPTIONS: { value: DeliveryType | 'all'; label: string; icon: React.ReactNode }[] = [
@@ -73,6 +82,14 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
       : [...currentStatuses, status];
     
     onFilterChange({ ...activeFilters, status: newStatuses.length > 0 ? newStatuses : undefined });
+  };
+
+  const handlePaymentStatusToggle = (status: PaymentStatus) => {
+    const currentStatuses = activeFilters.payment_status || [];
+    const newStatuses = currentStatuses.includes(status)
+      ? currentStatuses.filter(s => s !== status)
+      : [...currentStatuses, status];
+    onFilterChange({ ...activeFilters, payment_status: newStatuses.length > 0 ? newStatuses : undefined });
   };
 
   const handleDeliveryTypeChange = (value: string) => {
@@ -105,7 +122,8 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
   const hasActiveFilters = (activeFilters.status?.length || 0) > 0 || 
     activeFilters.delivery_type || 
     activeFilters.search ||
-    activeFilters.is_scheduled;
+    activeFilters.is_scheduled ||
+    activeFilters.payment_status;
 
   return (
     <div className="space-y-4">
@@ -142,6 +160,26 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
               variant={isActive ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleStatusToggle(option.value)}
+              className={`gap-1 flex-shrink-0 whitespace-nowrap ${isActive ? 'dark:text-white' : 'dark:border-gray-600'}`}
+            >
+              {option.icon}
+              {option.label}
+            </Button>
+          );
+        })}
+      </div>
+
+      {/* Filtros por estado de pago */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        <span className="text-sm font-medium flex-shrink-0 dark:text-gray-100">Pago:</span>
+        {PAYMENT_STATUS_OPTIONS.map((option) => {
+          const isActive = activeFilters.payment_status?.includes(option.value);
+          return (
+            <Button
+              key={option.value}
+              variant={isActive ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handlePaymentStatusToggle(option.value)}
               className={`gap-1 flex-shrink-0 whitespace-nowrap ${isActive ? 'dark:text-white' : 'dark:border-gray-600'}`}
             >
               {option.icon}
@@ -193,6 +231,15 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
               <X 
                 className="h-3 w-3 cursor-pointer dark:text-gray-300" 
                 onClick={() => handleStatusToggle(status)}
+              />
+            </Badge>
+          ))}
+          {activeFilters.payment_status?.map(status => (
+            <Badge key={status} variant="secondary" className="gap-1">
+              {PAYMENT_STATUS_OPTIONS.find(p => p.value === status)?.label}
+              <X 
+                className="h-3 w-3 cursor-pointer dark:text-gray-300" 
+                onClick={() => handlePaymentStatusToggle(status)}
               />
             </Badge>
           ))}

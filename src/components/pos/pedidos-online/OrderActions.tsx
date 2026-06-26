@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { 
   CheckCircle, 
   XCircle, 
-  ChefHat, 
+  Timer, 
   Package, 
   Truck, 
   Printer,
@@ -117,7 +117,7 @@ export function OrderActions({
           {isLoading ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
-            <ChefHat className="h-4 w-4 mr-2" />
+            <Timer className="h-4 w-4 mr-2" />
           )}
           Iniciar preparación
         </Button>

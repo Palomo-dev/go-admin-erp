@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { metaMarketingService } from '@/lib/services/integrations/meta';
 
 /**
@@ -41,7 +40,10 @@ export async function GET(request: NextRequest) {
     // 1. Completar flujo OAuth: code → long-lived token → business_id
     const oauthResult = await metaMarketingService.completeOAuthFlow(code);
 
-    const supabase = createRouteHandlerClient({ cookies });
+    // Cliente con service role: el callback es server-to-server (Facebook redirige aquí)
+    // y la cookie de sesión propia de GO Admin no es legible por auth-helpers, por lo que
+    // se usa el admin client para evitar bloqueos de RLS al crear la conexión.
+    const supabase = getSupabaseAdmin();
     const appSecret = process.env.META_APP_SECRET || '';
 
     // 2. Si ya hay connection_id, usar esa; si no, crear una nueva

@@ -5,8 +5,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { tiktokMarketingService } from '@/lib/services/integrations/tiktok';
 
 export async function GET(request: NextRequest) {
@@ -34,7 +33,10 @@ export async function GET(request: NextRequest) {
     // 1. Completar flujo OAuth: auth_code → access_token + advertiser_id
     const oauthResult = await tiktokMarketingService.completeOAuthFlow(authCode);
 
-    const supabase = createRouteHandlerClient({ cookies });
+    // Cliente con service role: el callback es server-to-server (TikTok redirige aquí)
+    // y la cookie de sesión propia de GO Admin no es legible por auth-helpers, por lo que
+    // se usa el admin client para evitar bloqueos de RLS al crear la conexión.
+    const supabase = getSupabaseAdmin();
     const appSecret = process.env.TIKTOK_APP_SECRET || '';
 
     // 2. Obtener connector de tiktok_marketing

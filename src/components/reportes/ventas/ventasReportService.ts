@@ -69,6 +69,7 @@ export interface VentaDetalle {
   customer_name: string | null;
   seller_name: string | null;
   items_count: number;
+  source?: 'POS' | 'Web' | 'Factura';
 }
 
 export interface SavedReport {
@@ -300,62 +301,98 @@ export const ventasReportService = {
   async getTopProductos(
     organizationId: number,
     filters: VentasFilters,
-    limit: number = 10
+    limit: number = 10,
+    source: 'all' | 'pos' | 'web' | 'invoice' = 'all'
   ): Promise<TopProductoVenta[]> {
-    // Agrupar por producto (POS + Web)
+    // Agrupar por producto (POS + Web + Facturas)
     const grouped: Record<number, { name: string; sku: string; quantity: number; revenue: number; category_name: string | null }> = {};
 
     // POS sales
-    const { data: salesData } = await buildSalesQuery(organizationId, filters)
-      .neq('status', 'cancelled')
-      .select('id');
+    if (source === 'all' || source === 'pos') {
+      const { data: salesData } = await buildSalesQuery(organizationId, filters)
+        .neq('status', 'cancelled')
+        .select('id');
 
-    if (salesData && salesData.length > 0) {
-      const saleIds = salesData.map((s) => s.id);
-      const allItems: any[] = [];
-      for (let i = 0; i < saleIds.length; i += 100) {
-        const batch = saleIds.slice(i, i + 100);
-        const { data: items } = await supabase
-          .from('sale_items')
-          .select('product_id, quantity, total')
-          .in('sale_id', batch);
-        if (items) allItems.push(...items);
-      }
-      for (const item of allItems) {
-        const pid = item.product_id;
-        if (!pid) continue;
-        if (!grouped[pid]) grouped[pid] = { name: '', sku: '', quantity: 0, revenue: 0, category_name: null };
-        grouped[pid].quantity += Number(item.quantity) || 0;
-        grouped[pid].revenue += Number(item.total) || 0;
+      if (salesData && salesData.length > 0) {
+        const saleIds = salesData.map((s) => s.id);
+        const allItems: any[] = [];
+        for (let i = 0; i < saleIds.length; i += 100) {
+          const batch = saleIds.slice(i, i + 100);
+          const { data: items } = await supabase
+            .from('sale_items')
+            .select('product_id, quantity, total')
+            .in('sale_id', batch);
+          if (items) allItems.push(...items);
+        }
+        for (const item of allItems) {
+          const pid = item.product_id;
+          if (!pid) continue;
+          if (!grouped[pid]) grouped[pid] = { name: '', sku: '', quantity: 0, revenue: 0, category_name: null };
+          grouped[pid].quantity += Number(item.quantity) || 0;
+          grouped[pid].revenue += Number(item.total) || 0;
+        }
       }
     }
 
     // Web orders
-    const { data: webOrders } = await supabase
-      .from('web_orders')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .neq('status', 'cancelled')
-      .gte('created_at', filters.dateFrom)
-      .lte('created_at', filters.dateTo + 'T23:59:59.999Z');
+    if (source === 'all' || source === 'web') {
+      const { data: webOrders } = await supabase
+        .from('web_orders')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .neq('status', 'cancelled')
+        .gte('created_at', filters.dateFrom)
+        .lte('created_at', filters.dateTo + 'T23:59:59.999Z');
 
-    if (webOrders && webOrders.length > 0) {
-      const webIds = webOrders.map((o) => o.id);
-      const allWebItems: any[] = [];
-      for (let i = 0; i < webIds.length; i += 100) {
-        const batch = webIds.slice(i, i + 100);
-        const { data: items } = await supabase
-          .from('web_order_items')
-          .select('product_id, product_name, quantity, total')
-          .in('web_order_id', batch);
-        if (items) allWebItems.push(...items);
+      if (webOrders && webOrders.length > 0) {
+        const webIds = webOrders.map((o) => o.id);
+        const allWebItems: any[] = [];
+        for (let i = 0; i < webIds.length; i += 100) {
+          const batch = webIds.slice(i, i + 100);
+          const { data: items } = await supabase
+            .from('web_order_items')
+            .select('product_id, product_name, quantity, total')
+            .in('web_order_id', batch);
+          if (items) allWebItems.push(...items);
+        }
+        for (const item of allWebItems) {
+          const pid = item.product_id || 0;
+          if (!pid) continue;
+          if (!grouped[pid]) grouped[pid] = { name: item.product_name || 'Producto Web', sku: '', quantity: 0, revenue: 0, category_name: null };
+          grouped[pid].quantity += Number(item.quantity) || 0;
+          grouped[pid].revenue += Number(item.total) || 0;
+        }
       }
-      for (const item of allWebItems) {
-        const pid = item.product_id || 0;
-        if (!pid) continue;
-        if (!grouped[pid]) grouped[pid] = { name: item.product_name || 'Producto Web', sku: '', quantity: 0, revenue: 0, category_name: null };
-        grouped[pid].quantity += Number(item.quantity) || 0;
-        grouped[pid].revenue += Number(item.total) || 0;
+    }
+
+    // Invoice sales (facturas de venta)
+    if (source === 'all' || source === 'invoice') {
+      const { data: invoiceData } = await supabase
+        .from('invoice_sales')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .in('status', ['paid', 'partial', 'issued'])
+        .gte('issue_date', filters.dateFrom)
+        .lte('issue_date', filters.dateTo + 'T23:59:59.999Z');
+
+      if (invoiceData && invoiceData.length > 0) {
+        const invoiceIds = invoiceData.map((i) => i.id);
+        const allInvoiceItems: any[] = [];
+        for (let i = 0; i < invoiceIds.length; i += 100) {
+          const batch = invoiceIds.slice(i, i + 100);
+          const { data: items } = await supabase
+            .from('invoice_items')
+            .select('product_id, qty, total_line, description')
+            .in('invoice_sales_id', batch);
+          if (items) allInvoiceItems.push(...items);
+        }
+        for (const item of allInvoiceItems) {
+          const pid = item.product_id || 0;
+          if (!pid) continue;
+          if (!grouped[pid]) grouped[pid] = { name: item.description || `Producto #${pid}`, sku: '', quantity: 0, revenue: 0, category_name: null };
+          grouped[pid].quantity += Number(item.qty) || 0;
+          grouped[pid].revenue += Number(item.total_line) || 0;
+        }
       }
     }
 
@@ -470,29 +507,70 @@ export const ventasReportService = {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    // Count
-    const { count } = await supabase
-      .from('sales')
-      .select('id', { count: 'exact', head: true })
-      .eq('organization_id', organizationId)
-      .gte('sale_date', filters.dateFrom)
-      .lte('sale_date', filters.dateTo + 'T23:59:59.999Z');
+    // Consultar las tres fuentes en paralelo
+    const [posRes, webRes, invoiceRes] = await Promise.all([
+      // POS sales
+      buildSalesQuery(organizationId, filters)
+        .select('id, sale_date, total, subtotal, tax_total, discount_total, status, payment_status, branch_id, customer_id, user_id')
+        .order('sale_date', { ascending: false }),
+      // Web orders
+      supabase
+        .from('web_orders')
+        .select('id, created_at, total, subtotal, tax_total, discount_total, status, payment_status, branch_id, customer_id, customer_name')
+        .eq('organization_id', organizationId)
+        .neq('status', 'cancelled')
+        .gte('created_at', filters.dateFrom)
+        .lte('created_at', filters.dateTo + 'T23:59:59.999Z')
+        .order('created_at', { ascending: false }),
+      // Invoice sales (facturas de venta)
+      supabase
+        .from('invoice_sales')
+        .select('id, issue_date, total, subtotal, tax_total, status, branch_id, customer_id, created_by')
+        .eq('organization_id', organizationId)
+        .in('status', ['paid', 'partial', 'issued'])
+        .gte('issue_date', filters.dateFrom)
+        .lte('issue_date', filters.dateTo + 'T23:59:59.999Z')
+        .order('issue_date', { ascending: false }),
+    ]);
 
-    // Data
-    const { data, error } = await buildSalesQuery(organizationId, filters)
-      .select(`
-        id, sale_date, total, subtotal, tax_total, discount_total, status, payment_status,
-        branch_id, customer_id, user_id
-      `)
-      .order('sale_date', { ascending: false })
-      .range(from, to);
+    const posData = (posRes.data || []).map((s: any) => ({
+      id: s.id, sale_date: s.sale_date, total: Number(s.total) || 0,
+      subtotal: Number(s.subtotal) || 0, tax_total: Number(s.tax_total) || 0,
+      discount_total: Number(s.discount_total) || 0, status: s.status || '',
+      payment_status: s.payment_status || '', branch_id: s.branch_id,
+      customer_id: s.customer_id, seller_id: s.user_id, customer_name: null as string | null,
+      source: 'POS' as const,
+    }));
 
-    if (error || !data) return { data: [], total: count ?? 0 };
+    const webData = (webRes.data || []).map((w: any) => ({
+      id: w.id, sale_date: w.created_at, total: Number(w.total) || 0,
+      subtotal: Number(w.subtotal) || 0, tax_total: Number(w.tax_total) || 0,
+      discount_total: Number(w.discount_total) || 0, status: w.status || '',
+      payment_status: w.payment_status || '', branch_id: w.branch_id,
+      customer_id: w.customer_id, seller_id: null as string | null,
+      customer_name: w.customer_name || null, source: 'Web' as const,
+    }));
+
+    const invoiceData = (invoiceRes.data || []).map((i: any) => ({
+      id: i.id, sale_date: i.issue_date, total: Number(i.total) || 0,
+      subtotal: Number(i.subtotal) || 0, tax_total: Number(i.tax_total) || 0,
+      discount_total: 0, status: i.status || '',
+      payment_status: i.status === 'paid' ? 'paid' : (i.status === 'partial' ? 'partial' : 'pending'),
+      branch_id: i.branch_id, customer_id: i.customer_id, seller_id: i.created_by,
+      customer_name: null as string | null, source: 'Factura' as const,
+    }));
+
+    // Combinar y ordenar por fecha descendente
+    const allData = [...posData, ...webData, ...invoiceData]
+      .sort((a, b) => new Date(b.sale_date).getTime() - new Date(a.sale_date).getTime());
+
+    const total = allData.length;
+    const pagedData = allData.slice(from, to + 1);
 
     // Resolver nombres
-    const branchIds = Array.from(new Set(data.map((d) => d.branch_id).filter(Boolean)));
-    const customerIds = Array.from(new Set(data.map((d) => d.customer_id).filter(Boolean)));
-    const userIds = Array.from(new Set(data.map((d) => d.user_id).filter(Boolean)));
+    const branchIds = Array.from(new Set(pagedData.map((d) => d.branch_id).filter(Boolean))) as number[];
+    const customerIds = Array.from(new Set(pagedData.map((d) => d.customer_id).filter(Boolean))) as string[];
+    const sellerIds = Array.from(new Set(pagedData.map((d) => d.seller_id).filter(Boolean))) as string[];
 
     const [branchesRes, customersRes, profilesRes] = await Promise.all([
       branchIds.length > 0
@@ -501,40 +579,41 @@ export const ventasReportService = {
       customerIds.length > 0
         ? supabase.from('customers').select('id, full_name, first_name, last_name').in('id', customerIds)
         : { data: [] },
-      userIds.length > 0
-        ? supabase.from('profiles').select('id, first_name, last_name').in('id', userIds)
+      sellerIds.length > 0
+        ? supabase.from('profiles').select('id, first_name, last_name').in('id', sellerIds)
         : { data: [] },
     ]);
 
     const branchMap: Record<number, string> = {};
-    for (const b of branchesRes.data || []) branchMap[b.id] = b.name;
+    for (const b of (branchesRes.data || []) as any[]) branchMap[b.id] = b.name;
 
     const customerMap: Record<string, string> = {};
-    for (const c of customersRes.data || []) {
+    for (const c of (customersRes.data || []) as any[]) {
       customerMap[c.id] = c.full_name || `${c.first_name || ''} ${c.last_name || ''}`.trim();
     }
 
     const profileMap: Record<string, string> = {};
-    for (const p of profilesRes.data || []) {
+    for (const p of (profilesRes.data || []) as any[]) {
       profileMap[p.id] = `${p.first_name || ''} ${p.last_name || ''}`.trim();
     }
 
     return {
-      data: data.map((s) => ({
+      data: pagedData.map((s) => ({
         id: s.id,
         sale_date: s.sale_date,
-        total: Number(s.total) || 0,
-        subtotal: Number(s.subtotal) || 0,
-        tax_total: Number(s.tax_total) || 0,
-        discount_total: Number(s.discount_total) || 0,
-        status: s.status || '',
-        payment_status: s.payment_status || '',
-        branch_name: branchMap[s.branch_id] || '',
-        customer_name: customerMap[s.customer_id] || null,
-        seller_name: profileMap[s.user_id] || null,
+        total: s.total,
+        subtotal: s.subtotal,
+        tax_total: s.tax_total,
+        discount_total: s.discount_total,
+        status: s.status,
+        payment_status: s.payment_status,
+        branch_name: s.branch_id ? (branchMap[s.branch_id] || '') : '',
+        customer_name: s.customer_name || (s.customer_id ? (customerMap[s.customer_id] || null) : null),
+        seller_name: s.seller_id ? (profileMap[s.seller_id] || null) : null,
         items_count: 0,
+        source: s.source,
       })),
-      total: count ?? 0,
+      total,
     };
   },
 

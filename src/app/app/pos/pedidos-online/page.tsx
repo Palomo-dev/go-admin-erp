@@ -906,8 +906,8 @@ export default function PedidosOnlinePage() {
                       </td>
                       <td className="p-3">
                         <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-medium dark:text-gray-100">{order.order_number}</span>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="font-medium text-xs sm:text-sm dark:text-gray-100 break-all sm:break-normal">{order.order_number}</span>
                             {order.is_scheduled && (
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
                                 <CalendarClock className="h-3 w-3" />
@@ -922,7 +922,7 @@ export default function PedidosOnlinePage() {
                             )}
                           </div>
                           {order.customer_notes && (
-                            <span className="text-xs text-yellow-700 dark:text-yellow-300 line-clamp-1 max-w-[180px]" title={order.customer_notes}>
+                            <span className="text-xs text-yellow-700 dark:text-yellow-300 break-words sm:line-clamp-1 sm:max-w-[180px]" title={order.customer_notes}>
                               📝 {order.customer_notes}
                             </span>
                           )}
@@ -938,7 +938,7 @@ export default function PedidosOnlinePage() {
                             </span>
                           )}
                           {(order.customer_email || order.customer?.email) && (
-                            <span className="text-xs text-muted-foreground dark:text-gray-400 truncate max-w-[150px]" title={order.customer_email || order.customer?.email}>
+                            <span className="text-xs text-muted-foreground dark:text-gray-400 break-words sm:truncate sm:max-w-[150px]" title={order.customer_email || order.customer?.email}>
                               {order.customer_email || order.customer?.email}
                             </span>
                           )}
@@ -958,9 +958,9 @@ export default function PedidosOnlinePage() {
                             {order.delivery_type === 'pickup' ? 'Retiro' : order.delivery_type === 'delivery_own' ? 'Propio' : 'Tercero'}
                           </span>
                           {order.delivery_type !== 'pickup' && order.delivery_address?.address && (
-                            <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1 max-w-[120px] truncate" title={order.delivery_address.address}>
+                            <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1 break-words sm:max-w-[120px] sm:truncate" title={order.delivery_address.address}>
                               <MapPin className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate">{order.delivery_address.address}</span>
+                              <span className="break-words sm:truncate">{order.delivery_address.address}</span>
                             </span>
                           )}
                           {order.delivery_type !== 'pickup' && order.delivery_address?.city && (
@@ -973,10 +973,10 @@ export default function PedidosOnlinePage() {
                       <td className="p-3">
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-medium dark:text-gray-200">{order.items?.length || 0} producto(s)</span>
-                          <div className="text-xs text-muted-foreground dark:text-gray-400 space-y-0.5 max-w-[160px]">
+                          <div className="text-xs text-muted-foreground dark:text-gray-400 space-y-0.5 sm:max-w-[160px]">
                             {order.items?.slice(0, 2).map((item, idx) => (
                               <div key={idx} className="flex justify-between gap-1">
-                                <span className="truncate">{item.quantity}x {item.product_name}</span>
+                                <span className="break-words sm:truncate">{item.quantity}x {item.product_name}</span>
                               </div>
                             ))}
                             {(order.items?.length || 0) > 2 && (
@@ -995,13 +995,13 @@ export default function PedidosOnlinePage() {
                         </div>
                       </td>
                       <td className="p-3 text-right font-semibold dark:text-gray-100">${order.total.toLocaleString()}</td>
-                      <td className="p-3 text-xs text-muted-foreground dark:text-gray-400">
-                        <div className="flex flex-col gap-0.5">
+                      <td className="p-3 text-xs text-muted-foreground dark:text-gray-400 w-[140px] min-w-[140px] sm:w-auto sm:min-w-0">
+                        <div className="flex flex-col gap-1">
                           <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 dark:text-gray-400" />
-                            {new Date(order.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            <Clock className="h-3 w-3 dark:text-gray-400 flex-shrink-0" />
+                            <span className="whitespace-nowrap">{new Date(order.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, {new Date(order.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
                           </span>
-                          <span className="font-medium text-muted-foreground dark:text-gray-400">
+                          <span className="font-medium text-muted-foreground dark:text-gray-400 whitespace-nowrap pl-4">
                             {timeSince}
                           </span>
                         </div>

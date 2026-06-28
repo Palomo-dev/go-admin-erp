@@ -115,7 +115,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
         setAllNotifications((allData || []) as Notification[]);
         setMyUnreadCount(myUnread ?? 0);
         setAllUnreadCount(totalUnread ?? 0);
-        setUnreadCount((myUnread ?? 0) + (totalUnread ?? 0));
+        setUnreadCount(totalUnread ?? 0);
       } catch (error) {
         console.error('Error al cargar notificaciones:', error);
       } finally {
@@ -281,13 +281,13 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
             
             {/* Sub-tabs: Mías / Todas (solo visible en tab Notificaciones) */}
             {activeTab === 'notifications' && (
-              <div className="flex gap-1 mt-2 bg-gray-50 dark:bg-gray-750 rounded-md p-0.5">
+              <div className="flex gap-1 mt-2 bg-gray-100 dark:bg-gray-700/50 rounded-md p-1">
                 <button
                   onClick={() => setNotifSubTab('mine')}
-                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
                     notifSubTab === 'mine'
-                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                      ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <User className="h-3 w-3" />
@@ -298,16 +298,16 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
                 </button>
                 <button
                   onClick={() => setNotifSubTab('all')}
-                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
                     notifSubTab === 'all'
-                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                      ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <Users className="h-3 w-3" />
                   Todas
                   {allUnreadCount > 0 && (
-                    <span className="bg-gray-500 text-white rounded-full px-1.5 py-0 text-[10px] font-bold">{allUnreadCount}</span>
+                    <span className="bg-gray-500 dark:bg-gray-600 text-white rounded-full px-1.5 py-0 text-[10px] font-bold">{allUnreadCount}</span>
                   )}
                 </button>
               </div>

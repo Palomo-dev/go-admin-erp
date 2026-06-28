@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import {
   META_CREDENTIAL_PURPOSES,
   getMetaApiUrl,
+  getMetaRedirectUri,
   mapProductAvailability,
   formatFacebookPrice,
 } from './metaMarketingConfig';
@@ -136,7 +137,7 @@ class MetaMarketingService {
     const apiUrl = getMetaApiUrl();
     const appId = process.env.META_APP_ID;
     const appSecret = process.env.META_APP_SECRET;
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/meta/oauth/callback`;
+    const redirectUri = getMetaRedirectUri();
 
     const response = await fetch(
       `${apiUrl}/oauth/access_token` +

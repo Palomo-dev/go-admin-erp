@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, MoreVertical, Phone, Video, Search, ArrowLeft, Maximize2, PanelLeftOpen, PanelLeftClose, User, ArrowDown, XCircle, Clock, Circle } from 'lucide-react';
+import { Loader2, MoreVertical, Phone, Video, Search, ArrowLeft, Maximize2, PanelLeftOpen, PanelLeftClose, User, ArrowDown, XCircle, Clock, Circle, Tag, Flag, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -56,11 +56,14 @@ interface ChatViewProps {
   onToggleSidebar?: () => void;
   sidebarCollapsed?: boolean;
   onStatusChange?: (conversationId: string, status: string) => Promise<void>;
+  onPriorityChange?: (conversationId: string, priority: string) => Promise<void>;
+  onTagToggle?: (conversationId: string, tagId: string) => Promise<void>;
+  availableTags?: Array<{ id: string; name: string; color: string }>;
 }
 
 const MESSAGES_PAGE_SIZE = 10;
 
-export default function ChatView({ conversation, onBack, onSendMessage, organizationId, onToggleSidebar, sidebarCollapsed, onStatusChange }: ChatViewProps) {
+export default function ChatView({ conversation, onBack, onSendMessage, organizationId, onToggleSidebar, sidebarCollapsed, onStatusChange, onPriorityChange, onTagToggle, availableTags }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -84,6 +87,16 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
   const handleChangeStatus = async (newStatus: string) => {
     if (!conversation || !onStatusChange) return;
     await onStatusChange(conversation.id, newStatus);
+  };
+
+  const handlePriorityChange = async (newPriority: string) => {
+    if (!conversation || !onPriorityChange) return;
+    await onPriorityChange(conversation.id, newPriority);
+  };
+
+  const handleTagToggle = async (tagId: string) => {
+    if (!conversation || !onTagToggle) return;
+    await onTagToggle(conversation.id, tagId);
   };
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -379,6 +392,26 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
     }
   };
 
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'low': return 'Baja';
+      case 'normal': return 'Normal';
+      case 'high': return 'Alta';
+      case 'urgent': return 'Urgente';
+      default: return priority;
+    }
+  };
+
+  const getPriorityBadgeClass = (priority: string) => {
+    switch (priority) {
+      case 'low': return 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
+      case 'normal': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
+      case 'high': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400';
+      case 'urgent': return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
+      default: return 'bg-gray-100 text-gray-600';
+    }
+  };
+
   return (
     <div className="h-full flex bg-white dark:bg-gray-900 overflow-hidden">
       {/* Área principal del chat */}
@@ -426,9 +459,40 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-              {customerName}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                {customerName}
+              </h2>
+              {/* Prioridad */}
+              {onPriorityChange && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 ${getPriorityBadgeClass(conversation.priority)}`}
+                      title="Cambiar prioridad"
+                    >
+                      <Flag className="h-3 w-3" />
+                      {getPriorityLabel(conversation.priority)}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>Prioridad</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {(['low', 'normal', 'high', 'urgent'] as const).map((p) => (
+                      <DropdownMenuItem
+                        key={p}
+                        onClick={() => handlePriorityChange(p)}
+                        className={conversation.priority === p ? 'bg-gray-100 dark:bg-gray-700' : ''}
+                      >
+                        <Flag className="h-4 w-4 mr-2" />
+                        {getPriorityLabel(p)}
+                        {conversation.priority === p && <span className="ml-auto text-xs">✓</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <span className="truncate">{conversation.customer?.email}</span>
               {conversation.unread_count > 0 && (
@@ -437,6 +501,61 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
                 </Badge>
               )}
             </div>
+            {/* Etiquetas */}
+            {onTagToggle && (
+              <div className="flex items-center gap-1 flex-wrap mt-1">
+                {conversation.tags?.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                    style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+                  >
+                    {tag.name}
+                    <button
+                      onClick={() => handleTagToggle(tag.id)}
+                      className="hover:opacity-70 cursor-pointer"
+                      title="Quitar etiqueta"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+                {availableTags && availableTags.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                        title="Agregar etiqueta"
+                      >
+                        <Plus className="h-2.5 w-2.5" />
+                        Etiqueta
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuLabel>Etiquetas</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {availableTags
+                        .filter((t) => !conversation.tags?.some((ct) => ct.id === t.id))
+                        .map((tag) => (
+                          <DropdownMenuItem
+                            key={tag.id}
+                            onClick={() => handleTagToggle(tag.id)}
+                          >
+                            <span
+                              className="h-2.5 w-2.5 rounded-full mr-2 flex-shrink-0"
+                              style={{ backgroundColor: tag.color }}
+                            />
+                            {tag.name}
+                          </DropdownMenuItem>
+                        ))}
+                      {availableTags.filter((t) => !conversation.tags?.some((ct) => ct.id === t.id)).length === 0 && (
+                        <div className="px-2 py-1.5 text-xs text-gray-400">Todas las etiquetas ya están asignadas</div>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

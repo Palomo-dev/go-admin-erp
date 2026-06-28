@@ -25,9 +25,11 @@ interface WebSalesCardsProps {
   organizationId: number;
   dateFrom: string;
   dateTo: string;
+  refreshKey?: number;
+  isRefreshing?: boolean;
 }
 
-export function WebTopProductosCard({ organizationId, dateFrom, dateTo }: WebSalesCardsProps) {
+export function WebTopProductosCard({ organizationId, dateFrom, dateTo, refreshKey, isRefreshing }: WebSalesCardsProps) {
   const [products, setProducts] = useState<WebTopProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -45,12 +47,6 @@ export function WebTopProductosCard({ organizationId, dateFrom, dateTo }: WebSal
         if (!error && data) {
           setProducts(data);
         } else {
-          // Fallback: query directa
-          const { data: fallback } = await supabase
-            .from('web_order_items')
-            .select('product_name, quantity, total, web_order_id')
-            .order('quantity', { ascending: false });
-          // No hacer nada si falla
           setProducts([]);
         }
       } catch {
@@ -60,9 +56,9 @@ export function WebTopProductosCard({ organizationId, dateFrom, dateTo }: WebSal
       }
     };
     load();
-  }, [organizationId, dateFrom, dateTo]);
+  }, [organizationId, dateFrom, dateTo, refreshKey]);
 
-  if (isLoading) {
+  if (isLoading || isRefreshing) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
         <div className="flex items-center gap-2 mb-4">
@@ -129,7 +125,7 @@ export function WebTopProductosCard({ organizationId, dateFrom, dateTo }: WebSal
   );
 }
 
-export function WebConversionCard({ organizationId, dateFrom, dateTo }: WebSalesCardsProps) {
+export function WebConversionCard({ organizationId, dateFrom, dateTo, refreshKey, isRefreshing }: WebSalesCardsProps) {
   const [data, setData] = useState<WebConversionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -155,9 +151,9 @@ export function WebConversionCard({ organizationId, dateFrom, dateTo }: WebSales
       }
     };
     load();
-  }, [organizationId, dateFrom, dateTo]);
+  }, [organizationId, dateFrom, dateTo, refreshKey]);
 
-  if (isLoading) {
+  if (isLoading || isRefreshing) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
         <div className="flex items-center gap-2 mb-4">

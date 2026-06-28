@@ -32,10 +32,22 @@ export const META_REQUIRED_SCOPES = [
 /** URL de Facebook OAuth Dialog */
 export const META_OAUTH_DIALOG_URL = 'https://www.facebook.com' as const;
 
+/**
+ * Construir el redirect_uri de OAuth de forma normalizada.
+ * Elimina cualquier slash final de NEXT_PUBLIC_APP_URL para evitar
+ * dobles slashes (//api/...) que rompen la validación de Facebook
+ * ("Error validating verification code. redirect_uri must be identical").
+ * DEBE usarse igual en el diálogo (buildMetaOAuthUrl) y en el canje del token.
+ */
+export function getMetaRedirectUri(): string {
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '');
+  return `${baseUrl}/api/integrations/meta/oauth/callback`;
+}
+
 /** Construir URL de autorización OAuth */
 export function buildMetaOAuthUrl(state: string): string {
   const appId = process.env.META_APP_ID;
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/meta/oauth/callback`;
+  const redirectUri = getMetaRedirectUri();
   const scopes = META_REQUIRED_SCOPES.join(',');
 
   return (

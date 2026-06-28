@@ -46,7 +46,6 @@ import {
   VentasTopProductos,
   VentasTopClientes,
   VentasTable,
-  WebTopProductosCard,
   WebConversionCard,
 } from '@/components/reportes/ventas';
 
@@ -72,6 +71,9 @@ export default function ReportesVentasPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filters, setFilters] = useState<VentasFilters>(getDefaultFilters());
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [topProductosSource, setTopProductosSource] = useState<'all' | 'pos' | 'web' | 'invoice'>('all');
+  const [isLoadingTopProductos, setIsLoadingTopProductos] = useState(false);
 
   // Datos
   const [kpis, setKpis] = useState<VentasKPI | null>(null);
@@ -129,7 +131,6 @@ export default function ReportesVentasPage() {
         ventasDiaData,
         ventasSucursalData,
         pagosData,
-        topProdData,
         topCliData,
         detalleData,
       ] = await Promise.all([
@@ -137,7 +138,6 @@ export default function ReportesVentasPage() {
         ventasReportService.getVentasPorDia(organization.id, filters),
         ventasReportService.getVentasPorSucursal(organization.id, filters),
         ventasReportService.getPagosPorMetodo(organization.id, filters),
-        ventasReportService.getTopProductos(organization.id, filters),
         ventasReportService.getTopClientes(organization.id, filters),
         ventasReportService.getVentasDetalle(organization.id, filters, page, pageSize),
       ]);
@@ -146,7 +146,6 @@ export default function ReportesVentasPage() {
       setVentasPorDia(ventasDiaData);
       setVentasPorSucursal(ventasSucursalData);
       setPagosPorMetodo(pagosData);
-      setTopProductos(topProdData);
       setTopClientes(topCliData);
       setVentasDetalle(detalleData.data);
       setTotalVentas(detalleData.total);
@@ -171,6 +170,24 @@ export default function ReportesVentasPage() {
     }
   }, [organization?.id, filters, page, toast]);
 
+  // Cargar solo top productos cuando cambia el source (carga rapida independiente)
+  const loadTopProductos = useCallback(async () => {
+    if (!organization?.id) return;
+    setIsLoadingTopProductos(true);
+    try {
+      const data = await ventasReportService.getTopProductos(organization.id, filters, 10, topProductosSource);
+      setTopProductos(data);
+    } catch (error) {
+      console.error('Error cargando top productos:', error);
+    } finally {
+      setIsLoadingTopProductos(false);
+    }
+  }, [organization?.id, filters, topProductosSource]);
+
+  useEffect(() => {
+    loadTopProductos();
+  }, [loadTopProductos]);
+
   useEffect(() => {
     loadReportData();
   }, [loadReportData]);
@@ -183,6 +200,7 @@ export default function ReportesVentasPage() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setRefreshKey((k) => k + 1);
     await loadReportData();
     setIsRefreshing(false);
     toast({ title: 'Actualizado', description: 'Los datos del reporte se han actualizado' });
@@ -374,22 +392,24 @@ export default function ReportesVentasPage() {
 
           {/* Top Productos + Top Clientes */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VentasTopProductos data={topProductos} isLoading={isLoading} />
+            <VentasTopProductos 
+              data={topProductos} 
+              isLoading={isLoading || isLoadingTopProductos} 
+              source={topProductosSource}
+              onSourceChange={setTopProductosSource}
+            />
             <VentasTopClientes data={topClientes} isLoading={isLoading} />
           </div>
 
-          {/* Ventas Web: Top Productos + Conversión */}
+          {/* Conversión Web */}
           {organization?.id && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <WebTopProductosCard
-                organizationId={organization.id}
-                dateFrom={filters.dateFrom}
-                dateTo={filters.dateTo}
-              />
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
               <WebConversionCard
                 organizationId={organization.id}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
+                refreshKey={refreshKey}
+                isRefreshing={isRefreshing}
               />
             </div>
           )}

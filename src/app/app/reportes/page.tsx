@@ -31,8 +31,9 @@ import {
   ReportesAtajos,
   ReportesOcupacion,
   ReportesActividad,
+  TopProducto,
 } from '@/components/reportes';
-import { WebTopProductosCard, WebConversionCard } from '@/components/reportes/ventas';
+import { WebConversionCard } from '@/components/reportes/ventas';
 
 export default function ReportesPage() {
   const { organization } = useOrganization();
@@ -45,6 +46,10 @@ export default function ReportesPage() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [topProductosSource, setTopProductosSource] = useState<'all' | 'pos' | 'web' | 'invoice'>('all');
+  const [topProductos, setTopProductos] = useState<TopProducto[]>([]);
+  const [isLoadingTopProductos, setIsLoadingTopProductos] = useState(false);
 
   // Cargar favorito desde localStorage
   useEffect(() => {
@@ -112,8 +117,30 @@ export default function ReportesPage() {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  // Cargar solo top productos cuando cambia el source (carga rapida independiente)
+  const loadTopProductos = useCallback(async () => {
+    if (!organization?.id) return;
+    setIsLoadingTopProductos(true);
+    try {
+      const range = getDateRange();
+      const data = await reportesService.getTopProductos(
+        organization.id, 5, getDias(), range.from, topProductosSource
+      );
+      setTopProductos(data);
+    } catch (error) {
+      console.error('Error cargando top productos:', error);
+    } finally {
+      setIsLoadingTopProductos(false);
+    }
+  }, [organization?.id, getDias, getDateRange, topProductosSource]);
+
+  useEffect(() => {
+    loadTopProductos();
+  }, [loadTopProductos]);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setRefreshKey((k) => k + 1);
     await loadDashboardData();
     setIsRefreshing(false);
     toast({ title: 'Datos actualizados', description: 'El dashboard se ha actualizado correctamente' });
@@ -281,8 +308,10 @@ export default function ReportesPage() {
       {/* Segunda fila: Top Productos + Top Sucursales + Ocupación */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ReportesTopProductos
-          data={dashboardData?.topProductos ?? []}
-          isLoading={isLoading}
+          data={topProductos}
+          isLoading={isLoading || isLoadingTopProductos}
+          source={topProductosSource}
+          onSourceChange={setTopProductosSource}
         />
         <ReportesTopSucursales
           data={dashboardData?.topSucursales ?? []}
@@ -294,18 +323,15 @@ export default function ReportesPage() {
         />
       </div>
 
-      {/* Ventas Web */}
+      {/* Conversión Web */}
       {organization?.id && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <WebTopProductosCard
-            organizationId={organization.id}
-            dateFrom={getDateRange().from || new Date(Date.now() - getDias() * 86400000).toISOString().split('T')[0]}
-            dateTo={getDateRange().to || new Date().toISOString().split('T')[0]}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
           <WebConversionCard
             organizationId={organization.id}
             dateFrom={getDateRange().from || new Date(Date.now() - getDias() * 86400000).toISOString().split('T')[0]}
             dateTo={getDateRange().to || new Date().toISOString().split('T')[0]}
+            refreshKey={refreshKey}
+            isRefreshing={isRefreshing}
           />
         </div>
       )}

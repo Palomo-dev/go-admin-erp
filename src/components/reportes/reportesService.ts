@@ -335,9 +335,11 @@ export const reportesService = {
     limit: number = 5,
     dias: number = 30,
     dateFrom?: string,
-    source: 'all' | 'pos' | 'web' | 'invoice' = 'all'
+    source: 'all' | 'pos' | 'web' | 'invoice' = 'all',
+    dateTo?: string
   ): Promise<TopProducto[]> {
     const periodoStart = dateFrom ? toLocalISO(dateFrom) : daysAgo(dias);
+    const periodoEnd = dateTo ? toLocalISO(dateTo, true) : undefined;
 
     const grouped: Record<
       string,
@@ -346,12 +348,14 @@ export const reportesService = {
 
     // POS sales
     if (source === 'all' || source === 'pos') {
-      const { data: salesData } = await supabase
+      let posQuery = supabase
         .from('sales')
         .select('id')
         .eq('organization_id', organizationId)
         .gte('sale_date', periodoStart)
         .neq('status', 'cancelled');
+      if (periodoEnd) posQuery = posQuery.lte('sale_date', periodoEnd);
+      const { data: salesData } = await posQuery;
 
       if (salesData && salesData.length > 0) {
         const saleIds = salesData.map((s) => s.id);
@@ -376,12 +380,14 @@ export const reportesService = {
 
     // Web orders
     if (source === 'all' || source === 'web') {
-      const { data: webOrders } = await supabase
+      let webQuery = supabase
         .from('web_orders')
         .select('id')
         .eq('organization_id', organizationId)
-        .gte('created_at', periodoStart)
-        .neq('status', 'cancelled');
+        .neq('status', 'cancelled')
+        .gte('created_at', periodoStart);
+      if (periodoEnd) webQuery = webQuery.lte('created_at', periodoEnd);
+      const { data: webOrders } = await webQuery;
 
       if (webOrders && webOrders.length > 0) {
         const webIds = webOrders.map((o) => o.id);
@@ -404,12 +410,14 @@ export const reportesService = {
 
     // Invoice sales
     if (source === 'all' || source === 'invoice') {
-      const { data: invoiceData } = await supabase
+      let invQuery = supabase
         .from('invoice_sales')
         .select('id')
         .eq('organization_id', organizationId)
         .in('status', ['paid', 'partial', 'issued'])
         .gte('issue_date', periodoStart);
+      if (periodoEnd) invQuery = invQuery.lte('issue_date', periodoEnd);
+      const { data: invoiceData } = await invQuery;
 
       if (invoiceData && invoiceData.length > 0) {
         const invoiceIds = invoiceData.map((i) => i.id);

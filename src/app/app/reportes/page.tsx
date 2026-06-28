@@ -124,7 +124,7 @@ export default function ReportesPage() {
     try {
       const range = getDateRange();
       const data = await reportesService.getTopProductos(
-        organization.id, 5, getDias(), range.from, topProductosSource
+        organization.id, 5, getDias(), range.from, topProductosSource, range.to
       );
       setTopProductos(data);
     } catch (error) {
@@ -312,6 +312,7 @@ export default function ReportesPage() {
           isLoading={isLoading || isLoadingTopProductos}
           source={topProductosSource}
           onSourceChange={setTopProductosSource}
+          periodLabel={periodo === '0' ? 'de Hoy' : periodo === '1' ? 'de Ayer' : periodo === 'custom' ? 'del Período' : `de los Últimos ${periodo} Días`}
         />
         <ReportesTopSucursales
           data={dashboardData?.topSucursales ?? []}

@@ -83,11 +83,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Aplicar prioridad sugerida por la IA
+    if (conversationId && result.suggestedPriority) {
+      await supabase
+        .from('conversations')
+        .update({ priority: result.suggestedPriority, updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+    }
+
     return NextResponse.json({
       success: true,
       intent: result.intent,
       confidence: result.confidence,
       suggestedTags: result.suggestedTags,
+      suggestedPriority: result.suggestedPriority,
     });
   } catch (error: any) {
     console.error('Error clasificando intención:', error);

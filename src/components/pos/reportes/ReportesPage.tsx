@@ -47,6 +47,7 @@ export function ReportesPage() {
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
+  const [source, setSource] = useState<'pos' | 'web'>('pos');
 
   // Datos
   const [salesSummary, setSalesSummary] = useState<SalesReport | null>(null);
@@ -67,6 +68,7 @@ export function ReportesPage() {
         startDate,
         endDate,
         branchId: selectedBranch !== 'all' ? parseInt(selectedBranch) : undefined,
+        source,
       };
 
       const [summary, products, payments, daily, cash, branchesData] = await Promise.all([
@@ -95,7 +97,7 @@ export function ReportesPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [startDate, endDate, selectedBranch, toast]);
+  }, [startDate, endDate, selectedBranch, source, toast]);
 
   useEffect(() => {
     loadData();
@@ -158,7 +160,7 @@ export function ReportesPage() {
               Reportes POS
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
-              POS / Reportes
+              POS / Reportes · {source === 'web' ? 'Ventas Web' : 'Ventas POS'}
             </p>
           </div>
         </div>
@@ -176,6 +178,30 @@ export function ReportesPage() {
       {/* Filtros */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
+          {/* Toggle de origen de ventas */}
+          <div className="mb-4">
+            <Label className="text-gray-700 dark:text-gray-300">Origen de ventas</Label>
+            <div className="mt-1 inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-gray-50 dark:bg-gray-900">
+              <Button
+                variant={source === 'pos' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setSource('pos')}
+                className={source === 'pos' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-gray-600 dark:text-gray-300'}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Ventas POS
+              </Button>
+              <Button
+                variant={source === 'web' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setSource('web')}
+                className={source === 'web' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-gray-600 dark:text-gray-300'}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Ventas Web
+              </Button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div>
               <Label className="text-gray-700 dark:text-gray-300">Fecha Inicio</Label>
@@ -359,7 +385,8 @@ export function ReportesPage() {
         </Card>
       </div>
 
-      {/* Resumen de Caja */}
+      {/* Resumen de Caja (solo aplica a ventas POS) */}
+      {source === 'pos' && (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -455,6 +482,7 @@ export function ReportesPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Impuestos y Descuentos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -957,7 +957,7 @@ export const AppLayout = ({
       {/* Barra de progreso de navegación - feedback visual inmediato */}
       <NavigationProgress />
       
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex h-dynamic-screen overflow-hidden">
       {/* Overlay oscuro para móvil cuando el sidebar está abierto */}
       {sidebarOpen && (
         <div 
@@ -975,7 +975,7 @@ export const AppLayout = ({
         transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
         lg:translate-x-0 transition-transform duration-300 ease-in-out
         bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-2xl lg:shadow-lg
-        h-screen overflow-hidden
+        h-dynamic-screen overflow-hidden
       `}>
         <div className="flex flex-col h-full overflow-hidden">
           {/* Logo y nombre */}
@@ -1096,7 +1096,7 @@ export const AppLayout = ({
       )}
       
       {/* Área de contenido principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header del panel de administración */}
         <AppHeader 
           theme={nextTheme === 'dark' ? 'dark' : 'light'}
@@ -1111,8 +1111,8 @@ export const AppLayout = ({
         />
         
         {/* Contenido principal con scroll */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 overscroll-contain">
-          <div className="h-full">
+        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 overscroll-contain min-w-0">
+          <div className="h-full min-w-0 w-full">
             {children}
           </div>
         </div>

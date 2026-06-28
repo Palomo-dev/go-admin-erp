@@ -3,7 +3,7 @@
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Pin, Volume2, Check, CheckCheck } from 'lucide-react';
+import { Pin, Volume2, Check, CheckCheck, Flag } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -54,14 +54,48 @@ export default function ConversationItemCompact({
     .replace(/\[IMG:[^\]]+\]/g, '📷 Imagen')
     .replace(/\*\*([^*]+)\*\*/g, '$1');
 
+  const getPriorityDotClass = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-rose-500';
+      case 'high': return 'bg-amber-500';
+      case 'normal': return 'bg-sky-500';
+      case 'low': return 'bg-slate-400';
+      default: return 'bg-slate-400';
+    }
+  };
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'Urgente';
+      case 'high': return 'Alta';
+      case 'normal': return 'Normal';
+      case 'low': return 'Baja';
+      default: return '';
+    }
+  };
+
+  const getPriorityBorderClass = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'border-l-rose-500';
+      case 'high': return 'border-l-amber-500';
+      case 'normal': return 'border-l-sky-500';
+      case 'low': return 'border-l-slate-400';
+      default: return 'border-l-transparent';
+    }
+  };
+
+  const hasPriority = conversation.priority && conversation.priority !== 'normal';
+
   return (
     <div
       onClick={() => onClick(conversation)}
       className={cn(
-        'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-b dark:border-gray-800',
+        'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-b dark:border-gray-800 border-l-4',
         isActive 
-          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-4 border-l-blue-600' 
-          : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-4 border-l-transparent',
+          ? 'bg-blue-50 dark:bg-blue-950/30 border-l-blue-600' 
+          : hasPriority
+            ? cn('hover:bg-gray-50 dark:hover:bg-gray-800/50', getPriorityBorderClass(conversation.priority))
+            : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-transparent',
         isUnread && 'bg-blue-50/50 dark:bg-blue-950/10'
       )}
     >
@@ -136,14 +170,17 @@ export default function ConversationItemCompact({
             </Badge>
           )}
 
-          {/* Indicador de prioridad urgente */}
-          {conversation.priority === 'urgent' && (
-            <Badge 
-              variant="destructive" 
-              className="text-xs h-5 px-1.5"
-            >
-              !
-            </Badge>
+          {/* Indicador de prioridad */}
+          {hasPriority && (
+            <span className={cn(
+              'inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0',
+              conversation.priority === 'urgent' && 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300',
+              conversation.priority === 'high' && 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+              conversation.priority === 'low' && 'bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400'
+            )}>
+              <span className={cn('h-1.5 w-1.5 rounded-full', getPriorityDotClass(conversation.priority))} />
+              {getPriorityLabel(conversation.priority)}
+            </span>
           )}
         </div>
 

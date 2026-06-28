@@ -90,6 +90,14 @@ export default function PedidosOnlinePage() {
     total_revenue: 0,
     avg_order_value: 0,
   });
+  const [previousStats, setPreviousStats] = useState({
+    total_orders: 0,
+    pending_orders: 0,
+    completed_orders: 0,
+    cancelled_orders: 0,
+    total_revenue: 0,
+    avg_order_value: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<LocalFilters>({});
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -146,16 +154,63 @@ export default function PedidosOnlinePage() {
     }
   }, [datePreset, customDateFrom, customDateTo]);
 
+  // Rango del período ANTERIOR equivalente "a la misma hora" para comparar
+  const getComparisonRange = useCallback((): { from?: string; to?: string } => {
+    const now = new Date();
+    const startOfDay = (d: Date) => { const c = new Date(d); c.setHours(0,0,0,0); return c; };
+    const endOfDay = (d: Date) => { const c = new Date(d); c.setHours(23,59,59,999); return c; };
+    // Desplaza una fecha N días hacia atrás conservando la hora
+    const shiftDays = (d: Date, days: number) => { const c = new Date(d); c.setDate(c.getDate() - days); return c; };
+    switch (datePreset) {
+      case 'today': {
+        // Ayer desde las 00:00 hasta la misma hora actual
+        const prevStart = startOfDay(shiftDays(now, 1));
+        const prevTo = shiftDays(now, 1);
+        return { from: prevStart.toISOString(), to: prevTo.toISOString() };
+      }
+      case 'yesterday': {
+        // Antier completo (ayer ya es un día cerrado)
+        const db = shiftDays(now, 2);
+        return { from: startOfDay(db).toISOString(), to: endOfDay(db).toISOString() };
+      }
+      case 'last7': {
+        // Los 7 días anteriores al rango actual, hasta el mismo instante
+        const prevTo = shiftDays(now, 7);
+        const prevFrom = startOfDay(shiftDays(now, 14));
+        return { from: prevFrom.toISOString(), to: prevTo.toISOString() };
+      }
+      case 'last30': {
+        const prevTo = shiftDays(now, 30);
+        const prevFrom = startOfDay(shiftDays(now, 60));
+        return { from: prevFrom.toISOString(), to: prevTo.toISOString() };
+      }
+      case 'custom': {
+        if (!customDateFrom || !customDateTo) return {};
+        const from = new Date(customDateFrom + 'T00:00:00');
+        const to = new Date(customDateTo + 'T23:59:59');
+        const duration = to.getTime() - from.getTime();
+        const prevTo = new Date(from.getTime() - 1);
+        const prevFrom = new Date(from.getTime() - duration - 1);
+        return { from: prevFrom.toISOString(), to: prevTo.toISOString() };
+      }
+      default:
+        return {};
+    }
+  }, [datePreset, customDateFrom, customDateTo]);
+
   const loadOrders = useCallback(async () => {
     try {
       const dateRange = getDateRange();
+      const comparisonRange = getComparisonRange();
       const mergedFilters = { ...filters, date_from: dateRange.from, date_to: dateRange.to };
-      const [ordersData, statsData] = await Promise.all([
+      const [ordersData, statsData, prevStatsData] = await Promise.all([
         webOrdersService.getOrders(mergedFilters),
-        webOrdersService.getOrderStats(dateRange.from, dateRange.to)
+        webOrdersService.getOrderStats(dateRange.from, dateRange.to),
+        webOrdersService.getOrderStats(comparisonRange.from, comparisonRange.to)
       ]);
       setOrders(ordersData);
       setStats(statsData);
+      setPreviousStats(prevStatsData);
       setCurrentPage(1);
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -167,7 +222,7 @@ export default function PedidosOnlinePage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, getDateRange, toast]);
+  }, [filters, getDateRange, getComparisonRange, toast]);
 
   useEffect(() => {
     loadOrders();
@@ -593,7 +648,7 @@ export default function PedidosOnlinePage() {
       </div>
 
       {/* Estadísticas */}
-      <WebOrderStats stats={stats} isLoading={loading} datePreset={datePreset} />
+      <WebOrderStats stats={stats} previousStats={previousStats} isLoading={loading} datePreset={datePreset} />
 
       {/* Filtro de fechas */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

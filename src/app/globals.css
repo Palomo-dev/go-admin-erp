@@ -36,4 +36,11 @@ body {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Altura de viewport dinámica: evita que el header se salga en iOS Safari
+     cuando la barra de herramientas del navegador aparece/desaparece al hacer scroll. */
+  .h-dynamic-screen {
+    height: 100vh; /* fallback navegadores sin soporte de dvh */
+    height: 100dvh;
+  }
 }

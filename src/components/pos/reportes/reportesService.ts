@@ -37,12 +37,18 @@ export interface DailySalesData {
   transactions: number;
 }
 
+export type ReportSource = 'pos' | 'web';
+
 export interface ReportFilters {
   startDate: string;
   endDate: string;
   branchId?: number;
   cashierId?: string;
+  source?: ReportSource;
 }
+
+// Estados de web_orders que cuentan como venta realizada (excluye pending/cancelled/rejected)
+const WEB_SALE_STATUSES = ['confirmed', 'preparing', 'ready', 'in_delivery', 'delivered'];
 
 export class ReportesService {
   private static organizationId = getOrganizationId();
@@ -68,13 +74,22 @@ export class ReportesService {
     }
 
     try {
-      let query = supabase
-        .from('sales')
-        .select('id, total, subtotal, tax_total, discount_total')
-        .eq('organization_id', orgId)
-        .gte('sale_date', filters.startDate)
-        .lte('sale_date', filters.endDate + 'T23:59:59')
-        .in('status', ['completed', 'paid']);
+      const isWeb = filters.source === 'web';
+      let query = isWeb
+        ? supabase
+            .from('web_orders')
+            .select('id, total, subtotal, tax_total, discount_total')
+            .eq('organization_id', orgId)
+            .gte('created_at', filters.startDate)
+            .lte('created_at', filters.endDate + 'T23:59:59')
+            .in('status', WEB_SALE_STATUSES)
+        : supabase
+            .from('sales')
+            .select('id, total, subtotal, tax_total, discount_total')
+            .eq('organization_id', orgId)
+            .gte('sale_date', filters.startDate)
+            .lte('sale_date', filters.endDate + 'T23:59:59')
+            .in('status', ['completed', 'paid']);
 
       if (filters.branchId) {
         query = query.eq('branch_id', filters.branchId);
@@ -96,10 +111,9 @@ export class ReportesService {
       let totalItems = 0;
       if (data && data.length > 0) {
         const saleIds = data.map(s => s.id);
-        const { data: itemsData } = await supabase
-          .from('sale_items')
-          .select('quantity')
-          .in('sale_id', saleIds);
+        const { data: itemsData } = isWeb
+          ? await supabase.from('web_order_items').select('quantity').in('web_order_id', saleIds)
+          : await supabase.from('sale_items').select('quantity').in('sale_id', saleIds);
 
         totalItems = itemsData?.reduce((sum, item) => sum + Number(item.quantity || 0), 0) || 0;
       }
@@ -132,14 +146,24 @@ export class ReportesService {
     if (!orgId) return [];
 
     try {
-      // Primero obtener las ventas completadas en el rango
-      let salesQuery = supabase
-        .from('sales')
-        .select('id')
-        .eq('organization_id', orgId)
-        .gte('sale_date', filters.startDate)
-        .lte('sale_date', filters.endDate + 'T23:59:59')
-        .in('status', ['completed', 'paid']);
+      const isWeb = filters.source === 'web';
+
+      // Primero obtener las ventas realizadas en el rango (POS o Web)
+      let salesQuery = isWeb
+        ? supabase
+            .from('web_orders')
+            .select('id')
+            .eq('organization_id', orgId)
+            .gte('created_at', filters.startDate)
+            .lte('created_at', filters.endDate + 'T23:59:59')
+            .in('status', WEB_SALE_STATUSES)
+        : supabase
+            .from('sales')
+            .select('id')
+            .eq('organization_id', orgId)
+            .gte('sale_date', filters.startDate)
+            .lte('sale_date', filters.endDate + 'T23:59:59')
+            .in('status', ['completed', 'paid']);
 
       if (filters.branchId) {
         salesQuery = salesQuery.eq('branch_id', filters.branchId);
@@ -153,44 +177,72 @@ export class ReportesService {
 
       const saleIds = salesData.map(s => s.id);
 
-      // Obtener items de esas ventas con productos
-      const { data, error } = await supabase
-        .from('sale_items')
-        .select(`
-          product_id,
-          quantity,
-          total,
-          products(id, name, category_id, categories(name))
-        `)
-        .in('sale_id', saleIds);
-
-      if (error) {
-        console.error('Error getTopProducts:', error);
-        return [];
-      }
-
       // Agrupar por producto
-      const productMap = new Map<number, ProductReport>();
-      
-      data?.forEach(item => {
-        const productId = item.product_id;
-        if (!productId) return;
-        
-        const existing = productMap.get(productId);
-        
-        if (existing) {
-          existing.quantity_sold += Number(item.quantity || 0);
-          existing.total_revenue += Number(item.total || 0);
-        } else {
-          productMap.set(productId, {
-            product_id: productId,
-            product_name: (item.products as any)?.name || 'Producto',
-            quantity_sold: Number(item.quantity || 0),
-            total_revenue: Number(item.total || 0),
-            category_name: (item.products as any)?.categories?.name,
-          });
+      const productMap = new Map<string, ProductReport>();
+
+      if (isWeb) {
+        // Items web (incluyen product_name embebido)
+        const { data, error } = await supabase
+          .from('web_order_items')
+          .select('product_id, product_name, quantity, total')
+          .in('web_order_id', saleIds);
+
+        if (error) {
+          console.error('Error getTopProducts web:', error);
+          return [];
         }
-      });
+
+        data?.forEach(item => {
+          const key = item.product_id ? `id:${item.product_id}` : `name:${item.product_name}`;
+          const existing = productMap.get(key);
+          if (existing) {
+            existing.quantity_sold += Number(item.quantity || 0);
+            existing.total_revenue += Number(item.total || 0);
+          } else {
+            productMap.set(key, {
+              product_id: item.product_id || 0,
+              product_name: item.product_name || 'Producto',
+              quantity_sold: Number(item.quantity || 0),
+              total_revenue: Number(item.total || 0),
+            });
+          }
+        });
+      } else {
+        // Items POS con relación a products
+        const { data, error } = await supabase
+          .from('sale_items')
+          .select(`
+            product_id,
+            quantity,
+            total,
+            products(id, name, category_id, categories(name))
+          `)
+          .in('sale_id', saleIds);
+
+        if (error) {
+          console.error('Error getTopProducts:', error);
+          return [];
+        }
+
+        data?.forEach(item => {
+          const productId = item.product_id;
+          if (!productId) return;
+          const key = `id:${productId}`;
+          const existing = productMap.get(key);
+          if (existing) {
+            existing.quantity_sold += Number(item.quantity || 0);
+            existing.total_revenue += Number(item.total || 0);
+          } else {
+            productMap.set(key, {
+              product_id: productId,
+              product_name: (item.products as any)?.name || 'Producto',
+              quantity_sold: Number(item.quantity || 0),
+              total_revenue: Number(item.total || 0),
+              category_name: (item.products as any)?.categories?.name,
+            });
+          }
+        });
+      }
 
       // Ordenar por cantidad vendida y limitar
       return Array.from(productMap.values())
@@ -209,14 +261,24 @@ export class ReportesService {
     if (!orgId) return [];
 
     try {
-      // Consulta directa a payments filtrada por organization_id y fechas
-      let query = supabase
-        .from('payments')
-        .select('method, amount, created_at')
-        .eq('organization_id', orgId)
-        .gte('created_at', filters.startDate)
-        .lte('created_at', filters.endDate + 'T23:59:59')
-        .in('status', ['completed', 'paid']);
+      const isWeb = filters.source === 'web';
+
+      // Web: el método de pago vive en web_orders. POS: tabla payments.
+      let query = isWeb
+        ? supabase
+            .from('web_orders')
+            .select('payment_method, total')
+            .eq('organization_id', orgId)
+            .gte('created_at', filters.startDate)
+            .lte('created_at', filters.endDate + 'T23:59:59')
+            .in('status', WEB_SALE_STATUSES)
+        : supabase
+            .from('payments')
+            .select('method, amount, created_at')
+            .eq('organization_id', orgId)
+            .gte('created_at', filters.startDate)
+            .lte('created_at', filters.endDate + 'T23:59:59')
+            .in('status', ['completed', 'paid']);
 
       if (filters.branchId) {
         query = query.eq('branch_id', filters.branchId);
@@ -229,22 +291,19 @@ export class ReportesService {
         return [];
       }
 
-      // Agrupar por método
+      // Agrupar por método (normalizando los campos según el origen)
       const methodMap = new Map<string, PaymentMethodReport>();
-      
-      data?.forEach(payment => {
-        const method = payment.method || 'other';
+
+      data?.forEach((row: any) => {
+        const method = (isWeb ? row.payment_method : row.method) || 'other';
+        const amount = Number((isWeb ? row.total : row.amount) || 0);
         const existing = methodMap.get(method);
-        
+
         if (existing) {
           existing.count += 1;
-          existing.total += Number(payment.amount || 0);
+          existing.total += amount;
         } else {
-          methodMap.set(method, {
-            method,
-            count: 1,
-            total: Number(payment.amount || 0),
-          });
+          methodMap.set(method, { method, count: 1, total: amount });
         }
       });
 
@@ -262,14 +321,25 @@ export class ReportesService {
     if (!orgId) return [];
 
     try {
-      let query = supabase
-        .from('sales')
-        .select('sale_date, total')
-        .eq('organization_id', orgId)
-        .gte('sale_date', filters.startDate)
-        .lte('sale_date', filters.endDate + 'T23:59:59')
-        .in('status', ['completed', 'paid'])
-        .order('sale_date', { ascending: true });
+      const isWeb = filters.source === 'web';
+      const dateField = isWeb ? 'created_at' : 'sale_date';
+      let query = isWeb
+        ? supabase
+            .from('web_orders')
+            .select('created_at, total')
+            .eq('organization_id', orgId)
+            .gte('created_at', filters.startDate)
+            .lte('created_at', filters.endDate + 'T23:59:59')
+            .in('status', WEB_SALE_STATUSES)
+            .order('created_at', { ascending: true })
+        : supabase
+            .from('sales')
+            .select('sale_date, total')
+            .eq('organization_id', orgId)
+            .gte('sale_date', filters.startDate)
+            .lte('sale_date', filters.endDate + 'T23:59:59')
+            .in('status', ['completed', 'paid'])
+            .order('sale_date', { ascending: true });
 
       if (filters.branchId) {
         query = query.eq('branch_id', filters.branchId);
@@ -285,8 +355,9 @@ export class ReportesService {
       // Agrupar por fecha
       const dateMap = new Map<string, DailySalesData>();
       
-      data?.forEach(sale => {
-        const date = sale.sale_date ? sale.sale_date.split('T')[0] : '';
+      data?.forEach((sale: any) => {
+        const raw = sale[dateField];
+        const date = raw ? String(raw).split('T')[0] : '';
         if (!date) return;
         
         const existing = dateMap.get(date);
@@ -319,6 +390,31 @@ export class ReportesService {
     }
 
     try {
+      // Web: no hay sesiones de caja; solo calculamos el total de ventas web del período
+      if (filters.source === 'web') {
+        let webQuery = supabase
+          .from('web_orders')
+          .select('total')
+          .eq('organization_id', orgId)
+          .gte('created_at', filters.startDate)
+          .lte('created_at', filters.endDate + 'T23:59:59')
+          .in('status', WEB_SALE_STATUSES);
+
+        if (filters.branchId) {
+          webQuery = webQuery.eq('branch_id', filters.branchId);
+        }
+
+        const { data: webData } = await webQuery;
+        const totalVentasWeb = webData?.reduce((sum, o) => sum + Number(o.total || 0), 0) || 0;
+        return {
+          sessions: [],
+          totalIngresos: 0,
+          totalEgresos: 0,
+          totalVentas: totalVentasWeb,
+          balance: totalVentasWeb,
+        };
+      }
+
       // Consulta de sesiones de caja
       let sessionsQuery = supabase
         .from('cash_sessions')

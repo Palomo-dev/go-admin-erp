@@ -10,6 +10,7 @@ interface TopProductosProps {
   isLoading: boolean;
   source?: 'all' | 'pos' | 'web' | 'invoice';
   onSourceChange?: (source: 'all' | 'pos' | 'web' | 'invoice') => void;
+  periodLabel?: string;
 }
 
 interface TopSucursalesProps {
@@ -17,7 +18,7 @@ interface TopSucursalesProps {
   isLoading: boolean;
 }
 
-export function ReportesTopProductos({ data, isLoading, source = 'all', onSourceChange }: TopProductosProps) {
+export function ReportesTopProductos({ data, isLoading, source = 'all', onSourceChange, periodLabel = 'del Mes' }: TopProductosProps) {
   if (isLoading) {
     return <Skeleton className="h-72 rounded-xl" />;
   }
@@ -30,7 +31,7 @@ export function ReportesTopProductos({ data, isLoading, source = 'all', onSource
             <Package className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           </div>
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-            Top Productos del Mes
+            Top Productos {periodLabel}
           </h3>
         </div>
         {onSourceChange && (

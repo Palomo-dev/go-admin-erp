@@ -404,11 +404,11 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
 
   const getPriorityBadgeClass = (priority: string) => {
     switch (priority) {
-      case 'low': return 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
-      case 'normal': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
-      case 'high': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400';
-      case 'urgent': return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
-      default: return 'bg-gray-100 text-gray-600';
+      case 'low': return 'bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600';
+      case 'normal': return 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800';
+      case 'high': return 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
+      case 'urgent': return 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800';
+      default: return 'bg-slate-100 text-slate-500 border border-slate-200';
     }
   };
 
@@ -731,6 +731,10 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
         conversation={conversation}
         onSendMessage={onSendMessage}
         organizationId={organizationId}
+        onStatusChange={onStatusChange}
+        onPriorityChange={onPriorityChange}
+        onTagToggle={onTagToggle}
+        availableTags={availableTags}
       />
     </div>
   );

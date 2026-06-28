@@ -98,6 +98,19 @@ class ConversationsService {
     const offset = pagination?.offset || 0;
 
     try {
+      // Si hay filtro de tag, obtener los conversation_ids primero
+      let tagConversationIds: string[] | null = null;
+      if (filters?.tag_id) {
+        const { data: tagData } = await supabase
+          .from('conversation_tag_relations')
+          .select('conversation_id')
+          .eq('tag_id', filters.tag_id);
+        tagConversationIds = tagData?.map((tr: any) => tr.conversation_id) || [];
+        if (tagConversationIds.length === 0) {
+          return { data: [], total: 0, hasMore: false };
+        }
+      }
+
       // Primero obtener el total
       let countQuery = supabase
         .from('conversations')
@@ -118,6 +131,9 @@ class ConversationsService {
       }
       if (filters?.unresponded) {
         countQuery = countQuery.is('last_agent_message_at', null);
+      }
+      if (filters?.tag_id && tagConversationIds) {
+        countQuery = countQuery.in('id', tagConversationIds);
       }
 
       const { count: total } = await countQuery;
@@ -168,6 +184,9 @@ class ConversationsService {
       }
       if (filters?.unresponded) {
         query = query.is('last_agent_message_at', null);
+      }
+      if (filters?.tag_id && tagConversationIds) {
+        query = query.in('id', tagConversationIds);
       }
 
       const { data, error } = await query;

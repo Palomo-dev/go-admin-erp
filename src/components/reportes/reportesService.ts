@@ -334,66 +334,99 @@ export const reportesService = {
     organizationId: number,
     limit: number = 5,
     dias: number = 30,
-    dateFrom?: string
+    dateFrom?: string,
+    source: 'all' | 'pos' | 'web' | 'invoice' = 'all'
   ): Promise<TopProducto[]> {
     const periodoStart = dateFrom ? toLocalISO(dateFrom) : daysAgo(dias);
-
-    // POS sales
-    const { data: salesData } = await supabase
-      .from('sales')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .gte('sale_date', periodoStart)
-      .neq('status', 'cancelled');
 
     const grouped: Record<
       string,
       { name: string; quantity: number; revenue: number }
     > = {};
 
-    if (salesData && salesData.length > 0) {
-      const saleIds = salesData.map((s) => s.id);
-      const { data: items } = await supabase
-        .from('sale_items')
-        .select('product_id, quantity, total, products(name)')
-        .in('sale_id', saleIds);
+    // POS sales
+    if (source === 'all' || source === 'pos') {
+      const { data: salesData } = await supabase
+        .from('sales')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .gte('sale_date', periodoStart)
+        .neq('status', 'cancelled');
 
-      for (const item of items || []) {
-        const pid = item.product_id;
-        if (!pid) continue;
-        if (!grouped[pid]) {
-          const productName =
-            (item.products as any)?.name || 'Producto sin nombre';
-          grouped[pid] = { name: productName, quantity: 0, revenue: 0 };
+      if (salesData && salesData.length > 0) {
+        const saleIds = salesData.map((s) => s.id);
+        const { data: items } = await supabase
+          .from('sale_items')
+          .select('product_id, quantity, total, products(name)')
+          .in('sale_id', saleIds);
+
+        for (const item of items || []) {
+          const pid = item.product_id;
+          if (!pid) continue;
+          if (!grouped[pid]) {
+            const productName =
+              (item.products as any)?.name || 'Producto sin nombre';
+            grouped[pid] = { name: productName, quantity: 0, revenue: 0 };
+          }
+          grouped[pid].quantity += Number(item.quantity) || 0;
+          grouped[pid].revenue += Number(item.total) || 0;
         }
-        grouped[pid].quantity += Number(item.quantity) || 0;
-        grouped[pid].revenue += Number(item.total) || 0;
       }
     }
 
     // Web orders
-    const { data: webOrders } = await supabase
-      .from('web_orders')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .gte('created_at', periodoStart)
-      .neq('status', 'cancelled');
+    if (source === 'all' || source === 'web') {
+      const { data: webOrders } = await supabase
+        .from('web_orders')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .gte('created_at', periodoStart)
+        .neq('status', 'cancelled');
 
-    if (webOrders && webOrders.length > 0) {
-      const webIds = webOrders.map((o) => o.id);
-      const { data: webItems } = await supabase
-        .from('web_order_items')
-        .select('product_id, product_name, quantity, total')
-        .in('web_order_id', webIds);
+      if (webOrders && webOrders.length > 0) {
+        const webIds = webOrders.map((o) => o.id);
+        const { data: webItems } = await supabase
+          .from('web_order_items')
+          .select('product_id, product_name, quantity, total')
+          .in('web_order_id', webIds);
 
-      for (const item of webItems || []) {
-        const pid = String(item.product_id || item.product_name);
-        if (!pid) continue;
-        if (!grouped[pid]) {
-          grouped[pid] = { name: item.product_name || 'Producto Web', quantity: 0, revenue: 0 };
+        for (const item of webItems || []) {
+          const pid = String(item.product_id || item.product_name);
+          if (!pid) continue;
+          if (!grouped[pid]) {
+            grouped[pid] = { name: item.product_name || 'Producto Web', quantity: 0, revenue: 0 };
+          }
+          grouped[pid].quantity += Number(item.quantity) || 0;
+          grouped[pid].revenue += Number(item.total) || 0;
         }
-        grouped[pid].quantity += Number(item.quantity) || 0;
-        grouped[pid].revenue += Number(item.total) || 0;
+      }
+    }
+
+    // Invoice sales
+    if (source === 'all' || source === 'invoice') {
+      const { data: invoiceData } = await supabase
+        .from('invoice_sales')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .in('status', ['paid', 'partial', 'issued'])
+        .gte('issue_date', periodoStart);
+
+      if (invoiceData && invoiceData.length > 0) {
+        const invoiceIds = invoiceData.map((i) => i.id);
+        const { data: invoiceItems } = await supabase
+          .from('invoice_items')
+          .select('product_id, qty, total_line, description')
+          .in('invoice_sales_id', invoiceIds);
+
+        for (const item of invoiceItems || []) {
+          const pid = String(item.product_id || `inv-${item.description}`);
+          if (!pid) continue;
+          if (!grouped[pid]) {
+            grouped[pid] = { name: item.description || 'Producto Factura', quantity: 0, revenue: 0 };
+          }
+          grouped[pid].quantity += Number(item.qty) || 0;
+          grouped[pid].revenue += Number(item.total_line) || 0;
+        }
       }
     }
 

@@ -365,12 +365,12 @@ export default function ChatBandejaPage() {
       if (error) throw error;
 
       setConversations(prev => prev.map(c =>
-        c.id === conversationId ? { ...c, status: newStatus } : c
+        c.id === conversationId ? { ...c, status: newStatus as Conversation['status'] } : c
       ));
       setFilteredConversations(prev => prev.map(c =>
-        c.id === conversationId ? { ...c, status: newStatus } : c
+        c.id === conversationId ? { ...c, status: newStatus as Conversation['status'] } : c
       ));
-      setSelectedConversation(prev => prev ? { ...prev, status: newStatus } : prev);
+      setSelectedConversation(prev => prev ? { ...prev, status: newStatus as Conversation['status'] } : prev);
 
       toast({
         title: newStatus === 'closed' ? 'Conversación cerrada' : newStatus === 'pending' ? 'Conversación pendiente' : 'Conversación reabierta',
@@ -382,6 +382,68 @@ export default function ChatBandejaPage() {
         description: 'No se pudo cambiar el estado',
         variant: 'destructive'
       });
+    }
+  };
+
+  const handlePriorityChange = async (conversationId: string, newPriority: string) => {
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ priority: newPriority, updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+      if (error) throw error;
+
+      const updateFn = (c: Conversation) =>
+        c.id === conversationId ? { ...c, priority: newPriority as Conversation['priority'] } : c;
+      setConversations(prev => prev.map(updateFn));
+      setFilteredConversations(prev => prev.map(updateFn));
+      setSelectedConversation(prev => prev ? { ...prev, priority: newPriority as Conversation['priority'] } : prev);
+
+      toast({ title: 'Prioridad actualizada' });
+    } catch (error) {
+      console.error('Error cambiando prioridad:', error);
+      toast({ title: 'Error', description: 'No se pudo cambiar la prioridad', variant: 'destructive' });
+    }
+  };
+
+  const handleTagToggle = async (conversationId: string, tagId: string) => {
+    try {
+      const existingTags = selectedConversation?.tags || [];
+      const hasTag = existingTags.some(t => t.id === tagId);
+
+      if (hasTag) {
+        const { error } = await supabase
+          .from('conversation_tag_relations')
+          .delete()
+          .eq('conversation_id', conversationId)
+          .eq('tag_id', tagId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('conversation_tag_relations')
+          .insert({ conversation_id: conversationId, tag_id: tagId });
+        if (error) throw error;
+      }
+
+      const tagData = tags.find(t => t.id === tagId);
+      if (!tagData) return;
+
+      const updateFn = (c: Conversation) => {
+        if (c.id !== conversationId) return c;
+        const currentTags = c.tags || [];
+        const newTags = hasTag
+          ? currentTags.filter(t => t.id !== tagId)
+          : [...currentTags, { id: tagData.id, name: tagData.name, color: tagData.color }];
+        return { ...c, tags: newTags };
+      };
+      setConversations(prev => prev.map(updateFn));
+      setFilteredConversations(prev => prev.map(updateFn));
+      setSelectedConversation(prev => prev ? updateFn(prev) : prev);
+
+      toast({ title: hasTag ? 'Etiqueta removida' : 'Etiqueta agregada' });
+    } catch (error) {
+      console.error('Error toggling tag:', error);
+      toast({ title: 'Error', description: 'No se pudo actualizar la etiqueta', variant: 'destructive' });
     }
   };
 
@@ -586,6 +648,9 @@ export default function ChatBandejaPage() {
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           sidebarCollapsed={sidebarCollapsed}
           onStatusChange={handleStatusChange}
+          onPriorityChange={handlePriorityChange}
+          onTagToggle={handleTagToggle}
+          availableTags={tags}
         />
       </div>
     </div>

@@ -68,7 +68,31 @@ class FinanzasDashboardService {
       .lte('invoice_date', fechaFin)
       .in('status', ['paid', 'partial']);
     
-    const ingresos = ventasData?.reduce((sum, v) => sum + (Number(v.total) || 0), 0) || 0;
+    const ingresosFacturas = ventasData?.reduce((sum, v) => sum + (Number(v.total) || 0), 0) || 0;
+    
+    // Ingresos POS (sales pagadas)
+    const { data: salesData } = await supabase
+      .from('sales')
+      .select('total')
+      .eq('organization_id', organizationId)
+      .gte('sale_date', fechaInicio)
+      .lte('sale_date', fechaFin)
+      .eq('payment_status', 'paid');
+    
+    const ingresosPOS = salesData?.reduce((sum, s) => sum + (Number(s.total) || 0), 0) || 0;
+    
+    // Ingresos pedidos online (web_orders pagadas)
+    const { data: webOrdersData } = await supabase
+      .from('web_orders')
+      .select('total')
+      .eq('organization_id', organizationId)
+      .gte('created_at', fechaInicio)
+      .lte('created_at', fechaFin + 'T23:59:59.999Z')
+      .eq('payment_status', 'paid');
+    
+    const ingresosWeb = webOrdersData?.reduce((sum, w) => sum + (Number(w.total) || 0), 0) || 0;
+    
+    const ingresos = ingresosFacturas + ingresosPOS + ingresosWeb;
     
     // Egresos (facturas de compra pagadas)
     const { data: comprasData } = await supabase

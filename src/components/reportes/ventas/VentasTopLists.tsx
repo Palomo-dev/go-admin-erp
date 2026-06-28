@@ -10,20 +10,36 @@ import type { TopProductoVenta, TopClienteVenta } from './ventasReportService';
 interface TopProductosProps {
   data: TopProductoVenta[];
   isLoading: boolean;
+  source?: 'all' | 'pos' | 'web' | 'invoice';
+  onSourceChange?: (source: 'all' | 'pos' | 'web' | 'invoice') => void;
 }
 
-export function VentasTopProductos({ data, isLoading }: TopProductosProps) {
+export function VentasTopProductos({ data, isLoading, source = 'all', onSourceChange }: TopProductosProps) {
   if (isLoading) return <Skeleton className="h-80 rounded-xl" />;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
-          <Package className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
+            <Package className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            Top Productos
+          </h3>
         </div>
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-          Top Productos
-        </h3>
+        {onSourceChange && (
+          <select
+            value={source}
+            onChange={(e) => onSourceChange(e.target.value as 'all' | 'pos' | 'web' | 'invoice')}
+            className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="all">Todos</option>
+            <option value="pos">POS</option>
+            <option value="web">Web</option>
+            <option value="invoice">Facturas</option>
+          </select>
+        )}
       </div>
       {data.length === 0 ? (
         <div className="h-48 flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">

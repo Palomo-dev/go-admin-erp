@@ -27,6 +27,12 @@ const paymentLabels: Record<string, { label: string; class: string }> = {
   partial: { label: 'Parcial', class: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },
 };
 
+const sourceLabels: Record<string, { label: string; class: string }> = {
+  POS: { label: 'POS', class: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },
+  Web: { label: 'Web', class: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' },
+  Factura: { label: 'Factura', class: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
+};
+
 export function VentasTable({ data, total, page, pageSize, onPageChange, isLoading }: VentasTableProps) {
   const totalPages = Math.ceil(total / pageSize);
 
@@ -70,6 +76,7 @@ export function VentasTable({ data, total, page, pageSize, onPageChange, isLoadi
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left py-2.5 pr-3 text-xs font-medium text-gray-500 dark:text-gray-400">Fecha</th>
+                  <th className="text-left py-2.5 pr-3 text-xs font-medium text-gray-500 dark:text-gray-400">Fuente</th>
                   <th className="text-left py-2.5 pr-3 text-xs font-medium text-gray-500 dark:text-gray-400">Sucursal</th>
                   <th className="text-left py-2.5 pr-3 text-xs font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">Cliente</th>
                   <th className="text-left py-2.5 pr-3 text-xs font-medium text-gray-500 dark:text-gray-400 hidden lg:table-cell">Vendedor</th>
@@ -87,6 +94,13 @@ export function VentasTable({ data, total, page, pageSize, onPageChange, isLoadi
                     <tr key={sale.id} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                       <td className="py-2.5 pr-3 text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
                         {formatDate(sale.sale_date)}
+                      </td>
+                      <td className="py-2.5 pr-3 text-center">
+                        {sale.source && sourceLabels[sale.source] && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${sourceLabels[sale.source].class}`}>
+                            {sourceLabels[sale.source].label}
+                          </span>
+                        )}
                       </td>
                       <td className="py-2.5 pr-3 text-xs text-gray-600 dark:text-gray-400">{sale.branch_name || '—'}</td>
                       <td className="py-2.5 pr-3 text-xs text-gray-600 dark:text-gray-400 hidden md:table-cell truncate max-w-[140px]">

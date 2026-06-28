@@ -244,17 +244,19 @@ Responde en formato JSON con la siguiente estructura:
 
   async classifyIntent(
     message: string
-  ): Promise<{ intent: string; confidence: number; suggestedTags: string[] }> {
+  ): Promise<{ intent: string; confidence: number; suggestedTags: string[]; suggestedPriority: 'low' | 'normal' | 'high' }> {
     const systemPrompt = `Eres un clasificador de intenciones de mensajes de clientes. Analiza el mensaje y determina:
 1. La intención principal (consulta, queja, solicitud, agradecimiento, saludo, despedida, urgente, otro)
 2. Un nivel de confianza (0-1)
 3. Tags sugeridos para la conversación
+4. La prioridad sugerida: "high" para urgencias/quejas, "normal" para consultas/ventas, "low" para saludos/agradecimientos
 
 Responde en formato JSON:
 {
   "intent": "consulta|queja|solicitud|agradecimiento|saludo|despedida|urgente|otro",
   "confidence": 0.95,
-  "suggestedTags": ["tag1", "tag2"]
+  "suggestedTags": ["tag1", "tag2"],
+  "suggestedPriority": "low|normal|high"
 }`;
 
     const messages: ChatMessage[] = [
@@ -273,6 +275,7 @@ Responde en formato JSON:
         intent: parsed.intent || 'otro',
         confidence: parsed.confidence || 0.5,
         suggestedTags: parsed.suggestedTags || [],
+        suggestedPriority: parsed.suggestedPriority || 'normal',
       };
     } catch (error) {
       console.error('Error clasificando intención:', error);
@@ -280,6 +283,7 @@ Responde en formato JSON:
         intent: 'otro',
         confidence: 0,
         suggestedTags: [],
+        suggestedPriority: 'normal',
       };
     }
   }

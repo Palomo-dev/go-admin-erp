@@ -28,7 +28,9 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import { pmService, type Goal } from '@/lib/services/pmService';
+import { pmService, type Goal, type PMTask } from '@/lib/services/pmService';
+import { RelatedTasksList } from '@/components/pm/RelatedTasksList';
+import { KeyResultTasks } from '@/components/pm/KeyResultTasks';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { cn } from '@/utils/Utils';
 
@@ -86,6 +88,20 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
   const [newKRTarget, setNewKRTarget] = useState('');
   const [newKRUnit, setNewKRUnit] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [relatedTasks, setRelatedTasks] = useState<PMTask[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [expandedKR, setExpandedKR] = useState<string | null>(null);
+
+  // Refresca el progreso de los KRs y el de la meta tras cambios en tareas
+  const refreshKRs = useCallback(async () => {
+    if (!editGoal) return;
+    const krs = await pmService.getKeyResults(editGoal.id);
+    setKeyResults(prev => prev.map(item => {
+      const fresh = krs.find(k => k.id === item.id);
+      return fresh ? { ...item, progress: fresh.progress } : item;
+    }));
+    onGoalCreated();
+  }, [editGoal, onGoalCreated]);
 
   const resetForm = useCallback(() => {
     setForm(INITIAL_FORM);
@@ -119,8 +135,11 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
         })));
         if (krs.length > 0) setShowKeyResults(true);
       });
+      setLoadingTasks(true);
+      pmService.getGoalTasks(editGoal.id).then(t => { setRelatedTasks(t); setLoadingTasks(false); }).catch(() => setLoadingTasks(false));
     } else {
       resetForm();
+      setRelatedTasks([]);
     }
   }, [editGoal, resetForm]);
 
@@ -472,24 +491,39 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
             <div className="mt-3 space-y-2">
               <p className="text-xs text-gray-500">¿Cómo medirás el éxito de esta meta? (valor objetivo opcional)</p>
               {keyResults.map((kr, idx) => (
-                <div key={kr.id} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 group">
-                  <span className="text-xs font-bold text-blue-600 flex-shrink-0">{idx + 1}.</span>
-                  <span className="text-sm flex-1 text-gray-700 dark:text-gray-300 truncate">{kr.title}</span>
-                  {kr.target_value && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex-shrink-0">
-                      {kr.target_value}{kr.unit ? ` ${kr.unit}` : ''}
-                    </Badge>
+                <div key={kr.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2 group">
+                    <span className="text-xs font-bold text-blue-600 flex-shrink-0">{idx + 1}.</span>
+                    <span className="text-sm flex-1 text-gray-700 dark:text-gray-300 truncate">{kr.title}</span>
+                    {kr.target_value && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex-shrink-0">
+                        {kr.target_value}{kr.unit ? ` ${kr.unit}` : ''}
+                      </Badge>
+                    )}
+                    {kr.persisted && typeof kr.progress === 'number' && (
+                      <span className="text-[10px] text-gray-400 flex-shrink-0">{kr.progress}%</span>
+                    )}
+                    {kr.persisted && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedKR(expandedKR === kr.id ? null : kr.id)}
+                        className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                        title="Tareas del KR"
+                      >
+                        {expandedKR === kr.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveKR(kr.id)}
+                      className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity flex-shrink-0"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  {kr.persisted && expandedKR === kr.id && (
+                    <KeyResultTasks krId={kr.id} krTitle={kr.title} users={users} onChanged={refreshKRs} />
                   )}
-                  {kr.persisted && typeof kr.progress === 'number' && (
-                    <span className="text-[10px] text-gray-400 flex-shrink-0">{kr.progress}%</span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveKR(kr.id)}
-                    className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity flex-shrink-0"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
                 </div>
               ))}
               <div className="flex gap-2">
@@ -522,6 +556,21 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
             </div>
           )}
         </div>
+
+        {/* Tareas de la meta (solo edición) */}
+        {isEdit && (
+          <>
+            <div className="border-t border-gray-100 dark:border-gray-800" />
+            <div>
+              <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <ListChecks className="h-4 w-4" />
+                Tareas de la meta
+                {relatedTasks.length > 0 && <Badge variant="secondary" className="text-xs px-1.5 py-0">{relatedTasks.length}</Badge>}
+              </div>
+              <RelatedTasksList tasks={relatedTasks} loading={loadingTasks} show="project" emptyLabel="Aún no hay tareas vinculadas a esta meta." />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer */}

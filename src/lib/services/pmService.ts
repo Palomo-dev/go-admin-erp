@@ -96,6 +96,7 @@ export interface PMTask {
   project_id: string | null;
   milestone_id: string | null;
   goal_id: string | null;
+  key_result_id: string | null;
   parent_task_id: string | null;
   related_to_type?: string | null;
   estimated_hours: number | null;
@@ -344,15 +345,46 @@ export const pmService = {
     await supabase.from('goals').update({ progress, updated_at: new Date().toISOString() }).eq('id', goalId);
   },
 
+  // Recalcula el progreso de un KR a partir de sus tareas completadas (ponderado por horas estimadas)
+  async recalcKeyResultProgress(keyResultId: string): Promise<void> {
+    const { data: tasks } = await supabase.from('tasks').select('status, estimated_hours').eq('key_result_id', keyResultId);
+    const { data: kr } = await supabase.from('key_results').select('goal_id').eq('id', keyResultId).single();
+    if (tasks && tasks.length > 0) {
+      const weight = (t: any) => Number(t.estimated_hours) || 1;
+      const totalW = tasks.reduce((s, t) => s + weight(t), 0);
+      const doneW = tasks.filter(t => t.status === 'done').reduce((s, t) => s + weight(t), 0);
+      const progress = totalW > 0 ? Math.round((doneW / totalW) * 100) : 0;
+      await supabase.from('key_results').update({
+        progress,
+        status: progress >= 100 ? 'achieved' : 'active',
+        updated_at: new Date().toISOString(),
+      }).eq('id', keyResultId);
+    }
+    if (kr?.goal_id) await this.recalcGoalProgress(kr.goal_id);
+  },
+
+  // Tareas de un resultado clave (KR)
+  async getKeyResultTasks(keyResultId: string): Promise<PMTask[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('key_result_id', keyResultId)
+      .is('parent_task_id', null)
+      .order('due_date', { ascending: true, nullsFirst: false });
+    if (error) { console.error('Error getKeyResultTasks:', error.message); return []; }
+    return this._enrichWithProfiles(data || []);
+  },
+
   async deleteProject(id: string): Promise<void> {
     const { error } = await supabase.from('projects').delete().eq('id', id);
     if (error) throw error;
   },
 
   async deleteTask(id: string): Promise<void> {
-    const { data: t } = await supabase.from('tasks').select('project_id, goal_id').eq('id', id).single();
+    const { data: t } = await supabase.from('tasks').select('project_id, goal_id, key_result_id').eq('id', id).single();
     const { error } = await supabase.from('tasks').delete().eq('id', id);
     if (error) throw error;
+    if (t?.key_result_id) await this.recalcKeyResultProgress(t.key_result_id);
     if (t?.project_id) await this.recalcProjectProgress(t.project_id);
     if (t?.goal_id) await this.recalcGoalProgress(t.goal_id);
   },
@@ -407,6 +439,41 @@ export const pmService = {
     return tasks;
   },
 
+  // Enriquece una lista de tareas con el perfil del responsable (assigned_to)
+  async _enrichWithProfiles(tasks: PMTask[]): Promise<PMTask[]> {
+    const userIds = Array.from(new Set(tasks.filter(t => t.assigned_to).map(t => t.assigned_to as string)));
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name, email').in('id', userIds);
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      tasks.forEach(t => { if (t.assigned_to && profileMap.has(t.assigned_to)) t.profiles = profileMap.get(t.assigned_to); });
+    }
+    return tasks;
+  },
+
+  // Tareas de un proyecto (para mostrar en el drawer de proyecto)
+  async getProjectTasks(projectId: string): Promise<PMTask[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*, goals(id, title)')
+      .eq('project_id', projectId)
+      .is('parent_task_id', null)
+      .order('due_date', { ascending: true, nullsFirst: false });
+    if (error) { console.error('Error getProjectTasks:', error.message); return []; }
+    return this._enrichWithProfiles(data || []);
+  },
+
+  // Tareas de una meta (para mostrar en el drawer de meta)
+  async getGoalTasks(goalId: string): Promise<PMTask[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*, projects(id, name)')
+      .eq('goal_id', goalId)
+      .is('parent_task_id', null)
+      .order('due_date', { ascending: true, nullsFirst: false });
+    if (error) { console.error('Error getGoalTasks:', error.message); return []; }
+    return this._enrichWithProfiles(data || []);
+  },
+
   // Construye los campos de cierre al cambiar el estado de una tarea.
   // Al completar: fija completed_at y, si no hay horas reales, usa las estimadas.
   async buildCompletionPatch(taskId: string, status: string): Promise<Record<string, any>> {
@@ -423,7 +490,8 @@ export const pmService = {
     const patch = await this.buildCompletionPatch(taskId, status);
     const { error } = await supabase.from('tasks').update({ status, ...patch, updated_at: new Date().toISOString() }).eq('id', taskId);
     if (error) throw error;
-    const { data: t } = await supabase.from('tasks').select('project_id, goal_id').eq('id', taskId).single();
+    const { data: t } = await supabase.from('tasks').select('project_id, goal_id, key_result_id').eq('id', taskId).single();
+    if (t?.key_result_id) await this.recalcKeyResultProgress(t.key_result_id);
     if (t?.project_id) await this.recalcProjectProgress(t.project_id);
     if (t?.goal_id) await this.recalcGoalProgress(t.goal_id);
   },
@@ -433,8 +501,9 @@ export const pmService = {
     if (updates.status) patch = { ...patch, ...(await this.buildCompletionPatch(taskId, updates.status)) };
     const { error } = await supabase.from('tasks').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', taskId);
     if (error) throw error;
-    if (updates.status || updates.project_id || updates.goal_id) {
-      const { data: t } = await supabase.from('tasks').select('project_id, goal_id').eq('id', taskId).single();
+    if (updates.status || updates.project_id || updates.goal_id || updates.key_result_id || updates.estimated_hours != null) {
+      const { data: t } = await supabase.from('tasks').select('project_id, goal_id, key_result_id').eq('id', taskId).single();
+      if (t?.key_result_id) await this.recalcKeyResultProgress(t.key_result_id);
       if (t?.project_id) await this.recalcProjectProgress(t.project_id);
       if (t?.goal_id) await this.recalcGoalProgress(t.goal_id);
     }
@@ -454,13 +523,50 @@ export const pmService = {
   async createTask(task: Record<string, any>): Promise<PMTask> {
     const orgId = getOrganizationId();
     const { data: { user } } = await supabase.auth.getUser();
-    const { data, error } = await supabase.from('tasks').insert({
-      ...task, organization_id: orgId, created_by: user?.id,
-    }).select().single();
+    const payload: Record<string, any> = { ...task, organization_id: orgId, created_by: user?.id };
+    // Si la tarea pertenece a un KR, hereda la meta del KR (si no se especificó)
+    if (payload.key_result_id && !payload.goal_id) {
+      const { data: kr } = await supabase.from('key_results').select('goal_id').eq('id', payload.key_result_id).single();
+      if (kr?.goal_id) payload.goal_id = kr.goal_id;
+    }
+    const { data, error } = await supabase.from('tasks').insert(payload).select().single();
     if (error) throw error;
+    if (data?.key_result_id) await this.recalcKeyResultProgress(data.key_result_id);
     if (data?.project_id) await this.recalcProjectProgress(data.project_id);
     if (data?.goal_id) await this.recalcGoalProgress(data.goal_id);
     return data;
+  },
+
+  // Crea varias tareas vinculadas a un KR (hereda meta y proyecto de la meta)
+  async createTasksForKeyResult(keyResultId: string, tasks: Array<Record<string, any>>): Promise<number> {
+    if (!tasks || tasks.length === 0) return 0;
+    const orgId = getOrganizationId();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: kr } = await supabase.from('key_results').select('goal_id').eq('id', keyResultId).single();
+    let projectId: string | null = null;
+    if (kr?.goal_id) {
+      const { data: g } = await supabase.from('goals').select('project_id, owner_id').eq('id', kr.goal_id).single();
+      projectId = g?.project_id ?? null;
+    }
+    const rows = tasks.map(t => ({
+      organization_id: orgId,
+      created_by: user?.id,
+      key_result_id: keyResultId,
+      goal_id: kr?.goal_id ?? null,
+      project_id: projectId,
+      title: t.title,
+      description: t.description ?? null,
+      priority: t.priority ?? 'med',
+      status: 'open',
+      type: t.type ?? 'task',
+      estimated_hours: t.estimated_hours ?? null,
+      due_date: t.due_date ?? null,
+      assigned_to: t.assigned_to ?? null,
+    }));
+    const { error } = await supabase.from('tasks').insert(rows);
+    if (error) throw error;
+    await this.recalcKeyResultProgress(keyResultId);
+    return rows.length;
   },
 
   // ─── Task Attachments ──────────────

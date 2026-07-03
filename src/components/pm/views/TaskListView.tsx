@@ -49,7 +49,7 @@ function isAgentTask(task: PMTask): boolean {
   return (task.related_to_type || '').startsWith('agent:') || (task.tags || []).includes('agente');
 }
 
-export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], projects = [] }: TaskListViewProps) {
+export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], projects = [], runningTimers }: TaskListViewProps) {
   const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);

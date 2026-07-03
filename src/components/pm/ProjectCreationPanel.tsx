@@ -34,7 +34,8 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import { pmService, type Project } from '@/lib/services/pmService';
+import { pmService, type Project, type PMTask } from '@/lib/services/pmService';
+import { RelatedTasksList } from '@/components/pm/RelatedTasksList';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { cn } from '@/utils/Utils';
 
@@ -94,6 +95,8 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
   const [distributing, setDistributing] = useState(false);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [showMembers, setShowMembers] = useState(false);
+  const [relatedTasks, setRelatedTasks] = useState<PMTask[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
 
   const resetForm = useCallback(() => {
     setForm(INITIAL_FORM);
@@ -127,8 +130,11 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         })));
         if (pm.length > 0) setShowMembers(true);
       });
+      setLoadingTasks(true);
+      pmService.getProjectTasks(editProject.id).then(t => { setRelatedTasks(t); setLoadingTasks(false); }).catch(() => setLoadingTasks(false));
     } else {
       resetForm();
+      setRelatedTasks([]);
     }
   }, [editProject, users, resetForm]);
 
@@ -504,6 +510,21 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
             </div>
           )}
         </div>
+
+        {/* Tareas del proyecto (solo edición) */}
+        {isEdit && (
+          <>
+            <div className="border-t border-gray-100 dark:border-gray-800" />
+            <div>
+              <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Activity className="h-4 w-4" />
+                Tareas del proyecto
+                {relatedTasks.length > 0 && <Badge variant="secondary" className="text-xs px-1.5 py-0">{relatedTasks.length}</Badge>}
+              </div>
+              <RelatedTasksList tasks={relatedTasks} loading={loadingTasks} show="goal" emptyLabel="Aún no hay tareas en este proyecto." />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer */}

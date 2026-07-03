@@ -1,9 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Clock,
   Calendar,
@@ -15,15 +18,21 @@ import {
   Flag,
   Bot,
   Tag,
+  Check,
+  X,
 } from 'lucide-react';
-import { type PMTask, PRIORITY_COLORS, PRIORITY_LABELS, TASK_STATUS_COLORS, TASK_STATUS_LABELS, TASK_TYPE_LABELS } from '@/lib/services/pmService';
+import { type PMTask, type TaskTimeEntry, PRIORITY_COLORS, PRIORITY_LABELS, TASK_STATUS_COLORS, TASK_STATUS_LABELS, TASK_TYPE_LABELS } from '@/lib/services/pmService';
 import { pmService } from '@/lib/services/pmService';
+import { TaskTimer } from '@/components/pm/TaskTimer';
 import { useToast } from '@/components/ui/use-toast';
 
 interface TaskListViewProps {
   tasks: PMTask[];
   onTaskClick?: (task: PMTask) => void;
   onTaskUpdate: () => void;
+  users?: Array<{ id: string; nombre: string }>;
+  projects?: Array<{ id: string; name: string }>;
+  runningTimers?: Record<string, TaskTimeEntry>;
 }
 
 function getAssigneeName(task: PMTask): string {
@@ -40,8 +49,41 @@ function isAgentTask(task: PMTask): boolean {
   return (task.related_to_type || '').startsWith('agent:') || (task.tags || []).includes('agente');
 }
 
-export function TaskListView({ tasks, onTaskClick, onTaskUpdate }: TaskListViewProps) {
+export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], projects = [] }: TaskListViewProps) {
   const { toast } = useToast();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [applying, setApplying] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const allSelected = tasks.length > 0 && tasks.every(t => selectedIds.has(t.id));
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(tasks.map(t => t.id)));
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
+  // Aplica cambios en lote a todas las tareas seleccionadas
+  const applyBulk = async (updates: Record<string, any>, label: string) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setApplying(true);
+    try {
+      await Promise.all(ids.map(id => pmService.updateTask(id, updates)));
+      toast({ title: 'Acción aplicada', description: `${label} · ${ids.length} tarea(s)` });
+      clearSelection();
+      onTaskUpdate();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setApplying(false);
+    }
+  };
 
   const handleToggleDone = async (task: PMTask, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -68,6 +110,57 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate }: TaskListViewP
 
   return (
     <div className="space-y-2">
+      {/* Barra de acciones masivas */}
+      <div className="flex items-center gap-2 flex-wrap px-1">
+        <div className="flex items-center gap-2" onClick={toggleSelectAll} role="button">
+          <Checkbox checked={allSelected} className="cursor-pointer" />
+          <span className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer">Seleccionar todo</span>
+        </div>
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="text-xs">{selectedIds.size} seleccionada(s)</Badge>
+            <Select onValueChange={(v) => applyBulk({ status: v }, `Estado: ${TASK_STATUS_LABELS[v]}`)} disabled={applying}>
+              <SelectTrigger className="h-8 w-[130px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(TASK_STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select onValueChange={(v) => applyBulk({ priority: v }, `Prioridad: ${PRIORITY_LABELS[v]}`)} disabled={applying}>
+              <SelectTrigger className="h-8 w-[130px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Prioridad" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(PRIORITY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {users.length > 0 && (
+              <Select onValueChange={(v) => applyBulk({ assigned_to: v === 'none' ? null : v }, 'Responsable')} disabled={applying}>
+                <SelectTrigger className="h-8 w-[150px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Asignar a" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {users.map(u => <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            {projects.length > 0 && (
+              <Select onValueChange={(v) => applyBulk({ project_id: v }, 'Proyecto')} disabled={applying}>
+                <SelectTrigger className="h-8 w-[150px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Mover a proyecto" /></SelectTrigger>
+                <SelectContent>
+                  {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            <Input
+              type="date" disabled={applying}
+              onChange={(e) => { if (e.target.value) applyBulk({ due_date: e.target.value }, 'Fecha límite'); }}
+              className="h-8 w-[150px] text-xs bg-white dark:bg-gray-800"
+              title="Fecha límite"
+            />
+            <Button variant="ghost" size="sm" onClick={clearSelection} className="h-8 text-xs text-gray-500">
+              <X className="h-3.5 w-3.5 mr-1" />Limpiar
+            </Button>
+          </div>
+        )}
+      </div>
+
       {tasks.map((task) => {
         const overdue = isOverdue(task);
         const assignee = getAssigneeName(task);
@@ -84,10 +177,19 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate }: TaskListViewP
           >
             <CardContent className="py-3 px-4">
               <div className="flex items-start gap-3">
-                {/* Checkbox completar */}
-                <div className="mt-0.5" onClick={(e) => handleToggleDone(task, e)}>
-                  <Checkbox checked={task.status === 'done'} className="cursor-pointer" />
+                {/* Checkbox de selección (acciones masivas) */}
+                <div className="mt-0.5" onClick={(e) => { e.stopPropagation(); toggleSelect(task.id); }}>
+                  <Checkbox checked={selectedIds.has(task.id)} className="cursor-pointer" />
                 </div>
+                {/* Completar */}
+                <button
+                  type="button"
+                  onClick={(e) => handleToggleDone(task, e)}
+                  title="Marcar como completada"
+                  className={`mt-0.5 h-4 w-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${task.status === 'done' ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 dark:border-gray-600 hover:border-green-400'}`}
+                >
+                  {task.status === 'done' && <Check className="h-3 w-3" />}
+                </button>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -118,7 +220,7 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate }: TaskListViewP
                   </div>
 
                   {task.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{task.description}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{task.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
                   )}
 
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
@@ -139,6 +241,7 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate }: TaskListViewP
                         {task.actual_hours || 0}/{task.estimated_hours}h
                       </span>
                     )}
+                    <TaskTimer taskId={task.id} variant="compact" providedRunning={runningTimers?.[task.id] ?? null} />
                     {assignee && (
                       <span className="flex items-center gap-1">
                         <User className="h-3 w-3" />{assignee}

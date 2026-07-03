@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/select';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { pmService, type PMTask } from '@/lib/services/pmService';
+import { pmService, type PMTask, type TaskTimeEntry, PRIORITY_LABELS } from '@/lib/services/pmService';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { getAssignableUsers } from '@/lib/services/userService';
@@ -38,6 +38,35 @@ import { CalendarView } from '@/components/pm/views/CalendarView';
 import { TaskListView } from '@/components/pm/views/TaskListView';
 import { AITaskPlanner } from '@/components/pm/ai/AITaskPlanner';
 import TaskCreationPanel from '@/components/pm/TaskCreationPanel';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
+
+// Devuelve true si la tarea entra en el filtro de fecha de vencimiento
+function matchesDueFilter(task: PMTask, filter: string, customFrom: string, customTo: string): boolean {
+  if (filter === 'all') return true;
+  if (!task.due_date) return false;
+  const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const today = startOfDay(new Date());
+  const due = startOfDay(new Date(task.due_date));
+  const dayMs = 86400000;
+  const diffDays = Math.round((due.getTime() - today.getTime()) / dayMs);
+  const isClosed = task.status === 'done' || task.status === 'canceled';
+  switch (filter) {
+    case 'overdue': return diffDays < 0 && !isClosed;
+    case 'today': return diffDays === 0;
+    case 'tomorrow': return diffDays === 1;
+    case '7d': return diffDays >= 0 && diffDays <= 7;
+    case '15d': return diffDays >= 0 && diffDays <= 15;
+    case '30d': return diffDays >= 0 && diffDays <= 30;
+    case 'custom': {
+      const from = customFrom ? startOfDay(new Date(customFrom)) : null;
+      const to = customTo ? startOfDay(new Date(customTo)) : null;
+      if (from && due < from) return false;
+      if (to && due > to) return false;
+      return true;
+    }
+    default: return true;
+  }
+}
 
 type ViewTab = 'list' | 'kanban' | 'calendar' | 'ai';
 
@@ -60,13 +89,27 @@ export default function PMTasksPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const [dueFilter, setDueFilter] = useState<string>('all');
+  const [customFrom, setCustomFrom] = useState<string>('');
+  const [customTo, setCustomTo] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [editTask, setEditTask] = useState<PMTask | null>(null);
   const [users, setUsers] = useState<Array<{id: string, nombre: string}>>([]);
+  const [runningTimers, setRunningTimers] = useState<Record<string, TaskTimeEntry>>({});
 
   const openCreate = () => { setEditTask(null); setShowCreatePanel(true); };
   const openEdit = (t: PMTask) => { setEditTask(t); setShowCreatePanel(true); };
   const closePanel = () => { setShowCreatePanel(false); setEditTask(null); };
+
+  // Abrir una subtarea en el editor completo (reutiliza el panel con todas sus funciones)
+  const openSubtask = async (subtaskId: string) => {
+    const sub = await pmService.getTaskById(subtaskId);
+    if (sub) setEditTask(sub);
+  };
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -83,7 +126,24 @@ export default function PMTasksPage() {
     }
   }, [statusFilter, projectFilter]);
 
+  // Recarga en segundo plano sin mostrar el skeleton (para acciones fluidas como Kanban)
+  const loadTasksSilent = useCallback(async () => {
+    try {
+      const data = await pmService.getTasks({ status: statusFilter, projectId: projectFilter });
+      setTasks(data);
+    } catch (error) {
+      console.error('Error recargando tareas PM:', error);
+    }
+  }, [statusFilter, projectFilter]);
+
   useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  // Cargar en lote las sesiones de cronómetro activas para las tareas visibles (evita 1 consulta por tarjeta)
+  useEffect(() => {
+    const ids = tasks.map(t => t.id);
+    if (ids.length === 0) { setRunningTimers({}); return; }
+    pmService.getRunningTimeEntriesForTasks(ids).then(setRunningTimers).catch(() => setRunningTimers({}));
+  }, [tasks]);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -101,10 +161,21 @@ export default function PMTasksPage() {
     router.replace(`/app/pm/tareas?view=${tab}`, { scroll: false });
   };
 
-  const filtered = tasks.filter(t =>
-    t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (t.description || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = useMemo(() => tasks.filter(t => {
+    const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPriority = priorityFilter === 'all' || t.priority === priorityFilter;
+    const matchesAssignee = assigneeFilter === 'all'
+      || (assigneeFilter === 'unassigned' ? !t.assigned_to : t.assigned_to === assigneeFilter);
+    const matchesDue = matchesDueFilter(t, dueFilter, customFrom, customTo);
+    return matchesSearch && matchesPriority && matchesAssignee && matchesDue;
+  }), [tasks, searchTerm, priorityFilter, assigneeFilter, dueFilter, customFrom, customTo]);
+
+  // Reiniciar a la primera página cuando cambian filtros/búsqueda
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, projectFilter, priorityFilter, assigneeFilter, dueFilter, customFrom, customTo, activeTab]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paged = useMemo(() => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize), [filtered, currentPage, pageSize]);
 
   const stats = {
     total: tasks.length,
@@ -209,6 +280,42 @@ export default function PMTasksPage() {
                 {projects.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
               </SelectContent>
             </Select>
+            <Select value={dueFilter} onValueChange={setDueFilter}>
+              <SelectTrigger className="w-[170px] bg-white dark:bg-gray-800"><SelectValue placeholder="Vencimiento" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toda fecha</SelectItem>
+                <SelectItem value="overdue">Vencidas</SelectItem>
+                <SelectItem value="today">Vencen hoy</SelectItem>
+                <SelectItem value="tomorrow">Vencen mañana</SelectItem>
+                <SelectItem value="7d">En 7 días</SelectItem>
+                <SelectItem value="15d">En 15 días</SelectItem>
+                <SelectItem value="30d">En 30 días</SelectItem>
+                <SelectItem value="custom">Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-[150px] bg-white dark:bg-gray-800"><SelectValue placeholder="Prioridad" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toda prioridad</SelectItem>
+                {Object.entries(PRIORITY_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+              <SelectTrigger className="w-[170px] bg-white dark:bg-gray-800"><SelectValue placeholder="Asignado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los asignados</SelectItem>
+                <SelectItem value="unassigned">Sin asignar</SelectItem>
+                {users.map((u) => (<SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {activeTab !== 'ai' && dueFilter === 'custom' && (
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <span className="text-sm text-gray-500 dark:text-gray-400">Rango:</span>
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-[170px] bg-white dark:bg-gray-800" />
+            <span className="text-sm text-gray-400">a</span>
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-[170px] bg-white dark:bg-gray-800" />
           </div>
         )}
 
@@ -222,15 +329,35 @@ export default function PMTasksPage() {
         ) : (
           <>
             {activeTab === 'list' && (
-              <TaskListView tasks={filtered} onTaskClick={openEdit} onTaskUpdate={loadTasks} />
+              <>
+                <TaskListView tasks={paged} onTaskClick={openEdit} onTaskUpdate={loadTasks} users={users} projects={projects} runningTimers={runningTimers} />
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  totalItems={filtered.length}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                />
+              </>
             )}
 
             {activeTab === 'kanban' && (
-              <KanbanBoard tasks={filtered} onTaskUpdate={loadTasks} />
+              <>
+                <KanbanBoard tasks={paged} onTaskUpdate={loadTasksSilent} onTaskClick={openEdit} runningTimers={runningTimers} />
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  totalItems={filtered.length}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                />
+              </>
             )}
 
             {activeTab === 'calendar' && (
-              <CalendarView tasks={filtered} />
+              <CalendarView tasks={filtered} onTaskClick={openEdit} />
             )}
 
             {activeTab === 'ai' && (
@@ -252,6 +379,7 @@ export default function PMTasksPage() {
         users={users}
         editTask={editTask}
         onTaskCreated={loadTasks}
+        onOpenSubtask={openSubtask}
       />
     </div>
   );

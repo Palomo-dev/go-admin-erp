@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -12,13 +12,15 @@ import {
   GripVertical,
   AlertTriangle,
 } from 'lucide-react';
-import { pmService, type PMTask, PRIORITY_COLORS, PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/lib/services/pmService';
+import { pmService, type PMTask, type TaskTimeEntry, PRIORITY_COLORS, PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/lib/services/pmService';
+import { TaskTimer } from '@/components/pm/TaskTimer';
 import { useToast } from '@/components/ui/use-toast';
 
 interface KanbanBoardProps {
   tasks: PMTask[];
   onTaskUpdate: () => void;
   onTaskClick?: (task: PMTask) => void;
+  runningTimers?: Record<string, TaskTimeEntry>;
 }
 
 interface KanbanColumn {
@@ -46,12 +48,15 @@ function isOverdue(task: PMTask): boolean {
   return !!(task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done' && task.status !== 'canceled');
 }
 
-export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, runningTimers }: KanbanBoardProps) {
   const { toast } = useToast();
   const [updating, setUpdating] = useState<string | null>(null);
+  // Copia local para actualización optimista: la tarjeta se mueve al instante sin recargar
+  const [localTasks, setLocalTasks] = useState<PMTask[]>(tasks);
+  useEffect(() => { setLocalTasks(tasks); }, [tasks]);
 
   const tasksByStatus = COLUMNS.reduce((acc, col) => {
-    acc[col.id] = tasks.filter(t => t.status === col.id);
+    acc[col.id] = localTasks.filter(t => t.status === col.id);
     return acc;
   }, {} as Record<string, PMTask[]>);
 
@@ -60,6 +65,8 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick }: KanbanBoardPro
     if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) return;
 
     const newStatus = destination.droppableId;
+    // Actualización optimista inmediata (sin esperar al servidor ni recargar)
+    setLocalTasks(prev => prev.map(t => t.id === draggableId ? { ...t, status: newStatus as PMTask['status'] } : t));
     setUpdating(draggableId);
 
     try {
@@ -70,6 +77,8 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick }: KanbanBoardPro
       });
       onTaskUpdate();
     } catch (error: any) {
+      // Revertir el cambio optimista si falla
+      setLocalTasks(prev => prev.map(t => t.id === draggableId ? { ...t, status: source.droppableId as PMTask['status'] } : t));
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setUpdating(null);
@@ -157,12 +166,15 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick }: KanbanBoardPro
                                   )}
                                 </div>
 
-                                {getAssigneeName(task) && (
-                                  <div className="flex items-center gap-1 mt-2 text-[10px] text-gray-400">
-                                    <User className="h-3 w-3" />
-                                    <span className="truncate">{getAssigneeName(task)}</span>
-                                  </div>
-                                )}
+                                <div className="flex items-center justify-between gap-1 mt-2">
+                                  {getAssigneeName(task) ? (
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-400 min-w-0">
+                                      <User className="h-3 w-3 shrink-0" />
+                                      <span className="truncate">{getAssigneeName(task)}</span>
+                                    </div>
+                                  ) : <span />}
+                                  <TaskTimer taskId={task.id} variant="compact" providedRunning={runningTimers?.[task.id] ?? null} />
+                                </div>
                               </div>
                             </div>
                           </Card>

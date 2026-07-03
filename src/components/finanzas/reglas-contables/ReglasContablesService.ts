@@ -31,22 +31,29 @@ export interface ChartAccount {
 
 export const SOURCE_TYPES = [
   { value: 'sale', label: 'Venta' },
+  { value: 'sale_payment', label: 'Cobro de Venta' },
+  { value: 'sale_credit_note', label: 'Nota Crédito Venta' },
   { value: 'purchase', label: 'Compra' },
-  { value: 'payment', label: 'Pago' },
-  { value: 'receipt', label: 'Cobro' },
-  { value: 'inventory', label: 'Inventario' },
-  { value: 'payroll', label: 'Nómina' },
+  { value: 'purchase_payment', label: 'Pago de Compra' },
+  { value: 'cash_movement', label: 'Movimiento de Caja' },
+  { value: 'bank_transaction', label: 'Transacción Bancaria' },
   { value: 'expense', label: 'Gasto' },
+  { value: 'income', label: 'Ingreso' },
+  { value: 'payroll', label: 'Nómina' },
+  { value: 'inventory', label: 'Inventario' },
   { value: 'bank', label: 'Banco' },
+  { value: 'refund', label: 'Reembolso' },
 ];
 
 export const EVENT_TYPES = [
-  { value: 'create', label: 'Creación' },
-  { value: 'confirm', label: 'Confirmación' },
-  { value: 'cancel', label: 'Cancelación' },
-  { value: 'payment', label: 'Pago' },
-  { value: 'refund', label: 'Reembolso' },
-  { value: 'adjustment', label: 'Ajuste' },
+  { value: 'created', label: 'Creación' },
+  { value: 'paid', label: 'Pago' },
+  { value: 'partial_paid', label: 'Pago Parcial' },
+  { value: 'voided', label: 'Anulación' },
+  { value: 'confirmed', label: 'Confirmación' },
+  { value: 'cancelled', label: 'Cancelación' },
+  { value: 'refunded', label: 'Reembolso' },
+  { value: 'adjusted', label: 'Ajuste' },
 ];
 
 export class ReglasContablesService {
@@ -94,7 +101,16 @@ export class ReglasContablesService {
     const { data, error } = await supabase
       .from('accounting_rules')
       .insert({
-        ...regla,
+        name: regla.name,
+        description: regla.description || null,
+        source_type: regla.source_type,
+        event_type: regla.event_type,
+        debit_account_code: regla.debit_account_code,
+        credit_account_code: regla.credit_account_code,
+        tax_account_code: regla.tax_account_code || null,
+        use_tax_from_document: regla.use_tax_from_document || false,
+        priority: regla.priority || 0,
+        conditions: regla.conditions || null,
         organization_id: organizationId,
         is_active: true
       })

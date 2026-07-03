@@ -24,7 +24,9 @@ import {
   Settings,
   FolderKanban,
   Target,
-  ClipboardList
+  ClipboardList,
+  FileText,
+  CalendarClock
 } from 'lucide-react';
 
 export const moduleIcons: Record<string, React.ComponentType<any>> = {
@@ -144,6 +146,18 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     { name: 'Finanzas', path: '/app/finanzas', icon: BarChart3 },
     { name: 'Cuentas por Cobrar', path: '/app/finanzas/cuentas-por-cobrar', icon: BarChart3 },
     { name: 'Facturas de Venta', path: '/app/finanzas/facturas-venta', icon: BarChart3 },
+    { name: 'Contabilidad', path: '/app/finanzas/contabilidad', icon: Landmark },
+    { name: 'Plan de Cuentas', path: '/app/finanzas/contabilidad/plan-cuentas', icon: Landmark },
+    { name: 'Asientos', path: '/app/finanzas/contabilidad/asientos', icon: FileText },
+    { name: 'Reglas Contables', path: '/app/finanzas/reglas-contables', icon: Shield },
+    { name: 'Períodos Fiscales', path: '/app/finanzas/contabilidad/periodos-fiscales', icon: CalendarClock },
+    { name: 'Balance de Comprobacion', path: '/app/finanzas/contabilidad/balance-comprobacion', icon: BarChart3 },
+    { name: 'Estado de Resultados', path: '/app/finanzas/contabilidad/estado-resultados', icon: BarChart3 },
+    { name: 'Balance General', path: '/app/finanzas/contabilidad/balance-general', icon: BarChart3 },
+    { name: 'Mayor Contable', path: '/app/finanzas/contabilidad/mayor-contable', icon: Landmark },
+    { name: 'Centro de Costos', path: '/app/finanzas/centro-costos', icon: Grid3X3 },
+    { name: 'Activos Fijos', path: '/app/finanzas/activos-fijos', icon: Package },
+    { name: 'Presupuestos', path: '/app/finanzas/presupuestos', icon: Target },
     { name: 'Impuestos', path: '/app/finanzas/impuestos', icon: BarChart3 },
     { name: 'Métodos de Pago', path: '/app/finanzas/metodos-pago', icon: CreditCard },
     { name: 'Monedas', path: '/app/finanzas/monedas', icon: BarChart3 }

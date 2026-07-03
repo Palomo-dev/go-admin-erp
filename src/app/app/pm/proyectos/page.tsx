@@ -193,7 +193,7 @@ export default function ProjectsPage() {
                 </CardHeader>
                 <CardContent>
                   {project.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{project.description}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{project.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
                   )}
                   <div className="space-y-2">
                     <div className="flex items-center gap-3 text-xs text-gray-500">

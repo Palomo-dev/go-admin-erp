@@ -164,7 +164,23 @@ export default class FacebookChannelService {
       return { valid: false, message: 'Credenciales incompletas' };
     }
 
-    const isValid = true;
+    // Validación real contra Graph API: el token debe poder leer la página
+    let isValid = false;
+    let message = 'Error al verificar conexión';
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v19.0/${creds.credentials.page_id}?fields=id,name&access_token=${encodeURIComponent(creds.credentials.page_access_token)}`
+      );
+      const json = await res.json();
+      if (res.ok && json.id === creds.credentials.page_id) {
+        isValid = true;
+        message = `Conexión verificada: página "${json.name}"`;
+      } else {
+        message = json.error?.message || 'Page ID o Access Token inválidos';
+      }
+    } catch (err) {
+      message = 'No se pudo contactar a Meta para validar las credenciales';
+    }
 
     await supabase
       .from('channel_credentials')
@@ -174,10 +190,7 @@ export default class FacebookChannelService {
       })
       .eq('channel_id', channelId);
 
-    return { 
-      valid: isValid, 
-      message: isValid ? 'Conexión verificada correctamente' : 'Error al verificar conexión' 
-    };
+    return { valid: isValid, message };
   }
 
   async activateChannel(channelId: string): Promise<boolean> {

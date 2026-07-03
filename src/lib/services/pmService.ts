@@ -64,6 +64,7 @@ export interface PMTask {
   milestone_id: string | null;
   goal_id: string | null;
   parent_task_id: string | null;
+  related_to_type?: string | null;
   estimated_hours: number | null;
   actual_hours: number | null;
   tags: string[];
@@ -105,6 +106,9 @@ export const PRIORITY_COLORS: Record<string, string> = {
 };
 export const TASK_STATUS_LABELS: Record<string, string> = {
   open: 'Pendiente', in_progress: 'En Progreso', done: 'Completada', canceled: 'Cancelada',
+};
+export const TASK_TYPE_LABELS: Record<string, string> = {
+  onboarding: 'Onboarding', operational: 'Operativa', reminder: 'Recordatorio', meeting: 'Reunión', call: 'Llamada', email: 'Email', visit: 'Visita',
 };
 export const TASK_STATUS_COLORS: Record<string, string> = {
   open: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',

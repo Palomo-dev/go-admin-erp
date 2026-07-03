@@ -27,7 +27,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import { pmService } from '@/lib/services/pmService';
+import { pmService, type Goal } from '@/lib/services/pmService';
 import { cn } from '@/utils/Utils';
 
 interface KeyResult {
@@ -41,6 +41,7 @@ interface GoalCreationPanelProps {
   projects: Array<{ id: string; name: string }>;
   users: Array<{ id: string; nombre: string }>;
   onGoalCreated: () => void;
+  editGoal?: Goal | null;
 }
 
 const INITIAL_FORM = {
@@ -53,9 +54,10 @@ const INITIAL_FORM = {
   owner_id: '',
 };
 
-export default function GoalCreationPanel({ isOpen, onClose, projects, users, onGoalCreated }: GoalCreationPanelProps) {
+export default function GoalCreationPanel({ isOpen, onClose, projects, users, onGoalCreated, editGoal }: GoalCreationPanelProps) {
   const { toast } = useToast();
   const [isMobile, setIsMobile] = useState(false);
+  const isEdit = !!editGoal;
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)');
@@ -67,6 +69,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
 
   const [form, setForm] = useState(INITIAL_FORM);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [keyResults, setKeyResults] = useState<KeyResult[]>([]);
   const [showKeyResults, setShowKeyResults] = useState(false);
   const [newKR, setNewKR] = useState('');
@@ -77,6 +80,41 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
     setNewKR('');
     setShowKeyResults(false);
   }, []);
+
+  // Precargar datos al editar
+  useEffect(() => {
+    if (editGoal) {
+      setForm({
+        title: editGoal.title || '',
+        description: editGoal.description || '',
+        type: editGoal.type || 'goal',
+        status: editGoal.status || 'draft',
+        target_date: editGoal.target_date || '',
+        project_id: editGoal.project_id || '',
+        owner_id: editGoal.owner_id || '',
+      });
+      setKeyResults([]);
+    } else {
+      resetForm();
+    }
+  }, [editGoal, resetForm]);
+
+  const handleDelete = async () => {
+    if (!editGoal) return;
+    if (!window.confirm(`¿Eliminar "${editGoal.title}"? Esta acción no se puede deshacer.`)) return;
+    setDeleting(true);
+    try {
+      await pmService.deleteGoal(editGoal.id);
+      toast({ title: 'Meta eliminada' });
+      resetForm();
+      onClose();
+      onGoalCreated();
+    } catch (error: any) {
+      toast({ title: 'Error al eliminar', description: error.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleAddKR = () => {
     if (!newKR.trim()) return;
@@ -89,7 +127,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
 
     setCreating(true);
     try {
-      await pmService.createGoal({
+      const payload = {
         title: form.title.trim(),
         description: form.description.trim()
           ? (keyResults.length > 0
@@ -103,14 +141,20 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
         target_date: form.target_date || null,
         project_id: form.project_id || null,
         owner_id: form.owner_id || null,
-      });
+      };
 
-      toast({ title: 'Meta creada exitosamente', description: `"${form.title}" creada` });
+      if (isEdit && editGoal) {
+        await pmService.updateGoal(editGoal.id, payload);
+        toast({ title: 'Meta actualizada', description: `"${form.title}" guardada` });
+      } else {
+        await pmService.createGoal(payload);
+        toast({ title: 'Meta creada exitosamente', description: `"${form.title}" creada` });
+      }
       resetForm();
       onClose();
       onGoalCreated();
     } catch (error: any) {
-      toast({ title: 'Error al crear meta', description: error.message, variant: 'destructive' });
+      toast({ title: isEdit ? 'Error al actualizar meta' : 'Error al crear meta', description: error.message, variant: 'destructive' });
     } finally {
       setCreating(false);
     }
@@ -125,7 +169,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
             <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Nueva Meta</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">{isEdit ? 'Editar Meta' : 'Nueva Meta'}</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">Define objetivos con resultados clave</p>
           </div>
         </div>
@@ -277,18 +321,24 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-2 flex-shrink-0">
-        <Button variant="outline" onClick={() => { resetForm(); onClose(); }} className="flex-1">
-          Cancelar
-        </Button>
+        {isEdit ? (
+          <Button variant="outline" onClick={handleDelete} disabled={deleting} className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/40">
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => { resetForm(); onClose(); }} className="flex-1">
+            Cancelar
+          </Button>
+        )}
         <Button
           onClick={handleCreate}
           disabled={creating || !form.title.trim()}
           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
         >
           {creating ? (
-            <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Creando...</>
+            <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{isEdit ? 'Guardando...' : 'Creando...'}</>
           ) : (
-            'Crear Meta'
+            isEdit ? 'Guardar Cambios' : 'Crear Meta'
           )}
         </Button>
       </div>
@@ -319,7 +369,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
             className="w-full sm:w-[440px] sm:max-w-[440px] p-0 border-0 bg-white dark:bg-gray-900 [&>button:last-child]:hidden"
           >
             <VisuallyHidden.Root>
-              <SheetTitle>Nueva Meta</SheetTitle>
+              <SheetTitle>{isEdit ? 'Editar Meta' : 'Nueva Meta'}</SheetTitle>
             </VisuallyHidden.Root>
             {renderContent()}
           </SheetContent>

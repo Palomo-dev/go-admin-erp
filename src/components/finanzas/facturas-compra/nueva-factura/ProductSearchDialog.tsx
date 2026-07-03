@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { Search, Package, Plus, ShoppingCart } from 'lucide-react';
+import { Search, Package, Plus, ShoppingCart, PackagePlus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { ProductoFormDialog } from '@/components/shared/form-dialogs';
 import { formatCurrency } from '@/utils/Utils';
 
 // Tipo para productos con información de costos (para compras)
@@ -48,6 +49,7 @@ export function ProductSearchDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isNewProductOpen, setIsNewProductOpen] = useState(false);
   const organizationId = getOrganizationId();
 
   // Cargar productos al abrir el diálogo
@@ -142,6 +144,18 @@ export function ProductSearchDialog({
     });
   };
 
+  // Cuando el diálogo compartido crea un producto: recargar catálogo y seleccionarlo
+  const handleProductoCreado = async (product: { id: number; name: string; sku: string; price: number; cost: number }) => {
+    await cargarProductos();
+    handleSelectProduct({
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      cost: product.cost || 0,
+      price: product.price || 0,
+    });
+  };
+
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
@@ -177,6 +191,18 @@ export function ProductSearchDialog({
                 autoFocus
               />
             </div>
+
+            <Button 
+              type="button"
+              onClick={() => setIsNewProductOpen(true)}
+              variant="outline"
+              size="sm"
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 whitespace-nowrap"
+            >
+              <PackagePlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
+              <span className="hidden sm:inline">Nuevo Producto</span>
+              <span className="sm:hidden">Nuevo</span>
+            </Button>
 
             <Button 
               onClick={cargarProductos} 
@@ -331,6 +357,13 @@ export function ProductSearchDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Diálogo compartido: reutiliza el formulario COMPLETO de producto */}
+      <ProductoFormDialog
+        open={isNewProductOpen}
+        onOpenChange={setIsNewProductOpen}
+        onCreated={handleProductoCreado}
+      />
     </Dialog>
   );
 }

@@ -22,13 +22,21 @@ interface ClientFormProps {
   branchId?: number;
   clientId?: string; // Si se proporciona, es modo edición
   mode?: 'create' | 'edit';
+  /** Cuando se provee, tras crear/actualizar se llama en lugar de navegar (uso en diálogos) */
+  onSuccess?: (customer: any) => void;
+  /** Callback para el botón cancelar cuando se usa embebido */
+  onCancel?: () => void;
+  /** Modo embebido: oculta redirecciones y usa callbacks (para diálogos) */
+  embedded?: boolean;
 }
 
-type DocumentType = 'dni' | 'rut' | 'passport' | 'foreign_id' | 'other';
+type DocumentType = string;
 
 interface DocumentTypeOption {
   value: DocumentType;
   label: string;
+  forCompany: boolean;
+  forPerson: boolean;
 }
 
 interface CustomerRole {
@@ -37,15 +45,17 @@ interface CustomerRole {
   description?: string;
 }
 
-const documentTypes: DocumentTypeOption[] = [
-  { value: 'dni', label: 'DNI' },
-  { value: 'rut', label: 'RUT' },
-  { value: 'passport', label: 'Pasaporte' },
-  { value: 'foreign_id', label: 'ID Extranjero' },
-  { value: 'other', label: 'Otro' }
+type CustomerType = 'person' | 'company';
+
+const fallbackDocumentTypes: DocumentTypeOption[] = [
+  { value: 'national_id', label: 'Documento nacional', forCompany: false, forPerson: true },
+  { value: 'tax_id', label: 'ID Tributario / Fiscal', forCompany: true, forPerson: true },
+  { value: 'passport', label: 'Pasaporte', forCompany: false, forPerson: true },
+  { value: 'foreign_id', label: 'ID Extranjero', forCompany: false, forPerson: true },
+  { value: 'other', label: 'Otro', forCompany: true, forPerson: true }
 ];
 
-export function ClientForm({ organizationId, branchId, clientId, mode = 'create' }: ClientFormProps) {
+export function ClientForm({ organizationId, branchId, clientId, mode = 'create', onSuccess, onCancel, embedded = false }: ClientFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const isEditMode = mode === 'edit' && !!clientId;
@@ -56,7 +66,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     lastName: '',
     email: '',
     phone: '',
-    documentType: 'dni' as DocumentType,
+    documentType: '' as DocumentType,
     documentNumber: '',
     dv: '',
     companyName: '',
@@ -66,6 +76,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     notes: '',
     tags: '',
   });
+
+  // Tipo de cliente: persona o empresa
+  const [customerType, setCustomerType] = useState<CustomerType>('person');
+  // Empresa padre (para clientes persona vinculados a una empresa)
+  const [parentCustomerId, setParentCustomerId] = useState<string>('');
+  const [companies, setCompanies] = useState<{id: string; name: string}[]>([]);
+  // Tipos de documento según país de la organización
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeOption[]>(fallbackDocumentTypes);
   
   // Estados para roles seleccionados (desde catálogo)
   const [selectedRoles, setSelectedRoles] = useState<string[]>(['cliente', 'huesped']);
@@ -104,6 +122,80 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     loadCatalogs();
   }, []);
 
+  // Cargar tipos de documento según el país de la organización
+  useEffect(() => {
+    async function loadDocumentTypes() {
+      try {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('country_code')
+          .eq('id', organizationId)
+          .single();
+        const countryCode = org?.country_code || 'GEN';
+        let { data: types } = await supabase
+          .from('country_identification_types')
+          .select('code, name, for_company, for_person')
+          .eq('country_code', countryCode)
+          .eq('is_active', true)
+          .order('sort_order');
+        if (!types || types.length === 0) {
+          const { data: genTypes } = await supabase
+            .from('country_identification_types')
+            .select('code, name, for_company, for_person')
+            .eq('country_code', 'GEN')
+            .eq('is_active', true)
+            .order('sort_order');
+          types = genTypes;
+        }
+        if (types && types.length > 0) {
+          setDocumentTypes(types.map(t => ({
+            value: t.code,
+            label: t.name,
+            forCompany: t.for_company,
+            forPerson: t.for_person,
+          })));
+        }
+      } catch (err) {
+        console.error('Error cargando tipos de documento:', err);
+      }
+    }
+    loadDocumentTypes();
+  }, [organizationId]);
+
+  // Cargar empresas de la organización (posibles clientes padre)
+  useEffect(() => {
+    async function loadCompanies() {
+      const { data } = await supabase
+        .from('customers')
+        .select('id, company_name, trade_name, full_name')
+        .eq('organization_id', organizationId)
+        .eq('customer_type', 'company')
+        .order('company_name');
+      if (data) {
+        setCompanies(
+          data
+            .filter(c => !clientId || c.id !== clientId)
+            .map(c => ({ id: c.id, name: c.company_name || c.trade_name || c.full_name || 'Empresa sin nombre' }))
+        );
+      }
+    }
+    loadCompanies();
+  }, [organizationId, clientId]);
+
+  // Filtrar tipos de documento según tipo de cliente
+  const visibleDocumentTypes = documentTypes.filter(t =>
+    customerType === 'company' ? t.forCompany : t.forPerson
+  );
+
+  // Ajustar tipo de documento por defecto cuando cambia el tipo de cliente
+  useEffect(() => {
+    if (visibleDocumentTypes.length === 0) return;
+    const stillValid = visibleDocumentTypes.some(t => t.value === formData.documentType);
+    if (!stillValid) {
+      setFormData(prev => ({ ...prev, documentType: visibleDocumentTypes[0].value }));
+    }
+  }, [customerType, documentTypes]);
+
   // Cargar datos del cliente en modo edición
   useEffect(() => {
     if (!isEditMode || !clientId) return;
@@ -131,7 +223,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           lastName: clientData.last_name || '',
           email: clientData.email || '',
           phone: clientData.phone || '',
-          documentType: (clientData.identification_type as DocumentType) || 'dni',
+          documentType: (clientData.identification_type as DocumentType) || '',
           documentNumber: clientData.identification_number || '',
           dv: clientData.dv != null ? String(clientData.dv) : '',
           companyName: clientData.company_name || '',
@@ -141,6 +233,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           notes: clientData.notes || '',
           tags: clientData.tags ? clientData.tags.join(', ') : '',
         });
+        setCustomerType((clientData.customer_type as CustomerType) || 'person');
+        setParentCustomerId(clientData.parent_customer_id || '');
         
         // Si tiene municipio, cargar su nombre para el search
         if (clientData.fiscal_municipality_id) {
@@ -319,6 +413,11 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           roles: selectedRoles,
           fiscal_responsibilities: selectedFiscal,
           tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(t => t) : [],
+          customer_type: customerType,
+          parent_customer_id: customerType === 'person' && parentCustomerId ? parentCustomerId : null,
+          full_name: customerType === 'company'
+            ? (formData.companyName || formData.tradeName)
+            : `${formData.firstName} ${formData.lastName}`.trim(),
           updated_at: new Date().toISOString()
         };
         
@@ -335,7 +434,11 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           variant: "default",
         });
         
-        router.push(`/app/clientes/${clientId}`);
+        if (onSuccess) {
+          onSuccess({ id: clientId, ...updatedData });
+        } else {
+          router.push(`/app/clientes/${clientId}`);
+        }
         
       } else {
         // ===== MODO CREACIÓN =====
@@ -365,6 +468,11 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           roles: selectedRoles,
           fiscal_responsibilities: selectedFiscal,
           tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(t => t) : [],
+          customer_type: customerType,
+          parent_customer_id: customerType === 'person' && parentCustomerId ? parentCustomerId : null,
+          full_name: customerType === 'company'
+            ? (formData.companyName || formData.tradeName)
+            : `${formData.firstName} ${formData.lastName}`.trim(),
           created_at: new Date().toISOString()
         };
         
@@ -383,8 +491,10 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           variant: "default",
         });
         
-        // Redireccionar a la vista de detalle
-        if (newCustomer) {
+        // Si se usa embebido (diálogo), devolver el cliente creado vía callback
+        if (onSuccess) {
+          if (newCustomer) onSuccess(newCustomer);
+        } else if (newCustomer) {
           router.push(`/app/clientes/${newCustomer.id}`);
         } else {
           router.push('/app/clientes');
@@ -594,18 +704,52 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   </div>
                 </div>
 
+                {/* Tipo de cliente */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Users className="h-4 w-4 text-gray-400" />
+                    Tipo de Cliente
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3 max-w-md">
+                    <div
+                      className={cn(
+                        "flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
+                        customerType === 'person'
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                      )}
+                      onClick={() => setCustomerType('person')}
+                    >
+                      <User className="h-4 w-4" />
+                      <span className="text-sm font-medium">Persona</span>
+                    </div>
+                    <div
+                      className={cn(
+                        "flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
+                        customerType === 'company'
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                      )}
+                      onClick={() => setCustomerType('company')}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      <span className="text-sm font-medium">Empresa</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Nombre y Apellido */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName" className="text-sm font-medium flex items-center gap-1">
-                      Nombre <span className="text-red-500">*</span>
+                      {customerType === 'company' ? 'Nombre del Contacto' : 'Nombre'} {customerType === 'person' && <span className="text-red-500">*</span>}
                     </Label>
                     <Input 
                       id="firstName" 
                       name="firstName" 
                       value={formData.firstName}
                       onChange={handleChange}
-                      required
+                      required={customerType === 'person'}
                       placeholder="Ej: Juan Carlos"
                       className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
@@ -613,19 +757,41 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   
                   <div className="space-y-2">
                     <Label htmlFor="lastName" className="text-sm font-medium flex items-center gap-1">
-                      Apellido <span className="text-red-500">*</span>
+                      {customerType === 'company' ? 'Apellido del Contacto' : 'Apellido'} {customerType === 'person' && <span className="text-red-500">*</span>}
                     </Label>
                     <Input 
                       id="lastName" 
                       name="lastName" 
                       value={formData.lastName}
                       onChange={handleChange}
-                      required
+                      required={customerType === 'person'}
                       placeholder="Ej: García López"
                       className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>
+
+                {/* Empresa padre (solo para personas) */}
+                {customerType === 'person' && companies.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="parentCustomer" className="text-sm font-medium flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-gray-400" />
+                      Empresa a la que pertenece (opcional)
+                    </Label>
+                    <select
+                      id="parentCustomer"
+                      value={parentCustomerId}
+                      onChange={(e) => setParentCustomerId(e.target.value)}
+                      className="h-10 w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 ring-offset-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:ring-offset-gray-950"
+                    >
+                      <option value="">Sin empresa asociada</option>
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Vincula esta persona como cliente hijo de una empresa</p>
+                  </div>
+                )}
                 
                 {/* Documento */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -641,7 +807,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       onChange={(e) => setFormData(prev => ({ ...prev, documentType: e.target.value as DocumentType }))}
                       className="h-10 w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 ring-offset-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:ring-offset-gray-950"
                     >
-                      {documentTypes.map((type) => (
+                      {visibleDocumentTypes.map((type) => (
                         <option key={type.value} value={type.value}>
                           {type.label}
                         </option>
@@ -675,35 +841,38 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   </div>
                 </div>
 
-                {/* Datos Empresariales */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName" className="text-sm font-medium flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-gray-400" />
-                      Razón Social
-                    </Label>
-                    <Input 
-                      id="companyName" 
-                      name="companyName" 
-                      value={formData.companyName}
-                      onChange={handleChange}
-                      placeholder="Ej: Empresa S.A.S."
-                      className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
-                    />
+                {/* Datos Empresariales (solo para empresas) */}
+                {customerType === 'company' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName" className="text-sm font-medium flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-gray-400" />
+                        Razón Social <span className="text-red-500">*</span>
+                      </Label>
+                      <Input 
+                        id="companyName" 
+                        name="companyName" 
+                        value={formData.companyName}
+                        onChange={handleChange}
+                        required
+                        placeholder="Ej: Empresa S.A.S."
+                        className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="tradeName" className="text-sm font-medium">Nombre Comercial</Label>
+                      <Input 
+                        id="tradeName" 
+                        name="tradeName" 
+                        value={formData.tradeName}
+                        onChange={handleChange}
+                        placeholder="Ej: Mi Negocio"
+                        className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="tradeName" className="text-sm font-medium">Nombre Comercial</Label>
-                    <Input 
-                      id="tradeName" 
-                      name="tradeName" 
-                      value={formData.tradeName}
-                      onChange={handleChange}
-                      placeholder="Ej: Mi Negocio"
-                      className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
+                )}
                 
                 {/* Roles */}
                 <div className="space-y-3 pt-2">
@@ -973,7 +1142,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
+                  onClick={() => (embedded && onCancel ? onCancel() : router.back())}
                   disabled={loading}
                   className="min-w-[100px]"
                 >
@@ -983,7 +1152,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 
                 <Button 
                   type="submit" 
-                  disabled={loading || !formData.firstName || !formData.lastName}
+                  disabled={loading || (customerType === 'company' ? !formData.companyName : (!formData.firstName || !formData.lastName))}
                   className={cn(
                     "min-w-[160px] bg-blue-600 hover:bg-blue-700",
                     loading ? "opacity-80" : ""

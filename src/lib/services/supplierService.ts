@@ -6,6 +6,9 @@ export interface Supplier {
   uuid: string;
   organization_id: number;
   name: string;
+  supplier_type?: 'person' | 'company';
+  parent_supplier_id?: number | null;
+  doc_type?: string | null;
   nit?: string;
   contact?: string;
   phone?: string;
@@ -38,6 +41,9 @@ export interface Supplier {
 // Input para crear/actualizar proveedor
 export interface SupplierInput {
   name: string;
+  supplier_type?: 'person' | 'company';
+  parent_supplier_id?: number | null;
+  doc_type?: string | null;
   nit?: string;
   contact?: string;
   phone?: string;
@@ -206,6 +212,9 @@ class SupplierService {
         .insert({
           organization_id: organizationId,
           name: input.name,
+          supplier_type: input.supplier_type || 'company',
+          parent_supplier_id: input.parent_supplier_id || null,
+          doc_type: input.doc_type || null,
           nit: input.nit || null,
           contact: input.contact || null,
           phone: input.phone || null,
@@ -253,6 +262,9 @@ class SupplierService {
         .from('suppliers')
         .update({
           name: input.name,
+          supplier_type: input.supplier_type || 'company',
+          parent_supplier_id: input.parent_supplier_id || null,
+          doc_type: input.doc_type || null,
           nit: input.nit || null,
           contact: input.contact || null,
           phone: input.phone || null,

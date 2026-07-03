@@ -38,8 +38,13 @@ export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [editProject, setEditProject] = useState<Project | null>(null);
   const [users, setUsers] = useState<Array<{id: string, nombre: string}>>([]);
   const { toast } = useToast();
+
+  const openCreate = () => { setEditProject(null); setShowCreatePanel(true); };
+  const openEdit = (p: Project) => { setEditProject(p); setShowCreatePanel(true); };
+  const closePanel = () => { setShowCreatePanel(false); setEditProject(null); };
 
   const loadProjects = useCallback(async () => {
     try {
@@ -99,7 +104,7 @@ export default function ProjectsPage() {
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Administra los proyectos de tu organización</p>
             </div>
           </div>
-          <Button onClick={() => setShowCreatePanel(!showCreatePanel)} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+          <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
             <Plus size={16} />Nuevo Proyecto
           </Button>
         </div>
@@ -159,7 +164,7 @@ export default function ProjectsPage() {
             <FolderKanban className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay proyectos</h3>
             <p className="text-gray-500 dark:text-gray-400 mt-1">Crea tu primer proyecto para empezar</p>
-            <Button onClick={() => setShowCreatePanel(true)} className="mt-4 gap-2"><Plus size={16} />Crear Proyecto</Button>
+            <Button onClick={openCreate} className="mt-4 gap-2"><Plus size={16} />Crear Proyecto</Button>
           </CardContent>
         </Card>
       ) : (
@@ -167,7 +172,7 @@ export default function ProjectsPage() {
           {filtered.map((project) => {
             const daysLeft = project.end_date ? Math.ceil((new Date(project.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
             return (
-              <Card key={project.id} className="hover:shadow-md transition-all group border-l-4" style={{ borderLeftColor: project.status === 'active' ? '#22c55e' : project.status === 'completed' ? '#3b82f6' : project.status === 'on_hold' ? '#eab308' : '#d1d5db' }}>
+              <Card key={project.id} onClick={() => openEdit(project)} className="hover:shadow-md transition-all group border-l-4 cursor-pointer" style={{ borderLeftColor: project.status === 'active' ? '#22c55e' : project.status === 'completed' ? '#3b82f6' : project.status === 'on_hold' ? '#eab308' : '#d1d5db' }}>
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
@@ -221,8 +226,9 @@ export default function ProjectsPage() {
       {/* Panel lateral */}
       <ProjectCreationPanel
         isOpen={showCreatePanel}
-        onClose={() => setShowCreatePanel(false)}
+        onClose={closePanel}
         users={users}
+        editProject={editProject}
         onProjectCreated={loadProjects}
       />
     </div>

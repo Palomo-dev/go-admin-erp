@@ -32,6 +32,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { pmService, type PMTask } from '@/lib/services/pmService';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getAssignableUsers } from '@/lib/services/userService';
 import { KanbanBoard } from '@/components/pm/views/KanbanBoard';
 import { CalendarView } from '@/components/pm/views/CalendarView';
 import { TaskListView } from '@/components/pm/views/TaskListView';
@@ -60,6 +61,12 @@ export default function PMTasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [editTask, setEditTask] = useState<PMTask | null>(null);
+  const [users, setUsers] = useState<Array<{id: string, nombre: string}>>([]);
+
+  const openCreate = () => { setEditTask(null); setShowCreatePanel(true); };
+  const openEdit = (t: PMTask) => { setEditTask(t); setShowCreatePanel(true); };
+  const closePanel = () => { setShowCreatePanel(false); setEditTask(null); };
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -86,6 +93,7 @@ export default function PMTasksPage() {
       setProjects(data || []);
     };
     loadProjects();
+    getAssignableUsers().then(setUsers);
   }, []);
 
   const handleTabChange = (tab: ViewTab) => {
@@ -131,7 +139,7 @@ export default function PMTasksPage() {
               <Button variant="outline" size="sm" onClick={loadTasks} className="gap-1">
                 <RefreshCw className="h-4 w-4" />Actualizar
               </Button>
-              <Button size="sm" onClick={() => setShowCreatePanel(!showCreatePanel)} className="gap-1 bg-blue-600 hover:bg-blue-700 text-white">
+              <Button size="sm" onClick={openCreate} className="gap-1 bg-blue-600 hover:bg-blue-700 text-white">
                 <Plus className="h-4 w-4" />Nueva Tarea
               </Button>
             </div>
@@ -214,7 +222,7 @@ export default function PMTasksPage() {
         ) : (
           <>
             {activeTab === 'list' && (
-              <TaskListView tasks={filtered} onTaskUpdate={loadTasks} />
+              <TaskListView tasks={filtered} onTaskClick={openEdit} onTaskUpdate={loadTasks} />
             )}
 
             {activeTab === 'kanban' && (
@@ -238,9 +246,11 @@ export default function PMTasksPage() {
       {/* Panel lateral - empuja el contenido */}
       <TaskCreationPanel
         isOpen={showCreatePanel}
-        onClose={() => setShowCreatePanel(false)}
+        onClose={closePanel}
         projects={projects}
         existingTasks={tasks.map(t => ({ id: t.id, title: t.title, status: t.status }))}
+        users={users}
+        editTask={editTask}
         onTaskCreated={loadTasks}
       />
     </div>

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization';
 import { supplierService, type SupplierInput } from '@/lib/services/supplierService';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,16 @@ import { ArrowLeft, Save, Loader2, Building2, User, Phone, Mail, FileText, MapPi
 import ImageUploader from '@/components/common/ImageUploader';
 import Link from 'next/link';
 
-export function NuevoProveedorForm() {
+interface NuevoProveedorFormProps {
+  /** Cuando se provee, tras crear el proveedor se llama en lugar de navegar (uso en diálogos) */
+  onSuccess?: (supplier: any) => void;
+  /** Callback para el botón cancelar cuando se usa embebido */
+  onCancel?: () => void;
+  /** Modo embebido: oculta header/sidebar y usa callbacks (para diálogos) */
+  embedded?: boolean;
+}
+
+export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: NuevoProveedorFormProps = {}) {
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -31,6 +41,85 @@ export function NuevoProveedorForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [generatingImg, setGeneratingImg] = useState(false);
+
+  // Tipo de proveedor: persona natural o empresa
+  const [supplierType, setSupplierType] = useState<'person' | 'company'>('company');
+  // Proveedor padre (para personas vinculadas a una empresa proveedora)
+  const [parentSupplierId, setParentSupplierId] = useState<string>('');
+  const [companySuppliers, setCompanySuppliers] = useState<{ id: number; name: string }[]>([]);
+  // Tipos de documento según el país de la organización
+  const fallbackDocTypes = [
+    { value: 'tax_id', label: 'ID Tributario / Fiscal', forCompany: true, forPerson: true },
+    { value: 'national_id', label: 'Documento nacional', forCompany: false, forPerson: true },
+    { value: 'passport', label: 'Pasaporte', forCompany: false, forPerson: true },
+    { value: 'other', label: 'Otro', forCompany: true, forPerson: true },
+  ];
+  const [documentTypes, setDocumentTypes] = useState<{ value: string; label: string; forCompany: boolean; forPerson: boolean }[]>(fallbackDocTypes);
+
+  // Cargar tipos de documento por país de la organización
+  useEffect(() => {
+    async function loadDocTypes() {
+      if (!organization?.id) return;
+      try {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('country_code')
+          .eq('id', organization.id)
+          .single();
+        const countryCode = org?.country_code || 'GEN';
+        let { data: types } = await supabase
+          .from('country_identification_types')
+          .select('code, name, for_company, for_person')
+          .eq('country_code', countryCode)
+          .eq('is_active', true)
+          .order('sort_order');
+        if (!types || types.length === 0) {
+          const { data: genTypes } = await supabase
+            .from('country_identification_types')
+            .select('code, name, for_company, for_person')
+            .eq('country_code', 'GEN')
+            .eq('is_active', true)
+            .order('sort_order');
+          types = genTypes;
+        }
+        if (types && types.length > 0) {
+          setDocumentTypes(types.map(t => ({ value: t.code, label: t.name, forCompany: t.for_company, forPerson: t.for_person })));
+        }
+      } catch (err) {
+        console.error('Error cargando tipos de documento:', err);
+      }
+    }
+    loadDocTypes();
+  }, [organization?.id]);
+
+  // Cargar empresas proveedoras (posibles proveedores padre)
+  useEffect(() => {
+    async function loadCompanies() {
+      const orgId = getOrganizationId();
+      if (!orgId) return;
+      const { data } = await supabase
+        .from('suppliers')
+        .select('id, name')
+        .eq('organization_id', orgId)
+        .eq('supplier_type', 'company')
+        .order('name');
+      if (data) setCompanySuppliers(data);
+    }
+    loadCompanies();
+  }, [organization?.id]);
+
+  // Tipos de documento visibles según el tipo de proveedor
+  const visibleDocTypes = documentTypes.filter(t => (supplierType === 'company' ? t.forCompany : t.forPerson));
+
+  // Ajustar el tipo de documento por defecto al cambiar el tipo de proveedor
+  useEffect(() => {
+    if (visibleDocTypes.length === 0) return;
+    const stillValid = visibleDocTypes.some(t => t.value === formData.doc_type);
+    if (!stillValid) {
+      setFormData(prev => ({ ...prev, doc_type: visibleDocTypes[0].value }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supplierType, documentTypes]);
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -86,11 +175,21 @@ export function NuevoProveedorForm() {
     try {
       setIsSaving(true);
       const organizationId = getOrganizationId();
-      const { data, error } = await supplierService.createSupplier(organizationId, formData);
+      const payload: SupplierInput = {
+        ...formData,
+        supplier_type: supplierType,
+        parent_supplier_id: supplierType === 'person' && parentSupplierId ? parseInt(parentSupplierId, 10) : null,
+      };
+      const { data, error } = await supplierService.createSupplier(organizationId, payload);
       if (error) throw error;
       toast({ title: 'Proveedor creado', description: 'El proveedor ha sido creado correctamente' });
-      if (data?.uuid) router.push(`/app/inventario/proveedores/${data.uuid}`);
-      else router.push('/app/inventario/proveedores');
+      if (onSuccess) {
+        onSuccess(data);
+      } else if (data?.uuid) {
+        router.push(`/app/inventario/proveedores/${data.uuid}`);
+      } else {
+        router.push('/app/inventario/proveedores');
+      }
     } catch (error: any) {
       console.error('Error creando proveedor:', error);
       toast({ variant: 'destructive', title: 'Error', description: error.message || 'No se pudo crear el proveedor' });
@@ -99,15 +198,17 @@ export function NuevoProveedorForm() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Link href="/app/inventario/proveedores">
-          <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Volver</Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nuevo Proveedor</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Registra un nuevo proveedor en el sistema</p>
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <Link href="/app/inventario/proveedores">
+            <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Volver</Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nuevo Proveedor</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Registra un nuevo proveedor en el sistema</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -120,14 +221,63 @@ export function NuevoProveedorForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Tipo de proveedor: persona natural o empresa */}
+                <div className="space-y-2">
+                  <Label className="dark:text-gray-300">Tipo de Proveedor</Label>
+                  <div className="grid grid-cols-2 gap-3 max-w-md">
+                    <div
+                      className={`flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${supplierType === 'company' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                      onClick={() => setSupplierType('company')}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      <span className="text-sm font-medium">Empresa</span>
+                    </div>
+                    <div
+                      className={`flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${supplierType === 'person' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}
+                      onClick={() => setSupplierType('person')}
+                    >
+                      <User className="h-4 w-4" />
+                      <span className="text-sm font-medium">Persona Natural</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Empresa proveedora padre (solo para personas) */}
+                {supplierType === 'person' && companySuppliers.length > 0 && (
+                  <div>
+                    <Label className="dark:text-gray-300">Empresa proveedora asociada (opcional)</Label>
+                    <Select value={parentSupplierId || 'none'} onValueChange={(v) => setParentSupplierId(v === 'none' ? '' : v)}>
+                      <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700"><SelectValue placeholder="Sin empresa asociada" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sin empresa asociada</SelectItem>
+                        {companySuppliers.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Vincula esta persona como contacto/proveedor hijo de una empresa</p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <Label className="dark:text-gray-300">Nombre / Razón Social *</Label>
-                    <Input value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Nombre del proveedor" className={`dark:bg-gray-900 dark:border-gray-700 ${errors.name ? 'border-red-500' : ''}`} />
+                    <Label className="dark:text-gray-300">{supplierType === 'company' ? 'Razón Social' : 'Nombre completo'} *</Label>
+                    <Input value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder={supplierType === 'company' ? 'Empresa S.A.S.' : 'Juan Pérez'} className={`dark:bg-gray-900 dark:border-gray-700 ${errors.name ? 'border-red-500' : ''}`} />
                     {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
                   </div>
                   <div>
-                    <Label className="dark:text-gray-300">NIT / Identificación</Label>
+                    <Label className="dark:text-gray-300">Tipo de Documento</Label>
+                    <Select value={formData.doc_type || ''} onValueChange={(v) => handleChange('doc_type', v)}>
+                      <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                      <SelectContent>
+                        {visibleDocTypes.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="dark:text-gray-300">Número de Documento</Label>
                     <Input value={formData.nit} onChange={(e) => handleChange('nit', e.target.value)} placeholder="123456789-0" className="dark:bg-gray-900 dark:border-gray-700" />
                   </div>
                   <div>
@@ -323,9 +473,13 @@ export function NuevoProveedorForm() {
                   {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   Guardar Proveedor
                 </Button>
-                <Link href="/app/inventario/proveedores" className="block">
-                  <Button type="button" variant="outline" className="w-full dark:border-gray-700">Cancelar</Button>
-                </Link>
+                {embedded && onCancel ? (
+                  <Button type="button" variant="outline" className="w-full dark:border-gray-700" onClick={onCancel}>Cancelar</Button>
+                ) : (
+                  <Link href="/app/inventario/proveedores" className="block">
+                    <Button type="button" variant="outline" className="w-full dark:border-gray-700">Cancelar</Button>
+                  </Link>
+                )}
               </CardContent>
             </Card>
 

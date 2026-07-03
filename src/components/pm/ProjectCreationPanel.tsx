@@ -13,6 +13,7 @@ import {
   ChevronUp,
   Trash2,
   UserPlus,
+  Shuffle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +30,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import { pmService } from '@/lib/services/pmService';
+import { pmService, type Project } from '@/lib/services/pmService';
 import { cn } from '@/utils/Utils';
 
 interface MemberItem {
@@ -43,6 +44,7 @@ interface ProjectCreationPanelProps {
   onClose: () => void;
   users: Array<{ id: string; nombre: string }>;
   onProjectCreated: () => void;
+  editProject?: Project | null;
 }
 
 const INITIAL_FORM = {
@@ -63,9 +65,10 @@ const ROLE_LABELS: Record<string, string> = {
   viewer: 'Observador',
 };
 
-export default function ProjectCreationPanel({ isOpen, onClose, users, onProjectCreated }: ProjectCreationPanelProps) {
+export default function ProjectCreationPanel({ isOpen, onClose, users, onProjectCreated, editProject }: ProjectCreationPanelProps) {
   const { toast } = useToast();
   const [isMobile, setIsMobile] = useState(false);
+  const isEdit = !!editProject;
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)');
@@ -77,6 +80,8 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
 
   const [form, setForm] = useState(INITIAL_FORM);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [distributing, setDistributing] = useState(false);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [showMembers, setShowMembers] = useState(false);
 
@@ -86,12 +91,69 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
     setShowMembers(false);
   }, []);
 
+  // Precargar datos al editar
+  useEffect(() => {
+    if (editProject) {
+      setForm({
+        name: editProject.name || '',
+        description: editProject.description || '',
+        status: editProject.status || 'draft',
+        priority: editProject.priority || 'med',
+        start_date: editProject.start_date || '',
+        end_date: editProject.end_date || '',
+        budget: editProject.budget != null ? String(editProject.budget) : '',
+        owner_id: editProject.owner_id || '',
+      });
+      pmService.getProjectMembers(editProject.id).then(pm => {
+        setMembers(pm.map(m => ({
+          userId: m.user_id,
+          nombre: users.find(u => u.id === m.user_id)?.nombre || 'Usuario',
+          role: m.role,
+        })));
+        if (pm.length > 0) setShowMembers(true);
+      });
+    } else {
+      resetForm();
+    }
+  }, [editProject, users, resetForm]);
+
+  const handleDelete = async () => {
+    if (!editProject) return;
+    if (!window.confirm(`¿Eliminar el proyecto "${editProject.name}"? Esta acción no se puede deshacer.`)) return;
+    setDeleting(true);
+    try {
+      await pmService.deleteProject(editProject.id);
+      toast({ title: 'Proyecto eliminado' });
+      resetForm();
+      onClose();
+      onProjectCreated();
+    } catch (error: any) {
+      toast({ title: 'Error al eliminar', description: error.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDistribute = async () => {
+    if (!editProject) return;
+    setDistributing(true);
+    try {
+      const n = await pmService.distributeProjectTasks(editProject.id);
+      toast({ title: 'Tareas distribuidas', description: `${n} tarea(s) asignadas por cargo y departamento` });
+      onProjectCreated();
+    } catch (error: any) {
+      toast({ title: 'Error al distribuir', description: error.message, variant: 'destructive' });
+    } finally {
+      setDistributing(false);
+    }
+  };
+
   const handleCreate = async () => {
     if (!form.name.trim()) { toast({ title: 'El nombre es requerido', variant: 'destructive' }); return; }
 
     setCreating(true);
     try {
-      const project = await pmService.createProject({
+      const payload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
         status: form.status as any,
@@ -100,21 +162,32 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         end_date: form.end_date || null,
         budget: form.budget ? parseFloat(form.budget) : null,
         owner_id: form.owner_id || null,
-      });
+      };
 
-      // Agregar miembros
-      if (members.length > 0) {
-        await Promise.all(members.map(m =>
-          pmService.addProjectMember(project.id, m.userId, m.role)
-        ));
+      if (isEdit && editProject) {
+        await pmService.updateProject(editProject.id, payload);
+        // Sincronizar miembros: agregar nuevos, quitar eliminados
+        const existing = await pmService.getProjectMembers(editProject.id);
+        const existingIds = new Set(existing.map(m => m.user_id));
+        const currentIds = new Set(members.map(m => m.userId));
+        await Promise.all([
+          ...members.filter(m => !existingIds.has(m.userId)).map(m => pmService.addProjectMember(editProject.id, m.userId, m.role)),
+          ...existing.filter(m => !currentIds.has(m.user_id)).map(m => pmService.removeProjectMember(editProject.id, m.user_id)),
+        ]);
+        toast({ title: 'Proyecto actualizado', description: `"${form.name}" guardado` });
+      } else {
+        const project = await pmService.createProject(payload);
+        if (members.length > 0) {
+          await Promise.all(members.map(m => pmService.addProjectMember(project.id, m.userId, m.role)));
+        }
+        toast({ title: 'Proyecto creado exitosamente', description: `"${form.name}" con ${members.length} miembros` });
       }
 
-      toast({ title: 'Proyecto creado exitosamente', description: `"${form.name}" con ${members.length} miembros` });
       resetForm();
       onClose();
       onProjectCreated();
     } catch (error: any) {
-      toast({ title: 'Error al crear proyecto', description: error.message, variant: 'destructive' });
+      toast({ title: isEdit ? 'Error al actualizar proyecto' : 'Error al crear proyecto', description: error.message, variant: 'destructive' });
     } finally {
       setCreating(false);
     }
@@ -129,7 +202,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
             <FolderKanban className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Nuevo Proyecto</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">{isEdit ? 'Editar Proyecto' : 'Nuevo Proyecto'}</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">Define alcance, equipo y presupuesto</p>
           </div>
         </div>
@@ -298,6 +371,22 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
                   ))}
                 </SelectContent>
               </Select>
+
+              {isEdit && members.length > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDistribute}
+                  disabled={distributing}
+                  className="w-full mt-1 border-dashed text-blue-600 hover:text-blue-700 hover:border-blue-400"
+                >
+                  {distributing ? (
+                    <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Distribuyendo...</>
+                  ) : (
+                    <><Shuffle className="h-4 w-4 mr-1.5" />Distribuir tareas por cargo/departamento</>
+                  )}
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -305,18 +394,24 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-2 flex-shrink-0">
-        <Button variant="outline" onClick={() => { resetForm(); onClose(); }} className="flex-1">
-          Cancelar
-        </Button>
+        {isEdit ? (
+          <Button variant="outline" onClick={handleDelete} disabled={deleting} className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/40">
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => { resetForm(); onClose(); }} className="flex-1">
+            Cancelar
+          </Button>
+        )}
         <Button
           onClick={handleCreate}
           disabled={creating || !form.name.trim()}
           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
         >
           {creating ? (
-            <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Creando...</>
+            <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{isEdit ? 'Guardando...' : 'Creando...'}</>
           ) : (
-            'Crear Proyecto'
+            isEdit ? 'Guardar Cambios' : 'Crear Proyecto'
           )}
         </Button>
       </div>
@@ -347,7 +442,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
             className="w-full sm:w-[440px] sm:max-w-[440px] p-0 border-0 bg-white dark:bg-gray-900 [&>button:last-child]:hidden"
           >
             <VisuallyHidden.Root>
-              <SheetTitle>Nuevo Proyecto</SheetTitle>
+              <SheetTitle>{isEdit ? 'Editar Proyecto' : 'Nuevo Proyecto'}</SheetTitle>
             </VisuallyHidden.Root>
             {renderContent()}
           </SheetContent>

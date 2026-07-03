@@ -213,6 +213,27 @@ export const pmService = {
     return data;
   },
 
+  async updateGoal(id: string, updates: Partial<Goal>): Promise<Goal> {
+    const { data, error } = await supabase.from('goals').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteGoal(id: string): Promise<void> {
+    const { error } = await supabase.from('goals').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async deleteProject(id: string): Promise<void> {
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async deleteTask(id: string): Promise<void> {
+    const { error } = await supabase.from('tasks').delete().eq('id', id);
+    if (error) throw error;
+  },
+
   // ─── Milestones CRUD ─────────────
   async getMilestones(projectId?: string): Promise<Milestone[]> {
     const orgId = getOrganizationId();
@@ -377,6 +398,76 @@ export const pmService = {
     const { data, error } = await supabase.from('project_members').select('id, user_id, role').eq('project_id', projectId);
     if (error) { console.error('Error getProjectMembers:', error.message); return []; }
     return data || [];
+  },
+
+  async removeProjectMember(projectId: string, userId: string): Promise<void> {
+    const { error } = await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', userId);
+    if (error) throw error;
+  },
+
+  // Miembros de la organización con su cargo y departamento (para asignación por rol)
+  async getMembersWithPositions(): Promise<Array<{ user_id: string; nombre: string; position: string; department: string }>> {
+    const orgId = getOrganizationId();
+    if (!orgId) return [];
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('user_id, job_position_id, profiles!inner(first_name, last_name, email), job_positions(name, departments(name))')
+      .eq('organization_id', orgId)
+      .eq('is_active', true);
+    if (error) { console.error('Error getMembersWithPositions:', error.message); return []; }
+    return (data || []).map((m: any) => {
+      const p = m.profiles;
+      const nombre = (p?.first_name || p?.last_name) ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : (p?.email || 'Usuario');
+      return {
+        user_id: m.user_id,
+        nombre,
+        position: m.job_positions?.name || '',
+        department: m.job_positions?.departments?.name || '',
+      };
+    });
+  },
+
+  /**
+   * Distribuye las tareas sin responsable de un proyecto entre sus miembros,
+   * priorizando por coincidencia de cargo/departamento con el contenido de la tarea
+   * y balanceando la carga (round-robin) como respaldo.
+   */
+  async distributeProjectTasks(projectId: string): Promise<number> {
+    const [members, tasks] = await Promise.all([
+      this.getProjectMembers(projectId),
+      supabase.from('tasks').select('id, title, description, tags, assigned_to').eq('project_id', projectId)
+        .in('status', ['open', 'in_progress']).then(r => r.data || []),
+    ]);
+    if (members.length === 0) return 0;
+
+    const positions = await this.getMembersWithPositions();
+    const posMap = new Map(positions.map(p => [p.user_id, p]));
+    // Enriquecer miembros del proyecto con cargo/departamento
+    const enriched = members.map(m => ({
+      user_id: m.user_id,
+      keywords: [
+        (posMap.get(m.user_id)?.position || ''),
+        (posMap.get(m.user_id)?.department || ''),
+      ].join(' ').toLowerCase().split(/[\s,/-]+/).filter(w => w.length >= 3),
+      load: 0,
+    }));
+
+    const unassigned = (tasks as any[]).filter(t => !t.assigned_to);
+    let assigned = 0;
+    for (const task of unassigned) {
+      const haystack = `${task.title || ''} ${task.description || ''} ${(task.tags || []).join(' ')}`.toLowerCase();
+      // Puntuar cada miembro por coincidencia de palabras clave de cargo/departamento
+      let best = enriched[0];
+      let bestScore = -1;
+      for (const member of enriched) {
+        const matches = member.keywords.filter(k => haystack.includes(k)).length;
+        const score = matches * 100 - member.load; // prioriza match, luego menor carga
+        if (score > bestScore) { bestScore = score; best = member; }
+      }
+      const { error } = await supabase.from('tasks').update({ assigned_to: best.user_id, updated_at: new Date().toISOString() }).eq('id', task.id);
+      if (!error) { best.load += 1; assigned += 1; }
+    }
+    return assigned;
   },
 
   // ─── Recent Activity ─────────────

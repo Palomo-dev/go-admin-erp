@@ -59,8 +59,13 @@ export default function GoalsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [users, setUsers] = useState<Array<{id: string, nombre: string}>>([]);
   const { toast } = useToast();
+
+  const openCreate = () => { setEditGoal(null); setShowCreatePanel(true); };
+  const openEdit = (g: Goal) => { setEditGoal(g); setShowCreatePanel(true); };
+  const closePanel = () => { setShowCreatePanel(false); setEditGoal(null); };
 
   const loadGoals = useCallback(async () => {
     try {
@@ -119,7 +124,7 @@ export default function GoalsPage() {
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Gestiona metas, propósitos y propuestas</p>
             </div>
           </div>
-          <Button onClick={() => setShowCreatePanel(!showCreatePanel)} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+          <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
             <Plus size={16} />Nueva Meta
           </Button>
         </div>
@@ -175,7 +180,7 @@ export default function GoalsPage() {
             <Target className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay metas</h3>
             <p className="text-gray-500 dark:text-gray-400 mt-1">Crea tu primera meta o propuesta</p>
-            <Button onClick={() => setShowCreatePanel(true)} className="mt-4 gap-2"><Plus size={16} />Crear Meta</Button>
+            <Button onClick={openCreate} className="mt-4 gap-2"><Plus size={16} />Crear Meta</Button>
           </CardContent>
         </Card>
       ) : (
@@ -183,7 +188,7 @@ export default function GoalsPage() {
           {filtered.map((goal) => {
             const daysLeft = goal.target_date ? Math.ceil((new Date(goal.target_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
             return (
-              <Card key={goal.id} className="hover:shadow-md transition-all border-l-4" style={{ borderLeftColor: goal.status === 'achieved' ? '#22c55e' : goal.status === 'active' ? '#eab308' : goal.type === 'proposal' ? '#a855f7' : '#d1d5db' }}>
+              <Card key={goal.id} onClick={() => openEdit(goal)} className="hover:shadow-md transition-all border-l-4 cursor-pointer" style={{ borderLeftColor: goal.status === 'achieved' ? '#22c55e' : goal.status === 'active' ? '#eab308' : goal.type === 'proposal' ? '#a855f7' : '#d1d5db' }}>
                 <CardHeader className="pb-2">
                   <div className="flex items-start gap-2">
                     <div className={`p-1.5 rounded-lg mt-0.5 ${TYPE_COLORS[goal.type]}`}>
@@ -233,9 +238,10 @@ export default function GoalsPage() {
       {/* Panel lateral */}
       <GoalCreationPanel
         isOpen={showCreatePanel}
-        onClose={() => setShowCreatePanel(false)}
+        onClose={closePanel}
         projects={projects}
         users={users}
+        editGoal={editGoal}
         onGoalCreated={loadGoals}
       />
     </div>

@@ -71,7 +71,16 @@ interface ProductFormData {
   tags: number[]
 }
 
-export default function NuevoProductoForm() {
+interface NuevoProductoFormProps {
+  /** Cuando se provee, tras crear el producto se llama en lugar de navegar (uso en diálogos) */
+  onSuccess?: (product: { id: number; uuid: string; name: string; sku: string; price: number; cost: number }) => void
+  /** Callback para el botón cancelar cuando se usa embebido */
+  onCancel?: () => void
+  /** Modo embebido: usa callbacks en lugar de navegar (para diálogos) */
+  embedded?: boolean
+}
+
+export default function NuevoProductoForm({ onSuccess, onCancel, embedded = false }: NuevoProductoFormProps = {}) {
   const router = useRouter()
   const { toast } = useToast()
   const { organization, branch_id } = useOrganization()
@@ -421,7 +430,18 @@ export default function NuevoProductoForm() {
         description: "El producto se ha creado exitosamente"
       })
 
-      router.push(`/app/inventario/productos/${product.uuid}`)
+      if (onSuccess) {
+        onSuccess({
+          id: product.id,
+          uuid: product.uuid,
+          name: formData.name,
+          sku: formData.sku,
+          price: formData.price,
+          cost: formData.cost,
+        })
+      } else {
+        router.push(`/app/inventario/productos/${product.uuid}`)
+      }
     } catch (error: any) {
       const errMsg = error?.message || error?.details || error?.hint || (typeof error === 'string' ? error : JSON.stringify(error))
       console.error('Error creando producto:', errMsg, error)
@@ -513,7 +533,7 @@ export default function NuevoProductoForm() {
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.back()}
+          onClick={() => (embedded && onCancel ? onCancel() : router.back())}
           disabled={isLoading}
           className="border-gray-300 dark:border-gray-700"
         >

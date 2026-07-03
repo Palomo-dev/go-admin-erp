@@ -15,7 +15,16 @@ import { ArrowLeft, Save, Loader2, Building2, User, Phone, Mail, FileText, MapPi
 import ImageUploader from '@/components/common/ImageUploader';
 import Link from 'next/link';
 
-export function NuevoProveedorForm() {
+interface NuevoProveedorFormProps {
+  /** Cuando se provee, tras crear el proveedor se llama en lugar de navegar (uso en diálogos) */
+  onSuccess?: (supplier: any) => void;
+  /** Callback para el botón cancelar cuando se usa embebido */
+  onCancel?: () => void;
+  /** Modo embebido: oculta header/sidebar y usa callbacks (para diálogos) */
+  embedded?: boolean;
+}
+
+export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: NuevoProveedorFormProps = {}) {
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -89,8 +98,13 @@ export function NuevoProveedorForm() {
       const { data, error } = await supplierService.createSupplier(organizationId, formData);
       if (error) throw error;
       toast({ title: 'Proveedor creado', description: 'El proveedor ha sido creado correctamente' });
-      if (data?.uuid) router.push(`/app/inventario/proveedores/${data.uuid}`);
-      else router.push('/app/inventario/proveedores');
+      if (onSuccess) {
+        onSuccess(data);
+      } else if (data?.uuid) {
+        router.push(`/app/inventario/proveedores/${data.uuid}`);
+      } else {
+        router.push('/app/inventario/proveedores');
+      }
     } catch (error: any) {
       console.error('Error creando proveedor:', error);
       toast({ variant: 'destructive', title: 'Error', description: error.message || 'No se pudo crear el proveedor' });
@@ -99,15 +113,17 @@ export function NuevoProveedorForm() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Link href="/app/inventario/proveedores">
-          <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Volver</Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nuevo Proveedor</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Registra un nuevo proveedor en el sistema</p>
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <Link href="/app/inventario/proveedores">
+            <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Volver</Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nuevo Proveedor</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Registra un nuevo proveedor en el sistema</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -323,9 +339,13 @@ export function NuevoProveedorForm() {
                   {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   Guardar Proveedor
                 </Button>
-                <Link href="/app/inventario/proveedores" className="block">
-                  <Button type="button" variant="outline" className="w-full dark:border-gray-700">Cancelar</Button>
-                </Link>
+                {embedded && onCancel ? (
+                  <Button type="button" variant="outline" className="w-full dark:border-gray-700" onClick={onCancel}>Cancelar</Button>
+                ) : (
+                  <Link href="/app/inventario/proveedores" className="block">
+                    <Button type="button" variant="outline" className="w-full dark:border-gray-700">Cancelar</Button>
+                  </Link>
+                )}
               </CardContent>
             </Card>
 

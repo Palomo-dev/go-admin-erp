@@ -22,6 +22,12 @@ interface ClientFormProps {
   branchId?: number;
   clientId?: string; // Si se proporciona, es modo edición
   mode?: 'create' | 'edit';
+  /** Cuando se provee, tras crear/actualizar se llama en lugar de navegar (uso en diálogos) */
+  onSuccess?: (customer: any) => void;
+  /** Callback para el botón cancelar cuando se usa embebido */
+  onCancel?: () => void;
+  /** Modo embebido: oculta redirecciones y usa callbacks (para diálogos) */
+  embedded?: boolean;
 }
 
 type DocumentType = string;
@@ -49,7 +55,7 @@ const fallbackDocumentTypes: DocumentTypeOption[] = [
   { value: 'other', label: 'Otro', forCompany: true, forPerson: true }
 ];
 
-export function ClientForm({ organizationId, branchId, clientId, mode = 'create' }: ClientFormProps) {
+export function ClientForm({ organizationId, branchId, clientId, mode = 'create', onSuccess, onCancel, embedded = false }: ClientFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const isEditMode = mode === 'edit' && !!clientId;
@@ -428,7 +434,11 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           variant: "default",
         });
         
-        router.push(`/app/clientes/${clientId}`);
+        if (onSuccess) {
+          onSuccess({ id: clientId, ...updatedData });
+        } else {
+          router.push(`/app/clientes/${clientId}`);
+        }
         
       } else {
         // ===== MODO CREACIÓN =====
@@ -481,8 +491,10 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           variant: "default",
         });
         
-        // Redireccionar a la vista de detalle
-        if (newCustomer) {
+        // Si se usa embebido (diálogo), devolver el cliente creado vía callback
+        if (onSuccess) {
+          if (newCustomer) onSuccess(newCustomer);
+        } else if (newCustomer) {
           router.push(`/app/clientes/${newCustomer.id}`);
         } else {
           router.push('/app/clientes');
@@ -1130,7 +1142,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
+                  onClick={() => (embedded && onCancel ? onCancel() : router.back())}
                   disabled={loading}
                   className="min-w-[100px]"
                 >
@@ -1140,7 +1152,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 
                 <Button 
                   type="submit" 
-                  disabled={loading || !formData.firstName || !formData.lastName}
+                  disabled={loading || (customerType === 'company' ? !formData.companyName : (!formData.firstName || !formData.lastName))}
                   className={cn(
                     "min-w-[160px] bg-blue-600 hover:bg-blue-700",
                     loading ? "opacity-80" : ""

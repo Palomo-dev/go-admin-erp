@@ -6,7 +6,8 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2, Search, PackagePlus } from 'lucide-react';
+import { ProductoFormDialog } from '@/components/shared/form-dialogs';
 import {
   Table,
   TableBody,
@@ -47,6 +48,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const organizationId = getOrganizationId();
 
   // Cargar productos al iniciar
@@ -233,6 +235,25 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
     onItemsChange(updatedItems);
   };
 
+  // Cuando el diálogo compartido crea un producto: recargar catálogo y agregarlo a la factura
+  const handleProductoCreado = async (product: { id: number; name: string; sku: string; price: number }) => {
+    await cargarProductos();
+    const includeTax = taxIncluded;
+    const newItem: InvoiceItem = {
+      invoice_type: 'sale',
+      product_id: product.id,
+      description: product.name,
+      qty: 1,
+      unit_price: product.price,
+      tax_code: null,
+      tax_rate: null,
+      tax_included: includeTax,
+      total_line: product.price,
+      product_name: product.name,
+    };
+    onItemsChange([...items, newItem]);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
@@ -334,6 +355,22 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
         <Button 
           variant="outline"
           size="sm"
+          onClick={() => setIsProductDialogOpen(true)}
+          className="
+            w-full sm:w-auto
+            bg-white dark:bg-gray-800
+            border-gray-300 dark:border-gray-600
+            hover:bg-gray-50 dark:hover:bg-gray-700
+            text-gray-700 dark:text-gray-200
+          "
+        >
+          <PackagePlus className="h-4 w-4 mr-2" />
+          <span className="text-sm">Nuevo Producto</span>
+        </Button>
+
+        <Button 
+          variant="outline"
+          size="sm"
           onClick={agregarItemManual}
           className="
             w-full sm:w-auto
@@ -346,6 +383,13 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
           <Plus className="h-4 w-4 mr-2" />
           <span className="text-sm">Agregar Ítem Manual</span>
         </Button>
+
+        {/* Diálogo compartido: reutiliza el formulario COMPLETO de producto */}
+        <ProductoFormDialog
+          open={isProductDialogOpen}
+          onOpenChange={setIsProductDialogOpen}
+          onCreated={handleProductoCreado}
+        />
       </div>
       
       {/* Tabla de ítems */}

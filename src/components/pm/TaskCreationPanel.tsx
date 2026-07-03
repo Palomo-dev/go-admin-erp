@@ -33,7 +33,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import { pmService, PRIORITY_LABELS } from '@/lib/services/pmService';
+import { pmService, PRIORITY_LABELS, type PMTask } from '@/lib/services/pmService';
 import { cn } from '@/utils/Utils';
 
 interface SubtaskItem {
@@ -58,6 +58,8 @@ interface TaskCreationPanelProps {
   onClose: () => void;
   projects: Array<{ id: string; name: string }>;
   existingTasks?: Array<{ id: string; title: string; status: string }>;
+  users?: Array<{ id: string; nombre: string }>;
+  editTask?: PMTask | null;
   onTaskCreated: () => void;
 }
 
@@ -68,6 +70,8 @@ const INITIAL_FORM = {
   priority: 'med',
   due_date: '',
   estimated_hours: '',
+  status: 'open',
+  assigned_to: '',
 };
 
 function formatFileSize(bytes: number): string {
@@ -82,10 +86,12 @@ function getFileIcon(type: string) {
   return <File className="h-4 w-4 text-gray-500" />;
 }
 
-export default function TaskCreationPanel({ isOpen, onClose, projects, existingTasks = [], onTaskCreated }: TaskCreationPanelProps) {
+export default function TaskCreationPanel({ isOpen, onClose, projects, existingTasks = [], users = [], editTask, onTaskCreated }: TaskCreationPanelProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const isEdit = !!editTask;
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)');
@@ -116,6 +122,41 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
     setShowAttachments(false);
     setShowDependencies(false);
   }, []);
+
+  // Precargar datos al editar
+  useEffect(() => {
+    if (editTask) {
+      setForm({
+        title: editTask.title || '',
+        description: editTask.description || '',
+        project_id: editTask.project_id || '',
+        priority: editTask.priority || 'med',
+        due_date: editTask.due_date || '',
+        estimated_hours: editTask.estimated_hours != null ? String(editTask.estimated_hours) : '',
+        status: editTask.status || 'open',
+        assigned_to: editTask.assigned_to || '',
+      });
+    } else {
+      resetForm();
+    }
+  }, [editTask, resetForm]);
+
+  const handleDelete = async () => {
+    if (!editTask) return;
+    if (!window.confirm(`¿Eliminar la tarea "${editTask.title}"? Esta acción no se puede deshacer.`)) return;
+    setDeleting(true);
+    try {
+      await pmService.deleteTask(editTask.id);
+      toast({ title: 'Tarea eliminada' });
+      resetForm();
+      onClose();
+      onTaskCreated();
+    } catch (error: any) {
+      toast({ title: 'Error al eliminar', description: error.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleAddSubtask = () => {
     if (!newSubtask.trim()) return;
@@ -160,6 +201,25 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
 
     setCreating(true);
     try {
+      // Modo edición: actualizar campos principales y salir
+      if (isEdit && editTask) {
+        await pmService.updateTask(editTask.id, {
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          project_id: form.project_id,
+          priority: form.priority,
+          due_date: form.due_date || null,
+          estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
+          status: form.status,
+          assigned_to: form.assigned_to || null,
+        });
+        toast({ title: 'Tarea actualizada', description: `"${form.title}" guardada` });
+        resetForm();
+        onClose();
+        onTaskCreated();
+        return;
+      }
+
       // 1. Crear tarea principal
       const task = await pmService.createTask({
         title: form.title.trim(),
@@ -168,6 +228,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         priority: form.priority,
         due_date: form.due_date || null,
         estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
+        assigned_to: form.assigned_to || null,
         status: 'open',
       });
 
@@ -215,7 +276,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
             <ClipboardList className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Nueva Tarea</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">{isEdit ? 'Editar Tarea' : 'Nueva Tarea'}</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">Crea una tarea vinculada a un proyecto</p>
           </div>
         </div>
@@ -303,9 +364,43 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
           </div>
         </div>
 
+        {/* Responsable + Estado (edición) */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Responsable</Label>
+            <Select value={form.assigned_to || 'none'} onValueChange={(v) => setForm(f => ({ ...f, assigned_to: v === 'none' ? '' : v }))}>
+              <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectValue placeholder="Sin asignar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin asignar</SelectItem>
+                {users.map(u => <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {isEdit && (
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Estado</Label>
+              <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v }))}>
+                <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Pendiente</SelectItem>
+                  <SelectItem value="in_progress">En Progreso</SelectItem>
+                  <SelectItem value="done">Completada</SelectItem>
+                  <SelectItem value="canceled">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
         {/* Divider */}
         <div className="border-t border-gray-100 dark:border-gray-800" />
 
+        {!isEdit && (
+        <>
         {/* Subtareas - collapsible */}
         <div>
           <button
@@ -472,22 +567,30 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-2 flex-shrink-0">
-        <Button variant="outline" onClick={() => { resetForm(); onClose(); }} className="flex-1">
-          Cancelar
-        </Button>
+        {isEdit ? (
+          <Button variant="outline" onClick={handleDelete} disabled={deleting} className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/40">
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => { resetForm(); onClose(); }} className="flex-1">
+            Cancelar
+          </Button>
+        )}
         <Button
           onClick={handleCreate}
           disabled={creating || !form.title.trim() || !form.project_id}
           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
         >
           {creating ? (
-            <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{uploadingFiles ? 'Subiendo archivos...' : 'Creando...'}</>
+            <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{uploadingFiles ? 'Subiendo archivos...' : (isEdit ? 'Guardando...' : 'Creando...')}</>
           ) : (
-            'Crear Tarea'
+            isEdit ? 'Guardar Cambios' : 'Crear Tarea'
           )}
         </Button>
       </div>
@@ -518,7 +621,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
             className="w-full sm:w-[440px] sm:max-w-[440px] p-0 border-0 bg-white dark:bg-gray-900 [&>button:last-child]:hidden"
           >
             <VisuallyHidden.Root>
-              <SheetTitle>Nueva Tarea</SheetTitle>
+              <SheetTitle>{isEdit ? 'Editar Tarea' : 'Nueva Tarea'}</SheetTitle>
             </VisuallyHidden.Root>
             {renderContent()}
           </SheetContent>

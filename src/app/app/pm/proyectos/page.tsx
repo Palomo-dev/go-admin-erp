@@ -195,6 +195,15 @@ export default function ProjectsPage() {
                   {project.description && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{project.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
                   )}
+                  <div className="mb-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Progreso</span>
+                      <span className="font-medium">{project.progress ?? 0}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${(project.progress ?? 0) >= 100 ? 'bg-green-500' : (project.progress ?? 0) >= 50 ? 'bg-blue-500' : 'bg-yellow-400'}`} style={{ width: `${Math.min(project.progress ?? 0, 100)}%` }} />
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-3 text-xs text-gray-500">
                       {project.start_date && (

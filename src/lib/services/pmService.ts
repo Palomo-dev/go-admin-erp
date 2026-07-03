@@ -213,6 +213,27 @@ export const pmService = {
     return data;
   },
 
+  async updateGoal(id: string, updates: Partial<Goal>): Promise<Goal> {
+    const { data, error } = await supabase.from('goals').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteGoal(id: string): Promise<void> {
+    const { error } = await supabase.from('goals').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async deleteProject(id: string): Promise<void> {
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async deleteTask(id: string): Promise<void> {
+    const { error } = await supabase.from('tasks').delete().eq('id', id);
+    if (error) throw error;
+  },
+
   // ─── Milestones CRUD ─────────────
   async getMilestones(projectId?: string): Promise<Milestone[]> {
     const orgId = getOrganizationId();

@@ -430,6 +430,13 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       }
     }
 
+    // Totales de respaldo calculados desde los items: el estado subtotal/total
+    // puede quedar en 0 si la sincronización con ImpuestosFactura no ocurrió
+    const itemsSubtotal = items.reduce((sum, it) => sum + (Number(it.total_line) || 0), 0);
+    const safeSubtotal = subtotal > 0 ? subtotal : itemsSubtotal;
+    const safeTaxTotal = taxTotal > 0 ? taxTotal : 0;
+    const safeTotal = total > 0 ? total : (taxIncluded ? itemsSubtotal : itemsSubtotal + safeTaxTotal);
+
     // Si estamos en modo edición, delegar al onSubmit del padre
     if (esEdicion && onSubmit) {
       const datosFactura = {
@@ -443,9 +450,9 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         payment_method: paymentMethodCode || null,
         notes: notes || null,
         tax_included: taxIncluded,
-        subtotal,
-        tax_total: taxTotal,
-        total,
+        subtotal: safeSubtotal,
+        tax_total: safeTaxTotal,
+        total: safeTotal,
         appliedTaxes,
         items: items.map(item => ({
           id: item.id,
@@ -474,10 +481,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         customer_id: selectedCustomerId || null,
         user_id: currentUserId,
         sale_date: issueDate?.toISOString() || new Date().toISOString(),
-        subtotal: subtotal,
-        tax_total: taxTotal,
-        total: total,
-        balance: total, // Al crear, el balance es igual al total
+        subtotal: safeSubtotal,
+        tax_total: safeTaxTotal,
+        total: safeTotal,
+        balance: safeTotal, // Al crear, el balance es igual al total
         status: 'pending', // Estado permitido por la restricción sales_status_check
         payment_status: 'pending', // Por defecto pendiente de pago
         notes: notes,
@@ -526,10 +533,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         issue_date: issueDate ? toLocalDateString(issueDate) : null,
         due_date: dueDate ? toLocalDateString(dueDate) : null,
         currency: currency, // Moneda seleccionada por el usuario
-        subtotal: subtotal,
-        tax_total: taxTotal,
-        total: total,
-        balance: total, // Al crear, el balance es igual al total
+        subtotal: safeSubtotal,
+        tax_total: safeTaxTotal,
+        total: safeTotal,
+        balance: safeTotal, // Al crear, el balance es igual al total
         status: 'draft', // Por defecto
         payment_terms: paymentTerms,
         payment_method: paymentMethodCode,

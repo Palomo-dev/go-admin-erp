@@ -165,7 +165,23 @@ export default class InstagramChannelService {
       return { valid: false, message: 'Credenciales incompletas' };
     }
 
-    const isValid = true;
+    // Validación real contra Graph API: el token debe poder leer la cuenta IG Business
+    let isValid = false;
+    let message = 'Error al verificar conexión';
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v19.0/${creds.credentials.instagram_business_account_id}?fields=id,username&access_token=${encodeURIComponent(creds.credentials.access_token)}`
+      );
+      const json = await res.json();
+      if (res.ok && json.id === creds.credentials.instagram_business_account_id) {
+        isValid = true;
+        message = `Conexión verificada: cuenta @${json.username || json.id}`;
+      } else {
+        message = json.error?.message || 'Account ID o Access Token inválidos';
+      }
+    } catch (err) {
+      message = 'No se pudo contactar a Meta para validar las credenciales';
+    }
 
     await supabase
       .from('channel_credentials')
@@ -175,10 +191,7 @@ export default class InstagramChannelService {
       })
       .eq('channel_id', channelId);
 
-    return { 
-      valid: isValid, 
-      message: isValid ? 'Conexión verificada correctamente' : 'Error al verificar conexión' 
-    };
+    return { valid: isValid, message };
   }
 
   async activateChannel(channelId: string): Promise<boolean> {

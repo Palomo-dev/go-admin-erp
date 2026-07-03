@@ -67,8 +67,9 @@ export async function GET(request: NextRequest) {
         .insert({
           organization_id: state.organization_id,
           connector_id: connector.id,
-          connection_name: `Meta Marketing - ${oauthResult.businessName}`,
-          status: 'active',
+          name: `Meta Marketing - ${oauthResult.businessName}`,
+          status: 'connected',
+          connected_at: new Date().toISOString(),
           environment: 'production',
           country_code: 'CO',
         })
@@ -99,6 +100,16 @@ export async function GET(request: NextRequest) {
 
     const domain = domainData?.host || `${orgData?.subdomain || 'shop'}.goadmin.io`;
 
+    // Moneda base de la organización (organization_currencies, is_base = true)
+    const { data: currencyData } = await supabase
+      .from('organization_currencies')
+      .select('currency_code')
+      .eq('organization_id', state.organization_id)
+      .eq('is_base', true)
+      .maybeSingle();
+
+    const orgCurrency = (currencyData?.currency_code || 'COP').trim();
+
     // 4. Ejecutar fullSetup: crea catálogo + pixel + sincroniza productos
     const setupResult = await metaMarketingService.fullSetup(
       connectionId,
@@ -108,7 +119,8 @@ export async function GET(request: NextRequest) {
       state.organization_id,
       orgData?.name || 'Mi Negocio',
       domain,
-      'COP'
+      orgCurrency,
+      supabase
     );
 
     // 5. Redirigir con éxito

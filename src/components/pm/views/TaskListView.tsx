@@ -11,8 +11,12 @@ import {
   User,
   AlertTriangle,
   ClipboardList,
+  Target,
+  Flag,
+  Bot,
+  Tag,
 } from 'lucide-react';
-import { type PMTask, PRIORITY_COLORS, PRIORITY_LABELS, TASK_STATUS_COLORS, TASK_STATUS_LABELS } from '@/lib/services/pmService';
+import { type PMTask, PRIORITY_COLORS, PRIORITY_LABELS, TASK_STATUS_COLORS, TASK_STATUS_LABELS, TASK_TYPE_LABELS } from '@/lib/services/pmService';
 import { pmService } from '@/lib/services/pmService';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -30,6 +34,10 @@ function getAssigneeName(task: PMTask): string {
 
 function isOverdue(task: PMTask): boolean {
   return !!(task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done' && task.status !== 'canceled');
+}
+
+function isAgentTask(task: PMTask): boolean {
+  return (task.related_to_type || '').startsWith('agent:') || (task.tags || []).includes('agente');
 }
 
 export function TaskListView({ tasks, onTaskClick, onTaskUpdate }: TaskListViewProps) {
@@ -63,6 +71,8 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate }: TaskListViewP
       {tasks.map((task) => {
         const overdue = isOverdue(task);
         const assignee = getAssigneeName(task);
+        const agentTask = isAgentTask(task);
+        const visibleTags = (task.tags || []).filter(t => t !== 'agente' && t !== 'onboarding').slice(0, 3);
 
         return (
           <Card
@@ -90,6 +100,16 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate }: TaskListViewP
                     <Badge className={`text-[10px] ${PRIORITY_COLORS[task.priority]}`}>
                       {PRIORITY_LABELS[task.priority]}
                     </Badge>
+                    {task.type && TASK_TYPE_LABELS[task.type] && (
+                      <Badge className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                        {TASK_TYPE_LABELS[task.type]}
+                      </Badge>
+                    )}
+                    {agentTask && (
+                      <Badge className="text-[10px] bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
+                        <Bot className="h-2.5 w-2.5 mr-0.5" />Agente
+                      </Badge>
+                    )}
                     {overdue && (
                       <Badge className="text-[10px] bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300">
                         <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />Vencida
@@ -122,6 +142,21 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate }: TaskListViewP
                     {assignee && (
                       <span className="flex items-center gap-1">
                         <User className="h-3 w-3" />{assignee}
+                      </span>
+                    )}
+                    {task.goals?.title && (
+                      <span className="flex items-center gap-1 text-emerald-500 dark:text-emerald-400">
+                        <Target className="h-3 w-3" />{task.goals.title}
+                      </span>
+                    )}
+                    {task.milestones?.title && (
+                      <span className="flex items-center gap-1">
+                        <Flag className="h-3 w-3" />{task.milestones.title}
+                      </span>
+                    )}
+                    {visibleTags.length > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" />{visibleTags.join(', ')}
                       </span>
                     )}
                   </div>

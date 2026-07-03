@@ -4,6 +4,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import {
   META_CREDENTIAL_PURPOSES,
@@ -74,7 +75,8 @@ class MetaMarketingService {
   /** Guardar credenciales de Meta Marketing para una conexión */
   async saveCredentials(
     connectionId: string,
-    credentials: MetaMarketingCredentials
+    credentials: MetaMarketingCredentials,
+    db: SupabaseClient = supabase
   ): Promise<boolean> {
     const entries = [
       { purpose: META_CREDENTIAL_PURPOSES.ACCESS_TOKEN, value: credentials.accessToken },
@@ -87,7 +89,7 @@ class MetaMarketingService {
     for (const entry of entries) {
       if (!entry.value) continue;
 
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from('integration_credentials')
         .select('id')
         .eq('connection_id', connectionId)
@@ -95,7 +97,7 @@ class MetaMarketingService {
         .maybeSingle();
 
       if (existing) {
-        const { error } = await supabase
+        const { error } = await db
           .from('integration_credentials')
           .update({
             secret_ref: entry.value,
@@ -109,7 +111,7 @@ class MetaMarketingService {
           return false;
         }
       } else {
-        const { error } = await supabase
+        const { error } = await db
           .from('integration_credentials')
           .insert({
             connection_id: connectionId,
@@ -360,7 +362,8 @@ class MetaMarketingService {
     organizationId: number,
     organizationName: string,
     domain: string,
-    currency: string = 'COP'
+    currency: string = 'COP',
+    db: SupabaseClient = supabase
   ): Promise<MetaSetupResult> {
     // 1. Buscar o crear catálogo
     const existingCatalogs = await this.listCatalogs(accessToken, businessId);
@@ -403,10 +406,10 @@ class MetaMarketingService {
       businessId,
       pixelId: pixel.id,
       catalogId: catalog.id,
-    });
+    }, db);
 
     // 4. Sincronizar productos al catálogo
-    const products = await this.getProductsForSync(organizationId, domain, currency);
+    const products = await this.getProductsForSync(organizationId, domain, currency, db);
     let productsSynced = 0;
     if (products.length > 0) {
       const syncResult = await this.syncCatalog(accessToken, catalog.id, products, currency);
@@ -430,10 +433,11 @@ class MetaMarketingService {
   async getProductsForSync(
     organizationId: number,
     domain: string,
-    currency: string = 'COP'
+    currency: string = 'COP',
+    db: SupabaseClient = supabase
   ): Promise<GOAdminProduct[]> {
     // Productos con precio activo e imagen principal
-    const { data: products, error } = await supabase
+    const { data: products, error } = await db
       .from('products')
       .select(`
         id, uuid, sku, name, description, status, barcode,
@@ -448,7 +452,7 @@ class MetaMarketingService {
     if (error || !products) return [];
 
     // Obtener nombre de la organización
-    const { data: org } = await supabase
+    const { data: org } = await db
       .from('organizations')
       .select('name')
       .eq('id', organizationId)

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 export interface FiscalPeriod {

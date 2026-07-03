@@ -5,6 +5,7 @@ import {
   X,
   Plus,
   Loader2,
+  Sparkles,
   FolderKanban,
   CalendarIcon,
   DollarSign,
@@ -14,11 +15,14 @@ import {
   Trash2,
   UserPlus,
   Shuffle,
+  Hash,
+  Tag,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { RichTextEditor } from '@/components/pm/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -31,6 +35,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { pmService, type Project } from '@/lib/services/pmService';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { cn } from '@/utils/Utils';
 
 interface MemberItem {
@@ -56,6 +61,11 @@ const INITIAL_FORM = {
   end_date: '',
   budget: '',
   owner_id: '',
+  code: '',
+  category: '',
+  tags: '',
+  health: 'on_track',
+  progress: '0',
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -103,6 +113,11 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         end_date: editProject.end_date || '',
         budget: editProject.budget != null ? String(editProject.budget) : '',
         owner_id: editProject.owner_id || '',
+        code: editProject.code || '',
+        category: editProject.category || '',
+        tags: (editProject.tags || []).join(', '),
+        health: editProject.health || 'on_track',
+        progress: editProject.progress != null ? String(editProject.progress) : '0',
       });
       pmService.getProjectMembers(editProject.id).then(pm => {
         setMembers(pm.map(m => ({
@@ -148,6 +163,31 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
     }
   };
 
+  const [descLoading, setDescLoading] = useState(false);
+  const handleGenerateDescription = async () => {
+    if (!form.name.trim()) { toast({ title: 'Escribe un nombre primero', variant: 'destructive' }); return; }
+    setDescLoading(true);
+    try {
+      const owner = users.find(u => u.id === form.owner_id)?.nombre;
+      const res = await fetch('/api/ai/pm-assist', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'describe', entity: 'proyecto', title: form.name, description: form.description,
+          organizationId: getOrganizationId(),
+          context: { priority: form.priority, due_date: form.end_date, assignee: owner },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error de IA');
+      if (data.description) setForm(f => ({ ...f, description: data.description }));
+      toast({ title: 'Descripción generada con IA' });
+    } catch (error: any) {
+      toast({ title: 'Error del asistente IA', description: error.message, variant: 'destructive' });
+    } finally {
+      setDescLoading(false);
+    }
+  };
+
   const handleCreate = async () => {
     if (!form.name.trim()) { toast({ title: 'El nombre es requerido', variant: 'destructive' }); return; }
 
@@ -162,6 +202,11 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         end_date: form.end_date || null,
         budget: form.budget ? parseFloat(form.budget) : null,
         owner_id: form.owner_id || null,
+        code: form.code.trim() || null,
+        category: form.category.trim() || null,
+        tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+        health: form.health as any,
+        progress: form.progress ? Math.max(0, Math.min(100, parseFloat(form.progress))) : 0,
       };
 
       if (isEdit && editProject) {
@@ -227,13 +272,21 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
 
         {/* Descripción */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium">Descripción</Label>
-          <Textarea
-            placeholder="Objetivo, alcance y contexto del proyecto..."
-            rows={3}
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Descripción</Label>
+            <Button
+              type="button" variant="outline" size="sm"
+              onClick={handleGenerateDescription} disabled={descLoading}
+              className="h-7 gap-1 text-xs border-purple-200 text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400"
+            >
+              {descLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              Generar con IA
+            </Button>
+          </div>
+          <RichTextEditor
             value={form.description}
-            onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
-            className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 resize-none"
+            onChange={(html) => setForm(f => ({ ...f, description: html }))}
+            placeholder="Objetivo, alcance y contexto del proyecto..."
           />
         </div>
 
@@ -315,6 +368,67 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        {/* Clave + Categoría */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium flex items-center gap-1"><Hash className="h-3.5 w-3.5" />Clave</Label>
+            <Input
+              placeholder="Ej: PROJ-1"
+              value={form.code}
+              onChange={(e) => setForm(f => ({ ...f, code: e.target.value }))}
+              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium flex items-center gap-1"><Tag className="h-3.5 w-3.5" />Categoría</Label>
+            <Input
+              placeholder="Ej: Marketing, Operaciones..."
+              value={form.category}
+              onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
+              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+            />
+          </div>
+        </div>
+
+        {/* Salud + Progreso */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium flex items-center gap-1"><Activity className="h-3.5 w-3.5" />Salud</Label>
+            <Select value={form.health} onValueChange={(v) => setForm(f => ({ ...f, health: v }))}>
+              <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="on_track">En curso</SelectItem>
+                <SelectItem value="at_risk">En riesgo</SelectItem>
+                <SelectItem value="off_track">Desviado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Progreso ({form.progress || 0}%)</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={form.progress}
+              onChange={(e) => setForm(f => ({ ...f, progress: e.target.value }))}
+              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+            />
+          </div>
+        </div>
+
+        {/* Etiquetas */}
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium flex items-center gap-1"><Tag className="h-3.5 w-3.5" />Etiquetas</Label>
+          <Input
+            placeholder="Separadas por comas: urgente, cliente-vip, q1"
+            value={form.tags}
+            onChange={(e) => setForm(f => ({ ...f, tags: e.target.value }))}
+            className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+          />
         </div>
 
         {/* Divider */}
@@ -419,35 +533,16 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
   );
 
   return (
-    <>
-      {/* Desktop: Panel inline */}
-      <div
-        className={cn(
-          'hidden lg:flex flex-col h-full',
-          isOpen ? 'w-80 xl:w-96' : 'w-0',
-          'bg-white dark:bg-gray-900',
-          'border-l border-gray-200 dark:border-gray-700',
-          'transition-all duration-300 ease-in-out',
-          'overflow-hidden flex-shrink-0'
-        )}
+    <Sheet open={isOpen} onOpenChange={(open) => { if (!open) { resetForm(); onClose(); } }}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-2xl lg:max-w-3xl p-0 border-0 bg-white dark:bg-gray-900 [&>button:last-child]:hidden"
       >
-        {isOpen && renderContent()}
-      </div>
-
-      {/* Móvil: Sheet */}
-      {isMobile && (
-        <Sheet open={isOpen} onOpenChange={(open) => { if (!open) { resetForm(); onClose(); } }}>
-          <SheetContent
-            side="right"
-            className="w-full sm:w-[440px] sm:max-w-[440px] p-0 border-0 bg-white dark:bg-gray-900 [&>button:last-child]:hidden"
-          >
-            <VisuallyHidden.Root>
-              <SheetTitle>{isEdit ? 'Editar Proyecto' : 'Nuevo Proyecto'}</SheetTitle>
-            </VisuallyHidden.Root>
-            {renderContent()}
-          </SheetContent>
-        </Sheet>
-      )}
-    </>
+        <VisuallyHidden.Root>
+          <SheetTitle>{isEdit ? 'Editar Proyecto' : 'Nuevo Proyecto'}</SheetTitle>
+        </VisuallyHidden.Root>
+        {renderContent()}
+      </SheetContent>
+    </Sheet>
   );
 }

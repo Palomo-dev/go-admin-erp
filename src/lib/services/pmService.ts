@@ -18,6 +18,14 @@ export interface Project {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  // Campos profesionales (Asana/Jira style)
+  progress?: number;
+  color?: string | null;
+  code?: string | null;
+  category?: string | null;
+  tags?: string[];
+  actual_cost?: number | null;
+  health?: 'on_track' | 'at_risk' | 'off_track' | null;
 }
 
 export interface Goal {
@@ -34,7 +42,32 @@ export interface Goal {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  // Campos profesionales
+  start_date?: string | null;
+  complexity?: 'low' | 'med' | 'high' | null;
+  priority?: 'low' | 'med' | 'high' | 'urgent' | null;
   projects?: { name: string } | null;
+  key_results?: KeyResult[];
+}
+
+export interface KeyResult {
+  id: string;
+  organization_id: number;
+  goal_id: string;
+  title: string;
+  description: string | null;
+  metric_type: 'number' | 'percentage' | 'currency' | 'boolean';
+  start_value: number;
+  current_value: number;
+  target_value: number | null;
+  unit: string | null;
+  progress: number;
+  status: 'active' | 'achieved' | 'at_risk' | 'abandoned';
+  due_date: string | null;
+  sort_order: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Milestone {
@@ -77,6 +110,18 @@ export interface PMTask {
   goals?: { id: string; title: string } | null;
   profiles?: { first_name: string; last_name: string; email: string } | null;
   subtasks?: PMTask[];
+}
+
+export interface TaskTimeEntry {
+  id: string;
+  organization_id: number;
+  task_id: string;
+  user_id: string | null;
+  started_at: string;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  note: string | null;
+  created_at: string;
 }
 
 export interface PMDashboardStats {
@@ -224,14 +269,92 @@ export const pmService = {
     if (error) throw error;
   },
 
+  // ─── Key Results (KRs) ───────────
+  async getKeyResults(goalId: string): Promise<KeyResult[]> {
+    const { data, error } = await supabase.from('key_results').select('*').eq('goal_id', goalId).order('sort_order');
+    if (error) { console.error('Error getKeyResults:', error.message); return []; }
+    return data || [];
+  },
+
+  async createKeyResult(goalId: string, kr: Partial<KeyResult>): Promise<KeyResult> {
+    const orgId = getOrganizationId();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase.from('key_results').insert({
+      goal_id: goalId,
+      organization_id: orgId,
+      title: kr.title,
+      description: kr.description ?? null,
+      metric_type: kr.metric_type || 'number',
+      start_value: kr.start_value ?? 0,
+      current_value: kr.current_value ?? 0,
+      target_value: kr.target_value ?? null,
+      unit: kr.unit ?? null,
+      progress: kr.progress ?? 0,
+      status: kr.status || 'active',
+      due_date: kr.due_date ?? null,
+      sort_order: kr.sort_order ?? 0,
+      created_by: user?.id,
+    }).select().single();
+    if (error) throw error;
+    await this.recalcGoalProgress(goalId);
+    return data;
+  },
+
+  async updateKeyResult(id: string, updates: Partial<KeyResult>): Promise<KeyResult> {
+    // Recalcular progreso de la KR si cambian valores numéricos
+    const patch: any = { ...updates, updated_at: new Date().toISOString() };
+    if (updates.current_value != null || updates.target_value != null || updates.start_value != null) {
+      const { data: existing } = await supabase.from('key_results').select('start_value, current_value, target_value').eq('id', id).single();
+      const start = updates.start_value ?? existing?.start_value ?? 0;
+      const current = updates.current_value ?? existing?.current_value ?? 0;
+      const target = updates.target_value ?? existing?.target_value ?? null;
+      if (target != null && target !== start) {
+        patch.progress = Math.max(0, Math.min(100, Math.round(((current - start) / (target - start)) * 100)));
+      }
+    }
+    const { data, error } = await supabase.from('key_results').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    if (data?.goal_id) await this.recalcGoalProgress(data.goal_id);
+    return data;
+  },
+
+  async deleteKeyResult(id: string): Promise<void> {
+    const { data } = await supabase.from('key_results').select('goal_id').eq('id', id).single();
+    const { error } = await supabase.from('key_results').delete().eq('id', id);
+    if (error) throw error;
+    if (data?.goal_id) await this.recalcGoalProgress(data.goal_id);
+  },
+
+  // Recalcula el progreso de la meta combinando el avance de sus KRs y de las tareas vinculadas
+  async recalcGoalProgress(goalId: string): Promise<void> {
+    const { data: krs } = await supabase.from('key_results').select('progress').eq('goal_id', goalId);
+    const { data: gtasks } = await supabase.from('tasks').select('status, estimated_hours').eq('goal_id', goalId);
+    const metrics: number[] = [];
+    if (krs && krs.length > 0) {
+      metrics.push(Math.round(krs.reduce((s, k) => s + (Number(k.progress) || 0), 0) / krs.length));
+    }
+    if (gtasks && gtasks.length > 0) {
+      const weight = (t: any) => Number(t.estimated_hours) || 1;
+      const totalW = gtasks.reduce((s, t) => s + weight(t), 0);
+      const doneW = gtasks.filter(t => t.status === 'done').reduce((s, t) => s + weight(t), 0);
+      metrics.push(totalW > 0 ? Math.round((doneW / totalW) * 100) : 0);
+    }
+    if (metrics.length === 0) return;
+    const progress = Math.round(metrics.reduce((s, m) => s + m, 0) / metrics.length);
+    await supabase.from('goals').update({ progress, updated_at: new Date().toISOString() }).eq('id', goalId);
+  },
+
   async deleteProject(id: string): Promise<void> {
     const { error } = await supabase.from('projects').delete().eq('id', id);
     if (error) throw error;
   },
 
   async deleteTask(id: string): Promise<void> {
+    const { data: t } = await supabase.from('tasks').select('project_id, goal_id').eq('id', id).single();
     const { error } = await supabase.from('tasks').delete().eq('id', id);
     if (error) throw error;
+    if (t?.project_id) await this.recalcProjectProgress(t.project_id);
+    if (t?.goal_id) await this.recalcGoalProgress(t.goal_id);
   },
 
   // ─── Milestones CRUD ─────────────
@@ -284,14 +407,48 @@ export const pmService = {
     return tasks;
   },
 
+  // Construye los campos de cierre al cambiar el estado de una tarea.
+  // Al completar: fija completed_at y, si no hay horas reales, usa las estimadas.
+  async buildCompletionPatch(taskId: string, status: string): Promise<Record<string, any>> {
+    if (status === 'done') {
+      const { data } = await supabase.from('tasks').select('estimated_hours, actual_hours').eq('id', taskId).single();
+      const patch: Record<string, any> = { completed_at: new Date().toISOString() };
+      if (data?.actual_hours == null || Number(data.actual_hours) === 0) patch.actual_hours = data?.estimated_hours ?? null;
+      return patch;
+    }
+    return { completed_at: null };
+  },
+
   async updateTaskStatus(taskId: string, status: string): Promise<void> {
-    const { error } = await supabase.from('tasks').update({ status, updated_at: new Date().toISOString() }).eq('id', taskId);
+    const patch = await this.buildCompletionPatch(taskId, status);
+    const { error } = await supabase.from('tasks').update({ status, ...patch, updated_at: new Date().toISOString() }).eq('id', taskId);
     if (error) throw error;
+    const { data: t } = await supabase.from('tasks').select('project_id, goal_id').eq('id', taskId).single();
+    if (t?.project_id) await this.recalcProjectProgress(t.project_id);
+    if (t?.goal_id) await this.recalcGoalProgress(t.goal_id);
   },
 
   async updateTask(taskId: string, updates: Record<string, any>): Promise<void> {
-    const { error } = await supabase.from('tasks').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', taskId);
+    let patch: Record<string, any> = { ...updates };
+    if (updates.status) patch = { ...patch, ...(await this.buildCompletionPatch(taskId, updates.status)) };
+    const { error } = await supabase.from('tasks').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', taskId);
     if (error) throw error;
+    if (updates.status || updates.project_id || updates.goal_id) {
+      const { data: t } = await supabase.from('tasks').select('project_id, goal_id').eq('id', taskId).single();
+      if (t?.project_id) await this.recalcProjectProgress(t.project_id);
+      if (t?.goal_id) await this.recalcGoalProgress(t.goal_id);
+    }
+  },
+
+  // Recalcula el progreso del proyecto ponderado por horas estimadas (fallback: conteo)
+  async recalcProjectProgress(projectId: string): Promise<void> {
+    const { data } = await supabase.from('tasks').select('status, estimated_hours').eq('project_id', projectId);
+    if (!data || data.length === 0) return;
+    const weight = (t: any) => Number(t.estimated_hours) || 1;
+    const totalW = data.reduce((s, t) => s + weight(t), 0);
+    const doneW = data.filter(t => t.status === 'done').reduce((s, t) => s + weight(t), 0);
+    const progress = totalW > 0 ? Math.round((doneW / totalW) * 100) : 0;
+    await supabase.from('projects').update({ progress, updated_at: new Date().toISOString() }).eq('id', projectId);
   },
 
   async createTask(task: Record<string, any>): Promise<PMTask> {
@@ -301,6 +458,8 @@ export const pmService = {
       ...task, organization_id: orgId, created_by: user?.id,
     }).select().single();
     if (error) throw error;
+    if (data?.project_id) await this.recalcProjectProgress(data.project_id);
+    if (data?.goal_id) await this.recalcGoalProgress(data.goal_id);
     return data;
   },
 
@@ -340,15 +499,18 @@ export const pmService = {
   },
 
   // ─── Subtasks ─────────────────────
-  async createSubtask(parentTaskId: string, subtask: { title: string; priority?: string }): Promise<PMTask> {
+  async createSubtask(parentTaskId: string, subtask: { title: string; priority?: string; estimated_hours?: number | null; due_date?: string | null; status?: string; assigned_to?: string | null }): Promise<PMTask> {
     const orgId = getOrganizationId();
     const { data: { user } } = await supabase.auth.getUser();
-    // Obtener project_id del padre
-    const { data: parent } = await supabase.from('tasks').select('project_id').eq('id', parentTaskId).single();
+    // Obtener project_id y responsable del padre (la subtarea hereda el responsable por defecto)
+    const { data: parent } = await supabase.from('tasks').select('project_id, assigned_to').eq('id', parentTaskId).single();
     const { data, error } = await supabase.from('tasks').insert({
       title: subtask.title,
       priority: subtask.priority || 'med',
-      status: 'open',
+      status: subtask.status || 'open',
+      estimated_hours: subtask.estimated_hours ?? null,
+      due_date: subtask.due_date ?? null,
+      assigned_to: subtask.assigned_to !== undefined ? subtask.assigned_to : (parent?.assigned_to ?? null),
       parent_task_id: parentTaskId,
       project_id: parent?.project_id,
       organization_id: orgId,
@@ -356,6 +518,82 @@ export const pmService = {
     }).select().single();
     if (error) throw error;
     return data;
+  },
+
+  async getTaskById(taskId: string): Promise<PMTask | null> {
+    const { data, error } = await supabase.from('tasks').select('*').eq('id', taskId).single();
+    if (error) { console.error('Error getTaskById:', error.message); return null; }
+    return data;
+  },
+
+  // ─── Cronómetro de tareas (time tracking) ─────────────
+  // Devuelve la sesión activa (sin cerrar) de la tarea, si existe
+  async getRunningTimeEntry(taskId: string): Promise<TaskTimeEntry | null> {
+    const { data, error } = await supabase.from('task_time_entries')
+      .select('*').eq('task_id', taskId).is('ended_at', null)
+      .order('started_at', { ascending: false }).limit(1).maybeSingle();
+    if (error) { console.error('Error getRunningTimeEntry:', error.message); return null; }
+    return data;
+  },
+
+  // Devuelve un mapa taskId -> sesión activa para un conjunto de tareas (1 sola consulta)
+  async getRunningTimeEntriesForTasks(taskIds: string[]): Promise<Record<string, TaskTimeEntry>> {
+    if (!taskIds || taskIds.length === 0) return {};
+    const { data, error } = await supabase.from('task_time_entries')
+      .select('*').in('task_id', taskIds).is('ended_at', null);
+    if (error) { console.error('Error getRunningTimeEntriesForTasks:', error.message); return {}; }
+    const map: Record<string, TaskTimeEntry> = {};
+    (data || []).forEach(e => { if (!map[e.task_id]) map[e.task_id] = e; });
+    return map;
+  },
+
+  // Devuelve las sesiones y el total de segundos registrados de una tarea
+  async getTaskTimeSummary(taskId: string): Promise<{ entries: TaskTimeEntry[]; totalSeconds: number }> {
+    const { data, error } = await supabase.from('task_time_entries')
+      .select('*').eq('task_id', taskId).order('started_at', { ascending: false });
+    if (error) { console.error('Error getTaskTimeSummary:', error.message); return { entries: [], totalSeconds: 0 }; }
+    const entries = data || [];
+    const totalSeconds = entries.reduce((s, e) => s + (e.duration_seconds || 0), 0);
+    return { entries, totalSeconds };
+  },
+
+  // Inicia (o reanuda) el cronómetro creando una sesión abierta y marca la tarea en progreso
+  async startTimer(taskId: string): Promise<TaskTimeEntry> {
+    const existing = await this.getRunningTimeEntry(taskId);
+    if (existing) return existing;
+    const orgId = getOrganizationId();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase.from('task_time_entries').insert({
+      task_id: taskId, organization_id: orgId, user_id: user?.id, started_at: new Date().toISOString(),
+    }).select().single();
+    if (error) throw error;
+    // Poner la tarea en progreso si estaba abierta
+    const task = await this.getTaskById(taskId);
+    if (task && task.status === 'open') await supabase.from('tasks').update({ status: 'in_progress', updated_at: new Date().toISOString() }).eq('id', taskId);
+    return data;
+  },
+
+  // Detiene la sesión activa, calcula la duración y la suma a las horas reales de la tarea
+  async stopTimer(entryId: string): Promise<number> {
+    const { data: entry, error: e1 } = await supabase.from('task_time_entries').select('*').eq('id', entryId).single();
+    if (e1) throw e1;
+    const started = new Date(entry.started_at).getTime();
+    const durationSeconds = Math.max(1, Math.round((Date.now() - started) / 1000));
+    const { error: e2 } = await supabase.from('task_time_entries')
+      .update({ ended_at: new Date().toISOString(), duration_seconds: durationSeconds }).eq('id', entryId);
+    if (e2) throw e2;
+    // Acumular en actual_hours de la tarea
+    const task = await this.getTaskById(entry.task_id);
+    const prevHours = Number(task?.actual_hours) || 0;
+    const newHours = Math.round((prevHours + durationSeconds / 3600) * 100) / 100;
+    await supabase.from('tasks').update({ actual_hours: newHours, updated_at: new Date().toISOString() }).eq('id', entry.task_id);
+    return durationSeconds;
+  },
+
+  // Cancela la sesión activa sin registrar tiempo
+  async cancelTimer(entryId: string): Promise<void> {
+    const { error } = await supabase.from('task_time_entries').delete().eq('id', entryId);
+    if (error) throw error;
   },
 
   async getSubtasks(parentTaskId: string): Promise<PMTask[]> {
@@ -435,7 +673,7 @@ export const pmService = {
   async distributeProjectTasks(projectId: string): Promise<number> {
     const [members, tasks] = await Promise.all([
       this.getProjectMembers(projectId),
-      supabase.from('tasks').select('id, title, description, tags, assigned_to').eq('project_id', projectId)
+      supabase.from('tasks').select('id, title, description, tags, assigned_to, estimated_hours, priority').eq('project_id', projectId)
         .in('status', ['open', 'in_progress']).then(r => r.data || []),
     ]);
     if (members.length === 0) return 0;
@@ -449,23 +687,35 @@ export const pmService = {
         (posMap.get(m.user_id)?.position || ''),
         (posMap.get(m.user_id)?.department || ''),
       ].join(' ').toLowerCase().split(/[\s,/-]+/).filter(w => w.length >= 3),
-      load: 0,
+      load: 0, // carga acumulada en horas estimadas
     }));
 
-    const unassigned = (tasks as any[]).filter(t => !t.assigned_to);
+    // La carga se pondera por horas estimadas (fallback: 1h por tarea)
+    const weightOf = (t: any) => Number(t.estimated_hours) || 1;
+    // Sembrar la carga inicial con las tareas ya asignadas para balancear de forma justa
+    const loadByUser = new Map(enriched.map(e => [e.user_id, e]));
+    for (const t of tasks as any[]) {
+      if (t.assigned_to && loadByUser.has(t.assigned_to)) loadByUser.get(t.assigned_to)!.load += weightOf(t);
+    }
+
+    // Priorizar la asignación de las tareas más críticas primero
+    const priorityRank: Record<string, number> = { critical: 4, high: 3, med: 2, low: 1 };
+    const unassigned = (tasks as any[]).filter(t => !t.assigned_to)
+      .sort((a, b) => (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0));
+
     let assigned = 0;
     for (const task of unassigned) {
       const haystack = `${task.title || ''} ${task.description || ''} ${(task.tags || []).join(' ')}`.toLowerCase();
-      // Puntuar cada miembro por coincidencia de palabras clave de cargo/departamento
+      // Puntuar cada miembro por coincidencia de cargo/departamento y menor carga en horas
       let best = enriched[0];
-      let bestScore = -1;
+      let bestScore = -Infinity;
       for (const member of enriched) {
         const matches = member.keywords.filter(k => haystack.includes(k)).length;
-        const score = matches * 100 - member.load; // prioriza match, luego menor carga
+        const score = matches * 1000 - member.load; // prioriza match, luego menor carga (horas)
         if (score > bestScore) { bestScore = score; best = member; }
       }
       const { error } = await supabase.from('tasks').update({ assigned_to: best.user_id, updated_at: new Date().toISOString() }).eq('id', task.id);
-      if (!error) { best.load += 1; assigned += 1; }
+      if (!error) { best.load += weightOf(task); assigned += 1; }
     }
     return assigned;
   },

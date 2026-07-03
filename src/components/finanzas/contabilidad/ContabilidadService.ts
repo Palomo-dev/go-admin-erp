@@ -112,7 +112,11 @@ export class ContabilidadService {
     const { data, error } = await supabase
       .from('chart_of_accounts')
       .insert({
-        ...cuenta,
+        account_code: cuenta.account_code,
+        name: cuenta.name,
+        type: cuenta.type,
+        parent_code: cuenta.parent_code || null,
+        description: cuenta.description || null,
         organization_id: organizationId,
         is_active: true
       })
@@ -242,10 +246,33 @@ export class ContabilidadService {
     memo?: string;
     source?: string;
     source_id?: string;
-    lines: { account_code: string; description?: string; debit: number; credit: number }[];
+    currency_code?: string;
+    exchange_rate?: number;
+    base_currency_code?: string;
+    lines: { account_code: string; description?: string; debit: number; credit: number; cost_center_id?: string }[];
   }): Promise<JournalEntry> {
     const organizationId = this.getOrganizationId();
     const branchId = this.getBranchId();
+
+    const currencyCode = asiento.currency_code || 'COP';
+    const baseCurrency = asiento.base_currency_code || 'COP';
+    let exchangeRate = asiento.exchange_rate || 1.0;
+
+    // Si la moneda no es la base, obtener la tasa de currency_rates
+    if (currencyCode !== baseCurrency && !asiento.exchange_rate) {
+      const { data: rateData, error: rateError } = await supabase
+        .from('currency_rates')
+        .select('rate')
+        .eq('code', currencyCode)
+        .lte('rate_date', asiento.entry_date.split('T')[0])
+        .order('rate_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!rateError && rateData) {
+        exchangeRate = parseFloat(rateData.rate);
+      }
+    }
 
     // Crear entrada
     const { data: entry, error: entryError } = await supabase
@@ -257,7 +284,10 @@ export class ContabilidadService {
         memo: asiento.memo,
         source: asiento.source,
         source_id: asiento.source_id,
-        posted: false
+        posted: false,
+        currency_code: currencyCode,
+        exchange_rate: exchangeRate,
+        base_currency_code: baseCurrency,
       })
       .select()
       .single();
@@ -267,14 +297,24 @@ export class ContabilidadService {
       throw entryError;
     }
 
-    // Crear líneas
-    const lines = asiento.lines.map(line => ({
-      journal_entry_id: entry.id,
-      account_code: line.account_code,
-      description: line.description,
-      debit: line.debit || 0,
-      credit: line.credit || 0
-    }));
+    // Crear líneas con conversión a moneda base
+    const lines = asiento.lines.map(line => {
+      const debit = line.debit || 0;
+      const credit = line.credit || 0;
+      return {
+        journal_entry_id: entry.id,
+        account_code: line.account_code,
+        description: line.description,
+        debit,
+        credit,
+        debit_base: debit * exchangeRate,
+        credit_base: credit * exchangeRate,
+        currency_code: currencyCode,
+        exchange_rate: exchangeRate,
+        cost_center_id: line.cost_center_id || null,
+        organization_id: organizationId,
+      };
+    });
 
     const { error: linesError } = await supabase
       .from('journal_lines')

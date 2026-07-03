@@ -173,7 +173,11 @@ export function PlanCuentasPage() {
         });
         toast.success('Cuenta actualizada exitosamente');
       } else {
-        await ContabilidadService.crearCuenta(formData);
+        await ContabilidadService.crearCuenta({
+          ...formData,
+          parent_code: formData.parent_code || null,
+          description: formData.description || null
+        });
         toast.success('Cuenta creada exitosamente');
       }
       setShowDialog(false);
@@ -206,34 +210,50 @@ export function PlanCuentasPage() {
   const renderNode = (node: AccountNode, level: number = 0) => {
     const hasChildren = node.children.length > 0;
     const isExpanded = expandedNodes.has(node.account_code);
+    const indent = level * 24;
 
     return (
       <div key={node.account_code}>
         <div 
-          className={`flex items-center gap-2 py-2 px-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${level > 0 ? 'ml-6' : ''}`}
+          className="flex items-center gap-2 py-2.5 px-3 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-lg transition-colors group/node"
+          style={{ marginLeft: `${indent}px` }}
         >
           <button
             onClick={() => hasChildren && toggleExpand(node.account_code)}
-            className={`w-5 h-5 flex items-center justify-center ${hasChildren ? 'cursor-pointer' : 'invisible'}`}
+            className={`w-5 h-5 flex items-center justify-center shrink-0 ${hasChildren ? 'cursor-pointer' : 'invisible'}`}
           >
             {hasChildren && (isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
           </button>
           
-          <span className="font-mono text-sm text-gray-600 dark:text-gray-400 w-24">
+          <span className="font-mono text-sm text-gray-600 dark:text-gray-400 w-20 shrink-0">
             {node.account_code}
           </span>
           
-          <span className="flex-1 text-gray-900 dark:text-white font-medium">
-            {node.name}
-          </span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-900 dark:text-white font-medium truncate">
+                {node.name}
+              </span>
+              {hasChildren && (
+                <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                  ({node.children.length})
+                </span>
+              )}
+            </div>
+            {node.description && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                {node.description}
+              </p>
+            )}
+          </div>
           
           {getTypeBadge(node.type)}
           
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 hover:opacity-100">
-            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(node)}>
+          <div className="flex gap-1 shrink-0">
+            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(node)} className="h-8 w-8 p-0">
               <Edit className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleDelete(node.account_code)} className="text-red-600">
+            <Button variant="ghost" size="sm" onClick={() => handleDelete(node.account_code)} className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -340,7 +360,7 @@ export function PlanCuentasPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-1 group">
+          <div className="space-y-1">
             {tree.length > 0 ? (
               tree.map(node => renderNode(node))
             ) : (

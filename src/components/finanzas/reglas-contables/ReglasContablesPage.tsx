@@ -425,14 +425,14 @@ export function ReglasContablesPage() {
             <div className="space-y-2">
               <Label className="text-gray-700 dark:text-gray-300">Cuenta IVA (opcional)</Label>
               <Select
-                value={formData.tax_account_code}
-                onValueChange={(value) => setFormData({ ...formData, tax_account_code: value })}
+                value={formData.tax_account_code || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, tax_account_code: value === 'none' ? '' : value })}
               >
                 <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
                   <SelectValue placeholder="Seleccionar cuenta de IVA" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
-                  <SelectItem value="">Sin cuenta de IVA</SelectItem>
+                  <SelectItem value="none">Sin cuenta de IVA</SelectItem>
                   {cuentas.map(c => (
                     <SelectItem key={c.account_code} value={c.account_code}>
                       {c.account_code} - {c.name}

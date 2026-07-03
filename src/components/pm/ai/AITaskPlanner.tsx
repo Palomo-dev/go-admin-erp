@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Sparkles,
   Loader2,
@@ -71,7 +73,15 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
   const [creating, setCreating] = useState(false);
   const [generatedTasks, setGeneratedTasks] = useState<AIGeneratedTask[]>([]);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [goals, setGoals] = useState<Array<{ id: string; title: string }>>([]);
+  const [selectedGoalId, setSelectedGoalId] = useState<string>('');
+  const [autoAssign, setAutoAssign] = useState(false);
   const { toast } = useToast();
+
+  // Cargar metas para poder vincular las tareas generadas a una meta
+  useEffect(() => {
+    pmService.getGoals().then(gs => setGoals(gs.map(g => ({ id: g.id, title: g.title }))));
+  }, []);
 
   const generateWithAI = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -142,6 +152,7 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
           estimated_hours: task.estimated_hours,
           due_date: task.due_date,
           project_id: projectId || null,
+          goal_id: selectedGoalId || null,
           tags: ['ai-generated'],
         });
         created++;
@@ -157,6 +168,7 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
               estimated_hours: sub.estimated_hours,
               due_date: sub.due_date,
               project_id: projectId || null,
+              goal_id: selectedGoalId || null,
               parent_task_id: parentTask.id,
               type: 'tarea',
               tags: ['ai-generated'],
@@ -165,7 +177,13 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
         }
       }
 
-      toast({ title: 'Tareas creadas', description: `${created} tareas con sus subtareas creadas exitosamente` });
+      // Asignar automáticamente por cargo/departamento si se solicitó y hay proyecto
+      let assignedMsg = '';
+      if (autoAssign && projectId) {
+        const n = await pmService.distributeProjectTasks(projectId);
+        assignedMsg = ` · ${n} asignada(s) por cargo`;
+      }
+      toast({ title: 'Tareas creadas', description: `${created} tareas con sus subtareas creadas exitosamente${assignedMsg}` });
       setGeneratedTasks([]);
       setPrompt('');
       onTasksCreated?.();
@@ -264,6 +282,24 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
+            {/* Opciones de asignación y vínculo a meta */}
+            <div className="flex flex-wrap items-center gap-3 pb-2">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-gray-500">Meta:</Label>
+                <Select value={selectedGoalId || 'none'} onValueChange={(v) => setSelectedGoalId(v === 'none' ? '' : v)}>
+                  <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Sin meta" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin meta</SelectItem>
+                    {goals.map(g => <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <label className={`flex items-center gap-2 text-xs ${projectId ? 'text-gray-600 dark:text-gray-300 cursor-pointer' : 'text-gray-400'}`}>
+                <Checkbox checked={autoAssign} onCheckedChange={(c) => setAutoAssign(!!c)} disabled={!projectId} />
+                Asignar automáticamente por cargo/departamento
+              </label>
+              {!projectId && <span className="text-[11px] text-amber-500">Selecciona un proyecto en el filtro para poder asignar.</span>}
+            </div>
             {generatedTasks.map((task, index) => (
               <div key={index} className={`rounded-lg border ${task.selected ? 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/10' : 'border-gray-200 dark:border-gray-700 opacity-60'} transition-all`}>
                 <div className="flex items-start gap-3 p-3">

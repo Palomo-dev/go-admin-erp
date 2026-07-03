@@ -132,6 +132,17 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Cuentas por pagar': <CreditCard size={16} />,
     'Bancos': <Building2 size={16} />,
     'Contabilidad': <Calculator size={16} />,
+    'Plan de Cuentas': <ListChecks size={16} />,
+    'Asientos': <FileText size={16} />,
+    'Balance de Comprobación': <BarChart3 size={16} />,
+    'Estado de Resultados': <TrendingUp size={16} />,
+    'Balance General': <Calculator size={16} />,
+    'Mayor Contable': <BookOpen size={16} />,
+    'Reglas Contables': <Shield size={16} />,
+    'Períodos Fiscales': <CalendarClock size={16} />,
+    'Centro de Costos': <LayoutGrid size={16} />,
+    'Activos Fijos': <Package size={16} />,
+    'Presupuestos': <Target size={16} />,
     'Facturación Electrónica': <Zap size={16} />,
     'Reportes Financieros': <BarChart3 size={16} />,
     'Impuestos': <Percent size={16} />,
@@ -308,8 +319,20 @@ const SubMenuPanelComponent = ({
       return pathname === itemHref;
     }
     
-    // Para otros items, activo si es exacto o si está dentro de la sección
-    return pathname === itemHref || (pathname?.startsWith(itemHref + '/') ?? false);
+    // Coincidencia exacta siempre es activo
+    if (pathname === itemHref) {
+      return true;
+    }
+    
+    // Coincidencia por prefijo: solo activo si ningún otro item del submenú coincide exactamente
+    if (pathname?.startsWith(itemHref + '/')) {
+      const hasExactMatchElsewhere = activeModule.submenu.some(
+        sub => sub.href === pathname && sub.href !== itemHref
+      );
+      return !hasExactMatchElsewhere;
+    }
+    
+    return false;
   };
 
   return (

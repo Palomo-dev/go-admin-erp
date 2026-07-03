@@ -205,7 +205,7 @@ export default function GoalsPage() {
                 </CardHeader>
                 <CardContent>
                   {goal.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{goal.description}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{goal.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
                   )}
                   <div className="mb-3">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">

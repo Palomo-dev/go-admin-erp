@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { BookOpen, FileText, Calculator, Calendar, Settings, ArrowRight, Loader2 } from 'lucide-react';
+import { BookOpen, FileText, Calculator, Calendar, Settings, ArrowRight, Loader2, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
@@ -12,7 +12,7 @@ import { formatNumber } from '@/utils/Utils';
 const MODULES = [
   {
     title: 'Plan de Cuentas',
-    description: 'Gestión del catálogo contable (PUC)',
+    description: 'Gestión del catálogo contable',
     icon: BookOpen,
     href: '/app/finanzas/contabilidad/plan-cuentas',
     color: 'blue'
@@ -25,18 +25,67 @@ const MODULES = [
     color: 'green'
   },
   {
-    title: 'Periodos Contables',
-    description: 'Apertura y cierre de periodos',
-    icon: Calendar,
-    href: '/app/finanzas/periodos-contables',
+    title: 'Balance de Comprobación',
+    description: 'Reporte de saldos por cuenta',
+    icon: BarChart3,
+    href: '/app/finanzas/contabilidad/balance-comprobacion',
+    color: 'blue'
+  },
+  {
+    title: 'Estado de Resultados',
+    description: 'P&G: ingresos, costos y gastos',
+    icon: TrendingUp,
+    href: '/app/finanzas/contabilidad/estado-resultados',
+    color: 'green'
+  },
+  {
+    title: 'Balance General',
+    description: 'Estado de situación financiera',
+    icon: Calculator,
+    href: '/app/finanzas/contabilidad/balance-general',
     color: 'purple'
   },
   {
+    title: 'Mayor Contable',
+    description: 'Libro mayor por cuenta',
+    icon: BookOpen,
+    href: '/app/finanzas/contabilidad/mayor-contable',
+    color: 'blue'
+  },
+  {
     title: 'Reglas Contables',
-    description: 'Configuración de asientos automáticos',
-    icon: Settings,
+    description: 'Asientos automáticos por evento',
+    icon: Shield,
     href: '/app/finanzas/reglas-contables',
     color: 'orange'
+  },
+  {
+    title: 'Períodos Fiscales',
+    description: 'Apertura y cierre de períodos',
+    icon: CalendarClock,
+    href: '/app/finanzas/contabilidad/periodos-fiscales',
+    color: 'purple'
+  },
+  {
+    title: 'Centro de Costos',
+    description: 'Gestión de centros de costo',
+    icon: LayoutGrid,
+    href: '/app/finanzas/centro-costos',
+    color: 'orange'
+  },
+  {
+    title: 'Activos Fijos',
+    description: 'Registro y depreciación de activos',
+    icon: Package,
+    href: '/app/finanzas/activos-fijos',
+    color: 'green'
+  },
+  {
+    title: 'Presupuestos',
+    description: 'Planificación y control presupuestal',
+    icon: Target,
+    href: '/app/finanzas/presupuestos',
+    color: 'blue'
   }
 ];
 
@@ -82,6 +131,11 @@ export function ContabilidadHomePage() {
         bg: 'bg-orange-100 dark:bg-orange-900/30', 
         icon: 'text-orange-600 dark:text-orange-400',
         hover: 'hover:border-orange-300 dark:hover:border-orange-700'
+      },
+      red: {
+        bg: 'bg-red-100 dark:bg-red-900/30',
+        icon: 'text-red-600 dark:text-red-400',
+        hover: 'hover:border-red-300 dark:hover:border-red-700'
       }
     };
     return colors[color] || colors.blue;
@@ -167,7 +221,7 @@ export function ContabilidadHomePage() {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Módulos de Contabilidad
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {MODULES.map((module) => {
             const colors = getColorClasses(module.color);
             return (
@@ -220,10 +274,10 @@ export function ContabilidadHomePage() {
                 Nueva Cuenta
               </Button>
             </Link>
-            <Link href="/app/finanzas/periodos-contables">
+            <Link href="/app/finanzas/contabilidad/periodos-fiscales">
               <Button variant="outline" className="dark:border-gray-600 dark:hover:bg-gray-700">
-                <Calendar className="h-4 w-4 mr-2" />
-                Ver Periodos
+                <CalendarClock className="h-4 w-4 mr-2" />
+                Ver Períodos
               </Button>
             </Link>
           </div>

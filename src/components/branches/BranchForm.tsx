@@ -429,7 +429,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                             className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400"
                           />
                         </td>
-                        <td className={`p-3 ${isLast ? 'rounded-br-lg' : ''}">
+                        <td className={`p-3 ${isLast ? 'rounded-br-lg' : ''}`}>
                           <input
                             type="time"
                             value={dayHours.close || '18:00'}

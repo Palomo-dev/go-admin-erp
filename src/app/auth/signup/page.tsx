@@ -371,7 +371,7 @@ function SignupContent() {
           (typeof signupData.branchFeatures === 'string' ? JSON.parse(signupData.branchFeatures) : signupData.branchFeatures) :
           {};
         
-        const { error: branchError } = await supabase
+        const { data: updatedBranches, error: branchError } = await supabase
           .from('branches')
           .update({
             name: signupData.branchName || 'Sucursal Principal',
@@ -390,16 +390,20 @@ function SignupContent() {
             is_active: true
           })
           .eq('organization_id', orgId)
-          .eq('is_main', true);
+          .eq('is_main', true)
+          .select();
         
         if (branchError) {
-          console.error('❌ Error creando sucursal:', branchError);
+          console.error('❌ Error actualizando sucursal principal:', branchError);
           throw branchError;
         }
-        console.log('✅ Sucursal creada exitosamente');
+        if (!updatedBranches || updatedBranches.length === 0) {
+          throw new Error('No se encontró la sucursal principal creada automáticamente para actualizar');
+        }
+        console.log('✅ Sucursal principal actualizada exitosamente');
         
-        // 5. Crear suscripción en Stripe
-        console.log('5️⃣ Creando suscripción en Stripe...');
+        // 5. Crear/actualizar suscripción
+        console.log('5️⃣ Configurando suscripción...');
         console.log('🔍 DEBUG signup - Plan:', signupData.subscriptionPlan);
         
         // Determinar planCode y planId basado en selección
@@ -408,7 +412,7 @@ function SignupContent() {
         
         if (signupData.subscriptionPlan.includes('ultimate')) {
           planCode = 'ultimate';
-          planId = 5; // Ultimate plan ID
+          planId = 5;
         } else if (signupData.subscriptionPlan.includes('business')) {
           planCode = 'business';
           planId = 3;
@@ -416,12 +420,22 @@ function SignupContent() {
           planCode = 'pro';
           planId = 2;
         }
-          
-          try {
-            // Llamar a la API de Stripe para crear la suscripción con trial
+
+        // Obtener trial_days del plan desde la BD
+        const { data: planData } = await supabase
+          .from('plans')
+          .select('trial_days')
+          .eq('code', planCode)
+          .single();
+        const trialDays = planData?.trial_days || 15;
+
+        // Intentar crear suscripción en Stripe (no bloqueante)
+        let stripeSubscriptionId: string | null = null;
+        let stripeCustomerId: string | null = null;
+        let stripeTrialEnd: string | null = null;
+
+        try {
             console.log('🔍 DEBUG signup - Llamando a /api/stripe/create-subscription...');
-            console.log('🔍 DEBUG signup - userId:', userId);
-            console.log('🔍 DEBUG signup - email:', email);
             const stripeResponse = await fetch('/api/stripe/create-subscription', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -433,60 +447,66 @@ function SignupContent() {
                 userId: userId,
                 email: email,
                 customerName: `${signupData.firstName} ${signupData.lastName || ''}`.trim(),
-                // Incluir customer y método de pago si existen (del paso PaymentMethod)
                 ...(signupData.stripeCustomerId ? { existingCustomerId: signupData.stripeCustomerId } : {}),
                 ...(signupData.stripePaymentMethodId ? { paymentMethodId: signupData.stripePaymentMethodId } : {}),
               }),
             });
 
-            console.log('🔍 DEBUG signup - Response status:', stripeResponse.status);
             const stripeResult = await stripeResponse.json();
-            console.log('🔍 DEBUG signup - Response:', stripeResult);
+            console.log('🔍 DEBUG signup - Stripe response:', stripeResponse.status, stripeResult);
 
             if (stripeResponse.ok && stripeResult.success) {
-              console.log('✅ Suscripción creada en Stripe:', stripeResult.subscriptionId);
-              console.log('✅ Customer ID de Stripe:', stripeResult.customerId);
-              
-              // Actualizar la suscripción local
-              const updatePayload: any = {
-                plan_id: planId,
-                stripe_subscription_id: stripeResult.subscriptionId,
-                stripe_customer_id: stripeResult.customerId,
-                billing_period: signupData.billingPeriod || 'monthly',
-                ...(signupData.skipTrial
-                  ? {
-                      trial_start: null,
-                      trial_end: null,
-                      status: 'active',
-                    }
-                  : {
-                      trial_start: new Date().toISOString(),
-                      trial_end: stripeResult.trialEnd || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-                      status: 'trialing',
-                    }
-                ),
-              };
-              
-              
-              console.log('🔍 DEBUG signup - Actualizando BD con:', updatePayload);
-              
-              const { data: updateData, error: updateError } = await supabase
-                .from('subscriptions')
-                .update(updatePayload)
-                .eq('organization_id', orgId)
-                .select();
-
-              if (updateError) {
-                console.error('❌ Error actualizando suscripción:', updateError);
-              } else {
-                console.log('✅ Suscripción actualizada en BD:', updateData);
-              }
+              stripeSubscriptionId = stripeResult.subscriptionId;
+              stripeCustomerId = stripeResult.customerId;
+              stripeTrialEnd = stripeResult.trialEnd || null;
+              console.log('✅ Suscripción creada en Stripe:', stripeSubscriptionId);
             } else {
               console.error('❌ Error en respuesta de Stripe API:', stripeResult);
             }
-          } catch (stripeError) {
-            console.error('❌ Error en llamada a Stripe API:', stripeError);
-          }
+        } catch (stripeError) {
+            console.error('❌ Error en llamada a Stripe API (no bloqueante):', stripeError);
+        }
+
+        // Siempre actualizar la suscripción en la BD, con o sin Stripe
+        const now = new Date();
+        const trialEnd = stripeTrialEnd 
+          ? new Date(stripeTrialEnd).toISOString()
+          : new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000).toISOString();
+
+        const updatePayload: any = {
+          plan_id: planId,
+          billing_period: signupData.billingPeriod || 'monthly',
+          ...(signupData.skipTrial
+            ? {
+                trial_start: null,
+                trial_end: null,
+                status: 'active',
+              }
+            : {
+                trial_start: now.toISOString(),
+                trial_end: trialEnd,
+                status: 'trialing',
+              }
+          ),
+        };
+
+        // Solo incluir IDs de Stripe si se crearon
+        if (stripeSubscriptionId) updatePayload.stripe_subscription_id = stripeSubscriptionId;
+        if (stripeCustomerId) updatePayload.stripe_customer_id = stripeCustomerId;
+
+        console.log('🔍 DEBUG signup - Actualizando BD con:', updatePayload);
+
+        const { data: updateData, error: updateError } = await supabase
+          .from('subscriptions')
+          .update(updatePayload)
+          .eq('organization_id', orgId)
+          .select();
+
+        if (updateError) {
+          console.error('❌ Error actualizando suscripción en BD:', updateError);
+        } else {
+          console.log('✅ Suscripción actualizada en BD:', updateData);
+        }
         
         // Actualizar last_org_id en el perfil
         await supabase

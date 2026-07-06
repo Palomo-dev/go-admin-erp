@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import LogoUploader from './LogoUploader';
+import LocationSelector from '../common/LocationSelector';
 
 interface OrganizationData {
   name: string;
@@ -45,8 +46,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     address: '',
     city: '',
     state: '', 
+    stateCode: '',
     country: 'Colombia',
     countryCode: 'COL',
+    municipalityId: '',
     postalCode: '',
     taxId: '',
     nit: '', 
@@ -721,36 +724,29 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           {/* Dirección */}
           <div className="grid grid-cols-2 gap-6">
             {renderFormField('address', 'Dirección', 'text', false, 'col-span-2')}
-            {renderFormField('city', 'Ciudad', 'text', false, 'col-span-1')}
-            {renderFormField('state', 'Estado/Provincia', 'text', false, 'col-span-1')}
             
-            {/* Country selector */}
-            <div className="col-span-1">
-              <label htmlFor="country" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                País
-              </label>
-              <select
-                id="country"
-                name="country"
-                value={formData.countryCode}
-                onChange={(e) => {
-                  const selectedCountry = countries.find(c => c.code === e.target.value);
-                  setFormData({ 
-                    ...formData, 
-                    countryCode: e.target.value,
-                    country: selectedCountry?.name || ''
-                  });
-                }}
-                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900"
-              >
-                <option value="">Seleccionar país...</option>
-                {countries.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Location Selector: País, Estado/Departamento, Ciudad/Municipio */}
+            <LocationSelector
+              value={{
+                country: formData.country,
+                countryCode: formData.countryCode,
+                state: formData.state,
+                stateCode: formData.stateCode || '',
+                city: formData.city,
+                municipalityId: formData.municipalityId || '',
+              }}
+              onChange={(locData) => setFormData({
+                ...formData,
+                country: locData.country,
+                countryCode: locData.countryCode,
+                state: locData.state,
+                stateCode: locData.stateCode,
+                city: locData.city,
+                municipalityId: locData.municipalityId,
+              })}
+              errors={formErrors}
+              layout="grid"
+            />
             
             {renderFormField('postalCode', 'Código Postal', 'text', false, 'col-span-1')}
           </div>

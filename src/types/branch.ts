@@ -6,6 +6,9 @@ export interface Branch {
   city?: string;
   state?: string;
   country?: string;
+  country_code?: string;
+  state_code?: string;
+  municipality_id?: string;
   postal_code?: string;
   latitude?: number;
   longitude?: number;

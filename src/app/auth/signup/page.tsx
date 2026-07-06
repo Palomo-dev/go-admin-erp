@@ -575,7 +575,11 @@ function SignupContent() {
               branchFeatures: signupData.branchFeatures,
               // Datos de suscripción
               subscriptionPlan: signupData.subscriptionPlan,
-              billingPeriod: signupData.billingPeriod
+              billingPeriod: signupData.billingPeriod,
+              skipTrial: signupData.skipTrial,
+              // Datos de Stripe
+              stripeCustomerId: signupData.stripeCustomerId,
+              stripePaymentMethodId: signupData.stripePaymentMethodId
             })
           },
           emailRedirectTo: `${window.location.origin}/auth/callback?complete_signup=true`
@@ -606,9 +610,7 @@ function SignupContent() {
           return;
         } catch (createError: any) {
           console.error('Error creando datos de registro:', createError);
-          // Si falla la creación de datos, aún así el usuario existe
-          // Intentar limpiar y mostrar error
-          throw new Error(t('errorSetupAccount'));
+          throw new Error(`${t('errorSetupAccount')} - ${createError.message || 'Error desconocido'}`);
         }
       }
       

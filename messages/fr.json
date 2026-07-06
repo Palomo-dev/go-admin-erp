@@ -153,10 +153,10 @@
       "subscription": {
         "selectPlan": "Sélectionnez un plan",
         "selectPlanDescription": "Choisissez le plan qui correspond le mieux aux besoins de votre organisation.",
-        "trialPeriod": "Tous les plans incluent une période d'essai de 30 jours.",
+        "trialPeriod": "Les plans incluent une période d'essai de {days} jours.",
         "billingOption": "Comment voulez-vous commencer ?",
         "useTrial": "Utiliser la période gratuite",
-        "useTrialDescription": "Essayez 15 jours gratuits sans frais. Vous serez facturé à la fin de la période.",
+        "useTrialDescription": "Essayez {days} jours gratuits sans frais. Vous serez facturé à la fin de la période.",
         "payNow": "Payer maintenant",
         "payNowDescription": "Payez aujourd'hui et commencez votre abonnement immédiatement, sans période d'essai."
       },

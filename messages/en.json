@@ -153,10 +153,10 @@
       "subscription": {
         "selectPlan": "Select a plan",
         "selectPlanDescription": "Choose the plan that best fits your organization's needs.",
-        "trialPeriod": "All plans include a 30-day free trial.",
+        "trialPeriod": "Plans include a {days}-day free trial.",
         "billingOption": "How do you want to start?",
         "useTrial": "Use free trial",
-        "useTrialDescription": "Try 15 days free with no charge. You'll be billed at the end of the trial.",
+        "useTrialDescription": "Try {days} days free with no charge. You'll be billed at the end of the trial.",
         "payNow": "Pay now",
         "payNowDescription": "Pay today and start your subscription immediately, no trial period."
       },

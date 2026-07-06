@@ -153,10 +153,10 @@
       "subscription": {
         "selectPlan": "Selecciona un plan",
         "selectPlanDescription": "Elige el plan que mejor se adapte a las necesidades de tu organización.",
-        "trialPeriod": "Todos los planes incluyen un periodo de prueba de 30 días.",
+        "trialPeriod": "Los planes incluyen un periodo de prueba de {days} días.",
         "billingOption": "¿Cómo quieres empezar?",
         "useTrial": "Usar días gratis",
-        "useTrialDescription": "Prueba 15 días gratis sin cobro. Se cobrará al finalizar el período.",
+        "useTrialDescription": "Prueba {days} días gratis sin cobro. Se cobrará al finalizar el período.",
         "payNow": "Pagar ahora",
         "payNowDescription": "Paga hoy y comienza tu suscripción inmediatamente, sin período de prueba."
       },

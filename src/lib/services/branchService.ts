@@ -43,6 +43,63 @@ export const branchService = {
   },
 
   /**
+   * Get branches accessible to the current authenticated user.
+   * - Admins / super admins: all organization branches.
+   * - Regular members: only branches assigned in member_branches.
+   * canSelectAll indica si tiene sentido ofrecer "Todas las sucursales" (>1 accesible).
+   */
+  async getAccessibleBranches(
+    organizationId: number
+  ): Promise<{ branches: Branch[]; canSelectAll: boolean }> {
+    const all = await this.getBranches(organizationId);
+
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    if (!userId) {
+      return { branches: all, canSelectAll: all.length > 1 };
+    }
+
+    const { data: member } = await supabase
+      .from('organization_members')
+      .select('id, role_id, is_super_admin')
+      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    // Sin membresía activa: no restringimos (fail-open de UX)
+    if (!member) {
+      return { branches: all, canSelectAll: all.length > 1 };
+    }
+
+    let isAdmin = member.is_super_admin === true;
+    if (!isAdmin && member.role_id) {
+      const { data: role } = await supabase
+        .from('roles')
+        .select('name')
+        .eq('id', member.role_id)
+        .maybeSingle();
+      const roleName = role?.name;
+      isAdmin = roleName === 'Super Admin' || roleName === 'Admin de organización';
+    }
+
+    if (isAdmin) {
+      return { branches: all, canSelectAll: all.length > 1 };
+    }
+
+    const { data: assignments } = await supabase
+      .from('member_branches')
+      .select('branch_id')
+      .eq('organization_member_id', member.id);
+
+    const allowedIds = new Set((assignments || []).map((a: any) => a.branch_id));
+    // Fail-open: sin asignaciones mostramos todas (coincide con RLS legacy)
+    const branches = allowedIds.size > 0 ? all.filter((b) => allowedIds.has(b.id)) : all;
+
+    return { branches, canSelectAll: branches.length > 1 };
+  },
+
+  /**
    * Get a single branch by ID
    */
   async getBranchById(branchId: number): Promise<Branch> {

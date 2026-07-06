@@ -356,6 +356,38 @@ export function invalidateBranchIdCache(): void {
   console.log('🏦 Caché de branch_id invalidado');
 }
 
+// Clave de almacenamiento para el modo "Todas las sucursales"
+const BRANCH_ALL_KEY = 'branchFilterAll';
+
+// Nombre del evento global emitido al cambiar de sucursal o de modo
+export const BRANCH_CHANGED_EVENT = 'branch-changed';
+
+/**
+ * Indica si el usuario tiene activo el modo "Todas las sucursales".
+ * En este modo no se debe filtrar por branch_id al listar/consultar.
+ */
+export function getBranchFilterAll(): boolean {
+  try {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(BRANCH_ALL_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Devuelve el branch_id a usar para FILTRAR lecturas/consultas.
+ * - Si el modo "Todas" está activo, retorna null (no filtrar).
+ * - En caso contrario, retorna la sucursal seleccionada (o null si no hay).
+ *
+ * IMPORTANTE: para operaciones de ESCRITURA (crear ventas, pagos, etc.)
+ * seguir usando getCurrentBranchId(), que siempre devuelve una sucursal concreta.
+ */
+export function getBranchFilter(): number | null {
+  if (getBranchFilterAll()) return null;
+  return getCurrentBranchId();
+}
+
 // Función auxiliar para obtener branch_id con fallback (solo usar cuando se necesite realmente)
 export function getCurrentBranchIdWithFallback(): number {
   const branchId = getCurrentBranchId();
@@ -565,5 +597,7 @@ export default {
   getCurrentBranchId,
   getCurrentUserId,
   invalidateBranchIdCache,
-  getCurrentBranchIdWithFallback
+  getCurrentBranchIdWithFallback,
+  getBranchFilter,
+  getBranchFilterAll
 };

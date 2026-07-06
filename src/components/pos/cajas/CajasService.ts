@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentBranchId, getBranchFilter, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import type {
   CashSession,
   CashMovement,
@@ -15,8 +15,13 @@ import type {
 } from './types';
 
 export class CajasService {
-  private static organizationId = getOrganizationId();
-  private static branchId = getCurrentBranchId();
+  // Se leen en tiempo de llamada (no en import) para reflejar la organización/sucursal activa
+  private static get organizationId(): number | null {
+    return getOrganizationId();
+  }
+  private static get branchId(): number | null {
+    return getCurrentBranchId();
+  }
 
   /**
    * Obtiene la sesión de caja activa para la sucursal actual
@@ -202,7 +207,7 @@ export class CajasService {
         .from('payments')
         .select('amount')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', this.branchId)
+        .eq('branch_id', session.branch_id)
         .eq('method', 'cash')
         .eq('status', 'completed')
         .gte('created_at', session.opened_at)
@@ -283,12 +288,17 @@ export class CajasService {
    */
   static async getSessionHistory(filter?: CashSessionFilter): Promise<CashSession[]> {
     try {
+      const branchFilter = getBranchFilter();
       let query = supabase
         .from('cash_sessions')
         .select('*')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', this.branchId)
         .order('opened_at', { ascending: false });
+
+      // Filtrar por sucursal salvo en modo "Todas las sucursales"
+      if (branchFilter) {
+        query = query.eq('branch_id', branchFilter);
+      }
 
       if (filter?.status && filter.status !== 'all') {
         query = query.eq('status', filter.status);
@@ -327,7 +337,7 @@ export class CajasService {
         .from('payments')
         .select('amount, method')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', this.branchId)
+        .eq('branch_id', session.branch_id)
         .eq('status', 'completed')
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString());
@@ -549,7 +559,7 @@ export class CajasService {
         .from('sales')
         .select('id, total, status, payment_status, created_at, customer_id')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', this.branchId)
+        .eq('branch_id', session.branch_id)
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString())
         .order('created_at', { ascending: false });
@@ -574,7 +584,7 @@ export class CajasService {
         .from('payments')
         .select('method, amount')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', this.branchId)
+        .eq('branch_id', session.branch_id)
         .eq('status', 'completed')
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString());

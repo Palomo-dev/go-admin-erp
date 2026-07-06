@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, User, Percent } from 'lucide-react';
 import { FacturasCompraService } from '../FacturasCompraService';
 import { parseLocalDate, toLocalDateString } from '@/utils/Utils';
 import { 
@@ -20,6 +20,11 @@ import { ItemsListForm } from './ItemsListForm';
 import { ResumenFactura } from './ResumenFactura';
 import { FormActions } from './FormActions';
 import { ImpuestosFacturaCompra } from './ImpuestosFacturaCompra';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { 
   calculateCartTaxes,
   type TaxCalculationItem,
@@ -61,6 +66,12 @@ export function NuevaFacturaForm({
   });
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
 
+  // Estados para comisión
+  const [salespersonId, setSalespersonId] = useState<string>('');
+  const [commissionRate, setCommissionRate] = useState<number>(0);
+  const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_purchase' | 'none'>('salesperson');
+  const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
+
   // Función para obtener datos iniciales
   const obtenerDatosIniciales = (): NuevaFacturaCompraForm => {
     if (esEdicion && facturaInicial) {
@@ -79,7 +90,10 @@ export function NuevaFacturaForm({
           unit_price: item.unit_price,
           tax_rate: item.tax_rate || 19,
           discount_amount: item.discount_amount || 0
-        })) || []
+        })) || [],
+        salesperson_id: facturaInicial.salesperson_id || '',
+        commission_rate: Number(facturaInicial.commission_rate) || 0,
+        commission_type: facturaInicial.commission_type || 'salesperson'
       };
     }
     
@@ -92,7 +106,10 @@ export function NuevaFacturaForm({
       payment_terms: 30,
       tax_included: false,
       notes: '',
-      items: []
+      items: [],
+      salesperson_id: '',
+      commission_rate: 0,
+      commission_type: 'salesperson'
     };
   };
 
@@ -102,6 +119,30 @@ export function NuevaFacturaForm({
   useEffect(() => {
     cargarDatosIniciales();
     calcularFechaVencimiento();
+  }, []);
+
+  // Cargar miembros de la organización para selector de comisionista
+  useEffect(() => {
+    const loadMembers = async () => {
+      const orgId = await getOrganizationId();
+      if (!orgId) return;
+      try {
+        const { data: members } = await supabase
+          .from('organization_members')
+          .select('user_id, profiles(first_name, last_name)')
+          .eq('organization_id', orgId);
+        if (members) {
+          const formatted = members.map((m: any) => ({
+            id: m.user_id,
+            name: `${m.profiles?.first_name || ''} ${m.profiles?.last_name || ''}`.trim() || 'Usuario'
+          }));
+          setOrganizationMembers(formatted);
+        }
+      } catch (e) {
+        console.warn('Error cargando miembros:', e);
+      }
+    };
+    loadMembers();
   }, []);
 
   useEffect(() => {
@@ -136,6 +177,11 @@ export function NuevaFacturaForm({
 
   const handleInputChange = useCallback((field: keyof NuevaFacturaCompraForm, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Sincronizar estados de comisión con formData
+    if (field === 'salesperson_id') setSalespersonId(value);
+    if (field === 'commission_rate') setCommissionRate(Number(value) || 0);
+    if (field === 'commission_type') setCommissionType(value);
     
     // Limpiar error del campo si existe usando función que no depende de errors
     setErrors(prev => {
@@ -341,6 +387,9 @@ export function NuevaFacturaForm({
         const { subtotal: calculatedSubtotal, taxTotal: calculatedTaxTotal, total: calculatedTotal } = calcularTotales();
         await onSubmit({
           ...formData,
+          salesperson_id: salespersonId || undefined,
+          commission_rate: commissionRate || 0,
+          commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
           appliedTaxes,
           _calculatedTotals: {
             subtotal: calculatedSubtotal,
@@ -361,6 +410,9 @@ export function NuevaFacturaForm({
         // Crear objeto con totales calculados
         const facturaConTotales = {
           ...formData,
+          salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
+          commission_rate: commissionRate || 0,
+          commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
           // Pasar totales calculados explícitamente
           _calculatedTotals: {
             subtotal: calculatedSubtotal,
@@ -487,6 +539,81 @@ export function NuevaFacturaForm({
           onTaxCalculationChange={handleTaxCalculationChange}
           initialAppliedTaxCodes={initialAppliedTaxCodes}
         />
+
+        {/* Sección de Comisión */}
+        <div className="
+          border border-gray-200 dark:border-gray-700
+          bg-gray-50/50 dark:bg-gray-900/30
+          p-3 sm:p-4
+          rounded-lg
+        ">
+          <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <User className="h-4 w-4 text-blue-500" />
+            Comisión (opcional)
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                Comisionista
+              </Label>
+              <Select value={salespersonId} onValueChange={(v) => handleInputChange('salesperson_id', v)}>
+                <SelectTrigger className="
+                  w-full text-sm
+                  bg-white dark:bg-gray-900
+                  border-gray-300 dark:border-gray-600
+                  text-gray-900 dark:text-gray-100
+                ">
+                  <SelectValue placeholder="Seleccionar comisionista" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="__none__" className="text-gray-900 dark:text-gray-100">Sin asignar</SelectItem>
+                  {organizationMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.id} className="text-gray-900 dark:text-gray-100">
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                <span className="flex items-center gap-1.5">
+                  <Percent className="h-3.5 w-3.5" />
+                  Porcentaje de Comisión
+                </span>
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={commissionRate || ''}
+                onChange={(e) => handleInputChange('commission_rate', Number(e.target.value) || 0)}
+                placeholder="0"
+                className="
+                  text-sm
+                  bg-white dark:bg-gray-900
+                  border-gray-300 dark:border-gray-600
+                  text-gray-900 dark:text-gray-100
+                "
+              />
+            </div>
+          </div>
+          {salespersonId && salespersonId !== '__none__' && commissionRate > 0 && (
+            <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-blue-700 dark:text-blue-400">
+                  Comisión estimada ({commissionRate}%):
+                </span>
+                <span className="font-semibold text-blue-700 dark:text-blue-400">
+                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: formData.currency || 'COP' }).format(
+                    (subtotal > 0 ? subtotal : total) * commissionRate / 100
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Resumen con desglose de impuestos */}
         <ResumenFactura

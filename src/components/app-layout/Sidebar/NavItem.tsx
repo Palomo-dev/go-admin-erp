@@ -49,6 +49,20 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
   const router = useRouter();
   const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
   
+  // Función para determinar si un subitem está activo usando longest-prefix-match
+  const isSubItemActive = (subItemHref: string): boolean => {
+    if (pathname === subItemHref) return true;
+    if (pathname?.startsWith(subItemHref + '/')) {
+      const hasMoreSpecificMatch = item.submenu?.some(
+        sub => sub.href !== subItemHref
+          && sub.href.length > subItemHref.length
+          && (pathname === sub.href || pathname?.startsWith(sub.href + '/'))
+      );
+      return !hasMoreSpecificMatch;
+    }
+    return false;
+  };
+  
   // Prefetch de rutas al hacer hover para carga más rápida
   const handlePrefetch = useCallback((href: string) => {
     router.prefetch(href);
@@ -136,7 +150,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
                     onMouseEnter={() => handlePrefetch(subItem.href)}
                     className={`
                       flex items-center px-3 py-1.5 text-sm rounded-md min-h-[40px]
-                      ${pathname === subItem.href
+                      ${isSubItemActive(subItem.href)
                         ? 'bg-blue-50 text-blue-700 font-medium dark:bg-blue-900/20 dark:text-blue-200'
                         : 'text-gray-600 hover:text-blue-600 active:bg-blue-50 dark:text-gray-400 dark:hover:text-gray-200 dark:active:bg-gray-700'}
                     `}
@@ -215,7 +229,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
                       onMouseEnter={() => handlePrefetch(subItem.href)}
                       className={`
                         flex items-center px-3 py-2 text-sm w-full cursor-default
-                        ${pathname === subItem.href 
+                        ${isSubItemActive(subItem.href)
                           ? 'bg-blue-50 text-blue-700 font-medium dark:bg-blue-900/20 dark:text-blue-200' 
                           : 'text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-gray-200'}
                       `}

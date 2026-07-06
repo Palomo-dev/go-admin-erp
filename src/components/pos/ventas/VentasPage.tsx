@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { VentasService } from './VentasService';
 import { VentasTable } from './VentasTable';
 import { VentasFilters } from './VentasFilters';
@@ -23,6 +24,7 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 export function VentasPage() {
   const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
   const [sales, setSales] = useState<SaleWithDetails[]>([]);
   const [totalSales, setTotalSales] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,7 +45,7 @@ export function VentasPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization, filters, currentPage]);
+  }, [organization, filters, currentPage, limit, branchFilter]);
 
   useEffect(() => {
     loadSales();

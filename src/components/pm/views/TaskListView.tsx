@@ -20,6 +20,9 @@ import {
   Tag,
   Check,
   X,
+  Trash2,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react';
 import { type PMTask, type TaskTimeEntry, PRIORITY_COLORS, PRIORITY_LABELS, TASK_STATUS_COLORS, TASK_STATUS_LABELS, TASK_TYPE_LABELS } from '@/lib/services/pmService';
 import { pmService } from '@/lib/services/pmService';
@@ -83,6 +86,53 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
     } finally {
       setApplying(false);
     }
+  };
+
+  // Eliminar tareas seleccionadas
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`¿Eliminar ${ids.length} tarea(s)? Esta acción no se puede deshacer.`)) return;
+    setApplying(true);
+    try {
+      await Promise.all(ids.map(id => pmService.deleteTask(id)));
+      toast({ title: 'Tareas eliminadas', description: `${ids.length} tarea(s) eliminada(s)` });
+      clearSelection();
+      onTaskUpdate();
+    } catch (error: any) {
+      toast({ title: 'Error al eliminar', description: error.message, variant: 'destructive' });
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  // Agregar etiqueta a tareas seleccionadas
+  const handleBulkAddTag = async (tag: string) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0 || !tag.trim()) return;
+    setApplying(true);
+    try {
+      await Promise.all(ids.map(async id => {
+        const task = tasks.find(t => t.id === id);
+        const currentTags = task?.tags || [];
+        const newTags = [...new Set([...currentTags, tag.trim()])];
+        await pmService.updateTask(id, { tags: newTags });
+      }));
+      toast({ title: 'Etiqueta agregada', description: `'${tag}' · ${ids.length} tarea(s)` });
+      clearSelection();
+      onTaskUpdate();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  // Asignar horas estimadas
+  const handleBulkEstimatedHours = async (hours: string) => {
+    const val = parseFloat(hours);
+    if (isNaN(val) || val <= 0) return;
+    await applyBulk({ estimated_hours: val }, `Horas: ${val}h`);
   };
 
   const handleToggleDone = async (task: PMTask, e: React.MouseEvent) => {
@@ -154,6 +204,29 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
               className="h-8 w-[150px] text-xs bg-white dark:bg-gray-800"
               title="Fecha límite"
             />
+            <Input
+              type="number" min="0" step="0.5" disabled={applying}
+              placeholder="Horas est."
+              onBlur={(e) => { if (e.target.value) handleBulkEstimatedHours(e.target.value); e.target.value = ''; }}
+              className="h-8 w-[100px] text-xs bg-white dark:bg-gray-800"
+              title="Horas estimadas"
+            />
+            <Input
+              type="text" disabled={applying}
+              placeholder="Agregar etiqueta..."
+              onKeyDown={(e) => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value; if (v.trim()) handleBulkAddTag(v); (e.target as HTMLInputElement).value = ''; } }}
+              className="h-8 w-[160px] text-xs bg-white dark:bg-gray-800"
+              title="Presionar Enter para agregar"
+            />
+            <Button variant="outline" size="sm" disabled={applying} onClick={() => applyBulk({ status: 'done' }, 'Marcar completadas')} className="h-8 text-xs">
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Completar
+            </Button>
+            <Button variant="outline" size="sm" disabled={applying} onClick={() => applyBulk({ status: 'open' }, 'Reabrir')} className="h-8 text-xs">
+              <Circle className="h-3.5 w-3.5 mr-1" />Reabrir
+            </Button>
+            <Button variant="outline" size="sm" disabled={applying} onClick={handleBulkDelete} className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20">
+              <Trash2 className="h-3.5 w-3.5 mr-1" />Eliminar
+            </Button>
             <Button variant="ghost" size="sm" onClick={clearSelection} className="h-8 text-xs text-gray-500">
               <X className="h-3.5 w-3.5 mr-1" />Limpiar
             </Button>

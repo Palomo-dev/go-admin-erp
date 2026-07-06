@@ -74,6 +74,7 @@ interface EmploymentData {
   branch_id: number | null;
   arl_risk_level: number | null;
   employee_name: string;
+  user_id: string | null;
 }
 
 interface TimesheetSummary {
@@ -273,7 +274,14 @@ export class PayrollCalculationService {
       ? this.calculateProportionalTransport(rules.transport_allowance, summary.days_worked)
       : 0;
 
-    const grossPay = basicSalary + overtimePay + nightPremium + holidayPremium + transportAllowance;
+    // Obtener comisiones accrued del empleado en el período
+    const commissionAmount = await this.getEmployeeCommissions(
+      employee.user_id,
+      periodStart,
+      periodEnd
+    );
+
+    const grossPay = basicSalary + overtimePay + nightPremium + holidayPremium + transportAllowance + commissionAmount.total;
 
     // Deducciones empleado
     const healthDeduction = basicSalary * (rules.health_employee_pct / 100);
@@ -318,7 +326,7 @@ export class PayrollCalculationService {
         overtime_pay: overtimePay,
         night_premium: nightPremium,
         holiday_premium: holidayPremium,
-        commissions: 0,
+        commissions: commissionAmount.total,
         bonuses: 0,
         other_earnings: 0,
         gross_pay: grossPay,
@@ -350,6 +358,7 @@ export class PayrollCalculationService {
           days_worked: summary.days_worked,
           period_start: periodStart,
           period_end: periodEnd,
+          commission_ids: commissionAmount.ids,
         },
       })
       .select('id')
@@ -455,6 +464,7 @@ export class PayrollCalculationService {
       employee_name: emp.organization_members?.profiles
         ? `${emp.organization_members.profiles.first_name || ''} ${emp.organization_members.profiles.last_name || ''}`.trim()
         : 'Sin nombre',
+      user_id: emp.organization_members?.user_id || null,
     }));
   }
 
@@ -539,6 +549,38 @@ export class PayrollCalculationService {
       5: 6.960,
     };
     return rates[riskLevel || 1] || 0.522;
+  }
+
+  /**
+   * Obtiene comisiones accrued del empleado en el período
+   */
+  private async getEmployeeCommissions(
+    userId: string | null,
+    periodStart: string,
+    periodEnd: string
+  ): Promise<{ total: number; ids: string[] }> {
+    if (!userId) return { total: 0, ids: [] };
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('commissions')
+      .select('id, commission_amount, accrued_at')
+      .eq('payee_id', userId)
+      .eq('payee_type', 'employee')
+      .eq('status', 'accrued')
+      .gte('accrued_at', periodStart)
+      .lte('accrued_at', periodEnd + 'T23:59:59');
+
+    if (error) {
+      console.warn('Error obteniendo comisiones:', error);
+      return { total: 0, ids: [] };
+    }
+
+    const commissions = data || [];
+    return {
+      total: commissions.reduce((sum, c) => sum + Number(c.commission_amount || 0), 0),
+      ids: commissions.map((c) => c.id),
+    };
   }
 
   /**

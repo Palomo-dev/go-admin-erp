@@ -68,6 +68,9 @@ interface SignupData {
   // Datos de suscripción
   subscriptionPlan: string;
   billingPeriod: 'monthly' | 'yearly';
+  skipTrial: boolean;
+  // Código de vendedor (referral)
+  referralCode?: string;
   // Datos de Stripe (método de pago)
   stripeCustomerId?: string;
   stripePaymentMethodId?: string;
@@ -127,7 +130,18 @@ function SignupContent() {
     branchFeatures: '',
     subscriptionPlan: 'pro',
     billingPeriod: 'monthly',
+    skipTrial: false,
+    referralCode: '',
   });
+
+  // Leer código de vendedor de la URL (?ref=VEND-001)
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      console.log('🔍 Código de vendedor detectado:', refCode);
+      updateFormData({ referralCode: refCode });
+    }
+  }, [searchParams]);
 
   // Verificar si viene de Google OAuth
   useEffect(() => {
@@ -302,6 +316,34 @@ function SignupContent() {
         }
         console.log('✅ Membresía creada exitosamente');
         
+        // Registrar vendedor si viene con código de referido
+        if (signupData.referralCode) {
+          console.log('🔍 Registrando referral de vendedor:', signupData.referralCode);
+          try {
+            const { data: seller, error: sellerError } = await supabase
+              .from('sellers')
+              .select('id')
+              .eq('referral_code', signupData.referralCode)
+              .eq('status', 'active')
+              .single();
+
+            if (seller && !sellerError) {
+              await supabase
+                .from('seller_referrals')
+                .insert({
+                  seller_id: seller.id,
+                  organization_id: orgId,
+                  status: 'pending',
+                });
+              console.log('✅ Referral de vendedor registrado');
+            } else {
+              console.warn('⚠️ Código de vendedor no encontrado:', signupData.referralCode);
+            }
+          } catch (refError) {
+            console.error('⚠️ Error registrando referral (no bloquea signup):', refError);
+          }
+        }
+        
         // Guardar organización activa en localStorage para que AppLayout la encuentre
         guardarOrganizacionActiva({ id: orgId, name: signupData.organizationName });
         
@@ -386,7 +428,7 @@ function SignupContent() {
                 organizationId: orgId,
                 planCode: planCode,
                 billingPeriod: signupData.billingPeriod || 'monthly',
-                useTrial: true,
+                useTrial: !signupData.skipTrial,
                 userId: userId,
                 email: email,
                 customerName: `${signupData.firstName} ${signupData.lastName || ''}`.trim(),
@@ -410,9 +452,18 @@ function SignupContent() {
                 stripe_subscription_id: stripeResult.subscriptionId,
                 stripe_customer_id: stripeResult.customerId,
                 billing_period: signupData.billingPeriod || 'monthly',
-                trial_start: new Date().toISOString(),
-                trial_end: stripeResult.trialEnd || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-                status: 'trialing'
+                ...(signupData.skipTrial
+                  ? {
+                      trial_start: null,
+                      trial_end: null,
+                      status: 'active',
+                    }
+                  : {
+                      trial_start: new Date().toISOString(),
+                      trial_end: stripeResult.trialEnd || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+                      status: 'trialing',
+                    }
+                ),
               };
               
               
@@ -578,8 +629,8 @@ function SignupContent() {
   // que se ejecuta cuando el email es confirmado por Supabase.
 
   return (
-    <div className="min-h-screen overflow-y-auto flex items-start sm:items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-6 md:py-10 px-4 sm:px-6 md:px-8 lg:px-10">
-      <div className={`${currentStep === 4 ? 'max-w-3xl' : 'max-w-2xl'} w-full space-y-3 sm:space-y-5 md:space-y-6 bg-white p-5 pb-20 sm:p-6 sm:pb-8 md:p-8 md:pb-10 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 my-4 max-h-[88vh] overflow-y-auto`}>
+    <div className="min-h-screen overflow-y-auto flex items-start sm:items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-4 sm:py-6 md:py-10 px-4 sm:px-6 md:px-8 lg:px-10">
+      <div className={`${currentStep === 4 ? 'max-w-3xl' : 'max-w-2xl'} w-full space-y-3 sm:space-y-5 md:space-y-6 bg-white dark:bg-gray-800 p-5 pb-20 sm:p-6 sm:pb-8 md:p-8 md:pb-10 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 dark:border-gray-700 my-4 max-h-[88vh] overflow-y-auto`}>
         <div className="flex flex-col items-center">
           {/* Logo GO Admin con diseño moderno */}
           <div className="mb-2 sm:mb-3">
@@ -604,11 +655,11 @@ function SignupContent() {
           </div>
           
           {/* Título mejorado */}
-          <h2 className="text-center text-lg sm:text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-1">
+          <h2 className="text-center text-lg sm:text-xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent mb-1">
             {isGoogleUser ? t('googleAccountSetup') : t('pageTitle')}
           </h2>
           {isGoogleUser && (
-            <p className="text-center text-xs text-gray-500 mt-1">
+            <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-1">
               {t('googleAccount', { email: signupData.email })}
             </p>
           )}
@@ -619,24 +670,24 @@ function SignupContent() {
               <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                 1
               </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 2 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
                 2
               </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 3 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 3 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
                 3
               </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 4 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 4 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 4 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
                 4
               </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 5 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 5 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 5 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
                 5
               </div>
-              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 6 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 6 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+              <div className={`w-4 sm:w-8 h-0.5 ${currentStep >= 6 ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-medium ${currentStep >= 6 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
                 6
               </div>
             </div>
@@ -644,7 +695,7 @@ function SignupContent() {
         </div>
         
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-2 py-1.5 sm:px-3 sm:py-2 rounded text-xs sm:text-sm relative" role="alert">
+          <div className="bg-red-100 border border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-500 dark:text-red-300 px-2 py-1.5 sm:px-3 sm:py-2 rounded text-xs sm:text-sm relative" role="alert">
             <span className="block sm:inline">{error}</span>
           </div>
         )}

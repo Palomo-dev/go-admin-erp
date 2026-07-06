@@ -195,7 +195,8 @@ const SidebarNavigationComponent = ({
             { name: "Reportes", href: "/app/finanzas/reportes", icon: <BarChart3 size={16} /> },
             { name: "Impuestos", href: "/app/finanzas/impuestos", icon: <Percent size={16} /> },
             { name: "Monedas", href: "/app/finanzas/monedas", icon: <Globe size={16} /> },
-            { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> }
+            { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> },
+            { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> }
           ]
         },
         { 

@@ -26,8 +26,10 @@ const setCookie = (name: string, value: string, maxAge: number = 604800) => {
   
   // La cookie de autenticación de Supabase necesita estar disponible para JavaScript
   const isAuthCookie = name.includes('-auth-token');
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
   
-  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${isProduction ? ';Secure' : ''}${cookieDomain}`;
 }
 
 // Función para eliminar una cookie
@@ -36,8 +38,10 @@ const removeCookie = (name: string) => {
   
   // La cookie de autenticación de Supabase necesita estar disponible para JavaScript
   const isAuthCookie = name.includes('-auth-token');
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
   
-  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${process.env.NODE_ENV === 'production' ? ';Secure' : ''}`;
+  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${isProduction ? ';Secure' : ''}${cookieDomain}`;
 }
 
 // Creación del cliente de Supabase para el navegador
@@ -92,9 +96,11 @@ export const createSupabaseClient = () => {
             // También guardar en cookies para que el middleware pueda leerlo
             // Usar secure en producción, no secure en desarrollo
             const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-            const cookieValue = `${key}=${encodeURIComponent(value)}; path=/; max-age=2592000; SameSite=Lax${secureFlag}`;
+            const isProduction = process.env.NODE_ENV === 'production';
+            const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
+            const cookieValue = `${key}=${encodeURIComponent(value)}; path=/; max-age=2592000; SameSite=Lax${secureFlag}${cookieDomain}`;
             document.cookie = cookieValue;
-            console.log('🍪 [STORAGE] Guardado en cookie:', key, 'con flags:', secureFlag);
+            console.log('🍪 [STORAGE] Guardado en cookie:', key, 'con flags:', secureFlag, cookieDomain);
             
             // Verificar que la cookie se estableció correctamente
             setTimeout(() => {
@@ -117,7 +123,9 @@ export const createSupabaseClient = () => {
             console.log('💾 [STORAGE] Eliminado de localStorage:', key);
             
             // Eliminar de cookies
-            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+            const isProduction = process.env.NODE_ENV === 'production';
+            const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
+            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
             console.log('🍪 [STORAGE] Eliminado de cookie:', key);
           }
         },
@@ -308,6 +316,23 @@ export const signInWithMicrosoft = async () => {
 
 export const signOut = async () => {
   try {
+    // Si es una sesión de impersonación de super admin, limpiar el member temporal
+    const isImpersonating = localStorage.getItem('superAdminImpersonating') === 'true';
+    const superAdminUserId = localStorage.getItem('superAdminUserId');
+    const superAdminOrgId = localStorage.getItem('superAdminOrgId');
+
+    if (isImpersonating && superAdminUserId && superAdminOrgId) {
+      try {
+        await fetch('/api/super-admin-cleanup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: superAdminUserId, org_id: parseInt(superAdminOrgId) }),
+        });
+      } catch (e) {
+        console.error('Error cleaning up super admin access:', e);
+      }
+    }
+
     // Extraer referencia del proyecto dinámicamente desde la URL de Supabase
     const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL
       ? process.env.NEXT_PUBLIC_SUPABASE_URL.split('.')[0].replace('https://', '')
@@ -341,6 +366,10 @@ export const signOut = async () => {
     localStorage.removeItem('currentOrganizationType');
     localStorage.removeItem('rememberMe');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('superAdminImpersonating');
+    localStorage.removeItem('superAdminName');
+    localStorage.removeItem('superAdminUserId');
+    localStorage.removeItem('superAdminOrgId');
     
     // Cerrar sesión en Supabase
     return await supabase.auth.signOut();

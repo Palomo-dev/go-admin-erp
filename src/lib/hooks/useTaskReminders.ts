@@ -15,6 +15,8 @@ export interface TaskReminder {
   };
   daysUntilDue: number;
   isOverdue: boolean;
+  project_id?: string | null;
+  related_to_type?: string | null;
 }
 
 interface UseTaskRemindersReturn {
@@ -64,7 +66,8 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
           assigned_to,
           related_to_id,
           related_to_type,
-          status
+          status,
+          project_id
         `)
         .eq('organization_id', organizationId)
         .not('status', 'in', '("completed", "canceled")')
@@ -174,7 +177,9 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
             ? customers[task.related_to_id] 
             : undefined,
           daysUntilDue,
-          isOverdue
+          isOverdue,
+          project_id: task.project_id,
+          related_to_type: task.related_to_type
         };
       });
       

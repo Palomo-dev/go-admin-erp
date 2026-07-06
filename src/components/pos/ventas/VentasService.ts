@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentBranchId, getBranchFilter } from '@/lib/hooks/useOrganization';
 import { SaleWithDetails, SalesFilter, DailySummary, CashSession, CashCount } from './types';
 
 export class VentasService {
@@ -10,7 +10,7 @@ export class VentasService {
     limit: number = 20
   ): Promise<{ data: SaleWithDetails[]; total: number }> {
     const organizationId = getOrganizationId();
-    const branchId = getCurrentBranchId();
+    const branchId = getBranchFilter();
     const sourceType = filter.source_type || 'all';
 
     try {
@@ -49,6 +49,7 @@ export class VentasService {
           .eq('organization_id', organizationId)
           .order('created_at', { ascending: false });
 
+        if (branchId) wQuery = wQuery.eq('branch_id', branchId);
         if (filter.status && filter.status !== 'all') {
           const statusMap: Record<string, string> = { completed: 'confirmed', pending: 'pending', cancelled: 'cancelled' };
           wQuery = wQuery.eq('status', statusMap[filter.status] || filter.status);
@@ -300,7 +301,7 @@ export class VentasService {
   // Obtener resumen del día
   static async getDailySummary(date?: string): Promise<DailySummary> {
     const organizationId = getOrganizationId();
-    const branchId = getCurrentBranchId();
+    const branchId = getBranchFilter();
     const targetDate = date || new Date().toISOString().split('T')[0];
 
     const startOfDay = `${targetDate}T00:00:00`;

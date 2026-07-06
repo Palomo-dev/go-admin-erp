@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { stockService, type StockLevel, type StockStats as StockStatsType } from '@/lib/services/stockService';
 import { StockHeader, StockStats, StockFilters, StockTable } from '@/components/inventario/stock';
 import { Loader2 } from 'lucide-react';
@@ -12,6 +13,7 @@ export default function StockPage() {
   const { theme } = useTheme();
   const { toast } = useToast();
   const { organization, isLoading: loadingOrg } = useOrganization();
+  const { branchFilter } = useBranch();
 
   // Estados de datos
   const [stockLevels, setStockLevels] = useState<StockLevel[]>([]);
@@ -94,6 +96,11 @@ export default function StockPage() {
       setIsRefreshing(false);
     }
   }, [organization?.id, branchId]);
+
+  // Sincronizar el filtro local con la sucursal seleccionada globalmente (header)
+  useEffect(() => {
+    setBranchId(branchFilter ? String(branchFilter) : 'all');
+  }, [branchFilter]);
 
   // Efecto para cargar datos iniciales
   useEffect(() => {

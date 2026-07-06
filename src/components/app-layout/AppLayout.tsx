@@ -98,6 +98,7 @@ import type { AssistantContext } from '@/lib/services/aiAssistantService';
 // Importaciones estándar para evitar ChunkLoadError
 import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
 import { ModuleProvider, useModuleContext } from '@/lib/context/ModuleContext';
+import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 
@@ -183,7 +184,8 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Reportes", href: "/app/finanzas/reportes", icon: <BarChart3 size={16} /> },
       { name: "Impuestos", href: "/app/finanzas/impuestos", icon: <Percent size={16} /> },
       { name: "Monedas", href: "/app/finanzas/monedas", icon: <Globe size={16} /> },
-      { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> }
+      { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> },
+      { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> }
     ]
   },
   { 
@@ -965,6 +967,7 @@ export const AppLayout = ({
   
   return (
     <ModuleProvider>
+      <BranchProvider>
       {/* Barra de progreso de navegación - feedback visual inmediato */}
       <NavigationProgress />
       
@@ -1159,6 +1162,7 @@ export const AppLayout = ({
       />
 
       </div>
+      </BranchProvider>
     </ModuleProvider>
   );
 };

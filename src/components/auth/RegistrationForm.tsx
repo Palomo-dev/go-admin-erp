@@ -141,7 +141,7 @@ export default function RegistrationForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             {t('firstName')}
           </label>
           <input
@@ -151,11 +151,11 @@ export default function RegistrationForm({
             value={formData.firstName}
             onChange={handleChange}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
           />
         </div>
         <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             {t('lastName')}
           </label>
           <input
@@ -165,13 +165,13 @@ export default function RegistrationForm({
             value={formData.lastName}
             onChange={handleChange}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
           />
         </div>
       </div>
       
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {t('email')}
         </label>
         <input
@@ -182,17 +182,17 @@ export default function RegistrationForm({
           onChange={handleChange}
           disabled={isReadOnlyEmail}
           required
-          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm ${
-            isReadOnlyEmail ? 'bg-gray-50 text-gray-500' : 'focus:outline-none focus:ring-blue-500 focus:border-blue-500'
+          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.email ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm dark:bg-gray-800 dark:text-gray-100 ${
+            isReadOnlyEmail ? 'bg-gray-50 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : 'focus:outline-none focus:ring-blue-500 focus:border-blue-500'
           }`}
         />
         {validationErrors.email && (
-          <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.email}</p>
         )}
       </div>
       
       <div>
-        <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {t('phone')} {!isEmployee && `(${tc('optional')})`}
         </label>
         <input
@@ -202,15 +202,15 @@ export default function RegistrationForm({
           value={formData.phoneNumber}
           onChange={handleChange}
           required={isEmployee}
-          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.phoneNumber ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.phoneNumber ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100`}
         />
         {validationErrors.phoneNumber && (
-          <p className="mt-1 text-sm text-red-600">{validationErrors.phoneNumber}</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.phoneNumber}</p>
         )}
       </div>
       
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {t('password')}
         </label>
         <div className="relative mt-1">
@@ -221,12 +221,12 @@ export default function RegistrationForm({
             value={formData.password}
             onChange={handleChange}
             required
-            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.password ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100`}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
           >
             {showPassword ? (
               <EyeSlashIcon className="h-5 w-5" />
@@ -236,13 +236,13 @@ export default function RegistrationForm({
           </button>
         </div>
         {validationErrors.password && (
-          <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.password}</p>
         )}
-        <p className="mt-1 text-xs text-gray-500">{t('passwordRequirements')}</p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('passwordRequirements')}</p>
       </div>
       
       <div>
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {t('confirmPassword')}
         </label>
         <div className="relative mt-1">
@@ -253,12 +253,12 @@ export default function RegistrationForm({
             value={formData.confirmPassword}
             onChange={handleChange}
             required
-            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
+            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.confirmPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100`}
           />
           <button
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
           >
             {showConfirmPassword ? (
               <EyeSlashIcon className="h-5 w-5" />
@@ -268,12 +268,12 @@ export default function RegistrationForm({
           </button>
         </div>
         {validationErrors.confirmPassword && (
-          <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.confirmPassword}</p>
         )}
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {t('profilePhoto')} ({tc('optional')})
         </label>
         <FileUpload
@@ -296,12 +296,12 @@ export default function RegistrationForm({
           preview={true}
         />
         {validationErrors.avatar && (
-          <p className="mt-1 text-sm text-red-600">{validationErrors.avatar}</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.avatar}</p>
         )}
       </div>
       
       <div>
-        <label htmlFor="preferredLanguage" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="preferredLanguage" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {t('preferredLanguage')}
         </label>
         <select
@@ -309,7 +309,7 @@ export default function RegistrationForm({
           name="preferredLanguage"
           value={formData.preferredLanguage}
           onChange={(e) => setFormData(prev => ({ ...prev, preferredLanguage: e.target.value }))}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
         >
           <option value="es">🇪🇸 es - Español</option>
           <option value="en">🇺🇸 en - English</option>
@@ -321,7 +321,7 @@ export default function RegistrationForm({
       </div>
       
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/20 dark:border-red-500">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
@@ -329,7 +329,7 @@ export default function RegistrationForm({
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
           </div>
         </div>

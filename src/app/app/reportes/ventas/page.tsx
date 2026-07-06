@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,6 +66,7 @@ function getDefaultFilters(): VentasFilters {
 
 export default function ReportesVentasPage() {
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
 
   // Estado principal
@@ -86,6 +88,12 @@ export default function ReportesVentasPage() {
   const [totalVentas, setTotalVentas] = useState(0);
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  // Sincronizar el filtro del reporte con el selector global de sucursal
+  useEffect(() => {
+    setFilters((prev) => (prev.branchId === branchFilter ? prev : { ...prev, branchId: branchFilter }));
+    setPage(1);
+  }, [branchFilter]);
 
   // Opciones de filtros
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);

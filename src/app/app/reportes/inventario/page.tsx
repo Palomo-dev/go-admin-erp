@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,11 +47,17 @@ function getDefaultFilters(): InventarioFilters {
 
 export default function ReportesInventarioPage() {
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filters, setFilters] = useState<InventarioFilters>(getDefaultFilters());
+
+  // Sincronizar el filtro del reporte con el selector global de sucursal
+  useEffect(() => {
+    setFilters((prev) => (prev.branchId === branchFilter ? prev : { ...prev, branchId: branchFilter }));
+  }, [branchFilter]);
 
   // Datos
   const [kpis, setKpis] = useState<InventarioKPI | null>(null);

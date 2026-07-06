@@ -166,12 +166,12 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   const formContent = (
     <>
       {/* Toolbar */}
-      <div className="sticky top-0 z-10 flex justify-between items-center p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+      <div className="sticky top-0 z-10 flex justify-between items-center p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 border-b dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <BuildingOfficeIcon className="h-6 w-6 text-blue-600" />
+          <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
+            <BuildingOfficeIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
             {initialData.id ? 'Editar Sucursal' : 'Nueva Sucursal'}
           </h2>
         </div>
@@ -200,16 +200,16 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
         )}
       </div>
       {/* Contenido del formulario */}
-      <div className="p-4 sm:p-6 space-y-8">
+      <div className="p-4 sm:p-6 space-y-8 bg-white dark:bg-gray-900">
         {/* Información básica */}
-        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <IdentificationIcon className="h-5 w-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Información básica</h3>
+            <IdentificationIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Información básica</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Nombre *</label>
               <input
                 type="text"
                 name="name"
@@ -217,11 +217,11 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 onChange={handleChange}
                 required
                 placeholder="Nombre de la sucursal"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Código de sucursal *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Código de sucursal *</label>
               <input
                 type="text"
                 name="branch_code"
@@ -229,75 +229,75 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 onChange={handleChange}
                 required
                 placeholder="Ej: SUC-001"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
             </div>
           </div>
         </div>
 
         {/* Ubicación */}
-        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <MapPinIcon className="h-5 w-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Ubicación</h3>
+            <MapPinIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Ubicación</h3>
           </div>
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Dirección</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Dirección</label>
               <input
                 type="text"
                 name="address"
                 value={form.address}
                 onChange={handleChange}
                 placeholder="Dirección completa"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Ciudad</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Ciudad</label>
                 <input
                   type="text"
                   name="city"
                   value={form.city}
                   onChange={handleChange}
                   placeholder="Ciudad"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Estado</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Estado</label>
                 <input
                   type="text"
                   name="state"
                   value={form.state}
                   onChange={handleChange}
                   placeholder="Estado o provincia"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">País</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">País</label>
                 <input
                   type="text"
                   name="country"
                   value={form.country}
                   onChange={handleChange}
                   placeholder="País"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Código Postal</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Código Postal</label>
                 <input
                   type="text"
                   name="postal_code"
                   value={form.postal_code}
                   onChange={handleChange}
                   placeholder="Código postal"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                 />
               </div>
             </div>
@@ -305,16 +305,16 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
         </div>
 
         {/* Contacto */}
-        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <PhoneIcon className="h-5 w-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Información de contacto</h3>
+            <PhoneIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Información de contacto</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Teléfono</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Teléfono</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 dark:text-gray-400">
                   <PhoneIcon className="h-4 w-4" />
                 </span>
                 <input
@@ -323,14 +323,14 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.phone}
                   onChange={handleChange}
                   placeholder="+57 300 123 4567"
-                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                 />
               </div>
             </div>
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 dark:text-gray-400">
                   <EnvelopeIcon className="h-4 w-4" />
                 </span>
                 <input
@@ -339,7 +339,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.email}
                   onChange={handleChange}
                   placeholder="sucursal@empresa.com"
-                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white"
+                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                 />
               </div>
             </div>
@@ -347,14 +347,14 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
         </div>
 
         {/* Gerente */}
-        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <UserIcon className="h-5 w-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Gerente de sucursal</h3>
+            <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Gerente de sucursal</h3>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Asignar Gerente
               </label>
               <ManagerSelector
@@ -365,7 +365,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 }}
                 disabled={isLoading}
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 El gerente tendrá permisos administrativos sobre esta sucursal.
               </p>
             </div>
@@ -373,22 +373,22 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
         </div>
 
         {/* Horarios */}
-        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-800">Horarios de apertura</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Horarios de apertura</h3>
           </div>
           <div className="overflow-x-auto">
-            <div className="bg-gray-50 rounded-lg p-1">
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-1">
               <table className="w-full min-w-[600px] border-collapse">
                 <thead>
-                  <tr className="bg-blue-50 rounded-t-lg">
-                    <th className="p-3 text-left text-sm font-medium text-gray-700 rounded-tl-lg">Día</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-700">Abierto</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-700">Hora apertura</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-700 rounded-tr-lg">Hora cierre</th>
+                  <tr className="bg-blue-50 dark:bg-blue-900/20 rounded-t-lg">
+                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 rounded-tl-lg">Día</th>
+                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Abierto</th>
+                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Hora apertura</th>
+                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 rounded-tr-lg">Hora cierre</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -407,8 +407,8 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                     const isLast = index === 6;
                     
                     return (
-                      <tr key={day} className={`${isLast ? '' : 'border-b border-gray-200'} hover:bg-gray-50`}>
-                        <td className={`p-3 text-sm font-medium ${isLast ? 'rounded-bl-lg' : ''}`}>{dayLabel}</td>
+                      <tr key={day} className={`${isLast ? '' : 'border-b border-gray-200 dark:border-gray-700'} hover:bg-gray-50 dark:hover:bg-gray-700/50`}>
+                        <td className={`p-3 text-sm font-medium text-gray-800 dark:text-gray-200 ${isLast ? 'rounded-bl-lg' : ''}`}>{dayLabel}</td>
                         <td className="p-3">
                           <label className="flex items-center space-x-2 cursor-pointer">
                             <input
@@ -417,7 +417,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                               onChange={(e) => handleHoursChange(day, 'closed', !e.target.checked)}
                               className="checkbox checkbox-sm checkbox-primary"
                             />
-                            <span className="text-sm font-medium">{!dayHours.closed ? 'Sí' : 'No'}</span>
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{!dayHours.closed ? 'Sí' : 'No'}</span>
                           </label>
                         </td>
                         <td className="p-3">
@@ -426,16 +426,16 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                             value={dayHours.open || '09:00'}
                             onChange={(e) => handleHoursChange(day, 'open', e.target.value)}
                             disabled={dayHours.closed}
-                            className="input input-bordered input-sm w-full max-w-[120px] bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400"
                           />
                         </td>
-                        <td className={`p-3 ${isLast ? 'rounded-br-lg' : ''}`}>
+                        <td className={`p-3 ${isLast ? 'rounded-br-lg' : ''}">
                           <input
                             type="time"
                             value={dayHours.close || '18:00'}
                             onChange={(e) => handleHoursChange(day, 'close', e.target.value)}
                             disabled={dayHours.closed}
-                            className="input input-bordered input-sm w-full max-w-[120px] bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400"
                           />
                         </td>
                       </tr>
@@ -447,15 +447,15 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
           </div>
         </div>
         {/* Características */}
-        <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-800">Características</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Características</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -463,10 +463,10 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   onChange={(e) => handleFeatureChange('has_wifi', e.target.checked)}
                   className="checkbox checkbox-sm checkbox-primary"
                 />
-                <span className="text-sm font-medium">WiFi</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">WiFi</span>
               </label>
             </div>
-            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -474,10 +474,10 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   onChange={(e) => handleFeatureChange('has_parking', e.target.checked)}
                   className="checkbox checkbox-sm checkbox-primary"
                 />
-                <span className="text-sm font-medium">Estacionamiento</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Estacionamiento</span>
               </label>
             </div>
-            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -485,10 +485,10 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   onChange={(e) => handleFeatureChange('has_delivery', e.target.checked)}
                   className="checkbox checkbox-sm checkbox-primary"
                 />
-                <span className="text-sm font-medium">Delivery</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Delivery</span>
               </label>
             </div>
-            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -496,10 +496,10 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   onChange={(e) => handleFeatureChange('has_outdoor_seating', e.target.checked)}
                   className="checkbox checkbox-sm checkbox-primary"
                 />
-                <span className="text-sm font-medium">Área exterior</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Área exterior</span>
               </label>
             </div>
-            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -507,10 +507,10 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   onChange={(e) => handleFeatureChange('is_wheelchair_accessible', e.target.checked)}
                   className="checkbox checkbox-sm checkbox-primary"
                 />
-                <span className="text-sm font-medium">Accesible para sillas de ruedas</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Accesible para sillas de ruedas</span>
               </label>
             </div>
-            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -518,7 +518,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   onChange={(e) => handleFeatureChange('has_air_conditioning', e.target.checked)}
                   className="checkbox checkbox-sm checkbox-primary"
                 />
-                <span className="text-sm font-medium">Aire acondicionado</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Aire acondicionado</span>
               </label>
             </div>
           </div>
@@ -527,15 +527,15 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
 
         {/* Estado - Hidden during signup */}
         {!hideStatusSection && (
-          <div className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm mb-8">
             <div className="flex items-center gap-2 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-800">Estado</h3>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Estado</h3>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
-            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -544,10 +544,10 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   onChange={handleChange}
                   className="checkbox checkbox-sm checkbox-primary"
                 />
-                <span className="text-sm font-medium">Sucursal principal</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Sucursal principal</span>
               </label>
             </div>
-            <div className="bg-gray-50 hover:bg-blue-50 p-3 rounded-lg transition-all duration-200">
+            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
               <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -556,7 +556,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   onChange={handleChange}
                   className="checkbox checkbox-sm checkbox-primary"
                 />
-                <span className="text-sm font-medium">Sucursal activa</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Sucursal activa</span>
               </label>
             </div>
           </div>
@@ -566,12 +566,12 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
       {/* Error */}
       <div className="mt-6">
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm mb-4">
+          <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-md shadow-sm mb-4">
             <div className="flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
           </div>
         )}

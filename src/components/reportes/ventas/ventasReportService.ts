@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { branchService } from '@/lib/services/branchService';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -621,13 +622,11 @@ export const ventasReportService = {
    * Obtener sucursales de la organización
    */
   async getBranches(organizationId: number): Promise<{ id: number; name: string }[]> {
-    const { data } = await supabase
-      .from('branches')
-      .select('id, name')
-      .eq('organization_id', organizationId)
-      .eq('is_active', true)
-      .order('name');
-    return data || [];
+    const { branches } = await branchService.getAccessibleBranches(organizationId);
+    return branches
+      .filter((b) => b.is_active !== false)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      .map((b) => ({ id: b.id as number, name: b.name }));
   },
 
   /**

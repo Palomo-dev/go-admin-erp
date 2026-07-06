@@ -48,6 +48,7 @@ import {
   Plus,
   Download,
   Printer,
+  Percent,
 } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
@@ -371,6 +372,23 @@ export default function ColillaDetallePage() {
                       {slip.holiday_hours || 0}
                     </p>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {Number(slip.commissions) > 0 && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <Percent className="h-4 w-4 text-green-500" />
+                  <span className="font-medium text-gray-900 dark:text-white">Comisiones</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Comisiones del período
+                  </p>
+                  <p className="font-semibold text-green-600 dark:text-green-400">
+                    {formatCurrency(Number(slip.commissions), slip.currency_code)}
+                  </p>
                 </div>
               </div>
             )}

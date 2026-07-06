@@ -90,6 +90,12 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
     }
   };
 
+  const allSelected = branches.length > 0 && branches.every(b => assignedBranches.includes(b.id));
+
+  const handleToggleAll = () => {
+    setAssignedBranches(allSelected ? [] : branches.map(b => b.id));
+  };
+
   const handleCheckboxChange = (branchId: string) => {
     setAssignedBranches(prev => {
       if (prev.includes(branchId)) {
@@ -208,6 +214,18 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
                 <p className="text-gray-500 text-center py-8">{t('noBranches')}</p>
               ) : (
                 <div className="space-y-3">
+                  <div className="flex items-center border-b border-gray-200 pb-3 mb-1">
+                    <input
+                      type="checkbox"
+                      id="branch-all"
+                      checked={allSelected}
+                      onChange={handleToggleAll}
+                      className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary mr-3"
+                    />
+                    <label htmlFor="branch-all" className="text-gray-900 font-medium">
+                      {t('selectAll')}
+                    </label>
+                  </div>
                   {branches.map((branch) => (
                     <div key={branch.id} className="flex items-center">
                       <input

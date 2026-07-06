@@ -175,7 +175,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
     setDescLoading(true);
     try {
       const owner = users.find(u => u.id === form.owner_id)?.nombre;
-      const res = await fetch('/api/ai/pm-assist', {
+      const res = await fetch('/api/ai-assistant/pm-assist', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: 'describe', entity: 'proyecto', title: form.name, description: form.description,

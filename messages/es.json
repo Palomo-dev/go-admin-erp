@@ -153,13 +153,21 @@
       "subscription": {
         "selectPlan": "Selecciona un plan",
         "selectPlanDescription": "Elige el plan que mejor se adapte a las necesidades de tu organización.",
-        "trialPeriod": "Todos los planes incluyen un periodo de prueba de 30 días."
+        "trialPeriod": "Todos los planes incluyen un periodo de prueba de 30 días.",
+        "billingOption": "¿Cómo quieres empezar?",
+        "useTrial": "Usar días gratis",
+        "useTrialDescription": "Prueba 15 días gratis sin cobro. Se cobrará al finalizar el período.",
+        "payNow": "Pagar ahora",
+        "payNowDescription": "Paga hoy y comienza tu suscripción inmediatamente, sin período de prueba."
       },
       "payment": {
         "title": "Método de Pago",
         "paidPlanMessage": "Agrega un método de pago para cuando termine tu período de prueba.",
         "freePlanMessage": "Puedes agregar un método de pago ahora o más tarde.",
+        "payNowMessage": "Ingresa tu método de pago. Se realizará el cobro hoy mismo.",
         "noChargeNow": "No se realizará ningún cobro ahora",
+        "chargeNow": "Se cobrará hoy",
+        "chargeNowDescription": "Se realizará el cobro de tu primer período inmediatamente al verificar la tarjeta.",
         "verified": "¡Método de pago verificado!",
         "cardInfo": "Información de la tarjeta",
         "verifyOnly": "Solo verificamos que la tarjeta sea válida. No se realizará ningún cargo.",
@@ -750,6 +758,7 @@
       "assignmentsUpdated": "Asignaciones actualizadas correctamente",
       "errorSaving": "Error al actualizar las asignaciones de sucursales",
       "noBranches": "No hay sucursales disponibles",
+      "selectAll": "Todas las sucursales",
       "cancel": "Cancelar",
       "saving": "Guardando...",
       "save": "Guardar"

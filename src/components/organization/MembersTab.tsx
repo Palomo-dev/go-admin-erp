@@ -31,7 +31,6 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [updatingRole, setUpdatingRole] = useState(false);
-  const [updatingBranch, setUpdatingBranch] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [newRole, setNewRole] = useState<string>('');
   
@@ -234,44 +233,6 @@ export default function MembersTab({ orgId }: { orgId: number }) {
     fetchMembers();
   };
 
-  // Función heredada - ya no se usa directamente pero se mantiene por compatibilidad
-  const updateMemberBranch = async (memberId: string, branchId: string) => {
-    try {
-      setUpdatingBranch(true);
-      console.log(memberId);  
-      // Update the member's branch_id in profiles table
-      const { error } = await supabase
-        .from('member_branches')
-        .update({ branch_id: branchId })
-        .eq('id', memberId)
-      
-      if (error) throw error;
-      
-      // Find the branch name
-      const branch = branches.find(b => b.id === branchId);
-      const branchName = branch ? branch.name : t('noBranch');
-      
-      // Update local member data
-      setMembers(prev => prev.map(m => {
-        if (m.id === memberId) {
-          return { 
-            ...m, 
-            branch_id: branchId,
-            branch_name: branchName
-          };
-        }
-        return m;
-      }));
-      
-      setSuccess(t('branchUpdated'));
-    } catch (err: any) {
-      console.error('Error al actualizar sucursal:', err);
-      setError(err.message || t('errorUpdatingBranch'));
-    } finally {
-      setUpdatingBranch(false);
-    }
-  };
-  
   const toggleMemberStatus = async (memberId: string, currentStatus: boolean) => {
     try {
       setUpdatingStatus(true);
@@ -674,7 +635,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <button
-                      onClick={() => openBranchAssignmentModal(member.user_id, member.full_name)}
+                      onClick={() => openBranchAssignmentModal(member.id, member.full_name)}
                       className="inline-flex items-center px-2 py-1 border border-primary text-xs font-medium rounded-md text-primary hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                       disabled={member.is_admin}
                     >

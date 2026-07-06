@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { transportService, Vehicle, TransportCarrier, DriverCredential, Trip } from '@/lib/services/transportService';
 import { 
   VehiclesHeader, 
@@ -27,6 +28,7 @@ import {
 export default function VehiculosPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,7 +64,7 @@ export default function VehiculosPage() {
     setIsLoading(true);
     try {
       const [vehiclesData, carriersData, branchesData, driversData] = await Promise.all([
-        transportService.getVehicles(organization.id),
+        transportService.getVehicles(organization.id, branchFilter),
         transportService.getCarriers(organization.id),
         transportService.getBranches(organization.id),
         transportService.getDrivers(organization.id),
@@ -81,7 +83,7 @@ export default function VehiculosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, toast]);
+  }, [organization?.id, branchFilter, toast]);
 
   useEffect(() => {
     loadData();

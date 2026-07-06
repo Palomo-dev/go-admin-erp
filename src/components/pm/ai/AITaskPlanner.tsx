@@ -89,7 +89,7 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
     setGenerating(true);
     setGeneratedTasks([]);
     try {
-      const response = await fetch('/api/ai/pm-planner', {
+      const response = await fetch('/api/ai-assistant/pm-planner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: prompt.trim(), projectId }),

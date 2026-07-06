@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Clock, Inbox, Mail, Smartphone, MessageSquare, User, Users } from 'lucide-react';
+import { Bell, Clock, Inbox, Mail, Smartphone, MessageSquare, User, Users, FolderKanban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
@@ -429,9 +429,10 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
               <TaskReminders
                 taskReminders={taskReminders}
                 loading={taskRemindersLoading}
-                onTaskClick={(taskId) => {
+                onTaskClick={(reminder) => {
                   setNotificationsOpen(false);
-                  router.push(`/app/crm/tareas?taskId=${taskId}`);
+                  const isPM = !!reminder.project_id || (reminder.related_to_type || '').startsWith('agent:');
+                  router.push(isPM ? `/app/pm/tareas?taskId=${reminder.id}` : `/app/crm/tareas?taskId=${reminder.id}`);
                 }}
               />
             )}
@@ -449,7 +450,11 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
               <button
                 onClick={() => {
                   setNotificationsOpen(false);
-                  router.push('/app/crm/tareas');
+                  const hasPM = taskReminders.some(r => !!r.project_id || (r.related_to_type || '').startsWith('agent:'));
+                  const hasCRM = taskReminders.some(r => !r.project_id && !(r.related_to_type || '').startsWith('agent:'));
+                  if (hasPM && !hasCRM) router.push('/app/pm/tareas');
+                  else if (hasCRM && !hasPM) router.push('/app/crm/tareas');
+                  else router.push('/app/pm/tareas');
                 }}
                 className="text-sm sm:text-xs text-blue-600 dark:text-blue-400 hover:underline block text-center w-full font-medium min-h-[44px] sm:min-h-0 flex items-center justify-center"
               >

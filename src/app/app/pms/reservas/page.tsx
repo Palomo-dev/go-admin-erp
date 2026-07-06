@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import ReservationListService, { type ReservationFilters, type ReservationListItem } from '@/lib/services/reservationListService';
 import CheckinService, { type CheckinReservation } from '@/lib/services/checkinService';
@@ -30,6 +31,7 @@ import {
 export default function ReservasPage() {
   const router = useRouter();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
 
   const [reservations, setReservations] = useState<ReservationListItem[]>([]);
@@ -89,12 +91,12 @@ export default function ReservasPage() {
     description: '',
   });
 
-  // Cargar datos al inicio
+  // Cargar datos al inicio y al cambiar de sucursal
   useEffect(() => {
     if (organization) {
       loadData();
     }
-  }, [organization]);
+  }, [organization, branchFilter]);
 
   // Filtrar reservas cuando cambian los filtros
   useEffect(() => {
@@ -107,7 +109,7 @@ export default function ReservasPage() {
     try {
       setIsLoading(true);
       const [reservationsData, statsData] = await Promise.all([
-        ReservationListService.getReservations(organization.id, filters),
+        ReservationListService.getReservations(organization.id, { ...filters, branchId: branchFilter }),
         ReservationListService.getReservationStats(organization.id),
       ]);
 

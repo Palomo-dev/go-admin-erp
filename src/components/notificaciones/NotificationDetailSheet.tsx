@@ -75,8 +75,13 @@ function getRedirect(notif: NotificationForSheet): { url: string; label: string 
       return { url: '/app/pms/housekeeping', label: 'Ver housekeeping' };
     case 'opportunity_stage_change': case 'opportunity_won': case 'opportunity_lost':
       return p.opportunity_id ? { url: `/app/crm/oportunidades/${p.opportunity_id}`, label: 'Ver oportunidad' } : { url: '/app/crm/oportunidades', label: 'Ver oportunidades' };
-    case 'task_assigned': case 'task_completed':
-      return p.task_id ? { url: `/app/crm/tareas?taskId=${p.task_id}`, label: 'Ver tarea' } : { url: '/app/crm/tareas', label: 'Ver tareas' };
+    case 'task_agent': case 'task_rescheduled': case 'task_reschedule_summary':
+      return p.task_id ? { url: `/app/pm/tareas?taskId=${p.task_id}`, label: 'Ver tarea PM' } : { url: '/app/pm/tareas', label: 'Ver tareas PM' };
+    case 'task_assigned': case 'task_completed': {
+      const isPM = p.source === 'agent' || p.source === 'agent_reschedule' || p.module === 'pm';
+      const base = isPM ? '/app/pm/tareas' : '/app/crm/tareas';
+      return p.task_id ? { url: `${base}?taskId=${p.task_id}`, label: isPM ? 'Ver tarea PM' : 'Ver tarea' } : { url: base, label: isPM ? 'Ver tareas PM' : 'Ver tareas' };
+    }
     case 'stock_low': case 'stock_out': case 'stock_low_periodic':
       return p.product_id ? { url: `/app/inventario/productos/${p.product_id}`, label: 'Ver producto' } : { url: '/app/inventario/stock', label: 'Ver stock' };
     case 'transfer_created': case 'transfer_approved': case 'transfer_rejected':

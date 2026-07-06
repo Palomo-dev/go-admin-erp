@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,6 +49,7 @@ function getDefaultFilters(): FinanzasFilters {
 
 export default function ReportesFinanzasPage() {
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +62,12 @@ export default function ReportesFinanzasPage() {
   const [totalFacturas, setTotalFacturas] = useState(0);
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  // Sincronizar el filtro del reporte con el selector global de sucursal
+  useEffect(() => {
+    setFilters((prev) => (prev.branchId === branchFilter ? prev : { ...prev, branchId: branchFilter }));
+    setPage(1);
+  }, [branchFilter]);
   const [pagosPorDia, setPagosPorDia] = useState<PagoPorDia[]>([]);
   const [pagosPorMetodo, setPagosPorMetodo] = useState<PagoPorMetodo[]>([]);
   const [aging, setAging] = useState<AgingBucket[]>([]);

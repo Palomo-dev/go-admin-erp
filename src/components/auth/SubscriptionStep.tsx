@@ -7,12 +7,14 @@ import { useTranslations } from 'next-intl';
 export interface SubscriptionData {
   subscriptionPlan: string;
   billingPeriod: 'monthly' | 'yearly';
+  skipTrial: boolean;
 }
 
 interface SubscriptionStepProps {
   formData: {
     subscriptionPlan?: string;
     billingPeriod?: 'monthly' | 'yearly';
+    skipTrial?: boolean;
   };
   updateFormData: (data: Partial<any>) => void;
   onNext: () => void;
@@ -33,6 +35,7 @@ export default function SubscriptionStep({
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>(
     formData.billingPeriod || 'monthly'
   );
+  const [skipTrial, setSkipTrial] = useState(formData.skipTrial || false);
   
 
   const handleSelectPlan = (planId: string) => {
@@ -49,6 +52,11 @@ export default function SubscriptionStep({
     const newPlanId = period === 'yearly' ? `${currentPlanBase}-yearly` : currentPlanBase;
     setSelectedPlan(newPlanId);
     updateFormData({ subscriptionPlan: newPlanId });
+  };
+
+  const handleToggleSkipTrial = (value: boolean) => {
+    setSkipTrial(value);
+    updateFormData({ skipTrial: value });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -73,6 +81,61 @@ export default function SubscriptionStep({
           billingPeriod={billingPeriod}
           onChangeBillingPeriod={handleChangeBillingPeriod}
         />
+
+        {/* Toggle: Trial vs Pago inmediato */}
+        <div className="mt-4 sm:mt-6 border border-gray-200 rounded-lg p-3 sm:p-4 bg-gray-50">
+          <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
+            {t('billingOption')}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <label
+              className={`flex-1 flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-md border cursor-pointer transition-colors ${
+                !skipTrial
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <input
+                type="radio"
+                name="trialOption"
+                checked={!skipTrial}
+                onChange={() => handleToggleSkipTrial(false)}
+                className="mt-0.5 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-gray-900">
+                  {t('useTrial')}
+                </p>
+                <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">
+                  {t('useTrialDescription')}
+                </p>
+              </div>
+            </label>
+            <label
+              className={`flex-1 flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-md border cursor-pointer transition-colors ${
+                skipTrial
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <input
+                type="radio"
+                name="trialOption"
+                checked={skipTrial}
+                onChange={() => handleToggleSkipTrial(true)}
+                className="mt-0.5 text-green-600 focus:ring-green-500"
+              />
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-gray-900">
+                  {t('payNow')}
+                </p>
+                <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">
+                  {t('payNowDescription')}
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
 
         <div className="mt-6 sm:mt-8 flex justify-between gap-2">
           <button

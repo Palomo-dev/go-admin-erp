@@ -225,7 +225,10 @@ export class FacturasCompraService {
           created_by: currentUserId,
           notes: formData.notes,
           payment_terms: formData.payment_terms,
-          tax_included: formData.tax_included
+          tax_included: formData.tax_included,
+          salesperson_id: formData.salesperson_id || null,
+          commission_rate: formData.commission_rate || 0,
+          commission_type: formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 ? formData.commission_type : 'none'
         })
         .select()
         .single();
@@ -393,7 +396,10 @@ export class FacturasCompraService {
           notes: formData.notes,
           payment_terms: formData.payment_terms,
           tax_included: formData.tax_included,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          salesperson_id: formData.salesperson_id || null,
+          commission_rate: formData.commission_rate || 0,
+          commission_type: formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 ? formData.commission_type : 'none'
         })
         .eq('id', facturaId)
         .select()

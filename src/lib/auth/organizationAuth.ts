@@ -1,4 +1,5 @@
 import { supabase, ensureSessionSynced } from '@/lib/supabase/config';
+import { guardarOrganizacionActiva, invalidateBranchIdCache } from '@/lib/hooks/useOrganization';
 
 // Define Organization type
 export interface Organization {
@@ -42,7 +43,20 @@ export const selectOrganizationFromPopup = async ({
   
   setShowOrgPopup(false);
   
-  // Save organization info to localStorage
+  // Limpiar caches stale de la organización anterior
+  localStorage.removeItem('appLayout_userData_cache');
+  localStorage.removeItem('currentBranchId');
+  sessionStorage.removeItem('currentBranchId');
+  invalidateBranchIdCache();
+  
+  // Guardar organización usando la función centralizada (guarda en organizacionActiva + sessionStorage)
+  guardarOrganizacionActiva({
+    id: organization.id,
+    name: organization.name,
+    logo_url: organization.logo_url
+  });
+  
+  // También mantener compatibilidad con las claves legacy
   localStorage.setItem('currentOrganizationId', organization.id.toString());
   localStorage.setItem('currentOrganizationName', organization.name);
   

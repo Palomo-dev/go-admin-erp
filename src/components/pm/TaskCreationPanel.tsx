@@ -289,7 +289,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
     if (!form.title.trim()) { toast({ title: 'Escribe un título primero', variant: 'destructive' }); return; }
     setAiLoading(true);
     try {
-      const res = await fetch('/api/ai/pm-assist', {
+      const res = await fetch('/api/ai-assistant/pm-assist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -345,7 +345,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         parentTitle = parent?.title;
         parentDescription = parent?.description || undefined;
       }
-      const res = await fetch('/api/ai/pm-assist', {
+      const res = await fetch('/api/ai-assistant/pm-assist', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: 'describe', entity: 'tarea', title: form.title, description: form.description,

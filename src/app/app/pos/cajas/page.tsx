@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency, cn } from '@/utils/Utils';
 
 // Componentes del módulo de cajas
@@ -25,6 +26,7 @@ import { toast } from 'sonner';
 
 export default function CajasPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
   const [sessionHistory, setSessionHistory] = useState<CashSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,13 +34,13 @@ export default function CajasPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  // Cargar sesión activa e historial al inicio
+  // Cargar sesión activa e historial al inicio y al cambiar de sucursal
   useEffect(() => {
     if (organization?.id) {
       loadActiveSession();
       loadSessionHistory();
     }
-  }, [organization]);
+  }, [organization, branchFilter]);
 
   const loadActiveSession = async () => {
     setIsLoading(true);

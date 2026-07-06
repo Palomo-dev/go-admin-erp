@@ -73,7 +73,7 @@ export function KeyResultTasks({ krId, krTitle, krDescription, users, onChanged 
   const handleGenerateAI = async () => {
     setAiLoading(true);
     try {
-      const res = await fetch('/api/ai/pm-assist', {
+      const res = await fetch('/api/ai-assistant/pm-assist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

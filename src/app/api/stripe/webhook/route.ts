@@ -154,6 +154,7 @@ export async function POST(request: NextRequest) {
         console.log('✅ Pago de factura exitoso:', invoice.id)
         if (invoice.subscription) {
           console.log('   Para suscripción:', invoice.subscription)
+          await processSellerCommission(invoice, event.id)
         }
         break
       }
@@ -573,6 +574,105 @@ async function deactivateNonCoreModules(organizationId: number) {
     }
   } catch (error) {
     console.error('❌ Error en deactivateNonCoreModules:', error)
+  }
+}
+
+/**
+ * Procesar comisión de vendedor cuando se cobra una factura
+ * Busca la suscripción en DB, luego el referral del vendedor, y crea el registro de comisión
+ */
+async function processSellerCommission(invoice: any, eventId: string) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
+    // 1. Idempotencia: verificar si ya existe una comisión para este invoice
+    const { data: existing } = await supabase
+      .from('seller_commissions')
+      .select('id')
+      .eq('stripe_invoice_id', invoice.id)
+      .single()
+
+    if (existing) {
+      console.log('ℹ️ Comisión ya existe para invoice:', invoice.id, '- saltando')
+      return
+    }
+
+    // 2. Buscar la suscripción por stripe_subscription_id
+    const stripeSubscriptionId = invoice.subscription as string
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('organization_id, plan_id, billing_period')
+      .eq('stripe_subscription_id', stripeSubscriptionId)
+      .single()
+
+    if (!sub?.organization_id) {
+      console.log('ℹ️ No se encontró suscripción para:', stripeSubscriptionId)
+      return
+    }
+
+    // 3. Buscar referral del vendedor para esta organización
+    const { data: referral } = await supabase
+      .from('seller_referrals')
+      .select('seller_id')
+      .eq('organization_id', sub.organization_id)
+      .single()
+
+    if (!referral?.seller_id) {
+      console.log('ℹ️ No hay vendedor referido para org:', sub.organization_id)
+      return
+    }
+
+    // 4. Obtener commission_rate del vendedor
+    const { data: seller } = await supabase
+      .from('sellers')
+      .select('commission_rate')
+      .eq('id', referral.seller_id)
+      .single()
+
+    if (!seller) {
+      console.log('ℹ️ Vendedor no encontrado:', referral.seller_id)
+      return
+    }
+
+    // 5. Calcular monto de comisión
+    // El invoice de Stripe trae total_paid_amount en centavos
+    const invoiceTotal = invoice.total_paid_amount || invoice.amount_paid || invoice.total || 0
+    const paymentAmount = invoiceTotal / 100 // convertir de centavos a dólares
+
+    if (paymentAmount <= 0) {
+      console.log('ℹ️ Invoice con monto 0, saltando comisión')
+      return
+    }
+
+    const commissionRate = Number(seller.commission_rate) || 0
+    const commissionAmount = (paymentAmount * commissionRate) / 100
+
+    // 6. Crear registro de comisión
+    const { error: insertError } = await supabase
+      .from('seller_commissions')
+      .insert({
+        seller_id: referral.seller_id,
+        organization_id: sub.organization_id,
+        subscription_id: stripeSubscriptionId,
+        amount: commissionAmount,
+        status: 'pending',
+        billing_period: sub.billing_period || null,
+        stripe_invoice_id: invoice.id,
+        stripe_event_id: eventId,
+      })
+
+    if (insertError) {
+      console.error('❌ Error creando comisión:', insertError)
+    } else {
+      console.log(`✅ Comisión creada: $${commissionAmount.toFixed(2)} para vendedor ${referral.seller_id} (org ${sub.organization_id})`)
+    }
+  } catch (error) {
+    console.error('❌ Error en processSellerCommission:', error)
   }
 }
 

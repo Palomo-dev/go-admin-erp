@@ -43,11 +43,13 @@ import { MoverPedidoDialog } from '@/components/pos/mesas/MoverPedidoDialog';
 import { MesasPagination } from '@/components/pos/mesas/MesasPagination';
 import { MesasService } from '@/components/pos/mesas/mesasService';
 import { MesasFloorMap } from '@/components/pos/mesas/MesasFloorMap';
+import { useBranch } from '@/lib/context/BranchContext';
 import type { TableWithSession, MesaFormData, RestaurantTable } from '@/components/pos/mesas/types';
 
 export default function MesasPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { branchFilter } = useBranch();
   const [mesas, setMesas] = useState<TableWithSession[]>([]);
   const [zonas, setZonas] = useState<string[]>([]);
   const [zonaFiltro, setZonaFiltro] = useState<string>('todas');
@@ -77,10 +79,11 @@ export default function MesasPage() {
   const [mesasParaCombinar, setMesasParaCombinar] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
-  // Cargar datos iniciales
+  // Cargar datos iniciales y al cambiar de sucursal
   useEffect(() => {
     cargarDatos();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchFilter]);
 
   const cargarDatos = async () => {
     setIsLoading(true);

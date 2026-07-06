@@ -595,6 +595,38 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                 </div>
               </div>
 
+              {opportunity.commission_type && opportunity.commission_type !== 'none' && opportunity.commission_rate && opportunity.commission_rate > 0 && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                      Comisión {opportunity.commission_type === 'salesperson' ? 'de Vendedor' : 'de Intermediación'}
+                    </p>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-blue-600 dark:text-blue-500">Tasa:</span>
+                    <span className="font-semibold text-blue-700 dark:text-blue-400">{opportunity.commission_rate}%</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-blue-600 dark:text-blue-500">Monto comisión:</span>
+                    <span className="font-semibold text-blue-700 dark:text-blue-400">
+                      {formatCurrency(displayAmount * (opportunity.commission_rate || 0) / 100)}
+                    </span>
+                  </div>
+                  {opportunity.status === 'won' && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Comisión generada al ganar
+                    </p>
+                  )}
+                  {opportunity.status === 'open' && (
+                    <p className="text-xs text-blue-600 dark:text-blue-500 mt-2">
+                      Se generará al marcar como ganada
+                    </p>
+                  )}
+                </div>
+              )}
+
               {opportunity.loss_reason && (
                 <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
                   <p className="text-sm font-medium text-red-600 dark:text-red-400">

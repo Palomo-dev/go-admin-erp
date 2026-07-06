@@ -49,6 +49,8 @@ export interface SaleWithDetails extends Sale {
   delivery_type?: string;
   delivery_address?: any;
   coupon_code?: string;
+  salesperson_name?: string;
+  commission_amount?: number;
 }
 
 export interface SalesFilter {

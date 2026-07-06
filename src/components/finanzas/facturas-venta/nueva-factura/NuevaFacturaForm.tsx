@@ -15,7 +15,7 @@ import { ItemsFactura } from './ItemsFactura';
 import { ImpuestosFactura } from './ImpuestosFactura';
 import { FormaPagoSelector } from './FormaPagoSelector';
 import { format } from 'date-fns';
-import { Save, FileCheck, ArrowLeft, RefreshCw, Coins } from 'lucide-react';
+import { Save, FileCheck, ArrowLeft, RefreshCw, Coins, User, Percent } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
@@ -111,6 +111,12 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
 
   // Estados para impuestos
   const [taxIncluded, setTaxIncluded] = useState<boolean>(false);
+
+  // Estados para comisión
+  const [salespersonId, setSalespersonId] = useState<string>('');
+  const [commissionRate, setCommissionRate] = useState<number>(0);
+  const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>('salesperson');
+  const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({}); // Indicador de impuestos aplicados
   const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: any}>({}); // Totales de impuestos aplicados
   const [subtotal, setSubtotal] = useState<number>(0);
@@ -178,6 +184,29 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     loadCurrencies();
   }, [loadCurrencies]);
 
+  // Cargar miembros de la organización para selector de vendedor
+  useEffect(() => {
+    const loadMembers = async () => {
+      if (!organizationId) return;
+      try {
+        const { data: members } = await supabase
+          .from('organization_members')
+          .select('user_id, profiles(first_name, last_name)')
+          .eq('organization_id', organizationId);
+        if (members) {
+          const formatted = members.map((m: any) => ({
+            id: m.user_id,
+            name: `${m.profiles?.first_name || ''} ${m.profiles?.last_name || ''}`.trim() || 'Usuario'
+          }));
+          setOrganizationMembers(formatted);
+        }
+      } catch (e) {
+        console.warn('Error cargando miembros:', e);
+      }
+    };
+    loadMembers();
+  }, [organizationId]);
+
   // Cargar datos de factura para edición
   useEffect(() => {
     if (esEdicion && facturaInicial) {
@@ -189,6 +218,9 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setNotes(facturaInicial.notes || '');
       setTaxIncluded(facturaInicial.tax_included || false);
       setBranchId(facturaInicial.branch_id || getCurrentBranchIdWithFallback());
+      setSalespersonId(facturaInicial.salesperson_id || '');
+      setCommissionRate(Number(facturaInicial.commission_rate) || 0);
+      setCommissionType(facturaInicial.commission_type || 'salesperson');
 
       if (facturaInicial.issue_date) {
         setIssueDate(parseLocalDate(facturaInicial.issue_date));
@@ -453,6 +485,9 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         subtotal: safeSubtotal,
         tax_total: safeTaxTotal,
         total: safeTotal,
+        salesperson_id: salespersonId || null,
+        commission_rate: commissionRate || 0,
+        commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none',
         appliedTaxes,
         items: items.map(item => ({
           id: item.id,
@@ -545,10 +580,18 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         created_by: currentUserId, // Asignamos el ID del usuario actual
       };
       
+      // Añadir campos de comisión al insert
+      const invoiceWithCommission = {
+        ...invoice,
+        salesperson_id: salespersonId || null,
+        commission_rate: commissionRate || 0,
+        commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none'
+      };
+      
       // 4. Guardar factura en Supabase
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoice_sales')
-        .insert(invoice)
+        .insert(invoiceWithCommission)
         .select()
         .single();
         
@@ -946,7 +989,83 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         onTaxTotalCalculated={setTaxTotal}
         onTotalCalculated={setTotal}
       />
-      
+
+      {/* Sección de Comisión de Vendedor */}
+      <div className="
+        border border-gray-200 dark:border-gray-700
+        bg-gray-50/50 dark:bg-gray-900/30
+        p-3 sm:p-4
+        rounded-lg
+      ">
+        <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <User className="h-4 w-4 text-blue-500" />
+          Comisión de Vendedor (opcional)
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <Label htmlFor="salesperson" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+              Vendedor
+            </Label>
+            <Select value={salespersonId} onValueChange={setSalespersonId}>
+              <SelectTrigger className="
+                w-full text-sm
+                bg-white dark:bg-gray-900
+                border-gray-300 dark:border-gray-600
+                text-gray-900 dark:text-gray-100
+              ">
+                <SelectValue placeholder="Seleccionar vendedor" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectItem value="__none__" className="text-gray-900 dark:text-gray-100">Sin asignar</SelectItem>
+                {organizationMembers.map((member) => (
+                  <SelectItem key={member.id} value={member.id} className="text-gray-900 dark:text-gray-100">
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="commission-rate" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+              <span className="flex items-center gap-1.5">
+                <Percent className="h-3.5 w-3.5" />
+                Porcentaje de Comisión
+              </span>
+            </Label>
+            <Input
+              id="commission-rate"
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              value={commissionRate || ''}
+              onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
+              placeholder="0"
+              className="
+                text-sm
+                bg-white dark:bg-gray-900
+                border-gray-300 dark:border-gray-600
+                text-gray-900 dark:text-gray-100
+              "
+            />
+          </div>
+        </div>
+        {salespersonId && salespersonId !== '__none__' && commissionRate > 0 && (
+          <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-blue-700 dark:text-blue-400">
+                Comisión estimada ({commissionRate}%):
+              </span>
+              <span className="font-semibold text-blue-700 dark:text-blue-400">
+                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: currency || 'COP' }).format(
+                  (subtotal > 0 ? subtotal : total) * commissionRate / 100
+                )}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Botones de Acción */}
       <div className="
         flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 

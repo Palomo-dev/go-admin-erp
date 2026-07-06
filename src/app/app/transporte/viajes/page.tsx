@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import {
   TripsHeader,
   TripsFilters,
@@ -47,6 +48,7 @@ interface Branch {
 export default function ViajesPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter: globalBranchFilter } = useBranch();
   const organizationId = organization?.id;
 
   // Estados principales
@@ -124,6 +126,11 @@ export default function ViajesPage() {
       setIsLoading(false);
     }
   }, [organizationId, dateFilter, statusFilter, routeFilter, vehicleFilter, driverFilter, branchFilter, toast]);
+
+  // Sincronizar el filtro local de sede con la sucursal seleccionada globalmente (header)
+  useEffect(() => {
+    setBranchFilter(globalBranchFilter ? String(globalBranchFilter) : 'all');
+  }, [globalBranchFilter]);
 
   useEffect(() => {
     loadData();

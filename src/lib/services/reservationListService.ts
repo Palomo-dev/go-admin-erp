@@ -24,6 +24,7 @@ export interface ReservationFilters {
   startDate?: string;
   endDate?: string;
   searchTerm?: string;
+  branchId?: number | null;
 }
 
 class ReservationListService {
@@ -66,6 +67,10 @@ class ReservationListService {
       .order('created_at', { ascending: false });
 
     // Aplicar filtros
+    if (filters?.branchId) {
+      query = query.eq('branch_id', filters.branchId);
+    }
+
     if (filters?.status) {
       query = query.eq('status', filters.status);
     }

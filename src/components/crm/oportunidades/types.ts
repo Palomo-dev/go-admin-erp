@@ -48,6 +48,9 @@ export interface Opportunity {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  salesperson_id?: string | null;
+  commission_rate?: number;
+  commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
   // Relaciones
   customer?: Customer;
   stage?: Stage;
@@ -126,6 +129,9 @@ export interface CreateOpportunityInput {
   amount: number;
   currency?: string;
   expected_close_date?: string;
+  salesperson_id?: string;
+  commission_rate?: number;
+  commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
   products?: {
     product_id: number;
     quantity: number;
@@ -142,4 +148,7 @@ export interface UpdateOpportunityInput {
   expected_close_date?: string;
   status?: 'open' | 'won' | 'lost';
   loss_reason?: string;
+  salesperson_id?: string | null;
+  commission_rate?: number;
+  commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
 }

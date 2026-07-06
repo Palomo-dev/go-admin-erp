@@ -1021,7 +1021,10 @@ export class POSService {
           payment_status: checkoutData.total_paid >= cart.total ? 'paid' : 'partial',
           tax_included: checkoutData.tax_included || false,
           tax_breakdown: checkoutData.tax_breakdown || null,
-          sale_date: new Date().toISOString()
+          sale_date: new Date().toISOString(),
+          salesperson_id: checkoutData.salesperson_id || null,
+          commission_rate: checkoutData.commission_rate || 0,
+          commission_type: checkoutData.commission_type || 'none'
         })
         .select()
         .single();

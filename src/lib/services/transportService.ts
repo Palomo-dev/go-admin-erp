@@ -479,16 +479,22 @@ class TransportService {
 
   // ==================== VEHICLES ====================
 
-  async getVehicles(organizationId: number) {
-    const { data, error } = await supabase
+  async getVehicles(organizationId: number, branchId?: number | null) {
+    let query = supabase
       .from('vehicles')
       .select(`
         *,
         transport_carriers(id, name, code),
         branches(id, name)
       `)
-      .eq('organization_id', organizationId)
-      .order('plate_number');
+      .eq('organization_id', organizationId);
+
+    // Filtrar por sucursal salvo en modo "Todas las sucursales" (branchId null/undefined)
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query.order('plate_number');
 
     if (error) {
       console.warn('Error fetching vehicles:', error.message);

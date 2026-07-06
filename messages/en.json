@@ -153,13 +153,21 @@
       "subscription": {
         "selectPlan": "Select a plan",
         "selectPlanDescription": "Choose the plan that best fits your organization's needs.",
-        "trialPeriod": "All plans include a 30-day free trial."
+        "trialPeriod": "All plans include a 30-day free trial.",
+        "billingOption": "How do you want to start?",
+        "useTrial": "Use free trial",
+        "useTrialDescription": "Try 15 days free with no charge. You'll be billed at the end of the trial.",
+        "payNow": "Pay now",
+        "payNowDescription": "Pay today and start your subscription immediately, no trial period."
       },
       "payment": {
         "title": "Payment Method",
         "paidPlanMessage": "Add a payment method for when your trial period ends.",
         "freePlanMessage": "You can add a payment method now or later.",
+        "payNowMessage": "Enter your payment method. You will be charged today.",
         "noChargeNow": "No charges will be made now",
+        "chargeNow": "You will be charged today",
+        "chargeNowDescription": "Your first period will be charged immediately upon card verification.",
         "verified": "Payment method verified!",
         "cardInfo": "Card information",
         "verifyOnly": "We only verify that the card is valid. No charges will be made.",
@@ -750,6 +758,7 @@
       "assignmentsUpdated": "Assignments updated successfully",
       "errorSaving": "Error updating branch assignments",
       "noBranches": "No branches available",
+      "selectAll": "All branches",
       "cancel": "Cancel",
       "saving": "Saving...",
       "save": "Save"

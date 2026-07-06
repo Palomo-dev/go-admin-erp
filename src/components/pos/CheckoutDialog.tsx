@@ -80,6 +80,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [tipPercentage, setTipPercentage] = useState<number | null>(null);
   const [serverId, setServerId] = useState<string>('');
   const [servers, setServers] = useState<{ id: string; name: string }[]>([]);
+
+  // Estados para comisión
+  const [salespersonId, setSalespersonId] = useState<string>('');
+  const [commissionRate, setCommissionRate] = useState<number>(0);
+  const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>('salesperson');
+
+  // Comisión calculada
+  const commissionAmount = commissionRate > 0 && salespersonId
+    ? Math.round((calculatedTotals.subtotal || cart.subtotal) * commissionRate / 100 * 100) / 100
+    : 0;
   
   // Calculados - usar totales con impuestos + propina
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
@@ -104,6 +114,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Reset propina
       setTipAmount(0);
       setTipPercentage(null);
+      setSalespersonId('');
+      setCommissionRate(0);
+      setCommissionType('salesperson');
     }
   }, [open]);
   
@@ -343,7 +356,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         tax_included: taxIncluded,
         tip_amount: tipAmount,
         tip_server_id: serverId && serverId !== '__none__' ? serverId : undefined,
-        tax_breakdown: taxBreakdown.length > 0 ? taxBreakdown : undefined
+        tax_breakdown: taxBreakdown.length > 0 ? taxBreakdown : undefined,
+        salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
+        commission_rate: commissionRate > 0 ? commissionRate : undefined,
+        commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none'
       };
 
       const sale = await POSService.checkout(checkoutData);
@@ -452,6 +468,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     setTipAmount(0);
     setTipPercentage(null);
     setServerId('');
+    setSalespersonId('');
+    setCommissionRate(0);
+    setCommissionType('salesperson');
   };
 
   // Generar botones de monto rápido dinámicos según el total a pagar
@@ -893,6 +912,69 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           <span className="dark:text-green-400 text-green-700">Propina:</span>
                           <span className="font-semibold dark:text-green-400 text-green-700">
                             {formatCurrency(tipAmount)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sección de Comisión de Vendedor */}
+                  <div className="pt-3 border-t dark:border-gray-700 border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <User className="h-4 w-4 dark:text-blue-400 text-blue-600" />
+                      <Label className="text-sm font-medium dark:text-gray-200 text-gray-900">
+                        Comisión de Vendedor (opcional)
+                      </Label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600">
+                          Vendedor
+                        </Label>
+                        <Select value={salespersonId} onValueChange={setSalespersonId}>
+                          <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
+                            <SelectValue placeholder="Seleccionar..." />
+                          </SelectTrigger>
+                          <SelectContent className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
+                            <SelectItem value="__none__">Sin asignar</SelectItem>
+                            {servers.map((server) => (
+                              <SelectItem key={server.id} value={server.id}>
+                                {server.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600">
+                          % Comisión
+                        </Label>
+                        <div className="relative">
+                          <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.5"
+                            value={commissionRate || ''}
+                            onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
+                            placeholder="0"
+                            className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {commissionAmount > 0 && (
+                      <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="dark:text-blue-400 text-blue-700">
+                            Comisión ({commissionRate}%):
+                          </span>
+                          <span className="font-semibold dark:text-blue-400 text-blue-700">
+                            {formatCurrency(commissionAmount)}
                           </span>
                         </div>
                       </div>

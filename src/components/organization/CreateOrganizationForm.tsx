@@ -326,20 +326,20 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     <div className="mb-8">
       <div className="flex items-center justify-center">
         <div className="flex items-center">
-          <div className={`flex items-center justify-center w-10 h-10 rounded-full ${step >= 1 ? 'bg-blue-600' : 'bg-gray-300'} text-white`}>
+          <div className={`flex items-center justify-center w-10 h-10 rounded-full ${step >= 1 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'} text-white`}>
             1
           </div>
-          <div className={`h-1 w-12 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+          <div className={`h-1 w-12 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
         </div>
         <div className="flex items-center">
-          <div className={`flex items-center justify-center w-10 h-10 rounded-full ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300'} text-white`}>
+          <div className={`flex items-center justify-center w-10 h-10 rounded-full ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'} text-white`}>
             2
           </div>
         </div>
       </div>
       <div className="flex justify-center mt-2">
-        <span className="text-sm font-medium mx-4 text-center">Información Básica</span>
-        <span className="text-sm font-medium mx-4 text-center">Detalles Adicionales</span>
+        <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">Información Básica</span>
+        <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">Detalles Adicionales</span>
       </div>
     </div>
   );
@@ -355,7 +355,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     
     return (
       <div className={colSpan}>
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         <div className="relative">
@@ -371,7 +371,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 setFormErrors({ ...formErrors, [id]: '' });
               }
             }}
-            className={`block w-full rounded-lg border ${formErrors[id] ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'} shadow-sm px-4 py-3 sm:text-sm`}
+            className={`block w-full rounded-lg border ${formErrors[id] ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100`}
           />
           {formErrors[id] && (
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
@@ -380,7 +380,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           )}
         </div>
         {formErrors[id] && (
-          <p className="mt-2 text-sm text-red-600" id={`${id}-error`}>
+          <p className="mt-2 text-sm text-red-600 dark:text-red-400" id={`${id}-error`}>
             {formErrors[id]}
           </p>
         )}
@@ -476,8 +476,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
   const renderStep1 = () => (
     <div className="space-y-6">
-      <div className="bg-white px-6 py-8 shadow-md sm:rounded-lg">
-        <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-6">Información Básica</h3>
+      <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md sm:rounded-lg">
+        <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">Información Básica</h3>
         
         <div className="mb-8 flex justify-center">
           <LogoUploader
@@ -492,7 +492,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           {renderFormField('legalName', 'Nombre Legal', 'text', true, 'col-span-6')}
           
           <div className="col-span-6">
-            <label htmlFor="typeId" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="typeId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Tipo de Organización <span className="text-red-500">*</span>
             </label>
             <select
@@ -506,7 +506,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   setFormErrors({ ...formErrors, typeId: '' });
                 }
               }}
-              className={`block w-full rounded-lg border ${formErrors.typeId ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'} shadow-sm px-4 py-3 sm:text-sm`}
+              className={`block w-full rounded-lg border ${formErrors.typeId ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100`}
             >
               <option value="">Seleccionar...</option>
               {organizationTypes.map((type) => (
@@ -516,7 +516,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               ))}
             </select>
             {formErrors.typeId && (
-              <p className="mt-2 text-sm text-red-600" id="typeId-error">
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400" id="typeId-error">
                 {formErrors.typeId}
               </p>
             )}
@@ -524,7 +524,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           {/* Always show email field, but if defaultEmail is provided, show it as disabled/readonly */}
           <div className="col-span-6 sm:col-span-4">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Correo Electrónico <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -543,9 +543,9 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 }}
                 className={`block w-full rounded-lg border ${
                   formErrors.email 
-                    ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500' 
-                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-                } shadow-sm px-4 py-3 sm:text-sm ${!!defaultEmail ? 'bg-gray-100' : ''}`}
+                    ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400' 
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'
+                } shadow-sm px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100 ${!!defaultEmail ? 'bg-gray-100 dark:bg-gray-700' : ''}`}
               />
               {formErrors.email && (
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
@@ -554,12 +554,12 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               )}
             </div>
             {formErrors.email && (
-              <p className="mt-2 text-sm text-red-600" id="email-error">
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400" id="email-error">
                 {formErrors.email}
               </p>
             )}
             {!!defaultEmail && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Usando el correo electrónico de tu cuenta
               </p>
             )}
@@ -570,7 +570,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           {/* Color selector */}
           <div className="col-span-6">
-            <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Color Primario
             </label>
             <div className="mt-2">
@@ -626,10 +626,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   className="w-6 h-6 rounded-full mr-2" 
                   style={{ backgroundColor: formData.primaryColor }}
                 />
-                <span className="text-sm text-gray-600">{formData.primaryColor}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">{formData.primaryColor}</span>
               </div>
               
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Este color se usará en la interfaz de tu organización
               </p>
             </div>
@@ -637,7 +637,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           {/* Secondary color selector */}
           <div className="col-span-6">
-            <label htmlFor="secondaryColor" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="secondaryColor" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Color Secundario
             </label>
             <div className="mt-2">
@@ -684,10 +684,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   className="w-6 h-6 rounded-full mr-2" 
                   style={{ backgroundColor: formData.secondaryColor }}
                 />
-                <span className="text-sm text-gray-600">{formData.secondaryColor}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">{formData.secondaryColor}</span>
               </div>
               
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Este color se usará en la interfaz de tu organización
               </p>
             </div>
@@ -699,13 +699,13 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
   const renderStep2 = () => (
     <div className="space-y-6">
-      <div className="bg-white px-6 py-8 shadow-md sm:rounded-lg">
-        <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-6">Detalles Adicionales</h3>
+      <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md sm:rounded-lg">
+        <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">Detalles Adicionales</h3>
         
         <div className="space-y-6">
           {/* Descripción */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Descripción
             </label>
             <textarea
@@ -714,7 +714,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 sm:text-sm"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
 
@@ -726,7 +726,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             
             {/* Country selector */}
             <div className="col-span-1">
-              <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 País
               </label>
               <select
@@ -741,7 +741,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     country: selectedCountry?.name || ''
                   });
                 }}
-                className="block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm"
+                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100"
               >
                 <option value="">Seleccionar país...</option>
                 {countries.map((country) => (
@@ -757,7 +757,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           {/* Subdominio con preview y validación */}
           <div className="col-span-2">
-            <label htmlFor="subdomain" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="subdomain" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Subdominio de tu sitio web
             </label>
             <div className="mt-1 flex rounded-lg shadow-sm">
@@ -772,15 +772,15 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   setSubdomainManuallyEdited(true);
                 }}
                 placeholder="miempresa"
-                className={`block w-full rounded-l-lg border px-4 py-3 sm:text-sm ${
+                className={`block w-full rounded-l-lg border px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100 ${
                   subdomainStatus === 'taken' 
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500' 
                     : subdomainStatus === 'available'
-                    ? 'border-green-300 focus:border-green-500 focus:ring-green-500'
-                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    ? 'border-green-300 focus:border-green-500 focus:ring-green-500 dark:border-green-500'
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'
                 }`}
               />
-              <span className="inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
+              <span className="inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 text-gray-500 dark:text-gray-400 sm:text-sm">
                 .goadmin.io
               </span>
             </div>
@@ -788,7 +788,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             {/* Estado de disponibilidad */}
             <div className="mt-2 flex items-center">
               {subdomainStatus === 'checking' && (
-                <div className="flex items-center text-sm text-gray-500">
+                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                   <svg className="animate-spin h-4 w-4 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -797,7 +797,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 </div>
               )}
               {subdomainStatus === 'available' && formData.subdomain && (
-                <div className="flex items-center text-sm text-green-600">
+                <div className="flex items-center text-sm text-green-600 dark:text-green-400">
                   <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
@@ -805,7 +805,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 </div>
               )}
               {subdomainStatus === 'taken' && (
-                <div className="flex items-center text-sm text-red-600">
+                <div className="flex items-center text-sm text-red-600 dark:text-red-400">
                   <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -814,7 +814,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               )}
             </div>
             
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Este será el enlace de tu sitio web público. Solo letras y números, sin espacios ni caracteres especiales.
               {subdomainManuallyEdited && (
                 <button 
@@ -823,7 +823,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     setSubdomainManuallyEdited(false);
                     setFormData(prev => ({ ...prev, subdomain: generateSubdomain(prev.name) }));
                   }}
-                  className="ml-2 text-blue-600 hover:text-blue-800 underline"
+                  className="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
                 >
                   Restaurar sugerencia
                 </button>
@@ -845,13 +845,13 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       {step === 2 && renderStep2()}
 
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
+        <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <ExclamationCircleIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">{error}</h3>
+              <h3 className="text-sm font-medium text-red-800 dark:text-red-300">{error}</h3>
             </div>
           </div>
         </div>
@@ -861,7 +861,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         <button
           type="button"
           onClick={step === 1 ? onCancel : prevStep}
-          className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 px-4 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           {step === 1 ? 'Cancelar' : 'Atrás'}
         </button>

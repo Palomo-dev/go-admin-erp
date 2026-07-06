@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { format } from 'date-fns';
 import { 
   stockService, 
@@ -24,6 +25,7 @@ export default function MovimientosPage() {
   const { theme } = useTheme();
   const { toast } = useToast();
   const { organization, isLoading: loadingOrg } = useOrganization();
+  const { branchFilter } = useBranch();
 
   // Estados de datos
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -147,6 +149,11 @@ export default function MovimientosPage() {
     setPageSize(newPageSize);
     setCurrentPage(1);
   };
+
+  // Sincronizar el filtro local con la sucursal seleccionada globalmente (header)
+  useEffect(() => {
+    setBranchId(branchFilter ? String(branchFilter) : 'all');
+  }, [branchFilter]);
 
   // Efecto para cargar datos iniciales
   useEffect(() => {

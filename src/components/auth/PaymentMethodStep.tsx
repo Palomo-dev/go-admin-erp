@@ -20,6 +20,7 @@ interface PaymentMethodStepProps {
     firstName: string;
     lastName: string;
     subscriptionPlan: string;
+    skipTrial?: boolean;
   };
   updateFormData: (data: any) => void;
   onNext: () => void;
@@ -169,6 +170,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
   };
 
   const isPaidPlan = formData.subscriptionPlan !== 'free';
+  const isPayNow = formData.skipTrial === true;
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -181,15 +183,23 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
           {t('title')}
         </h3>
         <p className="text-xs sm:text-sm text-gray-600 mt-1 px-2">
-          {isPaidPlan 
-            ? t('paidPlanMessage')
+          {isPaidPlan
+            ? isPayNow
+              ? t('payNowMessage')
+              : t('paidPlanMessage')
             : t('freePlanMessage')
           }
         </p>
-        {isPaidPlan && (
+        {isPaidPlan && !isPayNow && (
           <div className="mt-2 inline-flex items-center px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
             <CheckCircleIcon className="w-3.5 h-3.5 mr-1" />
             {t('noChargeNow')}
+          </div>
+        )}
+        {isPayNow && (
+          <div className="mt-2 inline-flex items-center px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
+            <ExclamationTriangleIcon className="w-3.5 h-3.5 mr-1" />
+            {t('chargeNow')}
           </div>
         )}
       </div>
@@ -223,7 +233,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
               />
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              {t('verifyOnly')}
+              {isPayNow ? t('chargeNowDescription') : t('verifyOnly')}
             </p>
           </div>
 
@@ -250,7 +260,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
             ) : (
               <>
                 <CreditCardIcon className="w-4 h-4 mr-2" />
-                {t('verifyCard')}
+                {isPayNow ? t('payNow') : t('verifyCard')}
               </>
             )}
           </button>
@@ -284,8 +294,8 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
         <button
           type="button"
           onClick={onSkip}
-          disabled={loading || isProcessing}
-          className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+          disabled={loading || isProcessing || isPayNow}
+          className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {t('skipForNow')}
         </button>

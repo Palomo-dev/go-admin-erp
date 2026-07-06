@@ -81,6 +81,8 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/stripe/',  // <-- Excluir APIs de Stripe
     '/api/sessions/', // <-- Excluir APIs de sesiones
     '/api/integrations/twilio/', // <-- Excluir webhooks de Twilio (autenticación propia via firma)
+    '/api/super-admin-access', // <-- Excluir canje de token de super admin (autenticación propia via token BD)
+    '/api/super-admin-cleanup', // <-- Excluir cleanup de super admin (autenticación propia via body)
     '/auth/v1/',
     '/auth/callback', // <-- Excluir callback de OAuth para no interferir con PKCE
     '/.well-known/',
@@ -440,7 +442,8 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
         pathname !== '/auth/session-expired' &&
         !pathname.startsWith('/auth/invite') &&
         !pathname.startsWith('/auth/select-organization') &&
-        !pathname.startsWith('/auth/signup')) {
+        !pathname.startsWith('/auth/signup') &&
+        !pathname.startsWith('/auth/super-admin-access')) {
       if (shouldDebug) {
         console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde auth a /app/inicio');
       }
@@ -511,6 +514,6 @@ export const config = {
      * - api/stripe (Stripe API endpoints - handle their own auth)
      * - api/sessions (Session API endpoints - handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio|api/super-admin-access|api/super-admin-cleanup).*)',
   ],
 };

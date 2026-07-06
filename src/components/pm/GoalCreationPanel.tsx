@@ -197,7 +197,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
     if (!form.title.trim()) { toast({ title: 'Escribe un título primero', variant: 'destructive' }); return; }
     setAiLoading(true);
     try {
-      const res = await fetch('/api/ai/pm-assist', {
+      const res = await fetch('/api/ai-assistant/pm-assist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -239,7 +239,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
     try {
       const owner = users.find(u => u.id === form.owner_id)?.nombre;
       const project = projects.find(p => p.id === form.project_id)?.name;
-      const res = await fetch('/api/ai/pm-assist', {
+      const res = await fetch('/api/ai-assistant/pm-assist', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: 'describe', entity: 'meta', title: form.title, description: form.description,

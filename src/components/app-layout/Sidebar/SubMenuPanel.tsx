@@ -324,12 +324,17 @@ const SubMenuPanelComponent = ({
       return true;
     }
     
-    // Coincidencia por prefijo: solo activo si ningún otro item del submenú coincide exactamente
+    // Coincidencia por prefijo: solo activo si ningún otro item del submenú
+    // tiene un href más largo que también coincida con la ruta actual
+    // (ya sea por coincidencia exacta o por prefijo).
+    // Esto evita el doble highlight en rutas anidadas (ej: contabilidad/plan-cuentas, contabilidad/asientos/405)
     if (pathname?.startsWith(itemHref + '/')) {
-      const hasExactMatchElsewhere = activeModule.submenu.some(
-        sub => sub.href === pathname && sub.href !== itemHref
+      const hasMoreSpecificMatch = activeModule.submenu.some(
+        sub => sub.href !== itemHref
+          && sub.href.length > itemHref.length
+          && (pathname === sub.href || pathname?.startsWith(sub.href + '/'))
       );
-      return !hasExactMatchElsewhere;
+      return !hasMoreSpecificMatch;
     }
     
     return false;

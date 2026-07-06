@@ -7,7 +7,7 @@ import { TaskReminder } from '@/lib/hooks/useTaskReminders';
 interface TaskRemindersProps {
   taskReminders: TaskReminder[];
   loading: boolean;
-  onTaskClick?: (taskId: string) => void;
+  onTaskClick?: (reminder: TaskReminder) => void;
 }
 
 export const TaskReminders: React.FC<TaskRemindersProps> = ({
@@ -99,7 +99,7 @@ export const TaskReminders: React.FC<TaskRemindersProps> = ({
             className={`px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${
               reminder.isOverdue ? 'bg-red-50 dark:bg-red-900/10' : ''
             }`}
-            onClick={() => onTaskClick?.(reminder.id)}
+            onClick={() => onTaskClick?.(reminder)}
           >
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1 min-w-0">

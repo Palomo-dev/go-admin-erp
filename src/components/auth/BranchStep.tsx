@@ -21,6 +21,15 @@ interface FormData {
   branchFeatures?: string; // JSON string de características
   // Organization data (for reference)
   organizationId?: number;
+  // Organization fields for auto-fill
+  organizationAddress?: string;
+  organizationCity?: string;
+  organizationState?: string;
+  organizationCountry?: string;
+  organizationPostalCode?: string;
+  organizationPhone?: string;
+  organizationEmail?: string;
+  organizationNit?: string;
 }
 
 type BranchStepProps = {
@@ -81,18 +90,18 @@ export default function BranchStep({
     }
   };
 
-  // Create initial data for the branch form
+  // Create initial data for the branch form, auto-filled from organization data
   const initialBranchData: Partial<Branch> = {
     name: formData.branchName || 'Sucursal Principal',
     branch_code: formData.branchCode || 'MAIN-001',
-    address: formData.branchAddress,
-    city: formData.branchCity,
-    state: formData.branchState,
-    country: formData.branchCountry,
-    postal_code: formData.branchPostalCode,
-    phone: formData.branchPhone,
-    email: formData.branchEmail,
-    tax_identification: formData.branchTaxIdentification,
+    address: formData.branchAddress || formData.organizationAddress,
+    city: formData.branchCity || formData.organizationCity,
+    state: formData.branchState || formData.organizationState,
+    country: formData.branchCountry || formData.organizationCountry,
+    postal_code: formData.branchPostalCode || formData.organizationPostalCode,
+    phone: formData.branchPhone || formData.organizationPhone,
+    email: formData.branchEmail || formData.organizationEmail,
+    tax_identification: formData.branchTaxIdentification || formData.organizationNit,
     is_main: true,
     is_active: true,
     organization_id: organizationId || 0

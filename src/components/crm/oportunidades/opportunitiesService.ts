@@ -207,6 +207,9 @@ class OpportunitiesService {
         expected_close_date: input.expected_close_date || null,
         status: 'open',
         created_by: userData.user?.id || null,
+        salesperson_id: input.salesperson_id || null,
+        commission_rate: input.commission_rate || 0,
+        commission_type: input.salesperson_id && input.commission_rate && input.commission_rate > 0 ? input.commission_type : 'none',
       })
       .select()
       .single();
@@ -242,6 +245,9 @@ class OpportunitiesService {
     if (input.expected_close_date !== undefined) updateData.expected_close_date = input.expected_close_date;
     if (input.status !== undefined) updateData.status = input.status;
     if (input.loss_reason !== undefined) updateData.loss_reason = input.loss_reason;
+    if (input.salesperson_id !== undefined) updateData.salesperson_id = input.salesperson_id;
+    if (input.commission_rate !== undefined) updateData.commission_rate = input.commission_rate;
+    if (input.commission_type !== undefined) updateData.commission_type = input.commission_type;
 
     const { data, error } = await supabase
       .from('opportunities')

@@ -114,6 +114,9 @@ export interface Sale {
   tip_amount?: number;
   tax_included?: boolean;
   tax_breakdown?: { name: string; amount: number }[];
+  salesperson_id?: string;
+  commission_rate?: number;
+  commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
 }
 
 export interface SaleItem {
@@ -209,6 +212,9 @@ export interface CheckoutData {
   tip_amount?: number;
   tip_server_id?: string;
   tax_breakdown?: { name: string; amount: number }[];
+  salesperson_id?: string;
+  commission_rate?: number;
+  commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
 }
 
 // Para impuestos

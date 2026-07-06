@@ -464,6 +464,22 @@ class PayrollService {
       .single();
 
     if (error) throw error;
+
+    // Si se marca como pagado, marcar comisiones vinculadas como pagadas
+    if (status === 'paid' && data?.metadata?.commission_ids?.length) {
+      const now = new Date().toISOString();
+      await supabase
+        .from('commissions')
+        .update({
+          status: 'paid',
+          paid_at: now,
+          updated_at: now,
+          metadata: { payroll_slip_id: id },
+        })
+        .in('id', data.metadata.commission_ids)
+        .eq('status', 'accrued');
+    }
+
     return this.getSlipById(data.id) as Promise<PayrollSlip>;
   }
 

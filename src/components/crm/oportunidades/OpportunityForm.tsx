@@ -16,7 +16,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from '@/components/ui/use-toast';
-import { CalendarIcon, Plus, Trash2, Loader2, ArrowLeft } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, ArrowLeft, User, Percent } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,8 @@ import { CustomerSearchSelect } from './CustomerSearchSelect';
 import { ProductSearchSelect } from './ProductSearchSelect';
 import { PipelineSearchSelect } from './PipelineSearchSelect';
 import { SpaceSearchSelect } from './SpaceSearchSelect';
+import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 interface OpportunityFormProps {
   opportunity?: Opportunity;
@@ -86,8 +88,38 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
   const [spaceLines, setSpaceLines] = useState<SpaceLine[]>([]);
   const [customLines, setCustomLines] = useState<CustomLine[]>([]);
 
+  // Estados para comisión
+  const [salespersonId, setSalespersonId] = useState<string>(opportunity?.salesperson_id || '');
+  const [commissionRate, setCommissionRate] = useState<number>(Number(opportunity?.commission_rate) || 0);
+  const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>(opportunity?.commission_type || 'salesperson');
+  const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
+
   useEffect(() => {
     loadInitialData();
+  }, []);
+
+  // Cargar miembros de la organización para selector de comisionista
+  useEffect(() => {
+    const loadMembers = async () => {
+      const orgId = getOrganizationId();
+      if (!orgId) return;
+      try {
+        const { data: members } = await supabase
+          .from('organization_members')
+          .select('user_id, profiles(first_name, last_name)')
+          .eq('organization_id', orgId);
+        if (members) {
+          const formatted = members.map((m: any) => ({
+            id: m.user_id,
+            name: `${m.profiles?.first_name || ''} ${m.profiles?.last_name || ''}`.trim() || 'Usuario'
+          }));
+          setOrganizationMembers(formatted);
+        }
+      } catch (e) {
+        console.warn('Error cargando miembros:', e);
+      }
+    };
+    loadMembers();
   }, []);
 
   useEffect(() => {
@@ -274,6 +306,9 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
           expected_close_date: expectedCloseDate
             ? format(expectedCloseDate, 'yyyy-MM-dd')
             : undefined,
+          salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : null,
+          commission_rate: commissionRate || 0,
+          commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
         });
         toast({
           title: 'Éxito',
@@ -290,6 +325,9 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
           expected_close_date: expectedCloseDate
             ? format(expectedCloseDate, 'yyyy-MM-dd')
             : undefined,
+          salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
+          commission_rate: commissionRate || 0,
+          commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
           products: productLines
             .filter((p) => p.product_id > 0)
             .map((p) => ({
@@ -494,8 +532,74 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
           </CardContent>
         </Card>
 
-        {/* Productos y Espacios - columna derecha */}
+        {/* Comisión - columna derecha */}
         <div className="lg:col-span-1 space-y-6">
+        {/* Sección de Comisión */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-gray-900 dark:text-white text-base flex items-center gap-2">
+              <User className="h-4 w-4 text-blue-500" />
+              Comisión (opcional)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                Comisionista
+              </Label>
+              <Select value={salespersonId} onValueChange={setSalespersonId}>
+                <SelectTrigger className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
+                  <SelectValue placeholder="Seleccionar comisionista" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="__none__">Sin asignar</SelectItem>
+                  {organizationMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                <span className="flex items-center gap-1.5">
+                  <Percent className="h-3.5 w-3.5" />
+                  Porcentaje de Comisión
+                </span>
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={commissionRate || ''}
+                onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
+                placeholder="0"
+                className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
+              />
+            </div>
+            {salespersonId && salespersonId !== '__none__' && commissionRate > 0 && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-blue-700 dark:text-blue-400">
+                    Comisión estimada ({commissionRate}%):
+                  </span>
+                  <span className="font-semibold text-blue-700 dark:text-blue-400">
+                    {formatCurrency(
+                      (productLines.length > 0 || spaceLines.length > 0 || customLines.length > 0
+                        ? calculateTotal()
+                        : parseFloat(amount) || 0) * commissionRate / 100
+                    )}
+                  </span>
+                </div>
+                <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                  Se generará al marcar la oportunidad como ganada
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
           {/* Productos cotizados */}
           <Card className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">

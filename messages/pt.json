@@ -153,13 +153,21 @@
       "subscription": {
         "selectPlan": "Selecione um plano",
         "selectPlanDescription": "Escolha o plano que melhor se adapta às necessidades da sua organização.",
-        "trialPeriod": "Todos os planos incluem um período de teste de 30 dias."
+        "trialPeriod": "Todos os planos incluem um período de teste de 30 dias.",
+        "billingOption": "Como você quer começar?",
+        "useTrial": "Usar período grátis",
+        "useTrialDescription": "Experimente 15 dias grátis sem cobrança. Você será cobrado ao final do período.",
+        "payNow": "Pagar agora",
+        "payNowDescription": "Pague hoje e comece sua assinatura imediatamente, sem período de teste."
       },
       "payment": {
         "title": "Método de Pagamento",
         "paidPlanMessage": "Adicione um método de pagamento para quando seu período de teste terminar.",
         "freePlanMessage": "Você pode adicionar um método de pagamento agora ou depois.",
+        "payNowMessage": "Insira seu método de pagamento. Você será cobrado hoje.",
         "noChargeNow": "Nenhuma cobrança será feita agora",
+        "chargeNow": "Você será cobrado hoje",
+        "chargeNowDescription": "Seu primeiro período será cobrado imediatamente após a verificação do cartão.",
         "verified": "Método de pagamento verificado!",
         "cardInfo": "Informações do cartão",
         "verifyOnly": "Apenas verificamos que o cartão é válido. Nenhuma cobrança será feita.",
@@ -750,6 +758,7 @@
       "assignmentsUpdated": "Atribuições atualizadas com sucesso",
       "errorSaving": "Erro ao atualizar as atribuições de filiais",
       "noBranches": "Nenhuma filial disponível",
+      "selectAll": "Todas as filiais",
       "cancel": "Cancelar",
       "saving": "Salvando...",
       "save": "Salvar"

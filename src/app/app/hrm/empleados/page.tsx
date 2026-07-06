@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import EmploymentsService from '@/lib/services/employmentsService';
 import type { EmploymentListItem } from '@/lib/services/employmentsService';
 import {
@@ -70,6 +71,7 @@ interface PositionOption {
 export default function EmpleadosPage() {
   const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
 
   // Estados principales
@@ -146,6 +148,13 @@ export default function EmpleadosPage() {
       setIsLoading(false);
     }
   }, [getService, filters, toast]);
+
+  // Sincronizar el filtro de sede con la sucursal seleccionada globalmente (header)
+  useEffect(() => {
+    setFilters((prev) =>
+      prev.branchId === branchFilter ? prev : { ...prev, branchId: branchFilter }
+    );
+  }, [branchFilter]);
 
   useEffect(() => {
     if (organization?.id && !orgLoading) {

@@ -153,13 +153,21 @@
       "subscription": {
         "selectPlan": "Sélectionnez un plan",
         "selectPlanDescription": "Choisissez le plan qui correspond le mieux aux besoins de votre organisation.",
-        "trialPeriod": "Tous les plans incluent une période d'essai de 30 jours."
+        "trialPeriod": "Tous les plans incluent une période d'essai de 30 jours.",
+        "billingOption": "Comment voulez-vous commencer ?",
+        "useTrial": "Utiliser la période gratuite",
+        "useTrialDescription": "Essayez 15 jours gratuits sans frais. Vous serez facturé à la fin de la période.",
+        "payNow": "Payer maintenant",
+        "payNowDescription": "Payez aujourd'hui et commencez votre abonnement immédiatement, sans période d'essai."
       },
       "payment": {
         "title": "Mode de Paiement",
         "paidPlanMessage": "Ajoutez un mode de paiement pour la fin de votre période d'essai.",
         "freePlanMessage": "Vous pouvez ajouter un mode de paiement maintenant ou plus tard.",
+        "payNowMessage": "Entrez votre mode de paiement. Vous serez facturé aujourd'hui.",
         "noChargeNow": "Aucun frais ne sera prélevé maintenant",
+        "chargeNow": "Vous serez facturé aujourd'hui",
+        "chargeNowDescription": "Votre première période sera facturée immédiatement après la vérification de la carte.",
         "verified": "Mode de paiement vérifié !",
         "cardInfo": "Informations de la carte",
         "verifyOnly": "Nous vérifions uniquement que la carte est valide. Aucun frais ne sera prélevé.",
@@ -750,6 +758,7 @@
       "assignmentsUpdated": "Attributions mises à jour avec succès",
       "errorSaving": "Erreur lors de la mise à jour des attributions de succursales",
       "noBranches": "Aucune succursale disponible",
+      "selectAll": "Toutes les succursales",
       "cancel": "Annuler",
       "saving": "Enregistrement...",
       "save": "Enregistrer"

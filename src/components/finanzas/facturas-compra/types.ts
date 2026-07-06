@@ -39,6 +39,9 @@ export interface InvoicePurchase {
   payment_terms?: number; // Días de crédito
   payment_method?: string;
   tax_included: boolean;
+  salesperson_id?: string;
+  commission_rate?: number;
+  commission_type?: 'salesperson' | 'intermediation_purchase' | 'none';
   
   // Relaciones
   supplier?: SupplierBase;
@@ -178,6 +181,9 @@ export interface NuevaFacturaCompraForm {
   tax_included: boolean;
   notes: string;
   items: InvoiceItemForm[];
+  salesperson_id?: string;
+  commission_rate?: number;
+  commission_type?: 'salesperson' | 'intermediation_purchase' | 'none';
 }
 
 export interface InvoiceItemForm {

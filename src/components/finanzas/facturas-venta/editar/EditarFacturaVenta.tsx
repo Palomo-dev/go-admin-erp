@@ -112,7 +112,10 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
           subtotal: Number(datosFactura.subtotal) || 0,
           tax_total: Number(datosFactura.tax_total) || 0,
           total: Number(datosFactura.total) || 0,
-          balance: nuevoBalance
+          balance: nuevoBalance,
+          salesperson_id: datosFactura.salesperson_id || null,
+          commission_rate: Number(datosFactura.commission_rate) || 0,
+          commission_type: datosFactura.commission_type || 'none'
         })
         .eq('id', factura.id);
 

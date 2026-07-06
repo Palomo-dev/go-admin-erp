@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase, updatePassword } from '@/lib/supabase/config';
 import { User } from '@supabase/supabase-js';
-import { ChevronRight, Lock, Edit2, Save, Users, Bell, LogOut, UserX, Globe, Shield, PhoneCall, Mail, AlertTriangle } from 'lucide-react';
+import { ChevronRight, Lock, Edit2, Save, Users, Bell, LogOut, UserX, Globe, Shield, PhoneCall, Mail, AlertTriangle, TrendingUp, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -78,6 +78,7 @@ export default function PerfilUsuarioPage() {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [mfaMethods, setMfaMethods] = useState<MfaMethod[]>([]);
+  const [isSeller, setIsSeller] = useState<boolean>(false);
   const [currentSection, setCurrentSection] = useState<string>('datos-personales');
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -230,6 +231,18 @@ export default function PerfilUsuarioPage() {
           console.error('Error al obtener métodos MFA:', mfaError);
           // No interrumpir el flujo si falla MFA
         }
+
+        // Verificar si el usuario es vendedor
+        try {
+          const { data: sellerData } = await supabase
+            .from('sellers')
+            .select('id, status')
+            .eq('auth_user_id', session.user.id)
+            .single();
+          setIsSeller(!!sellerData);
+        } catch {
+          setIsSeller(false);
+        }
         
       } catch (error) {
         console.error('Error al cargar datos:', error);
@@ -254,6 +267,7 @@ export default function PerfilUsuarioPage() {
     { id: 'organizacion-default', label: 'Organización por defecto', icon: <Users size={18} /> },
     { id: 'notificaciones', label: 'Preferencias de notificación', icon: <Bell size={18} /> },
     { id: 'roles', label: 'Roles asignados', icon: <Shield size={18} /> },
+    { id: 'panel-vendedor', label: 'Panel de Vendedor', icon: <TrendingUp size={18} /> },
     { id: 'eliminar-cuenta', label: 'Eliminar cuenta', icon: <UserX size={18} /> },
   ];
 
@@ -392,6 +406,67 @@ export default function PerfilUsuarioPage() {
             <EliminarCuentaSection 
               user={user}
             />
+          )}
+
+          {currentSection === 'panel-vendedor' && (
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Panel de Vendedor</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                Vende con nosotros y genera comisiones por cada referencia.
+              </p>
+
+              {isSeller ? (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-medium text-green-900 dark:text-green-300 mb-1">
+                        Ya eres vendedor
+                      </h3>
+                      <p className="text-sm text-green-700 dark:text-green-400 mb-4">
+                        Tu cuenta está vinculada al panel de vendedores. Accede para ver tus comisiones, pagos y referidos.
+                      </p>
+                      <a
+                        href={process.env.NEXT_PUBLIC_SELLERS_URL || 'http://localhost:3002'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Abrir Panel de Vendedor
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-medium text-blue-900 dark:text-blue-300 mb-1">
+                        Conviértete en vendedor
+                      </h3>
+                      <p className="text-sm text-blue-700 dark:text-blue-400 mb-4">
+                        Regístrate en nuestro panel de vendedores y empieza a generar comisiones por cada cliente que refieras. Usarás las mismas credenciales que en el ERP.
+                      </p>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_SELLERS_URL || 'http://localhost:3002'}/register`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Registrarme como vendedor
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </main>
       </div>

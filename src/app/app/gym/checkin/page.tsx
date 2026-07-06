@@ -31,7 +31,8 @@ import {
   CheckinStats as CheckinStatsType,
   MemberWithMembership
 } from '@/lib/services/gymCheckinService';
-import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -40,6 +41,7 @@ export default function GymCheckinPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter: globalBranchFilter } = useBranch();
   
   // Estados de búsqueda y validación
   const [isSearching, setIsSearching] = useState(false);
@@ -79,6 +81,11 @@ export default function GymCheckinPage() {
   // Datos auxiliares
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [expiringToday, setExpiringToday] = useState<Membership[]>([]);
+
+  // Sincronizar el filtro local de sede con la sucursal seleccionada globalmente (header)
+  useEffect(() => {
+    setBranchFilter(globalBranchFilter ? String(globalBranchFilter) : 'all');
+  }, [globalBranchFilter]);
 
   // Servicio
   const service = useMemo(() => {

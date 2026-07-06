@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentBranchId, getBranchFilter } from '@/lib/hooks/useOrganization';
 import type {
   RestaurantTable,
   TableSession,
@@ -15,20 +15,22 @@ export class MesasService {
    */
   static async obtenerMesasConSesiones(): Promise<TableWithSession[]> {
     const organizationId = getOrganizationId();
-    const branchId = getCurrentBranchId();
-
-    if (!branchId) {
-      throw new Error('No se pudo obtener el branch_id');
-    }
+    // En modo "Todas las sucursales" branchFilter es null y se listan las mesas de todas
+    const branchFilter = getBranchFilter();
 
     try {
       // 1. Obtener todas las mesas
-      const { data: mesas, error: mesasError } = await supabase
+      let mesasQuery = supabase
         .from('restaurant_tables')
         .select('*')
         .eq('organization_id', organizationId)
-        .eq('branch_id', branchId)
         .order('name');
+
+      if (branchFilter) {
+        mesasQuery = mesasQuery.eq('branch_id', branchFilter);
+      }
+
+      const { data: mesas, error: mesasError } = await mesasQuery;
 
       if (mesasError) throw mesasError;
 

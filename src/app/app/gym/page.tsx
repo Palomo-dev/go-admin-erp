@@ -14,10 +14,11 @@ import {
   Membership,
   MemberCheckin
 } from '@/lib/services/gymService';
-import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export default function GymDashboardPage() {
   const { toast } = useToast();
+  const { branchFilter } = useBranch();
   
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<GymStatsType>({
@@ -34,12 +35,11 @@ export default function GymDashboardPage() {
   const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const branchId = getCurrentBranchId();
-      
+      // En modo "Todas las sucursales" branchFilter es null → se muestran todas
       const [statsData, expiringData, checkinsData] = await Promise.all([
         getGymStats(),
         getMemberships(undefined, { expiringIn: 7 }),
-        getTodayCheckins(undefined, branchId || undefined)
+        getTodayCheckins(undefined, branchFilter || undefined)
       ]);
 
       setStats(statsData);
@@ -55,7 +55,7 @@ export default function GymDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, branchFilter]);
 
   useEffect(() => {
     loadDashboardData();

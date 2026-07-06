@@ -588,3 +588,5 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
 
 // Add display name for debugging
 BranchForm.displayName = 'BranchForm';
+
+export default BranchForm;

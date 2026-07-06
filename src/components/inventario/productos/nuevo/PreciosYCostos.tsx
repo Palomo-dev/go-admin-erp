@@ -20,6 +20,14 @@ export default function PreciosYCostos({ formData, updateFormData }: PreciosYCos
     ? ((formData.price - formData.cost) / formData.price * 100).toFixed(2)
     : '0.00'
 
+  const handleMargenChange = (value: string) => {
+    const margenValue = parseFloat(value) || 0
+    if (formData.price > 0 && margenValue >= 0 && margenValue < 100) {
+      const calculatedCost = formData.price * (1 - margenValue / 100)
+      updateFormData('cost', parseFloat(calculatedCost.toFixed(2)))
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-full overflow-hidden">
       <div className="flex items-center gap-3 mb-6">
@@ -119,16 +127,23 @@ export default function PreciosYCostos({ formData, updateFormData }: PreciosYCos
 
         {/* Margen de Ganancia */}
         <div className="space-y-2">
-          <Label className="text-gray-700 dark:text-gray-300">
+          <Label htmlFor="margen" className="text-gray-700 dark:text-gray-300">
             Margen de Ganancia
           </Label>
-          <div className="h-10 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800/50">
-            <span className={`font-semibold ${
-              parseFloat(margen) > 0 
-                ? 'text-green-600 dark:text-green-400' 
-                : 'text-gray-500 dark:text-gray-400'
-            }`}>
-              {margen}%
+          <div className="relative">
+            <Input
+              id="margen"
+              type="number"
+              min="0"
+              max="99.99"
+              step="0.01"
+              value={formData.price > 0 && formData.cost > 0 ? parseFloat(margen).toFixed(2) : ''}
+              onChange={(e) => handleMargenChange(e.target.value)}
+              className="pr-8 border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+              placeholder="0.00"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
+              %
             </span>
           </div>
           {formData.price > 0 && formData.cost > 0 && (

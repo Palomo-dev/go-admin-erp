@@ -415,9 +415,6 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(t => t) : [],
           customer_type: customerType,
           parent_customer_id: customerType === 'person' && parentCustomerId ? parentCustomerId : null,
-          full_name: customerType === 'company'
-            ? (formData.companyName || formData.tradeName)
-            : `${formData.firstName} ${formData.lastName}`.trim(),
           updated_at: new Date().toISOString()
         };
         
@@ -470,9 +467,6 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(t => t) : [],
           customer_type: customerType,
           parent_customer_id: customerType === 'person' && parentCustomerId ? parentCustomerId : null,
-          full_name: customerType === 'company'
-            ? (formData.companyName || formData.tradeName)
-            : `${formData.firstName} ${formData.lastName}`.trim(),
           created_at: new Date().toISOString()
         };
         

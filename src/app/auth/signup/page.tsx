@@ -415,6 +415,19 @@ function SignupContent() {
         }
         console.log('✅ Sucursal principal actualizada exitosamente');
         
+        // 4.5. Asignar al creador como gerente de la sucursal principal
+        const { error: managerError } = await supabase
+          .from('branches')
+          .update({ manager_id: userId })
+          .eq('organization_id', orgId)
+          .eq('is_main', true);
+        
+        if (managerError) {
+          console.warn('⚠️ No se pudo asignar manager_id a la sucursal principal:', managerError);
+        } else {
+          console.log('✅ Creador asignado como gerente de la sucursal principal');
+        }
+        
         // 5. Crear/actualizar suscripción
         console.log('5️⃣ Configurando suscripción...');
         console.log('🔍 DEBUG signup - Plan:', signupData.subscriptionPlan);

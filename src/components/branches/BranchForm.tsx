@@ -335,7 +335,8 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
           </div>
         </div>
 
-        {/* Gerente */}
+        {/* Gerente - oculto durante signup (hideStatusSection) porque la org aún no existe */}
+        {!hideStatusSection && (
         <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -360,6 +361,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
             </div>
           </div>
         </div>
+        )}
 
         {/* Horarios */}
         <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">

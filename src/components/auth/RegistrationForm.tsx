@@ -151,7 +151,7 @@ export default function RegistrationForm({
             value={formData.firstName}
             onChange={handleChange}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900 dark:border-gray-600"
           />
         </div>
         <div>
@@ -165,7 +165,7 @@ export default function RegistrationForm({
             value={formData.lastName}
             onChange={handleChange}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900 dark:border-gray-600"
           />
         </div>
       </div>
@@ -182,8 +182,8 @@ export default function RegistrationForm({
           onChange={handleChange}
           disabled={isReadOnlyEmail}
           required
-          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.email ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm dark:bg-gray-800 dark:text-gray-100 ${
-            isReadOnlyEmail ? 'bg-gray-50 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : 'focus:outline-none focus:ring-blue-500 focus:border-blue-500'
+          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.email ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm dark:bg-white dark:text-gray-900 ${
+            isReadOnlyEmail ? 'bg-gray-50 text-gray-500 dark:bg-gray-100 dark:text-gray-500' : 'focus:outline-none focus:ring-blue-500 focus:border-blue-500'
           }`}
         />
         {validationErrors.email && (
@@ -202,7 +202,7 @@ export default function RegistrationForm({
           value={formData.phoneNumber}
           onChange={handleChange}
           required={isEmployee}
-          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.phoneNumber ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100`}
+          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.phoneNumber ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900`}
         />
         {validationErrors.phoneNumber && (
           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.phoneNumber}</p>
@@ -221,7 +221,7 @@ export default function RegistrationForm({
             value={formData.password}
             onChange={handleChange}
             required
-            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.password ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100`}
+            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.password ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900`}
           />
           <button
             type="button"
@@ -253,7 +253,7 @@ export default function RegistrationForm({
             value={formData.confirmPassword}
             onChange={handleChange}
             required
-            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.confirmPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100`}
+            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.confirmPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900`}
           />
           <button
             type="button"
@@ -309,7 +309,7 @@ export default function RegistrationForm({
           name="preferredLanguage"
           value={formData.preferredLanguage}
           onChange={(e) => setFormData(prev => ({ ...prev, preferredLanguage: e.target.value }))}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900 dark:border-gray-600"
         >
           <option value="es">🇪🇸 es - Español</option>
           <option value="en">🇺🇸 en - English</option>

@@ -217,7 +217,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 onChange={handleChange}
                 required
                 placeholder="Nombre de la sucursal"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
               />
             </div>
             <div>
@@ -229,7 +229,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 onChange={handleChange}
                 required
                 placeholder="Ej: SUC-001"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
               />
             </div>
           </div>
@@ -250,7 +250,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 value={form.address}
                 onChange={handleChange}
                 placeholder="Dirección completa"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -262,7 +262,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.city}
                   onChange={handleChange}
                   placeholder="Ciudad"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
                 />
               </div>
               <div>
@@ -273,7 +273,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.state}
                   onChange={handleChange}
                   placeholder="Estado o provincia"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
                 />
               </div>
             </div>
@@ -286,7 +286,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.country}
                   onChange={handleChange}
                   placeholder="País"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
                 />
               </div>
               <div>
@@ -297,7 +297,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.postal_code}
                   onChange={handleChange}
                   placeholder="Código postal"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
                 />
               </div>
             </div>
@@ -323,7 +323,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.phone}
                   onChange={handleChange}
                   placeholder="+57 300 123 4567"
-                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
                 />
               </div>
             </div>
@@ -339,7 +339,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.email}
                   onChange={handleChange}
                   placeholder="sucursal@empresa.com"
-                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
                 />
               </div>
             </div>
@@ -426,7 +426,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                             value={dayHours.open || '09:00'}
                             onChange={(e) => handleHoursChange(day, 'open', e.target.value)}
                             disabled={dayHours.closed}
-                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400"
+                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-white dark:text-gray-900 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
                           />
                         </td>
                         <td className={`p-3 ${isLast ? 'rounded-br-lg' : ''}`}>
@@ -435,7 +435,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                             value={dayHours.close || '18:00'}
                             onChange={(e) => handleHoursChange(day, 'close', e.target.value)}
                             disabled={dayHours.closed}
-                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400"
+                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-white dark:text-gray-900 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
                           />
                         </td>
                       </tr>

@@ -454,7 +454,7 @@ export default function PerfilUsuarioPage() {
                         Regístrate en nuestro panel de vendedores y empieza a generar comisiones por cada cliente que refieras. Usarás las mismas credenciales que en el ERP.
                       </p>
                       <a
-                        href={`${process.env.NEXT_PUBLIC_SELLERS_URL || 'http://localhost:3002'}/register`}
+                        href={`${process.env.NEXT_PUBLIC_SELLERS_URL || 'https://sellers.goadmin.io'}/register`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"

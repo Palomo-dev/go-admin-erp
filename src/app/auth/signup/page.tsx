@@ -42,6 +42,8 @@ interface SignupData {
   organizationState?: string;
   organizationCountry?: string;
   organizationCountryCode?: string;
+  organizationStateCode?: string;
+  organizationMunicipalityId?: string;
   organizationPostalCode?: string;
   organizationTaxId?: string;
   organizationNit?: string;
@@ -59,6 +61,9 @@ interface SignupData {
   branchCity?: string;
   branchState?: string;
   branchCountry?: string;
+  branchCountryCode?: string;
+  branchStateCode?: string;
+  branchMunicipalityId?: string;
   branchPostalCode?: string;
   branchPhone?: string;
   branchEmail?: string;
@@ -107,6 +112,8 @@ function SignupContent() {
     organizationState: '',
     organizationCountry: '',
     organizationCountryCode: '',
+    organizationStateCode: '',
+    organizationMunicipalityId: '',
     organizationPostalCode: '',
     organizationTaxId: '',
     organizationNit: '',
@@ -122,6 +129,9 @@ function SignupContent() {
     branchCity: '',
     branchState: '',
     branchCountry: '',
+    branchCountryCode: '',
+    branchStateCode: '',
+    branchMunicipalityId: '',
     branchPostalCode: '',
     branchPhone: '',
     branchEmail: '',
@@ -380,6 +390,9 @@ function SignupContent() {
             city: signupData.branchCity || null,
             state: signupData.branchState || null,
             country: signupData.branchCountry === 'COL' ? 'Colombia' : (signupData.branchCountry || 'Colombia'),
+            country_code: signupData.branchCountryCode || null,
+            state_code: signupData.branchStateCode || null,
+            municipality_id: signupData.branchMunicipalityId || null,
             postal_code: signupData.branchPostalCode || null,
             phone: signupData.branchPhone || null,
             email: signupData.branchEmail || null,
@@ -571,6 +584,8 @@ function SignupContent() {
               organizationState: signupData.organizationState,
               organizationCountry: signupData.organizationCountry || 'Colombia',
               organizationCountryCode: signupData.organizationCountryCode || 'COL',
+              organizationStateCode: signupData.organizationStateCode,
+              organizationMunicipalityId: signupData.organizationMunicipalityId,
               organizationPostalCode: signupData.organizationPostalCode,
               organizationTaxId: signupData.organizationTaxId,
               organizationNit: signupData.organizationNit,
@@ -588,6 +603,9 @@ function SignupContent() {
               branchCity: signupData.branchCity,
               branchState: signupData.branchState,
               branchCountry: signupData.branchCountry || 'COL',
+              branchCountryCode: signupData.branchCountryCode,
+              branchStateCode: signupData.branchStateCode,
+              branchMunicipalityId: signupData.branchMunicipalityId,
               branchPostalCode: signupData.branchPostalCode,
               branchPhone: signupData.branchPhone,
               branchEmail: signupData.branchEmail,

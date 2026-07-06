@@ -353,8 +353,8 @@ function SignupContent() {
           .update({ last_org_id: orgId })
           .eq('id', userId);
         
-        // 4. Crear sucursal principal (después de membresía para cumplir RLS)
-        console.log('4️⃣ Creando sucursal principal...');
+        // 4. Actualizar sucursal principal (el trigger trg_create_default_branch_and_period ya la crea)
+        console.log('4️⃣ Actualizando sucursal principal...');
         const openingHours = signupData.branchOpeningHours ? 
           (typeof signupData.branchOpeningHours === 'string' ? JSON.parse(signupData.branchOpeningHours) : signupData.branchOpeningHours) :
           {
@@ -373,8 +373,7 @@ function SignupContent() {
         
         const { error: branchError } = await supabase
           .from('branches')
-          .insert({
-            organization_id: orgId,
+          .update({
             name: signupData.branchName || 'Sucursal Principal',
             branch_code: signupData.branchCode || 'MAIN-001',
             address: signupData.branchAddress || null,
@@ -389,7 +388,9 @@ function SignupContent() {
             features: features,
             is_main: true,
             is_active: true
-          });
+          })
+          .eq('organization_id', orgId)
+          .eq('is_main', true);
         
         if (branchError) {
           console.error('❌ Error creando sucursal:', branchError);

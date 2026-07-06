@@ -371,7 +371,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 setFormErrors({ ...formErrors, [id]: '' });
               }
             }}
-            className={`block w-full rounded-lg border ${formErrors[id] ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100`}
+            className={`block w-full rounded-lg border ${formErrors[id] ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
           />
           {formErrors[id] && (
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
@@ -506,7 +506,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   setFormErrors({ ...formErrors, typeId: '' });
                 }
               }}
-              className={`block w-full rounded-lg border ${formErrors.typeId ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100`}
+              className={`block w-full rounded-lg border ${formErrors.typeId ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
             >
               <option value="">Seleccionar...</option>
               {organizationTypes.map((type) => (
@@ -545,7 +545,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   formErrors.email 
                     ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400' 
                     : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'
-                } shadow-sm px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100 ${!!defaultEmail ? 'bg-gray-100 dark:bg-gray-700' : ''}`}
+                } shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 ${!!defaultEmail ? 'bg-gray-100 dark:bg-gray-100' : ''}`}
               />
               {formErrors.email && (
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
@@ -714,7 +714,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900"
             />
           </div>
 
@@ -741,7 +741,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     country: selectedCountry?.name || ''
                   });
                 }}
-                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100"
+                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900"
               >
                 <option value="">Seleccionar país...</option>
                 {countries.map((country) => (
@@ -772,7 +772,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   setSubdomainManuallyEdited(true);
                 }}
                 placeholder="miempresa"
-                className={`block w-full rounded-l-lg border px-4 py-3 sm:text-sm dark:bg-gray-800 dark:text-gray-100 ${
+                className={`block w-full rounded-l-lg border px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 ${
                   subdomainStatus === 'taken' 
                     ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500' 
                     : subdomainStatus === 'available'

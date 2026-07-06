@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SubscriptionPlanSelector from '../subscription/SubscriptionPlanSelector';
 import { useTranslations } from 'next-intl';
+import { supabase } from '@/lib/supabase/config';
 
 export interface SubscriptionData {
   subscriptionPlan: string;
@@ -36,6 +37,23 @@ export default function SubscriptionStep({
     formData.billingPeriod || 'monthly'
   );
   const [skipTrial, setSkipTrial] = useState(formData.skipTrial || false);
+  const [trialDays, setTrialDays] = useState<number>(15);
+
+  // Obtener trial_days del plan seleccionado desde la BD
+  useEffect(() => {
+    const fetchTrialDays = async () => {
+      const planCode = (selectedPlan || 'pro').replace('-yearly', '');
+      const { data } = await supabase
+        .from('plans')
+        .select('trial_days')
+        .eq('code', planCode)
+        .single();
+      if (data?.trial_days) {
+        setTrialDays(data.trial_days);
+      }
+    };
+    fetchTrialDays();
+  }, [selectedPlan]);
   
 
   const handleSelectPlan = (planId: string) => {
@@ -70,7 +88,7 @@ export default function SubscriptionStep({
         <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{t('selectPlan')}</h2>
         <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-500">
           {t('selectPlanDescription')}
-          <span className="block mt-1 text-[11px] sm:text-xs">{t('trialPeriod')}</span>
+          <span className="block mt-1 text-[11px] sm:text-xs">{t('trialPeriod', { days: trialDays })}</span>
         </p>
       </div>
 
@@ -107,7 +125,7 @@ export default function SubscriptionStep({
                   {t('useTrial')}
                 </p>
                 <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">
-                  {t('useTrialDescription')}
+                  {t('useTrialDescription', { days: trialDays })}
                 </p>
               </div>
             </label>

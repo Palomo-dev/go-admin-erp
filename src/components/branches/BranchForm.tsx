@@ -2,6 +2,7 @@ import React, { useState, forwardRef, useImperativeHandle, FormEvent } from 'rea
 import { Branch, BranchFormData, OpeningHours, BranchFeatures } from '@/types/branch';
 import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon, UserIcon } from '@heroicons/react/24/outline';
 import { ManagerSelector } from './ManagerSelector';
+import LocationSelector from '../common/LocationSelector';
 
 type BranchFormProps = {
   initialData?: Partial<Branch>;
@@ -79,7 +80,10 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     address: initialData.address || '',
     city: initialData.city || '',
     state: initialData.state || '',
-    country: initialData.country || '',
+    country: initialData.country || 'Colombia',
+    country_code: initialData.country_code || 'COL',
+    state_code: initialData.state_code || '',
+    municipality_id: initialData.municipality_id || '',
     postal_code: initialData.postal_code || '',
     latitude: initialData.latitude || undefined,
     longitude: initialData.longitude || undefined,
@@ -253,42 +257,27 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
               />
             </div>
+            <LocationSelector
+              value={{
+                country: form.country,
+                countryCode: form.country_code || '',
+                state: form.state,
+                stateCode: form.state_code || '',
+                city: form.city,
+                municipalityId: form.municipality_id || '',
+              }}
+              onChange={(locData) => setForm({
+                ...form,
+                country: locData.country,
+                country_code: locData.countryCode,
+                state: locData.state,
+                state_code: locData.stateCode,
+                city: locData.city,
+                municipality_id: locData.municipalityId,
+              })}
+              layout="stacked"
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Ciudad</label>
-                <input
-                  type="text"
-                  name="city"
-                  value={form.city}
-                  onChange={handleChange}
-                  placeholder="Ciudad"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Estado</label>
-                <input
-                  type="text"
-                  name="state"
-                  value={form.state}
-                  onChange={handleChange}
-                  placeholder="Estado o provincia"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">País</label>
-                <input
-                  type="text"
-                  name="country"
-                  value={form.country}
-                  onChange={handleChange}
-                  placeholder="País"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Código Postal</label>
                 <input

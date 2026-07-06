@@ -22,6 +22,7 @@ export interface Organization {
 export interface SelectOrganizationParams {
   organization: Organization;
   email?: string;
+  rememberMe?: boolean;
   setShowOrgPopup: (show: boolean) => void;
   proceedWithLogin: (rememberMe: boolean, email: string) => void;
 }
@@ -29,6 +30,7 @@ export interface SelectOrganizationParams {
 export const selectOrganizationFromPopup = async ({
   organization,
   email = '',
+  rememberMe = false,
   setShowOrgPopup,
   proceedWithLogin
 }: SelectOrganizationParams) => {
@@ -53,7 +55,7 @@ export const selectOrganizationFromPopup = async ({
   
   // Continue with login process
   try {
-    await proceedWithLogin(false, email);
+    await proceedWithLogin(rememberMe, email);
     console.log('✅ [DEBUG] proceedWithLogin completado exitosamente');
   } catch (error) {
     console.error('❌ [DEBUG] Error en proceedWithLogin:', error);
@@ -277,8 +279,9 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
   }
 
   // Simple function to obfuscate email (not true encryption but better than plaintext)
+  // Debe usar la misma ofuscación que page.tsx: btoa(email).split('').reverse().join('')
   const obfuscateEmail = (email: string): string => {
-    return btoa(email.split('').reverse().join(''));
+    return btoa(email).split('').reverse().join('');
   };
   
   // Simple function to deobfuscate email

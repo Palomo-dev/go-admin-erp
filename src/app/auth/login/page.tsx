@@ -165,6 +165,7 @@ function LoginContent() {
       await selectOrganizationFromPopup({
         organization: org,
         email,
+        rememberMe,
         setShowOrgPopup,
         proceedWithLogin: (rememberMe, email) => {
           console.log('🔗 [LOGIN PAGE] Wrapper proceedWithLogin llamado:', { rememberMe, email });

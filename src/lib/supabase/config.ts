@@ -64,7 +64,7 @@ export const createSupabaseClient = () => {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
+      detectSessionInUrl: true,
       flowType: 'pkce',
       storage: {
         getItem: (key: string) => {

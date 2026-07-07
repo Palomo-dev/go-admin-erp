@@ -36,6 +36,7 @@ interface FormData {
   payment_method: string;
   reference: string;
   notes: string;
+  payment_date: string;
 }
 
 export function RegistrarPagoModal({
@@ -52,8 +53,10 @@ export function RegistrarPagoModal({
     amount: '',
     payment_method: '',
     reference: '',
-    notes: ''
+    notes: '',
+    payment_date: new Date().toISOString().split('T')[0]
   });
+  const [fechaError, setFechaError] = useState(false);
 
   // Cargar métodos de pago
   useEffect(() => {
@@ -63,8 +66,10 @@ export function RegistrarPagoModal({
       if (factura) {
         setFormData(prev => ({
           ...prev,
-          amount: factura.balance.toString()
+          amount: factura.balance.toString(),
+          payment_date: new Date().toISOString().split('T')[0]
         }));
+        setFechaError(false);
       }
     }
   }, [open, factura]);
@@ -123,9 +128,11 @@ export function RegistrarPagoModal({
       amount: factura?.balance.toString() || '0',
       payment_method: metodosPago.length > 0 ? metodosPago[0].payment_method_code : '',
       reference: '',
-      notes: ''
+      notes: '',
+      payment_date: new Date().toISOString().split('T')[0]
     });
     setMontoExcedido(false);
+    setFechaError(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,6 +157,15 @@ export function RegistrarPagoModal({
       return;
     }
 
+    // Validar que la fecha de pago no sea anterior a la fecha de emisión
+    if (factura.issue_date) {
+      const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
+      if (formData.payment_date < fechaEmision) {
+        alert(`La fecha de pago no puede ser anterior a la fecha de emisión (${fechaEmision})`);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       
@@ -158,7 +174,8 @@ export function RegistrarPagoModal({
         amount: monto,
         payment_method: formData.payment_method,
         reference: formData.reference,
-        notes: formData.notes
+        notes: formData.notes,
+        payment_date: formData.payment_date
       });
       
       // Notificar éxito (podrías usar un toast aquí)
@@ -273,6 +290,31 @@ export function RegistrarPagoModal({
               />
             </div>
           )}
+
+          {/* Notas */}
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="payment_date" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+              Fecha de Pago *
+            </Label>
+            <Input
+              id="payment_date"
+              type="date"
+              value={formData.payment_date}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, payment_date: e.target.value }));
+                if (factura.issue_date) {
+                  const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
+                  setFechaError(e.target.value < fechaEmision);
+                }
+              }}
+              max={new Date().toISOString().split('T')[0]}
+              min={factura.issue_date ? new Date(factura.issue_date).toISOString().split('T')[0] : undefined}
+              className={`h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
+            />
+            {fechaError && (
+              <p className="text-xs text-red-500 dark:text-red-400">La fecha no puede ser anterior a la emisión de la factura</p>
+            )}
+          </div>
 
           {/* Notas */}
           <div className="space-y-1.5 sm:space-y-2">

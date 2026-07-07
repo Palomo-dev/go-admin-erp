@@ -203,12 +203,12 @@ export class CuentaPorCobrarDetailService {
   }
 
   // Aplicar pago
-  static async aplicarPago(accountId: string, amount: number, method: string, reference?: string): Promise<void> {
+  static async aplicarPago(accountId: string, amount: number, method: string, reference?: string, paymentDate?: string): Promise<void> {
     const organizationId = this.getOrganizationId();
     const branchId = getCurrentBranchId();
     const createdBy = await getCurrentUserId();
     
-    console.log('💰 DEBUG aplicarPago:', { accountId, amount, method, organizationId, branchId, createdBy });
+    console.log('💰 DEBUG aplicarPago:', { accountId, amount, method, organizationId, branchId, createdBy, paymentDate });
     
     try {
       // Crear registro de pago
@@ -224,7 +224,8 @@ export class CuentaPorCobrarDetailService {
           method: method,
           reference: reference,
           status: 'completed',
-          currency: 'COP'
+          currency: 'COP',
+          payment_date: paymentDate ? new Date(paymentDate + 'T12:00:00').toISOString() : new Date().toISOString()
         });
 
       if (paymentError) {
@@ -389,7 +390,8 @@ export class CuentaPorCobrarDetailService {
     installmentId: string,
     amount: number,
     method: string,
-    reference?: string
+    reference?: string,
+    paymentDate?: string
   ): Promise<void> {
     try {
       // Obtener la cuota
@@ -420,7 +422,7 @@ export class CuentaPorCobrarDetailService {
           paid_amount: newPaidAmount,
           balance: newBalance,
           status: newStatus,
-          paid_at: newStatus === 'paid' ? new Date().toISOString() : null
+          paid_at: newStatus === 'paid' ? (paymentDate ? new Date(paymentDate + 'T12:00:00').toISOString() : new Date().toISOString()) : null
         })
         .eq('id', installmentId);
 
@@ -434,7 +436,8 @@ export class CuentaPorCobrarDetailService {
         installment.account_receivable_id,
         amount,
         method,
-        reference
+        reference,
+        paymentDate
       );
 
     } catch (error) {

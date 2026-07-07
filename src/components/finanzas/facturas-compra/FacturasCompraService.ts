@@ -663,6 +663,7 @@ export class FacturasCompraService {
     payment_method: string;
     reference?: string;
     notes?: string;
+    payment_date?: string;
   }): Promise<any> {
     try {
       console.log('=== Registrando pago ===');
@@ -692,7 +693,8 @@ export class FacturasCompraService {
           amount: pagoData.amount,
           currency: factura.currency || 'COP',
           reference: pagoData.reference || null,
-          status: 'completed'
+          status: 'completed',
+          payment_date: pagoData.payment_date ? new Date(pagoData.payment_date + 'T12:00:00').toISOString() : new Date().toISOString()
         })
         .select()
         .single();

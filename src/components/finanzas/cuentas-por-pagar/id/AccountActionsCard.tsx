@@ -38,8 +38,10 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
     method: '',
     reference: '',
     bankAccountId: '',
-    installmentId: ''
+    installmentId: '',
+    paymentDate: new Date().toISOString().split('T')[0]
   });
+  const [fechaError, setFechaError] = useState(false);
 
   useEffect(() => {
     loadOptions();
@@ -97,7 +99,8 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
           amount,
           paymentData.method,
           paymentData.reference || undefined,
-          paymentData.bankAccountId || undefined
+          paymentData.bankAccountId || undefined,
+          paymentData.paymentDate
         );
       } else if (installments.length > 0) {
         // Aplicar automáticamente a cuotas pendientes (de la más antigua a la más nueva)
@@ -111,7 +114,8 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
             paymentForInstallment,
             paymentData.method,
             paymentData.reference || undefined,
-            paymentData.bankAccountId || undefined
+            paymentData.bankAccountId || undefined,
+            paymentData.paymentDate
           );
           remainingAmount -= paymentForInstallment;
         }
@@ -122,12 +126,14 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
           amount,
           paymentData.method,
           paymentData.reference || undefined,
-          paymentData.bankAccountId || undefined
+          paymentData.bankAccountId || undefined,
+          paymentData.paymentDate
         );
       }
       
       toast.success('Pago registrado exitosamente');
-      setPaymentData({ amount: '', method: '', reference: '', bankAccountId: '', installmentId: '' });
+      setPaymentData({ amount: '', method: '', reference: '', bankAccountId: '', installmentId: '', paymentDate: new Date().toISOString().split('T')[0] });
+      setFechaError(false);
       onUpdate();
     } catch (error) {
       console.error('Error al aplicar pago:', error);
@@ -305,6 +311,28 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
                       50%
                     </Button>
                   </div>
+                </div>
+                <div>
+                  <Label className="text-gray-700 dark:text-gray-300">
+                    Fecha de Pago
+                  </Label>
+                  <Input
+                    type="date"
+                    value={paymentData.paymentDate}
+                    onChange={(e) => {
+                      setPaymentData({ ...paymentData, paymentDate: e.target.value });
+                      if (account.issue_date) {
+                        const fechaEmision = new Date(account.issue_date).toISOString().split('T')[0];
+                        setFechaError(e.target.value < fechaEmision);
+                      }
+                    }}
+                    max={new Date().toISOString().split('T')[0]}
+                    min={account.issue_date ? new Date(account.issue_date).toISOString().split('T')[0] : undefined}
+                    className={`dark:bg-gray-900 dark:border-gray-600 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
+                  />
+                  {fechaError && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-1">La fecha no puede ser anterior a la emisión</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-gray-700 dark:text-gray-300">

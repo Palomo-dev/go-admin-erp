@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -70,6 +71,8 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
   const [monto, setMonto] = useState<string>('');
   const [referencia, setReferencia] = useState<string>('');
   const [montoExcedido, setMontoExcedido] = useState(false);
+  const [fechaPago, setFechaPago] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [fechaError, setFechaError] = useState(false);
 
   // Cargar métodos de pago disponibles
   useEffect(() => {
@@ -110,6 +113,9 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       cargarMetodosPago();
       // Establecer monto predeterminado con el saldo pendiente
       setMonto(factura.balance?.toString() || '0');
+      // Establecer fecha de pago predeterminada a hoy
+      setFechaPago(new Date().toISOString().split('T')[0]);
+      setFechaError(false);
     }
   }, [open, organizationId]);
 
@@ -145,6 +151,19 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
         variant: "destructive",
       });
       return;
+    }
+
+    // Validar que la fecha de pago no sea anterior a la fecha de emisión de la factura
+    if (factura.issue_date) {
+      const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
+      if (fechaPago < fechaEmision) {
+        toast({
+          title: "Error de validación",
+          description: `La fecha de pago no puede ser anterior a la fecha de emisión (${fechaEmision})`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     const montoNumerico = parseFloat(monto);
@@ -185,7 +204,8 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
           amount: montoNumerico,
           currency: factura.currency || 'COP',
           reference: referencia || null,
-          status: 'completed'
+          status: 'completed',
+          payment_date: new Date(fechaPago + 'T12:00:00').toISOString()
         });
 
       if (paymentError) {
@@ -357,6 +377,27 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
                   </AlertDescription>
                 </div>
               </Alert>
+            )}
+          </div>
+          
+          <div className="grid items-center gap-1.5">
+            <Label htmlFor="fechaPago" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Fecha de Pago</Label>
+            <Input
+              id="fechaPago"
+              type="date"
+              value={fechaPago}
+              onChange={(e) => {
+                setFechaPago(e.target.value);
+                if (factura.issue_date) {
+                  const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
+                  setFechaError(e.target.value < fechaEmision);
+                }
+              }}
+              max={new Date().toISOString().split('T')[0]}
+              className={`text-sm dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
+            />
+            {fechaError && (
+              <p className="text-xs text-red-500 dark:text-red-400">La fecha no puede ser anterior a la emisión de la factura</p>
             )}
           </div>
           

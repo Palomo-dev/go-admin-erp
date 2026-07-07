@@ -40,8 +40,10 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
     amount: '',
     method: '',
     reference: '',
-    installmentId: ''
+    installmentId: '',
+    paymentDate: new Date().toISOString().split('T')[0]
   });
+  const [fechaError, setFechaError] = useState(false);
 
   // Cargar métodos de pago e installments al abrir el diálogo
   const loadPaymentData = async () => {
@@ -106,7 +108,8 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
           paymentData.installmentId,
           amount,
           paymentData.method,
-          paymentData.reference || undefined
+          paymentData.reference || undefined,
+          paymentData.paymentDate
         );
       } else {
         // Pago general - aplicar automáticamente a cuotas pendientes (de la más antigua a la más nueva)
@@ -127,7 +130,8 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
               installment.id,
               paymentForInstallment,
               paymentData.method,
-              paymentData.reference || undefined
+              paymentData.reference || undefined,
+              paymentData.paymentDate
             );
             remainingAmount -= paymentForInstallment;
           }
@@ -137,13 +141,15 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
             account.id,
             amount,
             paymentData.method,
-            paymentData.reference || undefined
+            paymentData.reference || undefined,
+            paymentData.paymentDate
           );
         }
       }
       
       toast.success('Pago aplicado exitosamente');
-      setPaymentData({ amount: '', method: '', reference: '', installmentId: '' });
+      setPaymentData({ amount: '', method: '', reference: '', installmentId: '', paymentDate: new Date().toISOString().split('T')[0] });
+      setFechaError(false);
       setShowPaymentDialog(false);
       onUpdate();
     } catch (error) {
@@ -386,6 +392,29 @@ Saludos cordiales.`;
                       50%
                     </Button>
                   </div>
+                </div>
+                <div>
+                  <Label htmlFor="paymentDate" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Fecha de Pago
+                  </Label>
+                  <Input
+                    id="paymentDate"
+                    type="date"
+                    value={paymentData.paymentDate}
+                    onChange={(e) => {
+                      setPaymentData({ ...paymentData, paymentDate: e.target.value });
+                      if (account.issue_date) {
+                        const fechaEmision = new Date(account.issue_date).toISOString().split('T')[0];
+                        setFechaError(e.target.value < fechaEmision);
+                      }
+                    }}
+                    max={new Date().toISOString().split('T')[0]}
+                    min={account.issue_date ? new Date(account.issue_date).toISOString().split('T')[0] : undefined}
+                    className={`dark:bg-gray-900 dark:border-gray-600 ${fechaError ? 'border-red-500 dark:border-red-500' : ''}`}
+                  />
+                  {fechaError && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-1">La fecha no puede ser anterior a la emisión</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="paymentMethod" className="text-sm font-medium text-gray-700 dark:text-gray-300">

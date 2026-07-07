@@ -65,7 +65,7 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5): P
     const { data: clientes, error: clientError } = await supabase
       .from('customers')
       .select('id, first_name, last_name, email, full_name, organization_id, avatar_url')
-      .or(`first_name.ilike.%${searchTerm}%, last_name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%, full_name.ilike.%${searchTerm}%`)
+      .or(`first_name.ilike.%${searchTerm}%, last_name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%, full_name.ilike.%${searchTerm}%, company_name.ilike.%${searchTerm}%, trade_name.ilike.%${searchTerm}%`)
       .eq('organization_id', organizationId)
       .limit(resultLimit);
       
@@ -165,7 +165,7 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5): P
       const { data: clientesFallback, error: clientFallbackError } = await supabase
         .from('customers')
         .select('id, first_name, last_name, email, full_name, identification_number, organization_id, avatar_url')
-        .or(`first_name.ilike.%${searchTerm}%, last_name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%, full_name.ilike.%${searchTerm}%`)
+        .or(`first_name.ilike.%${searchTerm}%, last_name.ilike.%${searchTerm}%, email.ilike.%${searchTerm}%, full_name.ilike.%${searchTerm}%, company_name.ilike.%${searchTerm}%, trade_name.ilike.%${searchTerm}%`)
         .limit(resultLimit);
         
       if (clientFallbackError) {

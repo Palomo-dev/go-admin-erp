@@ -208,7 +208,7 @@ export default function Home() {
       localStorage.removeItem('currentOrganizationName');
       localStorage.removeItem('userRole');
       localStorage.removeItem('supabase.auth.token');
-      localStorage.removeItem('rememberMe');
+      // No eliminar rememberMe para que el "recuérdame" funcione en el próximo login
       
       // Redireccionar a la página de login
       window.location.replace('/auth/login'); 

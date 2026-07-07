@@ -928,8 +928,7 @@ export const AppLayout = ({
       localStorage.removeItem('currentBranchId');
       localStorage.removeItem('userRole');
       localStorage.removeItem('supabase.auth.token');
-      localStorage.removeItem('rememberMe');
-      localStorage.removeItem('userEmail');
+      // No eliminar rememberMe ni userEmail para que el "recuérdame" funcione en el próximo login
       
       // Limpiar sessionStorage
       sessionStorage.removeItem('organizacionActiva');

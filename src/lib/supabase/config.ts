@@ -140,13 +140,19 @@ export const createSupabaseClient = () => {
         const MAX_RETRIES = 3;
         const BASE_DELAY = 1000; // 1 segundo
         
+        // No reintentar peticiones de Auth (ej: /auth/v1/token). Reintentar el
+        // refresh de sesión amplifica el problema de rate limit (429) y provoca
+        // errores de "refresh_token_already_used".
+        const urlString = typeof url === 'string' ? url : (url instanceof URL ? url.toString() : url.url);
+        const isAuthRequest = urlString.includes('/auth/v1/');
+        
         return new Promise((resolve, reject) => {
           const attemptFetch = async (retriesLeft: number, delay: number) => {
             try {
               const response = await fetch(url, options);
               
               // Si recibimos un 429 (Too Many Requests) y aún tenemos reintentos
-              if (response.status === 429 && retriesLeft > 0) {
+              if (response.status === 429 && retriesLeft > 0 && !isAuthRequest) {
                 console.log(`Límite de solicitudes alcanzado, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
                 
                 // Esperar antes de reintentar con backoff exponencial
@@ -364,8 +370,7 @@ export const signOut = async () => {
     localStorage.removeItem('currentOrganizationId');
     localStorage.removeItem('currentOrganizationName');
     localStorage.removeItem('currentOrganizationType');
-    localStorage.removeItem('rememberMe');
-    localStorage.removeItem('userEmail');
+    // No eliminar rememberMe ni userEmail para que el "recuérdame" funcione en el próximo login
     localStorage.removeItem('superAdminImpersonating');
     localStorage.removeItem('superAdminName');
     localStorage.removeItem('superAdminUserId');

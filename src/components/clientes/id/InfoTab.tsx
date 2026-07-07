@@ -101,23 +101,39 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
     ? fiscalResp.join(', ')
     : 'No especificado';
 
+  const isCompany = clienteInfo?.customer_type === 'company';
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium">Información completa del cliente</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Información personal */}
+        {/* Información personal / empresarial */}
         <Card>
           <CardHeader>
-            <CardTitle>Datos personales</CardTitle>
-            <CardDescription>Información básica de contacto e identificación</CardDescription>
+            <CardTitle>{isCompany ? 'Datos de la empresa' : 'Datos personales'}</CardTitle>
+            <CardDescription>{isCompany ? 'Información de la empresa y contacto' : 'Información básica de contacto e identificación'}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre completo</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{isCompany ? 'Razón Social' : 'Nombre completo'}</p>
                 <p>{clienteInfo.full_name || `${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim() || 'No especificado'}</p>
               </div>
+              
+              {isCompany && (clienteInfo.first_name || clienteInfo.last_name) && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Persona de contacto</p>
+                  <p>{`${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim()}</p>
+                </div>
+              )}
+              
+              {isCompany && clienteInfo.trade_name && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre Comercial</p>
+                  <p>{clienteInfo.trade_name}</p>
+                </div>
+              )}
               
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Correo electrónico</p>
@@ -169,22 +185,27 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
         </Card>
       </div>
       
-      {/* Datos Empresariales y Fiscales */}
+      {/* Datos Empresariales y Fiscales - solo mostrar si hay datos */}
+      {(isCompany || clienteInfo.company_name || clienteInfo.trade_name || clienteInfo.dv != null || fiscalResp.length > 0) && (
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Datos Empresariales y Fiscales</CardTitle>
+          <CardTitle>{isCompany ? 'Datos Fiscales' : 'Datos Empresariales y Fiscales'}</CardTitle>
           <CardDescription>Información fiscal y comercial</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Razón Social</p>
-              <p>{clienteInfo.company_name || 'No especificado'}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre Comercial</p>
-              <p>{clienteInfo.trade_name || 'No especificado'}</p>
-            </div>
+            {!isCompany && (
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Razón Social</p>
+                <p>{clienteInfo.company_name || 'No especificado'}</p>
+              </div>
+            )}
+            {!isCompany && (
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Nombre Comercial</p>
+                <p>{clienteInfo.trade_name || 'No especificado'}</p>
+              </div>
+            )}
             <div>
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Dígito de Verificación (DV)</p>
               <p>{clienteInfo.dv != null ? clienteInfo.dv : 'No especificado'}</p>
@@ -202,6 +223,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
           </div>
         </CardContent>
       </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {/* Metadatos y preferencias */}

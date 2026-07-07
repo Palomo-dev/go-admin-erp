@@ -482,9 +482,19 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                                   className="shrink-0"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm dark:text-white text-gray-900 truncate">
-                                    {customer.full_name}
-                                  </p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-medium text-sm dark:text-white text-gray-900 truncate">
+                                      {customer.full_name}
+                                    </p>
+                                    {customer.customer_type === 'company' && (
+                                      <Building2 className="h-3 w-3 text-blue-500 dark:text-blue-400 shrink-0" />
+                                    )}
+                                  </div>
+                                  {customer.customer_type === 'company' && (customer.first_name || customer.last_name) && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                      Contacto: {`${customer.first_name || ''} ${customer.last_name || ''}`.trim()}
+                                    </p>
+                                  )}
                                   <div className="flex items-center gap-2 mt-1">
                                     {customer.email && (
                                       <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">

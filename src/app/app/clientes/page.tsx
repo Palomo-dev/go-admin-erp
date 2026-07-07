@@ -59,6 +59,7 @@ export default function ClientesPage() {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [cityFilter, setCityFilter] = useState<string | null>(null);
   const [balanceFilter, setBalanceFilter] = useState<string | null>(null); // 'all', 'pending', 'paid'
+  const [typeFilter, setTypeFilter] = useState<string | null>(null); // 'all', 'person', 'company'
   const [sortOrder, setSortOrder] = useState<string | null>(null);
   
   // Selección masiva
@@ -355,6 +356,13 @@ export default function ClientesPage() {
       );
     }
     
+    // Filtro por tipo (persona/empresa)
+    if (typeFilter && typeFilter !== "all_types") {
+      filtered = filtered.filter(customer => 
+        customer.customer_type === typeFilter
+      );
+    }
+    
     // Filtro por rol (ignorar "all_roles")
     if (roleFilter && roleFilter !== "all_roles") {
       filtered = filtered.filter(customer => 
@@ -409,7 +417,7 @@ export default function ClientesPage() {
     }
     
     setFilteredCustomers(filtered);
-  }, [customers, searchQuery, roleFilter, tagFilter, cityFilter, balanceFilter, sortOrder]);
+  }, [customers, searchQuery, roleFilter, tagFilter, cityFilter, balanceFilter, typeFilter, sortOrder]);
 
   // Función para cambiar de página
   const handlePageChange = (newPage: number) => {
@@ -881,6 +889,8 @@ export default function ClientesPage() {
             onCityFilterChange={setCityFilter}
             balanceFilter={balanceFilter}
             onBalanceFilterChange={setBalanceFilter}
+            typeFilter={typeFilter}
+            onTypeFilterChange={setTypeFilter}
             sortOrder={sortOrder}
             onSortOrderChange={setSortOrder}
             customers={customers}

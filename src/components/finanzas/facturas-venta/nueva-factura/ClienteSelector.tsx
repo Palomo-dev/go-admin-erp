@@ -22,6 +22,9 @@ type Cliente = {
   email?: string;
   phone?: string;
   organization_id: number;
+  customer_type?: string;
+  first_name?: string;
+  last_name?: string;
 };
 
 type ClienteSelectorProps = {
@@ -64,7 +67,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
         
         const { data, error } = await supabase
           .from('customers')
-          .select('id, full_name, email, phone, organization_id')
+          .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name')
           .eq('organization_id', organizationId)
           .or(`full_name.ilike.${termino},email.ilike.${termino},phone.ilike.${termino}`)
           .order('full_name', { ascending: true })
@@ -104,7 +107,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, full_name, email, phone, organization_id')
+        .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name')
         .eq('id', selectedCustomerId)
         .single();
       
@@ -138,7 +141,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       setIsLoading(true);
       const { data, error } = await supabase
         .from('customers')
-        .select('id, full_name, email, phone, organization_id')
+        .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name')
         .eq('organization_id', organizationId)
         .order('full_name', { ascending: true })
         .limit(100); // Limitamos la carga inicial a 100 clientes para mejor rendimiento
@@ -151,7 +154,10 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
         full_name: cliente.full_name,
         email: cliente.email,
         phone: cliente.phone,
-        organization_id: cliente.organization_id || organizationId
+        organization_id: cliente.organization_id || organizationId,
+        customer_type: cliente.customer_type,
+        first_name: cliente.first_name,
+        last_name: cliente.last_name
       }));
       
       setClientes(clientesFormateados);
@@ -246,6 +252,9 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
                     <SelectItem key={cliente.id} value={cliente.id.toString()} className="text-gray-900 dark:text-gray-100">
                       <div>
                         <div className="font-medium text-sm">{cliente.full_name}</div>
+                        {cliente.customer_type === 'company' && (cliente.first_name || cliente.last_name) && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Contacto: {`${cliente.first_name || ''} ${cliente.last_name || ''}`.trim()}</div>
+                        )}
                         {cliente.email && <div className="text-xs text-gray-600 dark:text-gray-400">{cliente.email}</div>}
                       </div>
                     </SelectItem>

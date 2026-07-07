@@ -50,6 +50,9 @@ export interface Customer {
   preferences: any;
   created_at: string;
   updated_at: string;
+  customer_type?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 export interface CartItem {

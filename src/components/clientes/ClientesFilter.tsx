@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Search, Filter, SortDesc, Clock } from 'lucide-react';
+import { Search, Filter, SortDesc, Clock, Building2, User } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,8 @@ interface ClientesFilterProps {
   onBalanceFilterChange: (balance: string | null) => void;
   sortOrder?: string | null;
   onSortOrderChange?: (sortOrder: string | null) => void;
+  typeFilter?: string | null;
+  onTypeFilterChange?: (type: string | null) => void;
   customers: Customer[];
 }
 
@@ -55,6 +57,8 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
   onBalanceFilterChange,
   sortOrder = null,
   onSortOrderChange = () => {},
+  typeFilter = null,
+  onTypeFilterChange = () => {},
   customers,
 }) => {
   // Extraer opciones únicas de los clientes para los filtros
@@ -96,10 +100,11 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
     onCityFilterChange(null);
     onBalanceFilterChange(null);
     onSortOrderChange(null);
+    onTypeFilterChange(null);
   };
   
   // Calcular si hay filtros activos
-  const hasActiveFilters = searchQuery || roleFilter || tagFilter || cityFilter || balanceFilter || sortOrder;
+  const hasActiveFilters = searchQuery || roleFilter || tagFilter || cityFilter || balanceFilter || sortOrder || typeFilter;
 
   return (
     <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4 space-y-3 sm:space-y-4">
@@ -138,7 +143,30 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
       </div>
       
       {/* Filtros avanzados */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-3 sm:gap-4">
+        {/* Filtro por tipo */}
+        <div>
+          <Select 
+            value={typeFilter || "all_types"} 
+            onValueChange={(value) => onTypeFilterChange(value === "all_types" ? null : value)}
+          >
+            <SelectTrigger className="w-full h-11 sm:h-10 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 text-sm">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectGroup>
+                <SelectItem value="all_types" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">Todos los tipos</SelectItem>
+                <SelectItem value="person" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                  <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Persona</span>
+                </SelectItem>
+                <SelectItem value="company" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                  <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Empresa</span>
+                </SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        
         {/* Filtro por rol */}
         <div>
           <Select 
@@ -263,6 +291,7 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
               <TooltipContent className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300">
                 <div className="text-xs sm:text-sm">
                   {searchQuery && <div>• Búsqueda: "{searchQuery}"</div>}
+                  {typeFilter && <div>• Tipo: {typeFilter === 'company' ? 'Empresa' : 'Persona'}</div>}
                   {roleFilter && <div>• Rol: {roleFilter}</div>}
                   {tagFilter && <div>• Etiqueta: {tagFilter}</div>}
                   {cityFilter && <div>• Municipio: {cityFilter}</div>}

@@ -39,6 +39,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -112,6 +114,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const [isPaid, setIsPaid] = useState(factura.status === 'paid');
   const [dialogPagoOpen, setDialogPagoOpen] = useState(false);
   const [dialogNotaCreditoOpen, setDialogNotaCreditoOpen] = useState(false);
+  const [dialogMarcarPagadaOpen, setDialogMarcarPagadaOpen] = useState(false);
+  const [fechaMarcarPagada, setFechaMarcarPagada] = useState(new Date().toISOString().split('T')[0]);
   const [facturaActual, setFacturaActual] = useState(factura);
   const [pagosActuales, setPagosActuales] = useState(factura.pagos);
   const [organizationData, setOrganizationData] = useState<OrganizationPDFData | null>(null);
@@ -250,6 +254,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   // Función para marcar la factura como pagada totalmente
   const marcarComoPagada = async () => {
     try {
+      const fechaPagoISO = new Date(fechaMarcarPagada + 'T12:00:00').toISOString();
+      
       // Verificar si la factura ya tiene un sale_id asociado
       if (!facturaActual.sale_id) {
         // Crear un registro de venta si no existe
@@ -315,7 +321,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
           currency: facturaActual.currency || 'COP',
           reference: 'Pago total automático',
           status: 'completed',
-          created_by: user?.id // Agregar el ID del usuario que creó el pago
+          created_by: user?.id, // Agregar el ID del usuario que creó el pago
+          payment_date: fechaPagoISO
         });
         
       if (paymentError) throw paymentError;
@@ -633,7 +640,10 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                 <span>Registrar Abono</span>
               </Button>
               <Button 
-                onClick={marcarComoPagada}
+                onClick={() => {
+                  setFechaMarcarPagada(new Date().toISOString().split('T')[0]);
+                  setDialogMarcarPagadaOpen(true);
+                }}
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
@@ -826,6 +836,49 @@ export default function DetalleFactura({ factura }: { factura: any }) {
           router.refresh();
         }}
       />
+      
+      {/* Diálogo para confirmar fecha al marcar como pagada */}
+      <Dialog open={dialogMarcarPagadaOpen} onOpenChange={setDialogMarcarPagadaOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-gray-100">Marcar como Pagada</DialogTitle>
+            <DialogDescription className="dark:text-gray-400">
+              Se registrará un pago total por {formatCurrency(facturaActual.balance)}. Selecciona la fecha del pago.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2">
+            <Label htmlFor="fechaMarcarPagada" className="text-sm text-gray-700 dark:text-gray-300">Fecha de Pago</Label>
+            <Input
+              id="fechaMarcarPagada"
+              type="date"
+              value={fechaMarcarPagada}
+              onChange={(e) => setFechaMarcarPagada(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              min={facturaActual.issue_date ? new Date(facturaActual.issue_date).toISOString().split('T')[0] : undefined}
+              className="dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
+            />
+            {facturaActual.issue_date && fechaMarcarPagada < new Date(facturaActual.issue_date).toISOString().split('T')[0] && (
+              <p className="text-xs text-red-500 dark:text-red-400">La fecha no puede ser anterior a la emisión de la factura</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogMarcarPagadaOpen(false)} className="dark:border-gray-600 dark:text-gray-300">
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => {
+                setDialogMarcarPagadaOpen(false);
+                marcarComoPagada();
+              }}
+              disabled={facturaActual.issue_date && fechaMarcarPagada < new Date(facturaActual.issue_date).toISOString().split('T')[0]}
+              className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Confirmar Pago
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

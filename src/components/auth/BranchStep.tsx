@@ -13,6 +13,9 @@ interface FormData {
   branchCity?: string;
   branchState?: string;
   branchCountry?: string;
+  branchCountryCode?: string;
+  branchStateCode?: string;
+  branchMunicipalityId?: string;
   branchPostalCode?: string;
   branchPhone?: string;
   branchEmail?: string;
@@ -26,6 +29,9 @@ interface FormData {
   organizationCity?: string;
   organizationState?: string;
   organizationCountry?: string;
+  organizationCountryCode?: string;
+  organizationStateCode?: string;
+  organizationMunicipalityId?: string;
   organizationPostalCode?: string;
   organizationPhone?: string;
   organizationEmail?: string;
@@ -62,7 +68,7 @@ export default function BranchStep({
     
     try {
       // Extract relevant data from the branch form
-      const { name, branch_code, address, city, state, country, postal_code, phone, email, tax_identification, opening_hours, features } = branchData;
+      const { name, branch_code, address, city, state, country, country_code, state_code, municipality_id, postal_code, phone, email, tax_identification, opening_hours, features } = branchData;
       
       // Update the form data in the parent component
       updateFormData({
@@ -72,6 +78,9 @@ export default function BranchStep({
         branchCity: city,
         branchState: state,
         branchCountry: country,
+        branchCountryCode: country_code,
+        branchStateCode: state_code,
+        branchMunicipalityId: municipality_id,
         branchPostalCode: postal_code,
         branchPhone: phone,
         branchEmail: email,
@@ -98,6 +107,9 @@ export default function BranchStep({
     city: formData.branchCity || formData.organizationCity,
     state: formData.branchState || formData.organizationState,
     country: formData.branchCountry || formData.organizationCountry,
+    country_code: formData.branchCountryCode || formData.organizationCountryCode,
+    state_code: formData.branchStateCode || formData.organizationStateCode,
+    municipality_id: formData.branchMunicipalityId || formData.organizationMunicipalityId,
     postal_code: formData.branchPostalCode || formData.organizationPostalCode,
     phone: formData.branchPhone || formData.organizationPhone,
     email: formData.branchEmail || formData.organizationEmail,

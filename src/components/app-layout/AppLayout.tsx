@@ -716,7 +716,7 @@ export const AppLayout = ({
         .single();
 
       if (unifiedError) {
-        console.error('Error en consulta unificada:', unifiedError);
+        console.warn('Consulta unificada falló, usando fallback:', unifiedError.code || unifiedError.message || 'unknown');
         // Fallback a consultas separadas si falla el JOIN
         await loadUserProfileFallback(user, currentOrgId);
         return;
@@ -920,8 +920,24 @@ export const AppLayout = ({
       
       console.log('Cerrando sesión...');
       
-      // Limpiar cache del usuario
+      // Limpiar TODO el estado relacionado con la organización y el usuario
       localStorage.removeItem(USER_CACHE_KEY);
+      localStorage.removeItem('organizacionActiva');
+      localStorage.removeItem('currentOrganizationId');
+      localStorage.removeItem('currentOrganizationName');
+      localStorage.removeItem('currentBranchId');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('rememberMe');
+      localStorage.removeItem('userEmail');
+      
+      // Limpiar sessionStorage
+      sessionStorage.removeItem('organizacionActiva');
+      sessionStorage.removeItem('currentBranchId');
+      
+      // Invalidar caché en memoria de branch_id
+      const { invalidateBranchIdCache } = await import('@/lib/hooks/useOrganization');
+      invalidateBranchIdCache();
       
       // Importar dinámicamente la función signOut para evitar referencias circulares
       const { signOut } = await import('@/lib/supabase/config');
@@ -934,13 +950,7 @@ export const AppLayout = ({
       
       console.log('Sesión cerrada exitosamente');
       
-      // Limpiar localStorage
-      localStorage.removeItem('currentOrganizationId');
-      localStorage.removeItem('currentOrganizationName');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('supabase.auth.token');
-      
-      // Redireccionar a login
+      // Redireccionar a login (usar replace para no volver atrás)
       window.location.replace('/auth/login');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);

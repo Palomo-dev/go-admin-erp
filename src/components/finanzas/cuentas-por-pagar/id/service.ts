@@ -274,7 +274,8 @@ export class CuentaPorPagarDetailService {
     amount: number,
     method: string,
     reference?: string,
-    bankAccountId?: string
+    bankAccountId?: string,
+    paymentDate?: string
   ): Promise<void> {
     const organizationId = this.getOrganizationId();
     const branchId = getCurrentBranchId();
@@ -292,7 +293,8 @@ export class CuentaPorPagarDetailService {
         method: method,
         reference: reference,
         status: 'completed',
-        currency: 'COP'
+        currency: 'COP',
+        payment_date: paymentDate ? new Date(paymentDate + 'T12:00:00').toISOString() : new Date().toISOString()
       };
 
       if (bankAccountId) {
@@ -349,7 +351,8 @@ export class CuentaPorPagarDetailService {
     amount: number,
     method: string,
     reference?: string,
-    bankAccountId?: string
+    bankAccountId?: string,
+    paymentDate?: string
   ): Promise<void> {
     try {
       // Obtener cuota
@@ -372,7 +375,7 @@ export class CuentaPorPagarDetailService {
           paid_amount: newPaidAmount,
           balance: Math.max(0, newBalance),
           status: newStatus,
-          paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
+          paid_at: newStatus === 'paid' ? (paymentDate ? new Date(paymentDate + 'T12:00:00').toISOString() : new Date().toISOString()) : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', installmentId);
@@ -383,7 +386,8 @@ export class CuentaPorPagarDetailService {
         amount,
         method,
         reference,
-        bankAccountId
+        bankAccountId,
+        paymentDate
       );
     } catch (error) {
       console.error('Error pagando cuota:', error);

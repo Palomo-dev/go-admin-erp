@@ -72,12 +72,15 @@ export default function LocationSelector({ value, onChange, errors = {}, layout 
       return;
     }
     setLoadingStates(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('municipalities')
       .select('state_code, state_name')
       .eq('country_code', countryCode)
       .order('state_name');
-    if (data) {
+    if (error) {
+      console.error('[LocationSelector] Error fetching states:', error);
+      setStates([]);
+    } else if (data) {
       const uniqueStates = Array.from(
         data.reduce((map, item) => map.set(item.state_code, item), new Map<string, StateOption>())
         .values()
@@ -95,13 +98,16 @@ export default function LocationSelector({ value, onChange, errors = {}, layout 
       return;
     }
     setLoadingMunicipalities(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('municipalities')
       .select('id, code, name, state_code, state_name')
       .eq('country_code', countryCode)
       .eq('state_code', stateCode)
       .order('name');
-    if (data) {
+    if (error) {
+      console.error('[LocationSelector] Error fetching municipalities:', error);
+      setMunicipalities([]);
+    } else if (data) {
       setMunicipalities(data);
     } else {
       setMunicipalities([]);
@@ -241,7 +247,7 @@ export default function LocationSelector({ value, onChange, errors = {}, layout 
   }
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <>
       {/* País */}
       <div className="col-span-1">
         <label className={lblClass}>País</label>
@@ -311,6 +317,6 @@ export default function LocationSelector({ value, onChange, errors = {}, layout 
         )}
         {errors.city && <p className="mt-1 text-xs text-red-500">{errors.city}</p>}
       </div>
-    </div>
+    </>
   );
 }

@@ -462,19 +462,23 @@ function BecomeSellerSection({ user, profile, onBecameSeller }: {
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const sellersUrl = process.env.NEXT_PUBLIC_SELLERS_URL || 'https://sellers.goadmin.io';
 
   const handleBecomeSeller = async () => {
+    if (!user?.id || !user?.email) {
+      setError('Debes estar autenticado para activar la cuenta de vendedor.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${sellersUrl}/api/become-seller`, {
+      const res = await fetch('/api/become-seller', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          auth_user_id: user?.id,
-          name: profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || user?.email?.split('@')[0],
-          email: user?.email,
+          auth_user_id: user.id,
+          name: profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || user.email.split('@')[0],
+          email: user.email,
           phone: profile?.phone || null,
           avatar_url: profile?.avatar_url || null,
         }),
@@ -489,7 +493,10 @@ function BecomeSellerSection({ user, profile, onBecameSeller }: {
       toast.success('¡Ya eres vendedor! Tu cuenta ha sido vinculada.');
       onBecameSeller();
     } catch (err: any) {
-      setError(err.message || 'Error al procesar la solicitud');
+      const message = err?.message?.includes('Failed to fetch')
+        ? 'No se pudo conectar con el servicio. Intenta más tarde.'
+        : err?.message || 'Error al procesar la solicitud';
+      setError(message);
       toast.error('Error al convertirse en vendedor');
     } finally {
       setLoading(false);

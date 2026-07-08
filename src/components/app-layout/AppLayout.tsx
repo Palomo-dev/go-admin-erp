@@ -374,6 +374,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Boletos", href: "/app/transporte/boletos", icon: <Tag size={16} /> },
       { name: "Tarifas Pasajeros", href: "/app/transporte/tarifas-pasajeros", icon: <DollarSign size={16} /> },
       { name: "Envíos", href: "/app/transporte/envios", icon: <Package size={16} /> },
+      { name: "Mis Envíos", href: "/app/transporte/mis-envios", icon: <Truck size={16} /> },
       { name: "Tarifas Envío", href: "/app/transporte/tarifas-envio", icon: <DollarSign size={16} /> },
       { name: "Tracking", href: "/app/transporte/tracking", icon: <Target size={16} /> },
       { name: "Etiquetas", href: "/app/transporte/etiquetas", icon: <Tag size={16} /> },

@@ -85,10 +85,38 @@ export default function MesaDetallePage() {
   const [paidSplitIds, setPaidSplitIds] = useState<string[]>([]);
   const [showSplitSelector, setShowSplitSelector] = useState(false);
   const [mesaNombre, setMesaNombre] = useState<string>('Mesa');
+  const [serverName, setServerName] = useState<string | undefined>();
 
   useEffect(() => {
     cargarDatos();
   }, [tableId]);
+
+  // Suscripción realtime para kitchen_ticket_items (actualizar estados de cocina)
+  useEffect(() => {
+    if (!session?.id) return;
+    const { supabase } = require('@/lib/supabase/config');
+    const channel = supabase
+      .channel(`kitchen-ticket-items-${session.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'kitchen_ticket_items', filter: `organization_id=eq.${session.organization_id}` },
+        () => {
+          cargarDatos();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'kitchen_tickets', filter: `table_session_id=eq.${session.id}` },
+        () => {
+          cargarDatos();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.id]);
 
   // Cargar información de la sucursal
   useEffect(() => {
@@ -143,6 +171,26 @@ export default function MesaDetallePage() {
         setSelectedRoom(undefined);
       } else {
         setSession(detalles);
+        
+        // Cargar nombre del mesero (server_id)
+        if (detalles.server_id) {
+          const { supabase } = await import('@/lib/supabase/config');
+          const { data: serverProfile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, full_name')
+            .eq('id', detalles.server_id)
+            .single();
+          if (serverProfile) {
+            const name = serverProfile.full_name ||
+              `${serverProfile.first_name || ''} ${serverProfile.last_name || ''}`.trim() ||
+              undefined;
+            setServerName(name);
+          } else {
+            setServerName(undefined);
+          }
+        } else {
+          setServerName(undefined);
+        }
         
         // Si la venta tiene customer_id, cargar el customer
         if (detalles.sales?.customer_id) {
@@ -1174,7 +1222,7 @@ export default function MesaDetallePage() {
           {/* Columna Principal - Pedidos */}
           <div className="lg:col-span-2 space-y-4">
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <Card 
                 className="p-4 hover:shadow-md transition-shadow cursor-pointer group relative"
                 onClick={handleAbrirEditarComensales}
@@ -1238,6 +1286,22 @@ export default function MesaDetallePage() {
                     </p>
                     <p className="text-lg font-bold text-blue-900 dark:text-blue-100">
                       {formatCurrency(total)}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <UserCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Mesero
+                    </p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                      {serverName || 'Sin asignar'}
                     </p>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent } from 'lucide-react';
+import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -86,6 +86,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [commissionRate, setCommissionRate] = useState<number>(0);
   const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>('salesperson');
 
+  // Estados para delivery
+  const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery_own' | 'delivery_third_party'>('pickup');
+  const [deliveryAddress, setDeliveryAddress] = useState<string>('');
+  const [deliveryCity, setDeliveryCity] = useState<string>('');
+  const [deliveryContactName, setDeliveryContactName] = useState<string>('');
+  const [deliveryContactPhone, setDeliveryContactPhone] = useState<string>('');
+  const [deliveryInstructions, setDeliveryInstructions] = useState<string>('');
+
   // Comisión calculada
   const commissionAmount = commissionRate > 0 && salespersonId
     ? Math.round((calculatedTotals.subtotal || cart.subtotal) * commissionRate / 100 * 100) / 100
@@ -117,6 +125,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setSalespersonId('');
       setCommissionRate(0);
       setCommissionType('salesperson');
+      setDeliveryType('pickup');
+      setDeliveryAddress('');
+      setDeliveryCity('');
+      setDeliveryContactName('');
+      setDeliveryContactPhone('');
+      setDeliveryInstructions('');
     }
   }, [open]);
   
@@ -359,12 +373,44 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         tax_breakdown: taxBreakdown.length > 0 ? taxBreakdown : undefined,
         salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
         commission_rate: commissionRate > 0 ? commissionRate : undefined,
-        commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none'
+        commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
+        delivery_type: deliveryType,
+        delivery_info: deliveryType !== 'pickup' ? {
+          address: deliveryAddress,
+          city: deliveryCity,
+          contact_name: deliveryContactName,
+          contact_phone: deliveryContactPhone,
+          instructions: deliveryInstructions,
+        } : undefined,
       };
 
       const sale = await POSService.checkout(checkoutData);
       setCompletedSale(sale);
       setShowReceipt(true);
+
+      // Crear shipment si es delivery propio
+      if (deliveryType === 'delivery_own' && deliveryAddress) {
+        try {
+          const { deliveryIntegrationService } = await import('@/lib/services/deliveryIntegrationService');
+          await deliveryIntegrationService.createShipmentFromPOSSale({
+            saleId: sale.id,
+            organizationId: cart.organization_id,
+            branchId: cart.branch_id || 0,
+            customerId: cart.customer_id,
+            total: cart.total,
+            itemsCount: cart.items.length,
+            deliveryInfo: {
+              address: deliveryAddress,
+              city: deliveryCity,
+              contact_name: deliveryContactName,
+              contact_phone: deliveryContactPhone,
+              instructions: deliveryInstructions,
+            },
+          });
+        } catch (shipmentError) {
+          console.error('Error creando shipment:', shipmentError);
+        }
+      }
       
       // NO cerrar automáticamente - el usuario debe cerrar manualmente después de imprimir
       
@@ -981,6 +1027,113 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                     )}
                   </div>
 
+                </CardContent>
+              </Card>
+
+              {/* Sección de Entrega / Delivery */}
+              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
+                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
+                  <CardTitle className="text-sm sm:text-base dark:text-white text-gray-900 flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-blue-500" />
+                    Entrega
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 space-y-3">
+                  {/* Selector de tipo de entrega */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      size="sm"
+                      variant={deliveryType === 'pickup' ? 'default' : 'outline'}
+                      onClick={() => setDeliveryType('pickup')}
+                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'pickup' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-xs">Recoger</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={deliveryType === 'delivery_own' ? 'default' : 'outline'}
+                      onClick={() => setDeliveryType('delivery_own')}
+                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_own' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      <Truck className="h-4 w-4" />
+                      <span className="text-xs">Envío propio</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={deliveryType === 'delivery_third_party' ? 'default' : 'outline'}
+                      onClick={() => setDeliveryType('delivery_third_party')}
+                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_third_party' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      <Navigation className="h-4 w-4" />
+                      <span className="text-xs">Tercero</span>
+                    </Button>
+                  </div>
+
+                  {/* Campos de delivery cuando no es pickup */}
+                  {deliveryType !== 'pickup' && (
+                    <div className="space-y-3 pt-2 border-t dark:border-gray-700 border-gray-200">
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          Dirección de entrega *
+                        </Label>
+                        <Input
+                          value={deliveryAddress}
+                          onChange={(e) => setDeliveryAddress(e.target.value)}
+                          placeholder="Calle 123 #45-67"
+                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs dark:text-gray-400 text-gray-600">
+                            Ciudad
+                          </Label>
+                          <Input
+                            value={deliveryCity}
+                            onChange={(e) => setDeliveryCity(e.target.value)}
+                            placeholder="Ciudad"
+                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            Teléfono contacto
+                          </Label>
+                          <Input
+                            value={deliveryContactPhone}
+                            onChange={(e) => setDeliveryContactPhone(e.target.value)}
+                            placeholder="300 123 4567"
+                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600">
+                          Nombre contacto
+                        </Label>
+                        <Input
+                          value={deliveryContactName}
+                          onChange={(e) => setDeliveryContactName(e.target.value)}
+                          placeholder="Nombre de quien recibe"
+                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600">
+                          Instrucciones
+                        </Label>
+                        <Input
+                          value={deliveryInstructions}
+                          onChange={(e) => setDeliveryInstructions(e.target.value)}
+                          placeholder="Portón negro, apartamento 302..."
+                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
               </div>

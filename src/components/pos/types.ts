@@ -218,6 +218,14 @@ export interface CheckoutData {
   salesperson_id?: string;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  delivery_type?: 'pickup' | 'delivery_own' | 'delivery_third_party';
+  delivery_info?: {
+    address?: string;
+    city?: string;
+    contact_name?: string;
+    contact_phone?: string;
+    instructions?: string;
+  };
 }
 
 // Para impuestos

@@ -429,7 +429,7 @@ export default function PerfilUsuarioPage() {
                         Tu cuenta está vinculada al panel de vendedores. Accede para ver tus comisiones, pagos y referidos.
                       </p>
                       <a
-                        href={process.env.NEXT_PUBLIC_SELLERS_URL || 'http://localhost:3002'}
+                        href={process.env.NEXT_PUBLIC_SELLERS_URL || 'https://sellers.goadmin.io'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -441,34 +441,98 @@ export default function PerfilUsuarioPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-blue-900 dark:text-blue-300 mb-1">
-                        Conviértete en vendedor
-                      </h3>
-                      <p className="text-sm text-blue-700 dark:text-blue-400 mb-4">
-                        Regístrate en nuestro panel de vendedores y empieza a generar comisiones por cada cliente que refieras. Usarás las mismas credenciales que en el ERP.
-                      </p>
-                      <a
-                        href={`${process.env.NEXT_PUBLIC_SELLERS_URL || 'https://sellers.goadmin.io'}/register`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                      >
-                        Registrarme como vendedor
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
+                <BecomeSellerSection
+                  user={user}
+                  profile={profile}
+                  onBecameSeller={() => setIsSeller(true)}
+                />
               )}
             </div>
           )}
         </main>
+      </div>
+    </div>
+  );
+}
+
+function BecomeSellerSection({ user, profile, onBecameSeller }: {
+  user: User | null;
+  profile: Profile | null;
+  onBecameSeller: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const sellersUrl = process.env.NEXT_PUBLIC_SELLERS_URL || 'https://sellers.goadmin.io';
+
+  const handleBecomeSeller = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${sellersUrl}/api/become-seller`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          auth_user_id: user?.id,
+          name: profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || user?.email?.split('@')[0],
+          email: user?.email,
+          phone: profile?.phone || null,
+          avatar_url: profile?.avatar_url || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al crear cuenta de vendedor');
+      }
+
+      toast.success('¡Ya eres vendedor! Tu cuenta ha sido vinculada.');
+      onBecameSeller();
+    } catch (err: any) {
+      setError(err.message || 'Error al procesar la solicitud');
+      toast.error('Error al convertirse en vendedor');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+          <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-medium text-blue-900 dark:text-blue-300 mb-1">
+            Conviértete en vendedor
+          </h3>
+          <p className="text-sm text-blue-700 dark:text-blue-400 mb-4">
+            Activa tu cuenta de vendedor y empieza a generar comisiones por cada cliente que refieras. Usarás las mismas credenciales, mismo correo y mismo avatar que en el ERP.
+          </p>
+          {error && (
+            <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
+          )}
+          <button
+            onClick={handleBecomeSeller}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {loading ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Activando...
+              </>
+            ) : (
+              <>
+                Activar cuenta de vendedor
+                <TrendingUp className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

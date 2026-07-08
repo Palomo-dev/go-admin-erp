@@ -16,6 +16,7 @@ interface FilterBarProps {
     new: number;
     in_progress: number;
     ready: number;
+    delivered: number;
   };
 }
 
@@ -95,6 +96,19 @@ export function FilterBar({
           {statusCounts.ready > 0 && (
             <Badge variant="secondary" className="ml-2">
               {statusCounts.ready}
+            </Badge>
+          )}
+        </Button>
+        <Button
+          variant={statusFilter === 'delivered' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onStatusChange('delivered')}
+          className={statusFilter === 'delivered' ? 'bg-gray-600 hover:bg-gray-700' : ''}
+        >
+          Entregados
+          {statusCounts.delivered > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {statusCounts.delivered}
             </Badge>
           )}
         </Button>

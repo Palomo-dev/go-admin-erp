@@ -1,5 +1,5 @@
 import React from 'react';
-import { MoreHorizontal, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Loader2, Building2, User } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +35,9 @@ interface Customer {
   avatar_url?: string | null;
   first_name?: string;
   last_name?: string;
+  customer_type?: string;
+  company_name?: string | null;
+  trade_name?: string | null;
 }
 
 interface ClientesTableProps {
@@ -198,9 +201,28 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                           )}
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
-                            {customer.full_name}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
+                              {customer.full_name}
+                            </span>
+                            {customer.customer_type === 'company' ? (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-full">
+                                <Building2 className="h-2.5 w-2.5" />
+                                Empresa
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+                                <User className="h-2.5 w-2.5" />
+                                Persona
+                              </span>
+                            )}
+                          </div>
+                          {/* Mostrar contacto para empresas */}
+                          {customer.customer_type === 'company' && (customer.first_name || customer.last_name) && (
+                            <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                              Contacto: {`${customer.first_name || ''} ${customer.last_name || ''}`.trim()}
+                            </span>
+                          )}
                           {/* Mostrar contacto en móvil */}
                           <div className="sm:hidden flex flex-col mt-1 text-xs text-gray-600 dark:text-gray-400">
                             {customer.email && <span className="truncate">{customer.email}</span>}

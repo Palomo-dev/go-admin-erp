@@ -219,6 +219,7 @@ export default function ComandasPage() {
     new: paginatedTickets.filter((t) => t.status === 'new'),
     in_progress: paginatedTickets.filter((t) => t.status === 'preparing'),
     ready: paginatedTickets.filter((t) => t.status === 'ready'),
+    delivered: paginatedTickets.filter((t) => t.status === 'delivered'),
   };
 
   // Resetear página cuando cambian los filtros
@@ -244,6 +245,7 @@ export default function ComandasPage() {
               new: ticketsByStatus.new.length,
               in_progress: ticketsByStatus.in_progress.length,
               ready: ticketsByStatus.ready.length,
+              delivered: ticketsByStatus.delivered.length,
             }}
           />
         </div>
@@ -262,6 +264,7 @@ export default function ComandasPage() {
                 new: paginatedTicketsByStatus.new,
                 in_progress: paginatedTicketsByStatus.in_progress,
                 ready: paginatedTicketsByStatus.ready,
+                delivered: paginatedTicketsByStatus.delivered,
               }}
               onStatusChange={handleStatusChange}
               onItemStatusChange={handleItemStatusChange}

@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, Building2, User } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from '@/components/ui/use-toast';
@@ -19,6 +19,7 @@ interface ClienteHeaderProps {
     email?: string;
     tags?: string[];
     avatar_url?: string | null;
+    customer_type?: string;
   };
   onAvatarUpdate?: (newUrl: string) => void;
 }
@@ -143,7 +144,27 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
         </div>
         
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{nombreCompleto}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{nombreCompleto}</h1>
+            {cliente.customer_type === 'company' ? (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                <Building2 className="h-3 w-3" />
+                Empresa
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                <User className="h-3 w-3" />
+                Persona
+              </span>
+            )}
+          </div>
+          
+          {/* Mostrar contacto para empresas */}
+          {cliente.customer_type === 'company' && (cliente.first_name || cliente.last_name) && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              Contacto: {`${cliente.first_name || ''} ${cliente.last_name || ''}`.trim()}
+            </p>
+          )}
           
           <div className="mt-1 flex items-center gap-3">
             {cliente.email && (

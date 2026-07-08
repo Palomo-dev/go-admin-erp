@@ -521,6 +521,212 @@ class DeliveryIntegrationService {
   }
 
   /**
+   * Obtiene el driver_credentials del usuario logueado
+   * Chain: auth.users.id -> employees.user_id -> employments -> driver_credentials
+   */
+  async getDriverForUser(userId: string): Promise<DeliveryDriver | null> {
+    // Buscar el employee por user_id
+    const { data: employee, error: empError } = await supabase
+      .from('employees')
+      .select('id, first_name, last_name, phone, photo_url')
+      .eq('user_id', userId)
+      .single();
+
+    if (empError) {
+      if (empError.code === 'PGRST116') return null;
+      throw empError;
+    }
+
+    // Buscar el employment del employee
+    const { data: employment, error: jobError } = await supabase
+      .from('employments')
+      .select('id')
+      .eq('employee_id', employee.id)
+      .eq('status', 'active')
+      .single();
+
+    if (jobError) {
+      if (jobError.code === 'PGRST116') return null;
+      throw jobError;
+    }
+
+    // Buscar driver_credentials por employment_id
+    const { data: driverCred, error: driverError } = await supabase
+      .from('driver_credentials')
+      .select('*')
+      .eq('employment_id', employment.id)
+      .eq('is_active', true)
+      .single();
+
+    if (driverError) {
+      if (driverError.code === 'PGRST116') return null;
+      throw driverError;
+    }
+
+    return {
+      ...driverCred,
+      employee: {
+        id: employee.id,
+        first_name: employee.first_name,
+        last_name: employee.last_name,
+        phone: employee.phone,
+        photo_url: employee.photo_url,
+      },
+    } as DeliveryDriver;
+  }
+
+  /**
+   * Obtiene TODOS los envíos asignados a un conductor (no solo pendientes)
+   */
+  async getAllShipmentsForDriver(driverId: string, organizationId: number): Promise<DeliveryShipment[]> {
+    const { data, error } = await supabase
+      .from('shipments')
+      .select(`
+        *,
+        customer:customers(id, full_name, phone, email),
+        shipment_items(id, description, qty)
+      `)
+      .eq('organization_id', organizationId)
+      .contains('metadata', { driver_id: driverId })
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []) as DeliveryShipment[];
+  }
+
+  /**
+   * Actualiza el estado de un shipment por el conductor, registrando evento
+   */
+  async updateShipmentStatusByDriver(
+    shipmentId: string,
+    newStatus: DeliveryShipment['status'],
+    driverId: string
+  ): Promise<DeliveryShipment> {
+    const updates: Record<string, unknown> = {
+      status: newStatus,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (newStatus === 'picked_up') updates.picked_at = new Date().toISOString();
+    if (newStatus === 'in_transit' || newStatus === 'out_for_delivery') updates.dispatched_at = new Date().toISOString();
+    if (newStatus === 'delivered') updates.delivered_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('shipments')
+      .update(updates)
+      .eq('id', shipmentId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Actualizar web_order si existe
+    if (data.source_type === 'web_order' && data.source_id) {
+      const webOrderStatus = newStatus === 'delivered' ? 'delivered' : newStatus === 'out_for_delivery' ? 'in_delivery' : undefined;
+      if (webOrderStatus) {
+        await supabase
+          .from('web_orders')
+          .update({ status: webOrderStatus, ...(newStatus === 'delivered' && { delivered_at: new Date().toISOString() }) })
+          .eq('id', data.source_id);
+      }
+    }
+
+    // Registrar evento de transporte
+    const eventDescriptions: Record<string, string> = {
+      picked_up: 'Pedido recogido por conductor',
+      in_transit: 'En tránsito al destino',
+      out_for_delivery: 'En entrega final',
+      delivered: 'Entregado exitosamente',
+      returned: 'Devuelto',
+      cancelled: 'Cancelado',
+    };
+
+    await this.createTransportEvent({
+      organization_id: data.organization_id,
+      reference_type: 'shipment',
+      reference_id: shipmentId,
+      event_type: newStatus,
+      actor_type: 'driver',
+      actor_id: driverId,
+      description: eventDescriptions[newStatus] || `Estado: ${newStatus}`,
+    });
+
+    // Liberar vehículo si fue entregado/devuelto/cancelado
+    if (['delivered', 'returned', 'cancelled'].includes(newStatus) && data.metadata?.vehicle_id) {
+      await supabase
+        .from('vehicles')
+        .update({ status: 'available', current_driver_id: null })
+        .eq('id', data.metadata.vehicle_id as string);
+    }
+
+    return data as DeliveryShipment;
+  }
+
+  /**
+   * Crea un shipment desde una venta POS con delivery propio
+   */
+  async createShipmentFromPOSSale(params: {
+    saleId: string;
+    organizationId: number;
+    branchId: number;
+    customerId?: string;
+    customerName?: string;
+    customerPhone?: string;
+    total: number;
+    itemsCount: number;
+    deliveryInfo: {
+      address: string;
+      city?: string;
+      contact_name?: string;
+      contact_phone?: string;
+      instructions?: string;
+    };
+  }): Promise<DeliveryShipment> {
+    const trackingNumber = await this.generateTrackingNumber(params.organizationId);
+    const shipmentNumber = `POS-${params.saleId.slice(-8).toUpperCase()}`;
+
+    const shipmentData = {
+      organization_id: params.organizationId,
+      branch_id: params.branchId,
+      source_type: 'pos_sale',
+      source_id: params.saleId,
+      shipment_number: shipmentNumber,
+      tracking_number: trackingNumber,
+      customer_id: params.customerId || null,
+      delivery_address: params.deliveryInfo.address,
+      delivery_city: params.deliveryInfo.city || '',
+      delivery_contact_name: params.deliveryInfo.contact_name || params.customerName || '',
+      delivery_contact_phone: params.deliveryInfo.contact_phone || params.customerPhone || '',
+      delivery_instructions: params.deliveryInfo.instructions || '',
+      status: 'pending' as const,
+      notes: `Venta POS: ${params.saleId.slice(-8)}`,
+      metadata: {
+        pos_sale_id: params.saleId,
+        pos_total: params.total,
+        items_count: params.itemsCount,
+      },
+    };
+
+    const { data, error } = await supabase
+      .from('shipments')
+      .insert(shipmentData)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await this.createTransportEvent({
+      reference_type: 'shipment',
+      reference_id: data.id,
+      event_type: 'created',
+      actor_type: 'system',
+      description: `Envío creado desde venta POS ${shipmentNumber}`,
+    });
+
+    return data as DeliveryShipment;
+  }
+
+  /**
    * Obtiene un vehículo por ID
    */
   async getVehicleById(vehicleId: string): Promise<DeliveryVehicle | null> {

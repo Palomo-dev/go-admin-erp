@@ -10,12 +10,16 @@ interface TicketsGridProps {
     new: KitchenTicket[];
     in_progress: KitchenTicket[];
     ready: KitchenTicket[];
+    delivered?: KitchenTicket[];
   };
   onStatusChange: (ticketId: number, status: KitchenTicket['status']) => void;
   onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status'], productName?: string) => void;
 }
 
 export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange }: TicketsGridProps) {
+  const [showDelivered, setShowDelivered] = React.useState(false);
+  const deliveredTickets = tickets.delivered || [];
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {/* Nuevos */}
@@ -74,6 +78,34 @@ export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange }: Tic
             </h2>
           </div>
           {tickets.ready.map((ticket) => (
+            <TicketCard
+              key={ticket.id}
+              ticket={ticket}
+              onStatusChange={onStatusChange}
+              onItemStatusChange={onItemStatusChange}
+            />
+          ))}
+        </>
+      )}
+
+      {/* Entregados (colapsable) */}
+      {deliveredTickets.length > 0 && (
+        <>
+          <div className="col-span-full mt-6">
+            <button
+              onClick={() => setShowDelivered(!showDelivered)}
+              className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100 hover:opacity-80 transition-opacity"
+            >
+              <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+                {deliveredTickets.length}
+              </Badge>
+              Entregados (Histórico)
+              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                {showDelivered ? '▲ Ocultar' : '▼ Mostrar'}
+              </span>
+            </button>
+          </div>
+          {showDelivered && deliveredTickets.map((ticket) => (
             <TicketCard
               key={ticket.id}
               ticket={ticket}

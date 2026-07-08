@@ -223,9 +223,9 @@ export const customerAddressesService = {
   async searchCustomers(organizationId: number, searchTerm: string) {
     const { data, error } = await supabase
       .from('customers')
-      .select('id, first_name, last_name, email, phone')
+      .select('id, first_name, last_name, full_name, email, phone')
       .eq('organization_id', organizationId)
-      .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+      .or(`full_name.ilike.%${searchTerm}%,first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,trade_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
       .limit(20);
 
     if (error) {

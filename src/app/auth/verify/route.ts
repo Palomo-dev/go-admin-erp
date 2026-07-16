@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { completeSignupAfterEmailConfirmation } from '@/app/auth/callback/route';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -69,10 +70,16 @@ export async function GET(request: NextRequest) {
         const user = data.user;
         console.log('Email verification successful for user:', user.id);
         
-        // Si es completar signup, redirigir al callback con sesión establecida
+        // Completar el signup directamente aquí (crear perfil, organización, etc.)
+        // No dependemos de /auth/callback ni de PKCE code exchange, ya que la sesión
+        // fue establecida directamente por verifyOtp con el token_hash (funciona en cualquier navegador/dispositivo).
         if (completeSignup) {
-          console.log('Redirecting to callback to complete signup...');
-          return NextResponse.redirect(new URL('/auth/callback?complete_signup=true', request.url));
+          console.log('Completando registro tras verificación de email...');
+          await completeSignupAfterEmailConfirmation(supabase, user);
+          await supabase.auth.signOut();
+          return NextResponse.redirect(
+            new URL('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'), request.url)
+          );
         }
         
         // Si no es signup, redirigir a la aplicación

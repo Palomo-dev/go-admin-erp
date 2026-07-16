@@ -259,7 +259,7 @@ async function checkUserOrganization(supabase: any, userId: string): Promise<boo
 }
 
 // Función para completar el registro después de confirmar el email
-async function completeSignupAfterEmailConfirmation(supabase: any, user: any) {
+export async function completeSignupAfterEmailConfirmation(supabase: any, user: any) {
   try {
     console.log('🚀 Starting complete signup for user:', user.id);
     

@@ -252,9 +252,17 @@ export async function createSubscription(
 
       // Incrementar redemption_count del cupón
       if (stripeCouponId && data.couponCode) {
-        await supabase.rpc('increment_coupon_redemption', { coupon_code: data.couponCode.toUpperCase() }).catch(() => {
-          supabase.from('subscription_coupons').update({ redemption_count: (await supabase.from('subscription_coupons').select('redemption_count').eq('code', data.couponCode!.toUpperCase()).single()).data?.redemption_count + 1 }).eq('code', data.couponCode!.toUpperCase());
-        });
+        const { data: couponRow } = await supabase
+          .from('subscription_coupons')
+          .select('redemption_count')
+          .eq('code', data.couponCode.toUpperCase())
+          .single();
+        if (couponRow) {
+          await supabase
+            .from('subscription_coupons')
+            .update({ redemption_count: (couponRow.redemption_count || 0) + 1 })
+            .eq('code', data.couponCode.toUpperCase());
+        }
       }
 
       // Guardar suscripción en base de datos
@@ -325,9 +333,17 @@ export async function createSubscription(
 
       // Incrementar redemption_count del cupón
       if (stripeCouponId && data.couponCode) {
-        await supabase.rpc('increment_coupon_redemption', { coupon_code: data.couponCode.toUpperCase() }).catch(() => {
-          supabase.from('subscription_coupons').update({ redemption_count: (await supabase.from('subscription_coupons').select('redemption_count').eq('code', data.couponCode!.toUpperCase()).single()).data?.redemption_count + 1 }).eq('code', data.couponCode!.toUpperCase());
-        });
+        const { data: couponRow } = await supabase
+          .from('subscription_coupons')
+          .select('redemption_count')
+          .eq('code', data.couponCode.toUpperCase())
+          .single();
+        if (couponRow) {
+          await supabase
+            .from('subscription_coupons')
+            .update({ redemption_count: (couponRow.redemption_count || 0) + 1 })
+            .eq('code', data.couponCode.toUpperCase());
+        }
       }
 
       // Guardar suscripción en base de datos

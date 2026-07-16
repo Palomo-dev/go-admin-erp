@@ -681,10 +681,10 @@ export class MesasService {
         throw new Error('ID de mesa requerido');
       }
 
-      // 1. Obtener sesiones activas de la mesa
+      // 1. Obtener sesiones activas de la mesa + datos de la mesa para auditoría
       const { data: sessions, error: sessionsError } = await supabase
         .from('table_sessions')
-        .select('id, sale_id')
+        .select('id, sale_id, organization_id, branch_id')
         .eq('restaurant_table_id', tableId)
         .in('status', ['active', 'bill_requested']);
 
@@ -731,6 +731,11 @@ export class MesasService {
         }
       }
 
+      // 2.5 Registrar auditoría de liberación de mesa
+      if (sessions && sessions.length > 0) {
+        await this.registrarAuditoriaLiberacion(tableId, sessions);
+      }
+
       // 3. Cambiar estado de la mesa a libre
       const { data, error: updateError } = await supabase
         .from('restaurant_tables')
@@ -754,6 +759,40 @@ export class MesasService {
       const errorMsg = error?.message || JSON.stringify(error) || 'Error desconocido';
       console.error('Error liberando mesa:', errorMsg, error);
       throw new Error(`Error liberando mesa: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Registra en ops_audit_log la liberación de una mesa, para auditar
+   * quién y cuándo liberó la mesa. No lanza error si falla.
+   */
+  private static async registrarAuditoriaLiberacion(
+    tableId: string,
+    sessions: { id: string; organization_id: number; branch_id: number | null }[]
+  ): Promise<void> {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id || null;
+      const now = new Date().toISOString();
+
+      const inserts = sessions.map((s) => ({
+        organization_id: s.organization_id,
+        branch_id: s.branch_id,
+        user_id: userId,
+        entity_type: 'table_sessions',
+        entity_id: s.id,
+        action: 'RELEASE',
+        previous_data: { status: 'active' },
+        metadata: {
+          table_id: tableId,
+          table_session_id: s.id,
+          released_at: now,
+        },
+      }));
+
+      await supabase.from('ops_audit_log').insert(inserts);
+    } catch (auditError) {
+      console.error('No se pudo registrar auditoría de liberación de mesa:', auditError);
     }
   }
 

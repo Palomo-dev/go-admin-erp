@@ -51,6 +51,8 @@ import { SaleWithDetails } from './types';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { cn } from '@/utils/Utils';
 import { PrintService } from '@/lib/services/printService';
+import { PrintJobsService } from '@/lib/services/printJobsService';
+import { useToast } from '@/components/ui/use-toast';
 import { SendToFactusButton, FactusStatusBadge } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService, type EInvoiceStatus } from '@/lib/services/electronicInvoicingService';
 
@@ -61,10 +63,12 @@ interface VentaDetalleProps {
 export function VentaDetalle({ saleId }: VentaDetalleProps) {
   const router = useRouter();
   const { organization } = useOrganization();
+  const { toast } = useToast();
   const [sale, setSale] = useState<SaleWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [eInvoiceStatus, setEInvoiceStatus] = useState<EInvoiceStatus | null>(null);
   const [eInvoiceCufe, setEInvoiceCufe] = useState<string | null>(null);
+  const [isReprinting, setIsReprinting] = useState(false);
 
   useEffect(() => {
     loadSale();
@@ -119,6 +123,40 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
         ? (sale as any).tax_breakdown
         : undefined
     );
+  };
+
+  const handlePhysicalReprint = async () => {
+    if (!sale || isReprinting) return;
+    setIsReprinting(true);
+    try {
+      const { enqueued } = await PrintJobsService.enqueueSaleTicket(sale.branch_id, {
+        saleId: sale.id,
+        saleNumber: sale.sale_number,
+        customerName: sale.customer?.name,
+        createdAt: sale.created_at,
+        total: sale.total,
+        items: (sale.items || []).map((item: any) => ({
+          productName: item.products?.name || item.notes?.product_name || 'Producto',
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          total: item.total,
+        })),
+      });
+      if (enqueued > 0) {
+        toast({ title: 'Reimpresión enviada', description: 'El ticket se envió a la impresora física de caja' });
+      } else {
+        toast({
+          title: 'Sin impresora asignada',
+          description: 'No hay impresora configurada para la estación de Caja',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error reimprimiendo venta:', error);
+      toast({ title: 'Error', description: 'No se pudo reimprimir el ticket', variant: 'destructive' });
+    } finally {
+      setIsReprinting(false);
+    }
   };
 
   const handleDuplicate = async () => {
@@ -264,6 +302,17 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
           <Button variant="outline" size="sm" onClick={handlePrint} className="dark:border-gray-700">
             <Printer className="h-4 w-4 mr-1.5" />
             Imprimir
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePhysicalReprint}
+            disabled={isReprinting}
+            className="dark:border-gray-700"
+            title="Enviar a la impresora física de caja (vía Print Agent)"
+          >
+            <Printer className="h-4 w-4 mr-1.5" />
+            {isReprinting ? 'Enviando...' : 'Reimprimir en Caja'}
           </Button>
           <Button variant="outline" size="sm" onClick={handleDuplicate} className="dark:border-gray-700">
             <Copy className="h-4 w-4 mr-1.5" />

@@ -29,6 +29,7 @@ import categoryService, {
 import ImageUploader from '@/components/common/ImageUploader';
 import IconSelector from '@/components/common/IconSelector';
 import ColorPicker from '@/components/common/ColorPicker';
+import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService';
 
 interface CategoryFormProps {
   categoryUuid?: string;
@@ -89,6 +90,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
         meta_title: cat.meta_title || '',
         meta_description: cat.meta_description || '',
         metadata: cat.metadata || {},
+        station: cat.station || null,
       });
     } catch {
       toast({ title: 'Error', description: 'No se pudo cargar la categoría', variant: 'destructive' });
@@ -294,6 +296,27 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Se genera automáticamente del nombre, pero puedes editarlo manualmente
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-gray-700 dark:text-gray-300">Estación de Cocina/Bar</Label>
+                <Select
+                  value={formData.station || 'none'}
+                  onValueChange={v => updateField('station', v === 'none' ? null : (v as PrinterStation))}
+                >
+                  <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700">
+                    <SelectValue placeholder="Sin estación asignada" />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                    <SelectItem value="none">Sin estación asignada</SelectItem>
+                    {Object.entries(STATION_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Los productos de esta categoría se enrutarán a esta estación al enviarse a cocina. Un producto puede sobreescribir esta estación individualmente.
                 </p>
               </div>
 

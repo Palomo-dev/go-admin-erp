@@ -63,7 +63,7 @@ export function MesaCard({ mesa, onClick, isSelected = false }: MesaCardProps) {
         mesa.state === 'occupied' && 'border-red-500 bg-red-50 dark:bg-red-950/20',
         mesa.state === 'reserved' && 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20',
         mesa.session?.status === 'bill_requested' && 'border-orange-500 bg-orange-50 dark:bg-orange-950/20',
-        esMesaOlvidada && 'ring-2 ring-red-400 dark:ring-red-600 animate-pulse'
+        esMesaOlvidada && 'ring-2 ring-red-400 dark:ring-red-600'
       )}
       onClick={onClick}
     >

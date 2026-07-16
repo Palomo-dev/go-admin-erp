@@ -26,6 +26,7 @@ interface ProductFormData {
   category_id: number | null
   unit_code: string
   supplier_id: number | null
+  station: string | null
   
   // Precios y costos
   price: number
@@ -94,6 +95,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
     category_id: null,
     unit_code: 'UN',
     supplier_id: null,
+    station: null,
     price: 0,
     compare_price: 0,
     cost: 0,
@@ -185,7 +187,8 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           category_id: formData.category_id,
           unit_code: formData.unit_code,
           status: 'active',
-          is_parent: formData.has_variants
+          is_parent: formData.has_variants,
+          station: formData.station
         })
         .select('id, uuid')
         .single()

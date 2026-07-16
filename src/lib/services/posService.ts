@@ -147,7 +147,8 @@ export class POSService {
         categories(
           id,
           name,
-          slug
+          slug,
+          station
         ),
         product_prices(
           price,

@@ -146,7 +146,9 @@ export function AddProductDialog({
 
   // Manejar selección de variante desde el diálogo
   const handleVariantSelect = (variant: any) => {
-    addToCart(variant);
+    // La variante hereda la estación del producto padre (o la categoría de este) si no tiene una propia
+    const inheritedStation = variant.station || selectedParentProduct?.station || selectedParentProduct?.categories?.station || null;
+    addToCart({ ...variant, station: inheritedStation, categories: selectedParentProduct?.categories });
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
@@ -165,13 +167,14 @@ export function AddProductDialog({
     if (existing) {
       existing.quantity += 1;
     } else {
+      const station = product.station || product.categories?.station || '';
       newCart.set(product.id, {
         product_id: product.id,
         product_name: product.name,
         quantity: 1,
         unit_price: Number(unitPrice),
         notes: '',
-        station: '',
+        station,
         guest_number: comensales > 1 ? 1 : undefined,
       });
     }

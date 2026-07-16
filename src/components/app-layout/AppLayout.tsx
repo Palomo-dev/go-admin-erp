@@ -515,6 +515,15 @@ export const AppLayout = ({
   // Estados para control del sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Colapsado por defecto
+  // El colapsado de sidebar es un concepto solo de escritorio (ancho fijo en móvil);
+  // se usa para no mostrar la vista "icono colapsado" (sin interacción) en móvil.
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  useEffect(() => {
+    const checkViewport = () => setIsMobileViewport(window.innerWidth < 1024);
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
+  }, []);
   
   // Estado para controlar el panel de submenú Multi-Column
   const [subMenuPanelOpen, setSubMenuPanelOpen] = useState(true);
@@ -688,6 +697,10 @@ export const AppLayout = ({
         console.log('⚡ Datos cargados desde cache');
         setUserData(cachedData.data);
         setOrgName(cachedData.orgName);
+
+        const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
+        updateSavedAccountProfile(user.id, { name: cachedData.data.name, avatarUrl: cachedData.data.avatar });
+
         setLoading(false);
         return;
       }
@@ -772,6 +785,12 @@ export const AppLayout = ({
       
       // Guardar en cache
       saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
+
+      // Sincronizar el nombre real del perfil con el selector de cuentas guardadas:
+      // ese registro solo conoce el auth user_metadata (a veces sin nombre), por lo
+      // que sin esto el selector muestra el correo repetido en vez del nombre.
+      const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
+      updateSavedAccountProfile(user.id, { name: finalUserData.name, avatarUrl: finalUserData.avatar });
       
     } catch (error) {
       console.error('Error general al cargar perfil:', error);
@@ -837,6 +856,11 @@ export const AppLayout = ({
       
       // Guardar en cache también
       saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
+
+      // Sincronizar el nombre real del perfil con el selector de cuentas guardadas
+      // (ver comentario equivalente en loadUserProfileOptimized).
+      const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
+      updateSavedAccountProfile(user.id, { name: finalUserData.name, avatarUrl: finalUserData.avatar });
       
     } catch (error) {
       console.error('Error en fallback:', error);
@@ -940,6 +964,12 @@ export const AppLayout = ({
       const { invalidateBranchIdCache } = await import('@/lib/hooks/useOrganization');
       invalidateBranchIdCache();
       
+      // Quitar esta cuenta del selector de cuentas (ya no debe ofrecerse
+      // para cambio instantáneo, pues su sesión se está cerrando)
+      const { getActiveAccountUserId, removeSavedAccount } = await import('@/lib/auth/accountSwitcher');
+      const activeAccountId = getActiveAccountUserId();
+      if (activeAccountId) removeSavedAccount(activeAccountId);
+      
       // Importar dinámicamente la función signOut para evitar referencias circulares
       const { signOut } = await import('@/lib/supabase/config');
       const { error } = await signOut();
@@ -1030,9 +1060,9 @@ export const AppLayout = ({
           
           {/* Selector de Organización */}
           {orgId && (
-            <div className={`flex-shrink-0 mx-3 mt-3 mb-2 ${sidebarCollapsed ? 'p-2 lg:relative lg:group' : 'p-3'} bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-md border border-blue-100 dark:border-blue-800 transition-all duration-200 hover:shadow-lg`}>
-              {/* Organización para sidebar colapsado */}
-              {sidebarCollapsed && (
+            <div className={`flex-shrink-0 mx-3 mt-3 mb-2 ${sidebarCollapsed && !isMobileViewport ? 'p-2 lg:relative lg:group' : 'p-3'} bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-md border border-blue-100 dark:border-blue-800 transition-all duration-200 hover:shadow-lg`}>
+              {/* Organización para sidebar colapsado (solo escritorio: en móvil el ancho es fijo) */}
+              {sidebarCollapsed && !isMobileViewport && (
                 <>
                   {/* Icono/Logo centrado cuando está colapsado */}
                   <div className="flex justify-center items-center">
@@ -1072,8 +1102,8 @@ export const AppLayout = ({
                 </>
               )}
               
-              {/* Selector de organizaciones (solo visible cuando no está colapsado) */}
-              {!sidebarCollapsed && (
+              {/* Selector de organizaciones interactivo: siempre en móvil, o en escritorio cuando no está colapsado */}
+              {(!sidebarCollapsed || isMobileViewport) && (
                 <OrganizationSelectorWrapper 
                   className="w-full" 
                   showCreateOption={true} 

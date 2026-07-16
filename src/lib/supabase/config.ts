@@ -294,6 +294,15 @@ export const signInWithEmail = async (email: string, password: string) => {
     const cookieName = `sb-${projectRef}-auth-token`;
   
     setCookie(cookieName, tokenPayload, 60 * 60 * 24 * 7); // 7 days
+
+    // Guarda esta sesión en el registro de cuentas de este navegador para
+    // permitir el cambio instantáneo entre cuentas ya autenticadas
+    try {
+      const { upsertAccountFromSession } = await import('@/lib/auth/accountSwitcher');
+      await upsertAccountFromSession(result.data.session);
+    } catch (e) {
+      console.error('Error guardando cuenta para el selector de cuentas:', e);
+    }
   }
   
 

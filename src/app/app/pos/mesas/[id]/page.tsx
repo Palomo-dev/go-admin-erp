@@ -37,12 +37,14 @@ import { type OccupiedSpace } from '@/components/pos/CustomerSelector';
 import { MesaDetailHeader } from '@/components/pos/mesas/id/MesaDetailHeader';
 import { MesaStatsCards } from '@/components/pos/mesas/id/MesaStatsCards';
 import { MesaActionsSidebar } from '@/components/pos/mesas/id/MesaActionsSidebar';
+import { SessionTimelineDialog } from '@/components/pos/mesas/id/SessionTimelineDialog';
 import { CombinarMesasDialog } from '@/components/pos/mesas/CombinarMesasDialog';
 import { SplitBillDialog, type BillSplit } from '@/components/pos/mesas/id/SplitBillDialog';
 import { SplitPaymentSelector } from '@/components/pos/mesas/id/SplitPaymentSelector';
 import { PedidosService } from '@/components/pos/mesas/id/pedidosService';
 import { MesasService } from '@/components/pos/mesas/mesasService';
 import { PrintService } from '@/lib/services/printService';
+import { PrintJobsService } from '@/lib/services/printJobsService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { branchService } from '@/lib/services/branchService';
 import type {
@@ -86,6 +88,7 @@ export default function MesaDetallePage() {
   const [meseroSeleccionado, setMeseroSeleccionado] = useState<string>('');
   const [orgMembers, setOrgMembers] = useState<{ value: string; label: string; sublabel?: string }[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [showHistorial, setShowHistorial] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -551,11 +554,25 @@ export default function MesaDetallePage() {
     if (!session) return;
 
     try {
-      await PedidosService.enviarComandaCocina(session.id);
+      const ticketsEnviados = await PedidosService.enviarComandaCocina(session.id);
       toast({
         title: 'Comanda enviada',
         description: 'La comanda se ha enviado a cocina',
       });
+
+      // Impresión física (best-effort): no bloquea el flujo si falla o si no hay
+      // impresoras/agente configurados, ya que la Comanda digital (KDS) ya se envió.
+      if (branch_id && ticketsEnviados.length > 0) {
+        for (const ticket of ticketsEnviados) {
+          PrintJobsService.enqueueKitchenTicket(branch_id, {
+            ticketId: ticket.ticketId,
+            tableName: mesaNombre,
+            serverName,
+            createdAt: ticket.createdAt,
+            items: ticket.items,
+          }).catch((err) => console.warn('No se pudo encolar impresión física de comanda:', err));
+        }
+      }
     } catch (error) {
       console.error('Error enviando comanda:', error);
       toast({
@@ -1310,7 +1327,14 @@ export default function MesaDetallePage() {
         onRefresh={cargarDatos}
         onCombinar={cargarMesasParaCombinar}
         onAddProduct={() => setShowAddProduct(true)}
+        onVerHistorial={() => setShowHistorial(true)}
         getEstadoBadge={getEstadoBadge}
+      />
+
+      <SessionTimelineDialog
+        open={showHistorial}
+        onOpenChange={setShowHistorial}
+        tableId={tableId}
       />
 
       {/* Main Content - 2 Columnas */}

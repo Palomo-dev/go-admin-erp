@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, RefreshCw, GitMerge, Plus } from 'lucide-react';
+import { ArrowLeft, RefreshCw, GitMerge, Plus, History } from 'lucide-react';
 
 interface MesaDetailHeaderProps {
   mesaNombre: string;
@@ -13,6 +13,7 @@ interface MesaDetailHeaderProps {
   onRefresh: () => void;
   onCombinar: () => void;
   onAddProduct: () => void;
+  onVerHistorial: () => void;
   getEstadoBadge: () => React.ReactNode;
 }
 
@@ -22,6 +23,7 @@ export function MesaDetailHeader({
   onRefresh,
   onCombinar,
   onAddProduct,
+  onVerHistorial,
   getEstadoBadge,
 }: MesaDetailHeaderProps) {
   const router = useRouter();
@@ -64,6 +66,15 @@ export function MesaDetailHeader({
               className="hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onVerHistorial}
+              className="hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <History className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Historial</span>
             </Button>
             <Button
               variant="outline"

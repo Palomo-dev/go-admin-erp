@@ -430,7 +430,11 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
 
   // Redirigir usuarios autenticados fuera de rutas de auth (excepto logout e invite)
   if (isAuthenticated) {
-    if (pathname === '/auth/login') {
+    // Permitir /auth/login?addAccount=1: es el flujo del selector de cuentas
+    // para agregar una sesión adicional sin cerrar la actual.
+    const isAddingAccount = pathname === '/auth/login' && request.nextUrl.searchParams.get('addAccount') === '1';
+
+    if (pathname === '/auth/login' && !isAddingAccount) {
       if (shouldDebug) {
         console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde login a /app/inicio');
       }
@@ -438,6 +442,7 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
     }
     
     if (pathname.startsWith('/auth/') && 
+        !isAddingAccount &&
         pathname !== '/auth/logout' &&
         pathname !== '/auth/session-expired' &&
         !pathname.startsWith('/auth/invite') &&

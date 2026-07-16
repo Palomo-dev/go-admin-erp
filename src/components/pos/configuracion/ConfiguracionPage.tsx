@@ -36,9 +36,14 @@ import {
   PosCategoriesDisplayConfig,
   defaultCategoriesDisplayConfig,
 } from './configuracionService';
+import { PrintersSection } from './printers/PrintersSection';
+import { PrintAgentStatusCard } from './printers/PrintAgentStatusCard';
+import { RecentPrintJobsTable } from './printers/RecentPrintJobsTable';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 
 export function ConfiguracionPage() {
   const { toast } = useToast();
+  const { branch_id } = useOrganization();
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -49,6 +54,7 @@ export function ConfiguracionPage() {
   const [serviceCharges, setServiceCharges] = useState<ServiceCharge[]>([]);
   const [categoriesDisplay, setCategoriesDisplay] = useState<PosCategoriesDisplayConfig>(defaultCategoriesDisplayConfig);
   const [savingCategoriesDisplay, setSavingCategoriesDisplay] = useState(false);
+  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
 
   const loadData = useCallback(async (showRefresh = false) => {
     if (showRefresh) {
@@ -58,12 +64,13 @@ export function ConfiguracionPage() {
     }
 
     try {
-      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData] = await Promise.all([
+      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData, branchesData] = await Promise.all([
         ConfiguracionService.getConfigStats(),
         ConfiguracionService.getPaymentMethods(),
         ConfiguracionService.getTaxes(),
         ConfiguracionService.getServiceCharges(),
         ConfiguracionService.getCategoriesDisplayConfig(),
+        ConfiguracionService.getBranches(),
       ]);
 
       setStats(statsData);
@@ -71,6 +78,7 @@ export function ConfiguracionPage() {
       setTaxes(taxesData);
       setServiceCharges(chargesData);
       setCategoriesDisplay(categoriesDisplayData);
+      setBranches(branchesData);
     } catch (error) {
       console.error('Error cargando configuración:', error);
       toast({
@@ -536,6 +544,13 @@ export function ConfiguracionPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Impresoras */}
+      <PrintersSection branches={branches} />
+
+      {/* Estado del Print Agent y trabajos de impresión recientes (sucursal activa) */}
+      <PrintAgentStatusCard branchId={branch_id} />
+      <RecentPrintJobsTable branchId={branch_id} />
     </div>
   );
 }

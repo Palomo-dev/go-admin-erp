@@ -91,7 +91,7 @@ import {
   Radio,
   FolderKanban,
 } from 'lucide-react';
-import ProfileDropdownMenu from '../ProfileDropdownMenu';
+import AccountSwitcher from '../AccountSwitcher';
 import { NavItem } from './NavItem';
 import { NavSection } from './NavSection';
 import { SidebarNavigationProps } from '../types';
@@ -541,13 +541,9 @@ const SidebarNavigationComponent = ({
       {/* Sección de perfil - siempre visible abajo */}
       <div className="flex-shrink-0 pt-3 mt-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 pb-safe-bottom pb-4">
         <div className="px-3">
-          <ProfileDropdownMenu 
+          <AccountSwitcher 
             userData={userData} 
-            handleSignOut={handleSignOut} 
-            loading={loading} 
-            isSidebar={true} 
             collapsed={collapsed} 
-            orgName={orgName || undefined} 
           />
         </div>
         

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Circle, Hash } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Circle, Hash, Printer, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ interface TicketCardProps {
   ticket: KitchenTicket;
   onStatusChange: (ticketId: number, status: KitchenTicket['status']) => void;
   onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status'], productName?: string) => void;
+  onReprint?: (ticket: KitchenTicket) => Promise<void> | void;
   stationFilter?: StationFilter;
 }
 
@@ -78,8 +79,20 @@ const getItemStatusInfo = (status: string | undefined) => {
   }
 };
 
-export function TicketCard({ ticket, onStatusChange, onItemStatusChange, stationFilter = 'all' }: TicketCardProps) {
+export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onReprint, stationFilter = 'all' }: TicketCardProps) {
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
+  const [isReprinting, setIsReprinting] = useState(false);
+
+  const handleReprint = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onReprint || isReprinting) return;
+    setIsReprinting(true);
+    try {
+      await onReprint(ticket);
+    } finally {
+      setIsReprinting(false);
+    }
+  };
   const statusInfo = getStatusInfo(ticket.status);
   const StatusIcon = statusInfo.icon;
   
@@ -166,10 +179,24 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, station
             </div>
           </div>
           
-          <Badge className={`${statusInfo.color} flex items-center gap-1`}>
-            <StatusIcon className="h-3 w-3" />
-            {statusInfo.label}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {onReprint && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 bg-white/70 dark:bg-gray-900/40"
+                title="Reimprimir comanda"
+                onClick={handleReprint}
+                disabled={isReprinting}
+              >
+                {isReprinting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
+              </Button>
+            )}
+            <Badge className={`${statusInfo.color} flex items-center gap-1`}>
+              <StatusIcon className="h-3 w-3" />
+              {statusInfo.label}
+            </Badge>
+          </div>
         </div>
       </div>
 

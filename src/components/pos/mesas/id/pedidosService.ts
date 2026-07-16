@@ -425,16 +425,27 @@ export class PedidosService {
   /**
    * Eliminar item de la orden
    */
-  static async eliminarItem(saleItemId: string): Promise<void> {
+  static async eliminarItem(saleItemId: string, motivo?: string): Promise<void> {
     try {
-      // Obtener sale_id antes de eliminar
+      // Obtener datos completos del item + venta antes de eliminar (para auditoría)
       const { data: item } = await supabase
         .from('sale_items')
-        .select('sale_id')
+        .select(`
+          sale_id,
+          product_id,
+          quantity,
+          unit_price,
+          total,
+          notes,
+          products(name),
+          sales(organization_id, branch_id, table_session_id)
+        `)
         .eq('id', saleItemId)
         .single();
 
       if (!item) throw new Error('Item no encontrado');
+
+      await this.registrarAuditoriaEliminacionItem(saleItemId, item, motivo);
 
       // Eliminar items de kitchen_tickets relacionados
       await supabase
@@ -455,6 +466,56 @@ export class PedidosService {
     } catch (error) {
       console.error('Error eliminando item:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Registra en ops_audit_log la eliminación de un item de venta, para poder
+   * mostrarlo luego en el historial de mesas (productos eliminados/cancelados).
+   * No lanza error si falla: la eliminación del item no debe bloquearse por esto.
+   */
+  private static async registrarAuditoriaEliminacionItem(
+    saleItemId: string,
+    item: {
+      sale_id: string;
+      product_id: number | null;
+      quantity: number;
+      unit_price: number;
+      total: number;
+      notes: any;
+      products?: { name: string } | null;
+      sales?: { organization_id: number; branch_id: number | null; table_session_id: string | null } | null;
+    },
+    motivo?: string
+  ): Promise<void> {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const sale = item.sales;
+      if (!sale) return;
+
+      await supabase.from('ops_audit_log').insert({
+        organization_id: sale.organization_id,
+        branch_id: sale.branch_id,
+        user_id: authData?.user?.id || null,
+        entity_type: 'sale_items',
+        entity_id: saleItemId,
+        action: 'DELETE',
+        previous_data: {
+          sale_id: item.sale_id,
+          product_id: item.product_id,
+          product_name: item.products?.name || 'Producto',
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total: item.total,
+          notes: item.notes,
+        },
+        metadata: {
+          table_session_id: sale.table_session_id,
+          motivo: motivo || null,
+        },
+      });
+    } catch (auditError) {
+      console.error('No se pudo registrar auditoría de eliminación de item:', auditError);
     }
   }
 
@@ -578,17 +639,48 @@ export class PedidosService {
   }
 
   /**
-   * Enviar comandas a cocina (marcar como printed)
+   * Enviar comandas a cocina (marcar como printed).
+   * Devuelve el detalle de los tickets recién enviados (items + estación + producto)
+   * para poder encolar la impresión física por estación (ver PrintJobsService).
    */
-  static async enviarComandaCocina(sessionId: string): Promise<void> {
+  static async enviarComandaCocina(sessionId: string): Promise<Array<{
+    ticketId: number;
+    createdAt: string;
+    items: Array<{ productName: string; quantity: number; notes: string | null; station: string | null }>;
+  }>> {
     try {
-      const { error } = await supabase
+      const { data: pendientes, error: fetchError } = await supabase
         .from('kitchen_tickets')
-        .update({ printed_at: new Date().toISOString() })
+        .select(`
+          id, created_at,
+          kitchen_ticket_items(
+            station, notes,
+            sale_items(quantity, products(name))
+          )
+        `)
         .eq('table_session_id', sessionId)
         .is('printed_at', null);
 
+      if (fetchError) throw fetchError;
+      if (!pendientes || pendientes.length === 0) return [];
+
+      const { error } = await supabase
+        .from('kitchen_tickets')
+        .update({ printed_at: new Date().toISOString() })
+        .in('id', pendientes.map((t) => t.id));
+
       if (error) throw error;
+
+      return pendientes.map((ticket: any) => ({
+        ticketId: ticket.id,
+        createdAt: ticket.created_at,
+        items: (ticket.kitchen_ticket_items || []).map((item: any) => ({
+          productName: item.sale_items?.products?.name || 'Producto',
+          quantity: item.sale_items?.quantity || 1,
+          notes: item.notes || null,
+          station: item.station || null,
+        })),
+      }));
     } catch (error) {
       console.error('Error enviando comanda:', error);
       throw error;

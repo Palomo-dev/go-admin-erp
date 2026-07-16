@@ -10,6 +10,7 @@ import { TicketsGrid } from '@/components/pos/comandas/TicketsGrid';
 import { ComandasPagination } from '@/components/pos/comandas/ComandasPagination';
 import { Card } from '@/components/ui/card';
 import KitchenService, { type KitchenTicket, type KitchenTicketItem, type ZoneFilter, type StatusFilter, type StationFilter } from '@/lib/services/kitchenService';
+import { PrintJobsService } from '@/lib/services/printJobsService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { playNotificationBeep } from '@/lib/utils/sound';
 
@@ -226,6 +227,25 @@ export default function ComandasPage() {
     }
   };
 
+  // Reimpresión física bajo demanda (best-effort, no bloquea la UI)
+  const handleReprint = async (ticket: KitchenTicket) => {
+    try {
+      const { enqueued, skippedStations } = await PrintJobsService.enqueueKitchenTicketByRecord(ticket);
+      if (enqueued > 0) {
+        toast({ title: 'Reimpresión enviada', description: `Ticket #${ticket.id} enviado a impresión` });
+      } else {
+        toast({
+          title: 'Sin impresora asignada',
+          description: `No hay impresora configurada para: ${skippedStations.join(', ') || 'esta estación'}`,
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error reimprimiendo ticket:', error);
+      toast({ title: 'Error', description: 'No se pudo reimprimir la comanda', variant: 'destructive' });
+    }
+  };
+
   const getItemStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       pending: 'Pendiente',
@@ -316,6 +336,7 @@ export default function ComandasPage() {
               }}
               onStatusChange={handleStatusChange}
               onItemStatusChange={handleItemStatusChange}
+              onReprint={handleReprint}
               stationFilter={stationFilter}
             />
 

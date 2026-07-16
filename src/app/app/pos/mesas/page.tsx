@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash, List, Map, Search, X, Receipt } from 'lucide-react';
+import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash, List, Map, Search, X, Receipt, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -43,6 +43,7 @@ import { MoverPedidoDialog } from '@/components/pos/mesas/MoverPedidoDialog';
 import { MesasPagination } from '@/components/pos/mesas/MesasPagination';
 import { MesasService } from '@/components/pos/mesas/mesasService';
 import { MesasFloorMap } from '@/components/pos/mesas/MesasFloorMap';
+import { HistorialMesasDialog } from '@/components/pos/mesas/HistorialMesasDialog';
 import { useBranch } from '@/lib/context/BranchContext';
 import type { TableWithSession, MesaFormData, RestaurantTable } from '@/components/pos/mesas/types';
 
@@ -70,6 +71,8 @@ export default function MesasPage() {
   const [mesaEliminar, setMesaEliminar] = useState<RestaurantTable | null>(null);
   const [mesaSeleccionada, setMesaSeleccionada] = useState<string | null>(null);
   const [mesaParaComensales, setMesaParaComensales] = useState<TableWithSession | null>(null);
+  const [mesaParaLiberar, setMesaParaLiberar] = useState<TableWithSession | null>(null);
+  const [showHistorial, setShowHistorial] = useState(false);
   const [comensales, setComensales] = useState(2);
   
   // Estados para abrir sesión
@@ -300,13 +303,18 @@ export default function MesasPage() {
     }
   };
 
-  const handleLiberarMesa = async (mesa: TableWithSession) => {
+  const handleLiberarMesa = (mesa: TableWithSession) => {
+    setMesaParaLiberar(mesa);
+  };
+
+  const confirmarLiberarMesa = async () => {
+    if (!mesaParaLiberar) return;
     try {
-      await MesasService.liberarMesa(mesa.id);
+      await MesasService.liberarMesa(mesaParaLiberar.id);
       await cargarDatos();
       toast({
         title: 'Mesa liberada',
-        description: `Mesa ${mesa.name} liberada exitosamente`,
+        description: `Mesa ${mesaParaLiberar.name} liberada exitosamente`,
       });
     } catch (error: any) {
       console.error('Error liberando mesa:', error);
@@ -315,6 +323,8 @@ export default function MesasPage() {
         description: error?.message || 'No se pudo liberar la mesa',
         variant: 'destructive',
       });
+    } finally {
+      setMesaParaLiberar(null);
     }
   };
 
@@ -518,6 +528,10 @@ export default function MesasPage() {
             <Button variant="outline" onClick={() => setShowMover(true)}>
               <MoveRight className="h-4 w-4 mr-2" />
               Mover Pedido
+            </Button>
+            <Button variant="outline" onClick={() => setShowHistorial(true)}>
+              <History className="h-4 w-4 mr-2" />
+              Historial
             </Button>
           </div>
 
@@ -884,6 +898,35 @@ export default function MesasPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <HistorialMesasDialog
+        open={showHistorial}
+        onOpenChange={setShowHistorial}
+      />
+
+      <AlertDialog
+        open={!!mesaParaLiberar}
+        onOpenChange={(open) => !open && setMesaParaLiberar(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Liberar mesa {mesaParaLiberar?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción cerrará la sesión activa de la mesa y marcará las comandas
+              pendientes como entregadas. ¿Deseas continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarLiberarMesa}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Sí, liberar mesa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Dialog para editar comensales */}
       <Dialog open={!!mesaParaComensales} onOpenChange={(open) => !open && setMesaParaComensales(null)}>
         <DialogContent>
@@ -1095,9 +1138,7 @@ function MesaCardWithMenu({
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`¿Liberar ${mesa.name}? Se cerrarán todas las sesiones activas.`)) {
-                        onLiberar();
-                      }
+                      onLiberar();
                     }}
                     className="text-red-600 dark:text-red-400"
                   >

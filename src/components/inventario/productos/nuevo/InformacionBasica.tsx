@@ -9,6 +9,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { SearchSelect } from '@/components/ui/search-select'
 import { Package, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService'
 
 interface InformacionBasicaProps {
   formData: any
@@ -18,6 +26,7 @@ interface InformacionBasicaProps {
 interface Category {
   id: number
   name: string
+  station?: string | null
 }
 
 interface Supplier {
@@ -59,7 +68,7 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
       // Cargar categorías
       const { data: categoriesData } = await supabase
         .from('categories')
-        .select('id, name')
+        .select('id, name, station')
         .eq('organization_id', organization.id)
         .order('name')
 
@@ -345,6 +354,35 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
               noneLabel="Sin proveedor"
             />
           )}
+        </div>
+
+        {/* Estación de Cocina/Bar */}
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="station" className="text-gray-700 dark:text-gray-300">
+            Estación de Cocina/Bar
+          </Label>
+          <Select
+            value={formData.station || 'none'}
+            onValueChange={(value) => updateFormData('station', value === 'none' ? null : (value as PrinterStation))}
+          >
+            <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
+              <SelectValue placeholder="Heredar de la categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Heredar de la categoría</SelectItem>
+              {Object.entries(STATION_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {(() => {
+              const selectedCategory = categories.find((c) => c.id === formData.category_id)
+              if (formData.station) return 'Esta estación sobreescribe la de la categoría para este producto.'
+              if (selectedCategory?.station) return `Se usará la estación de la categoría: ${STATION_LABELS[selectedCategory.station as PrinterStation]}`
+              return 'Sin estación definida en el producto ni en la categoría.'
+            })()}
+          </p>
         </div>
       </div>
     </div>

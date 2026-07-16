@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, memo, useRef, useMemo } from 'react';
+import { useState, useEffect, memo, useRef, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Plus, Search, Check, X } from 'lucide-react';
 import { Organization, organizationService } from '@/lib/services/organizationService';
@@ -42,7 +42,8 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const toggleOpen = () => {
+  const toggleOpen = (e?: ReactMouseEvent) => {
+    e?.stopPropagation();
     if (!isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       setAnchorRect({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 260) });
@@ -200,7 +201,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
             <div
               key={org.id}
               role="menuitem"
-              onClick={() => handleSelectOrganization(org)}
+              onClick={(e) => { e.stopPropagation(); handleSelectOrganization(org); }}
               className={`flex items-center px-4 py-3 sm:py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
                 selectedOrg?.id === org.id ? 'bg-gray-100 dark:bg-gray-700' : ''
               }`}
@@ -240,7 +241,8 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
 
         {showCreateOption && (
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setIsOpen(false);
               setQuery('');
               setIsDialogOpen(true);
@@ -300,7 +302,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
       <button
         ref={buttonRef}
         type="button"
-        onClick={toggleOpen}
+        onClick={(e) => toggleOpen(e)}
         className="w-full flex items-center justify-between p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 shadow-sm hover:shadow"
       >
         {selectedOrg?.logo_url && getOrganizationLogoUrl(selectedOrg.logo_url) ? (
@@ -350,6 +352,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
         ) : (
           <div
             ref={panelRef}
+            data-org-selector-portal
             className="fixed rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-[9999] max-h-80 flex flex-col overflow-hidden"
             style={{
               top: anchorRect?.top ?? 0,

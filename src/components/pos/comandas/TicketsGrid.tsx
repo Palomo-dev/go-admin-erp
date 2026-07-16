@@ -15,6 +15,7 @@ interface TicketsGridProps {
   };
   onStatusChange: (ticketId: number, status: KitchenTicket['status']) => void;
   onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status'], productName?: string) => void;
+  onReprint?: (ticket: KitchenTicket) => Promise<void> | void;
   stationFilter?: StationFilter;
 }
 
@@ -29,7 +30,7 @@ const COLUMNS: { key: ColumnKey; status: KitchenTicket['status']; label: string;
 
 const DELIVERED_VISIBLE_LIMIT = 12;
 
-export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange, stationFilter }: TicketsGridProps) {
+export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange, onReprint, stationFilter }: TicketsGridProps) {
   const columnsData: Record<ColumnKey, KitchenTicket[]> = {
     new: tickets.new,
     in_progress: tickets.in_progress,
@@ -85,6 +86,7 @@ export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange, stati
                               ticket={ticket}
                               onStatusChange={onStatusChange}
                               onItemStatusChange={onItemStatusChange}
+                              onReprint={onReprint}
                               stationFilter={stationFilter}
                             />
                           </div>

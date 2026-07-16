@@ -448,6 +448,7 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
         !pathname.startsWith('/auth/invite') &&
         !pathname.startsWith('/auth/select-organization') &&
         !pathname.startsWith('/auth/signup') &&
+        !pathname.startsWith('/auth/reset-password') &&
         !pathname.startsWith('/auth/super-admin-access')) {
       if (shouldDebug) {
         console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde auth a /app/inicio');

@@ -9,8 +9,25 @@ const DISMISS_KEY = 'email_verification_banner_dismissed_at';
 export function EmailVerificationBanner() {
   const [visible, setVisible] = useState(false);
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
   const [email, setEmail] = useState('');
+  const [canResend, setCanResend] = useState(true);
+  const [resendTimer, setResendTimer] = useState(0);
+
+  const startResendTimer = () => {
+    setCanResend(false);
+    setResendTimer(60); // 60 segundos
+
+    const timer = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   useEffect(() => {
     const checkEmailVerification = async () => {
@@ -41,7 +58,7 @@ export function EmailVerificationBanner() {
   };
 
   const handleResend = async () => {
-    if (sending || sent) return;
+    if (sending || !canResend) return;
     setSending(true);
     try {
       const { error } = await supabase.auth.resend({
@@ -49,7 +66,7 @@ export function EmailVerificationBanner() {
         email,
       });
       if (!error) {
-        setSent(true);
+        startResendTimer();
       }
     } catch {
       // silenciar error
@@ -76,15 +93,15 @@ export function EmailVerificationBanner() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleResend}
-            disabled={sending || sent}
+            disabled={sending || !canResend}
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white transition-colors"
           >
             <Send className="h-3 w-3" />
             <span className="hidden sm:inline">
-              {sent ? 'Correo enviado' : sending ? 'Enviando...' : 'Reenviar correo'}
+              {sending ? 'Enviando...' : canResend ? 'Reenviar correo' : `Reenviar en ${resendTimer}s`}
             </span>
             <span className="sm:hidden">
-              {sent ? 'Enviado' : 'Reenviar'}
+              {sending ? '...' : canResend ? 'Reenviar' : `${resendTimer}s`}
             </span>
           </button>
 

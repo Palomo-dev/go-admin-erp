@@ -214,17 +214,32 @@ function SignupContent() {
       setLoading(true);
       setError(null);
       
-      // Verificar si el correo ya está registrado (solo para usuarios no-Google)
-      const { data: existingUsers } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', signupData.email)
-        .maybeSingle();
+      // Verificar si el correo ya está registrado en auth.users (incluye usuarios fantasma de invitaciones)
+      try {
+        const res = await fetch('/api/auth/check-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: signupData.email }),
+        });
+        const data = await res.json();
+        if (data.exists) {
+          setError(t('emailAlreadyRegistered'));
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Si el API falla, continuar con validación de profiles como fallback
+        const { data: existingUsers } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', signupData.email)
+          .maybeSingle();
 
-      if (existingUsers) {
-        setError(t('emailAlreadyRegistered'));
-        setLoading(false);
-        return;
+        if (existingUsers) {
+          setError(t('emailAlreadyRegistered'));
+          setLoading(false);
+          return;
+        }
       }
       
       setLoading(false);
@@ -646,7 +661,12 @@ function SignupContent() {
 
       if (authError) {
         console.error('Error en Supabase Auth:', authError);
-        throw new Error(authError.message || 'Error al crear la cuenta');
+        // Traducir errores comunes de Supabase
+        const errorMsg = authError.message || '';
+        if (errorMsg.toLowerCase().includes('already registered') || errorMsg.toLowerCase().includes('already been registered')) {
+          throw new Error(t('emailAlreadyRegistered'));
+        }
+        throw new Error(errorMsg || 'Error al crear la cuenta');
       }
 
       if (!authData.user) {

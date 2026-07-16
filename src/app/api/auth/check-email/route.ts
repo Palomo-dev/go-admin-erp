@@ -11,38 +11,36 @@ export async function POST(request: Request) {
 
     const admin = getSupabaseAdmin();
 
-    // Buscar en auth.users por email
-    const { data, error } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1,
-    });
+    // Usar RPC function que consulta auth.users directamente (SECURITY DEFINER)
+    const { data: existsInAuth, error: rpcError } = await admin
+      .rpc('check_email_exists', { p_email: email.toLowerCase() });
 
-    // listUsers no filtra por email, usamos getUserByEmail alternativo
-    // Mejor: intentar recuperar usuario por email via from('profiles') o auth.users
-    const { data: existingUser, error: queryError } = await admin
+    if (rpcError) {
+      console.error('Error en RPC check_email_exists:', rpcError);
+      // Fallback: buscar en profiles
+      const { data: existingUser } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .limit(1)
+        .maybeSingle();
+
+      return NextResponse.json({ exists: !!existingUser });
+    }
+
+    if (existsInAuth) {
+      return NextResponse.json({ exists: true });
+    }
+
+    // Verificar también en profiles por si acaso
+    const { data: existingProfile } = await admin
       .from('profiles')
       .select('id')
       .eq('email', email.toLowerCase())
       .limit(1)
       .maybeSingle();
 
-    if (queryError) {
-      console.error('Error checking email:', queryError);
-      return NextResponse.json({ exists: false });
-    }
-
-    if (existingUser) {
-      return NextResponse.json({ exists: true });
-    }
-
-    // Fallback: buscar en auth.users directamente (si RLS lo permite con service role)
-    const { data: authUser } = await admin.auth.admin.getUserByEmail(email);
-
-    if (authUser?.user) {
-      return NextResponse.json({ exists: true });
-    }
-
-    return NextResponse.json({ exists: false });
+    return NextResponse.json({ exists: !!existingProfile });
   } catch (error) {
     console.error('Error in check-email:', error);
     return NextResponse.json({ exists: false });

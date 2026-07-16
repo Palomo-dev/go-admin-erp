@@ -259,9 +259,25 @@ async function checkUserOrganization(supabase: any, userId: string): Promise<boo
 }
 
 // Función para completar el registro después de confirmar el email
-export async function completeSignupAfterEmailConfirmation(supabase: any, user: any) {
+// Devuelve { alreadyExisted: true } si el perfil ya existía (creado en el signup
+// inmediato, ya que "Confirm email" está desactivado) para que el caller decida
+// el redirect sin repetir la creación de datos.
+export async function completeSignupAfterEmailConfirmation(supabase: any, user: any): Promise<{ alreadyExisted: boolean }> {
   try {
     console.log('🚀 Starting complete signup for user:', user.id);
+
+    // Idempotencia: si el perfil ya existe, todo el registro ya se creó
+    // (signup con sesión inmediata) y este correo solo confirma el email.
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (existingProfile) {
+      console.log('ℹ️ Profile ya existe, se omite la creación de datos (idempotente)');
+      return { alreadyExisted: true };
+    }
     
     // Extraer datos del signup guardados en metadata
     const metadata = user.user_metadata || {};
@@ -427,8 +443,10 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
     } else {
       console.log('⚠️ Skipping organization creation - join type is not "create" or no organization name');
     }
+    return { alreadyExisted: false };
   } catch (error: any) {
     console.error('❌ Error in completeSignupAfterEmailConfirmation:', error);
     // No lanzar error para no interrumpir el flujo de confirmación
+    return { alreadyExisted: false };
   }
 }

@@ -682,6 +682,15 @@ function SignupContent() {
         
         try {
           await createSignupData(authData.user.id, signupData.email);
+
+          // Con "Confirm email" desactivado, Supabase no envía el correo de
+          // confirmación automáticamente en signUp(). Se dispara aparte, sin
+          // bloquear el acceso a la app (el usuario ya tiene sesión activa).
+          try {
+            await supabase.auth.resend({ type: 'signup', email: signupData.email });
+          } catch (resendError) {
+            console.warn('No se pudo enviar el correo de confirmación (no bloqueante):', resendError);
+          }
           
           // Redirigir al dashboard directamente (la sesión ya está activa)
           router.push('/app/inicio?welcome=true');

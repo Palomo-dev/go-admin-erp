@@ -81,6 +81,15 @@ interface SignupData {
   stripePaymentMethodId?: string;
   // Cupón de descuento
   couponCode?: string;
+  validatedCoupon?: {
+    code: string;
+    name: string;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    durationMonths: number | null;
+    discountDescription: string;
+    durationDescription: string;
+  } | null;
 }
 
 function SignupContent() {
@@ -304,6 +313,7 @@ function SignupContent() {
             state: signupData.organizationState || null,
             country: signupData.organizationCountry || 'Colombia',
             country_code: signupData.organizationCountryCode || 'COL',
+            municipality_id: signupData.organizationMunicipalityId || null,
             postal_code: signupData.organizationPostalCode || null,
             primary_color: signupData.organizationPrimaryColor || '#3B82F6',
             secondary_color: signupData.organizationSecondaryColor || '#F59E0B',

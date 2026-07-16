@@ -10,6 +10,8 @@ import {
 } from '@stripe/react-stripe-js';
 import { CreditCardIcon, CheckCircleIcon, ExclamationTriangleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
+import PriceSummary from './PriceSummary';
+import type { CouponData } from './PriceSummary';
 
 // Cargar Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -20,7 +22,9 @@ interface PaymentMethodStepProps {
     firstName: string;
     lastName: string;
     subscriptionPlan: string;
+    billingPeriod?: 'monthly' | 'yearly';
     skipTrial?: boolean;
+    validatedCoupon?: CouponData | null;
   };
   updateFormData: (data: any) => void;
   onNext: () => void;
@@ -171,6 +175,7 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
 
   const isPaidPlan = formData.subscriptionPlan !== 'free';
   const isPayNow = formData.skipTrial === true;
+  const billingPeriod = formData.billingPeriod || 'monthly';
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -203,6 +208,17 @@ function PaymentForm({ formData, updateFormData, onNext, onBack, onSkip, loading
           </div>
         )}
       </div>
+
+      {/* Resumen de pago */}
+      {isPaidPlan && (
+        <PriceSummary
+          subscriptionPlan={formData.subscriptionPlan}
+          billingPeriod={billingPeriod}
+          skipTrial={isPayNow}
+          coupon={formData.validatedCoupon || null}
+          compact
+        />
+      )}
 
       {/* Tarjeta verificada */}
       {paymentVerified && verifiedCard ? (

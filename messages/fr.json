@@ -749,7 +749,11 @@
     "manageOrgs": {
       "title": "Gérer les organisations",
       "createNew": "Créer une nouvelle organisation",
-      "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette organisation ? Cette action est irréversible.",
+      "confirmDelete": "Supprimer l'organisation ?",
+      "confirmDeleteDescription": "Cette action supprimera l'organisation, ses succursales et toutes les données associées. Cette action est irréversible.",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "deleting": "Suppression...",
       "noSession": "Session utilisateur introuvable",
       "noPermissionsDelete": "Vous n'avez pas la permission de supprimer cette organisation",
       "loadingForm": "Chargement du formulaire...",

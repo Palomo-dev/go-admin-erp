@@ -12,6 +12,7 @@ import {
   X,
   Loader2,
   AlertTriangle,
+  Settings,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { UserData } from './types';
@@ -229,7 +230,10 @@ export const AccountSwitcher = ({ userData, collapsed = false }: AccountSwitcher
   // Cuerpo común del panel: cuentas guardadas + acciones de la cuenta activa
   const renderPanelBody = () => (
     <>
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <button
+        onClick={() => { setOpen(false); router.push('/app/perfil'); }}
+        className="w-full p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+      >
         <div className="flex items-center">
           {renderAvatar(userData?.avatar, userData?.name, 48)}
           <div className="ml-3 flex-1 min-w-0">
@@ -244,8 +248,9 @@ export const AccountSwitcher = ({ userData, collapsed = false }: AccountSwitcher
               </div>
             )}
           </div>
+          <ChevronRight size={16} className="text-gray-400 flex-shrink-0 ml-2" />
         </div>
-      </div>
+      </button>
 
       {switchError && (
         <div className="px-4 py-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-900/30">

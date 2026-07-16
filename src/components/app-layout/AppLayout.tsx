@@ -922,6 +922,21 @@ export const AppLayout = ({
     // Obtener ID de organización
     const storedOrgId = localStorage.getItem('currentOrganizationId');
     setOrgId(storedOrgId);
+
+    // Escuchar cambios de organización sin recargar la página
+    const handleOrgChange = () => {
+      const newOrgId = localStorage.getItem('currentOrganizationId');
+      const newOrgName = localStorage.getItem('currentOrganizationName');
+      setOrgId(newOrgId);
+      if (newOrgName) setOrgName(newOrgName);
+      // Forzar recarga del perfil y módulos con la nueva org
+      setProfileRefresh(prev => prev + 1);
+    };
+    window.addEventListener('organization-changed', handleOrgChange);
+
+    return () => {
+      window.removeEventListener('organization-changed', handleOrgChange);
+    };
   }, []);
   
   // Importación dinámica de la función signOut (memoizada)

@@ -37,9 +37,25 @@ const createClientWithSession = async () => {
       detectSessionInUrl: false,
       flowType: 'pkce',
       // Cookie storage personalizada para Next.js App Router
+      // Soporta cookies chunked (.0, .1, .2...) para tokens grandes
       storage: {
         getItem: (key: string) => {
-          return cookieStore.get(key)?.value ?? null
+          const direct = cookieStore.get(key)?.value
+          if (direct) return direct
+          // Buscar cookies chunked
+          const chunk0 = cookieStore.get(`${key}.0`)
+          if (chunk0) {
+            let fullValue = chunk0.value
+            let i = 1
+            while (true) {
+              const chunk = cookieStore.get(`${key}.${i}`)
+              if (!chunk) break
+              fullValue += chunk.value
+              i++
+            }
+            return fullValue
+          }
+          return null
         },
         setItem: () => {},
         removeItem: () => {}

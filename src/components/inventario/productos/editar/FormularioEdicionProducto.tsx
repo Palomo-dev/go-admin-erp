@@ -329,15 +329,19 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
     
     try {
       // 1. Actualizar los datos principales del producto
-      const productoData = {
-        ...data,
-        organization_id
+      // Solo enviar campos que existen en la tabla products
+      const productoData: Record<string, any> = {
+        sku: data.sku,
+        barcode: data.barcode || null,
+        name: data.name,
+        description: data.description || null,
+        category_id: data.category_id ?? null,
+        unit_code: data.unit_code,
+        status: data.status,
+        station: data.station ?? null,
+        updated_at: new Date().toISOString(),
       };
-      
-      // Eliminar campos que no corresponden a la tabla de productos
-      delete productoData.stock_inicial;
-      
-      // Actualizar el producto
+
       const { error } = await supabase
         .from('products')
         .update(productoData)
@@ -347,6 +351,79 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       if (error) throw error;
       
       console.log("Datos principales del producto actualizados correctamente");
+
+      // 1b. Actualizar precio en product_prices si cambió
+      if (data.price !== undefined && data.price >= 0) {
+        const now = new Date().toISOString();
+        // Cerrar precio vigente actual
+        const { data: currentPrice } = await supabase
+          .from('product_prices')
+          .select('id, price, compare_price')
+          .eq('product_id', productoId)
+          .is('effective_to', null)
+          .order('effective_from', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const hasCompare = data.compare_price && data.compare_price > 0;
+        const priceChanged = !currentPrice || currentPrice.price !== data.price ||
+          (currentPrice.compare_price || 0) !== (data.compare_price || 0);
+
+        if (priceChanged) {
+          if (currentPrice) {
+            await supabase
+              .from('product_prices')
+              .update({ effective_to: now })
+              .eq('id', currentPrice.id);
+          }
+          const newPriceData: Record<string, any> = {
+            product_id: productoId,
+            price: data.price,
+            effective_from: now,
+            effective_to: null,
+          };
+          if (hasCompare) {
+            newPriceData.compare_price = data.compare_price;
+          }
+          const { error: priceError } = await supabase
+            .from('product_prices')
+            .insert(newPriceData);
+          if (priceError) throw priceError;
+        }
+      }
+
+      // 1c. Actualizar costo en product_costs si cambió
+      if (data.cost !== undefined && data.cost >= 0) {
+        const now = new Date().toISOString();
+        const { data: currentCost } = await supabase
+          .from('product_costs')
+          .select('id, cost')
+          .eq('product_id', productoId)
+          .is('effective_to', null)
+          .order('effective_from', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const costChanged = !currentCost || currentCost.cost !== data.cost;
+
+        if (costChanged) {
+          if (currentCost) {
+            await supabase
+              .from('product_costs')
+              .update({ effective_to: now })
+              .eq('id', currentCost.id);
+          }
+          const { error: costError } = await supabase
+            .from('product_costs')
+            .insert({
+              product_id: productoId,
+              cost: data.cost,
+              effective_from: now,
+              effective_to: null,
+            });
+          if (costError) throw costError;
+        }
+      }
       
       // 2. Imágenes se manejan a través de formData (no requiere ref)
       

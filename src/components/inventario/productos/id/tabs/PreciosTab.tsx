@@ -261,27 +261,8 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
       
       if (newPriceError) throw newPriceError;
       
-      // 3. Actualizar el precio de referencia en la tabla de productos
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({
-          price: priceValue,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', producto.id)
-        .eq('organization_id', organization?.id);
-      
-      if (updateError) throw updateError;
-      
-      // 3. Actualizar registro en product_variants si es principal
-      const { error: variantError } = await supabase
-        .from('product_variants')
-        .update({ price: priceValue })
-        .eq('product_id', producto.id)
-        .eq('is_primary', true);
-      
-      // No bloqueamos por error en variantes
-      if (variantError) console.error('Error al actualizar variante:', variantError);
+      // El precio de referencia ya se guardó en product_prices en el paso anterior
+      // No es necesario actualizar la tabla products ya que no tiene columna price
       
       toast({
         title: "Precio actualizado",

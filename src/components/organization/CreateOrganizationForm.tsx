@@ -253,6 +253,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         state: formData.state,
         country: formData.country,
         country_code: formData.countryCode,
+        municipality_id: formData.municipalityId || null,
         postal_code: formData.postalCode,
         tax_id: formData.taxId,
         nit: formData.nit,

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, ReactElement, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { OrganizationListSkeleton } from './OrganizationSkeletons';
 import ChangePlanModal from './ChangePlanModal';
 import { useTranslations } from 'next-intl';
+import { cambiarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 type ProfileData = {
   organization_id: number | null;
@@ -40,9 +42,11 @@ interface OrganizationListProps {
   onDelete?: (orgId: number) => void;
   filterActive?: boolean; // Si es true, solo muestra organizaciones activas
   showFilters?: boolean; // Si es true, muestra la barra de filtros
+  refetchKey?: number; // Cambiar este valor fuerza un re-fetch sin recargar la página
 }
 
-export default function OrganizationList({ showActions = false, onDelete, filterActive = false, showFilters = false }: OrganizationListProps): ReactElement {
+export default function OrganizationList({ showActions = false, onDelete, filterActive = false, showFilters = false, refetchKey }: OrganizationListProps): ReactElement {
+  const router = useRouter();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -88,7 +92,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
 
   useEffect(() => {
     fetchUserOrganizations();
-  }, []);
+  }, [refetchKey]);
 
   const fetchUserOrganizations = async () => {
     try {
@@ -227,20 +231,34 @@ export default function OrganizationList({ showActions = false, onDelete, filter
   
   const handleSelectOrganization = async (orgId: number) => {
     try {
-      // Get current user session
+      const selectedOrg = organizations.find(o => o.id === orgId);
+      if (!selectedOrg) return;
+
+      // Actualizar localStorage y limpiar estado de la org anterior (sin recargar)
+      cambiarOrganizacionActiva(
+        { id: selectedOrg.id, name: selectedOrg.name },
+        { reload: false }
+      );
+
+      // Actualizar last_org_id en la BD
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error(t('noSession'));
+      if (session) {
+        await supabase
+          .from('profiles')
+          .update({ last_org_id: orgId })
+          .eq('id', session.user.id);
+      }
 
-      // Update user's organization
-      const { error } = await supabase
-        .from('profiles')
-        .update({ last_org_id: orgId })
-        .eq('id', session.user.id);
+      // Actualizar UI localmente: marcar la org seleccionada como actual
+      setOrganizations(prevOrgs =>
+        prevOrgs.map(org => ({ ...org, is_current: org.id === orgId }))
+      );
 
-      if (error) throw error;
+      // Notificar al resto de la app (AppLayout, header, etc.)
+      window.dispatchEvent(new Event('organization-changed'));
 
-      // Reload page to reflect changes
-      window.location.reload();
+      // Navegación suave al dashboard (re-monta componentes con el nuevo org)
+      router.push('/app');
     } catch (err: any) {
       console.error('Error selecting organization:', err);
       setError(err.message);

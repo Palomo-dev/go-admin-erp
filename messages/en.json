@@ -749,7 +749,11 @@
     "manageOrgs": {
       "title": "Manage Organizations",
       "createNew": "Create New Organization",
-      "confirmDelete": "Are you sure you want to delete this organization? This action cannot be undone.",
+      "confirmDelete": "Delete organization?",
+      "confirmDeleteDescription": "This will delete the organization, its branches and all associated data. This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting...",
       "noSession": "User session not found",
       "noPermissionsDelete": "You do not have permission to delete this organization",
       "loadingForm": "Loading form...",

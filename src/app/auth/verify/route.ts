@@ -77,11 +77,20 @@ export async function GET(request: NextRequest) {
       const user = data.user;
       console.log('Email verification successful for user:', user.id, 'type:', type);
 
-      // signup: completar registro (crear perfil, organización, etc.) y redirigir a login
+      // signup: completar registro (crear perfil, organización, etc.) y redirigir
       if (type === 'signup') {
         if (completeSignup) {
           console.log('Completando registro tras verificación de email...');
-          await completeSignupAfterEmailConfirmation(supabase, user);
+          const { alreadyExisted } = await completeSignupAfterEmailConfirmation(supabase, user);
+
+          if (alreadyExisted) {
+            // El perfil ya existía (signup con sesión inmediata, sin bloqueo por
+            // confirmación). Este correo solo confirma el email; la sesión sigue
+            // activa, así que se manda directo a la app sin re-loguear.
+            return NextResponse.redirect(new URL('/app/inicio?email_confirmed=true', request.url));
+          }
+
+          // Caso legado: el perfil se creó apenas ahora, se pide login limpio.
           await supabase.auth.signOut();
           return NextResponse.redirect(
             new URL('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'), request.url)

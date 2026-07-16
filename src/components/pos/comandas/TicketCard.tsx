@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Circle } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Circle, Hash } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/utils/Utils';
-import type { KitchenTicket, KitchenTicketItem } from '@/lib/services/kitchenService';
+import type { KitchenTicket, KitchenTicketItem, StationFilter } from '@/lib/services/kitchenService';
 
 interface TicketCardProps {
   ticket: KitchenTicket;
   onStatusChange: (ticketId: number, status: KitchenTicket['status']) => void;
   onItemStatusChange?: (itemId: number, status: KitchenTicketItem['status'], productName?: string) => void;
+  stationFilter?: StationFilter;
 }
 
 const getStatusInfo = (status: KitchenTicket['status']) => {
@@ -77,13 +78,14 @@ const getItemStatusInfo = (status: string | undefined) => {
   }
 };
 
-export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: TicketCardProps) {
+export function TicketCard({ ticket, onStatusChange, onItemStatusChange, stationFilter = 'all' }: TicketCardProps) {
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const statusInfo = getStatusInfo(ticket.status);
   const StatusIcon = statusInfo.icon;
   
   const tableName = ticket.table_sessions?.restaurant_tables?.name || 'Mesa';
   const zoneName = ticket.table_sessions?.restaurant_tables?.zone || '';
+  const serverName = ticket.table_sessions?.serverName;
 
   const timeElapsed = React.useMemo(() => {
     const created = new Date(ticket.created_at);
@@ -91,6 +93,28 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: Ticke
     const diff = Math.floor((now.getTime() - created.getTime()) / 60000);
     return diff;
   }, [ticket.created_at]);
+
+  // Urgencia por tiempo de espera (no aplica a tickets ya entregados)
+  const isFinal = ticket.status === 'delivered';
+  const timeUrgency: 'ok' | 'warning' | 'critical' = isFinal
+    ? 'ok'
+    : timeElapsed >= 20
+    ? 'critical'
+    : timeElapsed >= 10
+    ? 'warning'
+    : 'ok';
+
+  const timeUrgencyClasses: Record<typeof timeUrgency, string> = {
+    ok: 'text-gray-600 dark:text-gray-400',
+    warning: 'text-orange-600 dark:text-orange-400 font-semibold',
+    critical: 'text-red-600 dark:text-red-400 font-bold animate-pulse',
+  };
+
+  const cardUrgencyBorder: Record<typeof timeUrgency, string> = {
+    ok: '',
+    warning: 'ring-1 ring-orange-300 dark:ring-orange-700',
+    critical: 'ring-2 ring-red-400 dark:ring-red-600',
+  };
 
   const getNextStatus = (): KitchenTicket['status'] | null => {
     switch (ticket.status) {
@@ -108,7 +132,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: Ticke
   const nextStatus = getNextStatus();
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${cardUrgencyBorder[timeUrgency]}`}>
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 border-b border-blue-200 dark:border-blue-800">
         <div className="flex items-start justify-between">
@@ -124,14 +148,21 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: Ticke
               )}
             </div>
             <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-              <div className="flex items-center gap-1">
+              <div className={`flex items-center gap-1 ${timeUrgencyClasses[timeUrgency]}`}>
                 <Clock className="h-4 w-4" />
                 <span>{timeElapsed} min</span>
+                {timeUrgency === 'critical' && <span title="Tiempo de espera elevado">🔥</span>}
               </div>
               <div className="flex items-center gap-1">
-                <User className="h-4 w-4" />
+                <Hash className="h-4 w-4" />
                 <span>Ticket #{ticket.id}</span>
               </div>
+              {serverName && (
+                <div className="flex items-center gap-1">
+                  <User className="h-4 w-4" />
+                  <span>{serverName}</span>
+                </div>
+              )}
             </div>
           </div>
           
@@ -149,6 +180,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: Ticke
           const stationInfo = getStationInfo(item.station);
           const itemStatusInfo = getItemStatusInfo(item.status);
           const isItemReady = item.status === 'ready' || item.status === 'delivered';
+          const matchesStation = stationFilter === 'all' || item.station === stationFilter;
           
           const handleItemClick = (e: React.MouseEvent) => {
             e.stopPropagation();
@@ -177,7 +209,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange }: Ticke
                 isItemReady 
                   ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
                   : 'bg-gray-50 dark:bg-gray-800/50 border-transparent hover:border-blue-300 dark:hover:border-blue-700'
-              } ${onItemStatusChange ? 'cursor-pointer' : ''}`}
+              } ${onItemStatusChange ? 'cursor-pointer' : ''} ${!matchesStation ? 'opacity-35' : ''}`}
               onClick={onItemStatusChange ? (e) => handleItemClick(e) : undefined}
             >
               <div className="flex items-start gap-3 flex-1">

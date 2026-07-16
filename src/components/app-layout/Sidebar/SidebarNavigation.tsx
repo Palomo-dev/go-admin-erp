@@ -177,6 +177,7 @@ const SidebarNavigationComponent = ({
             { name: "Egresos", href: "/app/finanzas/egresos", icon: <TrendingDown size={16} /> },
             { name: "Transferencias", href: "/app/finanzas/transferencias", icon: <ArrowLeftRight size={16} /> },
             { name: "Cuentas por cobrar", href: "/app/finanzas/cuentas-por-cobrar", icon: <DollarSign size={16} /> },
+            { name: "Saldos a favor", href: "/app/finanzas/saldos-a-favor", icon: <DollarSign size={16} /> },
             { name: "Cuentas por pagar", href: "/app/finanzas/cuentas-por-pagar", icon: <CreditCard size={16} /> },
             { name: "Bancos", href: "/app/finanzas/bancos", icon: <Building2 size={16} /> },
             { name: "Contabilidad", href: "/app/finanzas/contabilidad", icon: <Calculator size={16} /> },

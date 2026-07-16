@@ -76,6 +76,7 @@ export default function PerfilUsuarioPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userSessions, setUserSessions] = useState<UserSession[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [userBranches, setUserBranches] = useState<any[]>([]);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [mfaMethods, setMfaMethods] = useState<MfaMethod[]>([]);
   const [isSeller, setIsSeller] = useState<boolean>(false);
@@ -185,6 +186,40 @@ export default function PerfilUsuarioPage() {
           setUserRoles(formattedRoles);
         }
         
+        // Obtener sucursales asignadas al usuario (member_branches + branches)
+        const { data: memberBranchesData, error: memberBranchesError } = await supabase
+          .from('organization_members')
+          .select(`
+            id,
+            organization_id,
+            member_branches(
+              id,
+              branch_id,
+              branches!inner(id, name, is_active)
+            )
+          `)
+          .eq('user_id', session.user.id)
+          .eq('is_active', true);
+
+        if (memberBranchesError) {
+          console.error('Error al obtener sucursales:', memberBranchesError);
+        } else {
+          const branches: any[] = [];
+          (memberBranchesData || []).forEach((member: any) => {
+            (member.member_branches || []).forEach((mb: any) => {
+              if (mb.branches) {
+                branches.push({
+                  id: mb.branches.id,
+                  name: mb.branches.name,
+                  organization_id: member.organization_id,
+                  is_active: mb.branches.is_active,
+                });
+              }
+            });
+          });
+          setUserBranches(branches);
+        }
+
         // Obtener organizaciones a las que pertenece el usuario
         const { data: orgs, error: orgsError } = await supabase
           .from('organization_members')
@@ -399,6 +434,7 @@ export default function PerfilUsuarioPage() {
             <RolesSection 
               roles={userRoles as any}
               user={user}
+              branches={userBranches}
             />
           )}
           
@@ -428,15 +464,31 @@ export default function PerfilUsuarioPage() {
                       <p className="text-sm text-green-700 dark:text-green-400 mb-4">
                         Tu cuenta está vinculada al panel de vendedores. Accede para ver tus comisiones, pagos y referidos.
                       </p>
-                      <a
-                        href={process.env.NEXT_PUBLIC_SELLERS_URL || 'https://sellers.goadmin.io'}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            const sellersUrl = process.env.NEXT_PUBLIC_SELLERS_URL || 'https://sellers.goadmin.io';
+                            if (session) {
+                              const params = new URLSearchParams({
+                                at: session.access_token,
+                                rt: session.refresh_token,
+                                dest: '/dashboard',
+                              });
+                              window.open(`${sellersUrl}/auth/bridge?${params.toString()}`, '_blank', 'noopener,noreferrer');
+                            } else {
+                              window.open(sellersUrl, '_blank', 'noopener,noreferrer');
+                            }
+                          } catch {
+                            const sellersUrl = process.env.NEXT_PUBLIC_SELLERS_URL || 'https://sellers.goadmin.io';
+                            window.open(sellersUrl, '_blank', 'noopener,noreferrer');
+                          }
+                        }}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
                       >
                         Abrir Panel de Vendedor
                         <ExternalLink className="w-4 h-4" />
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>

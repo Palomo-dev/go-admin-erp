@@ -39,6 +39,8 @@ export interface InvoiceDataForPDF {
     total_line: number;
     sku?: string;
   }[];
+  // Monto de notas de crédito / saldo a favor aplicado a esta factura (informativo)
+  credit_applied?: number;
 }
 
 export class PDFService {
@@ -184,6 +186,9 @@ export class PDFService {
             </div>
           </div>
           
+          ${['void', 'voided', 'cancelled'].includes(data.status) ? `
+          <div style="border:2px solid #dc2626;color:#dc2626;background:#fef2f2;padding:10px 16px;border-radius:8px;text-align:center;font-weight:bold;font-size:16px;letter-spacing:2px;margin-bottom:20px;">DOCUMENTO ANULADO</div>
+          ` : ''}
           <div class="info-section">
             <div class="info-box">
               <h3>De</h3>
@@ -254,6 +259,12 @@ export class PDFService {
               <span>Total</span>
               <span>${formatCurrency(data.total)}</span>
             </div>
+            ${data.credit_applied && data.credit_applied > 0 ? `
+              <div>
+                <span>Nota crédito / saldo aplicado</span>
+                <span>- ${formatCurrency(data.credit_applied)}</span>
+              </div>
+            ` : ''}
             ${data.balance > 0 && data.balance < data.total ? `
               <div class="balance">
                 <span>Saldo Pendiente</span>
@@ -379,6 +390,9 @@ export class PDFService {
             </div>
           </div>
           
+          ${['void', 'voided', 'cancelled'].includes(data.status) ? `
+          <div style="border:2px solid #dc2626;color:#dc2626;background:#fef2f2;padding:10px 16px;border-radius:8px;text-align:center;font-weight:bold;font-size:16px;letter-spacing:2px;margin-bottom:20px;">FACTURA DE COMPRA ANULADA</div>
+          ` : ''}
           <div class="info-section">
             <div class="info-box">
               <h3>Empresa</h3>
@@ -449,6 +463,12 @@ export class PDFService {
               <span>Total</span>
               <span>${formatCurrency(data.total)}</span>
             </div>
+            ${data.credit_applied && data.credit_applied > 0 ? `
+              <div>
+                <span>Nota crédito / saldo aplicado</span>
+                <span>- ${formatCurrency(data.credit_applied)}</span>
+              </div>
+            ` : ''}
             ${data.balance > 0 && data.balance < data.total ? `
               <div class="balance">
                 <span>Saldo Pendiente</span>

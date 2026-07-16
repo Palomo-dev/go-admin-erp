@@ -463,6 +463,7 @@ export const registerUserDevice = async (sessionOrUserId: any) => {
     // Llamar al endpoint API para registrar/actualizar el dispositivo
     const response = await fetch('/api/sessions', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },

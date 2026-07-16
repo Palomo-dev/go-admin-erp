@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { PageHeader } from '@/components/pos/comandas/PageHeader';
 import { FilterBar } from '@/components/pos/comandas/FilterBar';
@@ -9,8 +9,9 @@ import { EmptyState } from '@/components/pos/comandas/EmptyState';
 import { TicketsGrid } from '@/components/pos/comandas/TicketsGrid';
 import { ComandasPagination } from '@/components/pos/comandas/ComandasPagination';
 import { Card } from '@/components/ui/card';
-import KitchenService, { type KitchenTicket, type KitchenTicketItem, type ZoneFilter, type StatusFilter } from '@/lib/services/kitchenService';
+import KitchenService, { type KitchenTicket, type KitchenTicketItem, type ZoneFilter, type StatusFilter, type StationFilter } from '@/lib/services/kitchenService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { playNotificationBeep } from '@/lib/utils/sound';
 
 export default function ComandasPage() {
   const { toast } = useToast();
@@ -20,7 +21,10 @@ export default function ComandasPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [zoneFilter, setZoneFilter] = useState<ZoneFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [stationFilter, setStationFilter] = useState<StationFilter>('all');
   const [availableZones, setAvailableZones] = useState<string[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const knownTicketIdsRef = useRef<Set<number>>(new Set());
   
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,6 +42,8 @@ export default function ComandasPage() {
         zone: zoneFilter,
       });
       setTickets(data);
+      // Semilla inicial de IDs conocidos, sin disparar sonido de notificación
+      knownTicketIdsRef.current = new Set(data.map((t) => t.id));
       
       // Extraer zonas únicas de los tickets
       const zones = Array.from(
@@ -76,6 +82,21 @@ export default function ComandasPage() {
             status: statusFilter,
             zone: zoneFilter,
           });
+
+          const ticketsNuevos = data.filter(
+            (t) => t.status === 'new' && !knownTicketIdsRef.current.has(t.id)
+          );
+          if (ticketsNuevos.length > 0 && soundEnabled) {
+            playNotificationBeep();
+            toast({
+              title: ticketsNuevos.length === 1 ? 'Nuevo ticket de cocina' : 'Nuevos tickets de cocina',
+              description: ticketsNuevos
+                .map((t) => t.table_sessions?.restaurant_tables?.name || `Ticket #${t.id}`)
+                .join(', '),
+            });
+          }
+
+          knownTicketIdsRef.current = new Set(data.map((t) => t.id));
           setTickets(data);
         } catch (err) {
           console.error('Error recargando tickets por realtime:', err);
@@ -86,15 +107,30 @@ export default function ComandasPage() {
     return () => {
       unsubscribe();
     };
-  }, [organization?.id, statusFilter, zoneFilter]);
+  }, [organization?.id, statusFilter, zoneFilter, soundEnabled]);
 
   // Cambiar estado de ticket (con actualización optimista)
   const handleStatusChange = async (ticketId: number, status: KitchenTicket['status']) => {
     const previousTickets = [...tickets];
-    
-    // Actualización optimista
+    const itemStatusByTicketStatus: Record<KitchenTicket['status'], KitchenTicketItem['status']> = {
+      new: 'pending',
+      preparing: 'in_progress',
+      ready: 'ready',
+      delivered: 'delivered',
+    };
+
+    // Actualización optimista: el ticket y todos sus items reflejan el nuevo estado
     setTickets(prev => prev.map(ticket =>
-      ticket.id === ticketId ? { ...ticket, status } : ticket
+      ticket.id === ticketId
+        ? {
+            ...ticket,
+            status,
+            kitchen_ticket_items: ticket.kitchen_ticket_items?.map((item) => ({
+              ...item,
+              status: itemStatusByTicketStatus[status],
+            })),
+          }
+        : ticket
     ));
 
     try {
@@ -200,19 +236,24 @@ export default function ComandasPage() {
     return labels[status] || status;
   };
 
+  // Filtro por estación de cocina (cliente): solo tickets con al menos un item de esa estación
+  const stationTickets = stationFilter === 'all'
+    ? tickets
+    : tickets.filter((t) => t.kitchen_ticket_items?.some((i) => i.station === stationFilter));
+
   // Los tickets ya vienen filtrados del servicio, solo agrupar por estado
   const ticketsByStatus = {
-    new: tickets.filter((t) => t.status === 'new'),
-    in_progress: tickets.filter((t) => t.status === 'preparing'),
-    ready: tickets.filter((t) => t.status === 'ready'),
-    delivered: tickets.filter((t) => t.status === 'delivered'),
+    new: stationTickets.filter((t) => t.status === 'new'),
+    in_progress: stationTickets.filter((t) => t.status === 'preparing'),
+    ready: stationTickets.filter((t) => t.status === 'ready'),
+    delivered: stationTickets.filter((t) => t.status === 'delivered'),
   };
 
   // Calcular paginación
-  const totalPages = Math.ceil(tickets.length / pageSize);
+  const totalPages = Math.ceil(stationTickets.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const paginatedTickets = tickets.slice(startIndex, endIndex);
+  const paginatedTickets = stationTickets.slice(startIndex, endIndex);
 
   // Tickets paginados agrupados por estado
   const paginatedTicketsByStatus = {
@@ -225,22 +266,29 @@ export default function ComandasPage() {
   // Resetear página cuando cambian los filtros
   useEffect(() => {
     setCurrentPage(1);
-  }, [zoneFilter, statusFilter, pageSize]);
+  }, [zoneFilter, statusFilter, stationFilter, pageSize]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <PageHeader onRefresh={loadTickets} isLoading={isLoading} />
+      <PageHeader
+        onRefresh={loadTickets}
+        isLoading={isLoading}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled((prev) => !prev)}
+      />
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-6">
+        <div className="px-6">
           <FilterBar
             zoneFilter={zoneFilter}
             statusFilter={statusFilter}
+            stationFilter={stationFilter}
             availableZones={availableZones}
             onZoneChange={setZoneFilter}
             onStatusChange={setStatusFilter}
+            onStationChange={setStationFilter}
             statusCounts={{
               new: ticketsByStatus.new.length,
               in_progress: ticketsByStatus.in_progress.length,
@@ -252,10 +300,10 @@ export default function ComandasPage() {
       </div>
 
       {/* Contenido principal */}
-      <div className="container mx-auto px-6 py-6">
+      <div className="px-6 py-6">
         {isLoading ? (
           <LoadingState />
-        ) : tickets.length === 0 ? (
+        ) : stationTickets.length === 0 ? (
           <EmptyState />
         ) : (
           <>
@@ -268,16 +316,17 @@ export default function ComandasPage() {
               }}
               onStatusChange={handleStatusChange}
               onItemStatusChange={handleItemStatusChange}
+              stationFilter={stationFilter}
             />
 
             {/* Paginación */}
-            {tickets.length > 0 && (
+            {stationTickets.length > 0 && (
               <Card className="p-4 mt-6">
                 <ComandasPagination
                   currentPage={currentPage}
                   totalPages={totalPages}
                   pageSize={pageSize}
-                  totalItems={tickets.length}
+                  totalItems={stationTickets.length}
                   onPageChange={setCurrentPage}
                   onPageSizeChange={setPageSize}
                 />

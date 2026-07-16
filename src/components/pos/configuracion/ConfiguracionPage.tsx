@@ -20,14 +20,21 @@ import {
   DollarSign,
   Receipt,
   Calculator,
+  LayoutGrid,
+  Image as ImageIcon,
+  Search,
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/utils/Utils';
-import { 
-  ConfiguracionService, 
-  OrganizationPaymentMethod, 
-  OrganizationTax, 
+import { SearchSelect } from '@/components/ui/search-select';
+import { cn } from '@/utils/Utils';
+import {
+  ConfiguracionService,
+  OrganizationPaymentMethod,
+  OrganizationTax,
   ServiceCharge,
-  ConfigStats 
+  ConfigStats,
+  PosCategoriesDisplayConfig,
+  defaultCategoriesDisplayConfig,
 } from './configuracionService';
 
 export function ConfiguracionPage() {
@@ -40,6 +47,8 @@ export function ConfiguracionPage() {
   const [paymentMethods, setPaymentMethods] = useState<OrganizationPaymentMethod[]>([]);
   const [taxes, setTaxes] = useState<OrganizationTax[]>([]);
   const [serviceCharges, setServiceCharges] = useState<ServiceCharge[]>([]);
+  const [categoriesDisplay, setCategoriesDisplay] = useState<PosCategoriesDisplayConfig>(defaultCategoriesDisplayConfig);
+  const [savingCategoriesDisplay, setSavingCategoriesDisplay] = useState(false);
 
   const loadData = useCallback(async (showRefresh = false) => {
     if (showRefresh) {
@@ -49,17 +58,19 @@ export function ConfiguracionPage() {
     }
 
     try {
-      const [statsData, paymentsData, taxesData, chargesData] = await Promise.all([
+      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData] = await Promise.all([
         ConfiguracionService.getConfigStats(),
         ConfiguracionService.getPaymentMethods(),
         ConfiguracionService.getTaxes(),
         ConfiguracionService.getServiceCharges(),
+        ConfiguracionService.getCategoriesDisplayConfig(),
       ]);
 
       setStats(statsData);
       setPaymentMethods(paymentsData);
       setTaxes(taxesData);
       setServiceCharges(chargesData);
+      setCategoriesDisplay(categoriesDisplayData);
     } catch (error) {
       console.error('Error cargando configuración:', error);
       toast({
@@ -102,6 +113,26 @@ export function ConfiguracionPage() {
         description: 'No se pudo actualizar el cargo de servicio',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleUpdateCategoriesDisplay = async (config: Partial<PosCategoriesDisplayConfig>) => {
+    const previous = categoriesDisplay;
+    const merged = { ...categoriesDisplay, ...config };
+    setCategoriesDisplay(merged);
+    setSavingCategoriesDisplay(true);
+    try {
+      await ConfiguracionService.saveCategoriesDisplayConfig(config);
+      toast({ title: 'Actualizado', description: 'Visualización de categorías actualizada' });
+    } catch (error) {
+      setCategoriesDisplay(previous);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la visualización de categorías',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingCategoriesDisplay(false);
     }
   };
 
@@ -292,6 +323,67 @@ export function ConfiguracionPage() {
                 </div>
               </div>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Visualización de Categorías POS */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5 text-indigo-600" />
+            Visualización de Categorías
+          </CardTitle>
+          <CardDescription className="text-gray-500 dark:text-gray-400">
+            Define cómo se muestran las categorías al buscar productos en el POS y en Mesas
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Modo de visualización</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { value: 'searchselect' as const, label: 'Buscador', description: 'Lista desplegable con búsqueda', icon: Search },
+                { value: 'buttons' as const, label: 'Botones', description: 'Chips con icono y color', icon: LayoutGrid },
+                { value: 'images' as const, label: 'Imágenes', description: 'Tarjetas con imagen de fondo', icon: ImageIcon },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={savingCategoriesDisplay}
+                  onClick={() => handleUpdateCategoriesDisplay({ mode: opt.value })}
+                  className={cn(
+                    'p-4 rounded-lg border-2 text-left transition-colors',
+                    categoriesDisplay.mode === opt.value
+                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300'
+                  )}
+                >
+                  <opt.icon className={cn('h-5 w-5 mb-2', categoriesDisplay.mode === opt.value ? 'text-indigo-600' : 'text-gray-400')} />
+                  <p className="font-medium text-gray-900 dark:text-white text-sm">{opt.label}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{opt.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Orden de las categorías</p>
+            <SearchSelect
+              options={[
+                { value: 'display_order', label: 'Orden de visualización (display_order)' },
+                { value: 'rank', label: 'Rango (rank)' },
+                { value: 'name', label: 'Nombre (A-Z)' },
+              ]}
+              value={categoriesDisplay.orderBy}
+              onValueChange={(value) => handleUpdateCategoriesDisplay({ orderBy: value as PosCategoriesDisplayConfig['orderBy'] })}
+              placeholder="Selecciona el orden"
+              className="w-full sm:w-80"
+              disabled={savingCategoriesDisplay}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              El orden y colores/iconos se configuran por categoría en Inventario → Categorías
+            </p>
           </div>
         </CardContent>
       </Card>

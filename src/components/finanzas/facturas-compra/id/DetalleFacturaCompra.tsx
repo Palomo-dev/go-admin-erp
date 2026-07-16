@@ -28,12 +28,14 @@ import {
   Download,
   Send,
   Loader2,
-  CheckCircle
+  CheckCircle,
+  Ban
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { FacturasCompraService } from '../FacturasCompraService';
 import { InvoicePurchase } from '../types';
 import { RegistrarPagoModal } from '../RegistrarPagoModal';
+import { AnularFacturaCompraDialog } from './AnularFacturaCompraDialog';
 import { ResumenTotalesFactura } from './ResumenTotalesFactura';
 import { InfoProveedorFactura } from './InfoProveedorFactura';
 import { CuentaPorPagarInfo } from './CuentaPorPagarInfo';
@@ -58,6 +60,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
     : '/app/finanzas/facturas-compra';
   const [loading, setLoading] = useState(true);
   const [showPagoModal, setShowPagoModal] = useState(false);
+  const [showAnularModal, setShowAnularModal] = useState(false);
   const [recepcionando, setRecepcionando] = useState(false);
   const { toast } = useToast();
   
@@ -485,6 +488,19 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
               </Button>
             </>
           )}
+
+          {!['void', 'paid'].includes(factura.status) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAnularModal(true)}
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm border-red-500 text-red-600 hover:bg-red-50 dark:border-red-400 dark:text-red-400 dark:hover:bg-red-900/20"
+              title="Anular factura"
+            >
+              <Ban className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1" />
+              <span>Anular</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -657,6 +673,18 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
           cargarFactura(); // Recargar la factura para actualizar el balance
           cargarCuentaPorPagar(); // Recargar cuenta por pagar
           cargarPagos(); // Recargar historial de pagos
+        }}
+      />
+
+      {/* Modal de anulación de factura */}
+      <AnularFacturaCompraDialog
+        open={showAnularModal}
+        onOpenChange={setShowAnularModal}
+        factura={factura}
+        onSuccess={() => {
+          cargarFactura();
+          cargarCuentaPorPagar();
+          cargarPagos();
         }}
       />
     </div>

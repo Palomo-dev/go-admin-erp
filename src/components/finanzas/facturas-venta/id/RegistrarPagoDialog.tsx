@@ -260,6 +260,13 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
         }
       }
 
+      // Nota: el asiento contable de cobro se crea automaticamente en la BD
+      // mediante el trigger trg_auto_journal_payment (fn_auto_journal_payment)
+      // al insertar en payments (source='invoice_sales'), usando accounting_rules.
+      // No se registra cash_movement aqui: el ingreso de efectivo ya queda
+      // reflejado via el pago (payments) y su asiento automatico; registrar un
+      // cash_movement adicional duplicaria el ingreso (trigger fn_auto_journal_cash_movement).
+
       toast({
         title: "Pago registrado",
         description: `Se ha registrado un pago por ${formatCurrency(montoNumerico)} exitosamente`,

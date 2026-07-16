@@ -6,6 +6,10 @@ export interface Category {
   slug: string;
   rank: number;
   parent_id?: number;
+  icon?: string | null;
+  color?: string | null;
+  image_url?: string | null;
+  display_order?: number;
   created_at: string;
   updated_at: string;
 }

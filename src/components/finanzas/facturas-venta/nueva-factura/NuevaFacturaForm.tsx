@@ -638,7 +638,11 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           .insert(taxRows);
         if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
       }
-      
+
+      // Nota: el asiento contable de devengo se crea automaticamente en la BD
+      // mediante el trigger trg_auto_journal_sale (fn_auto_journal_sale) al
+      // insertar en invoice_sales, usando la tabla accounting_rules.
+
       // 7. Si está activada la opción de factura electrónica, enviar a DIAN
       if (sendToFactus) {
         try {

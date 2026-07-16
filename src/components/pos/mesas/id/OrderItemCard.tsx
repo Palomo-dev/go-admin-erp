@@ -39,6 +39,20 @@ export function OrderItemCard({
 
   const kitchenStatus = getKitchenStatus();
 
+  // El campo `notes` puede llegar como objeto (jsonb) o como string JSON según el origen del dato.
+  // Se normaliza aquí para no depender del tipo real de la columna.
+  const parsedNotes = (() => {
+    if (item.notes && typeof item.notes === 'object') return item.notes as { product_name?: string; extra?: string; guest_number?: number };
+    if (typeof item.notes === 'string' && item.notes.trim().startsWith('{')) {
+      try {
+        return JSON.parse(item.notes) as { product_name?: string; extra?: string; guest_number?: number };
+      } catch {
+        return { extra: item.notes };
+      }
+    }
+    return item.notes ? { extra: item.notes as string } : null;
+  })();
+
   const kitchenStatusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
     pending: { label: 'Pendiente en cocina', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock },
     in_progress: { label: 'En preparación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: ChefHat },
@@ -115,18 +129,25 @@ export function OrderItemCard({
 
         {/* Info del producto */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
-            {item.product?.name || 'Producto'}
-          </h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
+              {item.product?.name || 'Producto'}
+            </h3>
+            {parsedNotes?.guest_number && (
+              <Badge className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-300 inline-flex items-center gap-1 shrink-0">
+                👤 Comensal {parsedNotes.guest_number}
+              </Badge>
+            )}
+          </div>
           {kitchenStatus && kitchenStatusConfig[kitchenStatus] && (
             <Badge className={`${kitchenStatusConfig[kitchenStatus].color} text-xs mt-1 inline-flex items-center gap-1`}>
               {React.createElement(kitchenStatusConfig[kitchenStatus].icon, { className: 'h-3 w-3' })}
               {kitchenStatusConfig[kitchenStatus].label}
             </Badge>
           )}
-          {item.notes && (
+          {parsedNotes?.extra && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-              📝 {typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes}
+              📝 {parsedNotes.extra}
             </p>
           )}
           

@@ -48,6 +48,9 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
   const [itemsSeleccionados, setItemsSeleccionados] = useState<{ [key: string]: boolean }>({});
   const [cantidades, setCantidades] = useState<{ [key: string]: number }>({});
   const [ultimoNumero, setUltimoNumero] = useState<string>('');
+  const [modo, setModo] = useState<'items' | 'valor'>('items');
+  const [conceptoValor, setConceptoValor] = useState<string>('');
+  const [montoValor, setMontoValor] = useState<number>(0);
 
   // Cargar siguiente número de nota de crédito usando servicio centralizado
   const cargarSiguienteNumero = async () => {
@@ -97,11 +100,18 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       // Resetear selección de items
       setItemsSeleccionados({});
       setMontoTotal(0);
+      setModo('items');
+      setConceptoValor('');
+      setMontoValor(0);
     }
   }, [open, organizationId, items]);
 
   // Actualizar monto total cuando cambian las selecciones o cantidades
   useEffect(() => {
+    if (modo === 'valor') {
+      setMontoTotal(Number(montoValor) || 0);
+      return;
+    }
     const facturaSubtotal = Math.abs(Number(factura.subtotal) || 0);
     const facturaTaxTotal = Math.abs(Number(factura.tax_total) || 0);
     const tasaEfectiva = facturaSubtotal > 0 ? (facturaTaxTotal / facturaSubtotal) * 100 : 0;
@@ -120,7 +130,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
     });
     
     setMontoTotal(total);
-  }, [itemsSeleccionados, cantidades, items, factura]);
+  }, [itemsSeleccionados, cantidades, items, factura, modo, montoValor]);
 
   // Manejar cambio en la selección de un item
   const handleItemToggle = (itemId: string, checked: boolean) => {
@@ -186,6 +196,15 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       });
       return;
     }
+
+    if (modo === 'valor' && !conceptoValor.trim()) {
+      toast({
+        title: "Error",
+        description: "Debe ingresar un concepto para la nota de crédito por valor",
+        variant: "destructive"
+      });
+      return;
+    }
     
     if (montoTotal <= 0) {
       toast({
@@ -207,7 +226,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
     }
 
     // Verificar si hay ítems seleccionados con cantidad > 0
-    const itemsValidos = Object.keys(itemsSeleccionados).some(
+    const itemsValidos = modo === 'valor' ? true : Object.keys(itemsSeleccionados).some(
       id => itemsSeleccionados[id] && cantidades[id] > 0
     );
     
@@ -278,7 +297,69 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       }
       
       const notaCreditoId = creditNoteData[0].id;
-      
+
+      // MODO POR VALOR: una sola línea de concepto libre (sin mover inventario)
+      if (modo === 'valor') {
+        const monto = Number(montoValor) || 0;
+
+        const { error: itemValorError } = await supabase
+          .from('invoice_items')
+          .insert({
+            invoice_id: notaCreditoId,
+            invoice_sales_id: notaCreditoId,
+            invoice_type: 'sale',
+            product_id: null,
+            description: conceptoValor,
+            qty: 1,
+            unit_price: monto,
+            tax_code: null,
+            tax_rate: 0,
+            tax_included: false,
+            total_line: -monto,
+            discount_amount: 0
+          });
+
+        if (itemValorError) throw itemValorError;
+
+        // Confirmar totales de la nota de crédito (sin impuesto)
+        await supabase
+          .from('invoice_sales')
+          .update({ subtotal: -monto, tax_total: 0, total: -monto })
+          .eq('id', notaCreditoId);
+
+        // Actualizar saldo de la factura original
+        const nuevoSaldoV = Math.max(0, factura.balance - monto);
+        const nuevoEstadoV = nuevoSaldoV <= 0 ? 'void' : nuevoSaldoV < factura.total ? 'partial' : factura.status;
+        const { error: facturaVError } = await supabase
+          .from('invoice_sales')
+          .update({ balance: nuevoSaldoV, status: nuevoEstadoV })
+          .eq('id', factura.id);
+        if (facturaVError) throw facturaVError;
+
+        // Actualizar accounts_receivable si existe
+        const { data: arV } = await supabase
+          .from('accounts_receivable')
+          .select('id, balance')
+          .eq('invoice_id', factura.id)
+          .maybeSingle();
+        if (arV) {
+          const nuevoSaldoARV = Math.max(0, Number(arV.balance) - monto);
+          await supabase
+            .from('accounts_receivable')
+            .update({ balance: nuevoSaldoARV, status: nuevoSaldoARV <= 0 ? 'current' : 'overdue' })
+            .eq('id', arV.id);
+        }
+
+        toast({
+          title: 'Nota de crédito generada',
+          description: `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(monto)} exitosamente`,
+        });
+
+        onOpenChange(false);
+        if (onSuccess) onSuccess();
+        return;
+      }
+
       // 2. Crear los ítems de la nota de crédito
       const itemsNotaCredito = [];
       let subtotal = 0;
@@ -483,7 +564,54 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
               rows={2}
             />
           </div>
-          
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={modo === 'items' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setModo('items')}
+            >
+              Por devolución de ítems
+            </Button>
+            <Button
+              type="button"
+              variant={modo === 'valor' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setModo('valor')}
+            >
+              Por valor / concepto
+            </Button>
+          </div>
+
+          {modo === 'valor' && (
+            <div className="grid gap-3">
+              <div className="grid items-center gap-1.5">
+                <Label htmlFor="conceptoValor">Concepto</Label>
+                <Input
+                  id="conceptoValor"
+                  value={conceptoValor}
+                  onChange={(e) => setConceptoValor(e.target.value)}
+                  placeholder="Ej: Descuento comercial acordado"
+                />
+              </div>
+              <div className="grid items-center gap-1.5">
+                <Label htmlFor="montoValor">Monto</Label>
+                <Input
+                  id="montoValor"
+                  type="number"
+                  min="0"
+                  value={montoValor || 0}
+                  onChange={(e) => setMontoValor(parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                La nota de crédito por valor reduce el saldo de la factura sin mover inventario.
+              </p>
+            </div>
+          )}
+
+          {modo === 'items' && (
           <div>
             <Label>Selecciona los Ítems para la Nota de Crédito</Label>
             <div className="border rounded-md mt-1.5 overflow-hidden">
@@ -544,6 +672,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
               </Table>
             </div>
           </div>
+          )}
           
           <div className="flex justify-end items-center gap-2 mt-2">
             <span className="text-sm font-medium">Total de Nota de Crédito:</span>

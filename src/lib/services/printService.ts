@@ -525,6 +525,8 @@ export class PrintService {
     total: number,
     business?: BusinessInfo,
     branch?: BranchInfo,
+    serverName?: string,
+    driverName?: string,
   ): void {
     const dateStr = new Date().toLocaleDateString('es-CO');
     const timeStr = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
@@ -577,6 +579,8 @@ export class PrintService {
   <div class="pre-cuenta-title">*** PRE-CUENTA ***</div>
   <div class="mesa-info">${tableName}</div>
   <div style="text-align:center;font-size:11px;margin-bottom:8px">${dateStr} - ${timeStr}</div>
+  ${serverName ? `<div style="font-size:11px;margin-bottom:4px"><strong>Mesero:</strong> ${serverName}</div>` : ''}
+  ${driverName ? `<div style="font-size:11px;margin-bottom:4px"><strong>Conductor:</strong> ${driverName}</div>` : ''}
   <div class="items-header"><span>PRODUCTO</span><span>TOTAL</span></div>
   ${itemsHTML}
   <div class="totals">

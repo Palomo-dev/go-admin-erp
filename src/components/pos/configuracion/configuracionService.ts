@@ -82,6 +82,21 @@ export interface ConfigStats {
   saleSequences: number;
 }
 
+export type PosCategoryDisplayMode = 'searchselect' | 'buttons' | 'images';
+export type PosCategoryOrderBy = 'display_order' | 'rank' | 'name';
+
+export interface PosCategoriesDisplayConfig {
+  mode: PosCategoryDisplayMode;
+  orderBy: PosCategoryOrderBy;
+}
+
+const POS_CATEGORIES_DISPLAY_KEY = 'pos_categories_display';
+
+export const defaultCategoriesDisplayConfig: PosCategoriesDisplayConfig = {
+  mode: 'searchselect',
+  orderBy: 'display_order',
+};
+
 export class ConfiguracionService {
   // Obtener métodos de pago de la organización
   static async getPaymentMethods(): Promise<OrganizationPaymentMethod[]> {
@@ -230,6 +245,45 @@ export class ConfiguracionService {
       invoiceSequences: invoiceSequences.count || 0,
       saleSequences: saleSequences.count || 0,
     };
+  }
+
+  // Obtener configuración de visualización de categorías en el POS
+  static async getCategoriesDisplayConfig(): Promise<PosCategoriesDisplayConfig> {
+    const orgId = getOrganizationId();
+
+    const { data, error } = await supabase
+      .from('organization_settings')
+      .select('settings')
+      .eq('organization_id', orgId)
+      .eq('key', POS_CATEGORIES_DISPLAY_KEY)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error obteniendo configuración de categorías:', error);
+      return defaultCategoriesDisplayConfig;
+    }
+
+    return { ...defaultCategoriesDisplayConfig, ...(data?.settings || {}) };
+  }
+
+  // Guardar configuración de visualización de categorías en el POS
+  static async saveCategoriesDisplayConfig(config: Partial<PosCategoriesDisplayConfig>): Promise<void> {
+    const orgId = getOrganizationId();
+    const current = await this.getCategoriesDisplayConfig();
+    const merged = { ...current, ...config };
+
+    const { error } = await supabase
+      .from('organization_settings')
+      .upsert({
+        organization_id: orgId,
+        key: POS_CATEGORIES_DISPLAY_KEY,
+        settings: merged,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'organization_id,key',
+      });
+
+    if (error) throw error;
   }
 
   // Obtener sucursales

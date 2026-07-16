@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash, List, Map } from 'lucide-react';
+import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash, List, Map, Search, X, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -53,6 +53,8 @@ export default function MesasPage() {
   const [mesas, setMesas] = useState<TableWithSession[]>([]);
   const [zonas, setZonas] = useState<string[]>([]);
   const [zonaFiltro, setZonaFiltro] = useState<string>('todas');
+  const [estadoFiltro, setEstadoFiltro] = useState<'todos' | 'free' | 'occupied' | 'bill_requested' | 'reserved'>('todos');
+  const [busqueda, setBusqueda] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Paginación
@@ -107,13 +109,23 @@ export default function MesasPage() {
     }
   };
 
-  // Filtrar mesas por zona
-  const mesasFiltradas =
-    zonaFiltro === 'todas'
-      ? mesas
-      : zonaFiltro === 'sin-zona'
-      ? mesas.filter((m) => !m.zone)
-      : mesas.filter((m) => m.zone === zonaFiltro);
+  // Filtrar mesas por zona, estado y búsqueda por nombre
+  const mesasFiltradas = mesas
+    .filter((m) =>
+      zonaFiltro === 'todas'
+        ? true
+        : zonaFiltro === 'sin-zona'
+        ? !m.zone
+        : m.zone === zonaFiltro
+    )
+    .filter((m) => {
+      if (estadoFiltro === 'todos') return true;
+      if (estadoFiltro === 'bill_requested') return m.session?.status === 'bill_requested';
+      return m.state === estadoFiltro;
+    })
+    .filter((m) =>
+      busqueda.trim() === '' ? true : m.name.toLowerCase().includes(busqueda.trim().toLowerCase())
+    );
 
   // Calcular paginación
   const totalPages = Math.ceil(mesasFiltradas.length / pageSize);
@@ -124,7 +136,7 @@ export default function MesasPage() {
   // Resetear página cuando cambia el filtro
   useEffect(() => {
     setCurrentPage(1);
-  }, [zonaFiltro, pageSize]);
+  }, [zonaFiltro, estadoFiltro, busqueda, pageSize]);
 
   // Handlers
   const handleCrearMesa = async (data: MesaFormData) => {
@@ -266,6 +278,25 @@ export default function MesasPage() {
         variant: 'destructive',
       });
       throw error;
+    }
+  };
+
+  const handleSolicitarCuenta = async (mesa: TableWithSession) => {
+    if (!mesa.session) return;
+    try {
+      await MesasService.solicitarCuenta(mesa.session.id);
+      await cargarDatos();
+      toast({
+        title: 'Cuenta solicitada',
+        description: `Se marcó ${mesa.name} para cierre de cuenta`,
+      });
+    } catch (error: any) {
+      console.error('Error solicitando cuenta:', error);
+      toast({
+        title: 'Error',
+        description: error?.message || 'No se pudo solicitar la cuenta',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -431,7 +462,7 @@ export default function MesasPage() {
               variant={viewMode === 'list' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('list')}
-              className={viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}
+              className={viewMode === 'list' ? 'bg-blue-600 dark:bg-blue-600 text-white dark:text-white shadow-sm' : ''}
             >
               <List className="h-4 w-4 mr-1" />
               Lista
@@ -440,7 +471,7 @@ export default function MesasPage() {
               variant={viewMode === 'map' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('map')}
-              className={viewMode === 'map' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}
+              className={viewMode === 'map' ? 'bg-blue-600 dark:bg-blue-600 text-white dark:text-white shadow-sm' : ''}
             >
               <Map className="h-4 w-4 mr-1" />
               Mapa
@@ -454,70 +485,6 @@ export default function MesasPage() {
             Nueva Mesa
           </Button>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mesas.filter((m) => m.state === 'free').length}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Libres</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <Users className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mesas.filter((m) => m.state === 'occupied').length}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Ocupadas</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <Clock className="h-5 w-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mesas.filter((m) => m.session?.status === 'bill_requested').length}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Con Cuenta</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <div className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Hash className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mesas.length}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
-              </div>
-            </div>
-          </div>
-        </Card>
       </div>
 
       {/* === VISTA MAPA === */}
@@ -583,13 +550,29 @@ export default function MesasPage() {
         )}
       </Card>
 
-      {/* Filtro por zona */}
-      <div className="flex items-center gap-4">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Filtrar por zona:
-        </span>
+      {/* Filtros: búsqueda, zona y estado */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar mesa por nombre..."
+            className="pl-8 pr-8"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
         <Select value={zonaFiltro} onValueChange={setZonaFiltro}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -602,6 +585,34 @@ export default function MesasPage() {
             ))}
           </SelectContent>
         </Select>
+
+        <Select value={estadoFiltro} onValueChange={(v) => setEstadoFiltro(v as typeof estadoFiltro)}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos los estados</SelectItem>
+            <SelectItem value="free">🟢 Libre</SelectItem>
+            <SelectItem value="occupied">🔴 Ocupada</SelectItem>
+            <SelectItem value="bill_requested">🟠 Cuenta solicitada</SelectItem>
+            <SelectItem value="reserved">🟡 Reservada</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(busqueda || zonaFiltro !== 'todas' || estadoFiltro !== 'todos') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setBusqueda('');
+              setZonaFiltro('todas');
+              setEstadoFiltro('todos');
+            }}
+          >
+            <X className="h-3.5 w-3.5 mr-1" />
+            Limpiar filtros
+          </Button>
+        )}
       </div>
 
       {/* Grid de Mesas Organizado por Zonas */}
@@ -639,6 +650,7 @@ export default function MesasPage() {
                           setShowMesaForm(true);
                         }}
                         onLiberar={() => handleLiberarMesa(mesa)}
+                        onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
                         onEditarComensales={() => {
                           setMesaParaComensales(mesa);
                           setComensales(mesa.session?.customers || 2);
@@ -678,6 +690,7 @@ export default function MesasPage() {
                             setShowMesaForm(true);
                           }}
                           onLiberar={() => handleLiberarMesa(mesa)}
+                          onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
                           onEditarComensales={() => {
                             setMesaParaComensales(mesa);
                             setComensales(mesa.session?.customers || 2);
@@ -706,6 +719,7 @@ export default function MesasPage() {
                     setShowMesaForm(true);
                   }}
                   onLiberar={() => handleLiberarMesa(mesa)}
+                  onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
                   onEditarComensales={() => {
                     setMesaParaComensales(mesa);
                     setComensales(mesa.session?.customers || 2);
@@ -738,6 +752,70 @@ export default function MesasPage() {
       )}
       </>
       )}
+
+      {/* Stats - al final de la página */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {mesas.filter((m) => m.state === 'free').length}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Libres</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                <Users className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {mesas.filter((m) => m.state === 'occupied').length}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Ocupadas</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <Clock className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {mesas.filter((m) => m.session?.status === 'bill_requested').length}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Con Cuenta</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Hash className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {mesas.length}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       {/* Modales */}
       <MesaFormDialog
@@ -890,6 +968,7 @@ interface MesaCardWithMenuProps {
   onClick: () => void;
   onEdit: () => void;
   onLiberar: () => void;
+  onSolicitarCuenta?: () => void;
   onEditarComensales: () => void;
   modoCombinar?: boolean;
   isSelected?: boolean;
@@ -902,6 +981,7 @@ function MesaCardWithMenu({
   onClick, 
   onEdit, 
   onLiberar, 
+  onSolicitarCuenta,
   onEditarComensales,
   modoCombinar = false,
   isSelected = false,
@@ -956,6 +1036,24 @@ function MesaCardWithMenu({
         </div>
       )}
       
+      {/* Acción rápida: solicitar cuenta (visible al pasar el mouse) */}
+      {!modoCombinar && mesa.session && mesa.session.status === 'active' && onSolicitarCuenta && (
+        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 px-2 bg-white dark:bg-gray-800 shadow-md text-orange-600 dark:text-orange-400"
+            title="Solicitar cuenta"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSolicitarCuenta();
+            }}
+          >
+            <Receipt className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Menú contextual (solo si no está en modo combinar) */}
       {!modoCombinar && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">

@@ -36,6 +36,51 @@ export interface CashCount {
   created_at: string;
 }
 
+export interface MesaInfo {
+  table_session_id: string;
+  table_name?: string;
+  table_number?: string;
+  server_id?: string;
+  server_name?: string;
+  opened_at?: string;
+  closed_at?: string;
+  customers?: number;
+  status?: string;
+}
+
+export interface InvoiceInfo {
+  id: string;
+  number: string;
+  issue_date: string;
+  due_date: string;
+  status: string;
+  total: number;
+  balance: number;
+  payment_method?: string;
+}
+
+export interface AccountReceivableInfo {
+  id: string;
+  amount: number;
+  balance: number;
+  due_date: string;
+  status: string;
+}
+
+export interface JournalEntryInfo {
+  id: number;
+  entry_date: string;
+  memo: string;
+  posted: boolean;
+  lines?: {
+    id: number;
+    account_code: string;
+    debit: number;
+    credit: number;
+    description?: string;
+  }[];
+}
+
 export interface SaleWithDetails extends Sale {
   customer?: Customer;
   items?: SaleItem[];
@@ -43,14 +88,21 @@ export interface SaleWithDetails extends Sale {
   sale_number?: string;
   seller_name?: string;
   branch_name?: string;
-  _source?: 'pos' | 'web';
+  _source?: 'pos' | 'web' | 'mesa';
   delivery_fee?: number;
   tip_amount?: number;
+  tip_server_id?: string;
+  driver_id?: string;
+  table_session_id?: string;
   delivery_type?: string;
   delivery_address?: any;
   coupon_code?: string;
   salesperson_name?: string;
   commission_amount?: number;
+  mesa_info?: MesaInfo;
+  invoice?: InvoiceInfo;
+  accounts_receivable?: AccountReceivableInfo;
+  journal_entry?: JournalEntryInfo;
 }
 
 export interface SalesFilter {

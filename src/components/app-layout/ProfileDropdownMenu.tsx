@@ -12,6 +12,8 @@ import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { useTranslations } from 'next-intl';
+import OrganizationSelector from '@/components/common/OrganizationSelector';
+import BranchSelector from '@/components/common/BranchSelector';
 
 interface ProfileDropdownMenuProps {
   userData: UserData | null;
@@ -148,6 +150,18 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
               </div>
             </div>
             
+            {/* Organización y sucursal activas (solo en el perfil del sidebar) */}
+            {isSidebar && (
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
+                <p className="flex items-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  <Building2 size={14} className="mr-1.5" />
+                  Organización y sucursal
+                </p>
+                <OrganizationSelector showCreateOption={false} />
+                <BranchSelector />
+              </div>
+            )}
+
             {/* Botón de facturación destacado */}
             <div className="p-4">
               <Link 
@@ -453,6 +467,21 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
           </div>
         </div>
         
+        {/* Organización y sucursal activas (solo en el perfil del sidebar) */}
+        {isSidebar && (
+          <>
+            <div className="px-4 py-3 space-y-2" onClick={(e) => e.stopPropagation()}>
+              <p className="flex items-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <Building2 size={12} className="mr-1.5" />
+                Organización y sucursal
+              </p>
+              <OrganizationSelector showCreateOption={false} />
+              <BranchSelector />
+            </div>
+            <DropdownMenuSeparator />
+          </>
+        )}
+
         {/* Botón de suscripción */}
         <DropdownMenuItem asChild>
           <Link href="/app/suscripcion" className="flex items-center bg-blue-600 hover:bg-blue-700 text-white hover:text-white w-full">

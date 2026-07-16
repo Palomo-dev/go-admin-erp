@@ -24,7 +24,13 @@ import {
   Truck,
   MapPin,
   Tag,
-  Wallet
+  Wallet,
+  Utensils,
+  Users,
+  Timer,
+  BookOpen,
+  ExternalLink,
+  DollarSign
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -222,6 +228,11 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
                 <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-0 flex items-center gap-1 shrink-0">
                   <Globe className="h-3.5 w-3.5" />
                   Web
+                </Badge>
+              ) : sale._source === 'mesa' || sale.mesa_info ? (
+                <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-0 flex items-center gap-1 shrink-0">
+                  <Utensils className="h-3.5 w-3.5" />
+                  Mesa
                 </Badge>
               ) : (
                 <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-0 flex items-center gap-1 shrink-0">
@@ -462,6 +473,232 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* Info Mesa */}
+          {sale.mesa_info && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <Utensils className="h-5 w-5" />
+                  Información de Mesa
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <Utensils className="h-4 w-4 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Mesa</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {sale.mesa_info.table_name || `Mesa #${sale.mesa_info.table_number || 'N/A'}`}
+                    </p>
+                  </div>
+                </div>
+                {sale.mesa_info.server_name && (
+                  <div className="flex items-start gap-2">
+                    <User className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Mesero</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {sale.mesa_info.server_name}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {sale.mesa_info.customers != null && sale.mesa_info.customers > 0 && (
+                  <div className="flex items-start gap-2">
+                    <Users className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Comensales</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {sale.mesa_info.customers}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {sale.mesa_info.opened_at && (
+                  <div className="flex items-start gap-2">
+                    <Timer className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Tiempo en mesa</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {sale.mesa_info.closed_at
+                          ? `${Math.round((new Date(sale.mesa_info.closed_at).getTime() - new Date(sale.mesa_info.opened_at).getTime()) / 60000)} min`
+                          : 'En curso'}
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        {new Date(sale.mesa_info.opened_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                        {sale.mesa_info.closed_at && ` - ${new Date(sale.mesa_info.closed_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Factura asociada */}
+          {sale.invoice && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <FileText className="h-5 w-5" />
+                  Factura
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Número</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {sale.invoice.number}
+                    </p>
+                  </div>
+                  <Badge className={cn(
+                    sale.invoice.status === 'paid' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : sale.invoice.status === 'partial' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                    'border-0'
+                  )}>
+                    {sale.invoice.status === 'paid' ? 'Pagada' : sale.invoice.status === 'partial' ? 'Parcial' : sale.invoice.status}
+                  </Badge>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Total factura</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(sale.invoice.total)}</span>
+                </div>
+                {Number(sale.invoice.balance) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Saldo</span>
+                    <span className="font-medium text-red-600 dark:text-red-400">{formatCurrency(sale.invoice.balance)}</span>
+                  </div>
+                )}
+                <Link href={`/app/finanzas/facturas-venta/${sale.invoice.id}`}>
+                  <Button variant="outline" size="sm" className="w-full dark:border-gray-700">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                    Ver factura
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Cuenta por cobrar */}
+          {sale.accounts_receivable && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <DollarSign className="h-5 w-5" />
+                  Cuenta por Cobrar
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Estado</p>
+                    <Badge className={cn(
+                      sale.accounts_receivable.status === 'paid' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : sale.accounts_receivable.status === 'partial' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                      'border-0'
+                    )}>
+                      {sale.accounts_receivable.status === 'paid' ? 'Pagada'
+                        : sale.accounts_receivable.status === 'partial' ? 'Parcial'
+                        : sale.accounts_receivable.status === 'overdue' ? 'Vencida'
+                        : sale.accounts_receivable.status}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Monto total</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(sale.accounts_receivable.amount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Balance</span>
+                  <span className="font-medium text-red-600 dark:text-red-400">{formatCurrency(sale.accounts_receivable.balance)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Vencimiento</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{formatDate(sale.accounts_receivable.due_date)}</span>
+                </div>
+                <Link href="/app/finanzas/cuentas-por-cobrar">
+                  <Button variant="outline" size="sm" className="w-full dark:border-gray-700">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                    Ver en cuentas por cobrar
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Asiento contable */}
+          {sale.journal_entry && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <BookOpen className="h-5 w-5" />
+                  Asiento Contable
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Memo</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {sale.journal_entry.memo}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={cn(
+                    sale.journal_entry.posted
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+                    'border-0'
+                  )}>
+                    {sale.journal_entry.posted ? 'Publicado' : 'Borrador'}
+                  </Badge>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatDate(sale.journal_entry.entry_date)}
+                  </span>
+                </div>
+                {sale.journal_entry.lines && sale.journal_entry.lines.length > 0 && (
+                  <div className="rounded-lg border dark:border-gray-700 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="dark:border-gray-700">
+                          <TableHead className="dark:text-gray-400 text-xs h-8">Cuenta</TableHead>
+                          <TableHead className="dark:text-gray-400 text-xs h-8 text-right">Débito</TableHead>
+                          <TableHead className="dark:text-gray-400 text-xs h-8 text-right">Crédito</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sale.journal_entry.lines.map((line) => (
+                          <TableRow key={line.id} className="dark:border-gray-700">
+                            <TableCell className="text-xs dark:text-gray-300 py-1.5">
+                              <span className="font-mono">{line.account_code}</span>
+                              {line.description && (
+                                <p className="text-gray-400 dark:text-gray-500 text-[10px]">{line.description}</p>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs text-right py-1.5 dark:text-gray-300">
+                              {Number(line.debit) > 0 ? formatCurrency(line.debit) : '-'}
+                            </TableCell>
+                            <TableCell className="text-xs text-right py-1.5 dark:text-gray-300">
+                              {Number(line.credit) > 0 ? formatCurrency(line.credit) : '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                <Link href="/app/finanzas/contabilidad/asientos">
+                  <Button variant="outline" size="sm" className="w-full dark:border-gray-700">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                    Ver en contabilidad
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Info Web */}
           {sale._source === 'web' && (

@@ -11,6 +11,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import { EmailConfirmedGate } from '@/components/auth/EmailConfirmedGate';
 
 interface Invoice {
   id: string;
@@ -255,14 +256,16 @@ export default function BillingTab({ orgId }: BillingTabProps) {
             <h3 className="text-sm font-medium text-blue-800">Portal de Facturación de Stripe</h3>
             <p className="text-sm text-blue-600">Gestiona tus facturas, métodos de pago y suscripción</p>
           </div>
-          <button
-            onClick={handleOpenBillingPortal}
-            disabled={actionLoading === 'portal'}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-          >
-            {actionLoading === 'portal' ? 'Abriendo...' : 'Abrir Portal'}
-            <ArrowTopRightOnSquareIcon className="ml-2 h-4 w-4" />
-          </button>
+          <EmailConfirmedGate>
+            <button
+              onClick={handleOpenBillingPortal}
+              disabled={actionLoading === 'portal'}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+            >
+              {actionLoading === 'portal' ? 'Abriendo...' : 'Abrir Portal'}
+              <ArrowTopRightOnSquareIcon className="ml-2 h-4 w-4" />
+            </button>
+          </EmailConfirmedGate>
         </div>
       </div>
 

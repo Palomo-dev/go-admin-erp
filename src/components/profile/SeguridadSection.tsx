@@ -5,6 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase, updatePassword } from '@/lib/supabase/config';
 import { Lock, Key, RefreshCcw, Shield, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { EmailConfirmedGate, EmailConfirmedWarning } from '@/components/auth/EmailConfirmedGate';
 
 interface MfaMethod {
   id: string;
@@ -217,12 +218,14 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowPasswordModal(true)}
-            className="px-3 py-1.5 text-sm rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
-          >
-            Cambiar
-          </button>
+          <EmailConfirmedGate>
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="px-3 py-1.5 text-sm rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+            >
+              Cambiar
+            </button>
+          </EmailConfirmedGate>
         </div>
         
         {/* Modal para cambiar contraseña */}
@@ -232,6 +235,7 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
                 Cambiar contraseña
               </h3>
+              <EmailConfirmedWarning message="Debes confirmar tu correo electrónico para cambiar la contraseña." />
               
               <form onSubmit={handlePasswordChange} className="space-y-4">
                 <div>

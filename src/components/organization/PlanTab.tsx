@@ -33,6 +33,7 @@ import { PlanSkeleton } from './OrganizationSkeletons';
 import CancelSubscriptionModal from '@/components/subscription/CancelSubscriptionModal';
 import PaymentMethodCard from './PaymentMethodCard';
 import { useTranslations } from 'next-intl';
+import { EmailConfirmedGate } from '@/components/auth/EmailConfirmedGate';
 
 // Mapa de iconos para módulos (igual que en modulos/page.tsx)
 const moduleIcons: Record<string, LucideIcon> = {
@@ -679,13 +680,15 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 {/* Botones adicionales de gestión */}
                 <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-200">
                     {subscription?.stripe_customer_id && (
-                      <button
-                        onClick={handleOpenBillingPortal}
-                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                      >
-                        <DocumentTextIcon className="w-4 h-4 mr-1" />
-                        {t('billingPortal')}
-                      </button>
+                      <EmailConfirmedGate>
+                        <button
+                          onClick={handleOpenBillingPortal}
+                          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                          <DocumentTextIcon className="w-4 h-4 mr-1" />
+                          {t('billingPortal')}
+                        </button>
+                      </EmailConfirmedGate>
                     )}
                     {subscription?.status === 'canceled' ? (
                       <button

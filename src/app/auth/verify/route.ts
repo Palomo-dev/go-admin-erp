@@ -48,15 +48,16 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  // Verificar token de email
-  if (token && type === 'signup') {
+  // Tipos de OTP soportados por verifyOtp para links de email (sin PKCE, funcionan cross-device)
+  const supportedTypes = ['signup', 'recovery', 'email_change', 'invite'];
+
+  if (token && type && supportedTypes.includes(type)) {
     try {
-      console.log('Verifying email token...');
+      console.log('Verifying email token, type:', type);
       
-      // Verificar el token
       const { data, error: verifyError } = await supabase.auth.verifyOtp({
         token_hash: token,
-        type: 'signup'
+        type: type as 'signup' | 'recovery' | 'email_change' | 'invite'
       });
       
       if (verifyError) {
@@ -66,13 +67,18 @@ export async function GET(request: NextRequest) {
         );
       }
       
-      if (data.user && data.session) {
-        const user = data.user;
-        console.log('Email verification successful for user:', user.id);
-        
-        // Completar el signup directamente aquí (crear perfil, organización, etc.)
-        // No dependemos de /auth/callback ni de PKCE code exchange, ya que la sesión
-        // fue establecida directamente por verifyOtp con el token_hash (funciona en cualquier navegador/dispositivo).
+      if (!data.user || !data.session) {
+        console.error('Verification did not return user or session');
+        return NextResponse.redirect(
+          new URL('/auth/login?error=verification-failed', request.url)
+        );
+      }
+
+      const user = data.user;
+      console.log('Email verification successful for user:', user.id, 'type:', type);
+
+      // signup: completar registro (crear perfil, organización, etc.) y redirigir a login
+      if (type === 'signup') {
         if (completeSignup) {
           console.log('Completando registro tras verificación de email...');
           await completeSignupAfterEmailConfirmation(supabase, user);
@@ -81,14 +87,28 @@ export async function GET(request: NextRequest) {
             new URL('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'), request.url)
           );
         }
-        
-        // Si no es signup, redirigir a la aplicación
         return NextResponse.redirect(new URL('/app/inicio', request.url));
-      } else {
-        console.error('Verification did not return user or session');
+      }
+
+      // recovery: la sesión ya queda establecida (cookies); redirigir a reset-password
+      // para que el usuario defina su nueva contraseña
+      if (type === 'recovery') {
+        return NextResponse.redirect(new URL('/auth/reset-password', request.url));
+      }
+
+      // email_change: el correo ya fue actualizado por verifyOtp; cerrar sesión y
+      // pedir que inicie sesión de nuevo con el nuevo correo
+      if (type === 'email_change') {
+        await supabase.auth.signOut();
         return NextResponse.redirect(
-          new URL('/auth/login?error=verification-failed', request.url)
+          new URL('/auth/login?success=email-changed&message=' + encodeURIComponent('Tu correo electrónico ha sido actualizado exitosamente. Por favor, inicia sesión con tu nuevo correo.'), request.url)
         );
+      }
+
+      // invite: sesión establecida con contraseña temporal; redirigir a reset-password
+      // para que el usuario defina su contraseña definitiva
+      if (type === 'invite') {
+        return NextResponse.redirect(new URL('/auth/reset-password', request.url));
       }
     } catch (error: any) {
       console.error('Email verification error:', error);

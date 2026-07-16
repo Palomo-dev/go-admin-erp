@@ -247,42 +247,32 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         
       if (inviteError) throw inviteError;
 
-      // Send invitation email using Supabase's email functionality
+      // Send invitation email using Supabase's native invite flow (admin.inviteUserByEmail)
+      // via API route, para que se use el template "Invite user" en el Dashboard
       const inviteUrl = `${window.location.origin}/auth/invite?invite_code=${code}`;
       
       try {
-        // Use Supabase's built-in auth.signUp to trigger invitation email
-        // This will use the configured SMTP service and email templates
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: email.toLowerCase(),
-          password: 'temp-password', // Temporary password
-          options: {
-            data: {
-              organization_id: orgId,
-              organization_name: orgData.name,
-              role_id: roleId,
-              invitation_code: code,
-              is_invitation: true,
-              invited_by: currentUserId
-            },
-            emailRedirectTo: inviteUrl
-          }
+        const res = await fetch('/api/auth/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.toLowerCase(),
+            organizationId: orgId,
+            organizationName: orgData.name,
+            roleId,
+            invitationCode: code,
+            invitedBy: currentUserId,
+            origin: window.location.origin
+          })
         });
+        const result = await res.json();
 
-        if (signUpError) {
-          // If signup fails (e.g., email already exists), provide manual URL
-          console.warn('Signup for invitation failed:', signUpError);
+        if (!res.ok || result.error) {
+          console.warn('Error enviando invitación:', result.error);
           setSuccess(t('inviteCreatedManual', { email, url: inviteUrl }));
         } else {
-          // Success - Supabase will send the confirmation email automatically
           setSuccess(t('inviteSent', { email }));
-          
-          // Clean up the temporary user creation - mark the invitation properly
-          // The user will use our custom invite flow instead of the auth confirmation
-          if (signUpData.user) {
-            console.log('📧 Invitation email sent via Supabase Auth to:', email);
-            console.log('Url de invitación:', inviteUrl);
-          }
+          console.log('📧 Invitation email sent via Supabase Auth to:', email);
         }
       } catch (emailSendError: any) {
         console.warn('Error sending invitation email:', emailSendError);
@@ -370,45 +360,36 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       
       // Generate the invitation URL
       const inviteCode = inviteData.code;
-      const inviteUrl = `${window.location.origin}/auth/invite?code=${inviteCode}`;
+      const inviteUrl = `${window.location.origin}/auth/invite?invite_code=${inviteCode}`;
       
       // Get organization name safely
       const orgName = Array.isArray(inviteData.organizations) 
         ? (inviteData.organizations[0] as any)?.name 
         : (inviteData.organizations as any)?.name || 'la organización';
       
-      // Resend invitation email using Supabase Auth
+      // Resend invitation email using la ruta nativa de invitación (Invite user template)
       try {
-        // Try to trigger email resend using signUp (will fail if user exists, which is expected)
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: email.toLowerCase(),
-          password: 'temp-password-' + Math.random().toString(36),
-          options: {
-            data: {
-              organization_id: inviteData.organization_id,
-              organization_name: orgName,
-              role_id: inviteData.role_id,
-              invitation_code: inviteCode,
-              is_invitation: true,
-              resent: true
-            },
-            emailRedirectTo: inviteUrl
-          }
+        const res = await fetch('/api/auth/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.toLowerCase(),
+            organizationId: inviteData.organization_id,
+            organizationName: orgName,
+            roleId: inviteData.role_id,
+            invitationCode: inviteCode,
+            origin: window.location.origin,
+            resend: true
+          })
         });
+        const result = await res.json();
 
-        if (signUpError && signUpError.message.includes('already registered')) {
-          // Expected error - user already exists, provide manual URL
-          setSuccess(t('inviteUpdatedManual', { email, url: inviteUrl }));
-        } else if (signUpError) {
-          // Other signup error
-          console.warn('Error reenviando invitación:', signUpError);
+        if (!res.ok || result.error) {
+          console.warn('Error reenviando invitación:', result.error);
           setSuccess(t('inviteUpdatedUrl', { email, url: inviteUrl }));
         } else {
-          // Success - email sent
           setSuccess(t('inviteResent', { email }));
-          if (signUpData.user) {
-            console.log('📧 Invitation email resent via Supabase Auth to:', email);
-          }
+          console.log('📧 Invitation email resent via Supabase Auth to:', email);
         }
       } catch (emailSendError: any) {
         console.warn('Error reenviando invitación:', emailSendError);

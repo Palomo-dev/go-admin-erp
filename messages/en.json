@@ -158,7 +158,10 @@
         "useTrial": "Use free trial",
         "useTrialDescription": "Try {days} days free with no charge. You'll be billed at the end of the trial.",
         "payNow": "Pay now",
-        "payNowDescription": "Pay today and start your subscription immediately, no trial period."
+        "payNowDescription": "Pay today and start your subscription immediately, no trial period.",
+        "couponTitle": "Have a discount coupon?",
+        "couponPlaceholder": "Enter your code",
+        "couponApply": "Apply"
       },
       "payment": {
         "title": "Payment Method",

@@ -158,7 +158,10 @@
         "useTrial": "Usar período grátis",
         "useTrialDescription": "Experimente {days} dias grátis sem cobrança. Você será cobrado ao final do período.",
         "payNow": "Pagar agora",
-        "payNowDescription": "Pague hoje e comece sua assinatura imediatamente, sem período de teste."
+        "payNowDescription": "Pague hoje e comece sua assinatura imediatamente, sem período de teste.",
+        "couponTitle": "Tem um cupom de desconto?",
+        "couponPlaceholder": "Digite seu código",
+        "couponApply": "Aplicar"
       },
       "payment": {
         "title": "Método de Pagamento",

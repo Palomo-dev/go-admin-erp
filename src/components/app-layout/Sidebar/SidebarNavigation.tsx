@@ -91,7 +91,7 @@ import {
   Radio,
   FolderKanban,
 } from 'lucide-react';
-import ProfileDropdownMenu from '../ProfileDropdownMenu';
+import AccountSwitcher from '../AccountSwitcher';
 import { NavItem } from './NavItem';
 import { NavSection } from './NavSection';
 import { SidebarNavigationProps } from '../types';
@@ -177,6 +177,7 @@ const SidebarNavigationComponent = ({
             { name: "Egresos", href: "/app/finanzas/egresos", icon: <TrendingDown size={16} /> },
             { name: "Transferencias", href: "/app/finanzas/transferencias", icon: <ArrowLeftRight size={16} /> },
             { name: "Cuentas por cobrar", href: "/app/finanzas/cuentas-por-cobrar", icon: <DollarSign size={16} /> },
+            { name: "Saldos a favor", href: "/app/finanzas/saldos-a-favor", icon: <DollarSign size={16} /> },
             { name: "Cuentas por pagar", href: "/app/finanzas/cuentas-por-pagar", icon: <CreditCard size={16} /> },
             { name: "Bancos", href: "/app/finanzas/bancos", icon: <Building2 size={16} /> },
             { name: "Contabilidad", href: "/app/finanzas/contabilidad", icon: <Calculator size={16} /> },
@@ -540,13 +541,9 @@ const SidebarNavigationComponent = ({
       {/* Sección de perfil - siempre visible abajo */}
       <div className="flex-shrink-0 pt-3 mt-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 pb-safe-bottom pb-4">
         <div className="px-3">
-          <ProfileDropdownMenu 
+          <AccountSwitcher 
             userData={userData} 
-            handleSignOut={handleSignOut} 
-            loading={loading} 
-            isSidebar={true} 
             collapsed={collapsed} 
-            orgName={orgName || undefined} 
           />
         </div>
         

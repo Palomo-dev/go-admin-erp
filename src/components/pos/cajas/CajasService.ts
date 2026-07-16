@@ -11,7 +11,9 @@ import type {
   CashSessionFilter,
   CashCount,
   CreateCashCountData,
-  CreateCashMovementData
+  CreateCashMovementData,
+  SessionPaymentDetail,
+  SessionMovementType
 } from './types';
 
 export class CajasService {
@@ -202,10 +204,10 @@ export class CajasService {
       const session = await this.getSessionById(sessionId);
       const movements = await this.getSessionMovements(sessionId);
 
-      // Calcular ventas en efectivo del período
+      // Calcular pagos en efectivo del período (ventas vs compras a proveedores)
       const { data: cashPayments, error: paymentsError } = await supabase
         .from('payments')
-        .select('amount')
+        .select('amount, source')
         .eq('organization_id', this.organizationId)
         .eq('branch_id', session.branch_id)
         .eq('method', 'cash')
@@ -215,9 +217,15 @@ export class CajasService {
 
       if (paymentsError) throw paymentsError;
 
-      const salesCash = (cashPayments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+      const PURCHASE_SOURCES = ['invoice_purchase', 'account_payable'];
+      const salesCash = (cashPayments || [])
+        .filter(p => !PURCHASE_SOURCES.includes(p.source))
+        .reduce((sum, payment) => sum + Number(payment.amount), 0);
+      const purchasesCash = (cashPayments || [])
+        .filter(p => PURCHASE_SOURCES.includes(p.source))
+        .reduce((sum, payment) => sum + Number(payment.amount), 0);
 
-      // Calcular movimientos
+      // Calcular movimientos manuales de caja
       const cashIn = movements
         .filter(m => m.type === 'in')
         .reduce((sum, m) => sum + Number(m.amount), 0);
@@ -226,7 +234,32 @@ export class CajasService {
         .filter(m => m.type === 'out')
         .reduce((sum, m) => sum + Number(m.amount), 0);
 
-      const expectedAmount = Number(session.initial_amount) + salesCash + cashIn - cashOut;
+      const expectedAmount = Number(session.initial_amount) + salesCash + cashIn - cashOut - purchasesCash;
+
+      // Obtener pagos agrupados por metodo, separando ingresos (ventas) de egresos (compras)
+      const { data: allPayments, error: allPaymentsError } = await supabase
+        .from('payments')
+        .select('method, amount, source')
+        .eq('organization_id', this.organizationId)
+        .eq('branch_id', session.branch_id)
+        .eq('status', 'completed')
+        .gte('created_at', session.opened_at)
+        .lte('created_at', session.closed_at || new Date().toISOString());
+
+      if (allPaymentsError) throw allPaymentsError;
+
+      const EXPENSE_SOURCES = ['invoice_purchase', 'account_payable'];
+
+      const incomeByMethod: Record<string, number> = {};
+      const expenseByMethod: Record<string, number> = {};
+      (allPayments || []).forEach(p => {
+        const method = p.method || 'other';
+        if (EXPENSE_SOURCES.includes(p.source)) {
+          expenseByMethod[method] = (expenseByMethod[method] || 0) + Number(p.amount);
+        } else {
+          incomeByMethod[method] = (incomeByMethod[method] || 0) + Number(p.amount);
+        }
+      });
 
       return {
         initial_amount: Number(session.initial_amount),
@@ -235,7 +268,10 @@ export class CajasService {
         cash_out: cashOut,
         expected_amount: expectedAmount,
         counted_amount: session.final_amount ? Number(session.final_amount) : undefined,
-        difference: session.difference ? Number(session.difference) : undefined
+        difference: session.difference ? Number(session.difference) : undefined,
+        payments_by_method: incomeByMethod,
+        income_by_method: incomeByMethod,
+        expense_by_method: expenseByMethod,
       };
     } catch (error) {
       console.error('Error calculating cash summary:', error);
@@ -569,6 +605,141 @@ export class CajasService {
       return data || [];
     } catch (error) {
       console.error('Error getting session sales:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene el detalle de cada pago (movimiento) realizado durante la sesion:
+   * ventas POS, ventas de mesa, facturas de venta y facturas de compra pagadas.
+   */
+  static async getSessionPaymentsDetail(sessionId: number): Promise<SessionPaymentDetail[]> {
+    try {
+      const session = await this.getSessionById(sessionId);
+
+      const { data: payments, error } = await supabase
+        .from('payments')
+        .select('id, amount, method, source, source_id, created_at, reference')
+        .eq('organization_id', this.organizationId)
+        .eq('branch_id', session.branch_id)
+        .eq('status', 'completed')
+        .gte('created_at', session.opened_at)
+        .lte('created_at', session.closed_at || new Date().toISOString())
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      if (!payments || payments.length === 0) return [];
+
+      const invoiceSaleIds = payments.filter(p => p.source === 'invoice_sales').map(p => p.source_id);
+      const invoicePurchaseIds = payments.filter(p => p.source === 'invoice_purchase').map(p => p.source_id);
+      const saleIds = payments.filter(p => p.source === 'sale').map(p => p.source_id);
+      const arIds = payments.filter(p => p.source === 'account_receivable').map(p => p.source_id);
+      const apIds = payments.filter(p => p.source === 'account_payable').map(p => p.source_id);
+
+      const [invoiceSalesRes, invoicePurchaseRes, salesRes, arRes, apRes] = await Promise.all([
+        invoiceSaleIds.length
+          ? supabase.from('invoice_sales').select('id, number, customer_id').in('id', invoiceSaleIds)
+          : Promise.resolve({ data: [] as any[] }),
+        invoicePurchaseIds.length
+          ? supabase.from('invoice_purchase').select('id, number_ext, supplier_id').in('id', invoicePurchaseIds)
+          : Promise.resolve({ data: [] as any[] }),
+        saleIds.length
+          ? supabase.from('sales').select('id, table_session_id, customer_id').in('id', saleIds)
+          : Promise.resolve({ data: [] as any[] }),
+        arIds.length
+          ? supabase.from('accounts_receivable').select('id, invoice_id, customer_id').in('id', arIds)
+          : Promise.resolve({ data: [] as any[] }),
+        apIds.length
+          ? supabase.from('accounts_payable').select('id, invoice_id, supplier_id').in('id', apIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const invoiceSalesMap = new Map((invoiceSalesRes.data || []).map((i: any) => [i.id, i]));
+      const invoicePurchaseMap = new Map((invoicePurchaseRes.data || []).map((i: any) => [i.id, i]));
+      const salesMap = new Map((salesRes.data || []).map((s: any) => [s.id, s]));
+      const arMap = new Map((arRes.data || []).map((a: any) => [a.id, a]));
+      const apMap = new Map((apRes.data || []).map((a: any) => [a.id, a]));
+
+      const customerIds = new Set<string>();
+      (invoiceSalesRes.data || []).forEach((i: any) => i.customer_id && customerIds.add(i.customer_id));
+      (salesRes.data || []).forEach((s: any) => s.customer_id && customerIds.add(s.customer_id));
+      (arRes.data || []).forEach((a: any) => a.customer_id && customerIds.add(a.customer_id));
+
+      const supplierIds = new Set<string>();
+      (invoicePurchaseRes.data || []).forEach((i: any) => i.supplier_id && supplierIds.add(i.supplier_id));
+      (apRes.data || []).forEach((a: any) => a.supplier_id && supplierIds.add(a.supplier_id));
+
+      const [customersRes, suppliersRes] = await Promise.all([
+        customerIds.size
+          ? supabase.from('customers').select('id, full_name, company_name').in('id', Array.from(customerIds))
+          : Promise.resolve({ data: [] as any[] }),
+        supplierIds.size
+          ? supabase.from('suppliers').select('id, name').in('id', Array.from(supplierIds))
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const customersMap = new Map((customersRes.data || []).map((c: any) => [c.id, c.company_name || c.full_name]));
+      const suppliersMap = new Map((suppliersRes.data || []).map((s: any) => [s.id, s.name]));
+
+      const details: SessionPaymentDetail[] = payments.map(p => {
+        let type: SessionMovementType = 'otro';
+        let direction: 'in' | 'out' = 'in';
+        let label = 'Movimiento';
+        let reference: string | undefined;
+        let counterparty: string | undefined;
+
+        if (p.source === 'invoice_sales') {
+          const inv = invoiceSalesMap.get(p.source_id);
+          type = 'venta_factura';
+          direction = 'in';
+          label = 'Factura de Venta';
+          reference = inv?.number;
+          counterparty = inv?.customer_id ? customersMap.get(inv.customer_id) : undefined;
+        } else if (p.source === 'invoice_purchase') {
+          const inv = invoicePurchaseMap.get(p.source_id);
+          type = 'compra_factura';
+          direction = 'out';
+          label = 'Factura de Compra';
+          reference = inv?.number_ext;
+          counterparty = inv?.supplier_id ? suppliersMap.get(inv.supplier_id) : undefined;
+        } else if (p.source === 'sale') {
+          const sale = salesMap.get(p.source_id);
+          const esMesa = !!sale?.table_session_id;
+          type = esMesa ? 'venta_mesa' : 'venta_pos';
+          direction = 'in';
+          label = esMesa ? 'Venta de Mesa' : 'Venta POS';
+          reference = p.source_id?.slice(0, 8);
+          counterparty = sale?.customer_id ? customersMap.get(sale.customer_id) : undefined;
+        } else if (p.source === 'account_receivable') {
+          const ar = arMap.get(p.source_id);
+          type = 'cuenta_por_cobrar';
+          direction = 'in';
+          label = 'Cuenta por Cobrar';
+          counterparty = ar?.customer_id ? customersMap.get(ar.customer_id) : undefined;
+        } else if (p.source === 'account_payable') {
+          const ap = apMap.get(p.source_id);
+          type = 'cuenta_por_pagar';
+          direction = 'out';
+          label = 'Cuenta por Pagar';
+          counterparty = ap?.supplier_id ? suppliersMap.get(ap.supplier_id) : undefined;
+        }
+
+        return {
+          id: p.id,
+          type,
+          direction,
+          label,
+          reference,
+          counterparty,
+          method: p.method || 'other',
+          amount: Number(p.amount),
+          created_at: p.created_at,
+        };
+      });
+
+      return details;
+    } catch (error) {
+      console.error('Error getting session payments detail:', error);
       throw error;
     }
   }

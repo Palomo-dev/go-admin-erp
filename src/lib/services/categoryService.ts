@@ -19,6 +19,7 @@ export interface Category {
   meta_title: string | null;
   meta_description: string | null;
   metadata: Record<string, any> | null;
+  station: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +44,7 @@ export interface CategoryFormData {
   meta_title: string;
   meta_description: string;
   metadata: Record<string, any>;
+  station: string | null;
 }
 
 export interface CategoryStats {
@@ -121,6 +123,7 @@ export const emptyFormData: CategoryFormData = {
   meta_title: '',
   meta_description: '',
   metadata: {},
+  station: null,
 };
 
 // ─── Servicio CRUD ───────────────────────────────────────────────────────────
@@ -199,6 +202,7 @@ const categoryService = {
         meta_title: formData.meta_title || null,
         meta_description: formData.meta_description || null,
         metadata: formData.metadata || {},
+        station: formData.station || null,
       })
       .select()
       .single();
@@ -224,6 +228,7 @@ const categoryService = {
     if (formData.meta_title !== undefined) updateData.meta_title = formData.meta_title || null;
     if (formData.meta_description !== undefined) updateData.meta_description = formData.meta_description || null;
     if (formData.metadata !== undefined) updateData.metadata = formData.metadata;
+    if (formData.station !== undefined) updateData.station = formData.station || null;
 
     const { data, error } = await supabase
       .from('categories')
@@ -253,6 +258,7 @@ const categoryService = {
     if (formData.meta_title !== undefined) updateData.meta_title = formData.meta_title || null;
     if (formData.meta_description !== undefined) updateData.meta_description = formData.meta_description || null;
     if (formData.metadata !== undefined) updateData.metadata = formData.metadata;
+    if (formData.station !== undefined) updateData.station = formData.station || null;
 
     const { data, error } = await supabase
       .from('categories')
@@ -315,6 +321,7 @@ const categoryService = {
       meta_title: original.meta_title || '',
       meta_description: original.meta_description || '',
       metadata: original.metadata || {},
+      station: original.station || null,
     });
   },
 
@@ -336,6 +343,7 @@ const categoryService = {
       meta_title: original.meta_title || '',
       meta_description: original.meta_description || '',
       metadata: original.metadata || {},
+      station: original.station || null,
     });
   },
 

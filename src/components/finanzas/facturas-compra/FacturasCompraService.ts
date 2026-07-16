@@ -313,6 +313,10 @@ export class FacturasCompraService {
         console.warn('No se pudo actualizar inventario: branchId no disponible');
       }
 
+      // Nota: el asiento contable de devengo se crea automaticamente en la BD
+      // mediante el trigger trg_auto_journal_purchase (fn_auto_journal_purchase)
+      // cuando la factura pasa a status='received', usando accounting_rules.
+
       return factura;
     } catch (error) {
       console.error('Error en crearFactura:', error);
@@ -736,7 +740,13 @@ export class FacturasCompraService {
         console.warn('Error actualizando cuenta por pagar:', accountError);
         // No lanzamos error para no bloquear el flujo principal
       }
-      
+
+      // Nota: el asiento contable de pago se crea automaticamente en la BD
+      // mediante el trigger trg_auto_journal_payment (fn_auto_journal_payment)
+      // al insertar en payments (source='invoice_purchase'), usando accounting_rules.
+      // No se registra cash_movement aqui para evitar duplicar el egreso
+      // (trigger fn_auto_journal_cash_movement crearia otro asiento).
+
       console.log('Pago registrado exitosamente:', payment.id);
       return payment;
     } catch (error) {
@@ -1340,6 +1350,24 @@ export class FacturasCompraService {
       }
     } catch (error) {
       console.error('Error en eliminarFactura:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Anula una factura de compra vía RPC fn_void_purchase_invoice:
+   * bloquea si hay pagos, reversa inventario recibido, salda la cuenta por pagar,
+   * crea asiento de reversa (2105/1405) si existe asiento de compra y marca status='void'.
+   */
+  static async anularFactura(facturaId: string, motivo: string): Promise<void> {
+    const userId = await getCurrentUserId();
+    const { error } = await supabase.rpc('fn_void_purchase_invoice', {
+      p_invoice_id: facturaId,
+      p_reason: motivo || null,
+      p_user: userId,
+    });
+    if (error) {
+      console.error('Error anulando factura de compra:', error);
       throw error;
     }
   }

@@ -172,7 +172,10 @@ export default function POSPage() {
         }
       }
 
-      alert(`Venta completada: ${formatCurrency(sale.total)}`);
+      // El recibo se muestra automáticamente en el CheckoutDialog
+      // Cerrar el dialog después de procesar
+      setCheckoutCart(null);
+      setShowCheckout(false);
     } catch (error) {
       console.error('Error completing checkout:', error);
     }

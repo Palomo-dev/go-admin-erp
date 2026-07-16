@@ -462,12 +462,31 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       }
     }
 
-    // Totales de respaldo calculados desde los items: el estado subtotal/total
-    // puede quedar en 0 si la sincronización con ImpuestosFactura no ocurrió
-    const itemsSubtotal = items.reduce((sum, it) => sum + (Number(it.total_line) || 0), 0);
-    const safeSubtotal = subtotal > 0 ? subtotal : itemsSubtotal;
-    const safeTaxTotal = taxTotal > 0 ? taxTotal : 0;
-    const safeTotal = total > 0 ? total : (taxIncluded ? itemsSubtotal : itemsSubtotal + safeTaxTotal);
+    // Totales SIEMPRE recalculados desde los items (fuente de verdad), en vez de
+    // confiar en los estados subtotal/taxTotal/total que llegan de forma asíncrona
+    // desde ImpuestosFactura y pueden quedar desincronizados si se guarda justo
+    // después de agregar/editar un ítem (causaba facturas con subtotal/total
+    // distintos a la suma real de sus ítems).
+    // total_line de cada ítem SIEMPRE es el total final de esa línea (con impuesto
+    // incluido o sumado, según corresponda), por lo que su suma es el total real.
+    const itemsTotal = items.reduce((sum, it) => sum + (Number(it.total_line) || 0), 0);
+    const itemsTaxTotal = items.reduce((sum, it) => {
+      const qty = Number(it.qty) || 0;
+      const unitPrice = Number(it.unit_price) || 0;
+      const rate = Number(it.tax_rate) || 0;
+      const totalLine = Number(it.total_line) || 0;
+      if (rate <= 0) return sum;
+      if (it.tax_included) {
+        const base = totalLine / (1 + rate / 100);
+        return sum + (totalLine - base);
+      }
+      return sum + (totalLine - qty * unitPrice);
+    }, 0);
+    const itemsSubtotal = itemsTotal - itemsTaxTotal;
+
+    const safeSubtotal = itemsSubtotal;
+    const safeTaxTotal = itemsTaxTotal;
+    const safeTotal = itemsTotal;
 
     // Si estamos en modo edición, delegar al onSubmit del padre
     if (esEdicion && onSubmit) {
@@ -597,32 +616,36 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         
       if (invoiceError) throw invoiceError;
       
-      // 5. Preparar ítems para guardar con el ID de la factura
-      const itemPromises = items.map(item => {
-        return supabase
-          .from('invoice_items')
-          .insert({
-            invoice_sales_id: invoiceData.id, // Usamos el ID UUID de la factura
-            invoice_id: invoiceData.id, // Por compatibilidad con código existente
-            product_id: item.product_id,
-            description: item.description,
-            qty: item.qty,
-            unit_price: item.unit_price,
-            tax_code: item.tax_code,
-            tax_rate: item.tax_rate,
-            tax_included: item.tax_included || false, // Guardamos si el impuesto está incluido
-            total_line: item.total_line,
-            discount_amount: item.discount_amount || 0,
-            invoice_type: 'sale' // Tipo de factura (venta)
-          });
-      });
-      
+      // 5. Preparar ítems para guardar con el ID de la factura.
+      // IMPORTANTE: se insertan todos en UNA sola llamada (un solo INSERT/transacción)
+      // en vez de una promesa por ítem. El trigger fn_recalc_invoice_totals() recalcula
+      // subtotal/total de invoice_sales sumando invoice_items en cada INSERT; con
+      // inserts paralelos (Promise.all de N .insert() separados = N transacciones
+      // concurrentes) cada trigger solo veía los ítems ya confirmados en ese instante,
+      // y el último en confirmar sobrescribía el total con una suma parcial. Un único
+      // INSERT masivo dispara el trigger dentro de la misma transacción, donde todas
+      // las filas ya son visibles entre sí.
+      const invoiceItemsToInsert = items.map(item => ({
+        invoice_sales_id: invoiceData.id, // Usamos el ID UUID de la factura
+        invoice_id: invoiceData.id, // Por compatibilidad con código existente
+        product_id: item.product_id,
+        description: item.description,
+        qty: item.qty,
+        unit_price: item.unit_price,
+        tax_code: item.tax_code,
+        tax_rate: item.tax_rate,
+        tax_included: item.tax_included || false, // Guardamos si el impuesto está incluido
+        total_line: item.total_line,
+        discount_amount: item.discount_amount || 0,
+        invoice_type: 'sale' // Tipo de factura (venta)
+      }));
+
       // 6. Guardar ítems de factura
-      const itemsResults = await Promise.all(itemPromises);
-      
-      // Verificar si alguna promesa tuvo error
-      const itemsError = itemsResults.find(result => result.error);
-      if (itemsError) throw itemsError.error;
+      const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(invoiceItemsToInsert);
+
+      if (itemsError) throw itemsError;
       
       // 6.5. Guardar impuestos aplicados en invoice_applied_taxes
       const appliedTaxCodes = Object.keys(appliedTaxes).filter(code => appliedTaxes[code]);
@@ -638,7 +661,11 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           .insert(taxRows);
         if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
       }
-      
+
+      // Nota: el asiento contable de devengo se crea automaticamente en la BD
+      // mediante el trigger trg_auto_journal_sale (fn_auto_journal_sale) al
+      // insertar en invoice_sales, usando la tabla accounting_rules.
+
       // 7. Si está activada la opción de factura electrónica, enviar a DIAN
       if (sendToFactus) {
         try {

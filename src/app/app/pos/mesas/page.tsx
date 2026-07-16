@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash, List, Map } from 'lucide-react';
+import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash, List, Map, Search, X, Receipt, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -43,6 +43,7 @@ import { MoverPedidoDialog } from '@/components/pos/mesas/MoverPedidoDialog';
 import { MesasPagination } from '@/components/pos/mesas/MesasPagination';
 import { MesasService } from '@/components/pos/mesas/mesasService';
 import { MesasFloorMap } from '@/components/pos/mesas/MesasFloorMap';
+import { HistorialMesasDialog } from '@/components/pos/mesas/HistorialMesasDialog';
 import { useBranch } from '@/lib/context/BranchContext';
 import type { TableWithSession, MesaFormData, RestaurantTable } from '@/components/pos/mesas/types';
 
@@ -53,6 +54,8 @@ export default function MesasPage() {
   const [mesas, setMesas] = useState<TableWithSession[]>([]);
   const [zonas, setZonas] = useState<string[]>([]);
   const [zonaFiltro, setZonaFiltro] = useState<string>('todas');
+  const [estadoFiltro, setEstadoFiltro] = useState<'todos' | 'free' | 'occupied' | 'bill_requested' | 'reserved'>('todos');
+  const [busqueda, setBusqueda] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Paginación
@@ -68,6 +71,8 @@ export default function MesasPage() {
   const [mesaEliminar, setMesaEliminar] = useState<RestaurantTable | null>(null);
   const [mesaSeleccionada, setMesaSeleccionada] = useState<string | null>(null);
   const [mesaParaComensales, setMesaParaComensales] = useState<TableWithSession | null>(null);
+  const [mesaParaLiberar, setMesaParaLiberar] = useState<TableWithSession | null>(null);
+  const [showHistorial, setShowHistorial] = useState(false);
   const [comensales, setComensales] = useState(2);
   
   // Estados para abrir sesión
@@ -107,13 +112,23 @@ export default function MesasPage() {
     }
   };
 
-  // Filtrar mesas por zona
-  const mesasFiltradas =
-    zonaFiltro === 'todas'
-      ? mesas
-      : zonaFiltro === 'sin-zona'
-      ? mesas.filter((m) => !m.zone)
-      : mesas.filter((m) => m.zone === zonaFiltro);
+  // Filtrar mesas por zona, estado y búsqueda por nombre
+  const mesasFiltradas = mesas
+    .filter((m) =>
+      zonaFiltro === 'todas'
+        ? true
+        : zonaFiltro === 'sin-zona'
+        ? !m.zone
+        : m.zone === zonaFiltro
+    )
+    .filter((m) => {
+      if (estadoFiltro === 'todos') return true;
+      if (estadoFiltro === 'bill_requested') return m.session?.status === 'bill_requested';
+      return m.state === estadoFiltro;
+    })
+    .filter((m) =>
+      busqueda.trim() === '' ? true : m.name.toLowerCase().includes(busqueda.trim().toLowerCase())
+    );
 
   // Calcular paginación
   const totalPages = Math.ceil(mesasFiltradas.length / pageSize);
@@ -124,7 +139,7 @@ export default function MesasPage() {
   // Resetear página cuando cambia el filtro
   useEffect(() => {
     setCurrentPage(1);
-  }, [zonaFiltro, pageSize]);
+  }, [zonaFiltro, estadoFiltro, busqueda, pageSize]);
 
   // Handlers
   const handleCrearMesa = async (data: MesaFormData) => {
@@ -269,13 +284,37 @@ export default function MesasPage() {
     }
   };
 
-  const handleLiberarMesa = async (mesa: TableWithSession) => {
+  const handleSolicitarCuenta = async (mesa: TableWithSession) => {
+    if (!mesa.session) return;
     try {
-      await MesasService.liberarMesa(mesa.id);
+      await MesasService.solicitarCuenta(mesa.session.id);
+      await cargarDatos();
+      toast({
+        title: 'Cuenta solicitada',
+        description: `Se marcó ${mesa.name} para cierre de cuenta`,
+      });
+    } catch (error: any) {
+      console.error('Error solicitando cuenta:', error);
+      toast({
+        title: 'Error',
+        description: error?.message || 'No se pudo solicitar la cuenta',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleLiberarMesa = (mesa: TableWithSession) => {
+    setMesaParaLiberar(mesa);
+  };
+
+  const confirmarLiberarMesa = async () => {
+    if (!mesaParaLiberar) return;
+    try {
+      await MesasService.liberarMesa(mesaParaLiberar.id);
       await cargarDatos();
       toast({
         title: 'Mesa liberada',
-        description: `Mesa ${mesa.name} liberada exitosamente`,
+        description: `Mesa ${mesaParaLiberar.name} liberada exitosamente`,
       });
     } catch (error: any) {
       console.error('Error liberando mesa:', error);
@@ -284,6 +323,8 @@ export default function MesasPage() {
         description: error?.message || 'No se pudo liberar la mesa',
         variant: 'destructive',
       });
+    } finally {
+      setMesaParaLiberar(null);
     }
   };
 
@@ -431,7 +472,7 @@ export default function MesasPage() {
               variant={viewMode === 'list' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('list')}
-              className={viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}
+              className={viewMode === 'list' ? 'bg-blue-600 dark:bg-blue-600 text-white dark:text-white shadow-sm' : ''}
             >
               <List className="h-4 w-4 mr-1" />
               Lista
@@ -440,7 +481,7 @@ export default function MesasPage() {
               variant={viewMode === 'map' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('map')}
-              className={viewMode === 'map' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}
+              className={viewMode === 'map' ? 'bg-blue-600 dark:bg-blue-600 text-white dark:text-white shadow-sm' : ''}
             >
               <Map className="h-4 w-4 mr-1" />
               Mapa
@@ -456,8 +497,278 @@ export default function MesasPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      {/* === VISTA MAPA === */}
+      {viewMode === 'map' && (
+        <MesasFloorMap
+          mesas={mesasFiltradas}
+          onSavePositions={handleSavePositions}
+          onMesaClick={(mesa) => handleMesaClick(mesa)}
+        />
+      )}
+
+      {/* === VISTA LISTA === */}
+      {viewMode === 'list' && (
+      <>
+      {/* Acciones rápidas */}
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setShowZonasManager(true)}>
+              <Layers className="h-4 w-4 mr-2" />
+              Gestionar Zonas
+            </Button>
+            <Button 
+              variant={modoCombinar ? "default" : "outline"}
+              onClick={handleToggleModoCombinar}
+              className={modoCombinar ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
+            >
+              <GitMerge className="h-4 w-4 mr-2" />
+              {modoCombinar ? 'Cancelar Combinación' : 'Combinar Mesas'}
+            </Button>
+            <Button variant="outline" onClick={() => setShowMover(true)}>
+              <MoveRight className="h-4 w-4 mr-2" />
+              Mover Pedido
+            </Button>
+            <Button variant="outline" onClick={() => setShowHistorial(true)}>
+              <History className="h-4 w-4 mr-2" />
+              Historial
+            </Button>
+          </div>
+
+          {/* Barra de acción cuando está en modo combinar */}
+          {modoCombinar && mesasParaCombinar.length > 0 && (
+            <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
+              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                {mesasParaCombinar.length} {mesasParaCombinar.length === 1 ? 'mesa seleccionada' : 'mesas seleccionadas'}
+              </span>
+              <Button
+                size="sm"
+                onClick={handleCombinarRapido}
+                disabled={mesasParaCombinar.length < 2}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Combinar Ahora
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Instrucciones cuando está en modo combinar */}
+        {modoCombinar && (
+          <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-md">
+            <p className="text-sm text-blue-900 dark:text-blue-100">
+              <strong>Modo Combinar:</strong> Selecciona las mesas haciendo clic en los checkboxes. 
+              La primera mesa seleccionada será la principal (recibirá todos los pedidos).
+            </p>
+          </div>
+        )}
+      </Card>
+
+      {/* Filtros: búsqueda, zona y estado */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar mesa por nombre..."
+            className="pl-8 pr-8"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <Select value={zonaFiltro} onValueChange={setZonaFiltro}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas las zonas</SelectItem>
+            <SelectItem value="sin-zona">Sin zona</SelectItem>
+            {zonas.map((zona) => (
+              <SelectItem key={zona} value={zona}>
+                {zona}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={estadoFiltro} onValueChange={(v) => setEstadoFiltro(v as typeof estadoFiltro)}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos los estados</SelectItem>
+            <SelectItem value="free">🟢 Libre</SelectItem>
+            <SelectItem value="occupied">🔴 Ocupada</SelectItem>
+            <SelectItem value="bill_requested">🟠 Cuenta solicitada</SelectItem>
+            <SelectItem value="reserved">🟡 Reservada</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(busqueda || zonaFiltro !== 'todas' || estadoFiltro !== 'todos') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setBusqueda('');
+              setZonaFiltro('todas');
+              setEstadoFiltro('todos');
+            }}
+          >
+            <X className="h-3.5 w-3.5 mr-1" />
+            Limpiar filtros
+          </Button>
+        )}
+      </div>
+
+      {/* Grid de Mesas Organizado por Zonas */}
+      {mesasFiltradas.length === 0 ? (
+        <Card className="p-12 text-center">
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            No hay mesas para mostrar
+          </p>
+          <Button onClick={() => setShowMesaForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Crear Primera Mesa
+          </Button>
+        </Card>
+      ) : (
+        <>
+          <div className="space-y-6">
+            {/* Organizar mesas por zona */}
+            {zonaFiltro === 'todas' ? (
+              // Mostrar todas las zonas
+              <>
+                {/* Mesas sin zona */}
+                {mesasPaginadas.filter(m => !m.zone).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-gray-500" />
+                    Sin zona
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {mesasPaginadas.filter(m => !m.zone).map((mesa) => (
+                      <MesaCardWithMenu
+                        key={mesa.id}
+                        mesa={mesa}
+                        onEdit={() => {
+                          setMesaEditar(mesa);
+                          setShowMesaForm(true);
+                        }}
+                        onLiberar={() => handleLiberarMesa(mesa)}
+                        onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
+                        onEditarComensales={() => {
+                          setMesaParaComensales(mesa);
+                          setComensales(mesa.session?.customers || 2);
+                        }}
+                        onClick={() => handleMesaClick(mesa)}
+                        modoCombinar={modoCombinar}
+                        isSelected={mesasParaCombinar.includes(mesa.id)}
+                        selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
+                        onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+                {/* Mesas agrupadas por zona */}
+                {zonas.map(zona => {
+                  const mesasZona = mesasPaginadas.filter(m => m.zone === zona);
+                  if (mesasZona.length === 0) return null;
+
+                return (
+                  <div key={zona}>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                      <Layers className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      {zona}
+                      <Badge variant="secondary" className="ml-2">
+                        {mesasZona.length} {mesasZona.length === 1 ? 'mesa' : 'mesas'}
+                      </Badge>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {mesasZona.map((mesa) => (
+                        <MesaCardWithMenu
+                          key={mesa.id}
+                          mesa={mesa}
+                          onEdit={() => {
+                            setMesaEditar(mesa);
+                            setShowMesaForm(true);
+                          }}
+                          onLiberar={() => handleLiberarMesa(mesa)}
+                          onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
+                          onEditarComensales={() => {
+                            setMesaParaComensales(mesa);
+                            setComensales(mesa.session?.customers || 2);
+                          }}
+                          onClick={() => handleMesaClick(mesa)}
+                          modoCombinar={modoCombinar}
+                          isSelected={mesasParaCombinar.includes(mesa.id)}
+                          selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
+                          onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            // Mostrar zona específica
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {mesasPaginadas.map((mesa) => (
+                <MesaCardWithMenu
+                  key={mesa.id}
+                  mesa={mesa}
+                  onEdit={() => {
+                    setMesaEditar(mesa);
+                    setShowMesaForm(true);
+                  }}
+                  onLiberar={() => handleLiberarMesa(mesa)}
+                  onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
+                  onEditarComensales={() => {
+                    setMesaParaComensales(mesa);
+                    setComensales(mesa.session?.customers || 2);
+                  }}
+                  onClick={() => handleMesaClick(mesa)}
+                  modoCombinar={modoCombinar}
+                  isSelected={mesasParaCombinar.includes(mesa.id)}
+                  selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
+                  onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Paginación */}
+        {mesasFiltradas.length > 0 && (
+          <Card className="p-4">
+            <MesasPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={mesasFiltradas.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
+          </Card>
+        )}
+      </>
+      )}
+      </>
+      )}
+
+      {/* Stats - al final de la página */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <div className="p-4">
             <div className="flex items-center gap-3">
@@ -519,225 +830,6 @@ export default function MesasPage() {
           </div>
         </Card>
       </div>
-
-      {/* === VISTA MAPA === */}
-      {viewMode === 'map' && (
-        <MesasFloorMap
-          mesas={mesasFiltradas}
-          onSavePositions={handleSavePositions}
-          onMesaClick={(mesa) => handleMesaClick(mesa)}
-        />
-      )}
-
-      {/* === VISTA LISTA === */}
-      {viewMode === 'list' && (
-      <>
-      {/* Acciones rápidas */}
-      <Card className="p-4">
-        <div className="flex flex-wrap gap-2 items-center justify-between">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setShowZonasManager(true)}>
-              <Layers className="h-4 w-4 mr-2" />
-              Gestionar Zonas
-            </Button>
-            <Button 
-              variant={modoCombinar ? "default" : "outline"}
-              onClick={handleToggleModoCombinar}
-              className={modoCombinar ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
-            >
-              <GitMerge className="h-4 w-4 mr-2" />
-              {modoCombinar ? 'Cancelar Combinación' : 'Combinar Mesas'}
-            </Button>
-            <Button variant="outline" onClick={() => setShowMover(true)}>
-              <MoveRight className="h-4 w-4 mr-2" />
-              Mover Pedido
-            </Button>
-          </div>
-
-          {/* Barra de acción cuando está en modo combinar */}
-          {modoCombinar && mesasParaCombinar.length > 0 && (
-            <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
-              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                {mesasParaCombinar.length} {mesasParaCombinar.length === 1 ? 'mesa seleccionada' : 'mesas seleccionadas'}
-              </span>
-              <Button
-                size="sm"
-                onClick={handleCombinarRapido}
-                disabled={mesasParaCombinar.length < 2}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Combinar Ahora
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Instrucciones cuando está en modo combinar */}
-        {modoCombinar && (
-          <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-md">
-            <p className="text-sm text-blue-900 dark:text-blue-100">
-              <strong>Modo Combinar:</strong> Selecciona las mesas haciendo clic en los checkboxes. 
-              La primera mesa seleccionada será la principal (recibirá todos los pedidos).
-            </p>
-          </div>
-        )}
-      </Card>
-
-      {/* Filtro por zona */}
-      <div className="flex items-center gap-4">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Filtrar por zona:
-        </span>
-        <Select value={zonaFiltro} onValueChange={setZonaFiltro}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas las zonas</SelectItem>
-            <SelectItem value="sin-zona">Sin zona</SelectItem>
-            {zonas.map((zona) => (
-              <SelectItem key={zona} value={zona}>
-                {zona}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Grid de Mesas Organizado por Zonas */}
-      {mesasFiltradas.length === 0 ? (
-        <Card className="p-12 text-center">
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            No hay mesas para mostrar
-          </p>
-          <Button onClick={() => setShowMesaForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Crear Primera Mesa
-          </Button>
-        </Card>
-      ) : (
-        <>
-          <div className="space-y-6">
-            {/* Organizar mesas por zona */}
-            {zonaFiltro === 'todas' ? (
-              // Mostrar todas las zonas
-              <>
-                {/* Mesas sin zona */}
-                {mesasPaginadas.filter(m => !m.zone).length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                    <Layers className="h-5 w-5 text-gray-500" />
-                    Sin zona
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {mesasPaginadas.filter(m => !m.zone).map((mesa) => (
-                      <MesaCardWithMenu
-                        key={mesa.id}
-                        mesa={mesa}
-                        onEdit={() => {
-                          setMesaEditar(mesa);
-                          setShowMesaForm(true);
-                        }}
-                        onLiberar={() => handleLiberarMesa(mesa)}
-                        onEditarComensales={() => {
-                          setMesaParaComensales(mesa);
-                          setComensales(mesa.session?.customers || 2);
-                        }}
-                        onClick={() => handleMesaClick(mesa)}
-                        modoCombinar={modoCombinar}
-                        isSelected={mesasParaCombinar.includes(mesa.id)}
-                        selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
-                        onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-                {/* Mesas agrupadas por zona */}
-                {zonas.map(zona => {
-                  const mesasZona = mesasPaginadas.filter(m => m.zone === zona);
-                  if (mesasZona.length === 0) return null;
-
-                return (
-                  <div key={zona}>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                      <Layers className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      {zona}
-                      <Badge variant="secondary" className="ml-2">
-                        {mesasZona.length} {mesasZona.length === 1 ? 'mesa' : 'mesas'}
-                      </Badge>
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                      {mesasZona.map((mesa) => (
-                        <MesaCardWithMenu
-                          key={mesa.id}
-                          mesa={mesa}
-                          onEdit={() => {
-                            setMesaEditar(mesa);
-                            setShowMesaForm(true);
-                          }}
-                          onLiberar={() => handleLiberarMesa(mesa)}
-                          onEditarComensales={() => {
-                            setMesaParaComensales(mesa);
-                            setComensales(mesa.session?.customers || 2);
-                          }}
-                          onClick={() => handleMesaClick(mesa)}
-                          modoCombinar={modoCombinar}
-                          isSelected={mesasParaCombinar.includes(mesa.id)}
-                          selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
-                          onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          ) : (
-            // Mostrar zona específica
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {mesasPaginadas.map((mesa) => (
-                <MesaCardWithMenu
-                  key={mesa.id}
-                  mesa={mesa}
-                  onEdit={() => {
-                    setMesaEditar(mesa);
-                    setShowMesaForm(true);
-                  }}
-                  onLiberar={() => handleLiberarMesa(mesa)}
-                  onEditarComensales={() => {
-                    setMesaParaComensales(mesa);
-                    setComensales(mesa.session?.customers || 2);
-                  }}
-                  onClick={() => handleMesaClick(mesa)}
-                  modoCombinar={modoCombinar}
-                  isSelected={mesasParaCombinar.includes(mesa.id)}
-                  selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
-                  onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Paginación */}
-        {mesasFiltradas.length > 0 && (
-          <Card className="p-4">
-            <MesasPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              totalItems={mesasFiltradas.length}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
-            />
-          </Card>
-        )}
-      </>
-      )}
-      </>
-      )}
 
       {/* Modales */}
       <MesaFormDialog
@@ -801,6 +893,35 @@ export default function MesasPage() {
               className="bg-red-600 hover:bg-red-700"
             >
               Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <HistorialMesasDialog
+        open={showHistorial}
+        onOpenChange={setShowHistorial}
+      />
+
+      <AlertDialog
+        open={!!mesaParaLiberar}
+        onOpenChange={(open) => !open && setMesaParaLiberar(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Liberar mesa {mesaParaLiberar?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción cerrará la sesión activa de la mesa y marcará las comandas
+              pendientes como entregadas. ¿Deseas continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarLiberarMesa}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Sí, liberar mesa
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -890,6 +1011,7 @@ interface MesaCardWithMenuProps {
   onClick: () => void;
   onEdit: () => void;
   onLiberar: () => void;
+  onSolicitarCuenta?: () => void;
   onEditarComensales: () => void;
   modoCombinar?: boolean;
   isSelected?: boolean;
@@ -902,6 +1024,7 @@ function MesaCardWithMenu({
   onClick, 
   onEdit, 
   onLiberar, 
+  onSolicitarCuenta,
   onEditarComensales,
   modoCombinar = false,
   isSelected = false,
@@ -956,6 +1079,24 @@ function MesaCardWithMenu({
         </div>
       )}
       
+      {/* Acción rápida: solicitar cuenta (visible al pasar el mouse) */}
+      {!modoCombinar && mesa.session && mesa.session.status === 'active' && onSolicitarCuenta && (
+        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 px-2 bg-white dark:bg-gray-800 shadow-md text-orange-600 dark:text-orange-400"
+            title="Solicitar cuenta"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSolicitarCuenta();
+            }}
+          >
+            <Receipt className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Menú contextual (solo si no está en modo combinar) */}
       {!modoCombinar && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -997,9 +1138,7 @@ function MesaCardWithMenu({
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`¿Liberar ${mesa.name}? Se cerrarán todas las sesiones activas.`)) {
-                        onLiberar();
-                      }
+                      onLiberar();
                     }}
                     className="text-red-600 dark:text-red-400"
                   >

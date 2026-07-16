@@ -53,7 +53,8 @@ export class MesasService {
         .map(s => s.sale_id) || [];
 
       let itemsBySale: Record<string, number> = {};
-      
+      let saleTotals: Record<string, number> = {};
+
       if (saleIds.length > 0) {
         const { data: items } = await supabase
           .from('sale_items')
@@ -68,6 +69,52 @@ export class MesasService {
             itemsBySale[item.sale_id]++;
           });
         }
+
+        const { data: sales } = await supabase
+          .from('sales')
+          .select('id, total')
+          .in('id', saleIds);
+
+        sales?.forEach((sale) => {
+          saleTotals[sale.id] = Number(sale.total) || 0;
+        });
+      }
+
+      // Mesero asignado a cada sesión
+      const serverIds = Array.from(
+        new Set((sesiones || []).map((s) => s.server_id).filter(Boolean))
+      );
+      let serverNames: Record<string, string> = {};
+
+      if (serverIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', serverIds);
+
+        profiles?.forEach((p) => {
+          serverNames[p.id] =
+            `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Mesero';
+        });
+      }
+
+      // Items pendientes en cocina (sin entregar) por sesión
+      const sessionIds = (sesiones || []).map((s) => s.id);
+      let pendingKitchenBySession: Record<string, number> = {};
+
+      if (sessionIds.length > 0) {
+        const { data: kitchenTickets } = await supabase
+          .from('kitchen_tickets')
+          .select('table_session_id, kitchen_ticket_items(id, status)')
+          .in('table_session_id', sessionIds);
+
+        kitchenTickets?.forEach((ticket: any) => {
+          const pendientes = (ticket.kitchen_ticket_items || []).filter(
+            (i: any) => i.status !== 'delivered'
+          ).length;
+          pendingKitchenBySession[ticket.table_session_id] =
+            (pendingKitchenBySession[ticket.table_session_id] || 0) + pendientes;
+        });
       }
 
       // 4. Combinar mesas con sesiones (agregando datos de TODAS las sesiones por mesa)
@@ -99,11 +146,24 @@ export class MesasService {
           return sum;
         }, 0);
 
+        // Total consolidado (para mesas combinadas)
+        const totalAmount = sesionesDeMesa.reduce((sum, s) => {
+          return sum + (s.sale_id ? saleTotals[s.sale_id] || 0 : 0);
+        }, 0);
+
+        // Items pendientes en cocina consolidados
+        const pendingKitchenItems = sesionesDeMesa.reduce((sum, s) => {
+          return sum + (pendingKitchenBySession[s.id] || 0);
+        }, 0);
+
         return {
           ...mesa,
+          totalAmount,
           session: {
             ...sesionPrincipal,
             customers: customers, // Solo sesión principal
+            serverName: sesionPrincipal.server_id ? serverNames[sesionPrincipal.server_id] : undefined,
+            pendingKitchenItems,
             // Agregar información de items para la UI
             sale_items: Array(totalItems).fill(null).map((_, i) => ({ id: `item-${i}` })) as any
           },
@@ -357,23 +417,41 @@ export class MesasService {
   }
 
   /**
+   * Solicitar cuenta para la sesión activa de una mesa (acción rápida desde el listado)
+   */
+  static async solicitarCuenta(sessionId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('table_sessions')
+        .update({ status: 'bill_requested', updated_at: new Date().toISOString() })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error solicitando cuenta:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Obtener zonas únicas
    */
   static async obtenerZonas(): Promise<string[]> {
     const organizationId = getOrganizationId();
-    const branchId = getCurrentBranchId();
-
-    if (!branchId) {
-      throw new Error('No se pudo obtener el branch_id');
-    }
+    const branchFilter = getBranchFilter();
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('restaurant_tables')
         .select('zone')
         .eq('organization_id', organizationId)
-        .eq('branch_id', branchId)
         .not('zone', 'is', null);
+
+      if (branchFilter) {
+        query = query.eq('branch_id', branchFilter);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -603,10 +681,10 @@ export class MesasService {
         throw new Error('ID de mesa requerido');
       }
 
-      // 1. Obtener sesiones activas de la mesa
+      // 1. Obtener sesiones activas de la mesa + datos de la mesa para auditoría
       const { data: sessions, error: sessionsError } = await supabase
         .from('table_sessions')
-        .select('id, sale_id')
+        .select('id, sale_id, organization_id, branch_id')
         .eq('restaurant_table_id', tableId)
         .in('status', ['active', 'bill_requested']);
 
@@ -618,7 +696,27 @@ export class MesasService {
       // 2. Cerrar todas las sesiones activas
       if (sessions && sessions.length > 0) {
         const sessionIds = sessions.map(s => s.id);
-        
+
+        // Marcar comandas (digitales y físicas) como entregadas: se asume que
+        // todo lo que quedó en la mesa al cerrarla/pagarla ya fue consumido.
+        const { data: ticketIds } = await supabase
+          .from('kitchen_tickets')
+          .select('id')
+          .in('table_session_id', sessionIds)
+          .neq('status', 'delivered');
+
+        if (ticketIds && ticketIds.length > 0) {
+          const ids = ticketIds.map((t: any) => t.id);
+          await supabase
+            .from('kitchen_tickets')
+            .update({ status: 'delivered', updated_at: new Date().toISOString() })
+            .in('id', ids);
+          await supabase
+            .from('kitchen_ticket_items')
+            .update({ status: 'delivered', updated_at: new Date().toISOString() })
+            .in('kitchen_ticket_id', ids);
+        }
+
         const { error: closeError } = await supabase
           .from('table_sessions')
           .update({ 
@@ -631,6 +729,11 @@ export class MesasService {
           console.error('Error al cerrar sesiones:', closeError);
           throw new Error(`Error al cerrar sesiones: ${closeError.message || JSON.stringify(closeError)}`);
         }
+      }
+
+      // 2.5 Registrar auditoría de liberación de mesa
+      if (sessions && sessions.length > 0) {
+        await this.registrarAuditoriaLiberacion(tableId, sessions);
       }
 
       // 3. Cambiar estado de la mesa a libre
@@ -656,6 +759,40 @@ export class MesasService {
       const errorMsg = error?.message || JSON.stringify(error) || 'Error desconocido';
       console.error('Error liberando mesa:', errorMsg, error);
       throw new Error(`Error liberando mesa: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Registra en ops_audit_log la liberación de una mesa, para auditar
+   * quién y cuándo liberó la mesa. No lanza error si falla.
+   */
+  private static async registrarAuditoriaLiberacion(
+    tableId: string,
+    sessions: { id: string; organization_id: number; branch_id: number | null }[]
+  ): Promise<void> {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id || null;
+      const now = new Date().toISOString();
+
+      const inserts = sessions.map((s) => ({
+        organization_id: s.organization_id,
+        branch_id: s.branch_id,
+        user_id: userId,
+        entity_type: 'table_sessions',
+        entity_id: s.id,
+        action: 'RELEASE',
+        previous_data: { status: 'active' },
+        metadata: {
+          table_id: tableId,
+          table_session_id: s.id,
+          released_at: now,
+        },
+      }));
+
+      await supabase.from('ops_audit_log').insert(inserts);
+    } catch (auditError) {
+      console.error('No se pudo registrar auditoría de liberación de mesa:', auditError);
     }
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calculator, Lock } from 'lucide-react';
+import { Calculator, Lock, CreditCard, Banknote, Wallet, Smartphone, ArrowUpCircle, ArrowDownCircle, ShoppingCart, UtensilsCrossed, FileText, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,37 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
-import type { CashSession, CashSummary, CloseCashSessionData } from './types';
+import type { CashSession, CashSummary, CloseCashSessionData, SessionPaymentDetail } from './types';
 import { toast } from 'sonner';
+
+const METHOD_LABELS: Record<string, string> = {
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  transfer: 'Transferencia',
+  credit: 'Credito',
+  mixed: 'Mixto',
+  other: 'Otros',
+};
+
+const METHOD_ICONS: Record<string, React.ReactNode> = {
+  cash: <Banknote className="h-3.5 w-3.5" />,
+  card: <CreditCard className="h-3.5 w-3.5" />,
+  transfer: <Smartphone className="h-3.5 w-3.5" />,
+  credit: <Wallet className="h-3.5 w-3.5" />,
+};
+
+const MOVEMENT_ICONS: Record<string, React.ReactNode> = {
+  venta_pos: <ShoppingCart className="h-3.5 w-3.5" />,
+  venta_mesa: <UtensilsCrossed className="h-3.5 w-3.5" />,
+  venta_factura: <FileText className="h-3.5 w-3.5" />,
+  compra_factura: <Receipt className="h-3.5 w-3.5" />,
+  cuenta_por_cobrar: <FileText className="h-3.5 w-3.5" />,
+  cuenta_por_pagar: <Receipt className="h-3.5 w-3.5" />,
+  otro: <Wallet className="h-3.5 w-3.5" />,
+};
 
 interface CierreCajaDialogProps {
   session: CashSession;
@@ -30,6 +57,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
   const [loading, setLoading] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [summary, setSummary] = useState<CashSummary | null>(null);
+  const [movements, setMovements] = useState<SessionPaymentDetail[]>([]);
   const [formData, setFormData] = useState<CloseCashSessionData>({
     final_amount: 0,
     notes: ''
@@ -45,8 +73,12 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
   const loadCashSummary = async () => {
     setLoadingSummary(true);
     try {
-      const cashSummary = await CajasService.getCashSummary(session.id);
+      const [cashSummary, sessionMovements] = await Promise.all([
+        CajasService.getCashSummary(session.id),
+        CajasService.getSessionPaymentsDetail(session.id),
+      ]);
       setSummary(cashSummary);
+      setMovements(sessionMovements);
       // Pre-llenar con el monto esperado
       setFormData(prev => ({
         ...prev,
@@ -117,7 +149,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-2xl dark:bg-gray-800 bg-white">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 bg-white">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2 dark:text-white text-gray-900">
             <Calculator className="h-5 w-5 text-red-600" />
@@ -168,6 +200,52 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 </div>
                 
                 <Separator className="dark:bg-gray-600 bg-gray-300" />
+
+                {/* Desglose por metodo de pago: ingresos */}
+                {summary?.income_by_method && Object.keys(summary.income_by_method).length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs font-medium flex items-center gap-1 dark:text-green-400 text-green-700">
+                      <ArrowUpCircle className="h-3.5 w-3.5" /> Ingresos por metodo de pago:
+                    </span>
+                    <div className="space-y-1.5">
+                      {Object.entries(summary.income_by_method).map(([method, amount]) => (
+                        <div key={method} className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1.5 dark:text-gray-300 text-gray-700">
+                            {METHOD_ICONS[method] || <Wallet className="h-3.5 w-3.5" />}
+                            {METHOD_LABELS[method] || method}:
+                          </span>
+                          <span className="font-medium text-green-600">
+                            {formatCurrency(amount)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Desglose por metodo de pago: egresos (compras a proveedores) */}
+                {summary?.expense_by_method && Object.keys(summary.expense_by_method).length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs font-medium flex items-center gap-1 dark:text-red-400 text-red-700">
+                      <ArrowDownCircle className="h-3.5 w-3.5" /> Egresos por metodo de pago (compras):
+                    </span>
+                    <div className="space-y-1.5">
+                      {Object.entries(summary.expense_by_method).map(([method, amount]) => (
+                        <div key={method} className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1.5 dark:text-gray-300 text-gray-700">
+                            {METHOD_ICONS[method] || <Wallet className="h-3.5 w-3.5" />}
+                            {METHOD_LABELS[method] || method}:
+                          </span>
+                          <span className="font-medium text-red-600">
+                            {formatCurrency(amount)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Separator className="dark:bg-gray-600 bg-gray-300" />
                 
                 <div className="flex justify-between items-center">
                   <span className="font-medium dark:text-gray-200 text-gray-800">
@@ -179,6 +257,50 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                 </div>
               </CardContent>
             </Card>
+
+            {/* Movimientos de la sesion */}
+            {movements.length > 0 && (
+              <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
+                    Movimientos de la Sesion ({movements.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                    {movements.map((mov) => (
+                      <div
+                        key={mov.id}
+                        className="flex items-center justify-between text-sm p-2 rounded-md dark:bg-gray-600/50 bg-white border dark:border-gray-600 border-gray-200"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={mov.direction === 'in' ? 'text-green-600' : 'text-red-600'}>
+                            {MOVEMENT_ICONS[mov.type]}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-medium dark:text-white text-gray-900 truncate">
+                              {mov.label}
+                              {mov.reference ? ` #${mov.reference}` : ''}
+                            </p>
+                            <p className="text-xs dark:text-gray-400 text-gray-500 truncate">
+                              {mov.counterparty || 'Sin contraparte'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className="text-xs dark:border-gray-500">
+                            {METHOD_LABELS[mov.method] || mov.method}
+                          </Badge>
+                          <span className={`font-medium ${mov.direction === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+                            {mov.direction === 'in' ? '+' : '-'}{formatCurrency(mov.amount)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Arqueo */}
             <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">

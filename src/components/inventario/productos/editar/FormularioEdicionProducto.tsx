@@ -35,6 +35,7 @@ const productoSchema = z.object({
   unit_code: z.string().min(1, { message: 'La unidad es requerida' }),
   supplier_id: z.number().optional(),
   tax_id: z.string().optional(), // UUID del impuesto
+  station: z.string().nullable().optional(),
   
   // Precios y costos
   cost: z.number().min(0).optional(),
@@ -100,6 +101,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       unit_code: '',
       supplier_id: undefined,
       tax_id: '',
+      station: null,
       cost: 0,
       price: 0,
       track_stock: true,
@@ -258,6 +260,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           category_id: producto.category_id,
           unit_code: producto.unit_code?.trim() || '',
           supplier_id: supplierData?.supplier_id || undefined,
+          station: producto.station || null,
           cost: costData?.cost || 0,
           price: priceData?.price || 0,
           compare_price: priceData?.compare_price || 0,

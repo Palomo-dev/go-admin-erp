@@ -126,9 +126,9 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
     fetchSubscription();
   }, [orgId]);
 
-  // No mostrar si: está oculto, no cargado, o descartado (solo en estado azul)
+  // No mostrar si: está oculto, no cargado, o descartado temporalmente
   if (!loaded || bannerState === 'hidden') return null;
-  if (dismissed && bannerState === 'trial_active') return null;
+  if (dismissed) return null;
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, new Date().toISOString());
@@ -155,7 +155,7 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       iconColor: 'text-amber-500 dark:text-amber-400',
       message: `Tu prueba gratis del ${planName} vence pronto`,
       detail: `${daysLeft} día${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''}. Vincula un método de pago para no perder acceso.`,
-      canDismiss: false,
+      canDismiss: true,
       showCTA: true,
     },
     trial_expired: {
@@ -166,7 +166,7 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       iconColor: 'text-red-500 dark:text-red-400',
       message: `Tu período de prueba del ${planName} ha finalizado`,
       detail: 'Activa tu plan para seguir usando todas las funcionalidades.',
-      canDismiss: false,
+      canDismiss: true,
       showCTA: true,
     },
     payment_past_due: {
@@ -177,7 +177,7 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       iconColor: 'text-orange-500 dark:text-orange-400',
       message: 'Tu pago falló',
       detail: 'Actualiza tu método de pago para evitar la suspensión de tu cuenta.',
-      canDismiss: false,
+      canDismiss: true,
       showCTA: true,
     },
     subscription_canceled: {
@@ -188,7 +188,7 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       iconColor: 'text-red-500 dark:text-red-400',
       message: 'Tu suscripción ha sido cancelada',
       detail: 'Renueva tu plan para recuperar el acceso completo a la plataforma.',
-      canDismiss: false,
+      canDismiss: true,
       showCTA: true,
     },
     hidden: null,

@@ -15,6 +15,8 @@ export interface KitchenTicket {
   table_sessions?: {
     id: string;
     restaurant_table_id: string | null;
+    server_id: string | null;
+    serverName?: string;
     restaurant_tables?: {
       name: string;
       zone: string | null;
@@ -51,6 +53,7 @@ export interface KitchenTicketItem {
 
 export type ZoneFilter = 'all' | string; // Puede ser cualquier zona
 export type StatusFilter = 'all' | 'new' | 'preparing' | 'ready' | 'delivered';
+export type StationFilter = 'all' | 'hot_kitchen' | 'cold_kitchen' | 'bar';
 
 class KitchenService {
   /**
@@ -69,6 +72,7 @@ class KitchenService {
           table_sessions (
             id,
             restaurant_table_id,
+            server_id,
             restaurant_tables (
               name,
               zone
@@ -113,6 +117,41 @@ class KitchenService {
         );
       }
 
+      // Adjuntar nombre del mesero (no se puede embeber directamente: server_id
+      // referencia auth.users, no profiles, así que se resuelve en una consulta aparte)
+      const serverIds = Array.from(
+        new Set(
+          tickets
+            .map((t: any) => t.table_sessions?.server_id)
+            .filter(Boolean)
+        )
+      );
+
+      if (serverIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', serverIds);
+
+        const serverNames: Record<string, string> = {};
+        profiles?.forEach((p) => {
+          serverNames[p.id] = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Mesero';
+        });
+
+        tickets = tickets.map((t: any) => {
+          if (t.table_sessions?.server_id) {
+            return {
+              ...t,
+              table_sessions: {
+                ...t.table_sessions,
+                serverName: serverNames[t.table_sessions.server_id],
+              },
+            };
+          }
+          return t;
+        });
+      }
+
       return tickets as KitchenTicket[];
     } catch (error) {
       console.error('Error obteniendo tickets de cocina:', error);
@@ -136,6 +175,26 @@ class KitchenService {
         .single();
 
       if (error) throw error;
+
+      // Sincronizar el estado de los items para que coincidan con el estado del
+      // ticket (evita que un item quede "Preparando" cuando el ticket ya está Listo/Entregado)
+      const itemStatusByTicketStatus: Record<KitchenTicket['status'], KitchenTicketItem['status']> = {
+        new: 'pending',
+        preparing: 'in_progress',
+        ready: 'ready',
+        delivered: 'delivered',
+      };
+
+      const { error: itemsError } = await supabase
+        .from('kitchen_ticket_items')
+        .update({
+          status: itemStatusByTicketStatus[status],
+          updated_at: new Date().toISOString(),
+        })
+        .eq('kitchen_ticket_id', ticketId);
+
+      if (itemsError) throw itemsError;
+
       return data;
     } catch (error) {
       console.error('Error actualizando estado del ticket:', error);

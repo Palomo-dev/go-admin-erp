@@ -16,31 +16,40 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Minus, Search, X, ShoppingCart, Package } from 'lucide-react';
-import { formatCurrency } from '@/utils/Utils';
+import { Plus, Minus, Search, X, ShoppingCart, Package, Image as ImageIcon } from 'lucide-react';
+import { formatCurrency, cn } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { Product, ProductToAdd } from './types';
 import { POSService } from '@/lib/services/posService';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { CategoryFilterBar } from '@/components/pos/CategoryFilterBar';
+import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from '@/components/pos/configuracion/configuracionService';
 
 interface Category {
   id: number;
   name: string;
   slug: string;
   rank: number;
+  icon?: string | null;
+  color?: string | null;
+  image_url?: string | null;
+  display_order?: number;
 }
 
 interface AddProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddProducts: (products: ProductToAdd[]) => Promise<void>;
+  comensales?: number;
 }
 
 export function AddProductDialog({
   open,
   onOpenChange,
   onAddProducts,
+  comensales = 1,
 }: AddProductDialogProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,6 +57,7 @@ export function AddProductDialog({
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [categoriesDisplay, setCategoriesDisplay] = useState<PosCategoriesDisplayConfig>(defaultCategoriesDisplayConfig);
   const [cart, setCart] = useState<Map<number, ProductToAdd>>(new Map());
   
   // Estado para selector de variantes
@@ -88,7 +98,7 @@ export function AddProductDialog({
       const { supabase } = await import('@/lib/supabase/config');
       const { data, error } = await supabase
         .from('categories')
-        .select('id, name, slug, rank')
+        .select('id, name, slug, rank, icon, color, image_url, display_order')
         .order('rank')
         .order('name');
       
@@ -104,6 +114,9 @@ export function AddProductDialog({
   useEffect(() => {
     if (open) {
       loadCategories();
+      ConfiguracionService.getCategoriesDisplayConfig()
+        .then(setCategoriesDisplay)
+        .catch((error) => console.error('Error cargando configuración de categorías:', error));
     }
   }, [open]);
 
@@ -133,7 +146,9 @@ export function AddProductDialog({
 
   // Manejar selección de variante desde el diálogo
   const handleVariantSelect = (variant: any) => {
-    addToCart(variant);
+    // La variante hereda la estación del producto padre (o la categoría de este) si no tiene una propia
+    const inheritedStation = variant.station || selectedParentProduct?.station || selectedParentProduct?.categories?.station || null;
+    addToCart({ ...variant, station: inheritedStation, categories: selectedParentProduct?.categories });
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
@@ -152,13 +167,15 @@ export function AddProductDialog({
     if (existing) {
       existing.quantity += 1;
     } else {
+      const station = product.station || product.categories?.station || '';
       newCart.set(product.id, {
         product_id: product.id,
         product_name: product.name,
         quantity: 1,
         unit_price: Number(unitPrice),
         notes: '',
-        station: '',
+        station,
+        guest_number: comensales > 1 ? 1 : undefined,
       });
     }
 
@@ -193,6 +210,16 @@ export function AddProductDialog({
     const item = newCart.get(productId);
     if (item) {
       item.notes = notes;
+      setCart(newCart);
+    }
+  };
+
+  // Actualizar comensal asignado a un item
+  const updateCartGuestNumber = (productId: number, guestNumber: number | undefined) => {
+    const newCart = new Map(cart);
+    const item = newCart.get(productId);
+    if (item) {
+      item.guest_number = guestNumber;
       setCart(newCart);
     }
   };
@@ -259,14 +286,14 @@ export function AddProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[95vw] w-[1400px] max-h-[85vh] h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
-        <div className="flex flex-1 min-h-0">
+      <DialogContent className="max-w-[100vw] sm:max-w-[95vw] w-full sm:w-[1400px] max-h-[100vh] sm:max-h-[85vh] h-[100vh] sm:h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <div className="flex flex-col sm:flex-row flex-1 min-h-0">
           {/* Panel izquierdo - Productos */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <DialogHeader className="px-6 py-3 border-b shrink-0 space-y-3">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-xl">Agregar Productos</DialogTitle>
-                <div className="relative w-80">
+            <DialogHeader className="px-3 sm:px-6 py-3 border-b shrink-0 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <DialogTitle className="text-base sm:text-xl shrink-0">Agregar Productos</DialogTitle>
+                <div className="relative w-full sm:w-80">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="Buscar productos..."
@@ -278,42 +305,33 @@ export function AddProductDialog({
               </div>
               
               {/* Filtro de categorías */}
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                <Button
-                  variant={selectedCategory === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedCategory('all')}
-                  className="shrink-0 gap-2"
-                >
-                  Todas
-                  {!isLoadingProducts && (
-                    <Badge variant={selectedCategory === 'all' ? 'secondary' : 'outline'} className="ml-1 text-xs">
-                      {products.length}
-                    </Badge>
-                  )}
-                </Button>
-                {categories.map((category) => (
-                  <Button
-                    key={category.id}
-                    variant={selectedCategory === category.id.toString() ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedCategory(category.id.toString())}
-                    className="shrink-0"
-                  >
-                    {category.name}
-                  </Button>
-                ))}
+              <div className="-mx-3 sm:mx-0 px-3 sm:px-0">
+                <CategoryFilterBar
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={setSelectedCategory}
+                  mode={categoriesDisplay.mode}
+                  orderBy={categoriesDisplay.orderBy}
+                />
               </div>
             </DialogHeader>
 
             {/* Grid de productos */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+            <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4">
               {isLoadingProducts ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-500">Cargando productos...</p>
-                  </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                  {[...Array(8)].map((_, i) => (
+                    <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      <div className="aspect-square bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <Skeleton className="w-20 h-20 rounded" />
+                      </div>
+                      <div className="p-3 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                        <Skeleton className="h-6 w-full" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : filteredProducts.length === 0 ? (
                 <div className="flex items-center justify-center py-20">
@@ -323,67 +341,97 @@ export function AddProductDialog({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                   {filteredProducts.map((product: any) => {
                     const productImage = getProductImage(product);
                     const price = product.price || 0;
+                    const comparePrice = product.compare_price || 0;
                     const inCart = cart.has(product.id);
                     const hasVariants = product.has_variants && product.variant_count > 0;
 
                     return (
-                      <button
+                      <div
                         key={product.id}
-                        type="button"
                         onClick={() => handleProductClick(product)}
-                        className={`relative group rounded-xl border-2 transition-all hover:shadow-lg ${
+                        className={cn(
+                          'relative group rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]',
                           inCart
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
                             : hasVariants
-                              ? 'border-purple-200 bg-white hover:border-purple-400'
-                              : 'border-gray-200 bg-white hover:border-blue-300'
-                        }`}
+                              ? 'border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-800/50 hover:border-purple-400'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 hover:border-blue-300'
+                        )}
                       >
                         {/* Imagen */}
-                        <div className="aspect-square relative overflow-hidden rounded-t-lg bg-gray-100">
+                        <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
                           {productImage ? (
                             <Image
                               src={productImage}
                               alt={product.name}
                               fill
-                              className="object-cover"
-                              sizes="200px"
+                              className="object-cover group-hover:scale-105 transition-transform duration-200"
+                              sizes="(max-width: 768px) 50vw, 25vw"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package className="h-12 w-12 text-gray-300" />
+                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
+                              <ImageIcon className="h-10 w-10 mb-1" />
+                              <span className="text-[0.6rem]">Sin imagen</span>
+                            </div>
+                          )}
+                          {/* Badge de descuento */}
+                          {comparePrice > price && (
+                            <div className="absolute top-2 right-2 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold z-10">
+                              -{Math.round((1 - price / comparePrice) * 100)}%
                             </div>
                           )}
                           {/* Badge de variantes */}
                           {hasVariants && (
-                            <div className="absolute top-2 left-2 bg-purple-600 text-white rounded-full px-2 py-0.5 text-xs font-bold">
-                              {product.variant_count} var
+                            <div className={cn(
+                              'absolute left-2 bg-purple-600 text-white rounded-full px-2 py-0.5 text-[0.6rem] font-bold z-10',
+                              comparePrice > price ? 'top-8' : 'top-2'
+                            )}>
+                              {product.variant_count} var.
                             </div>
                           )}
                           {inCart && (
-                            <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
+                            <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold z-10">
                               {cart.get(product.id)?.quantity}
                             </div>
                           )}
                         </div>
 
                         {/* Información */}
-                        <div className="p-3">
-                          <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 mb-1 line-clamp-2 h-10">
+                        <div className="p-2 sm:p-3 space-y-1">
+                          <h3 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
                             {product.name}
                           </h3>
-                          <div className="flex items-center justify-between mt-1">
-                            <span className={`text-lg font-bold ${hasVariants ? 'text-purple-600' : 'text-blue-600'}`}>
-                              {hasVariants ? 'Desde' : ''} {formatCurrency(price || 0)}
+                          {product.description && (
+                            <p className="text-[0.6rem] text-gray-500 dark:text-gray-400 line-clamp-1 leading-tight">
+                              {product.description}
+                            </p>
+                          )}
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            {comparePrice > price && (
+                              <span className="line-through text-[0.65rem] text-gray-400">
+                                {formatCurrency(comparePrice)}
+                              </span>
+                            )}
+                            <span className={cn(
+                              'font-bold text-xs sm:text-sm px-1.5 py-0.5 rounded',
+                              hasVariants
+                                ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30'
+                                : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30'
+                            )}>
+                              {hasVariants ? 'Desde ' : ''}{formatCurrency(price || 0)}
                             </span>
-                            <Plus className={`h-5 w-5 ${hasVariants ? 'text-purple-600' : 'text-blue-600'} group-hover:scale-110 transition-transform`} />
                           </div>
+                          {product.sku && (
+                            <div className="text-[0.6rem] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded truncate text-center">
+                              {product.sku}
+                            </div>
+                          )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -392,7 +440,7 @@ export function AddProductDialog({
           </div>
 
           {/* Panel derecho - Carrito */}
-          <div className="w-[380px] border-l bg-gray-50 dark:bg-gray-900 flex flex-col min-h-0 overflow-hidden">
+          <div className="w-full sm:w-[380px] border-t sm:border-l bg-gray-50 dark:bg-gray-900 flex flex-col min-h-0 overflow-hidden max-h-[40vh] sm:max-h-none">
             <div className="px-4 py-3 border-b bg-white dark:bg-gray-800 shrink-0">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-6 w-6 text-blue-600" />
@@ -470,6 +518,41 @@ export function AddProductDialog({
                           {formatCurrency(item.quantity * item.unit_price)}
                         </span>
                       </div>
+
+                      {comensales > 1 && (
+                        <div className="flex items-center gap-1 mb-2 flex-wrap">
+                          <span className="text-[0.65rem] text-gray-500 dark:text-gray-400 shrink-0">
+                            Comensal:
+                          </span>
+                          {Array.from({ length: comensales }, (_, i) => i + 1).map((num) => (
+                            <button
+                              key={num}
+                              type="button"
+                              onClick={() => updateCartGuestNumber(item.product_id, num)}
+                              className={cn(
+                                'h-6 w-6 rounded-full text-[0.65rem] font-semibold transition-colors shrink-0',
+                                item.guest_number === num
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                              )}
+                            >
+                              {num}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => updateCartGuestNumber(item.product_id, undefined)}
+                            className={cn(
+                              'h-6 px-2 rounded-full text-[0.6rem] font-medium transition-colors shrink-0',
+                              !item.guest_number
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                            )}
+                          >
+                            General
+                          </button>
+                        </div>
+                      )}
 
                       <Textarea
                         placeholder="Notas..."

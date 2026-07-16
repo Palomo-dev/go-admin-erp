@@ -300,6 +300,7 @@ ${alertas.map(a => `[${a.prioridad.toUpperCase()}] ${a.titulo}: ${a.descripcion}
               { icon: FileText, label: 'Facturas Venta', href: '/app/finanzas/facturas-venta', color: 'blue' },
               { icon: FileText, label: 'Facturas Compra', href: '/app/finanzas/facturas-compra', color: 'orange' },
               { icon: Users, label: 'Cuentas x Cobrar', href: '/app/finanzas/cuentas-por-cobrar', color: 'green' },
+              { icon: Wallet, label: 'Saldos a Favor', href: '/app/finanzas/saldos-a-favor', color: 'green' },
               { icon: Truck, label: 'Cuentas x Pagar', href: '/app/finanzas/cuentas-por-pagar', color: 'red' },
               { icon: Wallet, label: 'Caja', href: '/app/finanzas/caja', color: 'purple' },
               { icon: Building2, label: 'Bancos', href: '/app/finanzas/bancos', color: 'cyan' },

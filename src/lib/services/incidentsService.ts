@@ -359,14 +359,24 @@ class IncidentsService {
    */
   async getEmployees(organizationId: number): Promise<Array<{ id: number; full_name: string; email?: string }>> {
     const { data, error } = await supabase
-      .from('employees')
-      .select('id, full_name, email')
+      .from('organization_members')
+      .select(`
+        id,
+        profiles!inner(id, first_name, last_name, email)
+      `)
       .eq('organization_id', organizationId)
-      .eq('is_active', true)
-      .order('full_name', { ascending: true });
+      .eq('is_active', true);
 
     if (error) throw error;
-    return data || [];
+
+    return (data || []).map((member: any) => {
+      const profile = member.profiles?.[0] || member.profiles;
+      return {
+        id: member.id,
+        full_name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim(),
+        email: profile?.email,
+      };
+    }).sort((a, b) => a.full_name.localeCompare(b.full_name));
   }
 
   /**

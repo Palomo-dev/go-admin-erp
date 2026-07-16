@@ -40,6 +40,40 @@ export function guardarOrganizacionActiva(organizacion: Organizacion): void {
 }
 
 /**
+ * Cambia la organización activa desde dentro de la app (no usar en el login inicial).
+ * Limpia primero el estado dependiente de la organización anterior (sucursal
+ * seleccionada, modo "todas las sucursales" y caché de datos de usuario) para
+ * evitar que queden visibles datos de la organización previa tras el cambio.
+ */
+export function cambiarOrganizacionActiva(
+  organizacion: Organizacion,
+  options: { reload?: boolean } = { reload: true }
+): void {
+  try {
+    localStorage.removeItem('currentBranchId');
+    sessionStorage.removeItem('currentBranchId');
+    localStorage.removeItem('branchFilterAll');
+    localStorage.removeItem('appLayout_userData_cache');
+    invalidateBranchIdCache();
+  } catch (error) {
+    console.error('Error al limpiar estado de la organización anterior:', error);
+  }
+
+  guardarOrganizacionActiva(organizacion);
+  try {
+    localStorage.setItem('currentOrganizationId', organizacion.id.toString());
+    if (organizacion.name) localStorage.setItem('currentOrganizationName', organizacion.name);
+    sessionStorage.setItem('currentOrganizationId', organizacion.id.toString());
+  } catch (error) {
+    console.error('Error al guardar claves legacy de organización:', error);
+  }
+
+  if (options.reload !== false) {
+    window.location.reload();
+  }
+}
+
+/**
  * Obtiene la organización activa de forma robusta
  * Intenta recuperarla de múltiples fuentes para mayor resiliencia
  */

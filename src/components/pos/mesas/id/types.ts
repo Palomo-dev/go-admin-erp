@@ -9,7 +9,7 @@ export interface SaleItem {
   total: number;
   tax_amount: number;
   discount_amount: number;
-  notes: string | null;
+  notes: string | { product_name?: string; extra?: string; guest_number?: number } | null;
   created_at: string;
   updated_at: string;
   // Relaciones
@@ -114,6 +114,7 @@ export interface ProductToAdd {
   unit_price: number;
   notes: string;
   station?: string;
+  guest_number?: number;
 }
 
 export interface TransferItemData {

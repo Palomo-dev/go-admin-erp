@@ -211,13 +211,121 @@ export class VentasService {
           if (fullName) sellerName = fullName;
         }
 
+        // Cargar info de mesa si hay table_session_id
+        let mesaInfo: any = undefined;
+        if (data.table_session_id) {
+          const { data: session } = await supabase
+            .from('table_sessions')
+            .select(`
+              id, server_id, opened_at, closed_at, customers, status,
+              restaurant_tables (id, name, number)
+            `)
+            .eq('id', data.table_session_id)
+            .maybeSingle();
+
+          if (session) {
+            let serverName: string | undefined;
+            if (session.server_id) {
+              const { data: serverProfile } = await supabase
+                .from('profiles')
+                .select('first_name, last_name')
+                .eq('id', session.server_id)
+                .maybeSingle();
+              serverName = `${serverProfile?.first_name || ''} ${serverProfile?.last_name || ''}`.trim() || undefined;
+            }
+            mesaInfo = {
+              table_session_id: session.id,
+              table_name: (session as any).restaurant_tables?.name,
+              table_number: (session as any).restaurant_tables?.number?.toString(),
+              server_id: session.server_id,
+              server_name: serverName,
+              opened_at: session.opened_at,
+              closed_at: session.closed_at,
+              customers: session.customers,
+              status: session.status,
+            };
+          }
+        }
+
+        // Cargar factura asociada
+        let invoiceInfo: any = undefined;
+        const { data: invoice } = await supabase
+          .from('invoice_sales')
+          .select('id, number, issue_date, due_date, status, total, balance, payment_method')
+          .eq('sale_id', saleId)
+          .maybeSingle();
+        if (invoice) {
+          invoiceInfo = {
+            id: invoice.id,
+            number: invoice.number,
+            issue_date: invoice.issue_date,
+            due_date: invoice.due_date,
+            status: invoice.status,
+            total: Number(invoice.total) || 0,
+            balance: Number(invoice.balance) || 0,
+            payment_method: invoice.payment_method,
+          };
+        }
+
+        // Cargar cuenta por cobrar
+        let arInfo: any = undefined;
+        const { data: ar } = await supabase
+          .from('accounts_receivable')
+          .select('id, amount, balance, due_date, status')
+          .eq('sale_id', saleId)
+          .maybeSingle();
+        if (ar) {
+          arInfo = {
+            id: ar.id,
+            amount: Number(ar.amount) || 0,
+            balance: Number(ar.balance) || 0,
+            due_date: ar.due_date,
+            status: ar.status,
+          };
+        }
+
+        // Cargar asiento contable
+        let journalInfo: any = undefined;
+        const { data: je } = await supabase
+          .from('journal_entries')
+          .select('id, entry_date, memo, posted')
+          .eq('source', 'sale')
+          .eq('source_id', saleId)
+          .maybeSingle();
+        if (je) {
+          const { data: jeLines } = await supabase
+            .from('journal_lines')
+            .select('id, account_code, debit, credit, description')
+            .eq('journal_entry_id', je.id);
+          journalInfo = {
+            id: je.id,
+            entry_date: je.entry_date,
+            memo: je.memo,
+            posted: je.posted,
+            lines: (jeLines || []).map((l: any) => ({
+              id: l.id,
+              account_code: l.account_code,
+              debit: Number(l.debit) || 0,
+              credit: Number(l.credit) || 0,
+              description: l.description,
+            })),
+          };
+        }
+
+        // Determinar origen: mesa si hay table_session_id
+        const source = data.table_session_id ? 'mesa' as const : 'pos' as const;
+
         return {
           ...data,
-          _source: 'pos' as const,
+          _source: source,
           seller_name: sellerName,
           customer,
           items: itemsWithProducts,
-          payments: payments || []
+          payments: payments || [],
+          mesa_info: mesaInfo,
+          invoice: invoiceInfo,
+          accounts_receivable: arInfo,
+          journal_entry: journalInfo,
         };
       }
 
@@ -291,7 +399,7 @@ export class VentasService {
         },
         items: itemsMapped,
         payments: [],
-      } as SaleWithDetails;
+      } as unknown as SaleWithDetails;
     } catch (err: any) {
       console.error('Error in getSaleById:', err?.message || err);
       return null;

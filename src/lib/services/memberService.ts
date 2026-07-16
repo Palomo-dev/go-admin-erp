@@ -51,15 +51,21 @@ export const memberService = {
       `)
       .eq('organization_id', organizationId)
       .eq('is_active', true)
-      .in('role_id', [2, 4, 5]) // Admin de organización, Empleado, Manager
-      .order('profiles(first_name)', { ascending: true });
+      .in('role_id', [2, 4, 5]); // Admin de organización, Empleado, Manager
 
     if (error) {
       console.error('Error fetching available managers:', error);
       throw new Error(error.message);
     }
 
-    return data || [];
+    // Ordenar en el cliente por first_name del perfil
+    const sorted = (data || []).sort((a: any, b: any) => {
+      const nameA = a.profiles?.[0]?.first_name || '';
+      const nameB = b.profiles?.[0]?.first_name || '';
+      return nameA.localeCompare(nameB);
+    });
+
+    return sorted;
   },
 
   /**

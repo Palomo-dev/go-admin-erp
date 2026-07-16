@@ -31,6 +31,9 @@ export interface TableSession {
   notes: string | null;
   created_at?: string;
   updated_at?: string;
+  // Datos enriquecidos calculados en MesasService.obtenerMesasConSesiones
+  serverName?: string;
+  pendingKitchenItems?: number;
 }
 
 export interface TableWithSession extends RestaurantTable {

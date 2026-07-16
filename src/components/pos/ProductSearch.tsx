@@ -30,6 +30,8 @@ import { cn, formatCurrency } from '@/utils/Utils';
 import Image from 'next/image';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
 import { VariantSelectorDialog } from './VariantSelectorDialog';
+import { CategoryFilterBar } from './CategoryFilterBar';
+import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from './configuracion/configuracionService';
 
 interface ProductSearchProps {
   onProductSelect: (product: Product) => void;
@@ -52,6 +54,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesDisplay, setCategoriesDisplay] = useState<PosCategoriesDisplayConfig>(defaultCategoriesDisplayConfig);
   const [error, setError] = useState<string | null>(null);
   const [gridSize, setGridSize] = useState<'small' | 'large'>('large');
   const [showScanner, setShowScanner] = useState(false);
@@ -110,6 +113,9 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   useEffect(() => {
     loadCategories();
+    ConfiguracionService.getCategoriesDisplayConfig()
+      .then(setCategoriesDisplay)
+      .catch((error) => console.error('Error loading categories display config:', error));
   }, [loadCategories]);
 
   useEffect(() => {
@@ -227,16 +233,13 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
           {/* Categorías + Vista + Controles - segunda fila */}
           <div className="flex items-center gap-2 mt-2 sm:mt-3">
-            <SearchSelect
-              options={categories.map((cat) => ({ value: cat.id.toString(), label: cat.name }))}
-              value={selectedCategory?.toString() || 'all'}
-              onValueChange={(value) => setSelectedCategory(value === 'all' ? null : parseInt(value))}
-              placeholder="Categorías"
-              searchPlaceholder="Buscar categoría..."
-              emptyText="No se encontraron categorías"
-              noneLabel="Todas las categorías"
-              noneValue="all"
-              className="flex-1 sm:w-[180px] sm:flex-none h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 text-sm shrink-0"
+            <CategoryFilterBar
+              categories={categories}
+              selectedCategory={selectedCategory?.toString() || 'all'}
+              onSelectCategory={(value) => setSelectedCategory(value === 'all' ? null : parseInt(value))}
+              mode={categoriesDisplay.mode}
+              orderBy={categoriesDisplay.orderBy}
+              className={categoriesDisplay.mode === 'searchselect' ? 'flex-1 sm:w-[180px] sm:flex-none h-9 sm:h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 text-sm shrink-0' : 'flex-1'}
             />
 
             {hasFilters && (
@@ -251,11 +254,8 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
               </Button>
             )}
 
-            {/* Separador flexible para empujar vista a la derecha */}
-            <div className="flex-1 hidden sm:block" />
-
             {/* Control de límites - Oculto en móvil */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
+            <div className="hidden sm:flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2 ml-auto bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
               <div className="flex items-center gap-1">
                 <span className="text-xs font-medium text-blue-600 dark:text-blue-400 hidden md:inline">Mostrar:</span>
                 <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white dark:bg-gray-800 text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-600 min-w-[28px] sm:min-w-[32px] text-center">

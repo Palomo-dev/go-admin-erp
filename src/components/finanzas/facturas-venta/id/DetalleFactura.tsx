@@ -18,7 +18,8 @@ import {
   Download,
   Printer,
   Copy,
-  Pencil
+  Pencil,
+  Ban
 } from 'lucide-react';
 import { 
   Card,
@@ -49,6 +50,7 @@ import { ItemsDetalle } from './ItemsDetalle';
 import { PagosDetalle } from './PagosDetalle';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
 import { NotaCreditoDialog } from './NotaCreditoDialog';
+import { AnularFacturaDialog } from './AnularFacturaDialog';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
@@ -62,7 +64,8 @@ const estadoColors: Record<string, string> = {
   'issued': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
   'paid': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
   'partial': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-  'void': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+  'void': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+  'voided': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
 };
 
 // Función para obtener el texto del estado en español
@@ -71,6 +74,7 @@ const getEstadoText = (estado: string): string => {
     'draft': 'Borrador',
     'issued': 'Emitida',
     'void': 'Anulada',
+    'voided': 'Anulada',
     'paid': 'Pagada',
     'partial': 'Pago Parcial',
     'overdue': 'Vencida'
@@ -114,6 +118,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const [isPaid, setIsPaid] = useState(factura.status === 'paid');
   const [dialogPagoOpen, setDialogPagoOpen] = useState(false);
   const [dialogNotaCreditoOpen, setDialogNotaCreditoOpen] = useState(false);
+  const [dialogAnularOpen, setDialogAnularOpen] = useState(false);
   const [dialogMarcarPagadaOpen, setDialogMarcarPagadaOpen] = useState(false);
   const [fechaMarcarPagada, setFechaMarcarPagada] = useState(new Date().toISOString().split('T')[0]);
   const [facturaActual, setFacturaActual] = useState(factura);
@@ -121,6 +126,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const [organizationData, setOrganizationData] = useState<OrganizationPDFData | null>(null);
   const [eInvoiceStatus, setEInvoiceStatus] = useState<EInvoiceStatus | null>(null);
   const [eInvoiceCufe, setEInvoiceCufe] = useState<string | null>(null);
+  const [creditoAplicado, setCreditoAplicado] = useState<number>(0);
 
   // Cargar datos de la organización al montar
   useEffect(() => {
@@ -159,7 +165,30 @@ export default function DetalleFactura({ factura }: { factura: any }) {
 
     loadOrganizationData();
     loadEInvoiceStatus();
+    loadCreditoAplicado();
   }, []);
+
+  // Cargar notas de crédito relacionadas y saldos a favor aplicados a esta factura
+  const loadCreditoAplicado = async () => {
+    try {
+      const [{ data: ncs }, { data: apps }] = await Promise.all([
+        supabase
+          .from('invoice_sales')
+          .select('total')
+          .eq('related_invoice_id', factura.id)
+          .eq('document_type', 'credit_note'),
+        supabase
+          .from('credit_note_applications')
+          .select('amount')
+          .eq('invoice_id', factura.id),
+      ]);
+      const totalNC = (ncs || []).reduce((s: number, n: any) => s + Math.abs(Number(n.total) || 0), 0);
+      const totalApps = (apps || []).reduce((s: number, a: any) => s + (Number(a.amount) || 0), 0);
+      setCreditoAplicado(totalNC + totalApps);
+    } catch (error) {
+      console.error('Error cargando crédito aplicado:', error);
+    }
+  };
 
   // Cargar estado de facturación electrónica
   const loadEInvoiceStatus = async () => {
@@ -228,6 +257,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       case 'paid': return 'success';
       case 'partial': return 'warning';
       case 'void': return 'destructive';
+      case 'voided': return 'destructive';
       default: return 'default';
     }
   };
@@ -239,6 +269,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       case 'paid': return 'Pagada';
       case 'partial': return 'Pago Parcial';
       case 'void': return 'Anulada';
+      case 'voided': return 'Anulada';
       default: return status;
     }
   };
@@ -398,6 +429,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       total: facturaActual.total || 0,
       balance: facturaActual.balance || 0,
       notes: facturaActual.notes,
+      credit_applied: creditoAplicado || undefined,
       organization: organizationData || undefined,
       customer: factura.customers ? {
         full_name: factura.customers.full_name,
@@ -617,7 +649,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             <span>Duplicar</span>
           </Button>
           
-          {facturaActual.status !== 'paid' && facturaActual.status !== 'void' && (
+          {facturaActual.status !== 'paid' && facturaActual.status !== 'void' && facturaActual.status !== 'voided' && (
             <>
               <Button
                 variant="outline"
@@ -650,6 +682,15 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               >
                 <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                 <span>Marcar Pagada</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-red-500 text-red-500 hover:text-red-600 hover:border-red-600 dark:border-red-400 dark:text-red-400 dark:hover:text-red-300 dark:hover:border-red-300 h-8 px-2 sm:px-3 text-xs"
+                onClick={() => setDialogAnularOpen(true)}
+              >
+                <Ban className="h-3.5 w-3.5 sm:mr-1" />
+                <span>Anular</span>
               </Button>
             </>
           )}
@@ -767,6 +808,15 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             
             <Separator className="dark:bg-gray-700" />
             
+            {creditoAplicado > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Nota crédito / saldo aplicado:</span>
+                <span className="text-sm sm:text-base font-semibold text-blue-600 dark:text-blue-400">
+                  - {formatCurrency(creditoAplicado)}
+                </span>
+              </div>
+            )}
+            
             <div className="flex justify-between items-center">
               <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pagado:</span>
               <span className="text-sm sm:text-base font-semibold text-green-600 dark:text-green-400">
@@ -833,6 +883,17 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         items={factura.items || []}
         onSuccess={() => {
           // Recargar la página para reflejar los cambios
+          router.refresh();
+        }}
+      />
+
+      {/* Diálogo para anular la factura directamente */}
+      <AnularFacturaDialog
+        open={dialogAnularOpen}
+        onOpenChange={setDialogAnularOpen}
+        factura={facturaActual}
+        onSuccess={() => {
+          actualizarPagos();
           router.refresh();
         }}
       />

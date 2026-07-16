@@ -27,6 +27,7 @@ interface CheckoutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCheckoutComplete: (sale: Sale) => void;
+  onProcessPayment?: (checkoutData: CheckoutData) => Promise<Sale>;
   organization?: {
     name?: string;
     legal_name?: string;
@@ -55,7 +56,7 @@ interface PaymentEntry {
   amount: number;
 }
 
-export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, organization, currentUser, branch }: CheckoutDialogProps) {
+export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch }: CheckoutDialogProps) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [currency, setCurrency] = useState<Currency | null>(null);
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
@@ -101,7 +102,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   
   // Calculados - usar totales con impuestos + propina
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const baseTotal = calculatedTotals.finalTotal > 0 ? calculatedTotals.finalTotal : cart.total;
+  // Si el dialog calculó impuestos, usar su finalTotal. 
+  // Si no calculó impuestos pero el carrito ya los tiene (ej. desde mesa con useMesaTaxes), usar cart.total.
+  const baseTotal = (calculatedTotals.totalTaxAmount === 0 && cart.tax_total > 0)
+    ? cart.total
+    : (calculatedTotals.finalTotal > 0 ? calculatedTotals.finalTotal : cart.total);
   const cartTotal = baseTotal + tipAmount;
   const remaining = Math.max(0, cartTotal - totalPaid);
   const change = Math.max(0, totalPaid - cartTotal);
@@ -384,7 +389,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         } : undefined,
       };
 
-      const sale = await POSService.checkout(checkoutData);
+      const sale = onProcessPayment 
+        ? await onProcessPayment(checkoutData)
+        : await POSService.checkout(checkoutData);
       setCompletedSale(sale);
       setShowReceipt(true);
 
@@ -580,6 +587,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         {showReceipt && completedSale ? (
           /* Vista de recibo - RESPONSIVE */
           <div className="space-y-3 sm:space-y-4 text-center">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Recibo de venta</DialogTitle>
+            </DialogHeader>
             <div className="p-4 sm:p-6">
               <CheckCircle className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4 text-green-600 dark:text-green-400" />
               <h2 className="text-xl sm:text-2xl font-bold mb-2 dark:text-white text-gray-900">
@@ -618,7 +628,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                   className="flex-1 h-10 sm:h-11 dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 text-sm sm:text-base"
                 >
                   <Printer className="h-4 w-4 mr-2" />
-                  Imprimir Recibo
+                  Re-imprimir Recibo
                 </Button>
                 <Button
                   onClick={handleCloseReceipt}
@@ -718,17 +728,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                     <span className="dark:text-gray-400 text-gray-600">Subtotal:</span>
                     <div className="text-right">
                       <span className="dark:text-white text-gray-900">
-                        {formatCurrency(calculatedTotals.subtotal)}
+                        {formatCurrency(calculatedTotals.subtotal || cart.subtotal)}
                       </span>
                       {taxIncluded && (
                         <div className="text-xs dark:text-gray-500 text-gray-500">(base imponible)</div>
                       )}
                     </div>
                   </div>
-                  {calculatedTotals.totalTaxAmount > 0 && (
+                  {(calculatedTotals.totalTaxAmount > 0 || cart.tax_total > 0) && (
                     <div className="flex justify-between text-sm">
                       <span className="dark:text-gray-400 text-gray-600">Impuestos:</span>
-                      <span className="dark:text-blue-400 text-blue-600">{formatCurrency(calculatedTotals.totalTaxAmount)}</span>
+                      <span className="dark:text-blue-400 text-blue-600">{formatCurrency(calculatedTotals.totalTaxAmount || cart.tax_total)}</span>
                     </div>
                   )}
                   {tipAmount > 0 && (
@@ -758,6 +768,113 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                     <div className="flex justify-between text-lg font-semibold">
                       <span className="dark:text-white text-gray-900">Cambio:</span>
                       <span className="dark:text-blue-400 text-blue-600">{formatCurrency(change)}</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Sección de Entrega / Delivery - movida a columna izquierda */}
+              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
+                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
+                  <CardTitle className="text-sm sm:text-base dark:text-white text-gray-900 flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-blue-500" />
+                    Entrega
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 space-y-3">
+                  {/* Selector de tipo de entrega */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      size="sm"
+                      variant={deliveryType === 'pickup' ? 'default' : 'outline'}
+                      onClick={() => setDeliveryType('pickup')}
+                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'pickup' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-xs">Recoger</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={deliveryType === 'delivery_own' ? 'default' : 'outline'}
+                      onClick={() => setDeliveryType('delivery_own')}
+                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_own' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      <Truck className="h-4 w-4" />
+                      <span className="text-xs">Envío propio</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={deliveryType === 'delivery_third_party' ? 'default' : 'outline'}
+                      onClick={() => setDeliveryType('delivery_third_party')}
+                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_third_party' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      <Navigation className="h-4 w-4" />
+                      <span className="text-xs">Tercero</span>
+                    </Button>
+                  </div>
+
+                  {/* Campos de delivery cuando no es pickup */}
+                  {deliveryType !== 'pickup' && (
+                    <div className="space-y-3 pt-2 border-t dark:border-gray-700 border-gray-200">
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          Dirección de entrega *
+                        </Label>
+                        <Input
+                          value={deliveryAddress}
+                          onChange={(e) => setDeliveryAddress(e.target.value)}
+                          placeholder="Calle 123 #45-67"
+                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs dark:text-gray-400 text-gray-600">
+                            Ciudad
+                          </Label>
+                          <Input
+                            value={deliveryCity}
+                            onChange={(e) => setDeliveryCity(e.target.value)}
+                            placeholder="Ciudad"
+                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            Teléfono contacto
+                          </Label>
+                          <Input
+                            value={deliveryContactPhone}
+                            onChange={(e) => setDeliveryContactPhone(e.target.value)}
+                            placeholder="300 123 4567"
+                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600">
+                          Nombre contacto
+                        </Label>
+                        <Input
+                          value={deliveryContactName}
+                          onChange={(e) => setDeliveryContactName(e.target.value)}
+                          placeholder="Nombre de quien recibe"
+                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600">
+                          Instrucciones
+                        </Label>
+                        <Input
+                          value={deliveryInstructions}
+                          onChange={(e) => setDeliveryInstructions(e.target.value)}
+                          placeholder="Portón negro, apartamento 302..."
+                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                        />
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -1027,113 +1144,6 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                     )}
                   </div>
 
-                </CardContent>
-              </Card>
-
-              {/* Sección de Entrega / Delivery */}
-              <Card className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
-                <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
-                  <CardTitle className="text-sm sm:text-base dark:text-white text-gray-900 flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-blue-500" />
-                    Entrega
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 sm:p-4 space-y-3">
-                  {/* Selector de tipo de entrega */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      size="sm"
-                      variant={deliveryType === 'pickup' ? 'default' : 'outline'}
-                      onClick={() => setDeliveryType('pickup')}
-                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'pickup' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="text-xs">Recoger</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={deliveryType === 'delivery_own' ? 'default' : 'outline'}
-                      onClick={() => setDeliveryType('delivery_own')}
-                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_own' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <Truck className="h-4 w-4" />
-                      <span className="text-xs">Envío propio</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={deliveryType === 'delivery_third_party' ? 'default' : 'outline'}
-                      onClick={() => setDeliveryType('delivery_third_party')}
-                      className={`h-auto py-2 flex flex-col items-center gap-1 ${deliveryType === 'delivery_third_party' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
-                    >
-                      <Navigation className="h-4 w-4" />
-                      <span className="text-xs">Tercero</span>
-                    </Button>
-                  </div>
-
-                  {/* Campos de delivery cuando no es pickup */}
-                  {deliveryType !== 'pickup' && (
-                    <div className="space-y-3 pt-2 border-t dark:border-gray-700 border-gray-200">
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          Dirección de entrega *
-                        </Label>
-                        <Input
-                          value={deliveryAddress}
-                          onChange={(e) => setDeliveryAddress(e.target.value)}
-                          placeholder="Calle 123 #45-67"
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600">
-                            Ciudad
-                          </Label>
-                          <Input
-                            value={deliveryCity}
-                            onChange={(e) => setDeliveryCity(e.target.value)}
-                            placeholder="Ciudad"
-                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            Teléfono contacto
-                          </Label>
-                          <Input
-                            value={deliveryContactPhone}
-                            onChange={(e) => setDeliveryContactPhone(e.target.value)}
-                            placeholder="300 123 4567"
-                            className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Nombre contacto
-                        </Label>
-                        <Input
-                          value={deliveryContactName}
-                          onChange={(e) => setDeliveryContactName(e.target.value)}
-                          placeholder="Nombre de quien recibe"
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          Instrucciones
-                        </Label>
-                        <Input
-                          value={deliveryInstructions}
-                          onChange={(e) => setDeliveryInstructions(e.target.value)}
-                          placeholder="Portón negro, apartamento 302..."
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
               </div>

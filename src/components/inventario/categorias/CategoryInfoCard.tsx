@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from 'lucide-react';
 import { type Category } from '@/lib/services/categoryService';
+import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService';
 
 interface CategoryInfoCardProps {
   category: Category;
@@ -55,6 +56,12 @@ export default function CategoryInfoCard({ category, parent }: CategoryInfoCardP
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Rank</p>
             <p className="text-sm text-gray-700 dark:text-gray-300">{category.rank}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Estación</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              {category.station ? STATION_LABELS[category.station as PrinterStation] : 'Sin estación asignada'}
+            </p>
           </div>
         </div>
 

@@ -86,6 +86,33 @@ export interface CashSummary {
   expected_amount: number;
   counted_amount?: number;
   difference?: number;
+  /** @deprecated usar income_by_method / expense_by_method */
+  payments_by_method?: Record<string, number>;
+  income_by_method?: Record<string, number>;
+  expense_by_method?: Record<string, number>;
+}
+
+// Detalle de un movimiento pagado durante la sesion de caja
+// (venta POS, venta de mesa, factura de venta, factura de compra, etc)
+export type SessionMovementType =
+  | 'venta_pos'
+  | 'venta_mesa'
+  | 'venta_factura'
+  | 'compra_factura'
+  | 'cuenta_por_cobrar'
+  | 'cuenta_por_pagar'
+  | 'otro';
+
+export interface SessionPaymentDetail {
+  id: number;
+  type: SessionMovementType;
+  direction: 'in' | 'out';
+  label: string;
+  reference?: string;
+  counterparty?: string;
+  method: string;
+  amount: number;
+  created_at: string;
 }
 
 export interface OpenCashSessionData {

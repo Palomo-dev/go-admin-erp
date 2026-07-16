@@ -16,6 +16,14 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { SearchSelect } from '@/components/ui/search-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService';
 
 interface DetallesTabProps {
   producto: any;
@@ -46,6 +54,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     category_id: producto.category_id || '',
     unit_code: producto.unit_code || '',
     supplier_id: preferredSupplier?.supplier_id?.toString() || '',
+    station: producto.station || null,
   });
   
   // Cargar datos de categorías, unidades y proveedores al montar el componente
@@ -120,6 +129,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           description: formData.description,
           category_id: formData.category_id || null,
           unit_code: formData.unit_code || null,
+          station: formData.station || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', producto.id)
@@ -273,6 +283,24 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
             placeholder="Descripción detallada del producto"
             className="min-h-24 dark:bg-gray-800 dark:border-gray-700"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="station">Estación de Cocina/Bar</Label>
+          <Select
+            value={formData.station || 'none'}
+            onValueChange={(value) => handleSelectChange('station', value)}
+          >
+            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700">
+              <SelectValue placeholder="Heredar de la categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Heredar de la categoría</SelectItem>
+              {Object.entries(STATION_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
         {/* Stock tracking removed as it's always on now */}

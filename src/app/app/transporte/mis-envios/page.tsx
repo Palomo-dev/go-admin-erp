@@ -24,25 +24,34 @@ export default function MisEnviosPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [driver, setDriver] = useState<DeliveryDriver | null>(null);
+  const [driverLoaded, setDriverLoaded] = useState(false);
 
   // Obtener driver_credentials del usuario logueado
   useEffect(() => {
     const loadDriver = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setDriverLoaded(true);
+        return;
+      }
 
       try {
         const driverData = await deliveryIntegrationService.getDriverForUser(user.id);
         setDriver(driverData);
       } catch (error) {
         console.error('Error obteniendo conductor:', error);
+      } finally {
+        setDriverLoaded(true);
       }
     };
     loadDriver();
   }, []);
 
   const cargarEnvios = useCallback(async () => {
-    if (!organization?.id || !driver?.id) return;
+    if (!organization?.id || !driver?.id) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const data = await deliveryIntegrationService.getAllShipmentsForDriver(
@@ -112,7 +121,7 @@ export default function MisEnviosPage() {
     entregados: shipments.filter((s) => s.status === 'delivered').length,
   };
 
-  if (isLoading) {
+  if (isLoading && !driverLoaded) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />

@@ -56,7 +56,7 @@ interface Factura {
   tax_total?: number;
   total: number;
   balance: number;
-  status: 'draft' | 'issued' | 'paid' | 'partial' | 'void' | 'overdue';
+  status: 'draft' | 'issued' | 'paid' | 'partial' | 'void' | 'voided' | 'overdue';
   currency: string;
   payment_method: string;
   payment_method_name: string; // Campo calculado para mostrar
@@ -76,6 +76,7 @@ const getStatusColor = (status: string) => {
     case 'draft': return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     case 'issued': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
     case 'void': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+    case 'voided': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
     case 'overdue': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
     case 'paid': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
     case 'partial': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
@@ -89,6 +90,7 @@ const getStatusText = (status: string) => {
     case 'draft': return 'Borrador';
     case 'issued': return 'Emitida';
     case 'void': return 'Anulada';
+    case 'voided': return 'Anulada';
     case 'overdue': return 'Vencida';
     case 'paid': return 'Pagada';
     case 'partial': return 'Pago Parcial';

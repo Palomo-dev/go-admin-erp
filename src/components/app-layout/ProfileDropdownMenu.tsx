@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Building2, LogOut, CreditCard, X } from 'lucide-react';
+import { Building2, LogOut, CreditCard, X, MailWarning, Send } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronDown, User, Settings, Bell, ChevronRight } from 'lucide-react';
@@ -27,6 +27,10 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [planName, setPlanName] = useState<string | null>(null);
+  const [emailConfirmed, setEmailConfirmed] = useState(true);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [canResendEmail, setCanResendEmail] = useState(true);
+  const [resendEmailTimer, setResendEmailTimer] = useState(0);
   const t = useTranslations('nav');
   
   // Detectar si estamos en móvil y si el componente está montado
@@ -37,6 +41,43 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Verificar si el correo del usuario está confirmado
+  useEffect(() => {
+    const checkEmailConfirmed = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setEmailConfirmed(!!user?.email_confirmed_at);
+    };
+    checkEmailConfirmed();
+  }, []);
+
+  const startResendEmailTimer = () => {
+    setCanResendEmail(false);
+    setResendEmailTimer(60);
+    const timer = setInterval(() => {
+      setResendEmailTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setCanResendEmail(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleResendConfirmation = async () => {
+    if (resendingEmail || !canResendEmail || !userData?.email) return;
+    setResendingEmail(true);
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email: userData.email });
+      if (!error) startResendEmailTimer();
+    } catch {
+      // silenciar error
+    } finally {
+      setResendingEmail(false);
+    }
+  };
 
   // Cargar plan de suscripción (se recarga si cambia la org en storage)
   useEffect(() => {
@@ -137,6 +178,20 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
                   )}
                   {userData?.email && (
                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1">{userData.email}</p>
+                  )}
+                  {!emailConfirmed && (
+                    <button
+                      onClick={handleResendConfirmation}
+                      disabled={resendingEmail || !canResendEmail}
+                      className="flex items-center gap-1 mt-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 disabled:opacity-60"
+                    >
+                      <MailWarning size={13} />
+                      <span>
+                        {t('emailNotConfirmed', { defaultValue: 'Correo sin confirmar' })}
+                        {' · '}
+                        {resendingEmail ? t('sending', { defaultValue: 'Enviando...' }) : !canResendEmail ? `${resendEmailTimer}s` : t('resend', { defaultValue: 'Reenviar' })}
+                      </span>
+                    </button>
                   )}
                   {planName && (
                     <div className="flex items-center mt-2 text-sm text-blue-600 dark:text-blue-400 font-medium">
@@ -449,6 +504,20 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
             )}
             {userData?.email && (
               <p className="truncate">{userData.email}</p>
+            )}
+            {!emailConfirmed && (
+              <button
+                onClick={handleResendConfirmation}
+                disabled={resendingEmail || !canResendEmail}
+                className="flex items-center gap-1 mt-1 text-xs font-medium text-amber-600 dark:text-amber-400 disabled:opacity-60"
+              >
+                <MailWarning size={12} />
+                <span>
+                  {t('emailNotConfirmed', { defaultValue: 'Correo sin confirmar' })}
+                  {' · '}
+                  {resendingEmail ? t('sending', { defaultValue: 'Enviando...' }) : !canResendEmail ? `${resendEmailTimer}s` : t('resend', { defaultValue: 'Reenviar' })}
+                </span>
+              </button>
             )}
           </div>
         </div>

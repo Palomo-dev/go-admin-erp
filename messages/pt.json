@@ -77,6 +77,8 @@
       "acceptInvitation": "Aceitar convite",
       "passwordRequirements": "Mínimo 8 caracteres",
       "passwordMismatch": "As senhas não coincidem",
+      "checkingEmail": "Verificando e-mail...",
+      "emailAvailable": "E-mail disponível",
       "pageTitle": "Cadastro no GO Admin ERP",
       "googleAccountSetup": "Configuração da conta",
       "googleAccount": "Conta Google: {email}",
@@ -270,6 +272,7 @@
       "passwordMismatch": "As senhas não coincidem",
       "nameRequired": "O nome é obrigatório",
       "lastNameRequired": "O sobrenome é obrigatório",
+      "emailAlreadyExists": "Este e-mail já está cadastrado. Tente fazer login.",
       "genericError": "Ocorreu um erro. Tente novamente."
     }
   },

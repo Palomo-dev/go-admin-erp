@@ -77,6 +77,8 @@
       "acceptInvitation": "Accept invitation",
       "passwordRequirements": "Minimum 8 characters",
       "passwordMismatch": "Passwords do not match",
+      "checkingEmail": "Checking email...",
+      "emailAvailable": "Email available",
       "pageTitle": "Sign up for GO Admin ERP",
       "googleAccountSetup": "Account setup",
       "googleAccount": "Google account: {email}",
@@ -270,6 +272,7 @@
       "passwordMismatch": "Passwords do not match",
       "nameRequired": "Name is required",
       "lastNameRequired": "Last name is required",
+      "emailAlreadyExists": "This email is already registered. Try logging in.",
       "genericError": "An error occurred. Please try again."
     }
   },

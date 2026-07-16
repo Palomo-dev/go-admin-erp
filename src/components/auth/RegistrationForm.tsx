@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect, useCallback } from 'react';
+import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import FileUpload from '@/components/common/FileUpload';
 import { useTranslations } from 'next-intl';
 
@@ -52,9 +52,41 @@ export default function RegistrationForm({
   }>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailExists, setEmailExists] = useState(false);
   const t = useTranslations('auth.signup');
   const tc = useTranslations('common');
   const te = useTranslations('auth.errors');
+
+  const checkEmailExists = useCallback(async (email: string) => {
+    setEmailChecking(true);
+    setEmailExists(false);
+    try {
+      const res = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (data.exists) {
+        setEmailExists(true);
+      }
+    } catch {
+      // Silently fail, don't block signup
+    } finally {
+      setEmailChecking(false);
+    }
+  }, []);
+
+  // Debounced email check
+  useEffect(() => {
+    const email = formData.email.trim();
+    if (!email || !validateEmail(email)) return;
+    const timer = setTimeout(() => {
+      checkEmailExists(email);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [formData.email, checkEmailExists]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -64,7 +96,12 @@ export default function RegistrationForm({
     if (validationErrors[name as keyof typeof validationErrors]) {
       setValidationErrors(prev => ({ ...prev, [name]: undefined }));
     }
-    
+
+    // Reset email exists state when email changes
+    if (name === 'email') {
+      setEmailExists(false);
+    }
+
     // Validar contraseñas en tiempo real
     if (name === 'password' || name === 'confirmPassword') {
       const password = name === 'password' ? value : formData.password;
@@ -134,6 +171,12 @@ export default function RegistrationForm({
       return;
     }
     
+    // Bloquear si el email ya existe
+    if (emailExists) {
+      setValidationErrors(prev => ({ ...prev, email: te('emailAlreadyExists') }));
+      return;
+    }
+
     await onSubmit(formData);
   };
 
@@ -182,10 +225,30 @@ export default function RegistrationForm({
           onChange={handleChange}
           disabled={isReadOnlyEmail}
           required
-          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.email ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm dark:bg-white dark:text-gray-900 ${
+          className={`mt-1 block w-full px-3 py-2 border ${
+            emailExists || validationErrors.email ? 'border-red-500 dark:border-red-500' : emailChecking ? 'border-yellow-400' : 'border-gray-300 dark:border-gray-600'
+          } rounded-md shadow-sm dark:bg-white dark:text-gray-900 ${
             isReadOnlyEmail ? 'bg-gray-50 text-gray-500 dark:bg-gray-100 dark:text-gray-500' : 'focus:outline-none focus:ring-blue-500 focus:border-blue-500'
           }`}
         />
+        {emailChecking && (
+          <p className="mt-1 text-sm text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+            <ExclamationCircleIcon className="h-4 w-4" />
+            {t('checkingEmail')}
+          </p>
+        )}
+        {emailExists && !emailChecking && (
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+            <ExclamationCircleIcon className="h-4 w-4" />
+            {te('emailAlreadyExists')}
+          </p>
+        )}
+        {!emailExists && !emailChecking && !validationErrors.email && formData.email && validateEmail(formData.email) && (
+          <p className="mt-1 text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+            <CheckCircleIcon className="h-4 w-4" />
+            {t('emailAvailable')}
+          </p>
+        )}
         {validationErrors.email && (
           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.email}</p>
         )}
@@ -338,7 +401,7 @@ export default function RegistrationForm({
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || emailExists || emailChecking}
           className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed"
         >
           {isLoading ? tc('loading') : isEmployee ? t('acceptInvitation') : tc('continue')}

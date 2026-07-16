@@ -749,7 +749,11 @@
     "manageOrgs": {
       "title": "Gerenciar Organizações",
       "createNew": "Criar Nova Organização",
-      "confirmDelete": "Tem certeza de que deseja excluir esta organização? Esta ação não pode ser desfeita.",
+      "confirmDelete": "Excluir organização?",
+      "confirmDeleteDescription": "Esta ação excluirá a organização, suas filiais e todos os dados associados. Esta ação não pode ser desfeita.",
+      "cancel": "Cancelar",
+      "delete": "Excluir",
+      "deleting": "Excluindo...",
       "noSession": "Sessão de usuário não encontrada",
       "noPermissionsDelete": "Você não tem permissão para excluir esta organização",
       "loadingForm": "Carregando formulário...",

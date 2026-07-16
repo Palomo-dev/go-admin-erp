@@ -20,28 +20,50 @@ const getCookie = (name: string): string | null => {
   return null;
 }
 
-// Función para establecer una cookie
+// Función para establecer una cookie (con soporte de chunks para cookies grandes)
 const setCookie = (name: string, value: string, maxAge: number = 604800) => {
   if (typeof document === 'undefined') return;
   
-  // La cookie de autenticación de Supabase necesita estar disponible para JavaScript
   const isAuthCookie = name.includes('-auth-token');
   const isProduction = process.env.NODE_ENV === 'production';
   const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
+  const encodedValue = encodeURIComponent(value);
   
-  document.cookie = `${name}=${encodeURIComponent(value)};path=/;max-age=${maxAge};SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${isProduction ? ';Secure' : ''}${cookieDomain}`;
+  // Limpiar chunks anteriores si existían
+  for (let i = 0; i < 20; i++) {
+    document.cookie = `${name}.${i}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${cookieDomain}`;
+  }
+  
+  if (encodedValue.length < 3600) {
+    document.cookie = `${name}=${encodedValue};path=/;max-age=${maxAge};SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${isProduction ? ';Secure' : ''}${cookieDomain}`;
+  } else {
+    // Dividir en chunks para cookies grandes
+    const CHUNK_SIZE = 3500;
+    let chunkIndex = 0;
+    let offset = 0;
+    while (offset < encodedValue.length) {
+      const chunk = encodedValue.substring(offset, offset + CHUNK_SIZE);
+      document.cookie = `${name}.${chunkIndex}=${chunk};path=/;max-age=${maxAge};SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${isProduction ? ';Secure' : ''}${cookieDomain}`;
+      offset += CHUNK_SIZE;
+      chunkIndex++;
+    }
+    console.log(`🍪 [SETCOOKIE] Cookie chunked: ${name} (${chunkIndex} chunks, ${encodedValue.length} bytes)`);
+  }
 }
 
 // Función para eliminar una cookie
 const removeCookie = (name: string) => {
   if (typeof document === 'undefined') return;
   
-  // La cookie de autenticación de Supabase necesita estar disponible para JavaScript
   const isAuthCookie = name.includes('-auth-token');
   const isProduction = process.env.NODE_ENV === 'production';
   const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
   
   document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${isProduction ? ';Secure' : ''}${cookieDomain}`;
+  // Limpiar chunks .0, .1, .2...
+  for (let i = 0; i < 20; i++) {
+    document.cookie = `${name}.${i}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${cookieDomain}`;
+  }
 }
 
 // Creación del cliente de Supabase para el navegador
@@ -94,25 +116,40 @@ export const createSupabaseClient = () => {
             console.log('💾 [STORAGE] Guardado en localStorage:', key);
             
             // También guardar en cookies para que el middleware pueda leerlo
-            // Usar secure en producción, no secure en desarrollo
             const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
             const isProduction = process.env.NODE_ENV === 'production';
             const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
-            const cookieValue = `${key}=${encodeURIComponent(value)}; path=/; max-age=2592000; SameSite=Lax${secureFlag}${cookieDomain}`;
-            document.cookie = cookieValue;
-            console.log('🍪 [STORAGE] Guardado en cookie:', key, 'con flags:', secureFlag, cookieDomain);
+            const encodedValue = encodeURIComponent(value);
+            
+            // Limpiar chunks anteriores si existían
+            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
+            for (let i = 0; i < 20; i++) {
+              document.cookie = `${key}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
+            }
+            
+            // Si el valor codificado cabe en una sola cookie (< 3600 bytes), usar cookie simple
+            if (encodedValue.length < 3600) {
+              document.cookie = `${key}=${encodedValue}; path=/; max-age=2592000; SameSite=Lax${secureFlag}${cookieDomain}`;
+              console.log('🍪 [STORAGE] Guardado en cookie simple:', key);
+            } else {
+              // Dividir en chunks de ~3500 bytes para no exceder el límite de 4KB por cookie
+              const CHUNK_SIZE = 3500;
+              let chunkIndex = 0;
+              let offset = 0;
+              while (offset < encodedValue.length) {
+                const chunk = encodedValue.substring(offset, offset + CHUNK_SIZE);
+                document.cookie = `${key}.${chunkIndex}=${chunk}; path=/; max-age=2592000; SameSite=Lax${secureFlag}${cookieDomain}`;
+                offset += CHUNK_SIZE;
+                chunkIndex++;
+              }
+              console.log(`🍪 [STORAGE] Guardado en cookie chunked: ${key} (${chunkIndex} chunks, ${encodedValue.length} bytes)`);
+            }
             
             // Verificar que la cookie se estableció correctamente
             setTimeout(() => {
               const cookies = document.cookie.split(';');
-              const cookieExists = cookies.some(c => c.trim().startsWith(`${key}=`));
+              const cookieExists = cookies.some(c => c.trim().startsWith(`${key}=`) || c.trim().startsWith(`${key}.0=`));
               console.log(`🔍 [STORAGE] Verificación cookie ${key}:`, cookieExists ? 'EXISTE' : 'NO EXISTE');
-              
-              if (!cookieExists) {
-                console.warn(`⚠️ [STORAGE] Cookie ${key} no se estableció correctamente, reintentando...`);
-                // Reintentar sin flags adicionales
-                document.cookie = `${key}=${encodeURIComponent(value)}; path=/`;
-              }
             }, 100);
           }
         },
@@ -122,11 +159,15 @@ export const createSupabaseClient = () => {
             localStorage.removeItem(key);
             console.log('💾 [STORAGE] Eliminado de localStorage:', key);
             
-            // Eliminar de cookies
+            // Eliminar de cookies (cookie simple + chunks)
             const isProduction = process.env.NODE_ENV === 'production';
             const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
             document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
-            console.log('🍪 [STORAGE] Eliminado de cookie:', key);
+            // Limpiar chunks .0, .1, .2...
+            for (let i = 0; i < 20; i++) {
+              document.cookie = `${key}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
+            }
+            console.log('🍪 [STORAGE] Eliminado de cookie (incluyendo chunks):', key);
           }
         },
       },
@@ -231,36 +272,41 @@ export const ensureSessionSynced = async (): Promise<boolean> => {
     localStorage.setItem(storageKey, JSON.stringify(sessionToken));
     console.log('💾 [SESSION] Sesión guardada en localStorage');
     
-    // Guardar en cookies de forma más agresiva
+    // Guardar en cookies con soporte de chunks para tokens grandes
     const cookieValue = encodeURIComponent(JSON.stringify(sessionToken));
     const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieDomain = isProduction ? '; domain=.goadmin.io' : '';
     
-    // Probar múltiples formatos de cookie
-    const cookieFormats = [
-      `${storageKey}=${cookieValue}; path=/; max-age=604800; SameSite=Lax${secureFlag}`,
-      `${storageKey}=${cookieValue}; path=/; SameSite=Lax`,
-      `${storageKey}=${cookieValue}; path=/`
-    ];
+    // Limpiar cookie simple y chunks anteriores
+    document.cookie = `${storageKey}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
+    for (let i = 0; i < 20; i++) {
+      document.cookie = `${storageKey}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${cookieDomain}`;
+    }
     
-    for (let i = 0; i < cookieFormats.length; i++) {
-      document.cookie = cookieFormats[i];
-      console.log(`🍪 [SESSION] Intentando formato cookie ${i + 1}:`, cookieFormats[i].substring(0, 100) + '...');
-      
-      // Verificar si se estableció
-      setTimeout(() => {
-        const cookies = document.cookie.split(';');
-        const exists = cookies.some(c => c.trim().startsWith(`${storageKey}=`));
-        if (exists) {
-          console.log(`✅ [SESSION] Cookie establecida con formato ${i + 1}`);
-        }
-      }, 50);
+    if (cookieValue.length < 3600) {
+      // Cookie simple para valores pequeños
+      document.cookie = `${storageKey}=${cookieValue}; path=/; max-age=604800; SameSite=Lax${secureFlag}${cookieDomain}`;
+      console.log('🍪 [SESSION] Cookie simple establecida');
+    } else {
+      // Dividir en chunks para valores grandes
+      const CHUNK_SIZE = 3500;
+      let chunkIndex = 0;
+      let offset = 0;
+      while (offset < cookieValue.length) {
+        const chunk = cookieValue.substring(offset, offset + CHUNK_SIZE);
+        document.cookie = `${storageKey}.${chunkIndex}=${chunk}; path=/; max-age=604800; SameSite=Lax${secureFlag}${cookieDomain}`;
+        offset += CHUNK_SIZE;
+        chunkIndex++;
+      }
+      console.log(`🍪 [SESSION] Cookie chunked establecida: ${chunkIndex} chunks, ${cookieValue.length} bytes`);
     }
     
     // Verificación final después de un delay
     return new Promise((resolve) => {
       setTimeout(() => {
         const cookies = document.cookie.split(';');
-        const exists = cookies.some(c => c.trim().startsWith(`${storageKey}=`));
+        const exists = cookies.some(c => c.trim().startsWith(`${storageKey}=`) || c.trim().startsWith(`${storageKey}.0=`));
         console.log('🔍 [SESSION] Verificación final de cookie:', exists ? 'ÉXITO' : 'FALLÓ');
         resolve(exists);
       }, 200);
@@ -282,12 +328,13 @@ export const signInWithEmail = async (email: string, password: string) => {
   }
 
   if (result.data.session) {
-    const { access_token, refresh_token, expires_at } = result.data.session;
+    const { access_token, refresh_token, expires_at, user } = result.data.session;
   
     const tokenPayload = JSON.stringify({
       access_token,
       refresh_token,
-      expires_at
+      expires_at,
+      user
     });
   
     const projectRef = getProjectRef(); // or hardcode your Supabase project ref
@@ -366,6 +413,10 @@ export const signOut = async () => {
     // Limpiar cookie específica del proyecto usando la referencia dinámica
     if (projectRef) {
       document.cookie = `sb-${projectRef}-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+      // Limpiar chunks .0, .1, .2...
+      for (let i = 0; i < 20; i++) {
+        document.cookie = `sb-${projectRef}-auth-token.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax`;
+      }
     }
     
     // También limpiar la cookie CSRF

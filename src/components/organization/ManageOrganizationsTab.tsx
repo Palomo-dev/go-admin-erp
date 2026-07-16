@@ -4,6 +4,17 @@ import { useState, lazy, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import OrganizationList from './OrganizationList';
 import { useTranslations } from 'next-intl';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 const CreateOrganizationForm = lazy(() => import('./CreateOrganizationForm'));
 
@@ -11,19 +22,25 @@ export default function ManageOrganizationsTab() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState('');
   const t = useTranslations('org.manageOrgs');
+  const [orgToDelete, setOrgToDelete] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [refetchKey, setRefetchKey] = useState(0);
 
   const handleCreateSuccess = () => {
     setShowCreateForm(false);
-    window.location.reload();
+    setRefetchKey(k => k + 1);
   };
 
-  const handleDeleteOrganization = async (orgId: number) => {
-    if (!window.confirm(t('confirmDelete'))) {
-      return;
-    }
+  const handleDeleteOrganization = (orgId: number) => {
+    setOrgToDelete(orgId);
+  };
+
+  const confirmDelete = async () => {
+    if (!orgToDelete) return;
+    setDeleting(true);
+    setError('');
 
     try {
-      // Check if user is admin of the organization
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error(t('noSession'));
 
@@ -31,7 +48,7 @@ export default function ManageOrganizationsTab() {
         .from('organization_members')
         .select('role_id, is_super_admin')
         .eq('user_id', session.user.id)
-        .eq('organization_id', orgId)
+        .eq('organization_id', orgToDelete)
         .single();
 
       if (memberError) throw memberError;
@@ -39,18 +56,40 @@ export default function ManageOrganizationsTab() {
         throw new Error(t('noPermissionsDelete'));
       }
 
-      // Delete organization (this will cascade delete branches, organization_members, etc.)
-      // Note: manager_id references in branches will be automatically set to NULL due to FK constraint
       const { error: deleteError } = await supabase
         .from('organizations')
         .delete()
-        .eq('id', orgId);
+        .eq('id', orgToDelete);
 
       if (deleteError) throw deleteError;
 
-      window.location.reload();
+      // Verificar si el usuario aún tiene organizaciones
+      const { data: remainingOrgs, error: orgCheckError } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', session.user.id);
+
+      if (orgCheckError) throw orgCheckError;
+
+      if (!remainingOrgs || remainingOrgs.length === 0) {
+        // No tiene más organizaciones, redirigir a selección de organización
+        localStorage.removeItem('currentOrganizationId');
+        localStorage.removeItem('currentOrganizationName');
+        localStorage.removeItem('currentOrganizationType');
+        window.location.href = '/auth/select-organization';
+      } else {
+        // Si la org eliminada era la actual, cambiar a otra
+        const currentOrgId = localStorage.getItem('currentOrganizationId');
+        if (currentOrgId && parseInt(currentOrgId) === orgToDelete) {
+          localStorage.setItem('currentOrganizationId', String(remainingOrgs[0].organization_id));
+        }
+        setRefetchKey(k => k + 1);
+      }
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setDeleting(false);
+      setOrgToDelete(null);
     }
   };
 
@@ -102,9 +141,43 @@ export default function ManageOrganizationsTab() {
             onDelete={handleDeleteOrganization}
             filterActive={false}
             showFilters={true}
+            refetchKey={refetchKey}
           />
         </div>
       )}
+
+      <AlertDialog open={orgToDelete !== null} onOpenChange={(open) => { if (!open && !deleting) setOrgToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              {t('confirmDelete')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('confirmDeleteDescription') || 'Esta acción eliminará la organización, sus sucursales y todos los datos asociados. No se puede deshacer.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting} onClick={() => setOrgToDelete(null)}>
+              {t('cancel') || 'Cancelar'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t('deleting') || 'Eliminando...'}
+                </>
+              ) : (
+                t('delete') || 'Eliminar'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -417,11 +417,34 @@ class AIActionsService {
   }
 
   private async updateProductPrice(data: Record<string, any>, organizationId: number) {
+    const now = new Date().toISOString();
+
+    // Cerrar precio vigente actual
+    const { data: currentPrice } = await supabase
+      .from('product_prices')
+      .select('id')
+      .eq('product_id', data.product_id)
+      .is('effective_to', null)
+      .order('effective_from', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (currentPrice) {
+      await supabase
+        .from('product_prices')
+        .update({ effective_to: now })
+        .eq('id', currentPrice.id);
+    }
+
+    // Insertar nuevo precio
     const { error } = await supabase
-      .from('products')
-      .update({ price: data.new_price })
-      .eq('id', data.product_id)
-      .eq('organization_id', organizationId);
+      .from('product_prices')
+      .insert({
+        product_id: data.product_id,
+        price: data.new_price,
+        effective_from: now,
+        effective_to: null,
+      });
 
     if (error) throw new Error(error.message);
     return { success: true, message: `Precio actualizado a $${data.new_price}` };

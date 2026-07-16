@@ -5,6 +5,7 @@ import SubscriptionPlanSelector from '../subscription/SubscriptionPlanSelector';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { Ticket, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import PriceSummary from './PriceSummary';
 
 export interface ValidatedCoupon {
   id: string;
@@ -114,10 +115,21 @@ export default function SubscriptionStep({
 
       if (data.valid && data.coupon) {
         setValidatedCoupon(data.coupon);
-        updateFormData({ couponCode: data.coupon.code });
+        updateFormData({
+          couponCode: data.coupon.code,
+          validatedCoupon: {
+            code: data.coupon.code,
+            name: data.coupon.name,
+            discountType: data.coupon.discountType,
+            discountValue: data.coupon.discountValue,
+            durationMonths: data.coupon.durationMonths,
+            discountDescription: data.coupon.discountDescription,
+            durationDescription: data.coupon.durationDescription,
+          },
+        });
       } else {
         setCouponError(data.error || 'Cupón no válido');
-        updateFormData({ couponCode: undefined });
+        updateFormData({ couponCode: undefined, validatedCoupon: null });
       }
     } catch {
       setCouponError('Error al validar el cupón');
@@ -131,7 +143,7 @@ export default function SubscriptionStep({
     setCouponInput('');
     setValidatedCoupon(null);
     setCouponError(null);
-    updateFormData({ couponCode: undefined });
+    updateFormData({ couponCode: undefined, validatedCoupon: null });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -220,7 +232,7 @@ export default function SubscriptionStep({
           </p>
 
           {!validatedCoupon ? (
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={couponInput}
@@ -235,14 +247,14 @@ export default function SubscriptionStep({
                   }
                 }}
                 placeholder={t('couponPlaceholder')}
-                className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+                className="w-full sm:flex-1 rounded-md border border-gray-300 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
                 disabled={couponLoading}
               />
               <button
                 type="button"
                 onClick={handleValidateCoupon}
                 disabled={couponLoading || !couponInput.trim()}
-                className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
                 {couponLoading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -253,7 +265,7 @@ export default function SubscriptionStep({
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-md border border-green-300 bg-green-50">
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-green-900 truncate">
@@ -281,6 +293,14 @@ export default function SubscriptionStep({
             </div>
           )}
         </div>
+
+        {/* Resumen de pago */}
+        <PriceSummary
+          subscriptionPlan={selectedPlan}
+          billingPeriod={billingPeriod}
+          skipTrial={skipTrial}
+          coupon={validatedCoupon}
+        />
 
         <div className="mt-6 sm:mt-8 flex justify-between gap-2">
           <button

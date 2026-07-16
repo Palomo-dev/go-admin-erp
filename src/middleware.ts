@@ -299,8 +299,24 @@ async function checkModuleAccess(request: NextRequest, pathname: string): Promis
       return null;
     }
 
-    // Obtener información del usuario desde las cookies
-    const authCookie = request.cookies.get('sb-jgmgphmzusbluqhuqihj-auth-token');
+    // Obtener información del usuario desde las cookies (con soporte de chunks)
+    const authCookieName = 'sb-jgmgphmzusbluqhuqihj-auth-token';
+    let authCookie = request.cookies.get(authCookieName);
+    if (!authCookie) {
+      // Buscar cookies chunked (.0, .1, .2...)
+      const chunk0 = request.cookies.get(`${authCookieName}.0`);
+      if (chunk0) {
+        let fullValue = chunk0.value;
+        let i = 1;
+        while (true) {
+          const chunk = request.cookies.get(`${authCookieName}.${i}`);
+          if (!chunk) break;
+          fullValue += chunk.value;
+          i++;
+        }
+        authCookie = { name: authCookieName, value: fullValue };
+      }
+    }
     if (!authCookie?.value) {
       return NextResponse.redirect(new URL('/auth/login', request.url));
     }

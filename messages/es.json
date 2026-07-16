@@ -749,7 +749,11 @@
     "manageOrgs": {
       "title": "Administrar Organizaciones",
       "createNew": "Crear Nueva Organización",
-      "confirmDelete": "¿Estás seguro de eliminar esta organización? Esta acción no se puede deshacer.",
+      "confirmDelete": "¿Eliminar organización?",
+      "confirmDeleteDescription": "Esta acción eliminará la organización, sus sucursales y todos los datos asociados. No se puede deshacer.",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "deleting": "Eliminando...",
       "noSession": "No se encontró sesión de usuario",
       "noPermissionsDelete": "No tienes permisos para eliminar esta organización",
       "loadingForm": "Cargando formulario...",

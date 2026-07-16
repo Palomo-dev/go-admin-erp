@@ -459,13 +459,20 @@ export const registerUserDevice = async (sessionOrUserId: any) => {
     };
 
     console.log('Registrando dispositivo:', deviceData);
-    
+
+    // Obtener el access_token actual: las cookies de Supabase pueden no estar
+    // disponibles inmediatamente después del login, así que enviamos el token
+    // en el header Authorization como fallback.
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    const accessToken = currentSession?.access_token;
+
     // Llamar al endpoint API para registrar/actualizar el dispositivo
     const response = await fetch('/api/sessions', {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify(deviceData),
     });

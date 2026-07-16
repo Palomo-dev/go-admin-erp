@@ -300,6 +300,11 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
     // 2. Crear organización (solo si es tipo 'create')
     if (signupData.joinType === 'create' && signupData.organizationName) {
       console.log('2️⃣ Creating organization...');
+
+      // Determinar plan_id desde el nombre del plan (soporta sufijos como 'business-yearly')
+      const planSlug = (signupData.subscriptionPlan || '').toLowerCase();
+      const planId = planSlug.startsWith('business') ? 3 : (planSlug.startsWith('pro') ? 2 : 1);
+
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .insert({
@@ -319,6 +324,7 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
           secondary_color: signupData.organizationSecondaryColor || '#F59E0B',
           created_by: user.id,
           owner_user_id: user.id,
+          plan_id: planId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -331,12 +337,14 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
       }
       console.log('✅ Organization created with ID:', orgData.id);
       
-      // 3. Crear sucursal principal
-      console.log('3️⃣ Creating main branch...');
-      const { data: branchData, error: branchError } = await supabase
+      // 3. Actualizar la sucursal principal
+      // NOTA: un trigger de la BD (trg_create_default_branch_and_period) ya crea
+      // automáticamente la sucursal principal al insertar la organización.
+      // Aquí solo actualizamos sus datos con la información capturada en el signup.
+      console.log('3️⃣ Updating main branch with signup data...');
+      const { error: branchError } = await supabase
         .from('branches')
-        .insert({
-          organization_id: orgData.id,
+        .update({
           name: signupData.branchName || 'Sucursal Principal',
           branch_code: signupData.branchCode || 'MAIN-001',
           address: signupData.branchAddress || '',
@@ -346,8 +354,6 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
           postal_code: signupData.branchPostalCode || '',
           phone: signupData.branchPhone || '',
           email: signupData.branchEmail || '',
-          is_main: true,
-          is_active: true,
           opening_hours: signupData.branchOpeningHours || {
             monday: { open: '09:00', close: '18:00', closed: false },
             tuesday: { open: '09:00', close: '18:00', closed: false },
@@ -357,17 +363,16 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
             saturday: { open: '10:00', close: '15:00', closed: false },
             sunday: { closed: true }
           },
-          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
-        .select()
-        .single();
+        .eq('organization_id', orgData.id)
+        .eq('is_main', true);
       
       if (branchError) {
-        console.error('❌ Error creating branch:', branchError);
+        console.error('❌ Error updating branch:', branchError);
         throw branchError;
       }
-      console.log('✅ Branch created with ID:', branchData.id);
+      console.log('✅ Branch updated successfully');
       
       // 4. Crear membresía del usuario como super admin
       console.log('4️⃣ Creating organization membership...');
@@ -388,33 +393,35 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
       }
       console.log('✅ Membership created successfully');
       
-      // 5. Crear suscripción
-      console.log('5️⃣ Creating subscription...');
-      const planId = signupData.subscriptionPlan === 'business' ? 3 : (signupData.subscriptionPlan === 'pro' ? 2 : 1);
+      // 5. Actualizar la suscripción con los datos reales del plan comprado
+      // NOTA: un trigger de la BD (after_organization_insert_subscription) ya crea
+      // automáticamente una suscripción (plan_id tomado de organizations.plan_id) al
+      // insertar la organización. Aquí solo la actualizamos con período de facturación,
+      // trial y datos de Stripe capturados en el signup.
+      console.log('5️⃣ Updating subscription with real plan data...');
       const trialDays = planId === 3 ? 30 : (planId === 2 ? 15 : 0);
+      const periodDays = signupData.billingPeriod === 'yearly' ? 365 : 30;
       
       const { error: subscriptionError } = await supabase
         .from('subscriptions')
-        .insert({
-          organization_id: orgData.id,
+        .update({
           plan_id: planId,
-          status: 'active',
           billing_period: signupData.billingPeriod || 'monthly',
+          skip_trial: !!signupData.skipTrial,
           trial_start: new Date().toISOString(),
           trial_end: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString(),
           current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          stripe_subscription_id: null,
-          stripe_customer_id: null,
-          created_at: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString(),
+          stripe_customer_id: signupData.stripeCustomerId || null,
           updated_at: new Date().toISOString()
-        });
+        })
+        .eq('organization_id', orgData.id);
       
       if (subscriptionError) {
-        console.error('❌ Error creating subscription:', subscriptionError);
+        console.error('❌ Error updating subscription:', subscriptionError);
         throw subscriptionError;
       }
-      console.log('✅ Subscription created successfully');
+      console.log('✅ Subscription updated successfully');
       
       console.log('🎉 Complete signup finished successfully!');
     } else {

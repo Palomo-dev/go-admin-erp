@@ -19,8 +19,8 @@ const createAdminClient = () => {
   })
 }
 
-// Función para crear un cliente de Supabase con la cookie de sesión
-const createClientWithSession = async () => {
+// Función para crear un cliente de Supabase con la cookie de sesión o token del header
+const createClientWithSession = async (request?: Request) => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
@@ -29,6 +29,26 @@ const createClientWithSession = async () => {
   }
   
   const cookieStore = await cookies()
+  
+  // Si viene un token en el header Authorization, usarlo directamente
+  // (las cookies pueden no estar disponibles inmediatamente después del login)
+  const authHeader = request?.headers.get('authorization')
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  
+  if (bearerToken) {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${bearerToken}`,
+        },
+      },
+    })
+  }
   
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
@@ -142,7 +162,7 @@ export async function GET(request: Request) {
 // POST: Registrar un nuevo dispositivo o actualizar uno existente
 export async function POST(request: Request) {
   try {
-    const supabase = await createClientWithSession()
+    const supabase = await createClientWithSession(request)
     const { data: { session } } = await supabase.auth.getSession()
     
     if (!session) {

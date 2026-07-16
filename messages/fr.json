@@ -77,6 +77,8 @@
       "acceptInvitation": "Accepter l'invitation",
       "passwordRequirements": "Minimum 8 caractères",
       "passwordMismatch": "Les mots de passe ne correspondent pas",
+      "checkingEmail": "Vérification de l'e-mail...",
+      "emailAvailable": "E-mail disponible",
       "pageTitle": "Inscription à GO Admin ERP",
       "googleAccountSetup": "Configuration du compte",
       "googleAccount": "Compte Google : {email}",
@@ -270,6 +272,7 @@
       "passwordMismatch": "Les mots de passe ne correspondent pas",
       "nameRequired": "Le prénom est obligatoire",
       "lastNameRequired": "Le nom est obligatoire",
+      "emailAlreadyExists": "Cet e-mail est déjà enregistré. Essayez de vous connecter.",
       "genericError": "Une erreur est survenue. Veuillez réessayer."
     }
   },

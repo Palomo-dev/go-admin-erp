@@ -154,6 +154,7 @@ export async function POST(request: NextRequest) {
       paymentMethodId: body.paymentMethodId,
       existingCustomerId: body.existingCustomerId,
       enterpriseConfig: body.enterpriseConfig, // <-- Agregar configuración Enterprise
+      couponCode: body.couponCode, // <-- Código de cupón de descuento
     }
 
     // Crear suscripción

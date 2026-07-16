@@ -29,6 +29,7 @@ export interface CreateSubscriptionData {
     aiCredits: number  // Cantidad de créditos IA a comprar
     selectedModules: string[]
   }
+  couponCode?: string // Código de cupón de descuento
 }
 
 export interface SubscriptionResult {
@@ -199,28 +200,70 @@ export async function createSubscription(
       }
     }
 
-    // 2. Crear suscripción según si usa trial o no
+    // 2. Buscar cupón si se proporcionó un código
+    let stripeCouponId: string | undefined
+    if (data.couponCode) {
+      console.log('🔍 Buscando cupón:', data.couponCode);
+      const { data: couponData, error: couponError } = await supabase
+        .from('subscription_coupons')
+        .select('stripe_coupon_id, is_active, max_redemptions, redemption_count, valid_until')
+        .eq('code', data.couponCode.toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (couponError || !couponData) {
+        console.warn('⚠️ Cupón no encontrado o inactivo:', data.couponCode);
+      } else if (couponData.max_redemptions && couponData.redemption_count >= couponData.max_redemptions) {
+        console.warn('⚠️ Cupón alcanzó límite de redenciones:', data.couponCode);
+      } else if (couponData.valid_until && new Date(couponData.valid_until) < new Date()) {
+        console.warn('⚠️ Cupón expirado:', data.couponCode);
+      } else if (!couponData.stripe_coupon_id) {
+        console.warn('⚠️ Cupón sin stripe_coupon_id:', data.couponCode);
+      } else {
+        stripeCouponId = couponData.stripe_coupon_id;
+        console.log('✅ Cupón válido, stripe_coupon_id:', stripeCouponId);
+      }
+    }
+
+    // 3. Crear suscripción según si usa trial o no
     let subscription: any
 
     if (data.useTrial) {
-      // CON TRIAL: 15 días gratis, no requiere payment method inmediato
+      // CON TRIAL: días gratis, no requiere payment method inmediato
       subscription = await stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
         trial_period_days: plan.trial_days || 15,
-        payment_behavior: 'default_incomplete', // Permitir suscripción sin payment method durante trial
+        payment_behavior: 'default_incomplete',
         payment_settings: {
           save_default_payment_method: 'on_subscription',
         },
+        ...(stripeCouponId ? { coupon: stripeCouponId } : {}),
         metadata: {
           organizationId: data.organizationId.toString(),
           planCode: data.planCode,
           billingPeriod: data.billingPeriod,
           usedTrial: 'true',
+          ...(data.couponCode ? { couponCode: data.couponCode } : {}),
         },
       })
 
       console.log('✅ Suscripción con trial creada:', subscription.id)
+
+      // Incrementar redemption_count del cupón
+      if (stripeCouponId && data.couponCode) {
+        const { data: couponRow } = await supabase
+          .from('subscription_coupons')
+          .select('redemption_count')
+          .eq('code', data.couponCode.toUpperCase())
+          .single();
+        if (couponRow) {
+          await supabase
+            .from('subscription_coupons')
+            .update({ redemption_count: (couponRow.redemption_count || 0) + 1 })
+            .eq('code', data.couponCode.toUpperCase());
+        }
+      }
 
       // Guardar suscripción en base de datos
       await saveSubscriptionToDatabase(supabase, {
@@ -276,15 +319,32 @@ export async function createSubscription(
         default_payment_method: data.paymentMethodId,
         payment_behavior: 'error_if_incomplete',
         expand: ['latest_invoice.payment_intent'],
+        ...(stripeCouponId ? { coupon: stripeCouponId } : {}),
         metadata: {
           organizationId: data.organizationId.toString(),
           planCode: data.planCode,
           billingPeriod: data.billingPeriod,
           usedTrial: 'false',
+          ...(data.couponCode ? { couponCode: data.couponCode } : {}),
         },
       })
 
       console.log('✅ Suscripción sin trial creada:', subscription.id)
+
+      // Incrementar redemption_count del cupón
+      if (stripeCouponId && data.couponCode) {
+        const { data: couponRow } = await supabase
+          .from('subscription_coupons')
+          .select('redemption_count')
+          .eq('code', data.couponCode.toUpperCase())
+          .single();
+        if (couponRow) {
+          await supabase
+            .from('subscription_coupons')
+            .update({ redemption_count: (couponRow.redemption_count || 0) + 1 })
+            .eq('code', data.couponCode.toUpperCase());
+        }
+      }
 
       // Guardar suscripción en base de datos
       await saveSubscriptionToDatabase(supabase, {

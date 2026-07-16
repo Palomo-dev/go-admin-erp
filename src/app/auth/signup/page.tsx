@@ -79,6 +79,8 @@ interface SignupData {
   // Datos de Stripe (método de pago)
   stripeCustomerId?: string;
   stripePaymentMethodId?: string;
+  // Cupón de descuento
+  couponCode?: string;
 }
 
 function SignupContent() {
@@ -142,6 +144,7 @@ function SignupContent() {
     billingPeriod: 'monthly',
     skipTrial: false,
     referralCode: '',
+    couponCode: undefined,
   });
 
   // Leer código de vendedor de la URL (?ref=VEND-001)
@@ -475,6 +478,7 @@ function SignupContent() {
                 customerName: `${signupData.firstName} ${signupData.lastName || ''}`.trim(),
                 ...(signupData.stripeCustomerId ? { existingCustomerId: signupData.stripeCustomerId } : {}),
                 ...(signupData.stripePaymentMethodId ? { paymentMethodId: signupData.stripePaymentMethodId } : {}),
+                ...(signupData.couponCode ? { couponCode: signupData.couponCode } : {}),
               }),
             });
 
@@ -631,7 +635,9 @@ function SignupContent() {
               skipTrial: signupData.skipTrial,
               // Datos de Stripe
               stripeCustomerId: signupData.stripeCustomerId,
-              stripePaymentMethodId: signupData.stripePaymentMethodId
+              stripePaymentMethodId: signupData.stripePaymentMethodId,
+              // Cupón
+              couponCode: signupData.couponCode
             })
           },
           emailRedirectTo: `${window.location.origin}/auth/callback?complete_signup=true`

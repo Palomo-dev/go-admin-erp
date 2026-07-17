@@ -85,6 +85,21 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error PM Planner:', error);
+
+    if (error?.status === 429 || error?.code === 'insufficient_quota') {
+      return NextResponse.json(
+        { error: 'Cuota de OpenAI agotada. Revisa el plan y facturación en platform.openai.com.' },
+        { status: 429 }
+      );
+    }
+
+    if (error?.status === 401 || error?.code === 'invalid_api_key') {
+      return NextResponse.json(
+        { error: 'Clave de API de OpenAI inválida o no configurada.' },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
       { error: error.message || 'Error al generar plan con IA' },
       { status: 500 }

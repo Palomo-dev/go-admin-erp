@@ -68,15 +68,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fijar la contraseña temporal que espera el flujo actual de /auth/invite
-    if (inviteData?.user?.id) {
-      const { error: pwError } = await admin.auth.admin.updateUserById(inviteData.user.id, {
-        password: 'temp-password',
-      });
-      if (pwError) {
-        console.error('Error fijando contraseña temporal:', pwError);
-      }
-    }
+    // No fijar contraseña temporal: updateUserById invalida el token de invitación
+    // que Supabase envía por email. El flujo correcto es:
+    // 1. Usuario clickea link del email → /auth/verify?token=...&type=invite
+    // 2. verifyOtp establece sesión automáticamente
+    // 3. Redirect a /auth/invite?invite_code=... donde completa su perfil y contraseña
 
     return NextResponse.json({ success: true, inviteUrl });
   } catch (error: any) {

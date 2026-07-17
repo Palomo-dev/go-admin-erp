@@ -154,7 +154,49 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
       console.log('✅ Perfil actualizado exitosamente');
 
-    
+      // 4. Crear membresía en la organización
+      console.log('👥 Creando membresía en organización...');
+      const { data: existingMembership } = await supabase
+        .from('organization_members')
+        .select('id')
+        .eq('user_id', authData.user.id)
+        .eq('organization_id', inviteData.organization_id)
+        .single();
+
+      if (!existingMembership) {
+        const { error: membershipError } = await supabase
+          .from('organization_members')
+          .insert({
+            user_id: authData.user.id,
+            organization_id: inviteData.organization_id,
+            role_id: inviteData.role_id,
+            is_active: true,
+            joined_at: new Date().toISOString()
+          });
+
+        if (membershipError) {
+          console.log('Error creando membresía:', membershipError);
+          throw new Error(`Error al crear membresía: ${membershipError.message}`);
+        }
+        console.log('✅ Membresía creada exitosamente');
+      } else {
+        const { error: updateMembershipError } = await supabase
+          .from('organization_members')
+          .update({
+            role_id: inviteData.role_id,
+            is_active: true,
+            joined_at: new Date().toISOString()
+          })
+          .eq('user_id', authData.user.id)
+          .eq('organization_id', inviteData.organization_id);
+
+        if (updateMembershipError) {
+          console.log('Error actualizando membresía:', updateMembershipError);
+          throw new Error(`Error al actualizar membresía: ${updateMembershipError.message}`);
+        }
+        console.log('✅ Membresía actualizada exitosamente');
+      }
+
       // 5. Marcar invitación como utilizada
       console.log('✅ Marcando invitación como utilizada...');
       const { error: invitationError } = await supabase

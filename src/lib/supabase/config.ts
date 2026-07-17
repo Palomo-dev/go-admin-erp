@@ -38,13 +38,26 @@ const setCookie = (name: string, value: string, maxAge: number = 604800) => {
     document.cookie = `${name}=${encodedValue};path=/;max-age=${maxAge};SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${isProduction ? ';Secure' : ''}${cookieDomain}`;
   } else {
     // Dividir en chunks para cookies grandes
+    // IMPORTANTE: Ajustar el límite para no dividir secuencias %XX
+    // Next.js (cookie package) decodifica cada cookie individualmente con
+    // decodeURIComponent. Si un %XX se divide entre chunks, la decodificación
+    // falla y corrompe el token.
     const CHUNK_SIZE = 3500;
     let chunkIndex = 0;
     let offset = 0;
     while (offset < encodedValue.length) {
-      const chunk = encodedValue.substring(offset, offset + CHUNK_SIZE);
+      let end = Math.min(offset + CHUNK_SIZE, encodedValue.length);
+      // No dividir una secuencia %XX (3 caracteres: %, X, X)
+      if (end < encodedValue.length) {
+        if (encodedValue[end - 2] === '%') {
+          end -= 2;
+        } else if (encodedValue[end - 1] === '%') {
+          end -= 1;
+        }
+      }
+      const chunk = encodedValue.substring(offset, end);
       document.cookie = `${name}.${chunkIndex}=${chunk};path=/;max-age=${maxAge};SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${isProduction ? ';Secure' : ''}${cookieDomain}`;
-      offset += CHUNK_SIZE;
+      offset = end;
       chunkIndex++;
     }
     console.log(`🍪 [SETCOOKIE] Cookie chunked: ${name} (${chunkIndex} chunks, ${encodedValue.length} bytes)`);
@@ -162,13 +175,25 @@ export const createSupabaseClient = () => {
               console.log('🍪 [STORAGE] Guardado en cookie simple:', key);
             } else {
               // Dividir en chunks de ~3500 bytes para no exceder el límite de 4KB por cookie
+              // IMPORTANTE: Ajustar el límite para no dividir secuencias %XX
+              // Next.js (cookie package) decodifica cada cookie individualmente con
+              // decodeURIComponent. Si un %XX se divide entre chunks, la decodificación
+              // falla y corrompe el token.
               const CHUNK_SIZE = 3500;
               let chunkIndex = 0;
               let offset = 0;
               while (offset < encodedValue.length) {
-                const chunk = encodedValue.substring(offset, offset + CHUNK_SIZE);
+                let end = Math.min(offset + CHUNK_SIZE, encodedValue.length);
+                if (end < encodedValue.length) {
+                  if (encodedValue[end - 2] === '%') {
+                    end -= 2;
+                  } else if (encodedValue[end - 1] === '%') {
+                    end -= 1;
+                  }
+                }
+                const chunk = encodedValue.substring(offset, end);
                 document.cookie = `${key}.${chunkIndex}=${chunk}; path=/; max-age=2592000; SameSite=Lax${secureFlag}${cookieDomain}`;
-                offset += CHUNK_SIZE;
+                offset = end;
                 chunkIndex++;
               }
               console.log(`🍪 [STORAGE] Guardado en cookie chunked: ${key} (${chunkIndex} chunks, ${encodedValue.length} bytes)`);
@@ -319,13 +344,25 @@ export const ensureSessionSynced = async (): Promise<boolean> => {
       console.log('🍪 [SESSION] Cookie simple establecida');
     } else {
       // Dividir en chunks para valores grandes
+      // IMPORTANTE: Ajustar el límite para no dividir secuencias %XX
+      // Next.js (cookie package) decodifica cada cookie individualmente con
+      // decodeURIComponent. Si un %XX se divide entre chunks, la decodificación
+      // falla y corrompe el token.
       const CHUNK_SIZE = 3500;
       let chunkIndex = 0;
       let offset = 0;
       while (offset < cookieValue.length) {
-        const chunk = cookieValue.substring(offset, offset + CHUNK_SIZE);
+        let end = Math.min(offset + CHUNK_SIZE, cookieValue.length);
+        if (end < cookieValue.length) {
+          if (cookieValue[end - 2] === '%') {
+            end -= 2;
+          } else if (cookieValue[end - 1] === '%') {
+            end -= 1;
+          }
+        }
+        const chunk = cookieValue.substring(offset, end);
         document.cookie = `${storageKey}.${chunkIndex}=${chunk}; path=/; max-age=604800; SameSite=Lax${secureFlag}${cookieDomain}`;
-        offset += CHUNK_SIZE;
+        offset = end;
         chunkIndex++;
       }
       console.log(`🍪 [SESSION] Cookie chunked establecida: ${chunkIndex} chunks, ${cookieValue.length} bytes`);

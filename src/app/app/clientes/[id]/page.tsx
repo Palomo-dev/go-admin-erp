@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
-import { ArrowLeft, User, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Importamos los componentes del perfil del cliente
@@ -17,6 +17,7 @@ import CuentasTab from '@/components/clientes/id/CuentasTab';
 import NotasArchivosTab from '@/components/clientes/id/NotasArchivosTab';
 import TareasSidebar from '@/components/clientes/id/TareasSidebar';
 import InfoTab from '@/components/clientes/id/InfoTab';
+import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
 
 // Interfaz para los datos del cliente
 interface Cliente {
@@ -35,6 +36,7 @@ interface Cliente {
   created_at: string;
   updated_at: string;
   avatar_url?: string | null;
+  customer_type?: string | null;
 }
 
 export default function PerfilCliente() {
@@ -148,6 +150,9 @@ export default function PerfilCliente() {
               <TabsTrigger value="timeline" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Timeline</TabsTrigger>
               <TabsTrigger value="cuentas" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Cuentas por cobrar</TabsTrigger>
               <TabsTrigger value="notas" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Notas y archivos</TabsTrigger>
+              {cliente.customer_type === 'company' && (
+                <TabsTrigger value="contactos" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Contactos</TabsTrigger>
+              )}
             </TabsList>
             
             <TabsContent value="resumen">
@@ -169,6 +174,12 @@ export default function PerfilCliente() {
             <TabsContent value="notas">
               <NotasArchivosTab clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
+            
+            {cliente.customer_type === 'company' && (
+              <TabsContent value="contactos">
+                <CompanyContactsManager companyId={cliente.id} organizationId={cliente.organization_id} />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
         

@@ -135,7 +135,12 @@ export async function middleware(request: NextRequest) {
         i++;
       }
       authCookie = { name: authCookieName, value: fullValue };
+      console.log(`🍪 [MIDDLEWARE] Cookie chunked leída: ${i} chunks, valor empieza con: ${fullValue.substring(0, 30)}...`);
+    } else {
+      console.log(`❌ [MIDDLEWARE] No se encontró cookie ${authCookieName} ni chunks`);
     }
+  } else {
+    console.log(`🍪 [MIDDLEWARE] Cookie simple leída, valor empieza con: ${authCookie.value.substring(0, 30)}...`);
   }
   
   if (!authCookie) {

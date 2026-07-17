@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/components/ui/use-toast';
 import { MergeModal } from './MergeModal';
+import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
 import { cn } from '@/utils/Utils';
 import { User, Mail, Phone, MapPin, FileText, Tag, Building2, CreditCard, Users, Loader2, Save, X, Check, Camera, ChevronDown } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
@@ -1161,7 +1162,16 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
             )}
           </div>
         </div>
-        
+
+        {/* Gestión de contactos - solo en edición de empresa */}
+        {isEditMode && customerType === 'company' && clientId && (
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
+            <CardContent className="pt-6">
+              <CompanyContactsManager companyId={clientId} organizationId={organizationId} />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Botones de acción mejorados */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
           <CardContent className="py-4">

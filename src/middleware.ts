@@ -135,7 +135,12 @@ export async function middleware(request: NextRequest) {
         i++;
       }
       authCookie = { name: authCookieName, value: fullValue };
+      console.log(`🍪 [MIDDLEWARE] Cookie chunked leída: ${i} chunks, valor empieza con: ${fullValue.substring(0, 30)}...`);
+    } else {
+      console.log(`❌ [MIDDLEWARE] No se encontró cookie ${authCookieName} ni chunks`);
     }
+  } else {
+    console.log(`🍪 [MIDDLEWARE] Cookie simple leída, valor empieza con: ${authCookie.value.substring(0, 30)}...`);
   }
   
   if (!authCookie) {
@@ -164,6 +169,19 @@ export async function middleware(request: NextRequest) {
         authCookie = { name, value: fullValue };
         break;
       }
+    }
+  }
+
+  // Decodificar el valor de la cookie si está URL-encoded
+  // Todas las funciones que setean cookies usan encodeURIComponent,
+  // pero Next.js middleware no decodifica automáticamente los valores.
+  if (authCookie?.value) {
+    try {
+      if (authCookie.value.startsWith('%7B') || authCookie.value.startsWith('%5B')) {
+        authCookie = { name: authCookie.name, value: decodeURIComponent(authCookie.value) };
+      }
+    } catch {
+      // Si falla la decodificación, mantener el valor original
     }
   }
 
@@ -319,6 +337,15 @@ async function checkModuleAccess(request: NextRequest, pathname: string): Promis
     }
     if (!authCookie?.value) {
       return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
+
+    // Decodificar el valor de la cookie si está URL-encoded
+    try {
+      if (authCookie.value.startsWith('%7B') || authCookie.value.startsWith('%5B')) {
+        authCookie = { name: authCookie.name, value: decodeURIComponent(authCookie.value) };
+      }
+    } catch {
+      // Si falla la decodificación, mantener el valor original
     }
 
     // Parsear el token para obtener user_id

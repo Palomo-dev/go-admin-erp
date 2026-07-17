@@ -5,16 +5,16 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/components/ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MergeModal } from './MergeModal';
+import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
 import { cn } from '@/utils/Utils';
-import { User, Mail, Phone, MapPin, FileText, Tag, Building2, CreditCard, Users, Loader2, Save, X, Check, Camera } from 'lucide-react';
+import { User, Mail, Phone, MapPin, FileText, Tag, Building2, CreditCard, Users, Loader2, Save, X, Check, Camera, ChevronDown } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 
 interface ClientFormProps {
@@ -108,6 +108,17 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const [openSections, setOpenSections] = useState({
+    personal: true,
+    contact: true,
+    classification: true,
+    additional: true,
+  });
+
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
   
   // Cargar catálogos de roles y responsabilidades fiscales
   useEffect(() => {
@@ -633,39 +644,27 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           </Alert>
         )}
         
-        <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid grid-cols-3 mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1 rounded-lg h-12">
-            <TabsTrigger value="personal" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md flex items-center gap-2">
-              <User className="h-4 w-4" />
-              <span className="hidden sm:inline">Datos Personales</span>
-              <span className="sm:hidden">Personal</span>
-            </TabsTrigger>
-            <TabsTrigger value="contact" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              <span className="hidden sm:inline">Contacto y Dirección</span>
-              <span className="sm:hidden">Contacto</span>
-            </TabsTrigger>
-            <TabsTrigger value="additional" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md flex items-center gap-2">
-              <Tag className="h-4 w-4" />
-              <span className="hidden sm:inline">Información Adicional</span>
-              <span className="sm:hidden">Adicional</span>
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="personal" className="space-y-6 mt-0">
-            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
-                    <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">Información Personal</CardTitle>
-                    <CardDescription>Datos básicos de identificación del cliente</CardDescription>
-                  </div>
+        <div className="space-y-4">
+          {/* Sección: Información Personal */}
+          <div>
+            <div
+              className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              onClick={() => toggleSection('personal')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                  <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Información Personal</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Datos básicos de identificación del cliente</p>
+                </div>
+              </div>
+              <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", openSections.personal && "rotate-180")} />
+            </div>
+            {openSections.personal && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mt-2">
+              <CardContent className="space-y-6 pt-6">
                 {/* Avatar upload */}
                 <div className="flex items-center gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                   <div className="relative group cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
@@ -867,7 +866,31 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                     </div>
                   </div>
                 )}
-                
+              </CardContent>
+            </Card>
+            )}
+          </div>
+
+          {/* Sección: Clasificación y Roles */}
+          <div>
+            <div
+              className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              onClick={() => toggleSection('classification')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
+                  <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Clasificación y Roles</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Roles y responsabilidades fiscales del cliente</p>
+                </div>
+              </div>
+              <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", openSections.classification && "rotate-180")} />
+            </div>
+            {openSections.classification && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mt-2">
+              <CardContent className="space-y-6 pt-6">
                 {/* Roles */}
                 <div className="space-y-3 pt-2">
                   <Label className="text-sm font-medium flex items-center gap-2">
@@ -944,22 +967,29 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-          
-          <TabsContent value="contact" className="space-y-6 mt-0">
-            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 dark:bg-green-900/40 rounded-lg">
-                    <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">Datos de Contacto</CardTitle>
-                    <CardDescription>Información para comunicarnos con el cliente</CardDescription>
-                  </div>
+            )}
+          </div>
+
+          {/* Sección: Datos de Contacto */}
+          <div>
+            <div
+              className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              onClick={() => toggleSection('contact')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900/40 rounded-lg">
+                  <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Datos de Contacto</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Información para comunicarnos con el cliente</p>
+                </div>
+              </div>
+              <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", openSections.contact && "rotate-180")} />
+            </div>
+            {openSections.contact && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mt-2">
+              <CardContent className="space-y-6 pt-6">
                 {/* Email y Teléfono */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -1067,22 +1097,29 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-          
-          <TabsContent value="additional" className="space-y-6 mt-0">
-            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
-                    <Tag className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">Información Adicional</CardTitle>
-                    <CardDescription>Etiquetas y notas para categorizar al cliente</CardDescription>
-                  </div>
+            )}
+          </div>
+
+          {/* Sección: Información Adicional */}
+          <div>
+            <div
+              className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              onClick={() => toggleSection('additional')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
+                  <Tag className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Información Adicional</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Etiquetas y notas para categorizar al cliente</p>
+                </div>
+              </div>
+              <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", openSections.additional && "rotate-180")} />
+            </div>
+            {openSections.additional && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mt-2">
+              <CardContent className="space-y-6 pt-6">
                 {/* Etiquetas */}
                 <div className="space-y-2">
                   <Label htmlFor="tags" className="text-sm font-medium flex items-center gap-2">
@@ -1122,9 +1159,19 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
-        
+            )}
+          </div>
+        </div>
+
+        {/* Gestión de contactos - solo en edición de empresa */}
+        {isEditMode && customerType === 'company' && clientId && (
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
+            <CardContent className="pt-6">
+              <CompanyContactsManager companyId={clientId} organizationId={organizationId} />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Botones de acción mejorados */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
           <CardContent className="py-4">

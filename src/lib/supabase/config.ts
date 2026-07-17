@@ -108,6 +108,10 @@ export const createSupabaseClient = () => {
             }
             
             // Intentar leer cookies chunked (key.0, key.1, ...)
+            // IMPORTANTE: No decodificar cada chunk individualmente.
+            // El valor completo se codifica con encodeURIComponent antes de dividirse,
+            // por lo que un carácter %XX puede quedar dividido entre dos chunks.
+            // Se deben concatenar los chunks raw y decodificar el resultado completo.
             const chunkPrefix = `${key}.`;
             const chunks: { index: number; value: string }[] = [];
             for (let cookie of cookies) {
@@ -115,19 +119,21 @@ export const createSupabaseClient = () => {
               if (name && name.startsWith(chunkPrefix) && value) {
                 const idx = parseInt(name.substring(chunkPrefix.length), 10);
                 if (!isNaN(idx)) {
-                  try {
-                    chunks.push({ index: idx, value: decodeURIComponent(value) });
-                  } catch {
-                    chunks.push({ index: idx, value });
-                  }
+                  chunks.push({ index: idx, value });
                 }
               }
             }
             if (chunks.length > 0) {
               chunks.sort((a, b) => a.index - b.index);
               const assembled = chunks.map(c => c.value).join('');
-              console.log(`🍪 [STORAGE] Leído de cookie chunked: ${key} (${chunks.length} chunks)`);
-              return assembled;
+              try {
+                const decoded = decodeURIComponent(assembled);
+                console.log(`🍪 [STORAGE] Leído de cookie chunked: ${key} (${chunks.length} chunks)`);
+                return decoded;
+              } catch {
+                console.log(`🍪 [STORAGE] Leído de cookie chunked (raw): ${key} (${chunks.length} chunks)`);
+                return assembled;
+              }
             }
           }
           return null;

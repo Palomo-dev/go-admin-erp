@@ -11,6 +11,7 @@ import {
   Calendar,
   GripVertical,
   AlertTriangle,
+  GitBranch,
 } from 'lucide-react';
 import { pmService, type PMTask, type TaskTimeEntry, PRIORITY_COLORS, PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/lib/services/pmService';
 import { TaskTimer } from '@/components/pm/TaskTimer';
@@ -139,6 +140,17 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, runningTimers }:
                                   <Badge className={`text-[10px] ${PRIORITY_COLORS[task.priority]}`}>
                                     {PRIORITY_LABELS[task.priority]}
                                   </Badge>
+                                  {task.parent_task && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); onTaskClick?.({ ...task, id: task.parent_task!.id, title: task.parent_task!.title }); }}
+                                      title={`Pertenece a: ${task.parent_task.title}`}
+                                      className="inline-flex items-center gap-1 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-full px-2 py-0.5 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
+                                    >
+                                      <GitBranch className="h-2.5 w-2.5" />
+                                      <span className="truncate max-w-[120px]">{task.parent_task.title}</span>
+                                    </button>
+                                  )}
                                   {isOverdue(task) && (
                                     <Badge className="text-[10px] bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300">
                                       <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />Vencida

@@ -111,6 +111,12 @@ export default function PMTasksPage() {
     if (sub) setEditTask(sub);
   };
 
+  // Abrir la tarea padre desde una subtarea en el editor completo
+  const openParentTask = async (parentTaskId: string) => {
+    const parent = await pmService.getTaskById(parentTaskId);
+    if (parent) setEditTask(parent);
+  };
+
   const loadTasks = useCallback(async () => {
     setLoading(true);
     try {
@@ -380,6 +386,7 @@ export default function PMTasksPage() {
         editTask={editTask}
         onTaskCreated={loadTasks}
         onOpenSubtask={openSubtask}
+        onOpenParent={openParentTask}
       />
     </div>
   );

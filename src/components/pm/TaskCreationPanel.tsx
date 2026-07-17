@@ -20,6 +20,7 @@ import {
   Clock,
   Link2,
   Maximize2,
+  GitBranch,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,6 +79,7 @@ interface TaskCreationPanelProps {
   editTask?: PMTask | null;
   onTaskCreated: () => void;
   onOpenSubtask?: (subtaskId: string) => void;
+  onOpenParent?: (parentTaskId: string) => void;
 }
 
 const INITIAL_FORM = {
@@ -105,7 +107,7 @@ function getFileIcon(type: string) {
   return <File className="h-4 w-4 text-gray-500" />;
 }
 
-export default function TaskCreationPanel({ isOpen, onClose, projects, existingTasks = [], users = [], editTask, onTaskCreated, onOpenSubtask }: TaskCreationPanelProps) {
+export default function TaskCreationPanel({ isOpen, onClose, projects, existingTasks = [], users = [], editTask, onTaskCreated, onOpenSubtask, onOpenParent }: TaskCreationPanelProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -545,6 +547,28 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
             autoFocus
           />
         </div>
+
+        {/* Tarea padre (si es subtarea) */}
+        {isEdit && editTask?.parent_task && (
+          <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg px-3 py-2 border border-indigo-100 dark:border-indigo-800">
+            <GitBranch className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] text-indigo-500 dark:text-indigo-400 font-medium">Pertenece a</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{editTask.parent_task.title}</p>
+            </div>
+            {onOpenParent && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenParent(editTask.parent_task!.id)}
+                className="h-7 gap-1 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />Abrir tarea
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Descripción */}
         <div className="space-y-1.5">

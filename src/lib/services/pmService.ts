@@ -111,6 +111,7 @@ export interface PMTask {
   goals?: { id: string; title: string } | null;
   profiles?: { first_name: string; last_name: string; email: string } | null;
   subtasks?: PMTask[];
+  parent_task?: { id: string; title: string; status: string } | null;
 }
 
 export interface TaskTimeEntry {
@@ -419,7 +420,7 @@ export const pmService = {
     // vía el dropdown si el usuario lo selecciona.
     let query = supabase
       .from('tasks')
-      .select('*, projects(id, name), milestones(id, title), goals(id, title)')
+      .select('*, projects(id, name), milestones(id, title), goals(id, title), parent_task:tasks!parent_task_id(id, title, status)')
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false });
 
@@ -629,7 +630,7 @@ export const pmService = {
   },
 
   async getTaskById(taskId: string): Promise<PMTask | null> {
-    const { data, error } = await supabase.from('tasks').select('*').eq('id', taskId).single();
+    const { data, error } = await supabase.from('tasks').select('*, parent_task:tasks!parent_task_id(id, title, status)').eq('id', taskId).single();
     if (error) { console.error('Error getTaskById:', error.message); return null; }
     return data;
   },

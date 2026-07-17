@@ -87,8 +87,8 @@ const createClientWithSession = async (request?: Request) => {
 // GET: Obtener las sesiones activas del usuario
 export async function GET(request: Request) {
   try {
-    // Cliente con la sesión actual
-    const supabase = await createClientWithSession()
+    // Cliente con la sesión actual (con fallback de Authorization header)
+    const supabase = await createClientWithSession(request)
     
     // Obtener la sesión actual
     const { data: { session } } = await supabase.auth.getSession()
@@ -103,8 +103,11 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const currentDeviceFingerprint = url.searchParams.get('current_fingerprint')
     
+    // Usar adminClient para evitar bloqueos de RLS en user_devices
+    const adminSupabase = createAdminClient()
+    
     // Obtener dispositivos asociados desde user_devices (solo activos)
-    const { data: devices, error: devicesError } = await supabase.from('user_devices')
+    const { data: devices, error: devicesError } = await adminSupabase.from('user_devices')
       .select('*')
       .eq('user_id', userId)
       .eq('is_active', true)
@@ -367,8 +370,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'ID de sesión no proporcionado o flag revokeAll ausente' }, { status: 400 })
     }
 
-    // Cliente con la sesión actual
-    const supabase = await createClientWithSession()
+    // Cliente con la sesión actual (con fallback de Authorization header)
+    const supabase = await createClientWithSession(request)
     
     // Verificar autenticación
     const { data: { session } } = await supabase.auth.getSession()
@@ -380,10 +383,13 @@ export async function DELETE(request: Request) {
     const userId = session.user.id
     const currentSessionId = userId // Igual que en el POST, usamos userId como identificador de sesión
     const currentTime = new Date().toISOString()
+
+    // Usar adminClient para operaciones en user_devices (evita bloqueos de RLS)
+    const adminSupabase = createAdminClient()
     
     if (revokeAll) {
       // Revocar todos los dispositivos excepto el actual
-      const { error } = await supabase.from('user_devices')
+      const { error } = await adminSupabase.from('user_devices')
         .update({
           is_active: false,
           revoked_at: currentTime
@@ -407,7 +413,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: true, message: 'Todos los dispositivos han sido revocados' })
     } else {
       // Primero verificar que el dispositivo a revocar no sea el actual
-      const { data: deviceToRevoke, error: deviceError } = await supabase
+      const { data: deviceToRevoke, error: deviceError } = await adminSupabase
         .from('user_devices')
         .select('device_fingerprint')
         .eq('id', sessionId)
@@ -431,7 +437,7 @@ export async function DELETE(request: Request) {
       }
       
       // Marcar el dispositivo específico como inactivo
-      const { error } = await supabase.from('user_devices')
+      const { error } = await adminSupabase.from('user_devices')
         .update({
           is_active: false,
           revoked_at: currentTime
@@ -455,7 +461,7 @@ export async function DELETE(request: Request) {
 // PATCH: Actualizar propiedades de un dispositivo (ej: marcar como confiable)
 export async function PATCH(request: Request) {
   try {
-    const supabase = await createClientWithSession()
+    const supabase = await createClientWithSession(request)
     const { data: { session } } = await supabase.auth.getSession()
     
     if (!session) {
@@ -478,8 +484,11 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'No hay campos válidos para actualizar' }, { status: 400 })
     }
     
+    // Usar adminClient para operaciones en user_devices (evita bloqueos de RLS)
+    const adminSupabase = createAdminClient()
+    
     // Actualizar dispositivo
-    const { error } = await supabase.from('user_devices')
+    const { error } = await adminSupabase.from('user_devices')
       .update(filteredUpdates)
       .eq('session_id', sessionId)
       .eq('user_id', session.user.id)

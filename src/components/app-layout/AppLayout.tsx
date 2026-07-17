@@ -101,6 +101,7 @@ import { ModuleProvider, useModuleContext } from '@/lib/context/ModuleContext';
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
+import { registerUserDevice } from '@/lib/auth/organizationAuth';
 
 // Función helper para obtener URL del logo
 const getOrganizationLogoUrl = (logoPath: string) => {
@@ -571,6 +572,25 @@ export const AppLayout = ({
       loadActiveModuleCodes(orgId);
     }
   }, [orgId, loadActiveModuleCodes]);
+
+  // Reintentar registro de dispositivo si quedó pendiente tras la redirección del login
+  useEffect(() => {
+    const pendingUserId = localStorage.getItem('pendingDeviceRegister');
+    if (pendingUserId) {
+      const retryRegister = async () => {
+        try {
+          await registerUserDevice(pendingUserId);
+          console.log('✅ [AppLayout] Dispositivo registrado en reintento post-redirect');
+        } catch (e) {
+          console.warn('⚠️ [AppLayout] Reintento de registro de dispositivo falló:', e);
+        } finally {
+          localStorage.removeItem('pendingDeviceRegister');
+        }
+      };
+      // Pequeño delay para que la sesión esté lista
+      setTimeout(retryRegister, 2000);
+    }
+  }, []);
 
   // Escuchar evento personalizado para refrescar módulos cuando se activan/desactivan
   useEffect(() => {

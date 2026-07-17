@@ -223,8 +223,20 @@ export const refreshSessionToken = async () => {
       return { session: data.session, error: null };
     }
     
-    // Si no hay sesión en el refresh, limpiar caché
+    // Si el refresh falló, intentar getSession() antes de rendirse
+    // El refresh_token puede haberse rotado pero la sesión aún ser válida
     console.warn('⚠️ [AUTH] refreshSession no retornó sesión:', error?.message);
+    
+    const { data: fallbackData } = await supabase.auth.getSession();
+    if (fallbackData?.session) {
+      cachedSession = fallbackData.session;
+      lastSessionCheck = Date.now();
+      console.log('✅ [AUTH] Sesión recuperada via getSession() tras refresh fallido');
+      if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(refreshingKey);
+      return { session: fallbackData.session, error: null };
+    }
+    
+    // Si tampoco hay sesión via getSession(), limpiar caché
     cachedSession = null;
     lastSessionCheck = 0;
     if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(refreshingKey);

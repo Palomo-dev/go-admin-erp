@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/config'
-import { 
-  Card, 
-  CardContent, 
+import {
+  Card,
+  CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
@@ -97,33 +97,49 @@ export function DeviceSessions() {
     }
   }
 
-  // Cargar sesiones
+  // Cargar sesiones directamente desde Supabase (evita error 431 por cookies grandes)
   const loadSessions = async () => {
     try {
-      // Generar fingerprint del dispositivo actual
-      const currentFingerprint = await generateDeviceFingerprint()
-      
-      const response = await fetch(`/api/sessions?current_fingerprint=${encodeURIComponent(currentFingerprint)}`, {
-        method: 'GET',
-        credentials: 'include', // Incluir cookies en la petición
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-      const data = await response.json()
-      
-      if (data.error) {
-        toast.error(data.error)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user?.id) {
+        setLoading(false)
         return
       }
-      
-      // Ordenar sesiones (sesión actual primero, luego por última actividad)
-      const sortedSessions = [...data.sessions].sort((a, b) => {
+
+      const currentFingerprint = await generateDeviceFingerprint()
+
+      const { data: devices, error } = await supabase
+        .from('user_devices')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('is_active', true)
+        .order('last_active_at', { ascending: false })
+
+      if (error) {
+        toast.error('No se pudieron cargar las sesiones')
+        return
+      }
+
+      const mappedSessions: Session[] = (devices || []).map(d => ({
+        id: d.id,
+        created_at: d.first_seen_at || d.last_active_at,
+        updated_at: d.last_active_at,
+        current: d.device_fingerprint === currentFingerprint,
+        device_name: d.device_name || 'Dispositivo',
+        device_type: d.device_type || 'desktop',
+        last_active_at: d.last_active_at || d.first_seen_at,
+        is_trusted: d.is_trusted || false,
+        location: d.location || null,
+        user_agent: d.user_agent || null,
+        ip_address: d.ip_address || null,
+      }))
+
+      const sortedSessions = [...mappedSessions].sort((a, b) => {
         if (a.current) return -1
         if (b.current) return 1
         return new Date(b.last_active_at).getTime() - new Date(a.last_active_at).getTime()
       })
-      
+
       setSessions(sortedSessions)
     } catch (error) {
       toast.error('No se pudieron cargar las sesiones')
@@ -142,28 +158,17 @@ export function DeviceSessions() {
     
     setRevokeLoading(true)
     try {
-      // Generar fingerprint del dispositivo actual para la validación
-      const currentFingerprint = await generateDeviceFingerprint()
-      
-      const response = await fetch(`/api/sessions?current_fingerprint=${encodeURIComponent(currentFingerprint)}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ sessionId: sessionToRevoke })
-      })
-      
-      const data = await response.json()
-      
-      if (data.error) {
-        toast.error(data.error)
+      const { error } = await supabase
+        .from('user_devices')
+        .update({ is_active: false, revoked_at: new Date().toISOString() })
+        .eq('id', sessionToRevoke)
+
+      if (error) {
+        toast.error('No se pudo desconectar el dispositivo')
         return
       }
       
-      toast.success(data.message || 'Dispositivo desconectado')
-      
-      // Recargar la lista de sesiones
+      toast.success('Dispositivo desconectado')
       loadSessions()
     } catch (error) {
       toast.error('No se pudo desconectar el dispositivo')
@@ -180,28 +185,17 @@ export function DeviceSessions() {
     
     setRenameLoading(true)
     try {
-      const response = await fetch('/api/sessions', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          sessionId: activeSession.id,
-          updates: { device_name: newDeviceName.trim() }
-        }),
-      })
-      
-      const data = await response.json()
-      
-      if (data.error) {
-        toast.error(data.error)
+      const { error } = await supabase
+        .from('user_devices')
+        .update({ device_name: newDeviceName.trim() })
+        .eq('id', activeSession.id)
+
+      if (error) {
+        toast.error('No se pudo actualizar el nombre del dispositivo')
         return
       }
       
       toast.success('Dispositivo renombrado')
-      
-      // Recargar la lista de sesiones
       loadSessions()
     } catch (error) {
       toast.error('No se pudo actualizar el nombre del dispositivo')
@@ -217,28 +211,17 @@ export function DeviceSessions() {
   const toggleTrustedDevice = async (sessionId: string, isTrusted: boolean) => {
     setTrustLoading(sessionId)
     try {
-      const response = await fetch('/api/sessions', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          updates: { is_trusted: !isTrusted }
-        }),
-      })
-      
-      const data = await response.json()
-      
-      if (data.error) {
-        toast.error(data.error)
+      const { error } = await supabase
+        .from('user_devices')
+        .update({ is_trusted: !isTrusted })
+        .eq('id', sessionId)
+
+      if (error) {
+        toast.error('No se pudo actualizar el estado del dispositivo')
         return
       }
       
       toast.success(!isTrusted ? 'Dispositivo confiable' : 'Dispositivo estándar')
-      
-      // Recargar la lista de sesiones
       loadSessions()
     } catch (error) {
       toast.error('No se pudo actualizar el estado del dispositivo')
@@ -250,28 +233,25 @@ export function DeviceSessions() {
   // Cerrar todas las demás sesiones
   const signOutFromOtherSessions = async () => {
     try {
-      // Generar fingerprint del dispositivo actual
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user?.id) return
+
       const currentFingerprint = await generateDeviceFingerprint()
-      
-      const response = await fetch(`/api/sessions?current_fingerprint=${encodeURIComponent(currentFingerprint)}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ revokeAll: true })
-      })
-      
-      const data = await response.json()
-      
-      if (data.error) {
-        toast.error(data.error)
+
+      // Marcar como inactivos todos los dispositivos excepto el actual
+      const { error } = await supabase
+        .from('user_devices')
+        .update({ is_active: false, revoked_at: new Date().toISOString() })
+        .eq('user_id', session.user.id)
+        .neq('device_fingerprint', currentFingerprint)
+        .eq('is_active', true)
+
+      if (error) {
+        toast.error('No se pudieron desconectar los otros dispositivos')
         return
       }
-      
+
       toast.success('Todos los otros dispositivos han sido desconectados')
-      
-      // Recargar la lista de sesiones
       loadSessions()
     } catch (error) {
       toast.error('No se pudieron desconectar los otros dispositivos')

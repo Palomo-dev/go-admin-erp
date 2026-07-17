@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
           }
         },
         persistSession: true,
-        autoRefreshToken: true,
+        autoRefreshToken: false,
         detectSessionInUrl: false
       }
     }
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         
         // Para OAuth (Google login), crear o actualizar perfil
         if (user.app_metadata?.provider === 'google') {
-          // Cookie pequeña para hidratación client-side
+          // Cookie para hidratación client-side (la página select-organization la lee como fallback)
           pendingCookies.set('go-admin-oauth-session', JSON.stringify({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
@@ -101,20 +101,14 @@ export async function GET(request: NextRequest) {
           
           const hasOrganization = await checkUserOrganization(supabase, user.id);
           
-          // Eliminar cookie de sesión completa DESPUÉS de DB ops (evita sesión parcial en el cliente)
-          const projectRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split('.')[0];
-          pendingCookies.delete(`sb-${projectRef}-auth-token`);
+          // NO eliminar la cookie sb-${projectRef}-auth-token: el cliente la necesita para persistir la sesión
+          // La cookie go-admin-oauth-session sirve como fallback para hidratar en select-organization
           
-          // Pasar tokens por URL params para hidratación client-side (más confiable que cookies)
-          const oauthParam = encodeURIComponent(JSON.stringify({
-            at: data.session.access_token,
-            rt: data.session.refresh_token,
-          }));
-          
+          // Redirigir sin tokens en URL (la cookie go-admin-oauth-session se usa como fallback)
           if (hasOrganization) {
-            return redirectWithCookies('/auth/select-organization?_oauth=' + oauthParam + '&dest=' + encodeURIComponent(next));
+            return redirectWithCookies('/auth/select-organization?dest=' + encodeURIComponent(next));
           } else {
-            return redirectWithCookies('/auth/select-organization?_oauth=' + oauthParam);
+            return redirectWithCookies('/auth/select-organization');
           }
         } else {
           // Para confirmación de email, verificar si es una invitación

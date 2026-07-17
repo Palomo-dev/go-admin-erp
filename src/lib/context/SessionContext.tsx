@@ -185,6 +185,15 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (document.visibilityState === 'hidden') return;
       if (isRefreshing) return;
       
+      // Solo refrescar si la sesión está próxima a expirar (menos de 30 min)
+      if (state.session) {
+        const expiresAt = (state.session.expires_at || 0) * 1000;
+        const timeUntilExpiry = expiresAt - Date.now();
+        if (timeUntilExpiry > 30 * 60 * 1000) {
+          return; // La sesión aún tiene más de 30 min, no refrescar
+        }
+      }
+      
       isRefreshing = true;
       try {
         const result = await refreshSessionToken();

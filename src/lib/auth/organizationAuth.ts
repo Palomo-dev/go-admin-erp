@@ -326,9 +326,15 @@ export const proceedWithLogin = async (rememberMe: boolean = false, email: strin
 
   // Registrar el dispositivo en la base de datos
   if (sessionData?.session?.user?.id) {
+    // Marcar como pendiente por si el fetch falla (dev server reinicio, red, etc.)
+    localStorage.setItem('pendingDeviceRegister', sessionData.session.user.id);
     registerUserDevice(sessionData.session.user.id).catch(error => {
       localStorage.setItem('registerDeviceError', JSON.stringify(error));
       console.error('Error al registrar el dispositivo:', error);
+    }).finally(() => {
+      // Si tuvo éxito (o falló definitivamente), limpiar el flag
+      // Se limpia en finally para que el retry post-redirect no se quede colgado
+      localStorage.removeItem('pendingDeviceRegister');
     });
   } else {
     console.warn('No se pudo registrar el dispositivo: no hay userId disponible');
@@ -460,29 +466,64 @@ export const registerUserDevice = async (sessionOrUserId: any) => {
 
     console.log('Registrando dispositivo:', deviceData);
 
-    // Obtener el access_token actual: las cookies de Supabase pueden no estar
-    // disponibles inmediatamente después del login, así que enviamos el token
-    // en el header Authorization como fallback.
+    // Usar el cliente Supabase directamente (evita error 431 por cookies chunked grandes)
     const { data: { session: currentSession } } = await supabase.auth.getSession();
-    const accessToken = currentSession?.access_token;
-
-    // Llamar al endpoint API para registrar/actualizar el dispositivo
-    const response = await fetch('/api/sessions', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
-      body: JSON.stringify(deviceData),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status}`);
+    if (!currentSession?.user?.id) {
+      console.warn('No hay sesión activa para registrar dispositivo');
+      return;
     }
 
-    const result = await response.json();
-    console.log('Dispositivo registrado exitosamente:', result);
+    // Buscar si ya existe un dispositivo con esta huella digital
+    const { data: existingDevice } = await supabase
+      .from('user_devices')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('device_fingerprint', deviceFingerprint)
+      .maybeSingle();
+
+    if (existingDevice) {
+      // Actualizar último acceso
+      const { error: updateError } = await supabase
+        .from('user_devices')
+        .update({
+          last_active_at: new Date().toISOString(),
+          is_active: true,
+          revoked_at: null,
+          user_agent: userAgent,
+          browser: browserInfo.browser,
+          browser_version: browserInfo.browserVersion,
+          os: browserInfo.os,
+          os_version: browserInfo.osVersion,
+        })
+        .eq('id', existingDevice.id);
+
+      if (updateError) throw updateError;
+      console.log('Dispositivo actualizado exitosamente:', existingDevice.id);
+    } else {
+      // Insertar nuevo dispositivo
+      const { error: insertError } = await supabase
+        .from('user_devices')
+        .insert({
+          user_id: userId,
+          session_id: userId,
+          device_name: deviceName,
+          device_type: deviceType,
+          device_fingerprint: deviceFingerprint,
+          user_agent: userAgent,
+          browser: browserInfo.browser,
+          browser_version: browserInfo.browserVersion,
+          os: browserInfo.os,
+          os_version: browserInfo.osVersion,
+          location: location,
+          is_active: true,
+          is_trusted: false,
+          first_seen_at: new Date().toISOString(),
+          last_active_at: new Date().toISOString(),
+        });
+
+      if (insertError) throw insertError;
+      console.log('Dispositivo registrado exitosamente');
+    }
   } catch (error) {
     console.error('Error al registrar el dispositivo:', error);
   }

@@ -84,7 +84,7 @@ export const createSupabaseClient = () => {
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
-      autoRefreshToken: true,
+      autoRefreshToken: false,
       persistSession: true,
       detectSessionInUrl: true,
       flowType: 'pkce',
@@ -97,7 +97,7 @@ export const createSupabaseClient = () => {
               return fromLocalStorage;
             }
             
-            // Intentar leer de cookies
+            // Intentar leer de cookies (cookie simple)
             const cookies = document.cookie.split(';');
             for (let cookie of cookies) {
               const [name, value] = cookie.trim().split('=');
@@ -105,6 +105,29 @@ export const createSupabaseClient = () => {
                 console.log('🍪 [STORAGE] Leído de cookie:', key);
                 return decodeURIComponent(value);
               }
+            }
+            
+            // Intentar leer cookies chunked (key.0, key.1, ...)
+            const chunkPrefix = `${key}.`;
+            const chunks: { index: number; value: string }[] = [];
+            for (let cookie of cookies) {
+              const [name, value] = cookie.trim().split('=');
+              if (name && name.startsWith(chunkPrefix) && value) {
+                const idx = parseInt(name.substring(chunkPrefix.length), 10);
+                if (!isNaN(idx)) {
+                  try {
+                    chunks.push({ index: idx, value: decodeURIComponent(value) });
+                  } catch {
+                    chunks.push({ index: idx, value });
+                  }
+                }
+              }
+            }
+            if (chunks.length > 0) {
+              chunks.sort((a, b) => a.index - b.index);
+              const assembled = chunks.map(c => c.value).join('');
+              console.log(`🍪 [STORAGE] Leído de cookie chunked: ${key} (${chunks.length} chunks)`);
+              return assembled;
             }
           }
           return null;

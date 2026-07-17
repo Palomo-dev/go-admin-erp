@@ -55,7 +55,7 @@ export const moduleIcons: Record<string, React.ComponentType<any>> = {
 export const moduleRoutes: Record<string, string> = {
   'organizations': '/app/organizacion',
   'branding': '/app/branding',
-  'branches': '/app/sucursales',
+  'branches': '/app/organizacion/sucursales',
   'clientes': '/app/clientes',
   'roles': '/app/roles',
   'subscriptions': '/app/plan',
@@ -94,9 +94,9 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     { name: 'Historial', path: '/app/plan/historial', icon: Calendar }
   ],
   'branches': [
-    { name: 'Sucursales', path: '/app/sucursales', icon: MapPin },
-    { name: 'Configuración', path: '/app/sucursales/configuracion', icon: Settings },
-    { name: 'Empleados', path: '/app/sucursales/empleados', icon: Users }
+    { name: 'Sucursales', path: '/app/organizacion/sucursales', icon: MapPin },
+    { name: 'Configuración', path: '/app/organizacion/sucursales/configuracion', icon: Settings },
+    { name: 'Empleados', path: '/app/organizacion/sucursales/empleados', icon: Users }
   ],
   'roles': [
     { name: 'Roles', path: '/app/roles', icon: Shield },

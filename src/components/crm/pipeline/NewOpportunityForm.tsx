@@ -159,7 +159,7 @@ export function NewOpportunityForm({
             .select("id")
             .eq("organization_id", organizationId)
             .eq("is_default", true)
-            .single();
+            .maybeSingle();
           
           if (defaultPipeline) {
             pipelineQuery = supabase

@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { StageDialog, StageDialogValues } from "./StageDialog";
+import { DeleteStageDialog } from "./DeleteStageDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/lib/supabase/config";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -13,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, getCurrentTheme, applyTheme } from "@/utils/Utils";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
-import { BarChart3, Calendar, DollarSign, Loader2, Settings, Plus, GripVertical, Trash2 } from "lucide-react";
+import { BarChart3, Calendar, DollarSign, Settings, Plus, GripVertical, Trash2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
@@ -57,22 +56,53 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   
-  // Estado para el diálogo de configuración de etapas
-  const [configStage, setConfigStage] = useState<any>(null);
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [stageName, setStageName] = useState("");
-  const [stageProbability, setStageProbability] = useState<number | null>(null);
-  const [stageColor, setStageColor] = useState("#3b82f6");
-  const [stageDescription, setStageDescription] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  
-  // Estado para crear nueva etapa
-  const [isNewStageOpen, setIsNewStageOpen] = useState(false);
-  const [newStageName, setNewStageName] = useState("");
-  const [isCreatingStage, setIsCreatingStage] = useState(false);
+  // Estado unificado para crear/editar etapa
+  const [stageDialogOpen, setStageDialogOpen] = useState(false);
+  const [stageDialogMode, setStageDialogMode] = useState<"create" | "edit">("create");
+  const [stageDialogInitial, setStageDialogInitial] = useState<Partial<StageDialogValues> | undefined>(undefined);
+  const [editingStageId, setEditingStageId] = useState<string | null>(null);
+
+  // Estado para eliminar etapa
+  const [deleteStageOpen, setDeleteStageOpen] = useState(false);
+  const [stageToDelete, setStageToDelete] = useState<{ id: string; name: string } | null>(null);
   
   // Estado para drag & drop de etapas
   const [isDraggingStage, setIsDraggingStage] = useState(false);
+
+  // Ref para scroll horizontal con click sostenido
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isMouseDown = useRef(false);
+  const startX = useRef(0);
+  const scrollLeftStart = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isMouseDown.current = true;
+    startX.current = e.pageX - el.offsetLeft;
+    scrollLeftStart.current = el.scrollLeft;
+    el.style.cursor = 'grabbing';
+  };
+
+  const handleMouseLeave = () => {
+    isMouseDown.current = false;
+    if (scrollRef.current) scrollRef.current.style.cursor = 'grab';
+  };
+
+  const handleMouseUp = () => {
+    isMouseDown.current = false;
+    if (scrollRef.current) scrollRef.current.style.cursor = 'grab';
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isMouseDown.current) return;
+    e.preventDefault();
+    const el = scrollRef.current;
+    if (!el) return;
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - startX.current) * 1.5;
+    el.scrollLeft = scrollLeftStart.current - walk;
+  };
 
   // Obtener ID de la organización y el usuario
   useEffect(() => {
@@ -324,18 +354,28 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     }, 0);
   };
   
-  // Función para manejar la configuración de etapas
-  const handleConfigStage = (stageToEdit: any) => {
-    setConfigStage(stageToEdit);
-    setStageName(stageToEdit.name || "");
-    // Convertir de decimal (0-1) a porcentaje (0-100) para mostrar en el modal
-    const probabilityPercent = stageToEdit.probability != null 
-      ? Math.round(stageToEdit.probability * 100) 
+  // Función para abrir el diálogo de edición de etapa
+  const handleOpenEditStage = (stageToEdit: Stage) => {
+    const probabilityPercent = stageToEdit.probability != null
+      ? Math.round(stageToEdit.probability * 100)
       : null;
-    setStageProbability(probabilityPercent);
-    setStageColor(stageToEdit.color || "#3b82f6"); // Color predeterminado azul
-    setStageDescription(stageToEdit.description || "");
-    setIsConfigOpen(true);
+    setStageDialogMode("edit");
+    setStageDialogInitial({
+      name: stageToEdit.name,
+      probability: probabilityPercent,
+      color: stageToEdit.color || "#3b82f6",
+      description: stageToEdit.description || "",
+    });
+    setEditingStageId(stageToEdit.id);
+    setStageDialogOpen(true);
+  };
+
+  // Función para abrir el diálogo de creación de etapa
+  const handleOpenCreateStage = () => {
+    setStageDialogMode("create");
+    setStageDialogInitial(undefined);
+    setEditingStageId(null);
+    setStageDialogOpen(true);
   };
 
   // Función para validar si un string es un UUID válido
@@ -346,288 +386,105 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     return pattern.test(uuid);
   };
 
-  // Función para guardar los cambios de la etapa
-  const handleSaveStage = async () => {
-    if (!configStage) return;
-    setIsSaving(true); // Mostrar carga
-    
-    try {
-      // Validar campos requeridos y contexto
-      if (!stageName.trim()) {
-        toast({
-          title: "Error",
-          description: "El nombre de la etapa es obligatorio",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
+  // Función unificada para crear o editar etapa (manejada por StageDialog)
+  const handleStageDialogSubmit = async (values: StageDialogValues) => {
+    if (stageDialogMode === "create") {
+      await handleCreateStage(values);
+    } else {
+      await handleEditStage(values);
+    }
+  };
 
-      if (!organizationId) {
-        toast({
-          title: "Error",
-          description: "No se pudo determinar la organización actual",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      if (!userId) {
-        toast({
-          title: "Error",
-          description: "No se pudo determinar el usuario actual",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      // Verificar que el usuario pertenece a la organización (cumple con RLS)
-      const { data: memberData, error: memberError } = await supabase
-        .from('organization_members')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (memberError || !memberData) {
-        console.error('Error de verificación de permisos:', memberError);
-        toast({
-          title: "Error de permisos",
-          description: "No tienes permisos para editar etapas en esta organización",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      // Verificar que el pipeline pertenece a la organización correcta
-      const { data: pipelineData, error: pipelineError } = await supabase
-        .from('pipelines')
-        .select('organization_id')
-        .eq('id', configStage.pipeline_id)
-        .maybeSingle();
-      
-      if (pipelineError) {
-        console.error('Error al verificar el pipeline:', pipelineError);
-        toast({
-          title: "Error de acceso",
-          description: "No se pudo verificar los permisos de la etapa",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      if (!pipelineData) {
-        toast({
-          title: "Error de acceso",
-          description: "No se encontró el pipeline asociado a esta etapa",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      // Convertir ambos a String para comparar
-      // El organization_id en la BD es entero mientras que el del frontend puede ser string
-      const dbOrgId = String(pipelineData.organization_id);
-      const currentOrgId = String(organizationId);
-      
-      console.log('Verificando organización:', { 
-        dbOrgId, 
-        currentOrgId, 
-        match: dbOrgId === currentOrgId 
-      });
-      
-      if (dbOrgId !== currentOrgId) {
-        console.error(`Error de acceso: organización no coincide (DB: ${dbOrgId}, Current: ${currentOrgId})`);
-        toast({
-          title: "Error de acceso",
-          description: "No tienes permisos para modificar etapas en este pipeline",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      // Convertir la probabilidad a formato numérico para la BD
-      // De porcentaje (0-100) a decimal (0-1)
-      let probabilityValue = null;
-      if (stageProbability !== null && stageProbability !== undefined) {
-        // Convertir de porcentaje a decimal como número (sin formatear como string)
-        probabilityValue = stageProbability / 100;
-      }
-      
-      // Preparar los datos a actualizar
-      const updateData = {
-        name: stageName.trim(),
-        probability: probabilityValue,
-        color: stageColor || "#3b82f6", // Asegurar que siempre haya un color
-        description: stageDescription ? stageDescription.trim() : null,
-        updated_at: new Date().toISOString()
-      };
-      
-      // Preparar datos para actualización
-      
-      // Validar que el ID de la etapa sea un UUID válido
-      if (!isValidUUID(configStage.id)) {
-        console.error('ID de etapa inválido, no es un UUID');
-        toast({
-          title: "Error",
-          description: "El identificador de la etapa no es válido",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      // Validar que el pipeline_id también sea un UUID válido
-      if (!isValidUUID(configStage.pipeline_id)) {
-        console.error('ID de pipeline inválido, no es un UUID');
-        toast({
-          title: "Error",
-          description: "El identificador del pipeline no es válido",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      // Usar la función RPC mejorada que desactiva temporalmente los triggers
-      console.log('Intentando actualizar etapa desactivando triggers:', {
-        id: configStage.id,
-        name: updateData.name,
-        color: updateData.color
-      });
-      
+  // Función para editar etapa existente
+  const handleEditStage = async (values: StageDialogValues) => {
+    if (!editingStageId) return;
+
+    try {
+      const probabilityValue = values.probability !== null ? values.probability / 100 : null;
+
       const { data, error } = await supabase
         .rpc('update_stage_without_triggers', {
-          p_stage_id: configStage.id,
-          p_name: updateData.name,
-          p_color: updateData.color,
-          p_description: updateData.description,
-          p_probability: updateData.probability
+          p_stage_id: editingStageId,
+          p_name: values.name,
+          p_color: values.color,
+          p_description: values.description || null,
+          p_probability: probabilityValue
         });
-        
-      if (error) {
-        console.error('Error al actualizar etapa:', error.message);
-        toast({
-          title: "Error",
-          description: `No se pudo actualizar la etapa: ${error.message || 'Error desconocido'}`,
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
-      if (!data || data.length === 0) {
-        console.error('Respuesta vacía de Supabase');
-        toast({
-          title: "Error",
-          description: "No se pudo actualizar la etapa: No se recibieron datos de respuesta",
-          variant: "destructive",
-        });
-        setIsSaving(false);
-        return;
-      }
-      
+
+      if (error) throw error;
+
       // Actualizar localmente
-      setStages(prevStages => 
-        prevStages.map(s => 
-          s.id === configStage.id ? 
-          { 
-            ...s, 
-            name: updateData.name,
-            probability: updateData.probability,
-            color: updateData.color,
-            description: updateData.description || undefined
-          } : 
-          s
+      setStages(prevStages =>
+        prevStages.map(s =>
+          s.id === editingStageId
+            ? {
+                ...s,
+                name: values.name,
+                probability: probabilityValue,
+                color: values.color,
+                description: values.description || undefined
+              }
+            : s
         )
       );
-      
-      // Mostrar mensaje de éxito
+
       toast({
         title: "Éxito",
         description: "La etapa se ha actualizado correctamente",
       });
-      
-      // Cerrar el diálogo
-      setIsConfigOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al actualizar la etapa:', error);
       toast({
-        title: "Error al guardar",
-        description: "No se pudo actualizar la etapa",
+        title: "Error",
+        description: error.message || "No se pudo actualizar la etapa",
         variant: "destructive",
       });
-    } finally {
-      setIsSaving(false);
+      throw error;
     }
   };
 
   // Función para crear nueva etapa
-  const handleCreateStage = async () => {
-    if (!newStageName.trim()) {
+  const handleCreateStage = async (values: StageDialogValues) => {
+    if (!pipelineId) {
       toast({
         title: "Error",
-        description: "El nombre de la etapa es obligatorio",
+        description: "No se pudo determinar el pipeline",
         variant: "destructive",
       });
       return;
     }
-
-    if (!organizationId || !pipelineId) {
-      toast({
-        title: "Error",
-        description: "No se pudo determinar la organización o pipeline",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsCreatingStage(true);
 
     try {
-      // Obtener la última posición
-      const maxPosition = stages.length > 0 
-        ? Math.max(...stages.map(s => s.position)) 
+      const maxPosition = stages.length > 0
+        ? Math.max(...stages.map(s => s.position))
         : 0;
-      
-      // Calcular probabilidad basada en posición (lógica progresiva)
-      // Las etapas intermedias tienen probabilidad proporcional
-      const totalStages = stages.length + 1;
+
       const newPosition = maxPosition + 1;
-      // Probabilidad: primera etapa 10%, aumenta progresivamente hasta 90% (antes de Ganado/Perdido)
-      const probability = Math.min(0.1 + ((newPosition - 1) / Math.max(totalStages - 1, 1)) * 0.8, 0.9);
+      const probability = values.probability !== null
+        ? values.probability / 100
+        : Math.min(0.1 + ((newPosition - 1) / Math.max(stages.length, 1)) * 0.8, 0.9);
 
       const { data, error } = await supabase
         .from('stages')
         .insert({
           pipeline_id: pipelineId,
-          name: newStageName.trim(),
+          name: values.name,
           position: newPosition,
           probability: probability,
-          color: '#3b82f6',
+          color: values.color || '#3b82f6',
+          description: values.description || null,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Agregar a la lista local
       setStages(prev => [...prev, data]);
-      
+
       toast({
         title: "Éxito",
         description: "Etapa creada correctamente",
       });
-
-      // Limpiar y cerrar
-      setNewStageName("");
-      setIsNewStageOpen(false);
     } catch (error: any) {
       console.error('Error al crear etapa:', error);
       toast({
@@ -635,41 +492,31 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         description: error.message || "No se pudo crear la etapa",
         variant: "destructive",
       });
-    } finally {
-      setIsCreatingStage(false);
+      throw error;
     }
   };
 
-  // Función para eliminar etapa
-  const handleDeleteStage = async (stageId: string) => {
-    const stageToDelete = stages.find(s => s.id === stageId);
+  // Función para abrir el diálogo de eliminación
+  const handleOpenDeleteStage = (stageId: string) => {
+    const stage = stages.find(s => s.id === stageId);
+    if (!stage) return;
+    setStageToDelete({ id: stageId, name: stage.name });
+    setDeleteStageOpen(true);
+  };
+
+  // Función para confirmar eliminación de etapa
+  const handleConfirmDeleteStage = async () => {
     if (!stageToDelete) return;
-
-    // Verificar si hay oportunidades en esta etapa
-    const oppsInStage = getOpportunitiesByStage(stageId);
-    if (oppsInStage.length > 0) {
-      toast({
-        title: "No se puede eliminar",
-        description: `Esta etapa tiene ${oppsInStage.length} oportunidad(es). Muévelas primero a otra etapa.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!confirm(`¿Estás seguro de eliminar la etapa "${stageToDelete.name}"?`)) {
-      return;
-    }
 
     try {
       const { error } = await supabase
         .from('stages')
         .delete()
-        .eq('id', stageId);
+        .eq('id', stageToDelete.id);
 
       if (error) throw error;
 
-      // Actualizar lista local
-      setStages(prev => prev.filter(s => s.id !== stageId));
+      setStages(prev => prev.filter(s => s.id !== stageToDelete.id));
 
       toast({
         title: "Éxito",
@@ -682,6 +529,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         description: error.message || "No se pudo eliminar la etapa",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
@@ -975,23 +823,44 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     );
   }
   
-  // Mostrar mensaje si no hay etapas
+  // Mostrar mensaje si no hay etapas, pero con botón para crear
   if (!stages || stages.length === 0) {
     return (
       <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-lg shadow border border-blue-100 dark:border-blue-900">
         <h3 className="text-xl font-medium text-blue-700 dark:text-blue-300 mb-2">No hay etapas configuradas</h3>
         <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Este pipeline no tiene etapas configuradas. Contacte al administrador para configurar el pipeline.
+          Este pipeline no tiene etapas configuradas. Crea la primera etapa para comenzar.
         </p>
+        <Button
+          onClick={handleOpenCreateStage}
+          className="bg-blue-600 hover:bg-blue-700 text-white min-h-[44px]"
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Crear Primera Etapa
+        </Button>
+
+        {/* Dialog unificado para crear/editar etapa */}
+        <StageDialog
+          open={stageDialogOpen}
+          onOpenChange={setStageDialogOpen}
+          mode={stageDialogMode}
+          initialValues={stageDialogInitial}
+          onSubmit={handleStageDialogSubmit}
+        />
       </div>
     );
   }
   
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      {/* Contenedor con scroll horizontal en móvil */}
+      {/* Contenedor con scroll horizontal con click sostenido */}
       <div 
-        className="overflow-x-auto overflow-y-hidden -mx-3 sm:mx-0 scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-gray-200 dark:scrollbar-track-gray-800"
+        ref={scrollRef}
+        onMouseDown={handleMouseDown}
+        onMouseLeave={handleMouseLeave}
+        onMouseUp={handleMouseUp}
+        onMouseMove={handleMouseMove}
+        className="overflow-x-auto overflow-y-hidden -mx-3 sm:mx-0 scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-gray-200 dark:scrollbar-track-gray-800 cursor-grab select-none"
         style={{ 
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'thin'
@@ -1037,14 +906,14 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                             {getOpportunitiesByStage(stage.id).length}
                           </Badge>
                           <button 
-                            onClick={() => handleConfigStage(stage)}
+                            onClick={() => handleOpenEditStage(stage)}
                             className="p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400"
                             title="Configurar etapa"
                           >
                             <Settings className="h-4 w-4" />
                           </button>
                           <button 
-                            onClick={() => handleDeleteStage(stage.id)}
+                            onClick={() => handleOpenDeleteStage(stage.id)}
                             className="p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900 text-red-500 dark:text-red-400"
                             title="Eliminar etapa"
                           >
@@ -1140,7 +1009,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
               <div className="flex-shrink-0 w-[280px] sm:w-72">
                 <Button
                   variant="outline"
-                  onClick={() => setIsNewStageOpen(true)}
+                  onClick={handleOpenCreateStage}
                   className="w-full h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
                 >
                   <Plus className="h-6 w-6 mr-2" />
@@ -1152,143 +1021,23 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         </Droppable>
       </div>
       
-      {/* Diálogo para crear nueva etapa */}
-      <Dialog open={isNewStageOpen} onOpenChange={setIsNewStageOpen}>
-        <DialogContent className="sm:max-w-md mx-4">
-          <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">Nueva Etapa</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="newStageName" className="text-gray-900 dark:text-gray-100 font-medium">
-                Nombre de la etapa <span className="text-red-600">*</span>
-              </Label>
-              <Input
-                id="newStageName"
-                value={newStageName}
-                onChange={(e) => setNewStageName(e.target.value)}
-                placeholder="Ej: Propuesta Enviada"
-                className="min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                La probabilidad se calculará automáticamente según la posición de la etapa.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setIsNewStageOpen(false);
-                setNewStageName("");
-              }} 
-              disabled={isCreatingStage}
-              className="w-full sm:w-auto min-h-[44px] dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
-            >
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleCreateStage} 
-              disabled={isCreatingStage || !newStageName.trim()}
-              className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700"
-            >
-              {isCreatingStage ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Creando...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear Etapa
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Diálogo de configuración de etapa */}
-      <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-        <DialogContent className="sm:max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">Configurar etapa</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-              <Label htmlFor="stageName" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-                Nombre <span className="text-red-600 dark:text-red-400">*</span>
-              </Label>
-              <Input
-                id="stageName"
-                value={stageName}
-                onChange={(e) => setStageName(e.target.value)}
-                className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-                required
-              />
-            </div>
-            <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-              <Label htmlFor="probability" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-                Probabilidad (%) <span className="text-gray-500 dark:text-gray-400 text-xs">(Opcional)</span>
-              </Label>
-              <Input
-                id="probability"
-                type="number"
-                min="0"
-                max="100"
-                value={stageProbability || ''}
-                onChange={(e) => setStageProbability(parseInt(e.target.value) || null)}
-                className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-              />
-            </div>
-            <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-              <Label htmlFor="color" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-                Color <span className="text-gray-500 dark:text-gray-400 text-xs">(Opcional)</span>
-              </Label>
-              <div className="col-span-3 flex items-center gap-2">
-                <input
-                  type="color"
-                  id="color"
-                  value={stageColor}
-                  onChange={(e) => setStageColor(e.target.value)}
-                  className="h-10 w-10 rounded-md cursor-pointer border-2 border-gray-300 dark:border-gray-600"
-                />
-                <Input
-                  value={stageColor}
-                  onChange={(e) => setStageColor(e.target.value)}
-                  className="flex-1 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-              <Label htmlFor="description" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-                Descripción <span className="text-gray-500 dark:text-gray-400 text-xs">(Opcional)</span>
-              </Label>
-              <Input
-                id="description"
-                value={stageDescription}
-                onChange={(e) => setStageDescription(e.target.value)}
-                className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-              />
-            </div>
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setIsConfigOpen(false)} disabled={isSaving} className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700">
-              Cancelar
-            </Button>
-            <Button type="submit" onClick={handleSaveStage} disabled={isSaving} className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white">
-              {isSaving ? (
-                <>
-                  <span className="mr-2">Guardando</span>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </>
-              ) : (
-                "Guardar"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog unificado para crear/editar etapa */}
+      <StageDialog
+        open={stageDialogOpen}
+        onOpenChange={setStageDialogOpen}
+        mode={stageDialogMode}
+        initialValues={stageDialogInitial}
+        onSubmit={handleStageDialogSubmit}
+      />
+
+      {/* AlertDialog para confirmar eliminación */}
+      <DeleteStageDialog
+        open={deleteStageOpen}
+        onOpenChange={setDeleteStageOpen}
+        stageName={stageToDelete?.name || ""}
+        opportunityCount={stageToDelete ? getOpportunitiesByStage(stageToDelete.id).length : 0}
+        onConfirm={handleConfirmDeleteStage}
+      />
     </DragDropContext>
   );
 }

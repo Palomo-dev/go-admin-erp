@@ -99,7 +99,7 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
               name: branch.name,
               description: `Sucursal`,
               type: 'branch' as const,
-              url: `/app/sucursales/${branch.id}`
+              url: `/app/organizacion/sucursales/${branch.id}`
             })),
 
             // Clientes - Mejoramos la construcción del nombre y añadimos avatar_url

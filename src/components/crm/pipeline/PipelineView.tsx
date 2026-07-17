@@ -14,7 +14,7 @@ import ForecastView from "./ForecastView";
 import TableView from "./TableView";
 import ClientsView from "./ClientsView";
 import AutomationsView from "./AutomationsView";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, FolderPlus } from "lucide-react";
 import { formatCurrency } from "@/utils/Utils";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 
@@ -318,7 +318,7 @@ export default function PipelineView() {
         .select("id")
         .eq("organization_id", organizationId)
         .eq("is_default", true)
-        .single();
+        .maybeSingle();
 
       if (defaultError && defaultError.code !== "PGRST116") {
         console.error("Error al cargar el pipeline predeterminado:", defaultError);
@@ -338,7 +338,7 @@ export default function PipelineView() {
         .eq("organization_id", organizationId)
         .order("created_at", { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (firstError && firstError.code !== "PGRST116") {
         console.error("Error al cargar el primer pipeline:", firstError);
@@ -354,6 +354,38 @@ export default function PipelineView() {
 
   const handlePipelineChange = (pipelineId: string) => {
     setCurrentPipelineId(pipelineId);
+  };
+
+  // Estado para crear pipeline
+  const [isCreatePipelineOpen, setIsCreatePipelineOpen] = useState(false);
+  const [newPipelineName, setNewPipelineName] = useState("");
+  const [isCreatingPipeline, setIsCreatingPipeline] = useState(false);
+
+  const handleCreatePipeline = async () => {
+    if (!newPipelineName.trim() || !organizationId) return;
+
+    setIsCreatingPipeline(true);
+    try {
+      const { data, error } = await supabase
+        .from("pipelines")
+        .insert({
+          organization_id: organizationId,
+          name: newPipelineName.trim(),
+          is_default: false,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      setCurrentPipelineId(data.id);
+      setNewPipelineName("");
+      setIsCreatePipelineOpen(false);
+    } catch (error: any) {
+      console.error("Error al crear pipeline:", error);
+    } finally {
+      setIsCreatingPipeline(false);
+    }
   };
 
   if (loading) {
@@ -384,8 +416,23 @@ export default function PipelineView() {
         </div>
         
         <TabsContent value="kanban" className="mt-0">
-          {currentPipelineId && (
+          {currentPipelineId ? (
             <PipelineStages pipelineId={currentPipelineId} />
+          ) : (
+            <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-lg shadow border border-blue-100 dark:border-blue-900">
+              <FolderPlus className="h-12 w-12 text-blue-500 dark:text-blue-400 mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-blue-700 dark:text-blue-300 mb-2">No hay pipeline configurado</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Crea un pipeline para comenzar a gestionar tus oportunidades.
+              </p>
+              <Button
+                onClick={() => setIsCreatePipelineOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white min-h-[44px]"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Crear Pipeline
+              </Button>
+            </div>
           )}
         </TabsContent>
         
@@ -429,6 +476,67 @@ export default function PipelineView() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Dialog para crear pipeline */}
+      <Dialog open={isCreatePipelineOpen} onOpenChange={setIsCreatePipelineOpen}>
+        <DialogContent className="sm:max-w-md mx-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">
+              Crear Pipeline
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400">
+              Crea un nuevo pipeline para gestionar tus oportunidades de venta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="pipelineName" className="text-gray-900 dark:text-gray-100 font-medium">
+                Nombre del pipeline <span className="text-red-600">*</span>
+              </Label>
+              <Input
+                id="pipelineName"
+                value={newPipelineName}
+                onChange={(e) => setNewPipelineName(e.target.value)}
+                placeholder="Ej: Ventas Principales"
+                className="min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newPipelineName.trim()) {
+                    handleCreatePipeline();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsCreatePipelineOpen(false)}
+              disabled={isCreatingPipeline}
+              className="w-full sm:w-auto min-h-[44px]"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreatePipeline}
+              disabled={isCreatingPipeline || !newPipelineName.trim()}
+              className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700"
+            >
+              {isCreatingPipeline ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Creando...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear Pipeline
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

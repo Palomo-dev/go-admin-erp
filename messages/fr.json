@@ -915,7 +915,9 @@
       "noInvitations": "Aucune invitation en attente",
       "noResults": "Aucune invitation trouvée avec les filtres appliqués",
       "resend": "Renvoyer",
-      "revoke": "Révoquer"
+      "revoke": "Révoquer",
+      "revokeDescription": "L'invitation à {email} sera annulée et le lien cessera de fonctionner. Cette action ne peut pas être annulée.",
+      "cancel": "Annuler"
     },
     "branchesTab": {
       "loadingMap": "Chargement de la carte...",

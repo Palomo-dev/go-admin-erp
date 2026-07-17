@@ -915,7 +915,9 @@
       "noInvitations": "No pending invitations",
       "noResults": "No invitations found with the applied filters",
       "resend": "Resend",
-      "revoke": "Revoke"
+      "revoke": "Revoke",
+      "revokeDescription": "The invitation to {email} will be cancelled and the link will stop working. This action cannot be undone.",
+      "cancel": "Cancel"
     },
     "branchesTab": {
       "loadingMap": "Loading map...",

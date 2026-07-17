@@ -100,12 +100,18 @@ export const AccountSwitcher = ({ userData, collapsed = false }: AccountSwitcher
           .eq('organization_id', org.id)
           .in('status', ['active', 'trialing'])
           .limit(1)
-          .single();
+          .maybeSingle();
         const planData = data as { plans?: { name?: string } } | null;
         setPlanName(planData?.plans?.name || null);
       } catch { setPlanName(null); }
     };
     loadPlan();
+    // Escuchar cambios de org para recargar el plan si se corrige la org
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'organizacionActiva' || e.key === 'currentOrganizationId') loadPlan();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   // Refrescar la lista de cuentas cada vez que se abre el panel

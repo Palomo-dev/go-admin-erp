@@ -104,6 +104,22 @@ ALTER TABLE products ADD COLUMN track_stock boolean DEFAULT true NOT NULL;
 | `src/components/inventario/productos/nuevo/Inventario.tsx` | Recibir prop `trackStock`. Si `false`, ocultar UI de stock por sucursal |
 | `src/components/inventario/productos/editar/FormularioEdicionProducto.tsx` | Cargar `track_stock` desde DB. Mostrar checkbox. Si `false`, ocultar pestaña/section de stock. Guardar cambios |
 
+#### 1b. Detalle de producto
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/inventario/productos/id/ProductoHeader.tsx` | Card "Stock" (líneas 357-379): si `track_stock = false`, mostrar "∞ Sin seguimiento" en lugar del número. No ejecutar fetch de stock |
+| `src/components/inventario/productos/id/tabs/DetallesTab.tsx` | Reemplazar comentarios "track_stock removed" (líneas 116, 306) por checkbox funcional. Incluir `track_stock` en `handleSaveChanges` update (líneas 123-136) |
+| `src/components/inventario/productos/id/tabs/StockTab.tsx` | Si `producto.track_stock = false`, mostrar mensaje "Este producto no tiene seguimiento de stock" y ocultar tabla, botones de ajuste/transferencia |
+| `src/components/inventario/productos/id/DetalleProducto.tsx` | Si `track_stock = false`, ocultar botones "Ajustar Stock" y "Transferir" (líneas 182-198) |
+
+#### 1c. Tabla de inventario
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/inventario/stock/StockTable.tsx` | Agregar columna "Seguimiento" entre "Categoría" y "Disponible". Badge verde "Con seguimiento" o gris "Sin seguimiento" (∞) |
+| `src/lib/services/stockService.ts` | Incluir `track_stock` en select de `products` en `getStockLevels`. Agregar `trackStock?: boolean` a interfaz `StockFilters` (línea 79-86) |
+
 #### 2. Inventario y reportes
 
 | Archivo | Cambio |
@@ -163,6 +179,26 @@ ALTER TABLE products ADD COLUMN track_stock boolean DEFAULT true NOT NULL;
 - En POS: badge "Sin stock" o icono ∞ en la tarjeta del producto
 - En tienda web: badge "Siempre disponible" en verde
 
+### Detalle de producto (`/app/inventario/productos/[id]`)
+
+Componentes afectados (analizados en código actual):
+
+| Componente | Archivo | Cambio |
+|------------|---------|--------|
+| **ProductoHeader** | `src/components/inventario/productos/id/ProductoHeader.tsx` (líneas 357-379) | Card "Stock": si `track_stock = false`, mostrar "∞ Sin seguimiento" en lugar del número. Ocultar loading de stock. Color gris o azul para distinguir |
+| **DetallesTab** | `src/components/inventario/productos/id/tabs/DetallesTab.tsx` (líneas 116, 306) | Reemplazar comentarios "track_stock removed" por checkbox "No registrar stock" funcional. Guardar `track_stock` en `handleSaveChanges` (línea 123-136) |
+| **StockTab** | `src/components/inventario/productos/id/tabs/StockTab.tsx` | Si `producto.track_stock = false`, mostrar mensaje "Este producto no tiene seguimiento de stock" en lugar de la tabla de stock por sucursal. Ocultar botones de ajuste y transferencia |
+| **DetalleProducto** | `src/components/inventario/productos/id/DetalleProducto.tsx` (líneas 182-198) | Si `track_stock = false`, ocultar botones "Ajustar Stock" y "Transferir" (no aplican) |
+
+### Tabla de inventario (`/app/inventario/stock`)
+
+Componente afectado:
+
+| Componente | Archivo | Cambio |
+|------------|---------|--------|
+| **StockTable** | `src/components/inventario/stock/StockTable.tsx` | Agregar columna "Seguimiento" entre "Categoría" y "Disponible". Para productos con `track_stock = true`: badge verde "Con seguimiento". Para `false`: badge gris "Sin seguimiento" con icono ∞. Los productos sin seguimiento pueden filtrarse con un toggle |
+| **stockService.ts** | `src/lib/services/stockService.ts` | En `getStockLevels`: incluir `track_stock` en el select de `products`. Agregar filtro opcional `trackStock?: boolean` a `StockFilters` (línea 79-86) |
+
 ### Variantes
 
 - Cada variante tiene su propio `track_stock` independiente
@@ -175,11 +211,13 @@ ALTER TABLE products ADD COLUMN track_stock boolean DEFAULT true NOT NULL;
 
 1. **Migración DB**: `ALTER TABLE products ADD COLUMN track_stock boolean DEFAULT true NOT NULL`
 2. **ERP - Formularios**: Checkbox en nuevo y editar producto
-3. **ERP - Inventario**: Filtrar en `stockService.ts`
-4. **ERP - POS**: Incluir campo, omitir validación/descuento
-5. **ERP - Transferencias**: Advertir/bloquear
-6. **ERP - Compras**: Omitir recepción de inventario
-7. **Web Storefront**: Validación, reserva, UI
+3. **ERP - Detalle de producto**: ProductoHeader, DetallesTab, StockTab, DetalleProducto
+4. **ERP - Tabla de inventario**: StockTable con columna "Seguimiento", stockService con filtro
+5. **ERP - Inventario**: Filtrar en `stockService.ts` (reportes, stats, export)
+6. **ERP - POS**: Incluir campo, omitir validación/descuento
+7. **ERP - Transferencias**: Advertir/bloquear
+8. **ERP - Compras**: Omitir recepción de inventario
+9. **Web Storefront**: Validación, reserva, UI
 
 ---
 
@@ -188,6 +226,11 @@ ALTER TABLE products ADD COLUMN track_stock boolean DEFAULT true NOT NULL;
 | Módulo | Productos track_stock=true | Productos track_stock=false |
 |--------|---------------------------|----------------------------|
 | Formulario producto | Stock por sucursal normal | Sin sección de stock |
+| Detalle producto - Header | Card "Stock" muestra total numérico | Card "Stock" muestra "∞ Sin seguimiento" |
+| Detalle producto - DetallesTab | Checkbox desmarcado | Checkbox marcado, guardable |
+| Detalle producto - StockTab | Tabla de stock por sucursal | Mensaje "Sin seguimiento", sin botones de ajuste |
+| Detalle producto - Acciones | Botones "Ajustar Stock" y "Transferir" visibles | Botones ocultos |
+| Tabla de inventario | Badge verde "Con seguimiento" | Badge gris "Sin seguimiento" (∞) |
 | Inventario/Reportes | Aparece en niveles y stats | Excluido |
 | POS | Valida y descuenta stock | Sin validación, sin descuento |
 | Ventas web | Valida y reserva stock | Sin validación, sin reserva |

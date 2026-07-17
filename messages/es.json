@@ -915,7 +915,9 @@
       "noInvitations": "No hay invitaciones pendientes",
       "noResults": "No se encontraron invitaciones con los filtros aplicados",
       "resend": "Reenviar",
-      "revoke": "Revocar"
+      "revoke": "Revocar",
+      "revokeDescription": "La invitación a {email} será cancelada y el enlace dejará de funcionar. Esta acción no se puede deshacer.",
+      "cancel": "Cancelar"
     },
     "branchesTab": {
       "loadingMap": "Cargando mapa...",

@@ -100,8 +100,25 @@ export async function GET(request: NextRequest) {
       }
 
       // recovery: la sesión ya queda establecida (cookies); redirigir a reset-password
-      // para que el usuario defina su nueva contraseña
+      // para que el usuario defina su nueva contraseña.
+      // Pero si el recovery viene de una invitación (hay invitación pendiente para
+      // este email en la tabla invitations), redirigir a /auth/invite.
       if (type === 'recovery') {
+        // Buscar invitación pendiente por email
+        const { data: pendingInvite } = await supabase
+          .from('invitations')
+          .select('code')
+          .eq('email', user.email)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pendingInvite?.code) {
+          return NextResponse.redirect(
+            new URL(`/auth/invite?invite_code=${pendingInvite.code}`, request.url)
+          );
+        }
         return NextResponse.redirect(new URL('/auth/reset-password', request.url));
       }
 

@@ -709,6 +709,48 @@ export const AppLayout = ({
         }
       }
 
+      // Validación temprana: verificar que el usuario sigue siendo miembro
+      // activo de la org guardada. Si la org fue eliminada o el usuario fue
+      // removido, buscar la org real y corregir localStorage antes de que
+      // otros componentes disparen consultas con un org_id obsoleto.
+      if (currentOrgId && currentOrgId > 0) {
+        const { data: validMember } = await supabase
+          .from('organization_members')
+          .select('organization_id, organizations(id, name)')
+          .eq('user_id', user.id)
+          .eq('organization_id', currentOrgId)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (!validMember) {
+          // La org guardada no es válida — buscar la primera org activa del usuario
+          const { data: fallbackMember } = await supabase
+            .from('organization_members')
+            .select('organization_id, organizations(id, name)')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .order('organization_id', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (fallbackMember?.organization_id) {
+            const validOrgId = fallbackMember.organization_id;
+            const orgInfo = Array.isArray(fallbackMember.organizations)
+              ? fallbackMember.organizations[0]
+              : fallbackMember.organizations;
+            console.warn(`⚠️ Org guardada (${currentOrgId}) no es válida, corrigiendo a: ${validOrgId}`);
+            currentOrgId = validOrgId;
+            guardarOrganizacionActiva({ id: validOrgId, name: orgInfo?.name || '' });
+            // Limpiar cache de usuario para que no se usen datos de la org anterior
+            try { localStorage.removeItem('appLayout_userData_cache'); } catch {}
+          } else {
+            // El usuario no tiene ninguna org activa
+            console.warn('⚠️ Usuario no tiene ninguna organización activa');
+            currentOrgId = 0;
+          }
+        }
+      }
+
       setOrgId(currentOrgId.toString());
 
       // Intentar cargar desde cache primero
@@ -752,6 +794,30 @@ export const AppLayout = ({
 
       if (unifiedError) {
         console.warn('Consulta unificada falló, usando fallback:', unifiedError.code || unifiedError.message || 'unknown');
+
+        // Si el error es PGRST116 (0 rows), el org_id en localStorage podría ser inválido.
+        // Buscar la organización real del usuario sin filtrar por org_id.
+        if (unifiedError.code === 'PGRST116') {
+          const { data: memberData } = await supabase
+            .from('organization_members')
+            .select('organization_id, organizations(id, name)')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .limit(1)
+            .single();
+
+          if (memberData?.organization_id && memberData.organization_id !== currentOrgId) {
+            const validOrgId = memberData.organization_id;
+            const orgInfo = Array.isArray(memberData.organizations)
+              ? memberData.organizations[0]
+              : memberData.organizations;
+            console.log(`🔄 Org inválida (${currentOrgId}), corrigiendo a: ${validOrgId}`);
+            currentOrgId = validOrgId;
+            guardarOrganizacionActiva({ id: validOrgId, name: orgInfo?.name || '' });
+            setOrgId(validOrgId.toString());
+          }
+        }
+
         // Fallback a consultas separadas si falla el JOIN
         await loadUserProfileFallback(user, currentOrgId);
         return;

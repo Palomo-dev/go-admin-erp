@@ -229,7 +229,7 @@ export const inicioService = {
         id: 'branch',
         titulo: 'Crear sucursal',
         descripcion: 'Agrega al menos una sucursal',
-        href: '/app/sucursales',
+        href: '/app/organizacion/sucursales',
         completado: (branchesRes.count || 0) > 0,
         icono: 'Building2',
       },

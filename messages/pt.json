@@ -915,7 +915,9 @@
       "noInvitations": "Nenhum convite pendente",
       "noResults": "Nenhum convite encontrado com os filtros aplicados",
       "resend": "Reenviar",
-      "revoke": "Revogar"
+      "revoke": "Revogar",
+      "revokeDescription": "O convite para {email} será cancelado e o link deixará de funcionar. Esta ação não pode ser desfeita.",
+      "cancel": "Cancelar"
     },
     "branchesTab": {
       "loadingMap": "Carregando mapa...",

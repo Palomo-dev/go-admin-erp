@@ -137,7 +137,7 @@ class CRMDashboardService {
         .select('id')
         .eq('organization_id', organizationId)
         .eq('is_default', true)
-        .single();
+        .maybeSingle();
       pipeline = defaultPipeline?.id;
     }
 
@@ -145,144 +145,169 @@ class CRMDashboardService {
       return { stages: [], totalValue: 0, weightedValue: 0 };
     }
 
-    // Obtener etapas con oportunidades
+    // Obtener etapas del pipeline
     const { data: stages } = await supabase
       .from('stages')
       .select('id, name, position, probability, color')
       .eq('pipeline_id', pipeline)
       .order('position', { ascending: true });
 
-    if (!stages) {
+    if (!stages || stages.length === 0) {
       return { stages: [], totalValue: 0, weightedValue: 0 };
     }
 
-    // Contar oportunidades por etapa
-    const stagesData: PipelineStageData[] = [];
-    let totalValue = 0;
-    let weightedValue = 0;
+    // Consulta batch: obtener todas las oportunidades de las etapas en una sola consulta
+    const stageIds = stages.map(s => s.id);
+    const { data: allOpportunities } = await supabase
+      .from('opportunities')
+      .select('stage_id, amount')
+      .eq('organization_id', organizationId)
+      .in('stage_id', stageIds)
+      .eq('status', 'open');
 
-    for (const stage of stages) {
-      const { data: opportunities } = await supabase
-        .from('opportunities')
-        .select('amount')
-        .eq('organization_id', organizationId)
-        .eq('stage_id', stage.id)
-        .eq('status', 'open');
+    // Agrupar oportunidades por etapa en memoria
+    const opportunitiesByStage = new Map<string, { count: number; value: number }>();
+    for (const opp of allOpportunities || []) {
+      const existing = opportunitiesByStage.get(opp.stage_id) || { count: 0, value: 0 };
+      existing.count++;
+      existing.value += opp.amount || 0;
+      opportunitiesByStage.set(opp.stage_id, existing);
+    }
 
-      const count = opportunities?.length || 0;
-      const value = opportunities?.reduce((sum, o) => sum + (o.amount || 0), 0) || 0;
-
-      stagesData.push({
+    const stagesData: PipelineStageData[] = stages.map(stage => {
+      const data = opportunitiesByStage.get(stage.id) || { count: 0, value: 0 };
+      return {
         id: stage.id,
         name: stage.name,
         color: stage.color || '#3b82f6',
-        count,
-        value,
+        count: data.count,
+        value: data.value,
         probability: stage.probability || 0,
-      });
+      };
+    });
 
-      totalValue += value;
-      weightedValue += value * ((stage.probability || 0) / 100);
-    }
+    const totalValue = stagesData.reduce((sum, s) => sum + s.value, 0);
+    const weightedValue = stagesData.reduce((sum, s) => sum + s.value * ((s.probability) / 100), 0);
 
     return { stages: stagesData, totalValue, weightedValue };
   }
 
-  // Obtener actividad por día
+  // Obtener actividad por día (optimizado: 4 consultas batch en lugar de N*4)
   async getActivityByDay(organizationId: number, filters: CRMFilters): Promise<ActivityByDay[]> {
     const dateFrom = filters.dateRange.from || subDays(new Date(), 7);
     const dateTo = filters.dateRange.to || new Date();
+    const dateFromStr = format(dateFrom, 'yyyy-MM-dd');
+    const dateToStr = format(new Date(dateTo.getTime() + 86400000), 'yyyy-MM-dd');
 
-    const result: ActivityByDay[] = [];
+    // Generar todas las fechas del rango
+    const dateMap = new Map<string, ActivityByDay>();
     let currentDate = new Date(dateFrom);
-
     while (currentDate <= dateTo) {
       const dateStr = format(currentDate, 'yyyy-MM-dd');
-      const nextDate = format(new Date(currentDate.getTime() + 86400000), 'yyyy-MM-dd');
-
-      // Conversaciones creadas ese día
-      const { count: conversations } = await supabase
-        .from('conversations')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .gte('created_at', dateStr)
-        .lt('created_at', nextDate);
-
-      // Mensajes ese día
-      const { count: messages } = await supabase
-        .from('messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .gte('created_at', dateStr)
-        .lt('created_at', nextDate);
-
-      // Oportunidades creadas ese día
-      const { count: opportunities } = await supabase
-        .from('opportunities')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .gte('created_at', dateStr)
-        .lt('created_at', nextDate);
-
-      // Actividades ese día
-      const { count: activities } = await supabase
-        .from('activities')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .gte('created_at', dateStr)
-        .lt('created_at', nextDate);
-
-      result.push({
+      dateMap.set(dateStr, {
         date: dateStr,
-        conversations: conversations || 0,
-        messages: messages || 0,
-        opportunities: opportunities || 0,
-        activities: activities || 0,
+        conversations: 0,
+        messages: 0,
+        opportunities: 0,
+        activities: 0,
       });
-
       currentDate = new Date(currentDate.getTime() + 86400000);
     }
 
-    return result;
+    // 4 consultas batch en paralelo (una por tabla) en lugar de 4*N secuenciales
+    const [conversationsRes, messagesRes, opportunitiesRes, activitiesRes] = await Promise.all([
+      supabase
+        .from('conversations')
+        .select('created_at')
+        .eq('organization_id', organizationId)
+        .gte('created_at', dateFromStr)
+        .lt('created_at', dateToStr),
+      supabase
+        .from('messages')
+        .select('created_at')
+        .eq('organization_id', organizationId)
+        .gte('created_at', dateFromStr)
+        .lt('created_at', dateToStr),
+      supabase
+        .from('opportunities')
+        .select('created_at')
+        .eq('organization_id', organizationId)
+        .gte('created_at', dateFromStr)
+        .lt('created_at', dateToStr),
+      supabase
+        .from('activities')
+        .select('created_at')
+        .eq('organization_id', organizationId)
+        .gte('created_at', dateFromStr)
+        .lt('created_at', dateToStr),
+    ]);
+
+    // Agrupar por fecha en memoria
+    const countByDate = (data: any[] | null) => {
+      const counts = new Map<string, number>();
+      for (const row of data || []) {
+        const dateStr = format(new Date(row.created_at), 'yyyy-MM-dd');
+        counts.set(dateStr, (counts.get(dateStr) || 0) + 1);
+      }
+      return counts;
+    };
+
+    const convCounts = countByDate(conversationsRes.data);
+    const msgCounts = countByDate(messagesRes.data);
+    const oppCounts = countByDate(opportunitiesRes.data);
+    const actCounts = countByDate(activitiesRes.data);
+
+    for (const [dateStr, entry] of dateMap) {
+      entry.conversations = convCounts.get(dateStr) || 0;
+      entry.messages = msgCounts.get(dateStr) || 0;
+      entry.opportunities = oppCounts.get(dateStr) || 0;
+      entry.activities = actCounts.get(dateStr) || 0;
+    }
+
+    return Array.from(dateMap.values());
   }
 
-  // Obtener mensajes por canal
+  // Obtener mensajes por canal (optimizado: 2 consultas en lugar de N+1)
   async getMessagesByChannel(organizationId: number): Promise<MessagesByChannel[]> {
     const { data: channels } = await supabase
       .from('channels')
       .select('id, name, type')
       .eq('organization_id', organizationId);
 
-    if (!channels) return [];
+    if (!channels || channels.length === 0) return [];
 
-    const result: MessagesByChannel[] = [];
+    // Una sola consulta para contar mensajes por canal_id
+    const { data: messagesData } = await supabase
+      .from('messages')
+      .select('channel_id')
+      .eq('organization_id', organizationId);
+
+    // Agrupar por channel_id en memoria
+    const countsByChannel = new Map<string, number>();
+    for (const msg of messagesData || []) {
+      countsByChannel.set(msg.channel_id, (countsByChannel.get(msg.channel_id) || 0) + 1);
+    }
+
     let totalMessages = 0;
-
-    for (const channel of channels) {
-      const { count } = await supabase
-        .from('messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .eq('channel_id', channel.id);
-
-      result.push({
+    const result: MessagesByChannel[] = channels.map(channel => {
+      const count = countsByChannel.get(channel.id) || 0;
+      totalMessages += count;
+      return {
         channelId: channel.id,
         channelName: channel.name,
         channelType: channel.type,
-        count: count || 0,
+        count,
         percentage: 0,
-      });
-      totalMessages += count || 0;
-    }
+      };
+    });
 
-    // Calcular porcentajes
     return result.map(r => ({
       ...r,
       percentage: totalMessages > 0 ? (r.count / totalMessages) * 100 : 0,
     }));
   }
 
-  // Obtener top agentes
+  // Obtener top agentes (optimizado: 2 consultas en lugar de 3*N)
   async getTopAgents(organizationId: number, limit: number = 5): Promise<TopAgent[]> {
     const { data: members } = await supabase
       .from('organization_members')
@@ -293,84 +318,93 @@ class CRMDashboardService {
       .eq('organization_id', organizationId)
       .eq('is_active', true);
 
-    if (!members) return [];
+    if (!members || members.length === 0) return [];
 
-    const result: TopAgent[] = [];
+    const memberIds = members.map(m => m.id);
 
-    for (const member of members) {
-      const { count: conversationsCount } = await supabase
-        .from('conversations')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .eq('assigned_member_id', member.id);
+    // Una sola consulta para todas las conversaciones de todos los agentes
+    const { data: allConversations } = await supabase
+      .from('conversations')
+      .select('assigned_member_id, status, first_response_time_seconds')
+      .eq('organization_id', organizationId)
+      .in('assigned_member_id', memberIds);
 
-      const { count: resolvedCount } = await supabase
-        .from('conversations')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .eq('assigned_member_id', member.id)
-        .eq('status', 'resolved');
+    // Agrupar por miembro en memoria
+    const statsByMember = new Map<number, { total: number; resolved: number; responseTimes: number[] }>();
+    for (const conv of allConversations || []) {
+      const memberId = conv.assigned_member_id as number;
+      if (!statsByMember.has(memberId)) {
+        statsByMember.set(memberId, { total: 0, resolved: 0, responseTimes: [] });
+      }
+      const stats = statsByMember.get(memberId)!;
+      stats.total++;
+      if (conv.status === 'resolved') stats.resolved++;
+      if (conv.first_response_time_seconds) stats.responseTimes.push(conv.first_response_time_seconds);
+    }
 
-      const { data: conversations } = await supabase
-        .from('conversations')
-        .select('first_response_time_seconds')
-        .eq('organization_id', organizationId)
-        .eq('assigned_member_id', member.id)
-        .not('first_response_time_seconds', 'is', null);
-
-      const responseTimes = conversations?.map(c => c.first_response_time_seconds) || [];
-      const avgResponseTime = responseTimes.length > 0
-        ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+    const result: TopAgent[] = members.map(member => {
+      const stats = statsByMember.get(member.id) || { total: 0, resolved: 0, responseTimes: [] };
+      const avgResponseTime = stats.responseTimes.length > 0
+        ? stats.responseTimes.reduce((a, b) => a + b, 0) / stats.responseTimes.length
         : 0;
-
       const profile = member.profiles as any;
-      result.push({
+      return {
         memberId: member.id,
         name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Sin nombre',
         email: profile?.email || '',
-        conversationsCount: conversationsCount || 0,
+        conversationsCount: stats.total,
         avgResponseTime,
-        resolvedCount: resolvedCount || 0,
-      });
-    }
+        resolvedCount: stats.resolved,
+      };
+    });
 
     return result
       .sort((a, b) => b.conversationsCount - a.conversationsCount)
       .slice(0, limit);
   }
 
-  // Obtener top canales
+  // Obtener top canales (optimizado: 3 consultas en lugar de 2*N+1)
   async getTopChannels(organizationId: number, limit: number = 5): Promise<TopChannel[]> {
     const { data: channels } = await supabase
       .from('channels')
       .select('id, name, type')
       .eq('organization_id', organizationId);
 
-    if (!channels) return [];
+    if (!channels || channels.length === 0) return [];
 
-    const result: TopChannel[] = [];
+    const channelIds = channels.map(c => c.id);
 
-    for (const channel of channels) {
-      const { count: messagesCount } = await supabase
+    // 2 consultas batch en paralelo
+    const [messagesRes, conversationsRes] = await Promise.all([
+      supabase
         .from('messages')
-        .select('id', { count: 'exact', head: true })
+        .select('channel_id')
         .eq('organization_id', organizationId)
-        .eq('channel_id', channel.id);
-
-      const { count: conversationsCount } = await supabase
+        .in('channel_id', channelIds),
+      supabase
         .from('conversations')
-        .select('id', { count: 'exact', head: true })
+        .select('channel_id')
         .eq('organization_id', organizationId)
-        .eq('channel_id', channel.id);
+        .in('channel_id', channelIds),
+    ]);
 
-      result.push({
-        channelId: channel.id,
-        channelName: channel.name,
-        channelType: channel.type,
-        messagesCount: messagesCount || 0,
-        conversationsCount: conversationsCount || 0,
-      });
+    // Agrupar por channel_id en memoria
+    const msgCounts = new Map<string, number>();
+    for (const msg of messagesRes.data || []) {
+      msgCounts.set(msg.channel_id, (msgCounts.get(msg.channel_id) || 0) + 1);
     }
+    const convCounts = new Map<string, number>();
+    for (const conv of conversationsRes.data || []) {
+      convCounts.set(conv.channel_id, (convCounts.get(conv.channel_id) || 0) + 1);
+    }
+
+    const result: TopChannel[] = channels.map(channel => ({
+      channelId: channel.id,
+      channelName: channel.name,
+      channelType: channel.type,
+      messagesCount: msgCounts.get(channel.id) || 0,
+      conversationsCount: convCounts.get(channel.id) || 0,
+    }));
 
     return result
       .sort((a, b) => b.messagesCount - a.messagesCount)

@@ -251,7 +251,7 @@ function updateUserActivityOptimized(userId: string, request: NextRequest) {
 const routeToModuleMap: Record<string, string> = {
   '/app/organizacion': 'organizations',
   '/app/branding': 'branding',
-  '/app/sucursales': 'branches',
+  '/app/organizacion/sucursales': 'branches',
   '/app/pos': 'pos',
   '/app/inventario': 'inventory',
   '/app/pms': 'pms_hotel',

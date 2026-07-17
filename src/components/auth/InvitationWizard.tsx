@@ -117,6 +117,20 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
     setError(null);
 
     try {
+      // 0. Verificar que la sesión sigue activa antes de intentar actualizar la contraseña.
+      // La sesión temporal (creada al abrir el enlace del correo) puede perderse si el
+      // usuario tarda en completar el formulario. Intentamos recuperarla antes de fallar.
+      const { data: sessionCheck } = await supabase.auth.getSession();
+      if (!sessionCheck.session) {
+        console.log('⚠️ Sesión no encontrada, intentando refrescar...');
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (!refreshData.session) {
+          throw new Error(
+            'Tu sesión expiró mientras completabas el formulario. Por favor, vuelve a abrir el enlace de invitación desde tu correo electrónico para continuar.'
+          );
+        }
+      }
+
       // 1. Actualizar contraseña del usuario existente (ya loggeado con credenciales temporales)
       console.log('🔑 Actualizando contraseña del usuario...');
       const { data: authData, error: authError } = await supabase.auth.updateUser({
@@ -125,6 +139,11 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
       if (authError) {
         console.log('Error actualizando contraseña:', authError);
+        if (authError.message?.includes('Auth session missing')) {
+          throw new Error(
+            'Tu sesión expiró mientras completabas el formulario. Por favor, vuelve a abrir el enlace de invitación desde tu correo electrónico para continuar.'
+          );
+        }
         throw new Error(authError.message);
       }
 
@@ -135,17 +154,20 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
       console.log('✅ Contraseña actualizada exitosamente');
       // Email ya está confirmado desde el login automático
 
-      // 3. Actualizar perfil del usuario con la información personal
-      console.log('📝 Actualizando perfil del usuario...');
+      // 3. Crear o actualizar perfil del usuario con la información personal
+      // Usar upsert porque el usuario invitado puede no tener perfil aún
+      console.log('📝 Creando/actualizando perfil del usuario...');
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: authData.user.id,
+          email: authData.user.email || inviteData.email,
           first_name: formData.firstName,
           last_name: formData.lastName,
           phone: formData.phoneNumber,
-          last_org_id: inviteData.organization_id
-        })
-        .eq('id', authData.user.id);
+          last_org_id: inviteData.organization_id,
+          status: 'active'
+        });
 
       if (profileError) {
         console.log('Error actualizando perfil:', profileError);
@@ -161,7 +183,7 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
         .select('id')
         .eq('user_id', authData.user.id)
         .eq('organization_id', inviteData.organization_id)
-        .single();
+        .maybeSingle();
 
       if (!existingMembership) {
         const { error: membershipError } = await supabase
@@ -459,38 +481,42 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
     </div>
   );
 
+  const steps = [
+    { number: 1, label: 'Datos Personales' },
+    { number: 2, label: 'Contraseña' },
+    { number: 3, label: 'Completado' },
+  ];
+
   const renderProgressBar = () => (
     <div className="mb-8">
-      <div className="flex items-center">
-        {[1, 2, 3].map((step) => (
-          <div key={step} className="flex items-center">
-            <div
-              className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                currentStep >= step
-                  ? 'bg-blue-600 border-blue-600 text-white'
-                  : 'border-gray-300 text-gray-500'
-              }`}
-            >
-              {currentStep > step ? (
-                <CheckCircleIcon className="w-5 h-5" />
-              ) : (
-                <span className="text-sm font-medium">{step}</span>
-              )}
-            </div>
-            {step < 3 && (
+      <div className="flex items-start">
+        {steps.map((s, idx) => (
+          <div key={s.number} className={`flex items-center ${idx < steps.length - 1 ? 'flex-1' : ''}`}>
+            <div className="flex flex-col items-center flex-shrink-0">
               <div
-                className={`flex-1 h-1 mx-2 ${
-                  currentStep > step ? 'bg-blue-600' : 'bg-gray-300'
+                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                  currentStep >= s.number
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'border-gray-300 text-gray-500'
+                }`}
+              >
+                {currentStep > s.number ? (
+                  <CheckCircleIcon className="w-5 h-5" />
+                ) : (
+                  <span className="text-sm font-medium">{s.number}</span>
+                )}
+              </div>
+              <span className="mt-2 text-xs text-gray-500 text-center w-20">{s.label}</span>
+            </div>
+            {idx < steps.length - 1 && (
+              <div
+                className={`flex-1 h-1 mx-2 mt-4 ${
+                  currentStep > s.number ? 'bg-blue-600' : 'bg-gray-300'
                 }`}
               />
             )}
           </div>
         ))}
-      </div>
-      <div className="flex justify-between mt-2">
-        <span className="text-xs text-gray-500">Datos Personales</span>
-        <span className="text-xs text-gray-500">Contraseña</span>
-        <span className="text-xs text-gray-500">Completado</span>
       </div>
     </div>
   );

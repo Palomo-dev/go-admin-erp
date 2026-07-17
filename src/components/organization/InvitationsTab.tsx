@@ -6,6 +6,17 @@ import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMa
 import { InvitationsSkeleton } from './OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
 import { EmailConfirmedGate, EmailConfirmedWarning } from '@/components/auth/EmailConfirmedGate';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
 
 interface InvitationProps {
   id: string;
@@ -298,31 +309,29 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
   // Revoke invitation
   const revokeInvitation = async (id: string) => {
-    if (confirm(t('confirmRevoke'))) {
-      try {
-        setLoading(true);
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('invitations')
+        .update({ status: 'revoked' })
+        .eq('id', id);
         
-        const { error } = await supabase
-          .from('invitations')
-          .update({ status: 'revoked' })
-          .eq('id', id);
-          
-        if (error) throw error;
-        
-        // Update local invitations list
-        setInvitations(prev => 
-          prev.map(inv => 
-            inv.id === id ? { ...inv, status: 'revoked', revoked: true } : inv
-          )
-        );
-        
-        setSuccess(t('inviteRevoked'));
-      } catch (err: any) {
-        console.error('Error al revocar invitación:', err);
-        setError(err.message || t('errorRevoking'));
-      } finally {
-        setLoading(false);
-      }
+      if (error) throw error;
+      
+      // Update local invitations list
+      setInvitations(prev => 
+        prev.map(inv => 
+          inv.id === id ? { ...inv, status: 'revoked', revoked: true } : inv
+        )
+      );
+      
+      setSuccess(t('inviteRevoked'));
+    } catch (err: any) {
+      console.error('Error al revocar invitación:', err);
+      setError(err.message || t('errorRevoking'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -828,12 +837,34 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                           >
                             {t('resend')}
                           </button>
-                          <button
-                            onClick={() => revokeInvitation(invitation.id)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            {t('revoke')}
-                          </button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                              >
+                                {t('revoke')}
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-white dark:bg-gray-900 dark:border-gray-800 dark:text-gray-100">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>{t('confirmRevoke')}</AlertDialogTitle>
+                                <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                                  {t('revokeDescription', { email: invitation.email })}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="dark:bg-gray-800 dark:hover:bg-gray-700">
+                                  {t('cancel')}
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => revokeInvitation(invitation.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                  {t('revoke')}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </>
                       )}
                     </td>
@@ -844,6 +875,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           </table>
         </div>
       </div>
+
+      {/* AlertDialog de confirmación de revocación */}
     </div>
   );
 }

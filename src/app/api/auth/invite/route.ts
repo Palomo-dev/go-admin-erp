@@ -45,6 +45,37 @@ export async function POST(request: Request) {
       );
     }
 
+    // Si el usuario ya existe en auth.users, inviteUserByEmail genera un token
+    // type=invite que falla en verifyOtp porque el usuario ya está confirmado.
+    // Solución: usar resetPasswordForEmail que envía un email con type=recovery.
+    // El verify route busca invitation_code en la tabla invitations por email.
+    if (existsInAuth) {
+      const { createClient } = await import('@supabase/supabase-js');
+      const anonClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+      );
+
+      const { error: resetError } = await anonClient.auth.resetPasswordForEmail(
+        normalizedEmail,
+        { redirectTo: inviteUrl }
+      );
+
+      if (resetError) {
+        console.error('Error enviando email de recovery:', resetError);
+        return NextResponse.json({
+          success: true,
+          inviteUrl,
+          message: 'No se pudo enviar el email automáticamente. Comparte el link manualmente.',
+        });
+      }
+
+      console.log('📧 Recovery email sent to existing user:', normalizedEmail);
+      return NextResponse.json({ success: true, inviteUrl });
+    }
+
+    // Usuario nuevo: usar inviteUserByEmail (envía email automáticamente)
     const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
       normalizedEmail,
       {
@@ -62,6 +93,23 @@ export async function POST(request: Request) {
 
     if (inviteError) {
       console.error('Error enviando invitación:', inviteError);
+      // Si el usuario ya existe, usar resetPasswordForEmail como fallback
+      if (inviteError.message.includes('already been registered') || inviteError.message.includes('already registered')) {
+        const { createClient } = await import('@supabase/supabase-js');
+        const anonClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          { auth: { autoRefreshToken: false, persistSession: false } }
+        );
+        const { error: resetError } = await anonClient.auth.resetPasswordForEmail(
+          normalizedEmail,
+          { redirectTo: inviteUrl }
+        );
+        if (!resetError) {
+          console.log('📧 Recovery email sent as fallback to:', normalizedEmail);
+          return NextResponse.json({ success: true, inviteUrl });
+        }
+      }
       return NextResponse.json(
         { error: inviteError.message, inviteUrl },
         { status: 200 }

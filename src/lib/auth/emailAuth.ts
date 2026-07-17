@@ -117,8 +117,25 @@ export const handleEmailLogin = async (params: EmailLoginParams): Promise<void> 
           setUserOrganizations(organizations);
           setShowOrgPopup(true);
         } else {
-          console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones');
-          // Login directo si no hay organizaciones
+          // 0 organizaciones: verificar si tiene invitación pendiente
+          console.log('� [EMAIL AUTH] Sin organizaciones, verificando invitaciones pendientes...');
+          const { data: pendingInvite } = await supabase
+            .from('invitations')
+            .select('code, organization_id, role_id, organizations(name), roles(name)')
+            .eq('email', sessionUser.email || email)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (pendingInvite?.code) {
+            console.log('📧 [EMAIL AUTH] Invitación pendiente encontrada, redirigiendo a invite wizard:', pendingInvite.code);
+            await supabase.auth.signOut();
+            window.location.replace(`/auth/invite?invite_code=${pendingInvite.code}`);
+            return;
+          }
+
+          console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones ni invitaciones');
           proceedWithLogin(rememberMe, email);
         }
         return;
@@ -142,8 +159,25 @@ export const handleEmailLogin = async (params: EmailLoginParams): Promise<void> 
       setUserOrganizations(organizations);
       setShowOrgPopup(true);
     } else {
-      console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones');
-      // Login directo si no hay organizaciones
+      // 0 organizaciones: verificar si tiene invitación pendiente
+      console.log('� [EMAIL AUTH] Sin organizaciones, verificando invitaciones pendientes...');
+      const { data: pendingInvite } = await supabase
+        .from('invitations')
+        .select('code, organization_id, role_id, organizations(name), roles(name)')
+        .eq('email', user.email || email)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (pendingInvite?.code) {
+        console.log('📧 [EMAIL AUTH] Invitación pendiente encontrada, redirigiendo a invite wizard:', pendingInvite.code);
+        await supabase.auth.signOut();
+        window.location.replace(`/auth/invite?invite_code=${pendingInvite.code}`);
+        return;
+      }
+
+      console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones ni invitaciones');
       proceedWithLogin(rememberMe, email);
     }
     

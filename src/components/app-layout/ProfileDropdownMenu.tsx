@@ -91,7 +91,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
           .eq('organization_id', org.id)
           .in('status', ['active', 'trialing'])
           .limit(1)
-          .single();
+          .maybeSingle();
         setPlanName((data as any)?.plans?.name || null);
       } catch { setPlanName(null); }
     };

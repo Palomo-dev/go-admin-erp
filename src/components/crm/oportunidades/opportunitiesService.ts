@@ -462,7 +462,7 @@ class OpportunitiesService {
             price
           ),
           product_images (
-            image_url
+            storage_path
           )
         `)
         .eq('organization_id', this.getOrganizationId())
@@ -479,7 +479,7 @@ class OpportunitiesService {
         name: p.name,
         sku: p.sku || '',
         price: parseFloat(p.product_prices?.[0]?.price) || 0,
-        image: p.product_images?.[0]?.image_url || undefined,
+        image: p.product_images?.[0]?.storage_path || undefined,
       }));
     } catch (err) {
       console.warn('Advertencia en getProducts');

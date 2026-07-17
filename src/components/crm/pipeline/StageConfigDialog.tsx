@@ -85,10 +85,9 @@ export function StageConfigDialog({
         .update({
           name: values.name,
           probability: values.probability,
+          color: values.color,
           description: values.description,
           updated_at: new Date().toISOString(),
-          // Nota: actualmente el campo color no existe en la tabla stages
-          // Añadirlo requeriría una migración
         })
         .eq("id", stage.id);
 

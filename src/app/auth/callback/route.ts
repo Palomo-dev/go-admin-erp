@@ -187,6 +187,7 @@ async function createOrUpdateUserProfile(supabase: any, user: any) {
           first_name: finalFirstName,
           last_name: finalLastName,
           avatar_url: avatarUrl,
+          auth_provider: user.app_metadata?.provider || 'email',
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
@@ -208,6 +209,7 @@ async function createOrUpdateUserProfile(supabase: any, user: any) {
           first_name: finalFirstName,
           last_name: finalLastName,
           avatar_url: avatarUrl,
+          auth_provider: user.app_metadata?.provider || 'email',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });

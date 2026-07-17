@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { resetPassword } from '@/lib/supabase/config';
+import { checkAuthProvider, getProviderLabel } from '@/lib/auth';
 import { useTranslations } from 'next-intl';
 
 export default function ForgotPasswordPage() {
@@ -59,6 +60,17 @@ export default function ForgotPasswordPage() {
     setMessage(null);
 
     try {
+      // Verificar si el usuario está registrado con OAuth
+      const provider = await checkAuthProvider(email);
+      if (provider) {
+        setMessage({
+          type: 'error',
+          text: `Esta cuenta está registrada con ${getProviderLabel(provider)}. No puedes restablecer la contraseña. Por favor, inicia sesión con ${getProviderLabel(provider)}.`
+        });
+        setLoading(false);
+        return;
+      }
+
       const { error } = await resetPassword(email);
       
       if (error) {

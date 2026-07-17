@@ -98,36 +98,23 @@ function InviteContent() {
         role_name: invitation.role_name || 'Usuario'
       };
       
-      // PASO 2: Intentar login automático con credenciales temporales
+      // PASO 2: Verificar si ya hay sesión activa (viene de verifyOtp tras clic en email)
       setLoadingMessage(t('autoSignIn'));
-      console.log('Intentando login con:', invitation.email, 'temp-password');
+      console.log('Verificando sesión activa...');
       
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: invitation.email,
-        password: 'temp-password'
-      });
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      console.log('Resultado de login:', { signInData, signInError });
-      
-      
-      if (signInError) {
-        console.log('Error en login automático:', signInError);
-        setError(t('errorAutoSignIn', { message: signInError.message }));
+      if (session && session.user && !sessionError) {
+        console.log('Sesión activa encontrada para usuario:', session.user.email);
+        setInviteData(invitationData);
+        setIsLoggedIn(true);
         setIsLoading(false);
         return;
       }
       
-      if (!signInData.user) {
-        console.log('Login exitoso pero no hay usuario');
-        setError(t('errorUnexpected'));
-        setIsLoading(false);
-        return;
-      }
-      
-      // PASO 3: Login exitoso, configurar datos y mostrar wizard
-      console.log('Login exitoso, usuario:', signInData.user.email);
-      setInviteData(invitationData);
-      setIsLoggedIn(true);
+      // Si no hay sesión, mostrar error con instrucciones
+      console.log('No hay sesión activa. El usuario debe clickear el enlace del email primero.');
+      setError(t('errorAutoSignIn', { message: 'Debes abrir el enlace enviado a tu correo electrónico para acceder. Si ya lo abriste, solicita un reenvío de la invitación.' }));
       setIsLoading(false);
       
     } catch (err) {

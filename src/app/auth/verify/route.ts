@@ -114,9 +114,16 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // invite: sesión establecida con contraseña temporal; redirigir a reset-password
-      // para que el usuario defina su contraseña definitiva
+      // invite: verifyOtp establece sesión; redirigir a /auth/invite con el código
+      // de invitación para que el usuario complete su perfil y defina su contraseña
       if (type === 'invite') {
+        const inviteCode = user.user_metadata?.invitation_code;
+        if (inviteCode) {
+          return NextResponse.redirect(
+            new URL(`/auth/invite?invite_code=${inviteCode}`, request.url)
+          );
+        }
+        // Si no hay código de invitación en metadata, redirigir a reset-password
         return NextResponse.redirect(new URL('/auth/reset-password', request.url));
       }
     } catch (error: any) {

@@ -97,6 +97,12 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          throw new Error('Cuota de OpenAI agotada. Revisa el plan y facturación en platform.openai.com.');
+        }
+        if (response.status === 401) {
+          throw new Error('Clave de API de OpenAI inválida o no configurada. Contacta al administrador.');
+        }
         throw new Error(errorData.error || 'Error generando plan con IA');
       }
 

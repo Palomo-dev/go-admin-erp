@@ -6,12 +6,14 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { 
-  handleEmailLogin, 
-  handleGoogleLogin, 
-  handleMicrosoftLogin, 
+import {
+  handleEmailLogin,
+  handleGoogleLogin,
+  handleMicrosoftLogin,
   selectOrganizationFromPopup,
   proceedWithLogin,
+  checkAuthProvider,
+  getProviderLabel,
   Organization
 } from '@/lib/auth';
 import GeolocationModal from '@/components/auth/GeolocationModal';
@@ -105,10 +107,27 @@ function LoginContent() {
     }
   }, [searchParams, userOrganizations]);
 
+  const [oauthProvider, setOauthProvider] = useState<string | null>(null);
+
+  const onEmailBlur = async () => {
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    setOauthProvider(null);
+    const provider = await checkAuthProvider(email);
+    if (provider) {
+      setOauthProvider(provider);
+    }
+  };
+
   const onEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     // Resetear estado de email no confirmado
     setEmailNotConfirmed(false);
+
+    // Si el usuario está registrado con OAuth, bloquear login con contraseña
+    if (oauthProvider) {
+      setError(`Esta cuenta está registrada con ${getProviderLabel(oauthProvider)}. Por favor, inicia sesión con ese proveedor.`);
+      return;
+    }
 
     // Guardar o eliminar credenciales segun rememberMe
     if (rememberMe) {
@@ -412,9 +431,18 @@ function LoginContent() {
                   placeholder={t('emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onBlur={onEmailBlur}
                 />
               </div>
             </div>
+            {oauthProvider && (
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.485 2.495c.671-1.167 2.357-1.167 3.028 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+                <span>Esta cuenta está registrada con <strong>{getProviderLabel(oauthProvider)}</strong>. Usa el botón de {getProviderLabel(oauthProvider)} para iniciar sesión.</span>
+              </div>
+            )}
             <div className="relative">
               <div className="flex items-center border border-blue-300 rounded-md">
                 <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
           }
         },
         persistSession: true,
-        autoRefreshToken: true,
+        autoRefreshToken: false,
         detectSessionInUrl: false
       }
     }
@@ -101,11 +101,10 @@ export async function GET(request: NextRequest) {
           
           const hasOrganization = await checkUserOrganization(supabase, user.id);
           
-          // Eliminar cookie de sesión chunked de Supabase (evita error 431 por headers too large)
-          const projectRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split('.')[0];
-          pendingCookies.delete(`sb-${projectRef}-auth-token`);
+          // NO eliminar la cookie sb-${projectRef}-auth-token: el cliente la necesita para persistir la sesión
+          // La cookie go-admin-oauth-session sirve como fallback para hidratar en select-organization
           
-          // Redirigir sin tokens en URL (la cookie go-admin-oauth-session se usa para hidratar)
+          // Redirigir sin tokens en URL (la cookie go-admin-oauth-session se usa como fallback)
           if (hasOrganization) {
             return redirectWithCookies('/auth/select-organization?dest=' + encodeURIComponent(next));
           } else {

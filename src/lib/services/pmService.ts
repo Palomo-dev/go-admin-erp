@@ -178,7 +178,7 @@ export const pmService = {
     const [projects, goals, tasks, milestones] = await Promise.all([
       safeQuery(supabase.from('projects').select('status').eq('organization_id', orgId)),
       safeQuery(supabase.from('goals').select('status').eq('organization_id', orgId)),
-      safeQuery(supabase.from('tasks').select('status, due_date, project_id').eq('organization_id', orgId).not('project_id', 'is', null)),
+      safeQuery(supabase.from('tasks').select('status, due_date, project_id').eq('organization_id', orgId)),
       safeQuery(supabase.from('milestones').select('is_completed').eq('organization_id', orgId)),
     ]);
 
@@ -414,11 +414,13 @@ export const pmService = {
     if (!orgId) return [];
 
     // Query sin join a profiles para evitar errores de FK indirecto
+    // No filtrar por project_id IS NOT NULL: las tareas creadas por IA Planner
+    // sin proyecto asignado deben ser visibles. El filtro de proyecto se aplica
+    // vía el dropdown si el usuario lo selecciona.
     let query = supabase
       .from('tasks')
       .select('*, projects(id, name), milestones(id, title), goals(id, title)')
       .eq('organization_id', orgId)
-      .not('project_id', 'is', null)
       .order('created_at', { ascending: false });
 
     if (filters?.status && filters.status !== 'all') query = query.eq('status', filters.status);
@@ -834,7 +836,6 @@ export const pmService = {
       .from('tasks')
       .select('*, projects(id, name)')
       .eq('organization_id', orgId)
-      .not('project_id', 'is', null)
       .order('updated_at', { ascending: false })
       .limit(limit);
     if (error) { console.error('Error getRecentTasks:', error.message); return []; }

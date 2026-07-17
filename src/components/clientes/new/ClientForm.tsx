@@ -13,6 +13,7 @@ import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/components/ui/use-toast';
 import { MergeModal } from './MergeModal';
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
+import LocationSelector, { type LocationData } from '@/components/common/LocationSelector';
 import { cn } from '@/utils/Utils';
 import { User, Mail, Phone, MapPin, FileText, Tag, Building2, CreditCard, Users, Loader2, Save, X, Check, Camera, ChevronDown } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
@@ -76,6 +77,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     notes: '',
     tags: '',
   });
+  const [locationData, setLocationData] = useState<LocationData>({
+    country: '',
+    countryCode: '',
+    state: '',
+    stateCode: '',
+    city: '',
+    municipalityId: '',
+  });
 
   // Tipo de cliente: persona o empresa
   const [customerType, setCustomerType] = useState<CustomerType>('person');
@@ -93,10 +102,6 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const [selectedFiscal, setSelectedFiscal] = useState<string[]>(['R-99-PN']);
   const [fiscalOptions, setFiscalOptions] = useState<{code: string; description: string}[]>([]);
   
-  // Estados para municipios
-  const [municipalities, setMunicipalities] = useState<{id: string; code: string; name: string; state_name: string}[]>([]);
-  const [municipalitySearch, setMunicipalitySearch] = useState('');
-  const [showMunicipalityDropdown, setShowMunicipalityDropdown] = useState(false);
   
   // Estados de carga y error
   const [loading, setLoading] = useState(false);
@@ -108,6 +113,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [pendingContacts, setPendingContacts] = useState<any[]>([]);
 
   const [openSections, setOpenSections] = useState({
     personal: true,
@@ -247,14 +253,28 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
         setCustomerType((clientData.customer_type as CustomerType) || 'person');
         setParentCustomerId(clientData.parent_customer_id || '');
         
-        // Si tiene municipio, cargar su nombre para el search
+        // Si tiene municipio, cargar datos de ubicación
         if (clientData.fiscal_municipality_id) {
           const { data: muni } = await supabase
             .from('municipalities')
-            .select('name, state_name')
+            .select('id, name, state_name, state_code, country_code')
             .eq('id', clientData.fiscal_municipality_id)
             .single();
-          if (muni) setMunicipalitySearch(`${muni.name} - ${muni.state_name}`);
+          if (muni) {
+            const { data: country } = await supabase
+              .from('countries')
+              .select('name')
+              .eq('code', muni.country_code)
+              .single();
+            setLocationData({
+              country: country?.name || '',
+              countryCode: muni.country_code || '',
+              state: muni.state_name || '',
+              stateCode: muni.state_code || '',
+              city: muni.name || '',
+              municipalityId: muni.id,
+            });
+          }
         }
         
         // Cargar avatar, roles y fiscal
@@ -278,27 +298,6 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     loadClientData();
   }, [clientId, isEditMode]);
   
-  // Buscar municipios cuando el usuario escribe
-  useEffect(() => {
-    if (municipalitySearch.length < 2) {
-      setMunicipalities(prev => prev.length === 0 ? prev : []);
-      return;
-    }
-    
-    const timer = setTimeout(async () => {
-      const { data } = await supabase
-        .from('municipalities')
-        .select('id, code, name, state_name')
-        .ilike('name', `%${municipalitySearch}%`)
-        .order('name')
-        .limit(15);
-      
-      if (data) setMunicipalities(data);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [municipalitySearch]);
-
   // Funciones de manejo de cambios en los campos
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -409,8 +408,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
       if (isEditMode && clientId) {
         // ===== MODO EDICIÓN =====
         const updatedData = {
-          first_name: formData.firstName,
-          last_name: formData.lastName,
+          first_name: customerType === 'company' ? (formData.companyName || '') : formData.firstName,
+          last_name: customerType === 'company' ? '' : formData.lastName,
           email: formData.email || null,
           phone: formData.phone || null,
           identification_type: formData.documentType,
@@ -438,7 +437,9 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
         
         toast({
           title: "Cliente actualizado",
-          description: `Se ha actualizado la información de ${formData.firstName} ${formData.lastName}`,
+          description: customerType === 'company'
+            ? `Se ha actualizado la información de ${formData.companyName}`
+            : `Se ha actualizado la información de ${formData.firstName} ${formData.lastName}`,
           variant: "default",
         });
         
@@ -461,8 +462,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
         const customerData = {
           organization_id: organizationId,
           branch_id: branchId || null,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
+          first_name: customerType === 'company' ? (formData.companyName || '') : formData.firstName,
+          last_name: customerType === 'company' ? '' : formData.lastName,
           email: formData.email || null,
           phone: formData.phone || null,
           identification_type: formData.documentType,
@@ -490,9 +491,63 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           
         if (insertError) throw insertError;
         
+        // Si es empresa y hay contactos pendientes, crearlos y vincularlos
+        if (customerType === 'company' && newCustomer && pendingContacts.length > 0) {
+          for (const contact of pendingContacts) {
+            let personId = contact.person_id;
+            
+            // Si es contacto nuevo, crear la persona
+            if (contact.isNew || !personId) {
+              const { data: newPerson, error: personError } = await supabase
+                .from('customers')
+                .insert({
+                  organization_id: organizationId,
+                  branch_id: branchId || null,
+                  first_name: contact.first_name,
+                  last_name: contact.last_name,
+                  email: contact.email || null,
+                  phone: contact.phone || null,
+                  identification_type: contact.document_type || 'national_id',
+                  identification_number: contact.document_number || null,
+                  fiscal_municipality_id: contact.municipality_id || null,
+                  customer_type: 'person',
+                  roles: ['cliente'],
+                  created_at: new Date().toISOString(),
+                })
+                .select()
+                .single();
+              
+              if (personError) {
+                console.error('Error al crear contacto:', personError);
+                continue;
+              }
+              personId = newPerson.id;
+            }
+            
+            // Vincular la persona con la empresa
+            if (personId) {
+              const { error: linkError } = await supabase
+                .from('customer_company_links')
+                .insert({
+                  organization_id: organizationId,
+                  person_id: personId,
+                  company_id: newCustomer.id,
+                  position: contact.position || null,
+                  is_primary: contact.is_primary || false,
+                });
+              
+              if (linkError) {
+                console.error('Error al vincular contacto:', linkError);
+              }
+            }
+          }
+        }
+        
         toast({
           title: "Cliente creado con éxito",
-          description: `Se ha registrado a ${formData.firstName} ${formData.lastName} como cliente.`,
+          description: customerType === 'company' 
+            ? `Se ha registrado la empresa ${formData.companyName}.`
+            : `Se ha registrado a ${formData.firstName} ${formData.lastName} como cliente.`,
           variant: "default",
         });
         
@@ -669,7 +724,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 <div className="flex items-center gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                   <div className="relative group cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
                     <UserAvatar
-                      name={`${formData.firstName} ${formData.lastName}`.trim() || 'Nuevo Cliente'}
+                      name={customerType === 'company' ? (formData.companyName || 'Nueva Empresa') : `${formData.firstName} ${formData.lastName}`.trim() || 'Nuevo Cliente'}
                       avatarUrl={avatarUrl}
                       size="lg"
                       className="w-20 h-20"
@@ -731,18 +786,52 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   </div>
                 </div>
 
-                {/* Nombre y Apellido */}
+                {/* Datos Empresariales (solo para empresas - PRIMERO) */}
+                {customerType === 'company' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName" className="text-sm font-medium flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-gray-400" />
+                        Razón Social <span className="text-red-500">*</span>
+                      </Label>
+                      <Input 
+                        id="companyName" 
+                        name="companyName" 
+                        value={formData.companyName}
+                        onChange={handleChange}
+                        required
+                        placeholder="Ej: Empresa S.A.S."
+                        className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="tradeName" className="text-sm font-medium">Nombre Comercial</Label>
+                      <Input 
+                        id="tradeName" 
+                        name="tradeName" 
+                        value={formData.tradeName}
+                        onChange={handleChange}
+                        placeholder="Ej: Mi Negocio"
+                        className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Nombre y Apellido (solo para persona) */}
+                {customerType === 'person' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName" className="text-sm font-medium flex items-center gap-1">
-                      {customerType === 'company' ? 'Nombre del Contacto' : 'Nombre'} {customerType === 'person' && <span className="text-red-500">*</span>}
+                      Nombre <span className="text-red-500">*</span>
                     </Label>
                     <Input 
                       id="firstName" 
                       name="firstName" 
                       value={formData.firstName}
                       onChange={handleChange}
-                      required={customerType === 'person'}
+                      required
                       placeholder="Ej: Juan Carlos"
                       className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
@@ -750,19 +839,20 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   
                   <div className="space-y-2">
                     <Label htmlFor="lastName" className="text-sm font-medium flex items-center gap-1">
-                      {customerType === 'company' ? 'Apellido del Contacto' : 'Apellido'} {customerType === 'person' && <span className="text-red-500">*</span>}
+                      Apellido <span className="text-red-500">*</span>
                     </Label>
                     <Input 
                       id="lastName" 
                       name="lastName" 
                       value={formData.lastName}
                       onChange={handleChange}
-                      required={customerType === 'person'}
+                      required
                       placeholder="Ej: García López"
                       className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>
+                )}
 
                 {/* Empresa padre (solo para personas) */}
                 {customerType === 'person' && companies.length > 0 && (
@@ -833,39 +923,6 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                     />
                   </div>
                 </div>
-
-                {/* Datos Empresariales (solo para empresas) */}
-                {customerType === 'company' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="companyName" className="text-sm font-medium flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-gray-400" />
-                        Razón Social <span className="text-red-500">*</span>
-                      </Label>
-                      <Input 
-                        id="companyName" 
-                        name="companyName" 
-                        value={formData.companyName}
-                        onChange={handleChange}
-                        required
-                        placeholder="Ej: Empresa S.A.S."
-                        className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="tradeName" className="text-sm font-medium">Nombre Comercial</Label>
-                      <Input 
-                        id="tradeName" 
-                        name="tradeName" 
-                        value={formData.tradeName}
-                        onChange={handleChange}
-                        placeholder="Ej: Mi Negocio"
-                        className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
             )}
@@ -1040,65 +1097,47 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   />
                 </div>
                 
-                {/* Municipio */}
-                <div className="space-y-2 relative">
-                    <Label htmlFor="municipalitySearch" className="text-sm font-medium flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      Municipio
-                    </Label>
-                    <Input 
-                      id="municipalitySearch"
-                      value={municipalitySearch}
-                      onChange={(e) => {
-                        setMunicipalitySearch(e.target.value);
-                        setShowMunicipalityDropdown(true);
-                        if (!e.target.value) {
-                          setFormData(prev => ({ ...prev, municipalityId: '' }));
-                        }
+                {/* Ubicación: País, Departamento, Municipio */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    Ubicación
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <LocationSelector
+                      value={locationData}
+                      onChange={(data) => {
+                        setLocationData(data);
+                        setFormData(prev => ({ ...prev, municipalityId: data.municipalityId || '' }));
                       }}
-                      onFocus={() => municipalitySearch.length >= 2 && setShowMunicipalityDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowMunicipalityDropdown(false), 200)}
-                      placeholder="Buscar municipio..."
-                      className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
-                      autoComplete="off"
                     />
-                    {formData.municipalityId && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, municipalityId: '' }));
-                          setMunicipalitySearch('');
-                        }}
-                        className="absolute right-2 top-[38px] text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                    {showMunicipalityDropdown && municipalities.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                        {municipalities.map((muni) => (
-                          <button
-                            key={muni.id}
-                            type="button"
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, municipalityId: muni.id }));
-                              setMunicipalitySearch(`${muni.name} - ${muni.state_name}`);
-                              setShowMunicipalityDropdown(false);
-                            }}
-                          >
-                            <span className="font-medium">{muni.name}</span>
-                            <span className="text-gray-500 dark:text-gray-400 ml-1 text-xs">({muni.code}) - {muni.state_name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
             )}
           </div>
+
+          {/* Gestión de contactos - para empresa (creación y edición) - ANTES de Información Adicional */}
+          {customerType === 'company' && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
+              <CardContent className="pt-6">
+                {isEditMode && clientId ? (
+                  <CompanyContactsManager 
+                    companyId={clientId} 
+                    organizationId={organizationId}
+                    branchId={branchId}
+                  />
+                ) : (
+                  <CompanyContactsManager 
+                    organizationId={organizationId}
+                    branchId={branchId}
+                    onContactsChange={setPendingContacts}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Sección: Información Adicional */}
           <div>
@@ -1162,15 +1201,6 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
             )}
           </div>
         </div>
-
-        {/* Gestión de contactos - solo en edición de empresa */}
-        {isEditMode && customerType === 'company' && clientId && (
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
-            <CardContent className="pt-6">
-              <CompanyContactsManager companyId={clientId} organizationId={organizationId} />
-            </CardContent>
-          </Card>
-        )}
 
         {/* Botones de acción mejorados */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">

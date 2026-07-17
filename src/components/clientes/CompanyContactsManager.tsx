@@ -19,13 +19,16 @@ import {
   Building2,
   X,
   Check,
+  UserPlus,
 } from 'lucide-react';
-import { cn } from '@/utils/Utils';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
+import LocationSelector, { type LocationData } from '@/components/common/LocationSelector';
 
 interface CompanyContactsManagerProps {
-  companyId: string;
+  companyId?: string;
   organizationId: number;
+  branchId?: number;
+  onContactsChange?: (contacts: PendingContact[]) => void;
 }
 
 interface ContactLink {
@@ -40,6 +43,23 @@ interface ContactLink {
   avatar_url: string | null;
 }
 
+interface PendingContact {
+  person_id?: string;
+  isNew?: boolean;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  document_type?: string;
+  document_number?: string;
+  country_code?: string;
+  state_code?: string;
+  municipality_id?: string;
+  position: string | null;
+  is_primary: boolean;
+  avatar_url: string | null;
+}
+
 interface SearchResult {
   id: string;
   first_name: string;
@@ -49,9 +69,10 @@ interface SearchResult {
   avatar_url: string | null;
 }
 
-export function CompanyContactsManager({ companyId, organizationId }: CompanyContactsManagerProps) {
-  const [contacts, setContacts] = useState<ContactLink[]>([]);
-  const [loading, setLoading] = useState(true);
+export function CompanyContactsManager({ companyId, organizationId, branchId, onContactsChange }: CompanyContactsManagerProps) {
+  const isPersisted = !!companyId;
+  const [contacts, setContacts] = useState<(ContactLink | PendingContact)[]>([]);
+  const [loading, setLoading] = useState(isPersisted);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -59,8 +80,30 @@ export function CompanyContactsManager({ companyId, organizationId }: CompanyCon
   const [selectedPerson, setSelectedPerson] = useState<SearchResult | null>(null);
   const [newPosition, setNewPosition] = useState('');
   const [adding, setAdding] = useState(false);
+  const [addMode, setAddMode] = useState<'search' | 'create'>('search');
+  const [newPersonData, setNewPersonData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    document_type: 'national_id',
+    document_number: '',
+  });
+  const [newPersonLocation, setNewPersonLocation] = useState<LocationData>({
+    country: '',
+    countryCode: '',
+    state: '',
+    stateCode: '',
+    city: '',
+    municipalityId: '',
+  });
+
+  const notifyChange = useCallback((updated: PendingContact[]) => {
+    onContactsChange?.(updated);
+  }, [onContactsChange]);
 
   const loadContacts = useCallback(async () => {
+    if (!companyId) return;
     setLoading(true);
     const { data, error } = await supabase
       .from('customer_company_links')
@@ -95,8 +138,12 @@ export function CompanyContactsManager({ companyId, organizationId }: CompanyCon
   }, [companyId, organizationId]);
 
   useEffect(() => {
-    loadContacts();
-  }, [loadContacts]);
+    if (isPersisted) {
+      loadContacts();
+    } else {
+      setLoading(false);
+    }
+  }, [loadContacts, isPersisted]);
 
   const handleSearch = async (term: string) => {
     setSearchTerm(term);
@@ -122,85 +169,228 @@ export function CompanyContactsManager({ companyId, organizationId }: CompanyCon
     setSearching(false);
   };
 
-  const handleAddContact = async () => {
+  const handleAddExistingContact = async () => {
     if (!selectedPerson) return;
     setAdding(true);
-    const { error } = await supabase.from('customer_company_links').insert({
-      organization_id: organizationId,
-      person_id: selectedPerson.id,
-      company_id: companyId,
-      position: newPosition.trim() || null,
-      is_primary: contacts.length === 0,
-    });
 
-    if (error) {
-      toast.error('Error al vincular contacto');
-      console.error(error);
+    if (isPersisted && companyId) {
+      const { error } = await supabase.from('customer_company_links').insert({
+        organization_id: organizationId,
+        person_id: selectedPerson.id,
+        company_id: companyId,
+        position: newPosition.trim() || null,
+        is_primary: contacts.length === 0,
+      });
+
+      if (error) {
+        toast.error('Error al vincular contacto');
+        console.error(error);
+      } else {
+        toast.success('Contacto vinculado correctamente');
+        resetModal();
+        loadContacts();
+      }
     } else {
-      toast.success('Contacto vinculado correctamente');
-      setShowAddModal(false);
-      setSelectedPerson(null);
-      setSearchTerm('');
-      setNewPosition('');
-      setSearchResults([]);
-      loadContacts();
+      const newContact: PendingContact = {
+        person_id: selectedPerson.id,
+        first_name: selectedPerson.first_name,
+        last_name: selectedPerson.last_name,
+        email: selectedPerson.email,
+        phone: selectedPerson.phone,
+        avatar_url: selectedPerson.avatar_url,
+        position: newPosition.trim() || null,
+        is_primary: contacts.length === 0,
+      };
+      const updated = [...contacts, newContact] as PendingContact[];
+      setContacts(updated);
+      notifyChange(updated);
+      toast.success('Contacto agregado');
+      resetModal();
     }
     setAdding(false);
   };
 
-  const handleRemoveContact = async (linkId: string, personName: string) => {
-    const { error } = await supabase
-      .from('customer_company_links')
-      .delete()
-      .eq('id', linkId);
+  const handleAddNewContact = async () => {
+    if (!newPersonData.first_name.trim() || !newPersonData.last_name.trim()) {
+      toast.error('Nombre y apellido son obligatorios');
+      return;
+    }
+    setAdding(true);
 
-    if (error) {
-      toast.error('Error al desvincular contacto');
-      console.error(error);
+    if (isPersisted && companyId) {
+      const { data: newPerson, error: personError } = await supabase
+        .from('customers')
+        .insert({
+          organization_id: organizationId,
+          branch_id: branchId || null,
+          first_name: newPersonData.first_name.trim(),
+          last_name: newPersonData.last_name.trim(),
+          email: newPersonData.email || null,
+          phone: newPersonData.phone || null,
+          identification_type: newPersonData.document_type,
+          identification_number: newPersonData.document_number || null,
+          fiscal_municipality_id: newPersonLocation.municipalityId || null,
+          customer_type: 'person',
+          roles: ['cliente'],
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (personError) {
+        toast.error('Error al crear persona');
+        console.error(personError);
+        setAdding(false);
+        return;
+      }
+
+      const { error: linkError } = await supabase.from('customer_company_links').insert({
+        organization_id: organizationId,
+        person_id: newPerson.id,
+        company_id: companyId,
+        position: newPosition.trim() || null,
+        is_primary: contacts.length === 0,
+      });
+
+      if (linkError) {
+        toast.error('Error al vincular contacto');
+        console.error(linkError);
+      } else {
+        toast.success('Persona creada y vinculada');
+        resetModal();
+        loadContacts();
+      }
     } else {
-      toast.success(`${personName} desvinculado`);
-      loadContacts();
+      const newContact: PendingContact = {
+        isNew: true,
+        first_name: newPersonData.first_name.trim(),
+        last_name: newPersonData.last_name.trim(),
+        email: newPersonData.email || null,
+        phone: newPersonData.phone || null,
+        document_type: newPersonData.document_type,
+        document_number: newPersonData.document_number || null,
+        country_code: newPersonLocation.countryCode || undefined,
+        state_code: newPersonLocation.stateCode || undefined,
+        municipality_id: newPersonLocation.municipalityId || undefined,
+        position: newPosition.trim() || null,
+        is_primary: contacts.length === 0,
+        avatar_url: null,
+      };
+      const updated = [...contacts, newContact] as PendingContact[];
+      setContacts(updated);
+      notifyChange(updated);
+      toast.success('Contacto agregado');
+      resetModal();
+    }
+    setAdding(false);
+  };
+
+  const resetModal = () => {
+    setShowAddModal(false);
+    setSelectedPerson(null);
+    setSearchTerm('');
+    setNewPosition('');
+    setSearchResults([]);
+    setAddMode('search');
+    setNewPersonData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      document_type: 'national_id',
+      document_number: '',
+    });
+    setNewPersonLocation({
+      country: '',
+      countryCode: '',
+      state: '',
+      stateCode: '',
+      city: '',
+      municipalityId: '',
+    });
+  };
+
+  const handleRemoveContact = async (linkId: string, personName: string) => {
+    if (isPersisted && companyId) {
+      const { error } = await supabase
+        .from('customer_company_links')
+        .delete()
+        .eq('id', linkId);
+
+      if (error) {
+        toast.error('Error al desvincular contacto');
+        console.error(error);
+      } else {
+        toast.success(`${personName} desvinculado`);
+        loadContacts();
+      }
+    } else {
+      const updated = contacts.filter((c) =>
+        'link_id' in c ? c.link_id !== linkId : `${c.person_id}-${c.first_name}` !== linkId
+      ) as PendingContact[];
+      setContacts(updated);
+      notifyChange(updated);
+      toast.success(`${personName} removido`);
     }
   };
 
   const handleTogglePrimary = async (linkId: string, currentPrimary: boolean) => {
     if (currentPrimary) return;
 
-    const { error: resetError } = await supabase
-      .from('customer_company_links')
-      .update({ is_primary: false })
-      .eq('company_id', companyId)
-      .eq('is_primary', true);
+    if (isPersisted && companyId) {
+      const { error: resetError } = await supabase
+        .from('customer_company_links')
+        .update({ is_primary: false })
+        .eq('company_id', companyId)
+        .eq('is_primary', true);
 
-    if (resetError) {
-      toast.error('Error al actualizar contacto principal');
-      return;
-    }
+      if (resetError) {
+        toast.error('Error al actualizar contacto principal');
+        return;
+      }
 
-    const { error } = await supabase
-      .from('customer_company_links')
-      .update({ is_primary: true })
-      .eq('id', linkId);
+      const { error } = await supabase
+        .from('customer_company_links')
+        .update({ is_primary: true })
+        .eq('id', linkId);
 
-    if (error) {
-      toast.error('Error al establecer contacto principal');
+      if (error) {
+        toast.error('Error al establecer contacto principal');
+      } else {
+        toast.success('Contacto principal actualizado');
+        loadContacts();
+      }
     } else {
-      toast.success('Contacto principal actualizado');
-      loadContacts();
+      const updated = contacts.map((c) => {
+        const id = 'link_id' in c ? c.link_id : `${c.person_id}-${c.first_name}`;
+        return { ...c, is_primary: id === linkId };
+      }) as PendingContact[];
+      setContacts(updated);
+      notifyChange(updated);
     }
   };
 
   const handleUpdatePosition = async (linkId: string, position: string) => {
-    const { error } = await supabase
-      .from('customer_company_links')
-      .update({ position: position.trim() || null })
-      .eq('id', linkId);
+    if (isPersisted && companyId) {
+      const { error } = await supabase
+        .from('customer_company_links')
+        .update({ position: position.trim() || null })
+        .eq('id', linkId);
 
-    if (error) {
-      toast.error('Error al actualizar cargo');
+      if (error) {
+        toast.error('Error al actualizar cargo');
+      } else {
+        toast.success('Cargo actualizado');
+        loadContacts();
+      }
     } else {
-      toast.success('Cargo actualizado');
-      loadContacts();
+      const updated = contacts.map((c) => {
+        const id = 'link_id' in c ? c.link_id : `${c.person_id}-${c.first_name}`;
+        if (id === linkId) return { ...c, position: position.trim() || null };
+        return c;
+      }) as PendingContact[];
+      setContacts(updated);
+      notifyChange(updated);
     }
   };
 
@@ -253,15 +443,19 @@ export function CompanyContactsManager({ companyId, organizationId }: CompanyCon
         </Card>
       ) : (
         <div className="space-y-2">
-          {contacts.map((contact) => (
-            <ContactRow
-              key={contact.link_id}
-              contact={contact}
-              onRemove={handleRemoveContact}
-              onTogglePrimary={handleTogglePrimary}
-              onUpdatePosition={handleUpdatePosition}
-            />
-          ))}
+          {contacts.map((contact) => {
+            const rowId = 'link_id' in contact ? contact.link_id : `${contact.person_id}-${contact.first_name}`;
+            return (
+              <ContactRow
+                key={rowId}
+                contact={contact}
+                rowId={rowId}
+                onRemove={handleRemoveContact}
+                onTogglePrimary={handleTogglePrimary}
+                onUpdatePosition={handleUpdatePosition}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -273,17 +467,18 @@ export function CompanyContactsManager({ companyId, organizationId }: CompanyCon
           selectedPerson={selectedPerson}
           newPosition={newPosition}
           adding={adding}
+          addMode={addMode}
+          newPersonData={newPersonData}
+          newPersonLocation={newPersonLocation}
           onSearch={handleSearch}
           onSelectPerson={setSelectedPerson}
           onPositionChange={setNewPosition}
-          onAdd={handleAddContact}
-          onClose={() => {
-            setShowAddModal(false);
-            setSelectedPerson(null);
-            setSearchTerm('');
-            setNewPosition('');
-            setSearchResults([]);
-          }}
+          onAddModeChange={setAddMode}
+          onNewPersonChange={setNewPersonData}
+          onNewPersonLocationChange={setNewPersonLocation}
+          onAddExisting={handleAddExistingContact}
+          onAddNew={handleAddNewContact}
+          onClose={resetModal}
         />
       )}
     </div>
@@ -292,11 +487,13 @@ export function CompanyContactsManager({ companyId, organizationId }: CompanyCon
 
 function ContactRow({
   contact,
+  rowId,
   onRemove,
   onTogglePrimary,
   onUpdatePosition,
 }: {
-  contact: ContactLink;
+  contact: ContactLink | PendingContact;
+  rowId: string;
   onRemove: (linkId: string, personName: string) => void;
   onTogglePrimary: (linkId: string, currentPrimary: boolean) => void;
   onUpdatePosition: (linkId: string, position: string) => void;
@@ -305,6 +502,7 @@ function ContactRow({
   const [positionValue, setPositionValue] = useState(contact.position || '');
 
   const fullName = `${contact.first_name} ${contact.last_name}`.trim();
+  const isNew = 'isNew' in contact && contact.isNew;
 
   return (
     <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
@@ -320,6 +518,11 @@ function ContactRow({
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
             {fullName}
           </p>
+          {isNew && (
+            <span className="px-1.5 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded">
+              Nuevo
+            </span>
+          )}
           {contact.is_primary && (
             <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded">
               <Star className="h-3 w-3 fill-current" />
@@ -351,7 +554,7 @@ function ContactRow({
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  onUpdatePosition(contact.link_id, positionValue);
+                  onUpdatePosition(rowId, positionValue);
                   setEditingPosition(false);
                 }
                 if (e.key === 'Escape') {
@@ -366,7 +569,7 @@ function ContactRow({
               variant="ghost"
               className="h-7 px-2"
               onClick={() => {
-                onUpdatePosition(contact.link_id, positionValue);
+                onUpdatePosition(rowId, positionValue);
                 setEditingPosition(false);
               }}
             >
@@ -388,7 +591,7 @@ function ContactRow({
         {!contact.is_primary && (
           <button
             type="button"
-            onClick={() => onTogglePrimary(contact.link_id, contact.is_primary)}
+            onClick={() => onTogglePrimary(rowId, contact.is_primary)}
             title="Marcar como principal"
             className="p-1.5 text-gray-400 hover:text-amber-500 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
@@ -397,7 +600,7 @@ function ContactRow({
         )}
         <button
           type="button"
-          onClick={() => onRemove(contact.link_id, fullName)}
+          onClick={() => onRemove(rowId, fullName)}
           title="Desvincular contacto"
           className="p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         >
@@ -415,10 +618,16 @@ function AddContactModal({
   selectedPerson,
   newPosition,
   adding,
+  addMode,
+  newPersonData,
   onSearch,
   onSelectPerson,
   onPositionChange,
-  onAdd,
+  onAddModeChange,
+  onNewPersonChange,
+  onNewPersonLocationChange,
+  onAddExisting,
+  onAddNew,
   onClose,
 }: {
   searchTerm: string;
@@ -427,20 +636,34 @@ function AddContactModal({
   selectedPerson: SearchResult | null;
   newPosition: string;
   adding: boolean;
+  addMode: 'search' | 'create';
+  newPersonData: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    document_type: string;
+    document_number: string;
+  };
+  newPersonLocation: LocationData;
   onSearch: (term: string) => void;
   onSelectPerson: (person: SearchResult | null) => void;
   onPositionChange: (value: string) => void;
-  onAdd: () => void;
+  onAddModeChange: (mode: 'search' | 'create') => void;
+  onNewPersonChange: (data: typeof newPersonData) => void;
+  onNewPersonLocationChange: (data: LocationData) => void;
+  onAddExisting: () => void;
+  onAddNew: () => void;
   onClose: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Vincular Contacto</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Agregar Contacto</h3>
           <button
             type="button"
             onClick={onClose}
@@ -451,101 +674,279 @@ function AddContactModal({
         </div>
 
         <div className="p-4 space-y-4">
-          {!selectedPerson ? (
-            <>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Buscar persona</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          {/* Tabs: Buscar / Crear */}
+          {addMode === 'search' && !selectedPerson && (
+            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
+              <button
+                type="button"
+                onClick={() => onAddModeChange('search')}
+                className="flex-1 py-2 px-3 text-sm font-medium rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm"
+              >
+                <Search className="h-4 w-4 inline mr-1" />
+                Buscar existente
+              </button>
+              <button
+                type="button"
+                onClick={() => onAddModeChange('create')}
+                className="flex-1 py-2 px-3 text-sm font-medium rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              >
+                <UserPlus className="h-4 w-4 inline mr-1" />
+                Crear nueva persona
+              </button>
+            </div>
+          )}
+
+          {/* === MODO BUSCAR === */}
+          {addMode === 'search' && (
+            !selectedPerson ? (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Buscar persona existente</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      value={searchTerm}
+                      onChange={(e) => onSearch(e.target.value)}
+                      placeholder="Nombre, apellido o email..."
+                      className="pl-9"
+                      autoFocus
+                    />
+                    {searching && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                    )}
+                  </div>
+                </div>
+
+                {searchResults.length > 0 && (
+                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {searchResults.map((person) => {
+                      const name = `${person.first_name} ${person.last_name}`.trim();
+                      return (
+                        <button
+                          key={person.id}
+                          type="button"
+                          onClick={() => onSelectPerson(person)}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                        >
+                          <UserAvatar
+                            name={name}
+                            avatarUrl={person.avatar_url}
+                            size="sm"
+                            className="w-8 h-8 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {name}
+                            </p>
+                            {person.email && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {person.email}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {searchTerm.length >= 2 && !searching && searchResults.length === 0 && (
+                  <div className="text-center py-4 space-y-2">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No se encontraron personas con ese criterio.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onAddModeChange('create')}
+                      className="border-gray-200 dark:border-gray-700"
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Crear nueva persona
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <UserAvatar
+                    name={`${selectedPerson.first_name} ${selectedPerson.last_name}`.trim()}
+                    avatarUrl={selectedPerson.avatar_url}
+                    size="sm"
+                    className="w-10 h-10 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {selectedPerson.first_name} {selectedPerson.last_name}
+                    </p>
+                    {selectedPerson.email && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{selectedPerson.email}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onSelectPerson(null)}
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="position" className="text-sm font-medium">
+                    Cargo (opcional)
+                  </Label>
                   <Input
-                    value={searchTerm}
-                    onChange={(e) => onSearch(e.target.value)}
-                    placeholder="Nombre, apellido o email..."
-                    className="pl-9"
+                    id="position"
+                    value={newPosition}
+                    onChange={(e) => onPositionChange(e.target.value)}
+                    placeholder="Ej: Gerente, Director, Asistente..."
                     autoFocus
                   />
-                  {searching && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
-                  )}
                 </div>
-              </div>
 
-              {searchResults.length > 0 && (
-                <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {searchResults.map((person) => {
-                    const name = `${person.first_name} ${person.last_name}`.trim();
-                    return (
-                      <button
-                        key={person.id}
-                        type="button"
-                        onClick={() => onSelectPerson(person)}
-                        className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
-                      >
-                        <UserAvatar
-                          name={name}
-                          avatarUrl={person.avatar_url}
-                          size="sm"
-                          className="w-8 h-8 shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {name}
-                          </p>
-                          {person.email && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                              {person.email}
-                            </p>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                    className="flex-1"
+                    disabled={adding}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={onAddExisting}
+                    disabled={adding}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  >
+                    {adding ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-1" />
+                    )}
+                    Vincular
+                  </Button>
                 </div>
-              )}
+              </>
+            )
+          )}
 
-              {searchTerm.length >= 2 && !searching && searchResults.length === 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                  No se encontraron personas. Puedes crear un nuevo cliente tipo persona primero.
-                </p>
-              )}
-            </>
-          ) : (
+          {/* === MODO CREAR === */}
+          {addMode === 'create' && (
             <>
-              <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <UserAvatar
-                  name={`${selectedPerson.first_name} ${selectedPerson.last_name}`.trim()}
-                  avatarUrl={selectedPerson.avatar_url}
-                  size="sm"
-                  className="w-10 h-10 shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {selectedPerson.first_name} {selectedPerson.last_name}
-                  </p>
-                  {selectedPerson.email && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{selectedPerson.email}</p>
-                  )}
-                </div>
+              <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
                 <button
                   type="button"
-                  onClick={() => onSelectPerson(null)}
-                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  onClick={() => onAddModeChange('search')}
+                  className="flex-1 py-2 px-3 text-sm font-medium rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 >
-                  <X className="h-4 w-4" />
+                  <Search className="h-4 w-4 inline mr-1" />
+                  Buscar existente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAddModeChange('create')}
+                  className="flex-1 py-2 px-3 text-sm font-medium rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm"
+                >
+                  <UserPlus className="h-4 w-4 inline mr-1" />
+                  Crear nueva persona
                 </button>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="position" className="text-sm font-medium">
-                  Cargo (opcional)
-                </Label>
-                <Input
-                  id="position"
-                  value={newPosition}
-                  onChange={(e) => onPositionChange(e.target.value)}
-                  placeholder="Ej: Gerente, Director, Asistente..."
-                  autoFocus
-                />
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">
+                      Nombre <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      value={newPersonData.first_name}
+                      onChange={(e) => onNewPersonChange({ ...newPersonData, first_name: e.target.value })}
+                      placeholder="Ej: Juan"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">
+                      Apellido <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      value={newPersonData.last_name}
+                      onChange={(e) => onNewPersonChange({ ...newPersonData, last_name: e.target.value })}
+                      placeholder="Ej: Pérez"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">Email</Label>
+                    <Input
+                      type="email"
+                      value={newPersonData.email}
+                      onChange={(e) => onNewPersonChange({ ...newPersonData, email: e.target.value })}
+                      placeholder="ejemplo@correo.com"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">Teléfono</Label>
+                    <Input
+                      value={newPersonData.phone}
+                      onChange={(e) => onNewPersonChange({ ...newPersonData, phone: e.target.value })}
+                      placeholder="Ej: 300 123 4567"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">Tipo de documento</Label>
+                    <select
+                      value={newPersonData.document_type}
+                      onChange={(e) => onNewPersonChange({ ...newPersonData, document_type: e.target.value })}
+                      className="h-10 w-full rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm"
+                    >
+                      <option value="national_id">Cédula</option>
+                      <option value="tax_id">NIT</option>
+                      <option value="passport">Pasaporte</option>
+                      <option value="foreign_id">ID Extranjero</option>
+                      <option value="other">Otro</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">N° documento</Label>
+                    <Input
+                      value={newPersonData.document_number}
+                      onChange={(e) => onNewPersonChange({ ...newPersonData, document_number: e.target.value })}
+                      placeholder="Ej: 12345678"
+                    />
+                  </div>
+                </div>
+
+                {/* Ubicación: País, Departamento, Municipio */}
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Ubicación</Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    <LocationSelector
+                      value={newPersonLocation}
+                      onChange={onNewPersonLocationChange}
+                      layout="stacked"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Cargo (opcional)</Label>
+                  <Input
+                    value={newPosition}
+                    onChange={(e) => onPositionChange(e.target.value)}
+                    placeholder="Ej: Gerente, Director, Asistente..."
+                  />
+                </div>
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -560,16 +961,16 @@ function AddContactModal({
                 </Button>
                 <Button
                   type="button"
-                  onClick={onAdd}
+                  onClick={onAddNew}
                   disabled={adding}
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
                 >
                   {adding ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-1" />
                   ) : (
-                    <Plus className="h-4 w-4 mr-1" />
+                    <UserPlus className="h-4 w-4 mr-1" />
                   )}
-                  Vincular
+                  Crear y vincular
                 </Button>
               </div>
             </>

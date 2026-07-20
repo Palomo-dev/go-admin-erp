@@ -89,7 +89,9 @@ class KitchenService {
                 name,
                 category_id,
                 categories (
-                  name
+                  name,
+                  station,
+                  requires_preparation
                 )
               )
             )

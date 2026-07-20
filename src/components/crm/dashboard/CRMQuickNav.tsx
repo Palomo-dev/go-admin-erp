@@ -72,13 +72,6 @@ const navItems: QuickNavItem[] = [
     color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
   },
   {
-    label: 'Tareas',
-    href: '/app/crm/tareas',
-    icon: <FileText className="h-5 w-5" />,
-    description: 'Gestión de tareas',
-    color: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400',
-  },
-  {
     label: 'Segmentos',
     href: '/app/crm/segmentos',
     icon: <Filter className="h-5 w-5" />,

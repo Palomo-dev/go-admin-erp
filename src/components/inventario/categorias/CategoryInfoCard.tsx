@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar } from 'lucide-react';
+import { Calendar, ChefHat, Utensils } from 'lucide-react';
 import { type Category } from '@/lib/services/categoryService';
 import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService';
 
@@ -62,6 +62,20 @@ export default function CategoryInfoCard({ category, parent }: CategoryInfoCardP
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {category.station ? STATION_LABELS[category.station as PrinterStation] : 'Sin estación asignada'}
             </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Preparación</p>
+            {category.requires_preparation ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium">
+                <ChefHat className="h-3.5 w-3.5" />
+                Requiere preparación
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-medium">
+                <Utensils className="h-3.5 w-3.5" />
+                Sin preparación
+              </span>
+            )}
           </div>
         </div>
 

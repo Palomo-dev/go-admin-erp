@@ -311,7 +311,7 @@ class TicketsService {
       .from('customers')
       .select('id, full_name, email, phone, doc_number')
       .eq('organization_id', organizationId)
-      .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,doc_number.ilike.%${query}%`)
+      .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,doc_number.ilike.%${query}%,company_name.ilike.%${query}%,trade_name.ilike.%${query}%,identification_number.ilike.%${query}%,phone.ilike.%${query}%`)
       .limit(10);
 
     if (error) throw error;

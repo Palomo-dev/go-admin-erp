@@ -620,6 +620,7 @@ function AddContactModal({
   adding,
   addMode,
   newPersonData,
+  newPersonLocation,
   onSearch,
   onSelectPerson,
   onPositionChange,

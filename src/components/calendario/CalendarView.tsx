@@ -165,7 +165,7 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
 
   const handleNavigateToSource = useCallback((event: CalendarEvent) => {
     const routes: Record<string, string> = {
-      task: '/app/crm/tareas',
+      task: '/app/pm/tareas',
       shift: '/app/hrm/turnos',
       leave: '/app/hrm/permisos',
       reservation: '/app/pms/reservaciones',

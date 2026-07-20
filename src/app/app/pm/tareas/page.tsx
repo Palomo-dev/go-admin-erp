@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/select';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { pmService, type PMTask, type TaskTimeEntry, PRIORITY_LABELS } from '@/lib/services/pmService';
+import { pmService, type PMTask, type TaskTimeEntry, PRIORITY_LABELS, TASK_TYPE_LABELS } from '@/lib/services/pmService';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { getAssignableUsers } from '@/lib/services/userService';
@@ -91,6 +91,8 @@ export default function PMTasksPage() {
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [moduleFilter, setModuleFilter] = useState<string>('all');
   const [dueFilter, setDueFilter] = useState<string>('all');
   const [customFrom, setCustomFrom] = useState<string>('');
   const [customTo, setCustomTo] = useState<string>('');
@@ -123,6 +125,8 @@ export default function PMTasksPage() {
       const data = await pmService.getTasks({
         status: statusFilter,
         projectId: projectFilter,
+        type: typeFilter,
+        module: moduleFilter,
       });
       setTasks(data);
     } catch (error) {
@@ -130,17 +134,17 @@ export default function PMTasksPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, projectFilter]);
+  }, [statusFilter, projectFilter, typeFilter, moduleFilter]);
 
   // Recarga en segundo plano sin mostrar el skeleton (para acciones fluidas como Kanban)
   const loadTasksSilent = useCallback(async () => {
     try {
-      const data = await pmService.getTasks({ status: statusFilter, projectId: projectFilter });
+      const data = await pmService.getTasks({ status: statusFilter, projectId: projectFilter, type: typeFilter, module: moduleFilter });
       setTasks(data);
     } catch (error) {
       console.error('Error recargando tareas PM:', error);
     }
-  }, [statusFilter, projectFilter]);
+  }, [statusFilter, projectFilter, typeFilter, moduleFilter]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
@@ -178,7 +182,7 @@ export default function PMTasksPage() {
   }), [tasks, searchTerm, priorityFilter, assigneeFilter, dueFilter, customFrom, customTo]);
 
   // Reiniciar a la primera página cuando cambian filtros/búsqueda
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, projectFilter, priorityFilter, assigneeFilter, dueFilter, customFrom, customTo, activeTab]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, projectFilter, priorityFilter, assigneeFilter, typeFilter, moduleFilter, dueFilter, customFrom, customTo, activeTab]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = useMemo(() => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize), [filtered, currentPage, pageSize]);
@@ -208,8 +212,8 @@ export default function PMTasksPage() {
                 <ClipboardList className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Tareas de Proyecto</h1>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Gestiona tareas vinculadas a proyectos</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Tareas</h1>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Gestiona todas las tareas de la organización</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -312,6 +316,22 @@ export default function PMTasksPage() {
                 <SelectItem value="all">Todos los asignados</SelectItem>
                 <SelectItem value="unassigned">Sin asignar</SelectItem>
                 {users.map((u) => (<SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Select value={moduleFilter} onValueChange={setModuleFilter}>
+              <SelectTrigger className="w-[150px] bg-white dark:bg-gray-800"><SelectValue placeholder="Módulo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los módulos</SelectItem>
+                <SelectItem value="crm">CRM</SelectItem>
+                <SelectItem value="projects">Proyectos</SelectItem>
+                <SelectItem value="general">General</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los tipos</SelectItem>
+                {Object.entries(TASK_TYPE_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>

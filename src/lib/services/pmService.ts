@@ -99,6 +99,8 @@ export interface PMTask {
   key_result_id: string | null;
   parent_task_id: string | null;
   related_to_type?: string | null;
+  related_to_id?: string | null;
+  customer_id?: string | null;
   estimated_hours: number | null;
   actual_hours: number | null;
   tags: string[];
@@ -155,7 +157,13 @@ export const TASK_STATUS_LABELS: Record<string, string> = {
   open: 'Pendiente', in_progress: 'En Progreso', done: 'Completada', canceled: 'Cancelada',
 };
 export const TASK_TYPE_LABELS: Record<string, string> = {
-  onboarding: 'Onboarding', operational: 'Operativa', reminder: 'Recordatorio', meeting: 'Reunión', call: 'Llamada', email: 'Email', visit: 'Visita',
+  // PM
+  onboarding: 'Onboarding', operational: 'Operativa', reminder: 'Recordatorio',
+  // CRM
+  meeting: 'Reunión', call: 'Llamada', email: 'Email', visit: 'Visita',
+  // Generales
+  tarea: 'Tarea', seguimiento: 'Seguimiento', revision: 'Revisión', entrega: 'Entrega',
+  investigacion: 'Investigación', documento: 'Documento', bug: 'Bug', feature: 'Feature',
 };
 export const TASK_STATUS_COLORS: Record<string, string> = {
   open: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
@@ -410,7 +418,7 @@ export const pmService = {
   },
 
   // ─── PM Tasks ────────────────────
-  async getTasks(filters?: { status?: string; projectId?: string; assignedTo?: string }): Promise<PMTask[]> {
+  async getTasks(filters?: { status?: string; projectId?: string; assignedTo?: string; type?: string; customerId?: string; module?: string }): Promise<PMTask[]> {
     const orgId = getOrganizationId();
     if (!orgId) return [];
 
@@ -427,12 +435,31 @@ export const pmService = {
     if (filters?.status && filters.status !== 'all') query = query.eq('status', filters.status);
     if (filters?.projectId && filters.projectId !== 'all') query = query.eq('project_id', filters.projectId);
     if (filters?.assignedTo) query = query.eq('assigned_to', filters.assignedTo);
+    if (filters?.type && filters.type !== 'all') query = query.eq('type', filters.type);
+    if (filters?.customerId && filters.customerId !== 'all') query = query.eq('customer_id', filters.customerId);
 
     const { data, error } = await query;
     if (error) { console.error('Error getTasks:', error.message); return []; }
 
     // Enriquecer con profiles por separado si hay assigned_to
-    const tasks = data || [];
+    let tasks = data || [];
+
+    // Filtro por módulo (post-query, en cliente)
+    if (filters?.module === 'crm') {
+      tasks = tasks.filter(t =>
+        ['llamada','reunion','email','visita','call','meeting'].includes(t.type || '') ||
+        !!t.customer_id ||
+        ['cliente','customer','oportunidad'].includes(t.related_to_type || '')
+      );
+    } else if (filters?.module === 'projects') {
+      tasks = tasks.filter(t => !!t.project_id);
+    } else if (filters?.module === 'general') {
+      tasks = tasks.filter(t =>
+        !t.project_id &&
+        !t.customer_id &&
+        !['llamada','reunion','email','visita','call','meeting'].includes(t.type || '')
+      );
+    }
     const userIds = Array.from(new Set(tasks.filter(t => t.assigned_to).map(t => t.assigned_to)));
     if (userIds.length > 0) {
       const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name, email').in('id', userIds);

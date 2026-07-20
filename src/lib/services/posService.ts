@@ -68,7 +68,9 @@ export class POSService {
           categories(
             id,
             name,
-            slug
+            slug,
+            station,
+            requires_preparation
           )
         `)
         .eq('organization_id', this.organizationId);
@@ -148,7 +150,8 @@ export class POSService {
           id,
           name,
           slug,
-          station
+          station,
+          requires_preparation
         ),
         product_prices(
           price,
@@ -351,7 +354,7 @@ export class POSService {
 
       if (filter.search) {
         query = query.or(
-          `full_name.ilike.%${filter.search}%,email.ilike.%${filter.search}%,phone.ilike.%${filter.search}%,doc_number.ilike.%${filter.search}%`
+          `full_name.ilike.%${filter.search}%,email.ilike.%${filter.search}%,phone.ilike.%${filter.search}%,doc_number.ilike.%${filter.search}%,company_name.ilike.%${filter.search}%,trade_name.ilike.%${filter.search}%,identification_number.ilike.%${filter.search}%`
         );
       }
 
@@ -1356,7 +1359,9 @@ export class POSService {
           *,
           categories(
             id,
-            name
+            name,
+            station,
+            requires_preparation
           ),
           product_prices!inner(
             price

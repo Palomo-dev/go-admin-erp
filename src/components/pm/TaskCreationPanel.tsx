@@ -36,9 +36,11 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import { pmService, PRIORITY_LABELS, type PMTask } from '@/lib/services/pmService';
+import { SearchSelect } from '@/components/ui/search-select';
+import { pmService, PRIORITY_LABELS, TASK_TYPE_LABELS, type PMTask } from '@/lib/services/pmService';
 import { RichTextEditor } from '@/components/pm/RichTextEditor';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { supabase } from '@/lib/supabase/config';
 import { TaskTimer } from '@/components/pm/TaskTimer';
 import { cn } from '@/utils/Utils';
 
@@ -93,6 +95,10 @@ const INITIAL_FORM = {
   status: 'open',
   assigned_to: '',
   goal_id: '',
+  type: '',
+  customer_id: '',
+  related_to_type: '',
+  related_to_id: '',
 };
 
 function formatFileSize(bytes: number): string {
@@ -134,10 +140,75 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
   const [dependencies, setDependencies] = useState<DependencyItem[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [goals, setGoals] = useState<Array<{ id: string; title: string }>>([]);
+  const [customers, setCustomers] = useState<Array<{ id: string; name: string }>>([]);
+  const [spaces, setSpaces] = useState<Array<{ id: string; label: string; type_name: string }>>([]);
+  const [sales, setSales] = useState<Array<{ id: string; total: number; sale_date: string; customer_name: string }>>([]);
+  const [reservations, setReservations] = useState<Array<{ id: string; checkin: string; checkout: string; customer_name: string }>>([]);
+  const [pmsActive, setPmsActive] = useState(false);
 
-  // Cargar metas de la organización para poder vincular la tarea a una meta
+  // Cargar metas, clientes, espacios, ventas y reservas de la organización
   useEffect(() => {
     pmService.getGoals().then(gs => setGoals(gs.map(g => ({ id: g.id, title: g.title }))));
+    const orgId = getOrganizationId();
+    if (orgId) {
+      supabase.from('customers')
+        .select('id, first_name, last_name')
+        .eq('organization_id', orgId)
+        .limit(200)
+        .then(({ data }) => {
+          setCustomers((data || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` })));
+        });
+      // Cargar ventas recientes con nombre del cliente
+      supabase.from('sales')
+        .select('id, total, sale_date, status, customers(first_name, last_name)')
+        .eq('organization_id', orgId)
+        .order('sale_date', { ascending: false })
+        .limit(200)
+        .then(({ data }) => {
+          setSales((data || []).map(s => ({
+            id: s.id,
+            total: Number(s.total) || 0,
+            sale_date: s.sale_date,
+            customer_name: s.customers ? `${s.customers.first_name} ${s.customers.last_name}` : 'Sin cliente',
+          })));
+        });
+      // Verificar si el módulo PMS está activo
+      supabase.from('organization_modules')
+        .select('is_active')
+        .eq('organization_id', orgId)
+        .eq('module_code', 'pms_hotel')
+        .eq('is_active', true)
+        .single()
+        .then(({ data }) => {
+          setPmsActive(!!data);
+          if (data) {
+            supabase.from('spaces')
+              .select('id, label, space_types(name)')
+              .eq('organization_id', orgId)
+              .limit(200)
+              .then(({ data: spaceData }) => {
+                setSpaces((spaceData || []).map(s => ({
+                  id: s.id,
+                  label: s.label,
+                  type_name: s.space_types?.name || 'Sin tipo',
+                })));
+              });
+            supabase.from('reservations')
+              .select('id, checkin, checkout, status, customers(first_name, last_name)')
+              .eq('organization_id', orgId)
+              .order('checkin', { ascending: false })
+              .limit(200)
+              .then(({ data: resData }) => {
+                setReservations((resData || []).map(r => ({
+                  id: r.id,
+                  checkin: r.checkin,
+                  checkout: r.checkout,
+                  customer_name: r.customers ? `${r.customers.first_name} ${r.customers.last_name}` : 'Sin cliente',
+                })));
+              });
+          }
+        });
+    }
   }, []);
 
   const resetForm = useCallback(() => {
@@ -165,6 +236,10 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         status: editTask.status || 'open',
         assigned_to: editTask.assigned_to || '',
         goal_id: editTask.goal_id || '',
+        type: editTask.type || '',
+        customer_id: editTask.customer_id || '',
+        related_to_type: editTask.related_to_type || '',
+        related_to_id: editTask.related_to_id || '',
       });
     } else {
       resetForm();
@@ -438,7 +513,6 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
 
   const handleCreate = async () => {
     if (!form.title.trim()) { toast({ title: 'El título es requerido', variant: 'destructive' }); return; }
-    if (!form.project_id) { toast({ title: 'Selecciona un proyecto', variant: 'destructive' }); return; }
 
     setCreating(true);
     try {
@@ -447,7 +521,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         await pmService.updateTask(editTask.id, {
           title: form.title.trim(),
           description: form.description.trim() || null,
-          project_id: form.project_id,
+          project_id: form.project_id || null,
           priority: form.priority,
           due_date: form.due_date || null,
           estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
@@ -455,6 +529,10 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
           status: form.status,
           assigned_to: form.assigned_to || null,
           goal_id: form.goal_id || null,
+          type: form.type || null,
+          customer_id: form.customer_id || null,
+          related_to_type: form.related_to_type || null,
+          related_to_id: form.related_to_id || null,
         });
         toast({ title: 'Tarea actualizada', description: `"${form.title}" guardada` });
         resetForm();
@@ -467,13 +545,17 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
       const task = await pmService.createTask({
         title: form.title.trim(),
         description: form.description.trim() || null,
-        project_id: form.project_id,
+        project_id: form.project_id || null,
         priority: form.priority,
         due_date: form.due_date || null,
         estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
         assigned_to: form.assigned_to || null,
         goal_id: form.goal_id || null,
         status: 'open',
+        type: form.type || null,
+        customer_id: form.customer_id || null,
+        related_to_type: form.related_to_type || null,
+        related_to_id: form.related_to_id || null,
       });
 
       // 2. Crear subtareas (heredan responsable del padre; salvo reasignación explícita)
@@ -525,7 +607,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
           </div>
           <div>
             <h2 className="text-base font-semibold text-gray-900 dark:text-white">{isEdit ? 'Editar Tarea' : 'Nueva Tarea'}</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Crea una tarea vinculada a un proyecto</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Crea o edita una tarea</p>
           </div>
         </div>
         <Button variant="ghost" size="icon" onClick={() => { resetForm(); onClose(); }} className="h-8 w-8">
@@ -590,16 +672,17 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
           />
         </div>
 
-        {/* Proyecto + Prioridad */}
+        {/* Tipo + Prioridad */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Proyecto *</Label>
-            <Select value={form.project_id} onValueChange={(v) => setForm(f => ({ ...f, project_id: v }))}>
+            <Label className="text-sm font-medium">Tipo de tarea</Label>
+            <Select value={form.type || 'none'} onValueChange={(v) => setForm(f => ({ ...f, type: v === 'none' ? '' : v }))}>
               <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <SelectValue placeholder="Seleccionar" />
+                <SelectValue placeholder="Sin tipo" />
               </SelectTrigger>
               <SelectContent>
-                {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                <SelectItem value="none">Sin tipo</SelectItem>
+                {Object.entries(TASK_TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -614,6 +697,98 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        {/* Proyecto + Cliente */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Proyecto</Label>
+            <Select value={form.project_id || 'none'} onValueChange={(v) => setForm(f => ({ ...f, project_id: v === 'none' ? '' : v }))}>
+              <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectValue placeholder="Sin proyecto" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin proyecto</SelectItem>
+                {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Cliente</Label>
+            <SearchSelect
+              options={customers.map(c => ({ value: c.id, label: c.name }))}
+              value={form.customer_id || 'none'}
+              onValueChange={(v) => setForm(f => ({ ...f, customer_id: v === 'none' ? '' : v }))}
+              placeholder="Sin cliente"
+              searchPlaceholder="Buscar cliente..."
+              noneLabel="Sin cliente"
+              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+            />
+          </div>
+        </div>
+
+        {/* Relacionado con (espacio/habitación) - solo mostrar espacio/reserva si PMS activo */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Relacionado con</Label>
+            <Select value={form.related_to_type || 'none'} onValueChange={(v) => setForm(f => ({ ...f, related_to_type: v === 'none' ? '' : v, related_to_id: '' }))}>
+              <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectValue placeholder="Nada" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nada</SelectItem>
+                {pmsActive && <SelectItem value="space">Espacio/Habitación</SelectItem>}
+                {pmsActive && <SelectItem value="reservation">Reserva</SelectItem>}
+                <SelectItem value="sale">Venta</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {form.related_to_type && form.related_to_type !== 'none' && (
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Buscar</Label>
+              {form.related_to_type === 'space' && (
+                <SearchSelect
+                  options={spaces.map(s => ({ value: s.id, label: s.label, sublabel: s.type_name }))}
+                  value={form.related_to_id || 'none'}
+                  onValueChange={(v) => setForm(f => ({ ...f, related_to_id: v === 'none' ? '' : v }))}
+                  placeholder="Seleccionar espacio..."
+                  searchPlaceholder="Buscar espacio..."
+                  noneLabel="Sin seleccionar"
+                  className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                />
+              )}
+              {form.related_to_type === 'reservation' && (
+                <SearchSelect
+                  options={reservations.map(r => ({
+                    value: r.id,
+                    label: `${r.customer_name} — ${new Date(r.checkin).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} → ${new Date(r.checkout).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`,
+                    sublabel: `Reserva`,
+                  }))}
+                  value={form.related_to_id || 'none'}
+                  onValueChange={(v) => setForm(f => ({ ...f, related_to_id: v === 'none' ? '' : v }))}
+                  placeholder="Seleccionar reserva..."
+                  searchPlaceholder="Buscar reserva..."
+                  noneLabel="Sin seleccionar"
+                  className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                />
+              )}
+              {form.related_to_type === 'sale' && (
+                <SearchSelect
+                  options={sales.map(s => ({
+                    value: s.id,
+                    label: `${s.customer_name} — $${s.total.toLocaleString('es-ES', { minimumFractionDigits: 0 })}`,
+                    sublabel: new Date(s.sale_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
+                  }))}
+                  value={form.related_to_id || 'none'}
+                  onValueChange={(v) => setForm(f => ({ ...f, related_to_id: v === 'none' ? '' : v }))}
+                  placeholder="Seleccionar venta..."
+                  searchPlaceholder="Buscar venta..."
+                  noneLabel="Sin seleccionar"
+                  className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Meta vinculada (opcional) */}

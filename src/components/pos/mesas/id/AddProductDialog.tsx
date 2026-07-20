@@ -148,7 +148,8 @@ export function AddProductDialog({
   const handleVariantSelect = (variant: any) => {
     // La variante hereda la estación del producto padre (o la categoría de este) si no tiene una propia
     const inheritedStation = variant.station || selectedParentProduct?.station || selectedParentProduct?.categories?.station || null;
-    addToCart({ ...variant, station: inheritedStation, categories: selectedParentProduct?.categories });
+    const inheritedRequiresPreparation = selectedParentProduct?.categories?.requires_preparation ?? false;
+    addToCart({ ...variant, station: inheritedStation, requires_preparation: inheritedRequiresPreparation, categories: selectedParentProduct?.categories });
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
@@ -168,6 +169,7 @@ export function AddProductDialog({
       existing.quantity += 1;
     } else {
       const station = product.station || product.categories?.station || '';
+      const requires_preparation = product.categories?.requires_preparation ?? false;
       newCart.set(product.id, {
         product_id: product.id,
         product_name: product.name,
@@ -175,6 +177,7 @@ export function AddProductDialog({
         unit_price: Number(unitPrice),
         notes: '',
         station,
+        requires_preparation,
         guest_number: comensales > 1 ? 1 : undefined,
       });
     }

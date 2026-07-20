@@ -336,39 +336,52 @@ export class PedidosService {
         throw new Error(`Error al insertar items: ${itemsError.message || JSON.stringify(itemsError)}`);
       }
 
-      // 3. Crear ticket de cocina
-      const { data: ticket, error: ticketError } = await supabase
-        .from('kitchen_tickets')
-        .insert({
-          organization_id: organizationId,
-          branch_id: branchId,
-          table_session_id: sessionId,
-          sale_id: saleId,
-          status: 'new',
-          priority: 0,
-        })
-        .select()
-        .single();
+      // 3. Filtrar items que requieren preparación (kitchen ticket)
+      // Solo se envían a cocina los productos cuya categoría tiene requires_preparation=true
+      // o que tienen una estación asignada explícitamente.
+      const itemsRequiringPreparation = insertedItems.filter((item, index) => {
+        const producto = productos[index];
+        return producto.requires_preparation || (producto.station && producto.station !== '');
+      });
 
-      if (ticketError) throw ticketError;
+      // 4. Solo crear ticket de cocina si hay items que requieren preparación
+      if (itemsRequiringPreparation.length > 0) {
+        const { data: ticket, error: ticketError } = await supabase
+          .from('kitchen_tickets')
+          .insert({
+            organization_id: organizationId,
+            branch_id: branchId,
+            table_session_id: sessionId,
+            sale_id: saleId,
+            status: 'new',
+            priority: 0,
+          })
+          .select()
+          .single();
 
-      // 4. Crear items del ticket
-      const ticketItems = insertedItems.map((item, index) => ({
-        organization_id: organizationId,
-        kitchen_ticket_id: ticket.id,
-        sale_item_id: item.id,
-        station: productos[index].station || null,
-        notes: productos[index].guest_number
-          ? `Comensal ${productos[index].guest_number}${productos[index].notes ? ` - ${productos[index].notes}` : ''}`
-          : (productos[index].notes || null),
-        status: 'pending',
-      }));
+        if (ticketError) throw ticketError;
 
-      const { error: ticketItemsError } = await supabase
-        .from('kitchen_ticket_items')
-        .insert(ticketItems);
+        // 5. Crear items del ticket (solo los que requieren preparación)
+        const ticketItems = itemsRequiringPreparation.map((item) => {
+          const index = insertedItems.indexOf(item);
+          return {
+            organization_id: organizationId,
+            kitchen_ticket_id: ticket.id,
+            sale_item_id: item.id,
+            station: productos[index].station || null,
+            notes: productos[index].guest_number
+              ? `Comensal ${productos[index].guest_number}${productos[index].notes ? ` - ${productos[index].notes}` : ''}`
+              : (productos[index].notes || null),
+            status: 'pending' as const,
+          };
+        });
 
-      if (ticketItemsError) throw ticketItemsError;
+        const { error: ticketItemsError } = await supabase
+          .from('kitchen_ticket_items')
+          .insert(ticketItems);
+
+        if (ticketItemsError) throw ticketItemsError;
+      }
 
       // 5. Actualizar total de la venta
       await this.recalcularTotalVenta(saleId!);

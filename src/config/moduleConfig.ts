@@ -137,7 +137,6 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     { name: 'Actividades', path: '/app/crm/actividades', icon: Activity },
     { name: 'Clientes', path: '/app/crm/clientes', icon: Users },
     { name: 'Pipeline', path: '/app/crm/pipeline', icon: BarChart3 },
-    { name: 'Tareas', path: '/app/crm/tareas', icon: Calendar }
   ],
   'hrm': [
     { name: 'Recursos Humanos', path: '/app/hrm', icon: Users }

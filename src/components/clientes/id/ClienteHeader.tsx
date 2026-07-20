@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
@@ -59,6 +59,41 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(cliente.avatar_url);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [primaryContact, setPrimaryContact] = useState<{ name: string; email: string | null; phone: string | null; position: string | null } | null>(null);
+
+  useEffect(() => {
+    if (cliente.customer_type !== 'company' || !cliente.id) return;
+    async function loadPrimaryContact() {
+      const { data: linkData } = await supabase
+        .from('customer_company_links')
+        .select(`
+          is_primary,
+          position,
+          person:customers!customer_company_links_person_id_fkey(
+            first_name,
+            last_name,
+            email,
+            phone
+          )
+        `)
+        .eq('company_id', cliente.id)
+        .order('is_primary', { ascending: false });
+
+      if (linkData && linkData.length > 0) {
+        const primary = linkData.find((l: any) => l.is_primary) || linkData[0];
+        const person = primary.person as any;
+        if (person) {
+          setPrimaryContact({
+            name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
+            email: person.email || null,
+            phone: person.phone || null,
+            position: primary.position || null,
+          });
+        }
+      }
+    }
+    loadPrimaryContact();
+  }, [cliente.id, cliente.customer_type]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -159,10 +194,10 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
             )}
           </div>
           
-          {/* Mostrar contacto para empresas */}
-          {cliente.customer_type === 'company' && (cliente.first_name || cliente.last_name) && (
+          {/* Mostrar contacto principal para empresas */}
+          {cliente.customer_type === 'company' && primaryContact && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Contacto: {`${cliente.first_name || ''} ${cliente.last_name || ''}`.trim()}
+              Contacto: {primaryContact.name}{primaryContact.position ? ` (${primaryContact.position})` : ''}
             </p>
           )}
           

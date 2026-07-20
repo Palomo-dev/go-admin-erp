@@ -44,6 +44,7 @@ import {
   Tag,
   GripVertical,
   Home,
+  ChefHat,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { FlatNode } from './useCategories';
@@ -202,6 +203,9 @@ export function CategoriesTreeTable({
                   <span className="flex items-center justify-center gap-1.5"><FolderTree className="h-3.5 w-3.5" /> Hijas</span>
                 </TableHead>
                 <TableHead className="text-center">
+                  <span className="flex items-center justify-center gap-1.5"><ChefHat className="h-3.5 w-3.5" /> Prep.</span>
+                </TableHead>
+                <TableHead className="text-center">
                   <span className="flex items-center justify-center gap-1.5"><Tag className="h-3.5 w-3.5" /> Slug</span>
                 </TableHead>
                 <TableHead className="w-[100px] text-right">Acciones</TableHead>
@@ -311,6 +315,17 @@ export function CategoriesTreeTable({
                               </span>
                             </TableCell>
 
+                            {/* Requiere preparación */}
+                            <TableCell className="text-center">
+                              {cat.requires_preparation ? (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-900/30" title="Requiere preparación">
+                                  <ChefHat className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                                </span>
+                              ) : (
+                                <span className="text-gray-300 dark:text-gray-600 flex justify-center" title="Sin preparación">—</span>
+                              )}
+                            </TableCell>
+
                             {/* Slug */}
                             <TableCell className="text-center">
                               <span className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate max-w-[120px] inline-block">
@@ -379,7 +394,7 @@ export function CategoriesTreeTable({
                         )}
                       >
                         <td
-                          colSpan={9}
+                          colSpan={10}
                           className={cn(
                             'py-3 text-center border-t-2 border-dashed',
                             dragOverRoot

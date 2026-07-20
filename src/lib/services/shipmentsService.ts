@@ -297,7 +297,7 @@ class ShipmentsService {
       .from('customers')
       .select('id, full_name, email, phone, identification_number, address, city')
       .eq('organization_id', organizationId)
-      .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,identification_number.ilike.%${query}%,phone.ilike.%${query}%`)
+      .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,identification_number.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%,trade_name.ilike.%${query}%`)
       .limit(10);
 
     if (error) throw error;

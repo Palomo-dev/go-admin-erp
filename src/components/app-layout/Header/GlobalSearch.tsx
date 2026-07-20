@@ -36,8 +36,10 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debouncedQuery = useDebounce(query, 300);
+  const debouncedQuery = useDebounce(query, 200);
   const isMountedRef = useRef(true);
+  const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Función para abrir el diálogo de búsqueda
   const openSearchDialog = () => {
@@ -50,13 +52,11 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
 
   // Efecto para realizar la búsqueda cuando cambia el query debounceado
   useEffect(() => {
-    // No realizar búsqueda si el query está vacío
-    if (!debouncedQuery) {
-      // Mostrar solo las páginas iniciales filtradas cuando no hay query
-      // Aseguramos que el tipo coincide con SearchResult
+    // No realizar búsqueda si el query está vacío o tiene menos de 2 caracteres
+    if (!debouncedQuery || debouncedQuery.trim().length < 2) {
       const paginasConTipoCorrecto = PAGINAS_INICIALES.map(page => ({
         ...page,
-        type: page.type as SearchResultType // Aseguramos que el tipo es compatible
+        type: page.type as SearchResultType
       }));
       
       setResults(paginasConTipoCorrecto);
@@ -64,15 +64,24 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
       return;
     }
 
+    const currentRequestId = ++requestIdRef.current;
+
+    // Cancelar requests anteriores para liberar conexiones
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     const fetchData = async () => {
       setIsLoading(true);
 
       try {
         // Usar el servicio modular para buscar datos
-        const data = await searchData(debouncedQuery);
+        const data = await searchData(debouncedQuery, 5, abortController.signal);
 
-        // Solo actualizar el estado si el componente sigue montado
-        if (isMountedRef.current) {
+        // Solo actualizar si esta sigue siendo la petición más reciente
+        if (isMountedRef.current && currentRequestId === requestIdRef.current) {
           // Convertir los resultados de la API a formato de resultado de búsqueda
           // Usamos una declaración de tipo más explícita
           const searchResults = [
@@ -202,9 +211,13 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
           setResults(searchResults as SearchResult[]);
           setIsLoading(false);
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Ignorar errores de abort (request cancelada)
+        if (error?.name === 'AbortError' || error?.message?.includes('abort')) {
+          return;
+        }
         console.error('Error al buscar:', error);
-        if (isMountedRef.current) {
+        if (isMountedRef.current && currentRequestId === requestIdRef.current) {
           setIsLoading(false);
           // En caso de error, mostrar solo las páginas predefinidas
           const paginasConTipoCorrecto = PAGINAS_PREDEFINIDAS.map(page => ({
@@ -212,6 +225,11 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
             type: page.type as SearchResultType // Aseguramos que el tipo es compatible
           }));
           setResults(paginasConTipoCorrecto);
+        }
+      } finally {
+        // Asegurar que isLoading se resete incluso si el requestId ya no coincide
+        if (isMountedRef.current && currentRequestId === requestIdRef.current) {
+          setIsLoading(false);
         }
       }
     };
@@ -224,19 +242,24 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
 
   // Función para actualizar el estado del query al escribir
   const handleInputChange = (value: string) => {
     setQuery(value);
-    if (value.trim() === '') {
-      // Reset a páginas iniciales filtradas cuando el campo está vacío
+    if (value.trim().length >= 2) {
+      setIsLoading(true);
+    } else if (value.trim() === '') {
       const paginasConTipoCorrecto = PAGINAS_INICIALES.map(page => ({
         ...page,
-        type: page.type as SearchResultType // Aseguramos que el tipo es compatible
+        type: page.type as SearchResultType
       }));
       setResults(paginasConTipoCorrecto);
+      setIsLoading(false);
     }
   };
 

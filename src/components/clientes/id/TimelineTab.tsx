@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
+import { ShoppingBag } from 'lucide-react';
 
 // Interfaces para los elementos del timeline
 interface TimelineItem {
   id: string;
-  type: 'sale' | 'reservation' | 'activity';
+  type: 'sale' | 'reservation' | 'activity' | 'web_order';
   date: Date;
   title: string;
   description: string;
@@ -33,6 +34,23 @@ const formatDate = (date: Date): string => {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date);
+};
+
+// Función para traducir estados de web orders
+const traducirEstadoWebOrder = (estado: string | undefined): string => {
+  if (!estado) return 'N/A';
+  const traducciones: Record<string, string> = {
+    'pending': 'Pendiente',
+    'confirmed': 'Confirmado',
+    'preparing': 'Preparando',
+    'ready': 'Listo',
+    'delivering': 'En entrega',
+    'delivered': 'Entregado',
+    'cancelled': 'Cancelado',
+    'paid': 'Pagado',
+    'completed': 'Completado',
+  };
+  return traducciones[estado.toLowerCase()] || estado;
 };
 
 // Función para traducir estados de pago
@@ -90,7 +108,17 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
           
         if (activitiesError) throw activitiesError;
         
-        // 4. Transformar los datos en items de timeline
+        // 4. Obtener pedidos web del cliente
+        const { data: webOrdersData, error: webOrdersError } = await supabase
+          .from('web_orders')
+          .select('id, order_number, status, total, created_at, payment_status, delivery_type')
+          .eq('customer_id', clienteId)
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false });
+        
+        if (webOrdersError) throw webOrdersError;
+        
+        // 5. Transformar los datos en items de timeline
         const timeline: TimelineItem[] = [
           // Transformar ventas
           ...(salesData || []).map(sale => ({
@@ -139,10 +167,24 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
               </svg>
             )
-          }))
+          })),
+          // Transformar pedidos web
+          ...(webOrdersData || []).map(order => ({
+            id: `web_order-${order.id}`,
+            type: 'web_order' as const,
+            date: new Date(order.created_at),
+            title: `Pedido Web #${order.order_number}`,
+            description: `${traducirEstadoWebOrder(order.delivery_type)} | ${traducirEstadoWebOrder(order.status)}`,
+            originalStatus: order.status,
+            originalPaymentStatus: order.payment_status,
+            amount: parseFloat(order.total) || 0,
+            icon: <ShoppingBag className="h-5 w-5" />,
+            status: traducirEstadoWebOrder(order.status),
+            paymentStatus: traducirEstadoWebOrder(order.payment_status),
+          })),
         ];
         
-        // 5. Ordenar el timeline por fecha, más reciente primero
+        // 6. Ordenar el timeline por fecha, más reciente primero
         timeline.sort((a, b) => b.date.getTime() - a.date.getTime());
         
         setTimelineItems(timeline);
@@ -225,6 +267,10 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
                 case 'activity':
                   iconBg = 'bg-amber-100 dark:bg-amber-900/20';
                   iconColor = 'text-amber-500';
+                  break;
+                case 'web_order':
+                  iconBg = 'bg-purple-100 dark:bg-purple-900/20';
+                  iconColor = 'text-purple-500';
                   break;
               }
               

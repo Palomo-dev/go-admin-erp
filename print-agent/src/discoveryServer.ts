@@ -146,6 +146,18 @@ export function startDiscoveryServer(): http.Server {
   });
 
   const port = config.discoveryPort;
+
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(
+        `[discovery] El puerto ${port} ya está en uso (¿otra instancia del agente corriendo?). ` +
+          'El servidor de descubrimiento no se iniciará en esta instancia, pero la impresión seguirá funcionando.'
+      );
+    } else {
+      console.error('[discovery] Error en el servidor de descubrimiento:', err);
+    }
+  });
+
   server.listen(port, () => {
     console.log(`[discovery] Servidor de descubrimiento en http://localhost:${port}`);
     console.log(`[discovery]   GET /health   - estado del agente`);

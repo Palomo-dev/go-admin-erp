@@ -330,7 +330,7 @@ export function VariantSelectorDialog({
                         {(group.product_modifiers || []).map((modifier) => {
                           const isChecked = selectedIds.has(modifier.id);
                           return (
-                            <label
+                            <div
                               key={modifier.id}
                               className={cn(
                                 "flex items-center justify-between gap-2 p-2 rounded-md border cursor-pointer transition-colors",
@@ -349,7 +349,7 @@ export function VariantSelectorDialog({
                                   +{formatCurrency(modifier.extra_price)}
                                 </span>
                               )}
-                            </label>
+                            </div>
                           );
                         })}
                       </div>

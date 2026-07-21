@@ -38,6 +38,8 @@ const ModificadoresTab: React.FC<ModificadoresTabProps> = ({ producto }) => {
   const [newGroupMode, setNewGroupMode] = useState<ModifierSelectionMode>('multiple');
   const [newOptionNameByGroup, setNewOptionNameByGroup] = useState<Record<number, string>>({});
   const [newOptionPriceByGroup, setNewOptionPriceByGroup] = useState<Record<number, string>>({});
+  const [existingGroupNames, setExistingGroupNames] = useState<string[]>([]);
+  const [variantValueSuggestions, setVariantValueSuggestions] = useState<string[]>([]);
 
   const loadGroups = async () => {
     if (!producto?.id) return;
@@ -57,8 +59,28 @@ const ModificadoresTab: React.FC<ModificadoresTabProps> = ({ producto }) => {
     }
   };
 
+  const loadExistingGroupNames = async () => {
+    try {
+      const names = await ProductModifiersService.getExistingGroupNames();
+      setExistingGroupNames(names);
+    } catch (error) {
+      console.error('Error cargando nombres de grupos existentes:', error);
+    }
+  };
+
+  const loadVariantValueSuggestions = async () => {
+    try {
+      const values = await ProductModifiersService.getVariantValueSuggestions();
+      setVariantValueSuggestions(values);
+    } catch (error) {
+      console.error('Error cargando valores de variantes existentes:', error);
+    }
+  };
+
   useEffect(() => {
     loadGroups();
+    loadExistingGroupNames();
+    loadVariantValueSuggestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [producto?.id]);
 
@@ -76,6 +98,7 @@ const ModificadoresTab: React.FC<ModificadoresTabProps> = ({ producto }) => {
       setNewGroupName('');
       setNewGroupMode('multiple');
       await loadGroups();
+      loadExistingGroupNames();
       toast({ title: 'Grupo creado', description: `"${name}" se agregó correctamente` });
     } catch (error) {
       console.error('Error creando grupo de modificadores:', error);
@@ -219,6 +242,32 @@ const ModificadoresTab: React.FC<ModificadoresTabProps> = ({ producto }) => {
               </div>
             ))}
 
+            {variantValueSuggestions.filter(
+              (v) => !(group.product_modifiers || []).some((m) => m.name === v)
+            ).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {variantValueSuggestions
+                  .filter((v) => !(group.product_modifiers || []).some((m) => m.name === v))
+                  .map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() =>
+                        setNewOptionNameByGroup((prev) => ({ ...prev, [group.id]: value }))
+                      }
+                      className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                        newOptionNameByGroup[group.id] === value
+                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700'
+                      }`}
+                      title="Valor ya usado en variantes, haz clic para reutilizarlo"
+                    >
+                      {value}
+                    </button>
+                  ))}
+              </div>
+            )}
+
             <div className="flex items-center gap-2 pt-1">
               <Input
                 placeholder="Nueva opción (ej. BBQ)"
@@ -246,8 +295,35 @@ const ModificadoresTab: React.FC<ModificadoresTabProps> = ({ producto }) => {
       ))}
 
       <Card className="dark:bg-gray-900 dark:border-gray-800 border-dashed">
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 space-y-3">
           <Label className="text-sm mb-2 block">Nuevo grupo de modificadores</Label>
+
+          {existingGroupNames.filter((n) => !groups.some((g) => g.name === n)).length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Grupos existentes en tu catálogo, haz clic para reutilizar:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {existingGroupNames
+                  .filter((n) => !groups.some((g) => g.name === n))
+                  .map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setNewGroupName(name)}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                        newGroupName === name
+                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
             <Input
               placeholder="Nombre (ej. Salsas)"

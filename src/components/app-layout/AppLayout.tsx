@@ -550,6 +550,10 @@ export const AppLayout = ({
   
   // Estado para almacenar el ID de la organización
   const [orgId, setOrgId] = useState<string | null>(null);
+
+  // Estado para saber si el usuario actual es administrador de la organización
+  // (controla, por ejemplo, la visibilidad de ModuleLimitNotification)
+  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
   
   // Estado para módulos activos de la organización (controla visibilidad del sidebar)
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
@@ -571,6 +575,40 @@ export const AppLayout = ({
       loadActiveModuleCodes(orgId);
     }
   }, [orgId, loadActiveModuleCodes]);
+
+  // Verificar si el usuario actual es administrador de la organización activa
+  useEffect(() => {
+    if (!orgId) {
+      setIsOrgAdmin(false);
+      return;
+    }
+
+    const checkOrgAdmin = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
+        if (!userId) {
+          setIsOrgAdmin(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('organization_members')
+          .select('is_super_admin')
+          .eq('user_id', userId)
+          .eq('organization_id', orgId)
+          .maybeSingle();
+
+        if (error) throw error;
+        setIsOrgAdmin(!!data?.is_super_admin);
+      } catch (error) {
+        console.error('Error verificando rol de administrador:', error);
+        setIsOrgAdmin(false);
+      }
+    };
+
+    checkOrgAdmin();
+  }, [orgId]);
 
   // Reintentar registro de dispositivo si quedó pendiente tras la redirección del login
   useEffect(() => {
@@ -1297,10 +1335,12 @@ export const AppLayout = ({
         </button>
       )}
       
-      {/* Notificación de límites de módulos */}
-      <ModuleLimitNotification 
-        organizationId={orgId ? parseInt(orgId) : undefined}
-      />
+      {/* Notificación de límites de módulos (solo visible para el administrador de la organización) */}
+      {isOrgAdmin && (
+        <ModuleLimitNotification 
+          organizationId={orgId ? parseInt(orgId) : undefined}
+        />
+      )}
 
       </div>
       </BranchProvider>

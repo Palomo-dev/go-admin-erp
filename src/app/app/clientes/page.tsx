@@ -136,15 +136,31 @@ export default function ClientesPage() {
 
 
   // Función para cargar clientes con paginación y última fecha de compra
-  async function loadCustomers(orgId: string | number) {
+  async function loadCustomers(orgId: string | number, searchTerm?: string) {
     setIsLoading(true);
-    console.log("Iniciando carga de clientes para organización:", orgId);
+    console.log("Iniciando carga de clientes para organización:", orgId, "búsqueda:", searchTerm || '(sin filtro)');
     try {
-      // Primero obtenemos el conteo total para la paginación
-      const { count: totalCount, error: countError } = await supabase
+      // Construir la consulta base
+      let countQuery = supabase
         .from("customers")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", orgId);
+
+      let dataQuery = supabase
+        .from("customers")
+        .select("*")
+        .eq("organization_id", orgId);
+
+      // Aplicar filtro de búsqueda server-side si hay término
+      if (searchTerm && searchTerm.trim()) {
+        const term = searchTerm.trim();
+        const orFilter = `full_name.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,company_name.ilike.%${term}%,trade_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,identification_number.ilike.%${term}%,doc_number.ilike.%${term}%`;
+        countQuery = countQuery.or(orFilter);
+        dataQuery = dataQuery.or(orFilter);
+      }
+
+      // Primero obtenemos el conteo total para la paginación
+      const { count: totalCount, error: countError } = await countQuery;
         
       if (countError) {
         console.error("Error al contar clientes:", countError);
@@ -164,10 +180,7 @@ export default function ClientesPage() {
       }
       
       // Obtenemos los clientes con paginación
-      const { data: customersData, error } = await supabase
-        .from("customers")
-        .select("*")
-        .eq("organization_id", orgId)
+      const { data: customersData, error } = await dataQuery
         .range(page * pageSize, (page + 1) * pageSize - 1);
         
       if (error) throw error;
@@ -295,6 +308,38 @@ export default function ClientesPage() {
         }
       }
 
+      // Obtener contactos principales para empresas
+      const companyIds = customersData
+        .filter((c: any) => c.customer_type === 'company')
+        .map((c: any) => c.id);
+      const primaryContactMap = new Map<string, { name: string; position: string | null }>();
+      if (companyIds.length > 0) {
+        const { data: links } = await supabase
+          .from('customer_company_links')
+          .select(`
+            company_id,
+            is_primary,
+            position,
+            person:customers!customer_company_links_person_id_fkey(first_name, last_name)
+          `)
+          .in('company_id', companyIds)
+          .order('is_primary', { ascending: false });
+
+        if (links) {
+          for (const link of links as any[]) {
+            if (!primaryContactMap.has(link.company_id)) {
+              const person = link.person;
+              if (person) {
+                primaryContactMap.set(link.company_id, {
+                  name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
+                  position: link.position || null,
+                });
+              }
+            }
+          }
+        }
+      }
+
       // Combinar datos asegurando compatibilidad de tipos entre UUIDs y strings
       const enhancedCustomers = customersData.map(customer => {
         const customerId = customer.id.toString();
@@ -322,6 +367,8 @@ export default function ClientesPage() {
           sales_count, 
           total_sales,
           municipality_name: customer.fiscal_municipality_id ? municipalityMap.get(customer.fiscal_municipality_id) || null : null,
+          primary_contact_name: primaryContactMap.get(customer.id)?.name || null,
+          primary_contact_position: primaryContactMap.get(customer.id)?.position || null,
         };
       });
       
@@ -344,17 +391,6 @@ export default function ClientesPage() {
   // Efecto para aplicar filtros cuando cambien
   useEffect(() => {
     let filtered = [...customers];
-    
-    // Filtro por búsqueda global
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(customer => 
-        customer.full_name?.toLowerCase().includes(query) ||
-        customer.email?.toLowerCase().includes(query) ||
-        customer.doc_number?.toLowerCase().includes(query) ||
-        customer.phone?.toLowerCase().includes(query)
-      );
-    }
     
     // Filtro por tipo (persona/empresa)
     if (typeFilter && typeFilter !== "all_types") {
@@ -417,12 +453,22 @@ export default function ClientesPage() {
     }
     
     setFilteredCustomers(filtered);
-  }, [customers, searchQuery, roleFilter, tagFilter, cityFilter, balanceFilter, typeFilter, sortOrder]);
+  }, [customers, roleFilter, tagFilter, cityFilter, balanceFilter, typeFilter, sortOrder]);
+
+  // Búsqueda server-side con debounce
+  useEffect(() => {
+    if (!organizationId) return;
+    const timer = setTimeout(() => {
+      setPage(0);
+      loadCustomers(organizationId, searchQuery || undefined);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery, organizationId]);
 
   // Función para cambiar de página
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-    if (organizationId) loadCustomers(organizationId);
+    if (organizationId) loadCustomers(organizationId, searchQuery || undefined);
   };
 
   // Función para exportar a CSV

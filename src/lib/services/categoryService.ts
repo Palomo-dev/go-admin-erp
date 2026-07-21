@@ -20,6 +20,7 @@ export interface Category {
   meta_description: string | null;
   metadata: Record<string, any> | null;
   station: string | null;
+  requires_preparation: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +46,7 @@ export interface CategoryFormData {
   meta_description: string;
   metadata: Record<string, any>;
   station: string | null;
+  requires_preparation: boolean;
 }
 
 export interface CategoryStats {
@@ -124,6 +126,7 @@ export const emptyFormData: CategoryFormData = {
   meta_description: '',
   metadata: {},
   station: null,
+  requires_preparation: false,
 };
 
 // ─── Servicio CRUD ───────────────────────────────────────────────────────────
@@ -203,6 +206,7 @@ const categoryService = {
         meta_description: formData.meta_description || null,
         metadata: formData.metadata || {},
         station: formData.station || null,
+        requires_preparation: formData.requires_preparation,
       })
       .select()
       .single();
@@ -229,6 +233,7 @@ const categoryService = {
     if (formData.meta_description !== undefined) updateData.meta_description = formData.meta_description || null;
     if (formData.metadata !== undefined) updateData.metadata = formData.metadata;
     if (formData.station !== undefined) updateData.station = formData.station || null;
+    if (formData.requires_preparation !== undefined) updateData.requires_preparation = formData.requires_preparation;
 
     const { data, error } = await supabase
       .from('categories')
@@ -259,6 +264,7 @@ const categoryService = {
     if (formData.meta_description !== undefined) updateData.meta_description = formData.meta_description || null;
     if (formData.metadata !== undefined) updateData.metadata = formData.metadata;
     if (formData.station !== undefined) updateData.station = formData.station || null;
+    if (formData.requires_preparation !== undefined) updateData.requires_preparation = formData.requires_preparation;
 
     const { data, error } = await supabase
       .from('categories')
@@ -322,6 +328,7 @@ const categoryService = {
       meta_description: original.meta_description || '',
       metadata: original.metadata || {},
       station: original.station || null,
+      requires_preparation: original.requires_preparation ?? false,
     });
   },
 
@@ -344,6 +351,7 @@ const categoryService = {
       meta_description: original.meta_description || '',
       metadata: original.metadata || {},
       station: original.station || null,
+      requires_preparation: original.requires_preparation ?? false,
     });
   },
 

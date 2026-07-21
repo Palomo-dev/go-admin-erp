@@ -524,7 +524,17 @@ export function useOrganization() {
             });
             return;
           }
-          throw new Error('No se encontró ID de usuario');
+          // No hay userId ni organización local — la sesión podría estar cargando aún.
+          // Mantener isLoading y reintentar en lugar de lanzar error.
+          setOrganizationData({
+            organization: null,
+            branch_id: null,
+            isLoading: true,
+            error: null
+          });
+          // Reintentar después de 1.5s para dar tiempo a que Supabase Auth restaure la sesión
+          setTimeout(() => fetchOrganizationData(), 1500);
+          return;
         }
         
         // Obtenemos datos completos de la organización desde Supabase

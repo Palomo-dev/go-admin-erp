@@ -25,6 +25,8 @@ type Cliente = {
   customer_type?: string;
   first_name?: string;
   last_name?: string;
+  primary_contact_name?: string | null;
+  primary_contact_position?: string | null;
 };
 
 type ClienteSelectorProps = {
@@ -69,20 +71,57 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
           .from('customers')
           .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name')
           .eq('organization_id', organizationId)
-          .or(`full_name.ilike.${termino},email.ilike.${termino},phone.ilike.${termino}`)
+          .or(`full_name.ilike.${termino},email.ilike.${termino},phone.ilike.${termino},company_name.ilike.${termino},trade_name.ilike.${termino},identification_number.ilike.${termino}`)
           .order('full_name', { ascending: true })
-          .limit(50); // Limitamos a 50 resultados para evitar sobrecarga
+          .limit(50);
         
         if (error) throw error;
         
+        // Obtener contactos principales para empresas
+        const companyResults = (data || []).filter((c: any) => c.customer_type === 'company');
+        const contactMap = new Map<string, { name: string; position: string | null }>();
+        if (companyResults.length > 0) {
+          const companyIds = companyResults.map((c: any) => c.id);
+          const { data: links } = await supabase
+            .from('customer_company_links')
+            .select(`
+              company_id,
+              is_primary,
+              position,
+              person:customers!customer_company_links_person_id_fkey(first_name, last_name)
+            `)
+            .in('company_id', companyIds)
+            .order('is_primary', { ascending: false });
+
+          if (links) {
+            for (const link of links as any[]) {
+              if (!contactMap.has(link.company_id)) {
+                const person = link.person;
+                if (person) {
+                  contactMap.set(link.company_id, {
+                    name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
+                    position: link.position || null,
+                  });
+                }
+              }
+            }
+          }
+        }
+        
         // Formatear los resultados
-        const clientesFormateados: Cliente[] = (data || []).map(cliente => ({
-          id: cliente.id,
-          full_name: cliente.full_name,
-          email: cliente.email,
-          phone: cliente.phone,
-          organization_id: cliente.organization_id || organizationId
-        }));
+        const clientesFormateados: Cliente[] = (data || []).map(cliente => {
+          const contact = contactMap.get(cliente.id);
+          return {
+            id: cliente.id,
+            full_name: cliente.full_name,
+            email: cliente.email,
+            phone: cliente.phone,
+            organization_id: cliente.organization_id || organizationId,
+            customer_type: cliente.customer_type,
+            primary_contact_name: contact?.name || null,
+            primary_contact_position: contact?.position || null,
+          };
+        });
         
         setClientesFiltrados(clientesFormateados);
       } catch (error) {
@@ -252,8 +291,8 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
                     <SelectItem key={cliente.id} value={cliente.id.toString()} className="text-gray-900 dark:text-gray-100">
                       <div>
                         <div className="font-medium text-sm">{cliente.full_name}</div>
-                        {cliente.customer_type === 'company' && (cliente.first_name || cliente.last_name) && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">Contacto: {`${cliente.first_name || ''} ${cliente.last_name || ''}`.trim()}</div>
+                        {cliente.customer_type === 'company' && cliente.primary_contact_name && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Contacto: {cliente.primary_contact_name}{cliente.primary_contact_position ? ` (${cliente.primary_contact_position})` : ''}</div>
                         )}
                         {cliente.email && <div className="text-xs text-gray-600 dark:text-gray-400">{cliente.email}</div>}
                       </div>

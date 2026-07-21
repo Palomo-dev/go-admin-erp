@@ -115,7 +115,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
         setAllNotifications((allData || []) as Notification[]);
         setMyUnreadCount(myUnread ?? 0);
         setAllUnreadCount(totalUnread ?? 0);
-        setUnreadCount(totalUnread ?? 0);
+        setUnreadCount(myUnread ?? 0);
       } catch (error) {
         console.error('Error al cargar notificaciones:', error);
       } finally {
@@ -205,6 +205,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
       setNotifications(notifications.map(n => 
         n.id === id ? { ...n, read_at: now } : n
       ));
+      setMyUnreadCount(prev => Math.max(0, prev - 1));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error al marcar como leída:', error);
@@ -219,9 +220,9 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
         aria-label="Ver notificaciones"
       >
         <Bell className="h-5 w-5" />
-        {(unreadCount > 0 || taskReminders.length > 0) && (
+        {(myUnreadCount > 0 || taskReminders.length > 0) && (
           <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-            {unreadCount + taskReminders.length}
+            {myUnreadCount + taskReminders.length}
           </span>
         )}
       </button>
@@ -236,9 +237,9 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base sm:text-sm font-semibold sm:font-medium text-gray-900 dark:text-gray-100">Notificaciones y Recordatorios</h3>
-              {(unreadCount > 0 || taskReminders.length > 0) && (
+              {(myUnreadCount > 0 || taskReminders.length > 0) && (
                 <span className="text-sm sm:text-xs font-medium text-gray-600 dark:text-gray-400">
-                  {unreadCount + taskReminders.length} pendiente{(unreadCount + taskReminders.length) !== 1 ? 's' : ''}
+                  {myUnreadCount + taskReminders.length} pendiente{(myUnreadCount + taskReminders.length) !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -255,9 +256,9 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
               >
                 <Inbox className="h-4 w-4 sm:h-3 sm:w-3 mr-1.5 sm:mr-1" />
                 <span className="truncate">Notificaciones</span>
-                {unreadCount > 0 && (
+                {myUnreadCount > 0 && (
                   <span className="ml-1.5 sm:ml-1 bg-red-500 text-white rounded-full px-2 sm:px-1.5 py-0.5 text-xs font-bold">
-                    {unreadCount}
+                    {myUnreadCount}
                   </span>
                 )}
               </button>
@@ -431,8 +432,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
                 loading={taskRemindersLoading}
                 onTaskClick={(reminder) => {
                   setNotificationsOpen(false);
-                  const isPM = !!reminder.project_id || (reminder.related_to_type || '').startsWith('agent:');
-                  router.push(isPM ? `/app/pm/tareas?taskId=${reminder.id}` : `/app/crm/tareas?taskId=${reminder.id}`);
+                  router.push(`/app/pm/tareas?taskId=${reminder.id}`);
                 }}
               />
             )}
@@ -450,11 +450,7 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
               <button
                 onClick={() => {
                   setNotificationsOpen(false);
-                  const hasPM = taskReminders.some(r => !!r.project_id || (r.related_to_type || '').startsWith('agent:'));
-                  const hasCRM = taskReminders.some(r => !r.project_id && !(r.related_to_type || '').startsWith('agent:'));
-                  if (hasPM && !hasCRM) router.push('/app/pm/tareas');
-                  else if (hasCRM && !hasPM) router.push('/app/crm/tareas');
-                  else router.push('/app/pm/tareas');
+                  router.push('/app/pm/tareas');
                 }}
                 className="text-sm sm:text-xs text-blue-600 dark:text-blue-400 hover:underline block text-center w-full font-medium min-h-[44px] sm:min-h-0 flex items-center justify-center"
               >

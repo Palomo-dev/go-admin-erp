@@ -91,6 +91,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
         meta_description: cat.meta_description || '',
         metadata: cat.metadata || {},
         station: cat.station || null,
+        requires_preparation: cat.requires_preparation ?? false,
       });
     } catch {
       toast({ title: 'Error', description: 'No se pudo cargar la categoría', variant: 'destructive' });
@@ -318,6 +319,24 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Los productos de esta categoría se enrutarán a esta estación al enviarse a cocina. Un producto puede sobreescribir esta estación individualmente.
                 </p>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <Label className="text-gray-700 dark:text-gray-300">Requiere preparación</Label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Los productos de esta categoría generarán tickets de cocina al enviarse desde el POS
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={formData.requires_preparation}
+                    onCheckedChange={v => updateField('requires_preparation', v)}
+                  />
+                  <span className={`text-sm font-medium ${formData.requires_preparation ? 'text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {formData.requires_preparation ? 'Sí' : 'No'}
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center justify-between py-1">

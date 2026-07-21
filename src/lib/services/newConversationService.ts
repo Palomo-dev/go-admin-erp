@@ -90,7 +90,7 @@ class NewConversationService {
       .from('customers')
       .select('id, organization_id, full_name, first_name, last_name, email, phone, identification_number, doc_number, avatar_url')
       .eq('organization_id', this.organizationId)
-      .or(`full_name.ilike.${searchLower},email.ilike.${searchLower},phone.ilike.${searchLower},identification_number.ilike.${searchLower},doc_number.ilike.${searchLower}`)
+      .or(`full_name.ilike.${searchLower},email.ilike.${searchLower},phone.ilike.${searchLower},identification_number.ilike.${searchLower},doc_number.ilike.${searchLower},company_name.ilike.${searchLower},trade_name.ilike.${searchLower}`)
       .limit(10);
 
     if (error) {

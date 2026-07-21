@@ -38,6 +38,8 @@ interface Customer {
   customer_type?: string;
   company_name?: string | null;
   trade_name?: string | null;
+  primary_contact_name?: string | null;
+  primary_contact_position?: string | null;
 }
 
 interface ClientesTableProps {
@@ -217,10 +219,10 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                               </span>
                             )}
                           </div>
-                          {/* Mostrar contacto para empresas */}
-                          {customer.customer_type === 'company' && (customer.first_name || customer.last_name) && (
+                          {/* Mostrar contacto principal para empresas */}
+                          {customer.customer_type === 'company' && customer.primary_contact_name && (
                             <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                              Contacto: {`${customer.first_name || ''} ${customer.last_name || ''}`.trim()}
+                              Contacto: {customer.primary_contact_name}{customer.primary_contact_position ? ` (${customer.primary_contact_position})` : ''}
                             </span>
                           )}
                           {/* Mostrar contacto en móvil */}

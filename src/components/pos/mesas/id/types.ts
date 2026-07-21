@@ -114,6 +114,7 @@ export interface ProductToAdd {
   unit_price: number;
   notes: string;
   station?: string;
+  requires_preparation?: boolean;
   guest_number?: number;
 }
 

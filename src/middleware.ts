@@ -428,7 +428,6 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
   const isPublicRoute = (
     pathname.startsWith('/auth/') ||
     pathname === '/auth' ||
-    pathname === '/' ||
     pathname.includes('/_next/') ||
     pathname.includes('/auth/v1/') // API de Supabase
   );
@@ -473,6 +472,14 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
 
   // Redirigir usuarios autenticados fuera de rutas de auth (excepto logout e invite)
   if (isAuthenticated) {
+    // Redirigir '/' a /app/inicio para usuarios autenticados
+    if (pathname === '/') {
+      if (shouldDebug) {
+        console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde / a /app/inicio');
+      }
+      return NextResponse.redirect(new URL('/app/inicio', request.url));
+    }
+
     // Permitir /auth/login?addAccount=1: es el flujo del selector de cuentas
     // para agregar una sesión adicional sin cerrar la actual.
     const isAddingAccount = pathname === '/auth/login' && request.nextUrl.searchParams.get('addAccount') === '1';

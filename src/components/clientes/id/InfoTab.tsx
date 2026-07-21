@@ -17,6 +17,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
   const [municipalityName, setMunicipalityName] = useState<string | null>(null);
   const [municipalityState, setMunicipalityState] = useState<string | null>(null);
   const [municipalityPostalCode, setMunicipalityPostalCode] = useState<string | null>(null);
+  const [primaryContact, setPrimaryContact] = useState<{ name: string; email: string | null; phone: string | null; position: string | null } | null>(null);
 
   // Cargar datos completos del cliente
   useEffect(() => {
@@ -53,6 +54,37 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
             setMunicipalityName(`${muni.name} (${muni.code}) - ${muni.state_name}`);
             setMunicipalityState(muni.state_name);
             setMunicipalityPostalCode(muni.code);
+          }
+        }
+
+        // Si es empresa, cargar el contacto principal desde customer_company_links
+        if (data.customer_type === 'company') {
+          const { data: linkData } = await supabase
+            .from('customer_company_links')
+            .select(`
+              is_primary,
+              position,
+              person:customers!customer_company_links_person_id_fkey(
+                first_name,
+                last_name,
+                email,
+                phone
+              )
+            `)
+            .eq('company_id', clienteId)
+            .order('is_primary', { ascending: false });
+
+          if (linkData && linkData.length > 0) {
+            const primary = linkData.find((l: any) => l.is_primary) || linkData[0];
+            const person = primary.person as any;
+            if (person) {
+              setPrimaryContact({
+                name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
+                email: person.email || null,
+                phone: person.phone || null,
+                position: primary.position || null,
+              });
+            }
           }
         }
       } catch (err: any) {
@@ -121,10 +153,16 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
                 <p>{clienteInfo.full_name || `${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim() || 'No especificado'}</p>
               </div>
               
-              {isCompany && (clienteInfo.first_name || clienteInfo.last_name) && (
+              {isCompany && primaryContact && (
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Persona de contacto</p>
-                  <p>{`${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim()}</p>
+                  <p>{primaryContact.name}{primaryContact.position ? ` (${primaryContact.position})` : ''}</p>
+                  {primaryContact.email && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{primaryContact.email}</p>
+                  )}
+                  {primaryContact.phone && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{primaryContact.phone}</p>
+                  )}
                 </div>
               )}
               
@@ -321,7 +359,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
           <CardDescription>Preferencias personalizadas del cliente</CardDescription>
         </CardHeader>
         <CardContent>
-          {clienteInfo.preferences ? (
+          {clienteInfo.preferences && Object.keys(clienteInfo.preferences).length > 0 ? (
             <pre className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 overflow-x-auto text-sm">
               {JSON.stringify(clienteInfo.preferences, null, 2)}
             </pre>

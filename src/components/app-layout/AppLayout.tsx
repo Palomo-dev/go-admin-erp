@@ -125,7 +125,6 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Oportunidades", href: "/app/crm/oportunidades", icon: <TrendingUp size={16} /> },
       { name: "Pronóstico", href: "/app/crm/pronostico", icon: <BarChart3 size={16} /> },
       { name: "Actividades", href: "/app/crm/actividades", icon: <Activity size={16} /> },
-      { name: "Tareas", href: "/app/crm/tareas", icon: <ClipboardList size={16} /> },
       { name: "Segmentos", href: "/app/crm/segmentos", icon: <Tag size={16} /> },
       { name: "Campañas", href: "/app/crm/campanas", icon: <Megaphone size={16} /> },
       { name: "Reportes", href: "/app/crm/reportes", icon: <BarChart3 size={16} /> },

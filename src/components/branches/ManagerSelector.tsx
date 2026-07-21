@@ -51,6 +51,14 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
 
   const currentManager = getCurrentManager();
 
+  // Supabase devuelve `profiles`/`roles` como objeto para relaciones to-one
+  // (organization_members.user_id/role_id -> profiles/roles), no como array.
+  // Normalizamos aquí para soportar ambas formas de manera segura.
+  const getProfile = (member: Member) =>
+    Array.isArray(member.profiles) ? member.profiles[0] : member.profiles;
+  const getRole = (member: Member) =>
+    Array.isArray(member.roles) ? member.roles[0] : member.roles;
+
   if (loading) {
     return (
       <div className="flex items-center space-x-2">
@@ -84,10 +92,10 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
         <span className="flex items-center">
           {currentManager ? (
             <>
-              {currentManager.profiles[0]?.avatar_url && getAvatarUrl(currentManager.profiles[0].avatar_url) ? (
+              {getProfile(currentManager)?.avatar_url && getAvatarUrl(getProfile(currentManager)!.avatar_url!) ? (
                 <img
                   className="flex-shrink-0 h-6 w-6 rounded-full"
-                  src={getAvatarUrl(currentManager.profiles[0].avatar_url)}
+                  src={getAvatarUrl(getProfile(currentManager)!.avatar_url!)}
                   alt=""
                 />
               ) : (
@@ -96,9 +104,9 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
                 </div>
               )}
               <span className="ml-3 block truncate">
-                {currentManager.profiles[0]?.first_name} {currentManager.profiles[0]?.last_name}
+                {getProfile(currentManager)?.first_name} {getProfile(currentManager)?.last_name}
                 <span className="text-gray-500 text-xs ml-2">
-                  ({currentManager.roles[0]?.name})
+                  ({getRole(currentManager)?.name})
                 </span>
               </span>
             </>
@@ -152,10 +160,10 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
               onClick={() => handleManagerSelect(member.user_id)}
             >
               <div className="flex items-center">
-                {member.profiles[0]?.avatar_url && getAvatarUrl(member.profiles[0].avatar_url) ? (
+                {getProfile(member)?.avatar_url && getAvatarUrl(getProfile(member)!.avatar_url!) ? (
                   <img
                     className="flex-shrink-0 h-6 w-6 rounded-full"
-                    src={getAvatarUrl(member.profiles[0].avatar_url)}
+                    src={getAvatarUrl(getProfile(member)!.avatar_url!)}
                     alt=""
                   />
                 ) : (
@@ -164,9 +172,9 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
                   </div>
                 )}
                 <span className="ml-3 block truncate">
-                  {member.profiles[0]?.first_name} {member.profiles[0]?.last_name}
+                  {getProfile(member)?.first_name} {getProfile(member)?.last_name}
                   <span className="text-gray-500 text-xs ml-2">
-                    ({member.roles[0]?.name})
+                    ({getRole(member)?.name})
                   </span>
                 </span>
               </div>

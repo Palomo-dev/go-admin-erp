@@ -38,7 +38,6 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 200);
   const isMountedRef = useRef(true);
-  const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   
   // Función para abrir el diálogo de búsqueda
@@ -64,8 +63,6 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
       return;
     }
 
-    const currentRequestId = ++requestIdRef.current;
-
     // Cancelar requests anteriores para liberar conexiones
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -73,15 +70,25 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
+    // Watchdog: si por cualquier motivo la búsqueda no resuelve, forzar fin de carga
+    const watchdog = setTimeout(() => {
+      if (isMountedRef.current && !abortController.signal.aborted) {
+        console.warn('[GlobalSearch] Watchdog: la búsqueda no completó a tiempo, forzando fin de carga.');
+        setIsLoading(false);
+      }
+    }, 7000);
+
     const fetchData = async () => {
       setIsLoading(true);
+      console.log('[GlobalSearch] Buscando:', debouncedQuery, '| organizationId:', getOrganizationId());
 
       try {
         // Usar el servicio modular para buscar datos
         const data = await searchData(debouncedQuery, 5, abortController.signal);
+        console.log('[GlobalSearch] Resultado clientes:', data.clientes);
 
-        // Solo actualizar si esta sigue siendo la petición más reciente
-        if (isMountedRef.current && currentRequestId === requestIdRef.current) {
+        // Solo actualizar si esta petición no fue cancelada por una búsqueda más reciente
+        if (isMountedRef.current && !abortController.signal.aborted) {
           // Convertir los resultados de la API a formato de resultado de búsqueda
           // Usamos una declaración de tipo más explícita
           const searchResults = [
@@ -216,8 +223,8 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
         if (error?.name === 'AbortError' || error?.message?.includes('abort')) {
           return;
         }
-        console.error('Error al buscar:', error);
-        if (isMountedRef.current && currentRequestId === requestIdRef.current) {
+        console.error('[GlobalSearch] Error al buscar:', error);
+        if (isMountedRef.current && !abortController.signal.aborted) {
           setIsLoading(false);
           // En caso de error, mostrar solo las páginas predefinidas
           const paginasConTipoCorrecto = PAGINAS_PREDEFINIDAS.map(page => ({
@@ -227,8 +234,9 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
           setResults(paginasConTipoCorrecto);
         }
       } finally {
-        // Asegurar que isLoading se resete incluso si el requestId ya no coincide
-        if (isMountedRef.current && currentRequestId === requestIdRef.current) {
+        clearTimeout(watchdog);
+        // Asegurar que isLoading se resete incluso si esta petición fue cancelada
+        if (isMountedRef.current && !abortController.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -240,6 +248,10 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
 
   // Limpiar al desmontar
   useEffect(() => {
+    // Re-asignar en el cuerpo del efecto: en React 18 StrictMode el ciclo
+    // mount -> cleanup -> mount dejaría el ref en false permanentemente
+    // si solo se confía en el valor inicial de useRef(true).
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       if (abortControllerRef.current) {
@@ -250,8 +262,13 @@ const GlobalSearch = ({ forceFullBar = false }: { forceFullBar?: boolean }) => {
 
   // Función para actualizar el estado del query al escribir
   const handleInputChange = (value: string) => {
+    // Evitar reactivar el spinner si el valor no cambió realmente (ej. re-emisión
+    // redundante de onValueChange de cmdk), ya que en ese caso el efecto de
+    // búsqueda no se re-ejecutaría (depende de debouncedQuery) y el spinner
+    // quedaría colgado para siempre.
+    const valueChanged = value !== query;
     setQuery(value);
-    if (value.trim().length >= 2) {
+    if (valueChanged && value.trim().length >= 2) {
       setIsLoading(true);
     } else if (value.trim() === '') {
       const paginasConTipoCorrecto = PAGINAS_INICIALES.map(page => ({

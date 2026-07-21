@@ -256,8 +256,11 @@ export const createSupabaseClient = () => {
               }
               
               resolve(response);
-            } catch (error) {
-              if (retriesLeft > 0) {
+            } catch (error: any) {
+              // No reintentar si la petición fue cancelada intencionalmente (AbortController.abort()).
+              // Reintentar aquí mantendría la conexión ocupada varios segundos más y anularía el propósito del abort.
+              const isAborted = error?.name === 'AbortError' || options?.signal?.aborted;
+              if (retriesLeft > 0 && !isAborted) {
                 console.log(`Error en solicitud, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
                 await new Promise(res => setTimeout(res, delay));
                 return attemptFetch(retriesLeft - 1, delay * 2);

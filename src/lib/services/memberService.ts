@@ -8,7 +8,15 @@ export interface Member {
   is_super_admin: boolean;
   is_active: boolean;
   created_at: string;
+  // Relación to-one (organization_members.user_id/role_id -> profiles/roles):
+  // PostgREST la devuelve como objeto único; se tipa como unión por seguridad.
   profiles: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    avatar_url?: string;
+  } | {
     id: string;
     first_name: string;
     last_name: string;
@@ -16,6 +24,9 @@ export interface Member {
     avatar_url?: string;
   }[];
   roles: {
+    id: number;
+    name: string;
+  } | {
     id: number;
     name: string;
   }[];

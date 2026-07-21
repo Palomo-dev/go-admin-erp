@@ -1052,7 +1052,7 @@ La base de datos está hospedada en **Supabase** (PostgreSQL) con **Row Level Se
 
 ## Resumen Ejecutivo
 
-**Go Admin ERP** es una plataforma SaaS multi-tenant completa y modular que centraliza la gestión de negocios en una sola solución. Atiende a **7 tipos de industrias**: restaurantes, hoteles, tiendas retail, servicios profesionales, gimnasios, transporte y parking.
+**Go Admin ERP** es una plataforma SaaS multi-tenant completa y modular que centraliza la gestión de negocios en una sola solución. Desarrollada con Next.js + Supabase, atiende a **7 tipos de industrias**: restaurantes, hoteles, tiendas retail, servicios profesionales, gimnasios, transporte y parking.
 
 ### Fortalezas clave
 
@@ -1069,9 +1069,9 @@ La base de datos está hospedada en **Supabase** (PostgreSQL) con **Row Level Se
 
 | Plan | Precio Anual | Product ID | Target |
 |---|---|---|---|
-| **Pro** | $199 USD/año | 80% del mercado (PYMES) |
-| **Business** | $490 USD/año | Grandes empresas y franquicias |
-| **Ultimate** | $1,990 USD/año | Empresas que necesitan todo |
+| **Pro** | $199 USD/año | `prod_Ue3vmr6NJRoYtQ` | 80% del mercado (PYMES) |
+| **Business** | $490 USD/año | `prod_Ue3wbzEypU3F7K` | Grandes empresas y franquicias |
+| **Ultimate** | $1,990 USD/año | `prod_Ue3xai4oS95RBf` | Empresas que necesitan todo |
 
 ### Total de páginas en la aplicación
 
@@ -1079,4 +1079,4 @@ La aplicación contiene **más de 260 páginas** distribuidas across 19+ módulo
 
 ---
 
-*Documento generado el 2025-07-17 basado en el análisis del código fuente y base de datos del proyecto Go Admin ERP.*
+*Documento generado el 2025-07-17 basado en el análisis del código fuente y base de datos del proyecto Go Admin ERP (Supabase project: jgmgphmzusbluqhuqihj).*

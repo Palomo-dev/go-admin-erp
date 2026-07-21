@@ -6,7 +6,8 @@ import { useOrganization } from '@/lib/hooks/useOrganization'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Warehouse, Plus, Trash2, Loader2 } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Warehouse, Plus, Trash2, Loader2, PackageCheck } from 'lucide-react'
 
 interface InventarioProps {
   formData: any
@@ -91,13 +92,32 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
         <Button
           type="button"
           onClick={addStockEntry}
-          disabled={isLoadingBranches || branches.length === 0}
+          disabled={isLoadingBranches || branches.length === 0 || formData.track_stock === false}
           className="bg-blue-600 hover:bg-blue-700 text-white"
           size="sm"
         >
           <Plus className="h-4 w-4 mr-2" />
           Agregar Sucursal
         </Button>
+      </div>
+
+      {/* Switch de seguimiento de stock */}
+      <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+        <div className="flex items-center gap-3">
+          <PackageCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <div>
+            <Label className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+              Rastrear inventario
+            </Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Si se desactiva, las ventas no descontarán stock de este producto
+            </p>
+          </div>
+        </div>
+        <Switch
+          checked={formData.track_stock !== false}
+          onCheckedChange={(checked) => updateFormData('track_stock', checked)}
+        />
       </div>
 
       {/* Mensaje cuando hay variantes */}

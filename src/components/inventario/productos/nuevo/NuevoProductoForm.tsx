@@ -188,7 +188,8 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           unit_code: formData.unit_code,
           status: 'active',
           is_parent: formData.has_variants,
-          station: formData.station
+          station: formData.station,
+          track_stock: formData.track_stock !== false
         })
         .select('id, uuid')
         .single()

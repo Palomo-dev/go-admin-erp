@@ -265,7 +265,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           price: priceData?.price || 0,
           compare_price: priceData?.compare_price || 0,
           tax_id: taxData?.tax_id || '',
-          track_stock: true,
+          track_stock: producto.track_stock !== false,
           status: producto.status || 'active',
           stock_inicial: stockInicial,
           images,
@@ -339,6 +339,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         unit_code: data.unit_code,
         status: data.status,
         station: data.station ?? null,
+        track_stock: data.track_stock,
         updated_at: new Date().toISOString(),
       };
 

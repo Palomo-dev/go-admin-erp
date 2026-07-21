@@ -142,7 +142,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
   const [goals, setGoals] = useState<Array<{ id: string; title: string }>>([]);
   const [customers, setCustomers] = useState<Array<{ id: string; name: string }>>([]);
   const [spaces, setSpaces] = useState<Array<{ id: string; label: string; type_name: string }>>([]);
-  const [sales, setSales] = useState<Array<{ id: string; total: number; sale_date: string; customer_name: string }>>([]);
+  const [sales, setSales] = useState<Array<{ id: string; total: number; sale_date: string; customer_name: string; source: string }>>([]);
   const [reservations, setReservations] = useState<Array<{ id: string; checkin: string; checkout: string; customer_name: string }>>([]);
   const [pmsActive, setPmsActive] = useState(false);
 
@@ -158,19 +158,40 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         .then(({ data }) => {
           setCustomers((data || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` })));
         });
-      // Cargar ventas recientes con nombre del cliente
+      // Cargar ventas POS recientes con nombre del cliente
       supabase.from('sales')
-        .select('id, total, sale_date, status, customers(first_name, last_name)')
+        .select('id, total, sale_date, status, table_session_id, customers(first_name, last_name)')
         .eq('organization_id', orgId)
         .order('sale_date', { ascending: false })
         .limit(200)
         .then(({ data }) => {
-          setSales((data || []).map(s => ({
+          const posSales = (data || []).map(s => ({
             id: s.id,
             total: Number(s.total) || 0,
             sale_date: s.sale_date,
             customer_name: s.customers ? `${s.customers.first_name} ${s.customers.last_name}` : 'Sin cliente',
-          })));
+            source: s.table_session_id ? 'Mesa' : 'POS',
+          }));
+          // Cargar ventas Web (web_orders)
+          supabase.from('web_orders')
+            .select('id, total_amount, order_date, customer_name, status')
+            .eq('organization_id', orgId)
+            .order('order_date', { ascending: false })
+            .limit(200)
+            .then(({ data: webData }) => {
+              const webSales = (webData || []).map(w => ({
+                id: w.id,
+                total: Number(w.total_amount) || 0,
+                sale_date: w.order_date,
+                customer_name: w.customer_name || 'Sin cliente',
+                source: 'Web',
+              }));
+              // Combinar y ordenar por fecha descendente
+              const combined = [...posSales, ...webSales].sort((a, b) =>
+                new Date(b.sale_date).getTime() - new Date(a.sale_date).getTime()
+              );
+              setSales(combined);
+            });
         });
       // Verificar si el módulo PMS está activo
       supabase.from('organization_modules')
@@ -777,7 +798,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
                   options={sales.map(s => ({
                     value: s.id,
                     label: `${s.customer_name} — $${s.total.toLocaleString('es-ES', { minimumFractionDigits: 0 })}`,
-                    sublabel: new Date(s.sale_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }),
+                    sublabel: `${s.source} · ${new Date(s.sale_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}`,
                   }))}
                   value={form.related_to_id || 'none'}
                   onValueChange={(v) => setForm(f => ({ ...f, related_to_id: v === 'none' ? '' : v }))}

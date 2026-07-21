@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { stockMovementService } from '@/lib/services/stockMovementService';
 
 export type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected';
 export type DeliveryType = 'pickup' | 'delivery_own' | 'delivery_third_party';
@@ -320,6 +321,22 @@ class WebOrdersService {
 
       if (itemsError) throw itemsError;
 
+      // Reservar stock por cada item con product_id
+      try {
+        const stockResult = await stockMovementService.reserveStock(
+          this.organizationId,
+          input.branch_id,
+          order.id,
+          itemsWithTotals.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price }))
+        );
+        if (stockResult.errors.length > 0) {
+          console.warn('⚠️ Algunos items no reservaron stock:', stockResult.errors);
+        }
+        console.log(`📦 Stock reservado (web order): ${itemsWithTotals.length - stockResult.skipped} items procesados`);
+      } catch (stockError) {
+        console.warn('⚠️ Error reservando stock (no bloquea el pedido):', stockError);
+      }
+
       return this.getOrderById(order.id) as Promise<WebOrder>;
     } catch (error) {
       console.error('Error creating web order:', error);
@@ -435,6 +452,7 @@ class WebOrdersService {
    * Cancelar pedido
    */
   async cancelOrder(orderId: string, reason: string): Promise<WebOrder> {
+    await this.releaseOrderStock(orderId);
     return this.updateOrderStatus(orderId, 'cancelled', { cancellation_reason: reason });
   }
 
@@ -442,7 +460,43 @@ class WebOrdersService {
    * Rechazar pedido
    */
   async rejectOrder(orderId: string, reason: string): Promise<WebOrder> {
+    await this.releaseOrderStock(orderId);
     return this.updateOrderStatus(orderId, 'rejected', { cancellation_reason: reason });
+  }
+
+  /**
+   * Liberar stock reservado de un pedido (al cancelar/rechazar)
+   */
+  private async releaseOrderStock(orderId: string): Promise<void> {
+    try {
+      const { data: order } = await supabase
+        .from('web_orders')
+        .select('branch_id')
+        .eq('id', orderId)
+        .single();
+
+      if (!order) return;
+
+      const { data: items } = await supabase
+        .from('web_order_items')
+        .select('product_id, quantity')
+        .eq('web_order_id', orderId);
+
+      if (!items || items.length === 0) return;
+
+      const stockResult = await stockMovementService.releaseStockReservation(
+        order.branch_id,
+        orderId,
+        items.map((item: any) => ({ product_id: item.product_id, quantity: Number(item.quantity) }))
+      );
+
+      if (stockResult.errors.length > 0) {
+        console.warn('⚠️ Error liberando reservas:', stockResult.errors);
+      }
+      console.log(`📦 Reservas liberadas (web order ${orderId}): ${items.length - stockResult.skipped} items`);
+    } catch (error) {
+      console.warn('⚠️ Error liberando stock reservado (no bloquea cancelación):', error);
+    }
   }
 
   /**

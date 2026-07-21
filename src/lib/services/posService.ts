@@ -3,6 +3,7 @@ import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/h
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculationForLog, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
+import { stockMovementService } from '@/lib/services/stockMovementService';
 import {
   Product,
   Customer,
@@ -898,6 +899,23 @@ export class POSService {
       }
       
       console.log(`🛍️ ${saleItems.length} items de venta creados exitosamente`);
+
+      // Descontar stock por cada item vendido
+      try {
+        const stockResult = await stockMovementService.decrementOnSale(
+          this.organizationId,
+          getCurrentBranchId(),
+          sale.id,
+          cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
+          'sale'
+        );
+        if (stockResult.errors.length > 0) {
+          console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
+        }
+        console.log(`📦 Stock descontado: ${cart.items.length - stockResult.skipped} items procesados`);
+      } catch (stockError) {
+        console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
+      }
       
       // PASO 5: La cuenta por cobrar se crea automáticamente por el trigger tr_create_account_receivable
       // al insertar la factura con status != 'draft'. Obtenemos la cuenta creada usando RPC:
@@ -1053,6 +1071,23 @@ export class POSService {
         .insert(saleItems);
 
       if (itemsError) throw itemsError;
+
+      // Descontar stock por cada item vendido
+      try {
+        const stockResult = await stockMovementService.decrementOnSale(
+          cart.organization_id,
+          getCurrentBranchId(),
+          saleData.id,
+          cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
+          'sale'
+        );
+        if (stockResult.errors.length > 0) {
+          console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
+        }
+        console.log(`📦 Stock descontado: ${cart.items.length - stockResult.skipped} items procesados`);
+      } catch (stockError) {
+        console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
+      }
 
       // Crear la factura (invoice_sales)
       const invoiceNumber = await this.generateInvoiceNumber();

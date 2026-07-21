@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { CalendarIcon, Save, Loader2 } from 'lucide-react';
+import { CalendarIcon, Save, Loader2, PackageCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -55,6 +55,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     unit_code: producto.unit_code || '',
     supplier_id: preferredSupplier?.supplier_id?.toString() || '',
     station: producto.station || null,
+    track_stock: producto.track_stock !== false,
   });
   
   // Cargar datos de categorías, unidades y proveedores al montar el componente
@@ -113,7 +114,10 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     setFormData({ ...formData, [name]: processedValue });
   };
   
-  // No longer needed - track_stock has been removed
+  // Manejar cambio en el switch de track_stock
+  const handleTrackStockChange = (checked: boolean) => {
+    setFormData({ ...formData, track_stock: checked });
+  };
   
   // Guardar cambios en el producto
   const handleSaveChanges = async () => {
@@ -130,6 +134,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           category_id: formData.category_id || null,
           unit_code: formData.unit_code || null,
           station: formData.station || null,
+          track_stock: formData.track_stock,
           updated_at: new Date().toISOString(),
         })
         .eq('id', producto.id)
@@ -303,7 +308,24 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           </Select>
         </div>
         
-        {/* Stock tracking removed as it's always on now */}
+        {/* Switch de rastreo de inventario */}
+        <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+          <div className="flex items-center gap-3">
+            <PackageCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div>
+              <Label className="text-sm font-medium text-gray-900 dark:text-white">
+                Rastrear inventario
+              </Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Si se desactiva, las ventas no descontarán stock de este producto
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={formData.track_stock}
+            onCheckedChange={handleTrackStockChange}
+          />
+        </div>
       </div>
       
       {/* Metadatos y botón guardar */}

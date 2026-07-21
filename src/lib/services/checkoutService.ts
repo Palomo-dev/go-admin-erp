@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 
 export interface CheckoutReservation {
   id: string;
@@ -305,22 +306,145 @@ class CheckoutService {
       if (folioError) throw folioError;
     }
 
+    // Crear venta desde el folio si hay items
+    if (folio) {
+      try {
+        await this.createSaleFromFolio(folio.id, reservationId, userId, generateInvoice);
+      } catch (saleError) {
+        console.warn('⚠️ Error creando venta desde folio (no bloquea checkout):', saleError);
+      }
+    }
+
     // Crear tarea de limpieza para las habitaciones
     await this.createHousekeepingTasks(reservationId);
 
     // Actualizar estado de espacios a 'cleaning' después de crear tareas de limpieza
     await this.updateSpaceStatus(reservationId, 'cleaning');
 
-    // TODO: Implementar generación de factura/recibo si es necesario
-    if (generateInvoice) {
-      // Lógica para generar factura
-      console.log('Generar factura para reserva:', reservationId);
+    // La factura se genera en createSaleFromFolio si generateInvoice es true
+  }
+
+  /**
+   * Crear venta + sale_items desde los folio_items
+   * El stock ya fue descontado al agregar consumos, aqui no se descuenta de nuevo.
+   */
+  private async createSaleFromFolio(
+    folioId: string,
+    reservationId: string,
+    userId?: string,
+    generateInvoice: boolean = false
+  ): Promise<void> {
+    // Obtener datos de la reserva y folio
+    const { data: reservation } = await supabase
+      .from('reservations')
+      .select('organization_id, branch_id, customer_id, total_estimated')
+      .eq('id', reservationId)
+      .single();
+
+    if (!reservation) return;
+
+    const { data: folioItems } = await supabase
+      .from('folio_items')
+      .select('id, description, amount, product_id, quantity, unit_price, source')
+      .eq('folio_id', folioId)
+      .order('created_at', { ascending: true });
+
+    if (!folioItems || folioItems.length === 0) return;
+
+    const subtotal = folioItems.reduce((sum, item) => sum + Number(item.amount), 0);
+    const branchId = reservation.branch_id || getCurrentBranchId();
+
+    // Crear la venta
+    const { data: sale, error: saleError } = await supabase
+      .from('sales')
+      .insert({
+        organization_id: reservation.organization_id,
+        branch_id: branchId,
+        customer_id: reservation.customer_id || null,
+        user_id: userId || null,
+        subtotal,
+        tax_total: 0,
+        discount_total: 0,
+        total: subtotal,
+        balance: 0,
+        status: 'paid',
+        payment_status: 'paid',
+        notes: `Checkout reserva ${reservationId.slice(0, 8)}`,
+        sale_date: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (saleError) {
+      console.error('Error creando sale desde folio:', saleError);
+      return;
     }
 
-    if (generateReceipt) {
-      // Lógica para generar recibo
-      console.log('Generar recibo para reserva:', reservationId);
+    // Crear sale_items desde folio_items
+    const saleItems = folioItems.map((item: any) => ({
+      sale_id: sale.id,
+      product_id: item.product_id || null,
+      quantity: Number(item.quantity) || 1,
+      unit_price: Number(item.unit_price) || Number(item.amount),
+      total: Number(item.amount),
+      tax_amount: 0,
+      discount_amount: 0,
+      notes: item.description,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('sale_items')
+      .insert(saleItems);
+
+    if (itemsError) {
+      console.error('Error creando sale_items desde folio:', itemsError);
     }
+
+    // Vincular folio con la venta
+    await supabase
+      .from('folios')
+      .update({ sale_id: sale.id })
+      .eq('id', folioId);
+
+    // Generar factura si se solicitó
+    if (generateInvoice) {
+      try {
+        const { data: invoiceCount } = await supabase
+          .from('invoice_sales')
+          .select('id')
+          .eq('organization_id', reservation.organization_id);
+
+        const invoiceNumber = `FAC-${(invoiceCount?.length || 0) + 1}-${new Date().getFullYear()}`;
+
+        await supabase
+          .from('invoice_sales')
+          .insert({
+            organization_id: reservation.organization_id,
+            branch_id: branchId,
+            customer_id: reservation.customer_id || null,
+            sale_id: sale.id,
+            number: invoiceNumber,
+            issue_date: new Date().toISOString(),
+            due_date: new Date().toISOString(),
+            currency: 'COP',
+            subtotal,
+            tax_total: 0,
+            total: subtotal,
+            balance: 0,
+            status: 'paid',
+            payment_method: 'folio',
+            document_type: 'invoice',
+            created_by: userId || null,
+            notes: `Factura desde checkout - Reserva ${reservationId.slice(0, 8)}`,
+          });
+
+        console.log(`📄 Factura generada para reserva ${reservationId.slice(0, 8)}`);
+      } catch (invoiceError) {
+        console.warn('⚠️ Error generando factura (no bloquea checkout):', invoiceError);
+      }
+    }
+
+    console.log(`🧾 Venta creada desde folio: ${sale.id} para reserva ${reservationId.slice(0, 8)}`);
   }
 
   /**

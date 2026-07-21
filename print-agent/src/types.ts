@@ -47,6 +47,8 @@ export interface SaleTicketPrintPayload {
   saleId: string;
   saleNumber?: string;
   customerName?: string;
+  title?: string;
+  tableName?: string;
   createdAt: string;
   items: SaleTicketItemPayload[];
   total: number;

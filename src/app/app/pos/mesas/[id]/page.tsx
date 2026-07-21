@@ -454,7 +454,29 @@ export default function MesaDetallePage() {
     }
   };
 
-  const imprimirPreCuenta = (cuenta: PreCuenta) => {
+  const imprimirPreCuenta = async (cuenta: PreCuenta) => {
+    // Impresión física por el Print Agent (estación 'cashier'), best-effort.
+    // Si hay impresora de caja configurada, sale por ella; si no, fallback al navegador.
+    if (branch_id) {
+      try {
+        const { enqueued } = await PrintJobsService.enqueuePreCuenta(branch_id, {
+          tableId,
+          tableName: session?.restaurant_tables?.name || mesaNombre,
+          createdAt: new Date().toISOString(),
+          total: cuenta.total,
+          items: cuenta.items.map((item) => ({
+            productName: item.product?.name || 'Producto',
+            quantity: item.quantity,
+            unitPrice: item.unit_price,
+            total: item.total,
+          })),
+        });
+        if (enqueued > 0) return;
+      } catch (err) {
+        console.warn('No se pudo encolar impresión física de pre-cuenta:', err);
+      }
+    }
+
     const businessInfo = organization ? {
       name: organization.name || '',
       nit: (organization as any).tax_id || '',

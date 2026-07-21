@@ -19,10 +19,11 @@ interface DownloadDesktopDialogProps {
 
 /**
  * URL de descarga del instalador de Go Admin Desktop.
- * Por ahora apunta a las instrucciones; cuando exista el .exe (GitHub Releases),
- * actualizar esta constante.
+ * Apunta a "latest" en GitHub Releases: siempre descarga la última versión
+ * publicada sin necesidad de actualizar esta constante.
  */
-const DOWNLOAD_URL: string | null = null;
+const DOWNLOAD_URL: string | null =
+  'https://github.com/Palomo-dev/go-admin-desktop/releases/latest/download/GoAdminDesktop-Setup.exe';
 
 const STEPS = [
   {

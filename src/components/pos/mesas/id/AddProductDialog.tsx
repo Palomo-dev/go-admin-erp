@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Minus, Search, X, ShoppingCart, Package, Image as ImageIcon } from 'lucide-react';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
-import type { Product, ProductToAdd } from './types';
+import type { Product, ProductToAdd, SelectedProductModifier } from './types';
 import { POSService } from '@/lib/services/posService';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
@@ -95,14 +95,7 @@ export function AddProductDialog({
 
   const loadCategories = async () => {
     try {
-      const { supabase } = await import('@/lib/supabase/config');
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name, slug, rank, icon, color, image_url, display_order')
-        .order('rank')
-        .order('name');
-      
-      if (error) throw error;
+      const data = await POSService.getCategories();
       setCategories(data || []);
     } catch (error) {
       console.error('Error cargando categorías:', error);
@@ -134,33 +127,35 @@ export function AddProductDialog({
 
   // Agregar producto al carrito (manejar variantes)
   const handleProductClick = (product: any) => {
-    // Si el producto tiene variantes, abrir el selector
-    if (product.has_variants && product.variant_count > 0) {
+    // Si el producto tiene variantes o modificadores configurados, abrir el selector
+    if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
     } else {
-      // Producto simple, agregar directamente
+      // Producto simple sin modificadores, agregar directamente
       addToCart(product);
     }
   };
 
-  // Manejar selección de variante desde el diálogo
-  const handleVariantSelect = (variant: any) => {
+  // Manejar selección de variante (y sus modificadores) desde el diálogo
+  const handleVariantSelect = (variant: any, modifiers: SelectedProductModifier[] = []) => {
     // La variante hereda la estación del producto padre (o la categoría de este) si no tiene una propia
     const inheritedStation = variant.station || selectedParentProduct?.station || selectedParentProduct?.categories?.station || null;
     const inheritedRequiresPreparation = selectedParentProduct?.categories?.requires_preparation ?? false;
-    addToCart({ ...variant, station: inheritedStation, requires_preparation: inheritedRequiresPreparation, categories: selectedParentProduct?.categories });
+    addToCart({ ...variant, station: inheritedStation, requires_preparation: inheritedRequiresPreparation, categories: selectedParentProduct?.categories }, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
 
   // Agregar producto al carrito
-  const addToCart = (product: any) => {
-    const unitPrice = product.price || 0;
-    if (unitPrice === 0) {
+  const addToCart = (product: any, modifiers: SelectedProductModifier[] = []) => {
+    const basePrice = product.price || 0;
+    if (basePrice === 0) {
       alert('Este producto no tiene precio configurado');
       return;
     }
+    const extraTotal = modifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
+    const unitPrice = basePrice + extraTotal;
 
     const newCart = new Map(cart);
     const existing = newCart.get(product.id);
@@ -179,6 +174,8 @@ export function AddProductDialog({
         station,
         requires_preparation,
         guest_number: comensales > 1 ? 1 : undefined,
+        variant_data: product.variant_data || null,
+        modifiers: modifiers.length > 0 ? modifiers : undefined,
       });
     }
 
@@ -288,6 +285,7 @@ export function AddProductDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-[100vw] sm:max-w-[95vw] w-full sm:w-[1400px] max-h-[100vh] sm:max-h-[85vh] h-[100vh] sm:h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
         <div className="flex flex-col sm:flex-row flex-1 min-h-0">
@@ -351,6 +349,7 @@ export function AddProductDialog({
                     const comparePrice = product.compare_price || 0;
                     const inCart = cart.has(product.id);
                     const hasVariants = product.has_variants && product.variant_count > 0;
+                    const hasModifiersOnly = !hasVariants && product.has_modifiers;
 
                     return (
                       <div
@@ -362,7 +361,9 @@ export function AddProductDialog({
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
                             : hasVariants
                               ? 'border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-800/50 hover:border-purple-400'
-                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 hover:border-blue-300'
+                              : hasModifiersOnly
+                                ? 'border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-800/50 hover:border-amber-400'
+                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 hover:border-blue-300'
                         )}
                       >
                         {/* Imagen */}
@@ -394,6 +395,15 @@ export function AddProductDialog({
                               comparePrice > price ? 'top-8' : 'top-2'
                             )}>
                               {product.variant_count} var.
+                            </div>
+                          )}
+                          {/* Badge de personalización (producto simple con modificadores) */}
+                          {hasModifiersOnly && (
+                            <div className={cn(
+                              'absolute left-2 bg-amber-600 text-white rounded-full px-2 py-0.5 text-[0.6rem] font-bold z-10',
+                              comparePrice > price ? 'top-8' : 'top-2'
+                            )}>
+                              Personalizable
                             </div>
                           )}
                           {inCart && (
@@ -470,7 +480,7 @@ export function AddProductDialog({
                       key={item.product_id}
                       className="bg-white dark:bg-gray-800 rounded-lg p-3 border"
                     >
-                      <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-start justify-between mb-1">
                         <h4 className="font-semibold text-sm flex-1 pr-2">
                           {item.product_name}
                         </h4>
@@ -483,6 +493,26 @@ export function AddProductDialog({
                           <X className="h-3 w-3" />
                         </Button>
                       </div>
+
+                      {item.variant_data && Object.keys(item.variant_data).length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {Object.entries(item.variant_data).filter(([, v]) => !!v).map(([attr, value]) => (
+                            <Badge key={attr} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300">
+                              {attr}: {value}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      {item.modifiers && item.modifiers.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {item.modifiers.map((mod) => (
+                            <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                              {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-1 mb-2">
                         <Button
@@ -612,16 +642,17 @@ export function AddProductDialog({
           </div>
         </div>
       </DialogContent>
-      
-      {/* Selector de variantes */}
-      {selectedParentProduct && (
-        <VariantSelectorDialog
-          open={showVariantDialog}
-          onOpenChange={setShowVariantDialog}
-          product={selectedParentProduct}
-          onSelectVariant={handleVariantSelect}
-        />
-      )}
     </Dialog>
+
+    {/* Selector de variantes: fuera del Dialog padre para evitar el conflicto de Radix con Dialogs anidados */}
+    {selectedParentProduct && (
+      <VariantSelectorDialog
+        open={showVariantDialog}
+        onOpenChange={setShowVariantDialog}
+        product={selectedParentProduct}
+        onSelectVariant={handleVariantSelect}
+      />
+    )}
+    </>
   );
 }

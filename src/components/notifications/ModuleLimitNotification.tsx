@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  AlertTriangle, 
-  Crown, 
-  X, 
-  ExternalLink,
-  Info
+import { Progress } from '@/components/ui/progress';
+import {
+  AlertTriangle,
+  Sparkles,
+  X,
+  ArrowUpRight,
+  LayoutGrid,
 } from 'lucide-react';
 import { useActiveModules } from '@/hooks/useActiveModules';
 
@@ -19,15 +19,14 @@ interface ModuleLimitNotificationProps {
   showUpgrade?: boolean;
 }
 
-export default function ModuleLimitNotification({ 
-  organizationId, 
+export default function ModuleLimitNotification({
+  organizationId,
   onDismiss,
-  showUpgrade = true 
+  showUpgrade = true,
 }: ModuleLimitNotificationProps) {
   const [dismissed, setDismissed] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
 
-  const { organizationStatus, loading } = useActiveModules(organizationId);
+  const { organizationStatus, activeModules, loading } = useActiveModules(organizationId);
 
   useEffect(() => {
     // Verificar si ya fue dismisseada en esta sesión
@@ -56,7 +55,7 @@ export default function ModuleLimitNotification({
   const maxModules = organizationStatus.plan.max_modules;
   const hasAvailableModules = organizationStatus.available_modules && organizationStatus.available_modules.length > 0;
   const usagePercentage = maxModules > 0 ? (totalActiveCount / maxModules) * 100 : 0;
-  
+
   // No mostrar si todos los módulos disponibles ya están activos
   if (!hasAvailableModules) {
     return null;
@@ -64,119 +63,105 @@ export default function ModuleLimitNotification({
 
   // Solo mostrar si está cerca del límite (80%) o lo ha alcanzado
   const shouldShow = usagePercentage >= 80;
-  
+
   if (!shouldShow) {
     return null;
   }
 
   const isAtLimit = totalActiveCount >= maxModules;
-  const isNearLimit = usagePercentage >= 80 && !isAtLimit;
+
+  // Módulos pagados activos, obtenidos dinámicamente desde la tabla `modules` (is_core)
+  const activePaidModules = activeModules.filter((m) => !m.is_core);
+
+  const accent = isAtLimit
+    ? {
+        ring: 'ring-red-100 dark:ring-red-900/30',
+        border: 'border-red-200 dark:border-red-900/50',
+        iconBg: 'bg-red-100 dark:bg-red-900/40',
+        icon: 'text-red-600 dark:text-red-400',
+        title: 'text-red-900 dark:text-red-200',
+        text: 'text-red-700 dark:text-red-300/90',
+        progress: 'bg-red-500',
+        cta: 'bg-red-600 hover:bg-red-700',
+      }
+    : {
+        ring: 'ring-amber-100 dark:ring-amber-900/30',
+        border: 'border-amber-200 dark:border-amber-900/50',
+        iconBg: 'bg-amber-100 dark:bg-amber-900/40',
+        icon: 'text-amber-600 dark:text-amber-400',
+        title: 'text-amber-900 dark:text-amber-200',
+        text: 'text-amber-700 dark:text-amber-300/90',
+        progress: 'bg-amber-500',
+        cta: 'bg-amber-600 hover:bg-amber-700',
+      };
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-md">
-      <Alert className={`border-l-4 ${
-        isAtLimit 
-          ? 'border-l-red-500 bg-red-50 border-red-200' 
-          : 'border-l-yellow-500 bg-yellow-50 border-yellow-200'
-      }`}>
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3 flex-1">
+    <div className="fixed top-4 right-4 z-50 w-[22rem] animate-in slide-in-from-top-2 fade-in duration-300">
+      <div
+        className={`rounded-xl border ${accent.border} bg-white dark:bg-gray-900 shadow-xl ring-1 ${accent.ring} overflow-hidden`}
+      >
+        <div className="flex items-start gap-3 p-4">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${accent.iconBg}`}>
             {isAtLimit ? (
-              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+              <AlertTriangle className={`h-4.5 w-4.5 ${accent.icon}`} />
             ) : (
-              <Info className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <LayoutGrid className={`h-4.5 w-4.5 ${accent.icon}`} />
             )}
-            
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className={`font-semibold ${
-                  isAtLimit ? 'text-red-800' : 'text-yellow-800'
-                }`}>
-                  {isAtLimit ? 'Límite de módulos alcanzado' : 'Cerca del límite de módulos'}
-                </span>
-                <Badge variant="outline" className="text-xs">
-                  {totalActiveCount}/{maxModules}
-                </Badge>
-              </div>
-              
-              <AlertDescription className={`text-sm ${
-                isAtLimit ? 'text-red-700' : 'text-yellow-700'
-              }`}>
-                {isAtLimit ? (
-                  <>
-                    Has alcanzado el límite de módulos de tu plan <strong>{organizationStatus.plan.name}</strong>. 
-                    Para activar más módulos, considera actualizar tu plan.
-                  </>
-                ) : (
-                  <>
-                    Estás usando {totalActiveCount} de {maxModules} módulos disponibles en tu plan{' '}
-                    <strong>{organizationStatus.plan.name}</strong>.
-                  </>
-                )}
-              </AlertDescription>
+          </div>
 
-              {showDetails && (
-                <div className="mt-3 p-3 bg-white/50 rounded border text-xs space-y-1">
-                  <div className="font-medium">Módulos pagados activos:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {organizationStatus.active_modules
-                      .filter(moduleCode => {
-                        // Filtrar solo módulos pagados (excluir core)
-                        const coreModules = ['organizations', 'subscriptions', 'branches', 'branding', 'roles'];
-                        return !coreModules.includes(moduleCode);
-                      })
-                      .map(moduleCode => (
-                        <Badge key={moduleCode} variant="secondary" className="text-xs">
-                          {moduleCode}
-                        </Badge>
-                      ))}
-                  </div>
-                  {organizationStatus.paid_modules_count < totalActiveCount && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      Incluye {totalActiveCount - organizationStatus.paid_modules_count} módulos core
-                    </div>
-                  )}
-                </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className={`text-sm font-semibold leading-tight ${accent.title}`}>
+                {isAtLimit ? 'Límite de módulos alcanzado' : 'Cerca del límite de módulos'}
+              </h3>
+              <button
+                onClick={handleDismiss}
+                className="shrink-0 rounded-md p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
+                aria-label="Cerrar"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <p className={`mt-1 text-xs leading-relaxed ${accent.text}`}>
+              Plan <span className="font-medium">{organizationStatus.plan.name}</span> ·{' '}
+              {totalActiveCount} de {maxModules} módulos en uso
+              {activePaidModules.length > 0 && (
+                <span className="text-gray-400 dark:text-gray-500"> ({activePaidModules.length} adicionales)</span>
               )}
+            </p>
 
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowDetails(!showDetails)}
-                  className="h-7 px-2 text-xs"
-                >
-                  {showDetails ? 'Ocultar detalles' : 'Ver detalles'}
-                </Button>
-                
-                {showUpgrade && (
-                  <Button
-                    size="sm"
-                    className={`h-7 px-3 text-xs ${
-                      isAtLimit 
-                        ? 'bg-red-600 hover:bg-red-700' 
-                        : 'bg-yellow-600 hover:bg-yellow-700'
-                    }`}
-                  >
-                    <Crown className="h-3 w-3 mr-1" />
-                    Actualizar Plan
-                    <ExternalLink className="h-3 w-3 ml-1" />
-                  </Button>
-                )}
+            <div className="mt-3 space-y-1.5">
+              <Progress
+                value={Math.min(usagePercentage, 100)}
+                className="h-1.5 bg-gray-100 dark:bg-gray-800"
+                indicatorClassName={accent.progress}
+              />
+              <div className="flex justify-between text-[11px] text-gray-400 dark:text-gray-500">
+                <span>{totalActiveCount} activos</span>
+                <span>{Math.max(maxModules - totalActiveCount, 0)} disponibles</span>
               </div>
             </div>
+
+            <div className="mt-3 flex items-center gap-2">
+              <Link href="/app/organizacion/modulos" className="flex-1">
+                <Button variant="outline" size="sm" className="h-7 w-full text-xs">
+                  Ver módulos
+                </Button>
+              </Link>
+              {showUpgrade && (
+                <Link href="/app/plan" className="flex-1">
+                  <Button size="sm" className={`h-7 w-full text-xs text-white ${accent.cta}`}>
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Mejorar plan
+                    <ArrowUpRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDismiss}
-            className="h-6 w-6 p-0 hover:bg-transparent"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </div>
-      </Alert>
+      </div>
     </div>
   );
 }

@@ -336,41 +336,88 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                 <p className="text-[0.65rem] sm:text-xs mt-1">Busca productos para agregar</p>
               </div>
             ) : (
-              cart.items.map((item) => (
+              cart.items.map((item) => {
+                const productImage = (item.product as any)?.image as string | null | undefined;
+                const variantEntries = (item.product as any)?.variant_data
+                  ? Object.entries((item.product as any).variant_data as Record<string, string>).filter(([, v]) => !!v)
+                  : [];
+
+                return (
                 <Card key={item.id} className="dark:bg-gray-800/50 dark:border-gray-700/50 bg-gray-50/50 border-gray-200 shadow-sm">
                   <CardContent className="p-2 sm:p-2.5">
                     {/* Layout responsive: móvil vertical, desktop horizontal */}
                     <div className="space-y-3 lg:space-y-0">
                       {/* Información del producto - RESPONSIVE */}
                       <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0 pr-2">
-                          {/* Nombre del producto con ellipsis */}
-                          <h4 className="font-medium text-xs sm:text-sm dark:text-gray-100 text-gray-900 line-clamp-2 leading-tight" title={item.product.name}>
-                            {item.product.name}
-                          </h4>
-                          
-                          {/* Info secundaria responsive */}
-                          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 mt-1">
-                            <Badge variant="outline" className="text-[0.65rem] sm:text-xs px-1 py-0 dark:border-gray-600 dark:text-gray-400 border-gray-400 text-gray-600 shrink-0">
-                              {item.product.sku}
-                            </Badge>
-                            <span className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600">
-                              {formatCurrency(item.unit_price)} / {item.product.unit_code}
-                            </span>
-                          </div>
-                          
-                          {/* Mostrar estado de impuesto */}
-                          {item.tax_excluded ? (
-                            <div className="text-[0.65rem] sm:text-xs dark:text-orange-400 text-orange-600 mt-0.5 sm:mt-1">
-                              Sin impuesto (excluido)
-                            </div>
-                          ) : (
-                            item.tax_amount != null && item.tax_amount > 0 && (
-                              <div className="text-[0.65rem] sm:text-xs dark:text-green-400 text-green-600 mt-0.5 sm:mt-1">
-                                +{formatCurrency(item.tax_amount)} impuestos
+                        <div className="flex items-start gap-2 flex-1 min-w-0 pr-2">
+                          {/* Imagen del producto */}
+                          <div className="shrink-0">
+                            {productImage ? (
+                              <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                <img
+                                  src={productImage}
+                                  alt={item.product.name}
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
-                            )
-                          )}
+                            ) : (
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                <Package className="h-5 w-5 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            {/* Nombre del producto con ellipsis */}
+                            <h4 className="font-medium text-xs sm:text-sm dark:text-gray-100 text-gray-900 line-clamp-2 leading-tight" title={item.product.name}>
+                              {item.product.name}
+                            </h4>
+
+                            {/* Badges de variantes seleccionadas */}
+                            {variantEntries.length > 0 && (
+                              <div className="flex items-center gap-1 flex-wrap mt-1">
+                                {variantEntries.map(([attr, value]) => (
+                                  <Badge key={attr} variant="outline" className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300 shrink-0">
+                                    {attr}: {value}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Badges de modificadores seleccionados */}
+                            {item.modifiers && item.modifiers.length > 0 && (
+                              <div className="flex items-center gap-1 flex-wrap mt-1">
+                                {item.modifiers.map((mod) => (
+                                  <Badge key={mod.modifierId} variant="outline" className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300 shrink-0">
+                                    {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Info secundaria responsive */}
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 mt-1">
+                              <Badge variant="outline" className="text-[0.65rem] sm:text-xs px-1 py-0 dark:border-gray-600 dark:text-gray-400 border-gray-400 text-gray-600 shrink-0">
+                                {item.product.sku}
+                              </Badge>
+                              <span className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600">
+                                {formatCurrency(item.unit_price)} / {item.product.unit_code}
+                              </span>
+                            </div>
+
+                            {/* Mostrar estado de impuesto */}
+                            {item.tax_excluded ? (
+                              <div className="text-[0.65rem] sm:text-xs dark:text-orange-400 text-orange-600 mt-0.5 sm:mt-1">
+                                Sin impuesto (excluido)
+                              </div>
+                            ) : (
+                              item.tax_amount != null && item.tax_amount > 0 && (
+                                <div className="text-[0.65rem] sm:text-xs dark:text-green-400 text-green-600 mt-0.5 sm:mt-1">
+                                  +{formatCurrency(item.tax_amount)} impuestos
+                                </div>
+                              )
+                            )}
+                          </div>
                         </div>
                         
                         {/* Total del item - visible en desktop */}
@@ -469,7 +516,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                     </div>
                   </CardContent>
                 </Card>
-              ))
+                );
+              })
             )}
           </div>
 

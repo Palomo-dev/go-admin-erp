@@ -13,6 +13,9 @@ import {
 // Valor especial para representar "Todas las sucursales"
 export const ALL_BRANCHES = 'all' as const;
 
+// Evento global para notificar que el listado de sucursales cambió (CRUD)
+export const BRANCHES_UPDATED_EVENT = 'branches-updated';
+
 // Selección puede ser una sucursal concreta (id) o "todas"
 export type BranchSelection = number | typeof ALL_BRANCHES;
 
@@ -34,6 +37,8 @@ interface BranchContextValue {
   isLoading: boolean;
   /** true si el usuario puede elegir "Todas las sucursales" (tiene acceso a >1) */
   canSelectAll: boolean;
+  /** Refresca el listado de sucursales desde la BD */
+  refreshBranches: () => Promise<void>;
 }
 
 const BranchContext = createContext<BranchContextValue | undefined>(undefined);
@@ -48,65 +53,71 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
   const [canSelectAll, setCanSelectAll] = useState<boolean>(false);
 
   // Cargar sucursales y restaurar selección persistida
-  useEffect(() => {
+  const loadBranches = useCallback(async () => {
     const orgId = getOrganizationId();
     if (!orgId) {
       setIsLoading(false);
       return;
     }
 
-    let cancelled = false;
+    try {
+      setIsLoading(true);
+      const { branches: data, canSelectAll: allowAll } =
+        await branchService.getAccessibleBranches(orgId);
+      setBranches(data);
+      setCanSelectAll(allowAll);
 
-    const load = async () => {
+      // Restaurar modo "Todas" (solo si el usuario puede seleccionarlo)
+      let allActive = false;
       try {
-        setIsLoading(true);
-        const { branches: data, canSelectAll: allowAll } =
-          await branchService.getAccessibleBranches(orgId);
-        if (cancelled) return;
-        setBranches(data);
-        setCanSelectAll(allowAll);
-
-        // Restaurar modo "Todas" (solo si el usuario puede seleccionarlo)
-        let allActive = false;
-        try {
-          allActive = allowAll && localStorage.getItem(BRANCH_ALL_KEY) === '1';
-        } catch {
-          allActive = false;
-        }
-
-        // Restaurar sucursal concreta (o elegir principal/primera)
-        const savedId = getCurrentBranchId();
-        let concrete: number | null = null;
-        if (savedId && data.some((b) => b.id === savedId)) {
-          concrete = savedId;
-        } else if (data.length > 0) {
-          const main = data.find((b) => b.is_main === true) || data[0];
-          concrete = main?.id ?? null;
-          if (concrete) {
-            try {
-              localStorage.setItem('currentBranchId', concrete.toString());
-              sessionStorage.setItem('currentBranchId', concrete.toString());
-            } catch {
-              /* noop */
-            }
-            invalidateBranchIdCache();
-          }
-        }
-
-        setSelectedBranchId(concrete);
-        setIsAllSelected(allActive);
-      } catch (error) {
-        console.error('Error cargando sucursales en BranchContext:', error);
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        allActive = allowAll && localStorage.getItem(BRANCH_ALL_KEY) === '1';
+      } catch {
+        allActive = false;
       }
-    };
 
-    load();
-    return () => {
-      cancelled = true;
-    };
+      // Restaurar sucursal concreta (o elegir principal/primera)
+      const savedId = getCurrentBranchId();
+      let concrete: number | null = null;
+      if (savedId && data.some((b) => b.id === savedId)) {
+        concrete = savedId;
+      } else if (data.length > 0) {
+        const main = data.find((b) => b.is_main === true) || data[0];
+        concrete = main?.id ?? null;
+        if (concrete) {
+          try {
+            localStorage.setItem('currentBranchId', concrete.toString());
+            sessionStorage.setItem('currentBranchId', concrete.toString());
+          } catch {
+            /* noop */
+          }
+          invalidateBranchIdCache();
+        }
+      }
+
+      setSelectedBranchId(concrete);
+      setIsAllSelected(allActive);
+    } catch (error) {
+      console.error('Error cargando sucursales en BranchContext:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Carga inicial
+  useEffect(() => {
+    loadBranches();
+  }, [loadBranches]);
+
+  // Escuchar evento de actualización de sucursales (CRUD en BranchesTab)
+  useEffect(() => {
+    const handleBranchesUpdated = () => {
+      loadBranches();
+    };
+    window.addEventListener(BRANCHES_UPDATED_EVENT, handleBranchesUpdated);
+    return () => {
+      window.removeEventListener(BRANCHES_UPDATED_EVENT, handleBranchesUpdated);
+    };
+  }, [loadBranches]);
 
   const setSelectedBranch = useCallback((selection: BranchSelection) => {
     try {
@@ -144,8 +155,9 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
       setSelectedBranch,
       isLoading,
       canSelectAll,
+      refreshBranches: loadBranches,
     }),
-    [branches, selectedBranchId, isAllSelected, branchFilter, setSelectedBranch, isLoading, canSelectAll]
+    [branches, selectedBranchId, isAllSelected, branchFilter, setSelectedBranch, isLoading, canSelectAll, loadBranches]
   );
 
   return <BranchContext.Provider value={value}>{children}</BranchContext.Provider>;

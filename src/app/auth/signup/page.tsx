@@ -414,16 +414,16 @@ function SignupContent() {
           .update({
             name: signupData.branchName || 'Sucursal Principal',
             branch_code: signupData.branchCode || 'MAIN-001',
-            address: signupData.branchAddress || null,
-            city: signupData.branchCity || null,
-            state: signupData.branchState || null,
-            country: signupData.branchCountry === 'COL' ? 'Colombia' : (signupData.branchCountry || 'Colombia'),
-            country_code: signupData.branchCountryCode || null,
+            address: signupData.branchAddress || signupData.organizationAddress || null,
+            city: signupData.branchCity || signupData.organizationCity || null,
+            state: signupData.branchState || signupData.organizationState || null,
+            country: (signupData.branchCountry || signupData.organizationCountry || 'Colombia') === 'COL' ? 'Colombia' : (signupData.branchCountry || signupData.organizationCountry || 'Colombia'),
+            country_code: signupData.branchCountryCode || signupData.organizationCountryCode || null,
             state_code: signupData.branchStateCode || null,
-            municipality_id: signupData.branchMunicipalityId || null,
-            postal_code: signupData.branchPostalCode || null,
-            phone: signupData.branchPhone || null,
-            email: signupData.branchEmail || null,
+            municipality_id: signupData.branchMunicipalityId || signupData.organizationMunicipalityId || null,
+            postal_code: signupData.branchPostalCode || signupData.organizationPostalCode || null,
+            phone: signupData.branchPhone || signupData.organizationPhone || null,
+            email: signupData.branchEmail || signupData.organizationEmail || email,
             tax_identification: signupData.branchTaxIdentification || null,
             opening_hours: openingHours,
             features: features,
@@ -454,6 +454,33 @@ function SignupContent() {
           console.warn('⚠️ No se pudo asignar manager_id a la sucursal principal:', managerError);
         } else {
           console.log('✅ Creador asignado como gerente de la sucursal principal');
+        }
+
+        // 4.6. Crear registro en member_branches para que la asignación sea visible
+        const branchId = updatedBranches?.[0]?.id;
+        if (branchId) {
+          const { data: memberRecord, error: memberFetchError } = await supabase
+            .from('organization_members')
+            .select('id')
+            .eq('organization_id', orgId)
+            .eq('user_id', userId)
+            .single();
+
+          if (memberFetchError) {
+            console.warn('⚠️ No se pudo obtener el member_id para member_branches:', memberFetchError);
+          } else if (memberRecord) {
+            const { error: memberBranchError } = await supabase
+              .from('member_branches')
+              .insert({
+                organization_member_id: memberRecord.id,
+                branch_id: branchId
+              });
+            if (memberBranchError) {
+              console.warn('⚠️ No se pudo crear registro en member_branches:', memberBranchError);
+            } else {
+              console.log('✅ Usuario asignado a la sucursal principal en member_branches');
+            }
+          }
         }
         
         // 5. Crear/actualizar suscripción

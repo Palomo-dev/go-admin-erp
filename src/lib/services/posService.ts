@@ -9,6 +9,7 @@ import {
   Customer,
   Cart,
   CartItem,
+  CartItemModifier,
   Sale,
   SaleItem,
   Payment,
@@ -227,6 +228,17 @@ export class POSService {
         }
       }
 
+      // Detectar qué productos tienen grupos de modificadores configurados (ej. salsas, extras),
+      // incluso si no tienen variantes, para poder ofrecer el selector en esos casos.
+      let productsWithModifiers = new Set<number>();
+      if (productIds.length > 0) {
+        const { data: modifierGroups } = await supabase
+          .from('product_modifier_groups')
+          .select('product_id')
+          .in('product_id', productIds);
+        (modifierGroups || []).forEach((g: any) => productsWithModifiers.add(g.product_id));
+      }
+
       const products = data?.map((product: any) => ({
         ...product,
         category: product.categories,
@@ -236,6 +248,7 @@ export class POSService {
         // Información de variantes
         has_variants: product.is_parent === true,
         variant_count: variantCountMap[product.id] || 0,
+        has_modifiers: productsWithModifiers.has(product.id),
         // Mantener compatibilidad con código que use 'image'
         image: productImagesMap[product.id]?.[0]?.storage_path ? 
           getStorageImageUrl(productImagesMap[product.id][0].storage_path) : null
@@ -289,13 +302,30 @@ export class POSService {
         }
       }
 
-      return data?.map((variant: any) => ({
-        ...variant,
-        price: variant.product_prices?.[0]?.price || null,
-        product_images: variantImagesMap[variant.id] || [],
-        image: variantImagesMap[variant.id]?.[0]?.storage_path ? 
-          getStorageImageUrl(variantImagesMap[variant.id][0].storage_path) : null
-      })) || [];
+      // Fallback: si una variante no tiene imagen propia, usar la del producto padre
+      const { data: parentImages } = await supabase
+        .from('product_images')
+        .select('id, product_id, storage_path, is_primary')
+        .eq('product_id', parentProductId);
+
+      const parentImage = parentImages?.find((img: any) => img.is_primary) || parentImages?.[0];
+
+      return data?.map((variant: any) => {
+        const ownImages = variantImagesMap[variant.id] || [];
+        const primaryOwnImage = ownImages.find((img: any) => img.is_primary) || ownImages[0];
+        const resolvedImage = primaryOwnImage?.storage_path
+          ? getStorageImageUrl(primaryOwnImage.storage_path)
+          : parentImage?.storage_path
+            ? getStorageImageUrl(parentImage.storage_path)
+            : null;
+
+        return {
+          ...variant,
+          price: variant.product_prices?.[0]?.price || null,
+          product_images: ownImages.length > 0 ? ownImages : (parentImages || []),
+          image: resolvedImage
+        };
+      }) || [];
     } catch (error) {
       console.error('Error getting product variants:', error);
       throw error;
@@ -463,7 +493,12 @@ export class POSService {
     }
   }
 
-  static async addItemToCart(cartId: string, product: Product, quantity: number = 1): Promise<Cart> {
+  static async addItemToCart(
+    cartId: string,
+    product: Product,
+    quantity: number = 1,
+    modifiers?: CartItemModifier[]
+  ): Promise<Cart> {
     try {
       const carts = await this.getActiveCarts();
       const cartIndex = carts.findIndex(c => c.id === cartId);
@@ -471,7 +506,11 @@ export class POSService {
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
       const cart = carts[cartIndex];
-      const existingItemIndex = cart.items.findIndex(item => item.product_id === product.id);
+      const modifiersKey = (mods?: CartItemModifier[]) =>
+        (mods || []).map((m) => m.modifierId).sort().join(',');
+      const existingItemIndex = cart.items.findIndex(
+        item => item.product_id === product.id && modifiersKey(item.modifiers) === modifiersKey(modifiers)
+      );
 
       if (existingItemIndex >= 0) {
         // Actualizar cantidad del item existente
@@ -479,17 +518,20 @@ export class POSService {
         cart.items[existingItemIndex].total = cart.items[existingItemIndex].quantity * cart.items[existingItemIndex].unit_price;
       } else {
         // Agregar nuevo item
+        const basePrice = await this.getProductPrice(product.id); // Implementar función de precios
+        const extraTotal = (modifiers || []).reduce((sum, m) => sum + (m.extraPrice || 0), 0);
         const newItem: CartItem = {
           id: crypto.randomUUID(),
           cart_id: cartId,
           product_id: product.id,
           product,
           quantity,
-          unit_price: await this.getProductPrice(product.id), // Implementar función de precios
+          unit_price: basePrice + extraTotal,
           total: 0,
           discount_amount: 0,
           tax_amount: 0,
           tax_rate: 0,
+          modifiers: modifiers && modifiers.length > 0 ? modifiers : undefined,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -1054,17 +1096,23 @@ export class POSService {
       if (saleError) throw saleError;
 
       // Crear los items de venta
-      const saleItems = cart.items.map(item => ({
-        sale_id: saleData.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total: item.total,
-        tax_amount: item.tax_amount || 0,
-        tax_rate: item.tax_rate || 0,
-        discount_amount: item.discount_amount || 0,
-        notes: item.notes ? JSON.stringify(item.notes) : null
-      }));
+      const saleItems = cart.items.map(item => {
+        const notesObj: Record<string, any> = { product_name: item.product?.name };
+        if (item.notes) notesObj.extra = item.notes;
+        if (item.modifiers && item.modifiers.length > 0) notesObj.modifiers = item.modifiers;
+
+        return {
+          sale_id: saleData.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total: item.total,
+          tax_amount: item.tax_amount || 0,
+          tax_rate: item.tax_rate || 0,
+          discount_amount: item.discount_amount || 0,
+          notes: notesObj
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('sale_items')

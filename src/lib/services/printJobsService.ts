@@ -12,6 +12,8 @@ export interface KitchenTicketPrintPayload {
     productName: string;
     quantity: number;
     notes?: string | null;
+    variantData?: Record<string, string> | null;
+    modifiers?: Array<{ name: string; extraPrice: number }> | null;
   }>;
 }
 
@@ -43,6 +45,7 @@ export interface PrintAgentStatus {
   agent_name: string;
   last_seen_at: string | null;
   isOnline: boolean;
+  branch_name: string | null;
 }
 
 /**
@@ -84,7 +87,7 @@ export class PrintJobsService {
       tableName?: string;
       serverName?: string;
       createdAt: string;
-      items: Array<{ productName: string; quantity: number; notes?: string | null; station?: string | null }>;
+      items: Array<{ productName: string; quantity: number; notes?: string | null; station?: string | null; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
     }
   ): Promise<{ enqueued: number; skippedStations: string[] }> {
     const orgId = getOrganizationId();
@@ -114,7 +117,7 @@ export class PrintJobsService {
         serverName: ticket.serverName,
         station,
         createdAt: ticket.createdAt,
-        items: items.map((i) => ({ productName: i.productName, quantity: i.quantity, notes: i.notes })),
+        items: items.map((i) => ({ productName: i.productName, quantity: i.quantity, notes: i.notes, variantData: i.variantData, modifiers: i.modifiers })),
       };
 
       const rows = printers.map((printer) => ({
@@ -155,7 +158,7 @@ export class PrintJobsService {
     kitchen_ticket_items?: Array<{
       station: string | null;
       notes: string | null;
-      sale_items?: { quantity: number; products?: { name: string } | null } | null;
+      sale_items?: { quantity: number; notes?: any; products?: { name: string; variant_data?: Record<string, string> | null } | null } | null;
     }>;
   }): Promise<{ enqueued: number; skippedStations: string[] }> {
     return this.enqueueKitchenTicket(ticket.branch_id, {
@@ -163,12 +166,18 @@ export class PrintJobsService {
       tableName: ticket.table_sessions?.restaurant_tables?.name,
       serverName: ticket.table_sessions?.serverName,
       createdAt: ticket.created_at,
-      items: (ticket.kitchen_ticket_items || []).map((item) => ({
-        productName: item.sale_items?.products?.name || 'Producto',
-        quantity: item.sale_items?.quantity || 1,
-        notes: item.notes,
-        station: item.station,
-      })),
+      items: (ticket.kitchen_ticket_items || []).map((item) => {
+        const saleItemNotes = item.sale_items?.notes;
+        const modifiers = saleItemNotes && typeof saleItemNotes === 'object' ? saleItemNotes.modifiers || null : null;
+        return {
+          productName: item.sale_items?.products?.name || 'Producto',
+          quantity: item.sale_items?.quantity || 1,
+          notes: item.notes,
+          station: item.station,
+          variantData: item.sale_items?.products?.variant_data || null,
+          modifiers,
+        };
+      }),
     });
   }
 
@@ -245,20 +254,21 @@ export class PrintJobsService {
 
     const { data, error } = await supabase
       .from('print_agents')
-      .select('id, agent_name, status, last_seen_at')
+      .select('id, agent_name, status, last_seen_at, branches(name)')
       .eq('organization_id', orgId)
       .eq('branch_id', branchId)
       .order('agent_name');
 
     if (error) throw error;
 
-    return (data || []).map((agent) => {
+    return (data || []).map((agent: any) => {
       const elapsed = agent.last_seen_at ? Date.now() - new Date(agent.last_seen_at).getTime() : Infinity;
       return {
         id: agent.id,
         agent_name: agent.agent_name,
         last_seen_at: agent.last_seen_at,
         isOnline: agent.status === 'online' && elapsed <= AGENT_ONLINE_THRESHOLD_MS,
+        branch_name: agent.branches?.name || null,
       };
     });
   }

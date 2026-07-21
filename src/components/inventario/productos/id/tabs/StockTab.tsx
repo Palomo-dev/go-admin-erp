@@ -170,10 +170,10 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
           <PackageCheck className="h-12 w-12 mx-auto text-gray-400 mb-4" />
           <p className="text-gray-500 dark:text-gray-400 font-medium mb-2">
-            Este producto no rastrea inventario
+            Inventario sin seguimiento
           </p>
           <p className="text-sm text-gray-400 dark:text-gray-500">
-            Las ventas de este producto no afectan el stock. Activa el rastreo en la pestaña &quot;Detalles&quot; para gestionar inventario.
+            Este producto no requiere control de inventario. Las ventas y compras no afectan el stock.
           </p>
         </div>
       </div>

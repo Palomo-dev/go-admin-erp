@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation } from 'lucide-react';
+import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -95,6 +95,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [deliveryContactPhone, setDeliveryContactPhone] = useState<string>('');
   const [deliveryInstructions, setDeliveryInstructions] = useState<string>('');
 
+  // Estados para conductores
+  const [drivers, setDrivers] = useState<Array<{ id: string; name: string; phone?: string }>>([]);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+
   // Comisión calculada
   const commissionAmount = commissionRate > 0 && salespersonId
     ? Math.round((calculatedTotals.subtotal || cart.subtotal) * commissionRate / 100 * 100) / 100
@@ -136,9 +140,26 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setDeliveryContactName('');
       setDeliveryContactPhone('');
       setDeliveryInstructions('');
+      setSelectedDriverId('');
+      loadDrivers();
     }
   }, [open]);
   
+  // Auto-llenar dirección del cliente al seleccionar delivery_own
+  useEffect(() => {
+    if (deliveryType === 'delivery_own' && !deliveryAddress && cart.customer?.address) {
+      setDeliveryAddress(cart.customer.address);
+      if (cart.customer.phone && !deliveryContactPhone) {
+        setDeliveryContactPhone(cart.customer.phone);
+      }
+      const customerName = cart.customer.full_name ||
+        [cart.customer.first_name, cart.customer.last_name].filter(Boolean).join(' ');
+      if (customerName && !deliveryContactName) {
+        setDeliveryContactName(customerName);
+      }
+    }
+  }, [deliveryType, cart.customer]);
+
   // Calcular totales con impuestos cuando cambie el carrito o configuración de impuestos
   useEffect(() => {
     calculateCartTotals();
@@ -158,6 +179,25 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     }
   };
   
+  const loadDrivers = async () => {
+    try {
+      const { transportService } = await import('@/lib/services/transportService');
+      const driversData = await transportService.getDrivers(cart.organization_id);
+      const mapped = driversData
+        .filter((d: any) => d.is_active)
+        .map((d: any) => {
+          const profile = d.employments?.[0]?.organization_members?.profiles;
+          const name = profile
+            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email
+            : 'Conductor';
+          return { id: d.id, name, phone: profile?.phone };
+        });
+      setDrivers(mapped);
+    } catch (error) {
+      console.error('Error loading drivers:', error);
+    }
+  };
+
   const loadServers = async () => {
     try {
       const members = await POSService.getOrganizationMembers();
@@ -387,6 +427,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           contact_phone: deliveryContactPhone,
           instructions: deliveryInstructions,
         } : undefined,
+        driver_id: deliveryType === 'delivery_own' ? (selectedDriverId || undefined) : undefined,
       };
 
       const sale = onProcessPayment 
@@ -406,6 +447,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             customerId: cart.customer_id,
             total: cart.total,
             itemsCount: cart.items.length,
+            driverId: selectedDriverId || undefined,
             deliveryInfo: {
               address: deliveryAddress,
               city: deliveryCity,
@@ -442,7 +484,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         discount: (item as any).discount || 0,
         tax: (item as any).tax || 0,
         total: item.total,
-        notes: { product_name: item.product?.name || 'Producto' },
+        notes: {
+          product_name: item.product?.name || 'Producto',
+          ...(item.modifiers && item.modifiers.length > 0 ? { modifiers: item.modifiers } : {}),
+        },
         product_name: item.product?.name || 'Producto',
         product: item.product
       }));
@@ -497,6 +542,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       } as any;
 
       // Usar PrintService para generar e imprimir el ticket formateado
+      const deliveryInfo = deliveryType !== 'pickup' && deliveryAddress ? {
+        type: deliveryType === 'delivery_own' ? 'Envío propio' : 'Envío tercero',
+        address: deliveryAddress,
+        driverName: selectedDriverId ? drivers.find(d => d.id === selectedDriverId)?.name : undefined,
+      } : undefined;
+
       PrintService.printTicket(
         saleForPrint,
         saleItems as any,
@@ -505,7 +556,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         businessInfo,
         cashierInfo,
         branchInfo as any,
-        taxBreakdown.length > 0 ? taxBreakdown : undefined
+        taxBreakdown.length > 0 ? taxBreakdown : undefined,
+        deliveryInfo
       );
     }
   };
@@ -816,6 +868,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                   {/* Campos de delivery cuando no es pickup */}
                   {deliveryType !== 'pickup' && (
                     <div className="space-y-3 pt-2 border-t dark:border-gray-700 border-gray-200">
+                      {deliveryType === 'delivery_own' && cart.customer?.address && (
+                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span>Dirección del cliente cargada. Puedes modificarla si el envío es a otro lugar.</span>
+                        </div>
+                      )}
                       <div className="space-y-1">
                         <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
@@ -828,6 +886,26 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
                         />
                       </div>
+                      {deliveryType === 'delivery_own' && drivers.length > 0 && (
+                        <div className="space-y-1">
+                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
+                            <UserCircle className="h-3 w-3" />
+                            Conductor asignado
+                          </Label>
+                          <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+                            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
+                              <SelectValue placeholder="Seleccionar conductor..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {drivers.map((driver) => (
+                                <SelectItem key={driver.id} value={driver.id}>
+                                  {driver.name}{driver.phone ? ` · ${driver.phone}` : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <Label className="text-xs dark:text-gray-400 text-gray-600">

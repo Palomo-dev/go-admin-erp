@@ -13,9 +13,12 @@ export const config = {
   supabaseAnonKey: required('SUPABASE_ANON_KEY'),
   agentEmail: required('AGENT_EMAIL'),
   agentPassword: required('AGENT_PASSWORD'),
-  organizationId: Number(required('ORGANIZATION_ID')),
-  branchId: Number(required('BRANCH_ID')),
+  // Opcionales: se detectan dinámicamente al arrancar (agentSetup.ts)
+  // Pero se pueden forzar via .env para deployments automatizados
+  organizationId: process.env.ORGANIZATION_ID ? Number(process.env.ORGANIZATION_ID) : null,
+  branchId: process.env.BRANCH_ID ? Number(process.env.BRANCH_ID) : null,
   agentName: process.env.AGENT_NAME || 'Print Agent',
   pollIntervalMs: Number(process.env.POLL_INTERVAL_MS || 5000),
   heartbeatIntervalMs: Number(process.env.HEARTBEAT_INTERVAL_MS || 20000),
+  discoveryPort: Number(process.env.DISCOVERY_PORT || 3456),
 };

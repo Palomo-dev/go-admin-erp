@@ -8,6 +8,7 @@ import BranchMapModal from '@/components/maps/BranchMapModal';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
+import { BRANCHES_UPDATED_EVENT } from '@/lib/context/BranchContext';
 
 // Cargar el mapa dinámicamente para evitar problemas de SSR
 const DynamicBranchesMap = dynamic(() => import('@/components/maps/BranchesMap'), {
@@ -138,9 +139,17 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
     if (orgId) fetchBranches();
   }, [orgId]);
 
-  const handleCreate = () => {
+  const [autoBranchCode, setAutoBranchCode] = useState<string>('');
+
+  const handleCreate = async () => {
     setEditingBranch(null);
     setError(null);
+    try {
+      const code = await branchService.generateBranchCode(orgId);
+      setAutoBranchCode(code);
+    } catch {
+      setAutoBranchCode(`SUC-${orgId}-001`);
+    }
     setShowForm(true);
   };
 
@@ -156,6 +165,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
     try {
       await branchService.deleteBranch(branchId);
       await fetchBranches();
+      window.dispatchEvent(new CustomEvent(BRANCHES_UPDATED_EVENT));
     } catch (err: any) {
       setError(err.message || t('errorDeleting'));
     } finally {
@@ -177,6 +187,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
       setShowForm(false);
       setEditingBranch(null);
       await fetchBranches();
+      window.dispatchEvent(new CustomEvent(BRANCHES_UPDATED_EVENT));
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message || t('errorSaving'));
@@ -472,6 +483,25 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                               </div>
                             </div>
                           </div>
+                        ) : branch.manager_id ? (
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                              <svg className="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <div className="font-medium text-gray-900">
+                                {t('assignedManager')}
+                              </div>
+                              <button
+                                onClick={() => handleAssignManager(branch)}
+                                className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                              >
+                                {t('assignManager')}
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           <div className="flex items-center text-gray-400">
                             <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -536,7 +566,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {userBranches?.some(ub => ub.branch_id === branch.id) ? (
+                      {userBranches?.some(ub => ub.branch_id === branch.id) || branch.manager_id ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           <svg className="mr-1.5 h-2 w-2 text-blue-500" fill="currentColor" viewBox="0 0 8 8">
                             <circle cx="4" cy="4" r="3" />
@@ -629,9 +659,9 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
               )}
               
               {/* Form Content */}
-              <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+              <div className="overflow-y-auto max-h-[calc(90vh-80px)] pb-24">
                 <BranchForm
-                  initialData={editingBranch ? editingBranch : { organization_id: orgId }}
+                  initialData={editingBranch ? editingBranch : { organization_id: orgId, branch_code: autoBranchCode }}
                   onSubmit={handleFormSubmit}
                   isLoading={formLoading}
                   submitLabel={editingBranch ? t('updateBranch') : t('createBranch')}

@@ -43,6 +43,16 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
 
   for (const item of payload.items) {
     device.style('b').text(`${item.quantity} x ${item.productName}`).style('normal');
+
+    const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
+    if (variantEntries.length > 0) {
+      device.text(`  ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}`);
+    }
+
+    if (item.modifiers && item.modifiers.length > 0) {
+      device.text(`  + ${item.modifiers.map((m) => m.name).join(', ')}`);
+    }
+
     if (item.notes) {
       device.text(`  * ${item.notes}`);
     }
@@ -74,6 +84,16 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload): string
 
   for (const item of payload.items) {
     lines.push(`${item.quantity} x ${item.productName}`);
+
+    const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
+    if (variantEntries.length > 0) {
+      lines.push(`  ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}`);
+    }
+
+    if (item.modifiers && item.modifiers.length > 0) {
+      lines.push(`  + ${item.modifiers.map((m) => m.name).join(', ')}`);
+    }
+
     if (item.notes) lines.push(`  * ${item.notes}`);
   }
 

@@ -264,7 +264,32 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                       {product?.name || 'Producto'}
                     </span>
                   </div>
-                  
+
+                  {product?.variant_data && Object.keys(product.variant_data).length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap mb-1">
+                      {Object.entries(product.variant_data).filter(([, v]) => !!v).map(([attr, value]) => (
+                        <Badge key={attr} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300">
+                          {attr}: {value}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {(() => {
+                    const saleItemNotes = item.sale_items?.notes;
+                    const modifiers: Array<{ modifierId: number; name: string; extraPrice: number }> = saleItemNotes && typeof saleItemNotes === 'object' ? saleItemNotes.modifiers || [] : [];
+                    if (modifiers.length === 0) return null;
+                    return (
+                      <div className="flex items-center gap-1 flex-wrap mb-1">
+                        {modifiers.map((mod) => (
+                          <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                            {mod.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={`${stationInfo.color} text-xs`}>
                       {stationInfo.label}

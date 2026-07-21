@@ -142,6 +142,12 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
       
       if (error) throw error;
 
+      // Propagar track_stock a las variantes hijas
+      await supabase
+        .from('products')
+        .update({ track_stock: formData.track_stock, updated_at: new Date().toISOString() })
+        .eq('parent_product_id', producto.id);
+
       // Sincronizar product_suppliers
       if (formData.supplier_id) {
         const supplierId = typeof formData.supplier_id === 'string' ? parseInt(formData.supplier_id) : formData.supplier_id;

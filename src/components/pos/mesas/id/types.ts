@@ -9,7 +9,7 @@ export interface SaleItem {
   total: number;
   tax_amount: number;
   discount_amount: number;
-  notes: string | { product_name?: string; extra?: string; guest_number?: number } | null;
+  notes: string | { product_name?: string; extra?: string; guest_number?: number; modifiers?: SelectedProductModifier[] } | null;
   created_at: string;
   updated_at: string;
   // Relaciones
@@ -33,8 +33,12 @@ export interface Product {
   category_id: number | null;
   status: string;
   is_parent: boolean;
-  variant_data: any;
+  parent_product_id?: number | null;
+  variant_data: Record<string, string> | null;
   product_images?: ProductImage[];
+  parent_product?: {
+    product_images?: ProductImage[];
+  } | null;
 }
 
 export interface Sale {
@@ -107,6 +111,14 @@ export interface KitchenTicketItem {
   updated_at: string;
 }
 
+export interface SelectedProductModifier {
+  groupId: number;
+  groupName: string;
+  modifierId: number;
+  name: string;
+  extraPrice: number;
+}
+
 export interface ProductToAdd {
   product_id: number;
   product_name: string;
@@ -116,6 +128,8 @@ export interface ProductToAdd {
   station?: string;
   requires_preparation?: boolean;
   guest_number?: number;
+  variant_data?: Record<string, string> | null;
+  modifiers?: SelectedProductModifier[];
 }
 
 export interface TransferItemData {

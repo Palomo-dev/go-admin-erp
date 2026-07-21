@@ -14,7 +14,7 @@ import { CartTabs } from '@/components/pos/CartTabs';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { POSService } from '@/lib/services/posService';
 import { useOrganization, getCurrentBranchIdWithFallback, getCurrentBranchId } from '@/lib/hooks/useOrganization';
-import { Product, Customer, Cart, Sale } from '@/components/pos/types';
+import { Product, Customer, Cart, Sale, CartItemModifier } from '@/components/pos/types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { VentasService, DailySummary, CashSession } from '@/components/pos/ventas';
 
@@ -107,14 +107,14 @@ export default function POSPage() {
     }
   };
 
-  const handleProductSelect = async (product: Product) => {
+  const handleProductSelect = async (product: Product, modifiers?: CartItemModifier[]) => {
     if (!activeCartId) {
       alert('No hay carrito activo');
       return;
     }
 
     try {
-      const updatedCart = await POSService.addItemToCart(activeCartId, product);
+      const updatedCart = await POSService.addItemToCart(activeCartId, product, 1, modifiers);
       updateCartInState(updatedCart);
     } catch (error) {
       console.error('Error adding product to cart:', error);
@@ -220,7 +220,7 @@ export default function POSPage() {
   }
 
   return (
-    <div className="min-h-screen h-screen dark:bg-gray-900 bg-gray-50 p-2 sm:p-4">
+    <div className="h-full dark:bg-gray-900 bg-gray-50 p-2 sm:p-4">
       <div className="w-full h-full flex flex-col space-y-2 sm:space-y-3">
         {/* Header - Responsive con estado de caja y accesos rápidos */}
         <Card className="dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 shadow-sm">
@@ -350,12 +350,12 @@ export default function POSPage() {
 
           {/* === MÓVIL: Vista Productos (pantalla completa) === */}
           <div className={cn(
-            'lg:col-span-3 lg:h-full overflow-hidden',
+            'lg:col-span-3 lg:h-full overflow-hidden lg:overflow-y-auto',
             mobileView === 'products' ? 'flex-1' : 'hidden lg:block',
           )}>
             <ProductSearch 
-              onProductSelect={(product) => {
-                handleProductSelect(product);
+              onProductSelect={(product, modifiers) => {
+                handleProductSelect(product, modifiers);
               }}
             />
           </div>

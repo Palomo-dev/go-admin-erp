@@ -27,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { POSService } from '@/lib/services/posService';
-import { Product, Cart, CartItem, Customer } from '@/components/pos/types';
+import { Product, Cart, CartItem, CartItemModifier, Customer } from '@/components/pos/types';
 import { ProductSearch } from '@/components/pos/ProductSearch';
 import { CustomerSelector } from '@/components/pos/CustomerSelector';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
@@ -67,11 +67,17 @@ export function NuevaVentaPage() {
           const items = JSON.parse(savedItems);
           for (const item of items) {
             if (item.products) {
-              await POSService.addItemToCart(newCart.id, {
-                id: item.product_id,
-                ...item.products,
-                price: item.unit_price
-              });
+              const savedNotes = item.notes && typeof item.notes === 'object' ? item.notes : null;
+              await POSService.addItemToCart(
+                newCart.id,
+                {
+                  id: item.product_id,
+                  ...item.products,
+                  price: item.unit_price
+                },
+                1,
+                savedNotes?.modifiers
+              );
             }
           }
           sessionStorage.removeItem('duplicateSaleItems');
@@ -88,10 +94,10 @@ export function NuevaVentaPage() {
     }
   };
 
-  const handleProductSelect = async (product: Product) => {
+  const handleProductSelect = async (product: Product, modifiers?: CartItemModifier[]) => {
     if (!cart) return;
     try {
-      const updatedCart = await POSService.addItemToCart(cart.id, product);
+      const updatedCart = await POSService.addItemToCart(cart.id, product, 1, modifiers);
       setCart(updatedCart);
     } catch (error) {
       console.error('Error adding product:', error);
@@ -299,6 +305,15 @@ export function NuevaVentaPage() {
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {formatCurrency(item.unit_price)} c/u
                         </p>
+                        {item.modifiers && item.modifiers.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap mt-1">
+                            {item.modifiers.map((mod) => (
+                              <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                                {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <Button
                         variant="ghost"

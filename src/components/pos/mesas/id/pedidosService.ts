@@ -13,6 +13,7 @@ import type {
   SaleItem,
   PreCuenta,
   KitchenTicket,
+  SelectedProductModifier,
 } from './types';
 
 export class PedidosService {
@@ -67,6 +68,8 @@ export class PedidosService {
               name, 
               description, 
               sku,
+              parent_product_id,
+              variant_data,
               product_images(
                 id,
                 storage_path,
@@ -85,6 +88,44 @@ export class PedidosService {
         }
         
         allItems = items || [];
+
+        // Fallback de imagen: para items cuyo producto (variante) no tiene
+        // imagen propia, resolver las imágenes del producto padre en una
+        // consulta aparte (un embed auto-referenciado anidado no es soportado por PostgREST).
+        const parentIdsSinImagen = Array.from(new Set(
+          allItems
+            .filter((item: any) => item.product?.parent_product_id && !item.product?.product_images?.length)
+            .map((item: any) => item.product.parent_product_id)
+        ));
+
+        if (parentIdsSinImagen.length > 0) {
+          const { data: parentImages } = await supabase
+            .from('product_images')
+            .select('id, product_id, storage_path, is_primary, display_order')
+            .in('product_id', parentIdsSinImagen);
+
+          const parentImagesByProductId = new Map<number, any[]>();
+          (parentImages || []).forEach((img: any) => {
+            const list = parentImagesByProductId.get(img.product_id) || [];
+            list.push(img);
+            parentImagesByProductId.set(img.product_id, list);
+          });
+
+          allItems = allItems.map((item: any) => {
+            if (item.product?.parent_product_id && !item.product?.product_images?.length) {
+              return {
+                ...item,
+                product: {
+                  ...item.product,
+                  parent_product: {
+                    product_images: parentImagesByProductId.get(item.product.parent_product_id) || [],
+                  },
+                },
+              };
+            }
+            return item;
+          });
+        }
       }
 
       // 4. Para comensales, usar solo la sesión principal (no sumar de combinadas)
@@ -323,6 +364,7 @@ export class PedidosService {
             product_name: p.product_name,
             ...(p.notes ? { extra: p.notes } : {}),
             ...(p.guest_number ? { guest_number: p.guest_number } : {}),
+            ...(p.modifiers && p.modifiers.length > 0 ? { modifiers: p.modifiers } : {}),
           },
         });
       }
@@ -660,7 +702,7 @@ export class PedidosService {
   static async enviarComandaCocina(sessionId: string): Promise<Array<{
     ticketId: number;
     createdAt: string;
-    items: Array<{ productName: string; quantity: number; notes: string | null; station: string | null }>;
+    items: Array<{ productName: string; quantity: number; notes: string | null; station: string | null; variantData?: Record<string, string> | null; modifiers?: SelectedProductModifier[] | null }>;
   }>> {
     try {
       const { data: pendientes, error: fetchError } = await supabase
@@ -669,7 +711,7 @@ export class PedidosService {
           id, created_at,
           kitchen_ticket_items(
             station, notes,
-            sale_items(quantity, products(name))
+            sale_items(quantity, notes, products(name, variant_data))
           )
         `)
         .eq('table_session_id', sessionId)
@@ -688,12 +730,18 @@ export class PedidosService {
       return pendientes.map((ticket: any) => ({
         ticketId: ticket.id,
         createdAt: ticket.created_at,
-        items: (ticket.kitchen_ticket_items || []).map((item: any) => ({
-          productName: item.sale_items?.products?.name || 'Producto',
-          quantity: item.sale_items?.quantity || 1,
-          notes: item.notes || null,
-          station: item.station || null,
-        })),
+        items: (ticket.kitchen_ticket_items || []).map((item: any) => {
+          const saleItemNotes = item.sale_items?.notes;
+          const modifiers = saleItemNotes && typeof saleItemNotes === 'object' ? saleItemNotes.modifiers || null : null;
+          return {
+            productName: item.sale_items?.products?.name || 'Producto',
+            quantity: item.sale_items?.quantity || 1,
+            notes: item.notes || null,
+            station: item.station || null,
+            variantData: item.sale_items?.products?.variant_data || null,
+            modifiers,
+          };
+        }),
       }));
     } catch (error) {
       console.error('Error enviando comanda:', error);

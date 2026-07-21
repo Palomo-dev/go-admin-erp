@@ -252,14 +252,48 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
         
         // Si el producto tiene variantes pre-cargadas (children), usarlas
         if (producto.children && producto.children.length > 0) {
+          const childIds = producto.children.map((c: any) => c.id);
+
+          // Consultar precios y costos vigentes de las variantes
+          const [pricesRes, costsRes] = await Promise.all([
+            supabase
+              .from('product_prices')
+              .select('product_id, price, effective_from, effective_to')
+              .in('product_id', childIds)
+              .or('effective_to.is.null,effective_to.gt.' + new Date().toISOString()),
+            supabase
+              .from('product_costs')
+              .select('product_id, cost, effective_from, effective_to')
+              .in('product_id', childIds)
+              .or('effective_to.is.null,effective_to.gt.' + new Date().toISOString()),
+          ]);
+
+          // Construir mapa de precio vigente por product_id (el más reciente)
+          const priceMap: Record<number, number> = {};
+          (pricesRes.data || []).forEach((pp: any) => {
+            const existing = priceMap[pp.product_id];
+            if (!existing || new Date(pp.effective_from) > new Date(existing)) {
+              priceMap[pp.product_id] = pp.price;
+            }
+          });
+
+          // Construir mapa de costo vigente por product_id
+          const costMap: Record<number, number> = {};
+          (costsRes.data || []).forEach((pc: any) => {
+            const existing = costMap[pc.product_id];
+            if (!existing || new Date(pc.effective_from) > new Date(existing)) {
+              costMap[pc.product_id] = pc.cost;
+            }
+          });
+
           const mappedVariants = producto.children.map((child: any) => ({
             id: child.id,
             parent_product_id: producto.id,
             sku: child.sku,
             name: child.name,
-            price: child.price || child.product_prices?.[0]?.price || 0,
-            cost: child.cost || child.product_costs?.[0]?.cost || 0,
-            stock: child.stock || child.stock_levels?.reduce((sum: number, sl: any) => sum + (sl.qty_on_hand || 0), 0) || 0,
+            price: priceMap[child.id] || 0,
+            cost: costMap[child.id] || 0,
+            stock: child.stock_levels?.reduce((sum: number, sl: any) => sum + (sl.qty_on_hand || 0), 0) || 0,
             barcode: child.barcode,
             variant_data: child.variant_data,
             status: child.status || 'active',
@@ -285,8 +319,16 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
         
         // Mapear los datos a la interfaz Variante
         const mappedVariants: Variante[] = (data || []).map((child: any) => {
-          const currentPrice = child.product_prices?.[0]?.price || 0;
-          const currentCost = child.product_costs?.[0]?.cost || 0;
+          const validPrices = (child.product_prices || [])
+            .filter((pp: any) => !pp.effective_to || new Date(pp.effective_to) > new Date())
+            .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+          const currentPrice = validPrices[0]?.price || 0;
+
+          const validCosts = (child.product_costs || [])
+            .filter((pc: any) => !pc.effective_to || new Date(pc.effective_to) > new Date())
+            .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+          const currentCost = validCosts[0]?.cost || 0;
+
           const totalStock = child.stock_levels?.reduce((sum: number, sl: any) => sum + (sl.qty_on_hand || 0), 0) || 0;
           
           return {
@@ -357,6 +399,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             barcode: editingVariante.barcode,
             parent_product_id: producto.id,
             is_parent: false,
+            track_stock: producto.track_stock !== undefined ? producto.track_stock : true,
             category_id: producto.category_id,
             unit_code: producto.unit_code,
             status: 'active',
@@ -599,7 +642,16 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
                   </TableCell>
                   <TableCell className="text-right dark:text-gray-200">{formatCurrency(variante.price || 0)}</TableCell>
                   <TableCell className="text-right dark:text-gray-200">{formatCurrency(variante.cost || 0)}</TableCell>
-                  <TableCell className="text-center dark:text-gray-200">{variante.stock || 0}</TableCell>
+                  <TableCell className="text-center dark:text-gray-200">
+                  {producto.track_stock === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
+                      Sin seguimiento
+                    </span>
+                  ) : (
+                    variante.stock || 0
+                  )}
+                </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button

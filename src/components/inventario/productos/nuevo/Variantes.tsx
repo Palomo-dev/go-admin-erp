@@ -41,6 +41,8 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
   const [branches, setBranches] = useState<Branch[]>([])
   const [expandedVariants, setExpandedVariants] = useState<number[]>([])
   const [customAttrName, setCustomAttrName] = useState('')
+  const [selectedValuesByType, setSelectedValuesByType] = useState<Record<string, string[]>>({})
+  const [customValueInputs, setCustomValueInputs] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (organization?.id) {
@@ -214,6 +216,88 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
       return { ...v, attributes: newAttrs }
     })
     updateFormData('variants', updatedVariants)
+    // Limpiar selección de valores del generador de combinaciones
+    setSelectedValuesByType(prev => {
+      const updated = { ...prev }
+      delete updated[typeName]
+      return updated
+    })
+  }
+
+  // Alterna la selección de un valor para el generador de combinaciones
+  const toggleValueSelection = (typeName: string, value: string) => {
+    setSelectedValuesByType(prev => {
+      const current = prev[typeName] || []
+      const updated = current.includes(value)
+        ? current.filter(v => v !== value)
+        : [...current, value]
+      return { ...prev, [typeName]: updated }
+    })
+  }
+
+  // Agrega un valor personalizado al catálogo y lo deja seleccionado para el generador
+  const addCustomValueAndSelect = async (typeName: string) => {
+    const value = (customValueInputs[typeName] || '').trim()
+    if (!value) return
+    await createValueInCatalog(typeName, value)
+    setSelectedValuesByType(prev => {
+      const current = prev[typeName] || []
+      return current.includes(value) ? prev : { ...prev, [typeName]: [...current, value] }
+    })
+    setCustomValueInputs(prev => ({ ...prev, [typeName]: '' }))
+  }
+
+  // Calcula el producto cartesiano de los valores seleccionados por cada tipo
+  const getVariantCombinations = (): Record<string, string>[] => {
+    const typesWithValues = selectedAttributeTypes.filter(t => (selectedValuesByType[t] || []).length > 0)
+    if (typesWithValues.length === 0) return []
+    let combinations: Record<string, string>[] = [{}]
+    typesWithValues.forEach(type => {
+      const values = selectedValuesByType[type] || []
+      const newCombinations: Record<string, string>[] = []
+      combinations.forEach(combo => {
+        values.forEach(val => {
+          newCombinations.push({ ...combo, [type]: val })
+        })
+      })
+      combinations = newCombinations
+    })
+    return combinations
+  }
+
+  // Genera variantes automáticamente a partir de las combinaciones seleccionadas
+  const generateVariantCombinations = () => {
+    const combinations = getVariantCombinations()
+    if (combinations.length === 0) return
+
+    const existingKeys = new Set(
+      formData.variants.map((v: any) => JSON.stringify(v.attributes))
+    )
+
+    const newVariants = combinations
+      .filter(combo => !existingKeys.has(JSON.stringify(combo)))
+      .map((combo, idx) => {
+        const varNum = formData.variants.length + idx + 1
+        const suffix = Date.now().toString(36).slice(-2).toUpperCase() + idx
+        const nameSuffix = Object.values(combo).join(' ')
+        return {
+          sku: `${formData.sku}-V${varNum}${suffix}`,
+          barcode: '',
+          name: `${formData.name} - ${nameSuffix}`,
+          price: formData.price,
+          cost: formData.cost,
+          attributes: combo,
+          stock: branches.map(branch => ({
+            branch_id: branch.id,
+            branch_name: branch.name,
+            qty_on_hand: 0
+          }))
+        }
+      })
+
+    if (newVariants.length === 0) return
+
+    updateFormData('variants', [...formData.variants, ...newVariants])
   }
 
   const getValuesForType = (typeName: string): string[] => {
@@ -425,6 +509,96 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
             </div>
           </div>
 
+          {/* Generador de combinaciones de variantes */}
+          {selectedAttributeTypes.length > 0 && (
+            <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-lg border border-indigo-200 dark:border-indigo-800 space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Generador de Combinaciones
+                </Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Selecciona varios valores por atributo (ej. varias salsas) para crear todas las combinaciones automáticamente
+                </p>
+              </div>
+
+              {selectedAttributeTypes.map((attrType) => {
+                const values = getValuesForType(attrType)
+                const selected = selectedValuesByType[attrType] || []
+                return (
+                  <div key={attrType} className="space-y-2">
+                    <Label className="text-sm text-gray-600 dark:text-gray-400">
+                      {attrType} {selected.length > 0 && `(${selected.length} seleccionados)`}
+                    </Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {values.map(v => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => toggleValueSelection(attrType, v)}
+                          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                            selected.includes(v)
+                              ? 'bg-indigo-600 border-indigo-600 text-white'
+                              : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                      {values.length === 0 && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          Aún no hay valores guardados para {attrType.toLowerCase()}, agrega uno abajo
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Input
+                        value={customValueInputs[attrType] || ''}
+                        onChange={(e) => setCustomValueInputs(prev => ({ ...prev, [attrType]: e.target.value }))}
+                        placeholder={`Nuevo valor de ${attrType.toLowerCase()}...`}
+                        className="h-8 text-xs w-48 border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            addCustomValueAndSelect(attrType)
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2"
+                        disabled={!customValueInputs[attrType]?.trim()}
+                        onClick={() => addCustomValueAndSelect(attrType)}
+                        title="Agregar y seleccionar valor"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+
+              <div className="flex items-center justify-between pt-2 border-t border-indigo-200 dark:border-indigo-800">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {getVariantCombinations().length > 0
+                    ? `Se generarán ${getVariantCombinations().length} variante(s)`
+                    : 'Selecciona al menos un valor para generar variantes'}
+                </span>
+                <Button
+                  type="button"
+                  onClick={generateVariantCombinations}
+                  disabled={getVariantCombinations().length === 0 || branches.length === 0}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  size="sm"
+                >
+                  <GitBranch className="h-4 w-4 mr-2" />
+                  Generar Variantes
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end">
             <Button
               type="button"
@@ -434,7 +608,7 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
               size="sm"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Agregar Variante
+              Agregar Variante Manual
             </Button>
           </div>
 
@@ -644,7 +818,8 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
                           </div>
                         )}
 
-                        {/* Stock por sucursal */}
+                        {/* Stock por sucursal (solo si el producto rastrea inventario) */}
+                        {formData.track_stock !== false && (
                         <div className="space-y-2">
                           <Label className="text-gray-700 dark:text-gray-300">
                             Stock por Sucursal
@@ -681,6 +856,7 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
                             </div>
                           )}
                         </div>
+                        )}
                       </div>
                     )}
                   </Card>

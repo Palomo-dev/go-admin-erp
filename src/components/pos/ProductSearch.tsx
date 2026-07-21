@@ -29,12 +29,12 @@ import { SearchSelect } from '@/components/ui/search-select';
 import { cn, formatCurrency } from '@/utils/Utils';
 import Image from 'next/image';
 import { BarcodeScanner } from '@/components/ui/barcode-scanner';
-import { VariantSelectorDialog } from './VariantSelectorDialog';
+import { VariantSelectorDialog, type SelectedModifier } from './VariantSelectorDialog';
 import { CategoryFilterBar } from './CategoryFilterBar';
 import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from './configuracion/configuracionService';
 
 interface ProductSearchProps {
-  onProductSelect: (product: Product) => void;
+  onProductSelect: (product: Product, modifiers?: SelectedModifier[]) => void;
   selectedProducts?: Product[];
 }
 
@@ -173,19 +173,19 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   // Manejar selección de producto (con o sin variantes)
   const handleProductClick = (product: any) => {
-    // Si el producto tiene variantes, abrir el selector
-    if (product.has_variants && product.variant_count > 0) {
+    // Si el producto tiene variantes o modificadores configurados, abrir el selector
+    if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
     } else {
-      // Producto simple, agregar directamente
+      // Producto simple sin modificadores, agregar directamente
       onProductSelect(product);
     }
   };
 
-  // Manejar selección de variante desde el diálogo
-  const handleVariantSelect = (variant: any) => {
-    onProductSelect(variant);
+  // Manejar selección de variante (y sus modificadores) desde el diálogo
+  const handleVariantSelect = (variant: any, modifiers: SelectedModifier[] = []) => {
+    onProductSelect(variant, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
@@ -333,18 +333,18 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
       </Card>
 
       {/* Grid de productos mejorado - RESPONSIVE */}
-      <Card className="flex-1 shadow-lg dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 overflow-hidden flex flex-col">
-        <CardContent className="p-2 sm:p-3 md:p-4 flex-1 overflow-y-auto lg:overflow-hidden flex flex-col min-h-0">
+      <Card className="flex-1 lg:flex-none shadow-lg dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200 overflow-hidden flex flex-col">
+        <CardContent className="p-2 sm:p-3 md:p-4 flex-1 overflow-y-auto lg:overflow-visible lg:flex-none flex flex-col min-h-0">
           {loading ? (
             <div className={cn(
-              "grid gap-2 sm:gap-4 lg:flex-1 lg:min-h-0 lg:[grid-auto-rows:1fr]",
+              "grid gap-2 sm:gap-4 lg:content-start lg:overflow-y-auto",
               gridSize === 'large' ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
             )}>
               {[...Array(12)].map((_, i) => (
-                <Card key={i} className="overflow-hidden lg:h-full lg:flex lg:flex-col">
+                <Card key={i} className="overflow-hidden">
                   <div className={cn(
                     "bg-gray-100 dark:bg-gray-800 flex items-center justify-center",
-                    gridSize === 'large' ? "h-28 sm:h-36 md:h-48 lg:flex-1 lg:min-h-0 lg:h-auto" : "h-24 sm:h-32 lg:flex-1 lg:min-h-0 lg:h-auto"
+                    gridSize === 'large' ? "h-28 sm:h-36 md:h-48 lg:h-40" : "h-24 sm:h-32 lg:h-32"
                   )}>
                     <Skeleton className={cn(
                       "rounded",
@@ -394,19 +394,19 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
           ) : (
             <>
               <div className={cn(
-                "grid gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 lg:flex-1 lg:min-h-0 lg:mb-0 lg:[grid-auto-rows:1fr]",
+                "grid gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 lg:mb-0 lg:content-start lg:overflow-y-auto",
                 gridSize === 'large' ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
               )}>
                 {productsData.data.map((product: any) => (
                   <Card 
                     key={product.id}
-                    className="group overflow-hidden hover:shadow-xl transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 bg-white hover:scale-[1.02] active:scale-[0.98] lg:h-full lg:flex lg:flex-col"
+                    className="group overflow-hidden hover:shadow-xl transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 bg-white hover:scale-[1.02] active:scale-[0.98]"
                     onClick={() => handleProductClick(product)}
                   >
                     {/* Imagen del producto */}
                     <div className={cn(
                       "relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center overflow-hidden",
-                      gridSize === 'large' ? "h-28 sm:h-36 md:h-48 lg:flex-1 lg:min-h-0 lg:h-auto" : "h-24 sm:h-32 lg:flex-1 lg:min-h-0 lg:h-auto"
+                      gridSize === 'large' ? "h-28 sm:h-36 md:h-48 lg:h-40" : "h-24 sm:h-32 lg:h-32"
                     )}>
                       {product.image && product.image.startsWith('http') ? (
                         <Image
@@ -458,6 +458,18 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                           {product.variant_count} var.
                         </Badge>
                       )}
+
+                      {/* Badge de personalización (producto simple con modificadores) */}
+                      {(!product.has_variants || product.variant_count === 0) && product.has_modifiers && (
+                        <Badge 
+                          className={cn(
+                            "absolute right-2 bg-amber-600 text-white hover:bg-amber-700 text-[0.6rem] sm:text-xs z-10",
+                            product.compare_price && Number(product.compare_price) > Number(product.price) ? "top-8 sm:top-9" : "top-2"
+                          )}
+                        >
+                          Personalizable
+                        </Badge>
+                      )}
                     </div>
                     
                     {/* Información del producto - RESPONSIVE */}
@@ -507,6 +519,8 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                           "w-full text-white h-7 sm:h-8 text-xs sm:text-sm",
                           product.has_variants && product.variant_count > 0
                             ? "bg-purple-600 hover:bg-purple-700"
+                            : product.has_modifiers
+                            ? "bg-amber-600 hover:bg-amber-700"
                             : "bg-blue-600 hover:bg-blue-700"
                         )}
                         onClick={(e) => {
@@ -519,7 +533,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                           gridSize === 'large' ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3 w-3"
                         )} />
                         <span className="hidden xs:inline">
-                          {product.has_variants && product.variant_count > 0 ? 'Elegir' : 'Agregar'}
+                          {(product.has_variants && product.variant_count > 0) || product.has_modifiers ? 'Elegir' : 'Agregar'}
                         </span>
                         <span className="inline xs:hidden">+</span>
                       </Button>

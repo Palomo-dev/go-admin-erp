@@ -186,28 +186,33 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
         .maybeSingle();
 
       if (!existingMembership) {
-        const { error: membershipError } = await supabase
+        const { data: membershipData, error: membershipError } = await supabase
           .from('organization_members')
           .insert({
             user_id: authData.user.id,
             organization_id: inviteData.organization_id,
             role_id: inviteData.role_id,
-            is_active: true,
-            joined_at: new Date().toISOString()
-          });
+            is_active: true
+          })
+          .select('id')
+          .single();
 
         if (membershipError) {
-          console.log('Error creando membresía:', membershipError);
+          console.error('❌ Error creando membresía:', membershipError);
           throw new Error(`Error al crear membresía: ${membershipError.message}`);
         }
-        console.log('✅ Membresía creada exitosamente');
+
+        if (!membershipData) {
+          console.error('❌ Membresía no fue creada (posible bloqueo de RLS)');
+          throw new Error('No se pudo crear la membresía en la organización. Contacta al administrador.');
+        }
+        console.log('✅ Membresía creada exitosamente, ID:', membershipData.id);
       } else {
         const { error: updateMembershipError } = await supabase
           .from('organization_members')
           .update({
             role_id: inviteData.role_id,
-            is_active: true,
-            joined_at: new Date().toISOString()
+            is_active: true
           })
           .eq('user_id', authData.user.id)
           .eq('organization_id', inviteData.organization_id);
@@ -220,18 +225,25 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
       }
 
       // 5. Marcar invitación como utilizada
-      console.log('✅ Marcando invitación como utilizada...');
-      const { error: invitationError } = await supabase
+      console.log('📧 Marcando invitación como utilizada...');
+      const { data: updatedInvitation, error: invitationError } = await supabase
         .from('invitations')
         .update({
           status: 'used',
           used_at: new Date().toISOString()
         })
-        .eq('code', inviteData.code);
+        .eq('code', inviteData.code)
+        .select('id')
+        .single();
 
       if (invitationError) {
-        console.log('Error marcando invitación:', invitationError);
+        console.error('❌ Error marcando invitación:', invitationError);
         throw new Error(`Error al marcar invitación: ${invitationError.message}`);
+      }
+
+      if (!updatedInvitation) {
+        console.error('❌ Invitación no fue actualizada (posible bloqueo de RLS - 0 filas afectadas)');
+        throw new Error('No se pudo marcar la invitación como utilizada. Es posible que no tengas permisos. Contacta al administrador.');
       }
 
       console.log('✅ Invitación marcada como utilizada exitosamente');

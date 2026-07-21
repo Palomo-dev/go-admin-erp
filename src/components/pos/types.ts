@@ -59,6 +59,14 @@ export interface Customer {
   last_name?: string;
 }
 
+export interface CartItemModifier {
+  groupId: number;
+  groupName: string;
+  modifierId: number;
+  name: string;
+  extraPrice: number;
+}
+
 export interface CartItem {
   id: string;
   cart_id: string;
@@ -72,6 +80,7 @@ export interface CartItem {
   tax_rate?: number;
   tax_excluded?: boolean;
   notes?: string;
+  modifiers?: CartItemModifier[];
   created_at: string;
   updated_at: string;
 }
@@ -230,6 +239,7 @@ export interface CheckoutData {
     contact_phone?: string;
     instructions?: string;
   };
+  driver_id?: string;
 }
 
 // Para impuestos

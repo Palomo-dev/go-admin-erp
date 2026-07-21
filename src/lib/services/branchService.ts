@@ -26,6 +26,41 @@ const normalizeOpeningHours = (openingHours: any): OpeningHours | null => {
 
 export const branchService = {
   /**
+   * Generate the next branch code for an organization
+   * Format: SUC-{orgId}-{sequentialNumber} (e.g. SUC-125-002)
+   * Main branch uses MAIN-001
+   */
+  async generateBranchCode(organizationId: number, isMain: boolean = false): Promise<string> {
+    if (isMain) {
+      return 'MAIN-001';
+    }
+
+    const { data, error } = await supabase
+      .from('branches')
+      .select('branch_code')
+      .eq('organization_id', organizationId);
+
+    if (error) {
+      console.error('Error fetching branch codes:', error);
+      return `SUC-${organizationId}-001`;
+    }
+
+    const codes = (data || []).map(b => b.branch_code).filter(Boolean);
+    let maxNum = 0;
+
+    codes.forEach(code => {
+      const match = code?.match(/SUC-\d+-(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+
+    const nextNum = maxNum + 1;
+    return `SUC-${organizationId}-${String(nextNum).padStart(3, '0')}`;
+  },
+
+  /**
    * Get all branches for an organization
    */
   async getBranches(organizationId: number): Promise<Branch[]> {

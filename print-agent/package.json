@@ -14,13 +14,17 @@
     "dotenv": "^16.4.5",
     "escpos": "^3.0.0-alpha.6",
     "escpos-network": "^3.0.0-alpha.5",
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
     "escpos-usb": "^3.0.0-alpha.4",
     "escpos-bluetooth": "^3.0.0-alpha.2",
-    "printer": "^0.4.1"
+    "printer": "^0.4.0"
   },
   "devDependencies": {
     "typescript": "^5.5.4",
     "tsx": "^4.16.2",
-    "@types/node": "^20.14.0"
+    "@types/node": "^20.14.0",
+    "@types/ws": "^8.5.12"
   }
 }

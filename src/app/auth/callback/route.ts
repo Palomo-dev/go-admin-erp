@@ -359,13 +359,14 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
         .update({
           name: signupData.branchName || 'Sucursal Principal',
           branch_code: signupData.branchCode || 'MAIN-001',
-          address: signupData.branchAddress || '',
-          city: signupData.branchCity || '',
-          state: signupData.branchState || '',
-          country: signupData.branchCountry === 'COL' ? 'Colombia' : (signupData.branchCountry || 'Colombia'),
-          postal_code: signupData.branchPostalCode || '',
-          phone: signupData.branchPhone || '',
-          email: signupData.branchEmail || '',
+          address: signupData.branchAddress || signupData.organizationAddress || null,
+          city: signupData.branchCity || signupData.organizationCity || null,
+          state: signupData.branchState || signupData.organizationState || null,
+          country: (signupData.branchCountry || signupData.organizationCountry || 'Colombia') === 'COL' ? 'Colombia' : (signupData.branchCountry || signupData.organizationCountry || 'Colombia'),
+          postal_code: signupData.branchPostalCode || signupData.organizationPostalCode || null,
+          phone: signupData.branchPhone || signupData.organizationPhone || null,
+          email: signupData.branchEmail || signupData.organizationEmail || user.email || null,
+          manager_id: user.id,
           opening_hours: signupData.branchOpeningHours || {
             monday: { open: '09:00', close: '18:00', closed: false },
             tuesday: { open: '09:00', close: '18:00', closed: false },
@@ -384,7 +385,7 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
         console.error('❌ Error updating branch:', branchError);
         throw branchError;
       }
-      console.log('✅ Branch updated successfully');
+      console.log('✅ Branch updated successfully with org data fallback and manager assigned');
       
       // 4. Crear membresía del usuario como super admin
       console.log('4️⃣ Creating organization membership...');
@@ -404,6 +405,41 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
         throw memberError;
       }
       console.log('✅ Membership created successfully');
+      
+      // 4.5. Crear registro en member_branches para que la asignación sea visible
+      const { data: memberRecord, error: memberFetchError } = await supabase
+        .from('organization_members')
+        .select('id')
+        .eq('organization_id', orgData.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (memberFetchError) {
+        console.warn('⚠️ No se pudo obtener el member_id para member_branches:', memberFetchError);
+      } else if (memberRecord) {
+        const { data: mainBranch, error: branchFetchError } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('organization_id', orgData.id)
+          .eq('is_main', true)
+          .single();
+
+        if (branchFetchError) {
+          console.warn('⚠️ No se pudo obtener la sucursal principal para member_branches:', branchFetchError);
+        } else if (mainBranch) {
+          const { error: memberBranchError } = await supabase
+            .from('member_branches')
+            .insert({
+              organization_member_id: memberRecord.id,
+              branch_id: mainBranch.id
+            });
+          if (memberBranchError) {
+            console.warn('⚠️ No se pudo crear registro en member_branches:', memberBranchError);
+          } else {
+            console.log('✅ Usuario asignado a la sucursal principal en member_branches');
+          }
+        }
+      }
       
       // 5. Actualizar la suscripción con los datos reales del plan comprado
       // NOTA: un trigger de la BD (after_organization_insert_subscription) ya crea

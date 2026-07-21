@@ -203,9 +203,9 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   };
   
   // Función para determinar el color de fondo según stock
-  const getBgColorByStock = (stock: number | undefined) => {
-    // Si no hay stock definido, dejamos el color predeterminado
-    if (stock === undefined) return '';
+  const getBgColorByStock = (stock: number | undefined, trackStock?: boolean) => {
+    // Si no rastrea inventario o no hay stock definido, color predeterminado
+    if (trackStock === false || stock === undefined) return '';
     
     if (stock <= 0) {
       return 'bg-red-50 dark:bg-red-950/30';
@@ -301,7 +301,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
             {currentProductos.map((producto) => (
               <TableRow 
                 key={typeof producto.id === 'number' ? producto.id : String(producto.id)}
-                className={`dark:border-gray-700 ${getBgColorByStock(producto.stock)} cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedIds.includes(typeof producto.id === 'number' ? producto.id : parseInt(String(producto.id), 10)) ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
+                className={`dark:border-gray-700 ${getBgColorByStock(producto.stock, producto.track_stock)} cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${selectedIds.includes(typeof producto.id === 'number' ? producto.id : parseInt(String(producto.id), 10)) ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
                 onClick={() => onView(producto)}
               >
                 {onSelectionChange && (
@@ -364,7 +364,14 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 </TableCell>
                 <TableCell className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">{typeof producto.cost === 'number' ? formatPrecioTabla(producto.cost) : '-'}</TableCell>
                 <TableCell className="text-center text-xs sm:text-sm">
-                  <span className={`font-semibold ${producto.stock && producto.stock <= 0 ? 'text-red-500' : 'dark:text-gray-200'}`}>{producto.stock || 0}</span>
+                  {producto.track_stock === false ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
+                      Sin seguimiento
+                    </span>
+                  ) : (
+                    <span className={`font-semibold ${producto.stock !== undefined && producto.stock <= 0 ? 'text-red-500' : 'dark:text-gray-200'}`}>{producto.stock ?? 0}</span>
+                  )}
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">{renderEstado(producto.status)}</TableCell>
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

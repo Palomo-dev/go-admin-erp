@@ -225,16 +225,15 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Código de sucursal *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Código de sucursal</label>
               <input
                 type="text"
                 name="branch_code"
                 value={form.branch_code}
-                onChange={handleChange}
-                required
-                placeholder="Ej: SUC-001"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
+                readOnly
+                className="input input-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-600"
               />
+              <p className="text-xs text-gray-400 mt-1">Asignado automáticamente</p>
             </div>
           </div>
         </div>

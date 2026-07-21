@@ -16,7 +16,7 @@ import { Plus, Minus, Search, X, ShoppingCart, Package } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { POSService } from '@/lib/services/posService';
-import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
+import { VariantSelectorDialog, type SelectedModifier } from '@/components/pos/VariantSelectorDialog';
 
 interface Product {
   id: number;
@@ -41,6 +41,7 @@ interface ConsumptionToAdd {
   quantity: number;
   unit_price: number;
   notes: string;
+  modifiers?: SelectedModifier[];
 }
 
 interface AddConsumptionDialogProps {
@@ -62,7 +63,7 @@ export function AddConsumptionDialog({
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [cart, setCart] = useState<Map<number, ConsumptionToAdd>>(new Map());
+  const [cart, setCart] = useState<Map<string, ConsumptionToAdd>>(new Map());
   
   // Estado para selector de variantes
   const [showVariantDialog, setShowVariantDialog] = useState(false);
@@ -119,9 +120,9 @@ export function AddConsumptionDialog({
     }
   }, [searchTerm, selectedCategory, open]);
 
-  // Manejar click en producto (con o sin variantes)
+  // Manejar click en producto (con variantes, con modificadores, o simple)
   const handleProductClick = (product: any) => {
-    if (product.has_variants && product.variant_count > 0) {
+    if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
     } else {
@@ -129,61 +130,66 @@ export function AddConsumptionDialog({
     }
   };
 
-  // Manejar selección de variante desde el diálogo
-  const handleVariantSelect = (variant: any) => {
-    addToCart(variant);
+  // Manejar selección de variante (y sus modificadores) desde el diálogo
+  const handleVariantSelect = (variant: any, modifiers: SelectedModifier[] = []) => {
+    addToCart(variant, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
 
-  const addToCart = (product: any) => {
-    const unitPrice = product.price || 0;
+  const addToCart = (product: any, modifiers: SelectedModifier[] = []) => {
+    const extraTotal = modifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
+    const unitPrice = (product.price || 0) + extraTotal;
     if (unitPrice === 0) {
       alert('Este producto no tiene precio configurado');
       return;
     }
 
+    // Los productos con distintos modificadores no se fusionan en la misma línea
+    const modifiersKey = modifiers.map((m) => m.modifierId).sort().join(',');
+    const cartKey = modifiersKey ? `${product.id}::${modifiersKey}` : String(product.id);
     const newCart = new Map(cart);
-    const existing = newCart.get(product.id);
+    const existing = newCart.get(cartKey);
 
     if (existing) {
       existing.quantity += 1;
     } else {
-      newCart.set(product.id, {
+      newCart.set(cartKey, {
         product_id: product.id,
         product_name: product.name,
         quantity: 1,
         unit_price: Number(unitPrice),
         notes: '',
+        modifiers: modifiers.length > 0 ? modifiers : undefined,
       });
     }
 
     setCart(newCart);
   };
 
-  const updateCartQuantity = (productId: number, quantity: number) => {
+  const updateCartQuantity = (cartKey: string, quantity: number) => {
     if (quantity < 1) {
-      removeFromCart(productId);
+      removeFromCart(cartKey);
       return;
     }
 
     const newCart = new Map(cart);
-    const item = newCart.get(productId);
+    const item = newCart.get(cartKey);
     if (item) {
       item.quantity = quantity;
       setCart(newCart);
     }
   };
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = (cartKey: string) => {
     const newCart = new Map(cart);
-    newCart.delete(productId);
+    newCart.delete(cartKey);
     setCart(newCart);
   };
 
-  const updateCartNotes = (productId: number, notes: string) => {
+  const updateCartNotes = (cartKey: string, notes: string) => {
     const newCart = new Map(cart);
-    const item = newCart.get(productId);
+    const item = newCart.get(cartKey);
     if (item) {
       item.notes = notes;
       setCart(newCart);
@@ -200,7 +206,14 @@ export function AddConsumptionDialog({
 
     setIsSubmitting(true);
     try {
-      const consumptions = Array.from(cart.values());
+      // folio_items no tiene columna estructurada para modificadores; se anexan como texto legible en notes
+      const consumptions = Array.from(cart.values()).map((item) => {
+        const modifiersText = (item.modifiers || [])
+          .map((m) => (m.extraPrice > 0 ? `${m.name} (+${formatCurrency(m.extraPrice)})` : m.name))
+          .join(', ');
+        const combinedNotes = [modifiersText, item.notes].filter(Boolean).join(' | ');
+        return { ...item, notes: combinedNotes };
+      });
       await onAddConsumptions(consumptions);
 
       setCart(new Map());
@@ -309,8 +322,12 @@ export function AddConsumptionDialog({
                   {products.map((product: any) => {
                     const productImage = getProductImage(product);
                     const price = product.price || 0;
-                    const inCart = cart.has(product.id);
                     const hasVariants = product.has_variants && product.variant_count > 0;
+                    const hasModifiersOnly = !hasVariants && product.has_modifiers;
+                    const productCartQty = Array.from(cart.values())
+                      .filter((item) => item.product_id === product.id)
+                      .reduce((sum, item) => sum + item.quantity, 0);
+                    const inCart = productCartQty > 0;
 
                     return (
                       <button
@@ -322,7 +339,9 @@ export function AddConsumptionDialog({
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
                             : hasVariants
                               ? 'border-purple-200 bg-white hover:border-purple-400'
-                              : 'border-gray-200 bg-white hover:border-blue-300'
+                              : hasModifiersOnly
+                                ? 'border-amber-200 bg-white hover:border-amber-400'
+                                : 'border-gray-200 bg-white hover:border-blue-300'
                         }`}
                       >
                         {/* Imagen */}
@@ -346,9 +365,15 @@ export function AddConsumptionDialog({
                               {product.variant_count} var
                             </div>
                           )}
+                          {/* Badge de personalización (producto simple con modificadores) */}
+                          {hasModifiersOnly && (
+                            <div className="absolute top-2 left-2 bg-amber-600 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                              Personalizable
+                            </div>
+                          )}
                           {inCart && (
                             <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
-                              {cart.get(product.id)?.quantity}
+                              {productCartQty}
                             </div>
                           )}
                         </div>
@@ -359,10 +384,10 @@ export function AddConsumptionDialog({
                             {product.name}
                           </h3>
                           <div className="flex items-center justify-between mt-1">
-                            <span className={`text-lg font-bold ${hasVariants ? 'text-purple-600' : 'text-blue-600'}`}>
+                            <span className={`text-lg font-bold ${hasVariants ? 'text-purple-600' : hasModifiersOnly ? 'text-amber-600' : 'text-blue-600'}`}>
                               {hasVariants ? 'Desde' : ''} {formatCurrency(price || 0)}
                             </span>
-                            <Plus className={`h-5 w-5 ${hasVariants ? 'text-purple-600' : 'text-blue-600'} group-hover:scale-110 transition-transform`} />
+                            <Plus className={`h-5 w-5 ${hasVariants ? 'text-purple-600' : hasModifiersOnly ? 'text-amber-600' : 'text-blue-600'} group-hover:scale-110 transition-transform`} />
                           </div>
                         </div>
                       </button>
@@ -396,9 +421,9 @@ export function AddConsumptionDialog({
                 </div>
               ) : (
                 <div className="p-3 space-y-2">
-                  {Array.from(cart.values()).map((item) => (
+                  {Array.from(cart.entries()).map(([cartKey, item]) => (
                     <div
-                      key={item.product_id}
+                      key={cartKey}
                       className="bg-white dark:bg-gray-800 rounded-lg p-3 border"
                     >
                       <div className="flex items-start justify-between mb-2">
@@ -408,19 +433,29 @@ export function AddConsumptionDialog({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => removeFromCart(item.product_id)}
+                          onClick={() => removeFromCart(cartKey)}
                           className="h-5 w-5 p-0"
                         >
                           <X className="h-3 w-3" />
                         </Button>
                       </div>
 
+                      {item.modifiers && item.modifiers.length > 0 && (
+                        <div className="flex items-center gap-1 flex-wrap mb-2">
+                          {item.modifiers.map((mod) => (
+                            <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                              {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-1 mb-2">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            updateCartQuantity(item.product_id, item.quantity - 1)
+                            updateCartQuantity(cartKey, item.quantity - 1)
                           }
                           className="h-7 w-7 p-0"
                         >
@@ -432,7 +467,7 @@ export function AddConsumptionDialog({
                           value={item.quantity}
                           onChange={(e) =>
                             updateCartQuantity(
-                              item.product_id,
+                              cartKey,
                               parseInt(e.target.value) || 1
                             )
                           }
@@ -442,7 +477,7 @@ export function AddConsumptionDialog({
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            updateCartQuantity(item.product_id, item.quantity + 1)
+                            updateCartQuantity(cartKey, item.quantity + 1)
                           }
                           className="h-7 w-7 p-0"
                         >
@@ -457,7 +492,7 @@ export function AddConsumptionDialog({
                         placeholder="Notas..."
                         value={item.notes}
                         onChange={(e) =>
-                          updateCartNotes(item.product_id, e.target.value)
+                          updateCartNotes(cartKey, e.target.value)
                         }
                         rows={2}
                         className="text-xs resize-none"

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Printer, Receipt, Split } from 'lucide-react';
+import { Printer, Receipt, Split, Truck } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { PreCuenta } from './types';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
@@ -25,6 +25,7 @@ interface PreCuentaDialogProps {
   onSplitBill?: () => void;
   customers?: number;
   showEInvoiceOption?: boolean;
+  deliveryInfo?: { type: string; address: string; driverName?: string };
 }
 
 export function PreCuentaDialog({
@@ -37,6 +38,7 @@ export function PreCuentaDialog({
   onSplitBill,
   customers = 1,
   showEInvoiceOption = true,
+  deliveryInfo,
 }: PreCuentaDialogProps) {
   const [sendToFactus, setSendToFactus] = React.useState(false);
   
@@ -75,6 +77,24 @@ export function PreCuentaDialog({
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                       {item.quantity} × {formatCurrency(Number(item.unit_price))}
                     </p>
+                    {item.product?.variant_data && Object.keys(item.product.variant_data).length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                        {Object.entries(item.product.variant_data).filter(([, v]) => !!v).map(([attr, value]) => (
+                          <span key={attr} className="text-[0.65rem] px-1.5 py-0.5 rounded-full border border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300">
+                            {attr}: {value}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {typeof item.notes === 'object' && (item.notes as any)?.modifiers?.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                        {(item.notes as any).modifiers.map((mod: any) => (
+                          <span key={mod.modifierId} className="text-[0.65rem] px-1.5 py-0.5 rounded-full border border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                            {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {typeof item.notes === 'object' && (item.notes as any)?.guest_number && (
                       <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">
                         👤 Comensal {(item.notes as any).guest_number}
@@ -145,6 +165,20 @@ export function PreCuentaDialog({
               Esta es una pre-cuenta. El cobro se realizará al cerrar la mesa.
             </p>
           </div>
+
+          {deliveryInfo && (
+            <div className="p-2 sm:p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20">
+              <p className="text-xs font-medium text-orange-700 dark:text-orange-300 flex items-center gap-1.5">
+                <Truck className="h-3.5 w-3.5" />
+                {deliveryInfo.type} · {deliveryInfo.address}
+              </p>
+              {deliveryInfo.driverName && (
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 ml-5">
+                  Conductor: {deliveryInfo.driverName}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Opción de Factura Electrónica */}
           {showEInvoiceOption && (

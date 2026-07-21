@@ -58,14 +58,15 @@ export interface Vehicle {
 
 export interface DriverCredential {
   id: string;
-  organization_id: number;
   employment_id: string;
   license_number: string;
   license_category: string;
   license_expiry: string;
+  license_restrictions?: string;
   medical_cert_expiry?: string;
-  certifications?: string[];
-  is_active_driver: boolean;
+  hazmat_certified?: boolean;
+  passenger_certified?: boolean;
+  is_active: boolean;
   metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
@@ -73,6 +74,7 @@ export interface DriverCredential {
     id: string;
     organization_members?: {
       id: number;
+      organization_id: number;
       profiles?: { id: string; first_name: string; last_name: string; email: string; phone?: string };
     };
   };
@@ -613,18 +615,20 @@ class TransportService {
           id,
           organization_members(
             id,
+            organization_id,
             profiles(id, first_name, last_name, email, phone)
           )
         )
       `)
-      .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
 
     if (error) {
       console.warn('Error fetching drivers:', error.message);
       return [];
     }
-    return (data || []) as DriverCredential[];
+    return (data || []).filter((d: any) =>
+      d.employments?.[0]?.organization_members?.organization_id === organizationId
+    ) as DriverCredential[];
   }
 
   async getDriverById(id: string) {
@@ -692,16 +696,18 @@ class TransportService {
           id,
           organization_members(
             id,
+            organization_id,
             profiles(id, first_name, last_name)
           )
         )
       `)
-      .eq('organization_id', organizationId)
-      .eq('is_active_driver', true)
+      .eq('is_active', true)
       .or(`license_expiry.lte.${dateStr},medical_cert_expiry.lte.${dateStr}`);
 
     if (error) throw error;
-    return data as DriverCredential[];
+    return (data || []).filter((d: any) =>
+      d.employments?.[0]?.organization_members?.organization_id === organizationId
+    ) as DriverCredential[];
   }
 
   // ==================== STOPS ====================

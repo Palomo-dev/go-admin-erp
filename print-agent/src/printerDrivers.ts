@@ -15,14 +15,24 @@ function renderPlainText(jobType: PrintJobRow['job_type'], payload: PrintJobPayl
 
 // Los paquetes escpos-* no traen tipados oficiales completos; se cargan con require
 // y se tratan como `any` para simplificar la integración.
+// USB, Bluetooth y printer son módulos NATIVOS opcionales (requieren compilación):
+// si no están instalados, el agente sigue funcionando con red y sistema.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const escpos = require('escpos');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 escpos.Network = require('escpos-network');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-escpos.USB = require('escpos-usb');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-escpos.Bluetooth = require('escpos-bluetooth');
+
+function tryRequire(moduleName: string): any {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require(moduleName);
+  } catch {
+    return null;
+  }
+}
+
+escpos.USB = tryRequire('escpos-usb');
+escpos.Bluetooth = tryRequire('escpos-bluetooth');
 
 /**
  * Imprime la comanda en la impresora indicada, según su connection_type.
@@ -73,6 +83,9 @@ function printViaNetwork(printer: PrinterRow, jobType: PrintJobRow['job_type'], 
  * Validar con el dispositivo físico antes de usar en producción.
  */
 function printViaUsb(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
+  if (!escpos.USB) {
+    throw new Error('Soporte USB no disponible: el módulo nativo escpos-usb no se pudo instalar en este equipo');
+  }
   if (!printer.vendor_id || !printer.product_id) {
     throw new Error(`Impresora "${printer.name}" no tiene vendor_id/product_id configurados`);
   }
@@ -102,6 +115,9 @@ function printViaUsb(printer: PrinterRow, jobType: PrintJobRow['job_type'], payl
  * y que mac_address corresponda al emparejamiento. Validar con hardware real.
  */
 function printViaBluetooth(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
+  if (!escpos.Bluetooth) {
+    throw new Error('Soporte Bluetooth no disponible: el módulo nativo escpos-bluetooth no se pudo instalar en este equipo');
+  }
   if (!printer.mac_address) {
     throw new Error(`Impresora "${printer.name}" no tiene mac_address configurada`);
   }
@@ -128,8 +144,10 @@ function printViaBluetooth(printer: PrinterRow, jobType: PrintJobRow['job_type']
  * a la impresora por nombre (printer.name) o a la predeterminada si no hay match.
  */
 function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const nodePrinter = require('printer');
+  const nodePrinter = tryRequire('printer');
+  if (!nodePrinter) {
+    throw new Error('Soporte de impresora del sistema no disponible: el módulo nativo printer no se pudo instalar en este equipo');
+  }
   const text = renderPlainText(jobType, payload);
 
   return new Promise((resolve, reject) => {

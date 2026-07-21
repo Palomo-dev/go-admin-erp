@@ -44,6 +44,7 @@ export interface KitchenTicketItem {
       id: number;
       name: string;
       category_id: number | null;
+      variant_data?: Record<string, string> | null;
       categories?: {
         name: string;
       };
@@ -88,6 +89,7 @@ class KitchenService {
                 id,
                 name,
                 category_id,
+                variant_data,
                 categories (
                   name,
                   station,

@@ -18,6 +18,19 @@ App Web (POS) ──insert print_jobs──▶ Supabase (Realtime) ──▶ Pri
 
 ## Instalación
 
+### Opción A: Instalador guiado (recomendado para usuarios finales)
+
+1. Copiar la carpeta `print-agent` al PC del local.
+2. Doble clic en **`instalar.bat`**.
+3. Ingresar email y contraseña de GO Admin cuando lo pida.
+4. Listo — el instalador crea la configuración, instala dependencias y opcionalmente configura el arranque automático con Windows.
+
+> **Nota para el desarrollador**: antes de distribuir, editar `instalar.bat` y pegar la `SUPABASE_ANON_KEY` en la variable al inicio del archivo.
+
+Para iniciar el agente después: doble clic en **`iniciar.bat`** (se reinicia solo si se cae).
+
+### Opción B: Manual (desarrolladores)
+
 ```bash
 cd print-agent
 npm install
@@ -30,8 +43,20 @@ Completa el archivo `.env`:
 |---|---|
 | `SUPABASE_URL` / `SUPABASE_ANON_KEY` | Mismos valores que usa la app web |
 | `AGENT_EMAIL` / `AGENT_PASSWORD` | Credenciales del usuario que autentica al agente |
-| `ORGANIZATION_ID` / `BRANCH_ID` | IDs de la organización y sucursal donde corre este agente |
 | `AGENT_NAME` | Nombre identificador (ej. "Agente - Sucursal Norte") |
+| `ORGANIZATION_ID` / `BRANCH_ID` | **Opcionales.** Solo para forzar en deployments automatizados |
+
+## Selección dinámica de organización y sucursal
+
+Ya **no es necesario** configurar `ORGANIZATION_ID` ni `BRANCH_ID`. Al arrancar, el agente:
+
+1. Se autentica con `AGENT_EMAIL`/`AGENT_PASSWORD`.
+2. Consulta a qué organizaciones pertenece ese usuario (`organization_members`).
+3. **Si hay 1 org con 1 sucursal** → arranca automáticamente sin preguntar.
+4. **Si hay varias** → muestra un menú interactivo en consola para elegir organización y sucursal (o "TODAS" las sucursales).
+5. Guarda la selección en `agent-config.json` para no volver a preguntar en el próximo arranque.
+
+Si la selección guardada deja de ser válida (ej. se eliminó la sucursal), el menú se muestra de nuevo.
 
 ## Ejecución
 
@@ -63,5 +88,22 @@ Cada fila de `print_jobs` incluye un `payload` JSON con la estructura de la coma
 
 ## Múltiples sucursales / múltiples impresoras
 
-- Cada sucursal con impresoras físicas necesita **su propia instancia** de este agente corriendo en un PC de ese local (configurado con su `BRANCH_ID`).
-- Una misma instancia del agente puede manejar **todas las impresoras** configuradas para esa sucursal (cocina caliente, fría, bar, caja), siempre que estén accesibles desde ese PC (misma red local para las de red, USB/Bluetooth conectadas directamente a esa máquina).
+- Una instancia del agente puede escuchar **una o varias sucursales** de la misma organización (seleccionando "TODAS" en el menú interactivo).
+- Lo típico: cada sucursal con impresoras físicas tiene **su propia instancia** del agente corriendo en un PC de ese local.
+- Una misma instancia puede manejar **todas las impresoras** configuradas para su(s) sucursal(es) (cocina caliente, fría, bar, caja), siempre que estén accesibles desde ese PC (misma red local para las de red, USB/Bluetooth conectadas directamente a esa máquina).
+
+## Servidor de descubrimiento (detección automática)
+
+El agente incluye un servidor HTTP local (puerto `DISCOVERY_PORT`, por defecto `3456`) que permite a la app web detectar impresoras automáticamente:
+
+| Endpoint | Descripción |
+|---|---|
+| `GET /health` | Estado del agente |
+| `GET /printers` | Lista las impresoras instaladas en el sistema operativo |
+| `GET /discover` | Escanea la red local buscando impresoras con puerto 9100 abierto |
+
+Desde **Configuración POS → Impresoras → Nueva Impresora**, el botón "Detectar impresoras automáticamente" consulta estos endpoints y muestra:
+- **Impresoras del sistema**: las ya instaladas en Windows/macOS/Linux (incluye Bluetooth emparejada)
+- **Impresoras de red**: dispositivos encontrados en la red local con puerto 9100 abierto
+
+Al hacer clic en una impresora detectada, el formulario se autocompleta con los datos correctos (tipo de conexión, IP/nombre), sin necesidad de ingresar manualmente MAC, IP ni Vendor/Product ID.

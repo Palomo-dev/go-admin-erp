@@ -16,7 +16,7 @@ import { Plus, Minus, Search, X, ShoppingCart, Package } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { POSService } from '@/lib/services/posService';
-import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
+import { VariantSelectorDialog, type SelectedModifier } from '@/components/pos/VariantSelectorDialog';
 
 interface Product {
   id: number;
@@ -41,6 +41,7 @@ interface ConsumptionToAdd {
   quantity: number;
   unit_price: number;
   notes: string;
+  modifiers?: SelectedModifier[];
 }
 
 interface AddConsumptionDialogProps {
@@ -119,9 +120,9 @@ export function AddConsumptionDialog({
     }
   }, [searchTerm, selectedCategory, open]);
 
-  // Manejar click en producto (con o sin variantes)
+  // Manejar click en producto (con variantes, con modificadores, o simple)
   const handleProductClick = (product: any) => {
-    if (product.has_variants && product.variant_count > 0) {
+    if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
     } else {
@@ -129,32 +130,37 @@ export function AddConsumptionDialog({
     }
   };
 
-  // Manejar selección de variante desde el diálogo
-  const handleVariantSelect = (variant: any) => {
-    addToCart(variant);
+  // Manejar selección de variante (y sus modificadores) desde el diálogo
+  const handleVariantSelect = (variant: any, modifiers: SelectedModifier[] = []) => {
+    addToCart(variant, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
 
-  const addToCart = (product: any) => {
-    const unitPrice = product.price || 0;
+  const addToCart = (product: any, modifiers: SelectedModifier[] = []) => {
+    const extraTotal = modifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
+    const unitPrice = (product.price || 0) + extraTotal;
     if (unitPrice === 0) {
       alert('Este producto no tiene precio configurado');
       return;
     }
 
+    // Los productos con distintos modificadores no se fusionan en la misma línea
+    const modifiersKey = modifiers.map((m) => m.modifierId).sort().join(',');
+    const cartKey = modifiersKey ? `${product.id}::${modifiersKey}` : product.id;
     const newCart = new Map(cart);
-    const existing = newCart.get(product.id);
+    const existing = newCart.get(cartKey as any);
 
     if (existing) {
       existing.quantity += 1;
     } else {
-      newCart.set(product.id, {
+      newCart.set(cartKey as any, {
         product_id: product.id,
         product_name: product.name,
         quantity: 1,
         unit_price: Number(unitPrice),
         notes: '',
+        modifiers: modifiers.length > 0 ? modifiers : undefined,
       });
     }
 

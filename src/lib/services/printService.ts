@@ -118,7 +118,8 @@ export class PrintService {
     business?: BusinessInfo,
     cashier?: CashierInfo,
     branch?: BranchInfo,
-    taxLines?: TaxLine[]
+    taxLines?: TaxLine[],
+    deliveryInfo?: { type: string; address: string; driverName?: string }
   ): string {
     const businessName = business?.name || 'Mi Empresa';
     const businessAddress = business?.address || '';
@@ -286,6 +287,14 @@ export class PrintService {
     </div>
     ` : ''}
 
+    ${deliveryInfo ? `
+    <div class="customer-info">
+        <div><strong>Entrega:</strong> ${deliveryInfo.type}</div>
+        <div><strong>Dirección:</strong> ${deliveryInfo.address}</div>
+        ${deliveryInfo.driverName ? `<div><strong>Conductor:</strong> ${deliveryInfo.driverName}</div>` : ''}
+    </div>
+    ` : ''}
+
     <div class="items-header">
         <span>PRODUCTO</span>
         <span>TOTAL</span>
@@ -317,7 +326,20 @@ export class PrintService {
       else if (notesObj?.product_name && notesObj?.product_name !== 'Producto') {
         productName = notesObj.product_name;
       }
-      
+
+      // Variantes elegidas (ej. Talla: M, Color: Rojo)
+      const variantData = (item as any).product?.variant_data || (item as any).products?.variant_data || null;
+      const variantEntries = variantData ? Object.entries(variantData).filter(([, v]) => !!v) : [];
+      const variantLine = variantEntries.length > 0
+        ? `<div class="item-details">${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}</div>`
+        : '';
+
+      // Modificadores elegidos (ej. Salsa: BBQ, Extra queso)
+      const modifiers: Array<{ name: string; extraPrice: number }> = Array.isArray(notesObj?.modifiers) ? notesObj.modifiers : [];
+      const modifiersLine = modifiers.length > 0
+        ? `<div class="item-details">${modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatCurrency(m.extraPrice)})` : m.name).join(' · ')}</div>`
+        : '';
+
       return `
     <div class="item">
         <div class="item-line">
@@ -329,6 +351,8 @@ export class PrintService {
             ${item.tax_amount && item.tax_amount > 0 ? ` (Imp.: ${formatCurrency(item.tax_amount)})` : ''}
             ${item.discount_amount && item.discount_amount > 0 ? ` (Desc: ${formatCurrency(item.discount_amount)})` : ''}
         </div>
+        ${variantLine}
+        ${modifiersLine}
     </div>
     `;
     }).join('')}
@@ -413,7 +437,8 @@ export class PrintService {
     business?: BusinessInfo,
     cashier?: CashierInfo,
     branch?: BranchInfo,
-    taxLines?: TaxLine[]
+    taxLines?: TaxLine[],
+    deliveryInfo?: { type: string; address: string; driverName?: string }
   ): void {
     const html = this.generateTicketHTML(
       sale, 
@@ -423,7 +448,8 @@ export class PrintService {
       business, 
       cashier,
       branch,
-      taxLines
+      taxLines,
+      deliveryInfo
     );
 
     const printWindow = window.open('', '_blank', 'width=300,height=600');
@@ -485,7 +511,8 @@ export class PrintService {
     business?: BusinessInfo,
     cashier?: CashierInfo,
     branch?: BranchInfo,
-    taxLines?: TaxLine[]
+    taxLines?: TaxLine[],
+    deliveryInfo?: { type: string; address: string; driverName?: string }
   ): void {
     const html = this.generateTicketHTML(
       sale, 
@@ -495,7 +522,8 @@ export class PrintService {
       business, 
       cashier,
       branch,
-      taxLines
+      taxLines,
+      deliveryInfo
     );
 
     const blob = new Blob([html], { type: 'text/html' });
@@ -518,7 +546,7 @@ export class PrintService {
    */
   static printPreCuenta(
     tableName: string,
-    items: Array<{ product?: { name?: string }; quantity: number; unit_price: number; total: number; tax_amount?: number; discount_amount?: number; notes?: any }>,
+    items: Array<{ product?: { name?: string; variant_data?: Record<string, string> | null }; quantity: number; unit_price: number; total: number; tax_amount?: number; discount_amount?: number; notes?: any }>,
     subtotal: number,
     taxTotal: number,
     discountTotal: number,
@@ -527,6 +555,7 @@ export class PrintService {
     branch?: BranchInfo,
     serverName?: string,
     driverName?: string,
+    deliveryAddress?: string,
   ): void {
     const dateStr = new Date().toLocaleDateString('es-CO');
     const timeStr = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
@@ -535,6 +564,16 @@ export class PrintService {
 
     const itemsHTML = items.map(item => {
       const name = item.product?.name || 'Producto';
+      const variantEntries = item.product?.variant_data
+        ? Object.entries(item.product.variant_data).filter(([, v]) => !!v)
+        : [];
+      const variantLine = variantEntries.length > 0
+        ? `<div class="item-details">${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}</div>`
+        : '';
+      const modifiers: Array<{ name: string; extraPrice: number }> = Array.isArray(item.notes?.modifiers) ? item.notes.modifiers : [];
+      const modifiersLine = modifiers.length > 0
+        ? `<div class="item-details">${modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatCurrency(m.extraPrice)})` : m.name).join(' · ')}</div>`
+        : '';
       return `
         <div class="item">
           <div class="item-line">
@@ -544,6 +583,8 @@ export class PrintService {
           <div class="item-details">
             ${item.quantity} × ${formatCurrency(item.unit_price)}
           </div>
+          ${variantLine}
+          ${modifiersLine}
         </div>`;
     }).join('');
 
@@ -581,6 +622,7 @@ export class PrintService {
   <div style="text-align:center;font-size:11px;margin-bottom:8px">${dateStr} - ${timeStr}</div>
   ${serverName ? `<div style="font-size:11px;margin-bottom:4px"><strong>Mesero:</strong> ${serverName}</div>` : ''}
   ${driverName ? `<div style="font-size:11px;margin-bottom:4px"><strong>Conductor:</strong> ${driverName}</div>` : ''}
+  ${deliveryAddress ? `<div style="font-size:11px;margin-bottom:4px"><strong>Domicilio:</strong> ${deliveryAddress}</div>` : ''}
   <div class="items-header"><span>PRODUCTO</span><span>TOTAL</span></div>
   ${itemsHTML}
   <div class="totals">
@@ -636,13 +678,14 @@ export class PrintService {
     business?: BusinessInfo,
     cashier?: CashierInfo,
     branch?: BranchInfo,
-    taxLines?: TaxLine[]
+    taxLines?: TaxLine[],
+    deliveryInfo?: { type: string; address: string; driverName?: string }
   ): void {
     if (this.canPrint()) {
-      this.printTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines);
+      this.printTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines, deliveryInfo);
     } else {
       // Fallback: descargar como HTML
-      this.downloadTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines);
+      this.downloadTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines, deliveryInfo);
       alert('La impresión directa no está disponible. El ticket se descargará como archivo HTML.');
     }
   }

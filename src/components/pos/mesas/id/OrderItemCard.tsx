@@ -41,11 +41,18 @@ export function OrderItemCard({
 
   // El campo `notes` puede llegar como objeto (jsonb) o como string JSON según el origen del dato.
   // Se normaliza aquí para no depender del tipo real de la columna.
+  type ParsedNotes = {
+    product_name?: string;
+    extra?: string;
+    guest_number?: number;
+    modifiers?: Array<{ groupId: number; groupName: string; modifierId: number; name: string; extraPrice: number }>;
+  };
+
   const parsedNotes = (() => {
-    if (item.notes && typeof item.notes === 'object') return item.notes as { product_name?: string; extra?: string; guest_number?: number };
+    if (item.notes && typeof item.notes === 'object') return item.notes as ParsedNotes;
     if (typeof item.notes === 'string' && item.notes.trim().startsWith('{')) {
       try {
-        return JSON.parse(item.notes) as { product_name?: string; extra?: string; guest_number?: number };
+        return JSON.parse(item.notes) as ParsedNotes;
       } catch {
         return { extra: item.notes };
       }
@@ -91,9 +98,11 @@ export function OrderItemCard({
     }
   };
 
-  // Obtener imagen primaria del producto
+  // Obtener imagen primaria del producto (con fallback a las imágenes del producto padre si es una variante sin imagen propia)
   const getProductImage = () => {
-    const images = item.product?.product_images;
+    const images = item.product?.product_images?.length
+      ? item.product.product_images
+      : item.product?.parent_product?.product_images;
     if (!images || images.length === 0) return null;
     
     const primaryImage = images.find(img => img.is_primary) || images[0];
@@ -104,6 +113,11 @@ export function OrderItemCard({
   };
 
   const productImage = getProductImage();
+
+  // Variantes elegidas (ej. Talla: M, Color: Rojo)
+  const variantEntries = item.product?.variant_data
+    ? Object.entries(item.product.variant_data).filter(([, v]) => !!v)
+    : [];
 
   return (
     <Card className="p-4">
@@ -139,6 +153,24 @@ export function OrderItemCard({
               </Badge>
             )}
           </div>
+          {variantEntries.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap mt-1">
+              {variantEntries.map(([attr, value]) => (
+                <Badge key={attr} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300">
+                  {attr}: {value}
+                </Badge>
+              ))}
+            </div>
+          )}
+          {parsedNotes?.modifiers && parsedNotes.modifiers.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap mt-1">
+              {parsedNotes.modifiers.map((mod) => (
+                <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                  {mod.name}{mod.extraPrice > 0 ? ` (+${formatCurrency(mod.extraPrice)})` : ''}
+                </Badge>
+              ))}
+            </div>
+          )}
           {kitchenStatus && kitchenStatusConfig[kitchenStatus] && (
             <Badge className={`${kitchenStatusConfig[kitchenStatus].color} text-xs mt-1 inline-flex items-center gap-1`}>
               {React.createElement(kitchenStatusConfig[kitchenStatus].icon, { className: 'h-3 w-3' })}

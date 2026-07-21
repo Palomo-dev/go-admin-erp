@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SearchSelect } from '@/components/ui/search-select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Wifi, Printer as PrinterIcon, Check } from 'lucide-react';
 import {
   type Printer,
   type PrinterFormData,
@@ -23,6 +23,8 @@ import {
   STATION_LABELS,
   CONNECTION_TYPE_LABELS,
 } from '../printersService';
+
+const DISCOVERY_URL = 'http://localhost:3456';
 
 interface PrinterFormDialogProps {
   open: boolean;
@@ -54,6 +56,49 @@ const emptyForm: PrinterFormData = {
 export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSave }: PrinterFormDialogProps) {
   const [form, setForm] = useState<PrinterFormData>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [systemPrinters, setSystemPrinters] = useState<{ name: string; isDefault: boolean }[]>([]);
+  const [networkPrinters, setNetworkPrinters] = useState<{ ip: string; port: number }[]>([]);
+  const [showDetected, setShowDetected] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
+
+  const handleDetect = async () => {
+    setDetecting(true);
+    setDetectError(null);
+    setSystemPrinters([]);
+    setNetworkPrinters([]);
+    setShowDetected(true);
+    try {
+      const [printersRes, discoverRes] = await Promise.allSettled([
+        fetch(`${DISCOVERY_URL}/printers`).then((r) => r.json()),
+        fetch(`${DISCOVERY_URL}/discover`).then((r) => r.json()),
+      ]);
+
+      if (printersRes.status === 'fulfilled' && printersRes.value?.printers) {
+        setSystemPrinters(printersRes.value.printers);
+      }
+      if (discoverRes.status === 'fulfilled' && discoverRes.value?.printers) {
+        setNetworkPrinters(discoverRes.value.printers);
+      }
+      if (printersRes.status === 'rejected' && discoverRes.status === 'rejected') {
+        setDetectError('No se pudo conectar al Print Agent. Asegúrate de que esté corriendo en esta PC.');
+      }
+    } catch {
+      setDetectError('No se pudo conectar al Print Agent. Asegúrate de que esté corriendo en esta PC.');
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  const selectSystemPrinter = (name: string) => {
+    setForm((f) => ({ ...f, connection_type: 'system', name: f.name || name }));
+    setShowDetected(false);
+  };
+
+  const selectNetworkPrinter = (ip: string, port: number) => {
+    setForm((f) => ({ ...f, connection_type: 'network', ip_address: ip, port, name: f.name || `Impresora ${ip}` }));
+    setShowDetected(false);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -134,6 +179,100 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
               onValueChange={(value) => setForm((f) => ({ ...f, connection_type: value as PrinterConnectionType }))}
               className="w-full"
             />
+          </div>
+
+          {/* Botón detectar impresoras */}
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDetect}
+              disabled={detecting}
+              className="w-full"
+            >
+              {detecting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Detectando impresoras...
+                </>
+              ) : (
+                <>
+                  <Wifi className="h-4 w-4 mr-2" />
+                  Detectar impresoras automáticamente
+                </>
+              )}
+            </Button>
+
+            {detectError && (
+              <p className="text-xs text-red-500 mt-2">{detectError}</p>
+            )}
+
+            {showDetected && !detectError && (
+              <div className="mt-3 space-y-3 border rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
+                {/* Impresoras del sistema */}
+                <div>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-1">
+                    <PrinterIcon className="h-3 w-3" />
+                    Impresoras del sistema ({systemPrinters.length})
+                  </p>
+                  {systemPrinters.length === 0 ? (
+                    <p className="text-xs text-gray-400">No se encontraron impresoras instaladas</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {systemPrinters.map((p) => (
+                        <button
+                          key={p.name}
+                          type="button"
+                          onClick={() => selectSystemPrinter(p.name)}
+                          className="flex items-center justify-between w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <PrinterIcon className="h-3 w-3 text-gray-400" />
+                            {p.name}
+                          </span>
+                          {p.isDefault && (
+                            <span className="text-[10px] text-blue-500 font-medium">Predeterminada</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Impresoras de red */}
+                <div>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-1">
+                    <Wifi className="h-3 w-3" />
+                    Impresoras de red ({networkPrinters.length})
+                  </p>
+                  {networkPrinters.length === 0 ? (
+                    <p className="text-xs text-gray-400">No se encontraron impresoras en la red</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {networkPrinters.map((p) => (
+                        <button
+                          key={p.ip}
+                          type="button"
+                          onClick={() => selectNetworkPrinter(p.ip, p.port)}
+                          className="flex items-center justify-between w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Wifi className="h-3 w-3 text-green-500" />
+                            {p.ip}:{p.port}
+                          </span>
+                          <Check className="h-3 w-3 text-green-500" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[10px] text-gray-400">
+                  Haz clic en una impresora para autocompletar el formulario
+                </p>
+              </div>
+            )}
           </div>
 
           {form.connection_type === 'network' && (

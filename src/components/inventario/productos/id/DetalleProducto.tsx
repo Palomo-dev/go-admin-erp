@@ -24,6 +24,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import ProductoHeader from './ProductoHeader';
 import DetallesTab from './tabs/DetallesTab';
 import VariantesTab from './tabs/VariantesTab';
+import ModificadoresTab from './tabs/ModificadoresTab';
 import StockTab from './tabs/StockTab';
 import ImagenesTab from './tabs/ImagenesTab';
 import PreciosTab from './tabs/PreciosTab';
@@ -246,9 +247,10 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
         {/* Pestañas de producto */}
         <div className="mt-6">
           <Tabs defaultValue="detalles" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 md:grid-cols-9 h-auto gap-1.5 md:gap-1 p-1.5 md:p-1 dark:bg-gray-800 dark:border-gray-700">
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-10 h-auto gap-1.5 md:gap-1 p-1.5 md:p-1 dark:bg-gray-800 dark:border-gray-700">
               <TabsTrigger value="detalles" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Detalles</TabsTrigger>
               <TabsTrigger value="variantes" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Variantes</TabsTrigger>
+              <TabsTrigger value="modificadores" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Modificadores</TabsTrigger>
               <TabsTrigger value="stock" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Stock</TabsTrigger>
               <TabsTrigger value="imagenes" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Imágenes</TabsTrigger>
               <TabsTrigger value="precios" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Precios</TabsTrigger>
@@ -267,6 +269,11 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
             <TabsContent value="variantes">
               <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
                 <VariantesTab producto={producto} />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="modificadores">
+              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+                <ModificadoresTab producto={producto} />
               </Suspense>
             </TabsContent>
             <TabsContent value="stock">

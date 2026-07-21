@@ -190,10 +190,14 @@ const CatalogoProductos: React.FC = () => {
           }
           
           // Calcular el stock disponible para la sucursal actual
-          let stockTotal = 0;
-          let stockBranch = 0;
-          
-          if (product.stock_levels && product.stock_levels.length > 0) {
+          let stockTotal: number | undefined = 0;
+          let stockBranch: number | undefined = 0;
+
+          // Si el producto no rastrea inventario, no mostrar stock
+          if (product.track_stock === false) {
+            stockTotal = undefined;
+            stockBranch = undefined;
+          } else if (product.stock_levels && product.stock_levels.length > 0) {
             // Stock total en todas las sucursales
             stockTotal = product.stock_levels.reduce((sum: number, sl: any) => {
               return sum + (sl.qty_on_hand || 0) - (sl.qty_reserved || 0);
@@ -209,7 +213,7 @@ const CatalogoProductos: React.FC = () => {
           }
           
           // Para productos padre, sumar stock de variantes hijas
-          if (product.is_parent && product.children && product.children.length > 0) {
+          if (product.is_parent && product.children && product.children.length > 0 && stockTotal !== undefined) {
             product.children.forEach((child: any) => {
               if (child.stock_levels && child.stock_levels.length > 0) {
                 stockTotal += child.stock_levels.reduce((sum: number, sl: any) => {

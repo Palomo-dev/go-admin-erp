@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Search } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
+import * as GiIcons from 'react-icons/gi'
 
 interface IconSelectorProps {
   value?: string
@@ -19,16 +20,39 @@ interface IconSelectorProps {
 const COMMON_ICONS = [
   // Productos y comercio
   'Package', 'ShoppingCart', 'ShoppingBag', 'ShoppingBasket', 'Gift', 'PackageOpen', 'PackageCheck',
-  'Boxes', 'Box', 'Archive', 'Warehouse', 'Store', 'Storefront',
+  'Boxes', 'Box', 'Archive', 'Warehouse', 'Store',
   // Tecnología
   'Laptop', 'Monitor', 'Smartphone', 'Tablet', 'Watch', 'Tv', 'Speaker',
   'Headphones', 'Camera', 'Gamepad', 'Cpu', 'HardDrive', 'Wifi', 'Bluetooth', 'Battery',
   'Printer', 'Mouse', 'Keyboard', 'Usb',
   // Ropa y moda
   'Shirt', 'Gem', 'Crown', 'Glasses', 'Footprints', 'Scissors',
-  // Alimentos y hogar
-  'Utensils', 'Coffee', 'Wine', 'Beer', 'CupSoda', 'Soup', 'Pizza', 'Apple', 'Beef',
-  'Cake', 'IceCream', 'Cookie', 'Egg', 'Milk', 'Salad', 'Sandwich', 'Cherry', 'Grape', 'Banana', 'Citrus',
+  // Belleza y cosméticos
+  'SprayCan', 'Brush', 'Eye', 'HandHeart',
+  // Alimentos - Frutas y verduras
+  'Apple', 'Banana', 'Cherry', 'Grape', 'Citrus', 'Carrot', 'Wheat', 'Nut', 'Vegan',
+  // Alimentos - Comidas y platos
+  'Pizza', 'Soup', 'Salad', 'Sandwich', 'Croissant', 'Donut',
+  // Alimentos - Postres y dulces
+  'Cake', 'CakeSlice', 'IceCream', 'IceCreamCone', 'IceCreamBowl', 'Cookie', 'Candy', 'CandyCane', 'Lollipop', 'Popcorn',
+  // Alimentos - Proteínas
+  'Beef', 'Drumstick', 'Egg', 'EggFried', 'Fish', 'FishSymbol', 'Shrimp', 'Ham',
+  // Alimentos - Lácteos y derivados
+  'Milk',
+  // Bebidas
+  'Coffee', 'Wine', 'Beer', 'CupSoda', 'Martini', 'GlassWater',
+  // Cocina y restaurante
+  'Utensils', 'UtensilsCrossed', 'CookingPot', 'ChefHat', 'ConciergeBell', 'HandPlatter',
+  'Refrigerator', 'Microwave',
+  // Alimentos extra (react-icons/gi) - verduras y platos que Lucide no tiene
+  'GiTomato', 'GiHamburger', 'GiTacos', 'GiCheeseWedge', 'GiCoffeeCup',
+  'GiChickenLeg', 'GiSausage', 'GiCarrot', 'GiPotato', 'GiHotMeal', 'GiNoodles',
+  'GiSushis', 'GiDonut', 'GiCupcake', 'GiFrenchFries', 'GiWaterBottle', 'GiWineGlass',
+  'GiMilkCarton', 'GiBreadSlice', 'GiChiliPepper', 'GiGarlic', 'GiBroccoli',
+  'GiAvocado', 'GiPear', 'GiWatermelon', 'GiPeanut', 'GiCorn', 'GiMushroom',
+  'GiSteak', 'GiShrimp', 'GiCrab', 'GiHoneypot', 'GiCakeSlice', 'GiPretzel',
+  'GiPopcorn', 'GiIceCreamScoop', 'GiKnifeFork', 'GiCookingPot', 'GiFruitBowl',
+  // Hogar
   'Home', 'Sofa', 'Lamp', 'Bath', 'Bed', 'AirVent', 'Refrigerator', 'WashingMachine',
   // Herramientas
   'Wrench', 'Hammer', 'Drill', 'Paintbrush', 'Ruler', 'Pipette', 'Pencil', 'PenTool', 'Eraser',
@@ -37,10 +61,18 @@ const COMMON_ICONS = [
   // Salud y bienestar
   'Heart', 'HeartPulse', 'Stethoscope', 'Pill', 'Syringe', 'Thermometer', 'Baby', 'Accessibility',
   'Dumbbell', 'Bike', 'PersonStanding',
+  // Farmacia ampliado
+  'Cross', 'Bandage', 'Bone', 'Plus',
+  // Deportes
+  'Volleyball', 'Dumbbell', 'SkipForward', 'Medal', 'Trophy', 'Goal',
   // Transporte
   'Car', 'Bus', 'Truck', 'Plane', 'Ship', 'Rocket', 'Train', 'Bike', 'Fuel',
+  // Automotriz
+  'CircleGauge', 'Caravan', 'CarTaxiFront',
   // Industria y construcción
-  'Factory', 'Building', 'Building2', 'Landmark', 'Construction', 'HardHat', 'Crane', 'BrickWall',
+  'Factory', 'Building', 'Building2', 'Landmark', 'Construction', 'HardHat', 'BrickWall',
+  // Agricultura y campo
+  'Tractor', 'Shovel', 'Pickaxe', 'Leaf', 'Sprout',
   // Internet y redes
   'Globe', 'Globe2', 'Earth', 'Cloud', 'CloudDownload', 'CloudUpload', 'Server', 'Database', 'Network',
   'Link', 'Rss', 'Radio', 'Podcast', 'Signal', 'Antenna',
@@ -50,6 +82,8 @@ const COMMON_ICONS = [
   // Personas
   'Users', 'User', 'UserPlus', 'UserCheck', 'UserX', 'UserCog', 'UsersRound',
   'Contact', 'BadgeCheck', 'Fingerprint', 'HandMetal', 'ThumbsUp', 'ThumbsDown',
+  // Servicios profesionales
+  'Briefcase', 'Scale', 'Gavel', 'Stamp', 'FileSignature', 'IdCard',
   // Seguridad
   'Shield', 'ShieldCheck', 'ShieldAlert', 'Lock', 'Unlock', 'Key', 'KeyRound', 'Eye', 'EyeOff',
   // Configuración
@@ -60,17 +94,25 @@ const COMMON_ICONS = [
   'Target', 'TrendingUp', 'TrendingDown', 'Activity', 'BarChart', 'BarChart2', 'BarChart3',
   'PieChart', 'LineChart', 'AreaChart', 'Gauge',
   // Tiempo y calendario
-  'Calendar', 'CalendarDays', 'CalendarCheck', 'CalendarClock', 'Clock', 'Timer', 'Hourglass', 'Alarm',
+  'Calendar', 'CalendarDays', 'CalendarCheck', 'CalendarClock', 'Clock', 'Timer', 'Hourglass',
   // Comunicación
   'Bell', 'BellRing', 'Mail', 'MailOpen', 'MessageSquare', 'MessageCircle', 'Send',
   'Phone', 'PhoneCall', 'Video', 'Mic', 'Volume2', 'Megaphone',
+  // Soporte y ayuda
+  'LifeBuoy', 'HelpCircle', 'Info', 'CircleHelp',
   // Ubicación
   'MapPin', 'Map', 'Navigation', 'Compass', 'Locate', 'Route', 'Signpost', 'Mountain', 'Trees',
+  // Inmuebles y real estate
+  'House', 'DoorOpen', 'DoorClosed', 'Fence', 'Warehouse',
+  // Estacionamiento
+  'ParkingSquare', 'CircleParking', 'SquareParking',
   // Archivos
   'File', 'FileText', 'FileCheck', 'FileSpreadsheet', 'FileImage', 'FileVideo', 'FileAudio',
   'Folder', 'FolderOpen', 'FolderTree', 'ClipboardList', 'ClipboardCheck',
   // Medios
   'Image', 'Images', 'Film', 'Clapperboard', 'Palette', 'Brush', 'PaintBucket',
+  // Entretenimiento
+  'Drum', 'Guitar', 'Piano', 'Ticket', 'Drama', 'Theater',
   // Acciones
   'Download', 'Upload', 'Share', 'Share2', 'ExternalLink', 'Copy', 'Clipboard',
   'Trash2', 'Edit', 'Edit3', 'Save', 'Plus', 'Minus', 'Check', 'X',
@@ -81,12 +123,16 @@ const COMMON_ICONS = [
   // Naturaleza y clima
   'Sun', 'Moon', 'CloudSun', 'CloudRain', 'Snowflake', 'Wind', 'Rainbow', 'Umbrella',
   'Leaf', 'TreePine', 'Flower', 'Sprout', 'Bug', 'Fish', 'Bird', 'Cat', 'Dog', 'Rabbit',
+  // Mascotas
+  'PawPrint', 'Turtle', 'Squirrel',
+  // Religioso y espiritual
+  'Church', 'Sparkles',
   // Formas y objetos
   'Circle', 'Square', 'Triangle', 'Hexagon', 'Pentagon', 'Octagon',
   'Hash', 'AtSign', 'Code', 'Terminal', 'Binary', 'Braces', 'Brackets',
   // Decoración y misc
-  'Sparkle', 'PartyPopper', 'Confetti', 'Flag', 'Bookmark', 'Pin', 'Paperclip',
-  'Lightbulb', 'Flashlight', 'Candle', 'Wand2', 'Magic',
+  'Sparkle', 'PartyPopper', 'Flag', 'Bookmark', 'Pin', 'Paperclip',
+  'Lightbulb', 'Flashlight', 'Wand2',
   'Music', 'Music2', 'Disc', 'Headset',
   'Layers', 'Layout', 'Grid', 'List', 'AlignJustify', 'Columns',
   // Emojis y expresiones
@@ -114,7 +160,9 @@ export default function IconSelector({ value, onChange, label = 'Icono', classNa
   }
 
   const renderIcon = (iconName: string, size: number = 20, iconColor?: string) => {
-    const IconComponent = (LucideIcons as any)[iconName]
+    const IconComponent = iconName.startsWith('Gi')
+      ? (GiIcons as any)[iconName]
+      : (LucideIcons as any)[iconName]
     if (!IconComponent) return null
     return <IconComponent size={size} style={iconColor ? { color: iconColor } : undefined} />
   }

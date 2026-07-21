@@ -1124,8 +1124,7 @@ export const createProfileFromInvitation = async ({
           user_id: authUserId,
           organization_id: inviteData.organization_id,
           role_id: inviteData.role_id,
-          is_active: true,
-          joined_at: new Date().toISOString()
+          is_active: true
         });
 
       if (membershipError) {
@@ -1139,8 +1138,7 @@ export const createProfileFromInvitation = async ({
         .from('organization_members')
         .update({
           role_id: inviteData.role_id,
-          is_active: true,
-          joined_at: new Date().toISOString()
+          is_active: true
         })
         .eq('user_id', authUserId)
         .eq('organization_id', inviteData.organization_id);

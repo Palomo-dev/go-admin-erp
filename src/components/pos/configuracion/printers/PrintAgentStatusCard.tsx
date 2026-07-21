@@ -4,8 +4,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Radio, Server } from 'lucide-react';
+import { RefreshCw, Radio, Server, Download, MapPin } from 'lucide-react';
 import { PrintJobsService, type PrintAgentStatus } from '@/lib/services/printJobsService';
+import { DownloadDesktopDialog } from './DownloadDesktopDialog';
 
 interface PrintAgentStatusCardProps {
   branchId: number | null;
@@ -14,6 +15,7 @@ interface PrintAgentStatusCardProps {
 export function PrintAgentStatusCard({ branchId }: PrintAgentStatusCardProps) {
   const [agents, setAgents] = useState<PrintAgentStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDownload, setShowDownload] = useState(false);
 
   const loadAgents = useCallback(async () => {
     if (!branchId) return;
@@ -46,15 +48,22 @@ export function PrintAgentStatusCard({ branchId }: PrintAgentStatusCardProps) {
             Agentes locales que envían las comandas a las impresoras físicas de esta sucursal
           </CardDescription>
         </div>
-        <Button variant="outline" size="icon" onClick={loadAgents} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowDownload(true)}>
+            <Download className="h-4 w-4 mr-2" />
+            Descargar Go Admin Desktop
+          </Button>
+          <Button variant="outline" size="icon" onClick={loadAgents} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {agents.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-4 text-sm">
-            No se ha registrado ningún Print Agent para esta sucursal aún. Instálalo siguiendo la guía en{' '}
-            <code className="text-xs">print-agent/README.md</code>.
+            No se ha registrado ningún agente de impresión para esta sucursal aún. Usa el botón{' '}
+            <span className="font-medium">"Descargar Go Admin Desktop"</span> para instalarlo en el
+            computador del local.
           </p>
         ) : (
           <div className="space-y-2">
@@ -66,6 +75,12 @@ export function PrintAgentStatusCard({ branchId }: PrintAgentStatusCardProps) {
                 <div className="flex items-center gap-2">
                   <Server className="h-4 w-4 text-gray-500" />
                   <span className="font-medium text-gray-900 dark:text-white text-sm">{agent.agent_name}</span>
+                  {agent.branch_name && (
+                    <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                      <MapPin className="h-3 w-3" />
+                      {agent.branch_name}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {agent.last_seen_at && (
@@ -88,6 +103,8 @@ export function PrintAgentStatusCard({ branchId }: PrintAgentStatusCardProps) {
           </div>
         )}
       </CardContent>
+
+      <DownloadDesktopDialog open={showDownload} onOpenChange={setShowDownload} />
     </Card>
   );
 }

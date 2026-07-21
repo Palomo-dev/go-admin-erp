@@ -353,6 +353,12 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       
       console.log("Datos principales del producto actualizados correctamente");
 
+      // Propagar track_stock a las variantes hijas
+      await supabase
+        .from('products')
+        .update({ track_stock: data.track_stock, updated_at: new Date().toISOString() })
+        .eq('parent_product_id', productoId);
+
       // 1b. Actualizar precio en product_prices si cambió
       if (data.price !== undefined && data.price >= 0) {
         const now = new Date().toISOString();

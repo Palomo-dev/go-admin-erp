@@ -701,6 +701,7 @@ class DeliveryIntegrationService {
     customerPhone?: string;
     total: number;
     itemsCount: number;
+    driverId?: string;
     deliveryInfo: {
       address: string;
       city?: string;
@@ -715,7 +716,7 @@ class DeliveryIntegrationService {
     const shipmentData = {
       organization_id: params.organizationId,
       branch_id: params.branchId,
-      source_type: 'pos_sale',
+      source_type: 'sale',
       source_id: params.saleId,
       shipment_number: shipmentNumber,
       tracking_number: trackingNumber,
@@ -725,12 +726,13 @@ class DeliveryIntegrationService {
       delivery_contact_name: params.deliveryInfo.contact_name || params.customerName || '',
       delivery_contact_phone: params.deliveryInfo.contact_phone || params.customerPhone || '',
       delivery_instructions: params.deliveryInfo.instructions || '',
-      status: 'pending' as const,
+      status: params.driverId ? 'assigned' as const : 'pending' as const,
       notes: `Venta POS: ${params.saleId.slice(-8)}`,
       metadata: {
         pos_sale_id: params.saleId,
         pos_total: params.total,
         items_count: params.itemsCount,
+        ...(params.driverId && { driver_id: params.driverId, assigned_at: new Date().toISOString() }),
       },
     };
 
@@ -743,12 +745,25 @@ class DeliveryIntegrationService {
     if (error) throw error;
 
     await this.createTransportEvent({
+      organization_id: params.organizationId,
       reference_type: 'shipment',
       reference_id: data.id,
       event_type: 'created',
       actor_type: 'system',
       description: `Envío creado desde venta POS ${shipmentNumber}`,
     });
+
+    if (params.driverId) {
+      await this.createTransportEvent({
+        organization_id: params.organizationId,
+        reference_type: 'shipment',
+        reference_id: data.id,
+        event_type: 'assigned',
+        actor_type: 'system',
+        actor_id: params.driverId,
+        description: `Conductor asignado desde venta POS ${shipmentNumber}`,
+      });
+    }
 
     return data as DeliveryShipment;
   }

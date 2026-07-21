@@ -64,6 +64,13 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
     const fetchStockData = async () => {
       if (!organization?.id) return;
       
+      // Si el producto no rastrea inventario, no cargar stock
+      if (producto.track_stock === false) {
+        setTotalStock({ total: 0, reserved: 0, available: 0 });
+        setLoadingStock(false);
+        return;
+      }
+      
       try {
         setLoadingStock(true);
         
@@ -107,7 +114,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
     };
     
     fetchStockData();
-  }, [organization?.id, producto.id]);
+  }, [organization?.id, producto.id, producto.track_stock]);
 
   // Función para renderizar el badge de estado
   const renderEstado = (estado: string) => {
@@ -365,16 +372,25 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                         <InfoIcon className="h-4 w-4 cursor-help text-gray-400" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Stock total disponible</p>
+                        <p>{producto.track_stock === false ? 'Inventario sin seguimiento' : 'Stock total disponible'}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <p className="mt-1 text-2xl font-semibold dark:text-white">
-                    {loadingStock ? 
-                      <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : 
-                      totalStock.total
-                    }
-                  </p>
+                  {producto.track_stock === false ? (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                        <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500" />
+                        Sin seguimiento
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-2xl font-semibold dark:text-white">
+                      {loadingStock ? 
+                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : 
+                        totalStock.total
+                      }
+                    </p>
+                  )}
                 </div>
               </TooltipProvider>
             </div>

@@ -14,10 +14,17 @@ export interface PrinterRow {
   is_active: boolean;
 }
 
+export interface KitchenTicketItemModifier {
+  name: string;
+  extraPrice: number;
+}
+
 export interface KitchenTicketItemPayload {
   productName: string;
   quantity: number;
   notes?: string | null;
+  variantData?: Record<string, string> | null;
+  modifiers?: KitchenTicketItemModifier[] | null;
 }
 
 export interface KitchenTicketPrintPayload {

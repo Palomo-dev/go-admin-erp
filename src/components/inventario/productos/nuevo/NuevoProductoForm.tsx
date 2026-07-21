@@ -371,7 +371,8 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
               parent_product_id: product.id,
               is_parent: false,
               variant_data: variant.attributes,
-              status: 'active'
+              status: 'active',
+              track_stock: formData.track_stock !== false
             })
             .select('id')
             .single()
@@ -396,8 +397,8 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
             })
           }
 
-          // Stock de variante
-          if (variant.stock.length > 0) {
+          // Stock de variante (solo si el producto rastrea inventario)
+          if (formData.track_stock !== false && variant.stock.length > 0) {
             const variantStockLevels = variant.stock.map(stock => ({
               product_id: variantProduct.id,
               branch_id: stock.branch_id,

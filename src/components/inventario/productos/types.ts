@@ -17,6 +17,7 @@ export interface Producto {
   barcode: string | null;
   status: string;
   is_menu_item: boolean;
+  track_stock?: boolean;
   created_at?: string;
   updated_at?: string;
   parent_product_id?: number | string | null;

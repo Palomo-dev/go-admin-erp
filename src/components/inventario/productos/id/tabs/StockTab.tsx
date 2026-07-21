@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { Plus, ArrowUp, ArrowDown, History, Loader2 } from 'lucide-react';
+import { Plus, ArrowUp, ArrowDown, History, Loader2, PackageCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
@@ -164,6 +164,22 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
     router.push(`/app/inventario/kardex?producto=${producto.id}`);
   };
   
+  if (producto.track_stock === false) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+          <PackageCheck className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-500 dark:text-gray-400 font-medium mb-2">
+            Este producto no rastrea inventario
+          </p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            Las ventas de este producto no afectan el stock. Activa el rastreo en la pestaña &quot;Detalles&quot; para gestionar inventario.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
         <>

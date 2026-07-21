@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import FoliosService from './foliosService';
+import { stockMovementService } from './stockMovementService';
+import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 
 export interface SpaceConsumption {
   id: string;
@@ -190,8 +192,31 @@ class SpaceConsumptionService {
           source: 'room_service',
           description: `${consumption.quantity}x ${consumption.product_name}${consumption.notes ? ` - ${consumption.notes}` : ''}`,
           amount,
+          product_id: consumption.product_id,
+          quantity: consumption.quantity,
+          unit_price: consumption.unit_price,
           created_by: userId,
         });
+      }
+
+      // Descontar stock por cada consumo con product_id
+      try {
+        const orgId = getOrganizationId();
+        const branchId = getCurrentBranchId();
+        const stockResult = await stockMovementService.decrementOnSale(
+          orgId,
+          branchId,
+          folioId,
+          consumptions.map(c => ({ product_id: c.product_id, quantity: c.quantity, unit_price: c.unit_price })),
+          'room_consumption',
+          userId
+        );
+        if (stockResult.errors.length > 0) {
+          console.warn('⚠️ Algunos consumos no descontaron stock:', stockResult.errors);
+        }
+        console.log(`📦 Stock descontado (consumo habitación): ${consumptions.length - stockResult.skipped} items`);
+      } catch (stockError) {
+        console.warn('⚠️ Error descontando stock (no bloquea el consumo):', stockError);
       }
     } catch (error) {
       console.error('Error agregando consumos:', error);

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { POSService } from '@/lib/services/posService';
+import { stockMovementService } from '@/lib/services/stockMovementService';
 import {
   calculateItemTaxes,
   type OrganizationTax as TaxUtilOrganizationTax,
@@ -1045,6 +1046,34 @@ export class PedidosService {
       // aquí manualmente generaba asientos duplicados (source='sale' vs 'sales' del
       // trigger) y errores de FK por usar códigos de cuenta hardcodeados que no
       // existen para todas las organizaciones.
+
+      // 7. Descontar stock de los items vendidos
+      try {
+        const { data: saleItemsForStock } = await supabase
+          .from('sale_items')
+          .select('product_id, quantity, unit_price')
+          .eq('sale_id', saleId);
+
+        if (saleItemsForStock && saleItemsForStock.length > 0) {
+          const stockResult = await stockMovementService.decrementOnSale(
+            saleData.organization_id,
+            saleData.branch_id,
+            saleId,
+            saleItemsForStock.map((item: any) => ({
+              product_id: item.product_id,
+              quantity: Number(item.quantity),
+              unit_price: Number(item.unit_price),
+            })),
+            'mesa_sale'
+          );
+          if (stockResult.errors.length > 0) {
+            console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
+          }
+          console.log(`📦 Stock descontado (mesa): ${saleItemsForStock.length - stockResult.skipped} items procesados`);
+        }
+      } catch (stockError) {
+        console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
+      }
 
       return {
         id: saleData.id,

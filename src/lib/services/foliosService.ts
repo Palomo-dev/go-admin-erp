@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
+import { stockMovementService } from './stockMovementService';
+import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 
 export interface Folio {
   id: string;
@@ -30,6 +32,9 @@ export interface FolioItem {
   description: string;
   amount: number;
   tax_code?: string;
+  product_id?: number | null;
+  quantity?: number | null;
+  unit_price?: number | null;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -58,6 +63,9 @@ export interface CreateFolioItemData {
   description: string;
   amount: number;
   tax_code?: string;
+  product_id?: number | null;
+  quantity?: number | null;
+  unit_price?: number | null;
   created_by?: string;
 }
 
@@ -227,6 +235,27 @@ class FoliosService {
 
       console.log('Item creado exitosamente:', item.id);
 
+      // Descontar stock si el item tiene product_id
+      if (data.product_id && data.quantity && data.quantity > 0) {
+        try {
+          const orgId = getOrganizationId();
+          const branchId = getCurrentBranchId();
+          const stockResult = await stockMovementService.decrementOnSale(
+            orgId,
+            branchId,
+            data.folio_id,
+            [{ product_id: data.product_id, quantity: Number(data.quantity), unit_price: Number(data.unit_price || 0) }],
+            'folio_item',
+            data.created_by
+          );
+          if (stockResult.errors.length > 0) {
+            console.warn('⚠️ Folio item no descontó stock:', stockResult.errors);
+          }
+        } catch (stockError) {
+          console.warn('⚠️ Error descontando stock (no bloquea el item):', stockError);
+        }
+      }
+
       // Actualizar balance del folio
       await this.updateFolioBalance(data.folio_id);
 
@@ -246,12 +275,37 @@ class FoliosService {
    */
   async deleteFolioItem(itemId: string, folioId: string): Promise<void> {
     try {
+      // Obtener el item antes de eliminarlo para saber si hay que revertir stock
+      const { data: item } = await supabase
+        .from('folio_items')
+        .select('product_id, quantity, unit_price')
+        .eq('id', itemId)
+        .maybeSingle();
+
       const { error } = await supabase
         .from('folio_items')
         .delete()
         .eq('id', itemId);
 
       if (error) throw error;
+
+      // Revertir stock si el item tenía product_id
+      if (item?.product_id && item?.quantity && Number(item.quantity) > 0) {
+        try {
+          const orgId = getOrganizationId();
+          const branchId = getCurrentBranchId();
+          await stockMovementService.incrementOnPurchase(
+            orgId,
+            branchId,
+            folioId,
+            [{ product_id: item.product_id, quantity: Number(item.quantity), unit_price: Number(item.unit_price || 0) }],
+            'folio_item_reversal'
+          );
+          console.log(`📦 Stock revertido (folio item eliminado): producto ${item.product_id}`);
+        } catch (stockError) {
+          console.warn('⚠️ Error revirtiendo stock (no bloquea eliminación):', stockError);
+        }
+      }
 
       // Actualizar balance del folio
       await this.updateFolioBalance(folioId);

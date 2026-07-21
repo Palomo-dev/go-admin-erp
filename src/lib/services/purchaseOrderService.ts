@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { stockMovementService } from '@/lib/services/stockMovementService';
 
 // Tipos para Órdenes de Compra
 export interface PurchaseOrder {
@@ -433,10 +434,10 @@ class PurchaseOrderService {
     itemsReceived: { itemId: number; quantity: number }[]
   ): Promise<{ success: boolean; error: Error | null }> {
     try {
-      // Obtener el ID numérico de la orden
+      // Obtener el ID numérico de la orden y branch_id
       const { data: order } = await supabase
         .from('purchase_orders')
-        .select('id')
+        .select('id, branch_id')
         .eq('uuid', orderUuid)
         .eq('organization_id', organizationId)
         .single();
@@ -446,6 +447,17 @@ class PurchaseOrderService {
       }
 
       const orderId = order.id;
+      const branchId = order.branch_id;
+
+      // Obtener received_quantity actual para calcular delta
+      const itemIds = itemsReceived.map(i => i.itemId);
+      const { data: currentItems } = await supabase
+        .from('purchase_order_items')
+        .select('id, product_id, unit_cost, received_quantity')
+        .in('id', itemIds)
+        .eq('purchase_order_id', orderId);
+
+      const currentMap = new Map((currentItems || []).map(i => [i.id, i]));
 
       // Actualizar cantidad recibida de cada item
       for (const item of itemsReceived) {
@@ -459,6 +471,41 @@ class PurchaseOrderService {
           .eq('purchase_order_id', orderId);
 
         if (error) throw error;
+      }
+
+      // Sumar stock por el delta recibido (nuevo - anterior)
+      try {
+        const stockItems = itemsReceived
+          .map(item => {
+            const current = currentMap.get(item.itemId);
+            if (!current || !current.product_id) return null;
+            const prevQty = Number(current.received_quantity) || 0;
+            const newQty = Number(item.quantity) || 0;
+            const delta = newQty - prevQty;
+            if (delta <= 0) return null;
+            return {
+              product_id: current.product_id,
+              quantity: delta,
+              unit_price: Number(current.unit_cost) || 0,
+            };
+          })
+          .filter((item): item is { product_id: number; quantity: number; unit_price: number } => item !== null);
+
+        if (stockItems.length > 0) {
+          const stockResult = await stockMovementService.incrementOnPurchase(
+            organizationId,
+            branchId,
+            orderId,
+            stockItems,
+            'purchase_order'
+          );
+          if (stockResult.errors.length > 0) {
+            console.warn('⚠️ Algunos items no sumaron stock:', stockResult.errors);
+          }
+          console.log(`📦 Stock incrementado (OC ${orderId}): ${stockItems.length - stockResult.skipped} items`);
+        }
+      } catch (stockError) {
+        console.warn('⚠️ Error sumando stock (no bloquea recepción):', stockError);
       }
 
       // Verificar si es recepción total o parcial

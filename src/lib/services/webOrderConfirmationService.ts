@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { PropinasService } from '@/components/pos/propinas/propinasService';
 import { deliveryIntegrationService } from './deliveryIntegrationService';
+import { stockMovementService } from './stockMovementService';
 import type { WebOrder } from './webOrdersService';
 
 export interface ConfirmOrderResult {
@@ -51,6 +52,38 @@ class WebOrderConfirmationService {
 
     // 2. Crear sale_items y obtener los IDs insertados
     const insertedSaleItems = await this.createSaleItems(order, saleId);
+
+    // 2b. Descontar stock definitivamente y liberar reserva
+    try {
+      const stockResult = await stockMovementService.decrementOnSale(
+        order.organization_id,
+        order.branch_id,
+        saleId,
+        (order.items || []).map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        })),
+        'web_sale',
+        userId
+      );
+      if (stockResult.errors.length > 0) {
+        console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
+      }
+      console.log(`📦 Stock descontado (web order confirm): ${(order.items || []).length - stockResult.skipped} items`);
+
+      // Liberar reserva (qty_reserved) ya que el stock fue descontado definitivamente
+      await stockMovementService.releaseStockReservation(
+        order.branch_id,
+        order.id,
+        (order.items || []).map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+        }))
+      );
+    } catch (stockError) {
+      console.warn('⚠️ Error descontando stock (no bloquea la confirmación):', stockError);
+    }
 
     // 3. Crear kitchen_ticket + kitchen_ticket_items
     const kitchenTicketId = await this.createKitchenTicket(

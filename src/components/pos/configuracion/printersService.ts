@@ -193,7 +193,7 @@ export class PrintersService {
       .from('printer_station_assignments')
       .select('printers!inner(*)')
       .eq('organization_id', orgId)
-      .eq('branch_id', branchId)
+      .or(`branch_id.eq.${branchId},branch_id.is.null`)
       .in('station', [station, 'all'])
       .eq('printers.is_active', true);
 

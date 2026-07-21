@@ -1291,8 +1291,53 @@ export default function MesaDetallePage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Skeleton header */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-7 w-40 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            </div>
+            <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+          </div>
+
+          {/* Skeleton stats cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                <div className="h-6 w-16 bg-blue-100 dark:bg-blue-900/30 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+
+          {/* Skeleton items */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+            <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700/50 last:border-0">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                    <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  </div>
+                </div>
+                <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+
+          {/* Spinner centrado */}
+          <div className="flex items-center justify-center py-4 gap-3">
+            <div className="relative h-8 w-8">
+              <div className="absolute inset-0 rounded-full border-3 border-transparent bg-gradient-to-r from-blue-500 to-indigo-500 animate-spin" style={{ maskImage: 'radial-gradient(transparent 60%, black 62%)', WebkitMaskImage: 'radial-gradient(transparent 60%, black 62%)' }} />
+              <div className="absolute inset-2 rounded-full bg-blue-500/20 animate-ping" style={{ animationDuration: '1.5s' }} />
+            </div>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 animate-pulse">Cargando mesa</p>
+          </div>
+        </div>
       </div>
     );
   }

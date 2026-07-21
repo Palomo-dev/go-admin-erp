@@ -2,7 +2,7 @@ import type { PrinterRow, PrintJobPayload, PrintJobRow } from './types';
 import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket } from './escposFormatter';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): void {
-  if (jobType === 'sale_ticket') {
+  if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
     printSaleTicket(device_, payload as any);
   } else {
     printKitchenTicket(device_, payload as any);
@@ -10,7 +10,9 @@ function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload:
 }
 
 function renderPlainText(jobType: PrintJobRow['job_type'], payload: PrintJobPayload): string {
-  return jobType === 'sale_ticket' ? buildPlainTextSaleTicket(payload as any) : buildPlainTextTicket(payload as any);
+  return jobType === 'sale_ticket' || jobType === 'pre_cuenta'
+    ? buildPlainTextSaleTicket(payload as any)
+    : buildPlainTextTicket(payload as any);
 }
 
 // Los paquetes escpos-* no traen tipados oficiales completos; se cargan con require

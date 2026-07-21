@@ -114,11 +114,12 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
     .align('ct')
     .style('b')
     .size(1, 1)
-    .text('TICKET DE VENTA')
+    .text(payload.title || 'TICKET DE VENTA')
     .style('normal')
     .text('--------------------------------')
     .align('lt');
 
+  if (payload.tableName) device.text(`Mesa: ${payload.tableName}`);
   if (payload.saleNumber) device.text(`Venta: #${payload.saleNumber}`);
   if (payload.customerName) device.text(`Cliente: ${payload.customerName}`);
 
@@ -147,8 +148,9 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
   const fecha = new Date(payload.createdAt).toLocaleString('es-CO');
   const lines: string[] = [];
 
-  lines.push('TICKET DE VENTA');
+  lines.push(payload.title || 'TICKET DE VENTA');
   lines.push('--------------------------------');
+  if (payload.tableName) lines.push(`Mesa: ${payload.tableName}`);
   if (payload.saleNumber) lines.push(`Venta: #${payload.saleNumber}`);
   if (payload.customerName) lines.push(`Cliente: ${payload.customerName}`);
   lines.push(`Fecha: ${fecha}`);

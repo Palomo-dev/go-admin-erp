@@ -228,6 +228,52 @@ export class PrintJobsService {
   }
 
   /**
+   * Encola la impresión física de la pre-cuenta de una mesa.
+   * Sale por la(s) impresora(s) asignada(s) a la estación 'cashier' (o 'all'),
+   * con el mismo formato del ticket de venta pero titulada "PRE-CUENTA".
+   */
+  static async enqueuePreCuenta(
+    branchId: number,
+    preCuenta: {
+      tableId: string;
+      tableName?: string;
+      createdAt: string;
+      total: number;
+      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number }>;
+    }
+  ): Promise<{ enqueued: number }> {
+    const orgId = getOrganizationId();
+    const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
+
+    if (printers.length === 0) return { enqueued: 0 };
+
+    const payload = {
+      saleId: `pre-${preCuenta.tableId}`,
+      title: 'PRE-CUENTA',
+      tableName: preCuenta.tableName,
+      createdAt: preCuenta.createdAt,
+      items: preCuenta.items,
+      total: preCuenta.total,
+    };
+
+    const rows = printers.map((printer) => ({
+      organization_id: orgId,
+      branch_id: branchId,
+      printer_id: printer.id,
+      station: 'cashier',
+      job_type: 'pre_cuenta' as const,
+      reference_id: preCuenta.tableId,
+      payload: payload as any,
+      status: 'pending' as const,
+    }));
+
+    const { error } = await supabase.from('print_jobs').insert(rows);
+    if (error) throw error;
+
+    return { enqueued: rows.length };
+  }
+
+  /**
    * Últimos trabajos de impresión de una sucursal, con el nombre de la impresora,
    * para diagnóstico en Configuración > Impresoras.
    */

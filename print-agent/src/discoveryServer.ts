@@ -13,9 +13,11 @@ export interface NetworkPrinter {
 }
 
 /**
- * Lista las impresoras instaladas en el sistema operativo usando el paquete `printer`.
+ * Lista las impresoras instaladas en el sistema operativo.
+ * Intenta primero el paquete nativo `printer`; si no está disponible
+ * (no compiló en este equipo), usa PowerShell (Win32_Printer) como fallback.
  */
-function listSystemPrinters(): SystemPrinter[] {
+async function listSystemPrinters(): Promise<SystemPrinter[]> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const nodePrinter = require('printer');
@@ -24,10 +26,47 @@ function listSystemPrinters(): SystemPrinter[] {
       name: p.name || 'Desconocida',
       isDefault: p.isDefault || false,
     }));
-  } catch (err) {
-    console.error('[discovery] Error listando impresoras del sistema:', err);
-    return [];
+  } catch {
+    // Módulo nativo no disponible: fallback por sistema operativo
   }
+
+  if (process.platform === 'win32') {
+    try {
+      return await listWindowsPrinters();
+    } catch (err) {
+      console.error('[discovery] Error listando impresoras via PowerShell:', err);
+    }
+  }
+
+  return [];
+}
+
+/**
+ * Fallback Windows: lista impresoras con PowerShell (no requiere módulos nativos).
+ */
+function listWindowsPrinters(): Promise<SystemPrinter[]> {
+  return new Promise((resolve, reject) => {
+    const { exec } = require('child_process');
+    const cmd =
+      'powershell -NoProfile -Command "Get-CimInstance Win32_Printer | Select-Object Name, Default | ConvertTo-Json -Compress"';
+    exec(cmd, { timeout: 15000, windowsHide: true }, (err: Error | null, stdout: string) => {
+      if (err) return reject(err);
+      try {
+        const raw = stdout.trim();
+        if (!raw) return resolve([]);
+        const parsed = JSON.parse(raw);
+        const list = Array.isArray(parsed) ? parsed : [parsed];
+        resolve(
+          list.map((p: any) => ({
+            name: p.Name || 'Desconocida',
+            isDefault: Boolean(p.Default),
+          }))
+        );
+      } catch (parseErr) {
+        reject(parseErr);
+      }
+    });
+  });
 }
 
 /**
@@ -119,7 +158,7 @@ export function startDiscoveryServer(): http.Server {
 
     if (req.url === '/printers') {
       try {
-        const printers = listSystemPrinters();
+        const printers = await listSystemPrinters();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ printers }));
       } catch (err: any) {

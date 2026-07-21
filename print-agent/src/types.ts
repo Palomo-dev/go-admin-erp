@@ -49,9 +49,20 @@ export interface SaleTicketPrintPayload {
   customerName?: string;
   title?: string;
   tableName?: string;
+  serverName?: string;
   createdAt: string;
   items: SaleTicketItemPayload[];
+  subtotal?: number;
+  taxTotal?: number;
+  discountTotal?: number;
   total: number;
+  businessName?: string;
+  businessNit?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  branchName?: string;
+  branchAddress?: string;
+  branchPhone?: string;
 }
 
 export type PrintJobPayload = KitchenTicketPrintPayload | SaleTicketPrintPayload;

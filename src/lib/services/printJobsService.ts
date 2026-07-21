@@ -193,7 +193,18 @@ export class PrintJobsService {
       customerName?: string;
       createdAt: string;
       total: number;
+      subtotal?: number;
+      taxTotal?: number;
+      discountTotal?: number;
       items: Array<{ productName: string; quantity: number; unitPrice: number; total: number }>;
+      businessName?: string;
+      businessNit?: string;
+      businessPhone?: string;
+      businessAddress?: string;
+      branchName?: string;
+      branchAddress?: string;
+      branchPhone?: string;
+      serverName?: string;
     }
   ): Promise<{ enqueued: number }> {
     const orgId = getOrganizationId();
@@ -208,6 +219,17 @@ export class PrintJobsService {
       createdAt: sale.createdAt,
       items: sale.items,
       total: sale.total,
+      subtotal: sale.subtotal,
+      taxTotal: sale.taxTotal,
+      discountTotal: sale.discountTotal,
+      businessName: sale.businessName,
+      businessNit: sale.businessNit,
+      businessPhone: sale.businessPhone,
+      businessAddress: sale.businessAddress,
+      branchName: sale.branchName,
+      branchAddress: sale.branchAddress,
+      branchPhone: sale.branchPhone,
+      serverName: sale.serverName,
     };
 
     const rows = printers.map((printer) => ({
@@ -239,7 +261,18 @@ export class PrintJobsService {
       tableName?: string;
       createdAt: string;
       total: number;
+      subtotal?: number;
+      taxTotal?: number;
+      discountTotal?: number;
       items: Array<{ productName: string; quantity: number; unitPrice: number; total: number }>;
+      businessName?: string;
+      businessNit?: string;
+      businessPhone?: string;
+      businessAddress?: string;
+      branchName?: string;
+      branchAddress?: string;
+      branchPhone?: string;
+      serverName?: string;
     }
   ): Promise<{ enqueued: number }> {
     const orgId = getOrganizationId();
@@ -251,9 +284,20 @@ export class PrintJobsService {
       saleId: `pre-${preCuenta.tableId}`,
       title: 'PRE-CUENTA',
       tableName: preCuenta.tableName,
+      serverName: preCuenta.serverName,
       createdAt: preCuenta.createdAt,
       items: preCuenta.items,
+      subtotal: preCuenta.subtotal,
+      taxTotal: preCuenta.taxTotal,
+      discountTotal: preCuenta.discountTotal,
       total: preCuenta.total,
+      businessName: preCuenta.businessName,
+      businessNit: preCuenta.businessNit,
+      businessPhone: preCuenta.businessPhone,
+      businessAddress: preCuenta.businessAddress,
+      branchName: preCuenta.branchName,
+      branchAddress: preCuenta.branchAddress,
+      branchPhone: preCuenta.branchPhone,
     };
 
     const rows = printers.map((printer) => ({

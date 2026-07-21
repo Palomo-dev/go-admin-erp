@@ -446,6 +446,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           saleNumber: (sale as any).sale_number,
           customerName: cart.customer?.full_name,
           createdAt: new Date().toISOString(),
+          subtotal: calculatedTotals.subtotal,
+          taxTotal: calculatedTotals.totalTaxAmount,
           total: cartTotal,
           items: updatedCart.items.map((item) => ({
             productName: (item as any).name || item.product?.name || 'Producto',
@@ -453,6 +455,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             unitPrice: item.unit_price,
             total: item.total,
           })),
+          businessName: organization?.name,
+          businessNit: organization?.nit || organization?.tax_id,
+          businessPhone: organization?.phone,
+          businessAddress: organization?.address,
+          branchName: branch?.name,
+          branchAddress: branch?.address,
+          branchPhone: branch?.phone,
         }).catch((err) => console.warn('No se pudo encolar impresión física del recibo:', err));
       }
 

@@ -113,6 +113,23 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
     .font('a')
     .align('ct')
     .style('b')
+    .size(1, 1);
+
+  if (payload.businessName) device.text(payload.businessName);
+  device.style('normal');
+  if (payload.businessNit) device.text(`NIT: ${payload.businessNit}`);
+  if (payload.businessPhone) device.text(`Tel: ${payload.businessPhone}`);
+  if (payload.businessAddress) device.text(payload.businessAddress);
+  if (payload.branchName && payload.branchName !== payload.businessName) {
+    device.text(payload.branchName);
+  }
+  if (payload.branchAddress && payload.branchAddress !== payload.businessAddress) {
+    device.text(payload.branchAddress);
+  }
+
+  device
+    .text('--------------------------------')
+    .style('b')
     .size(1, 1)
     .text(payload.title || 'TICKET DE VENTA')
     .style('normal')
@@ -122,6 +139,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
   if (payload.tableName) device.text(`Mesa: ${payload.tableName}`);
   if (payload.saleNumber) device.text(`Venta: #${payload.saleNumber}`);
   if (payload.customerName) device.text(`Cliente: ${payload.customerName}`);
+  if (payload.serverName) device.text(`Mesero: ${payload.serverName}`);
 
   device.text(`Fecha: ${fecha}`).text('--------------------------------');
 
@@ -130,12 +148,26 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
     device.align('rt').text(formatMoney(item.total)).align('lt');
   }
 
+  device.text('--------------------------------');
+
+  if (payload.subtotal != null) {
+    device.align('lt').text('Subtotal:').align('rt').text(formatMoney(payload.subtotal)).align('lt');
+  }
+  if (payload.discountTotal && payload.discountTotal > 0) {
+    device.align('lt').text('Descuento:').align('rt').text(`-${formatMoney(payload.discountTotal)}`).align('lt');
+  }
+  if (payload.taxTotal && payload.taxTotal > 0) {
+    device.align('lt').text('Impuestos:').align('rt').text(formatMoney(payload.taxTotal)).align('lt');
+  }
+
   device
     .text('--------------------------------')
     .align('rt')
     .style('b')
+    .size(1, 1)
     .text(`TOTAL: ${formatMoney(payload.total)}`)
     .style('normal')
+    .size(1, 1)
     .align('lt')
     .feed(2)
     .cut();
@@ -148,11 +180,24 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
   const fecha = new Date(payload.createdAt).toLocaleString('es-CO');
   const lines: string[] = [];
 
+  if (payload.businessName) lines.push(payload.businessName);
+  if (payload.businessNit) lines.push(`NIT: ${payload.businessNit}`);
+  if (payload.businessPhone) lines.push(`Tel: ${payload.businessPhone}`);
+  if (payload.businessAddress) lines.push(payload.businessAddress);
+  if (payload.branchName && payload.branchName !== payload.businessName) {
+    lines.push(payload.branchName);
+  }
+  if (payload.branchAddress && payload.branchAddress !== payload.businessAddress) {
+    lines.push(payload.branchAddress);
+  }
+
+  lines.push('--------------------------------');
   lines.push(payload.title || 'TICKET DE VENTA');
   lines.push('--------------------------------');
   if (payload.tableName) lines.push(`Mesa: ${payload.tableName}`);
   if (payload.saleNumber) lines.push(`Venta: #${payload.saleNumber}`);
   if (payload.customerName) lines.push(`Cliente: ${payload.customerName}`);
+  if (payload.serverName) lines.push(`Mesero: ${payload.serverName}`);
   lines.push(`Fecha: ${fecha}`);
   lines.push('--------------------------------');
 
@@ -160,6 +205,10 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
     lines.push(`${item.quantity} x ${item.productName} — ${formatMoney(item.total)}`);
   }
 
+  lines.push('--------------------------------');
+  if (payload.subtotal != null) lines.push(`Subtotal: ${formatMoney(payload.subtotal)}`);
+  if (payload.discountTotal && payload.discountTotal > 0) lines.push(`Descuento: -${formatMoney(payload.discountTotal)}`);
+  if (payload.taxTotal && payload.taxTotal > 0) lines.push(`Impuestos: ${formatMoney(payload.taxTotal)}`);
   lines.push('--------------------------------');
   lines.push(`TOTAL: ${formatMoney(payload.total)}`);
   lines.push('\n\n');

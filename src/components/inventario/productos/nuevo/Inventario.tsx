@@ -116,7 +116,10 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
         </div>
         <Switch
           checked={formData.track_stock !== false}
-          onCheckedChange={(checked) => updateFormData('track_stock', checked)}
+          onCheckedChange={(checked) => {
+            updateFormData('track_stock', checked)
+            if (!checked) updateFormData('stock_inicial', [])
+          }}
         />
       </div>
 
@@ -140,7 +143,17 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
         </div>
       )}
 
-      {isLoadingBranches ? (
+      {formData.track_stock === false ? (
+        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+          <PackageCheck className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-500 dark:text-gray-400 font-medium mb-2">
+            Inventario sin seguimiento
+          </p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            Este producto no requiere control de inventario. Las ventas y compras no afectarán el stock.
+          </p>
+        </div>
+      ) : isLoadingBranches ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </div>
@@ -253,13 +266,14 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
         </div>
       )}
 
-      {/* Información adicional */}
-      <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg">
-        <p className="text-sm text-purple-800 dark:text-purple-300">
-          <strong>Nota:</strong> El stock inicial se registrará como un movimiento de entrada tipo "ajuste". 
-          El costo promedio se tomará automáticamente del costo configurado en "Precios y Costos".
-        </p>
-      </div>
+      {formData.track_stock !== false && (
+        <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg">
+          <p className="text-sm text-purple-800 dark:text-purple-300">
+            <strong>Nota:</strong> El stock inicial se registrará como un movimiento de entrada tipo "ajuste". 
+            El costo promedio se tomará automáticamente del costo configurado en "Precios y Costos".
+          </p>
+        </div>
+      )}
     </div>
   )
 }

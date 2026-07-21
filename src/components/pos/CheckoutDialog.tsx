@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { POSService } from '@/lib/services/posService';
 import { supabase } from '@/lib/supabase/config';
 import { PrintService, BusinessInfo, CashierInfo, BranchInfo } from '@/lib/services/printService';
+import { PrintJobsService } from '@/lib/services/printJobsService';
 import { Cart, PaymentMethod, CheckoutData, Sale, Currency, SaleItem } from './types';
 import { formatCurrency } from '@/utils/Utils';
 import { 
@@ -435,6 +436,25 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         : await POSService.checkout(checkoutData);
       setCompletedSale(sale);
       setShowReceipt(true);
+
+      // Impresión física automática del ticket de venta (best-effort):
+      // sale por la(s) impresora(s) con estación 'Caja'. Si no hay impresora
+      // o falla, no bloquea el flujo; queda el botón "Imprimir Recibo" (PDF).
+      if (cart.branch_id) {
+        PrintJobsService.enqueueSaleTicket(cart.branch_id, {
+          saleId: sale.id,
+          saleNumber: (sale as any).sale_number,
+          customerName: cart.customer?.full_name,
+          createdAt: new Date().toISOString(),
+          total: cartTotal,
+          items: updatedCart.items.map((item) => ({
+            productName: (item as any).name || item.product?.name || 'Producto',
+            quantity: item.quantity,
+            unitPrice: item.unit_price,
+            total: item.total,
+          })),
+        }).catch((err) => console.warn('No se pudo encolar impresión física del recibo:', err));
+      }
 
       // Crear shipment si es delivery propio
       if (deliveryType === 'delivery_own' && deliveryAddress) {

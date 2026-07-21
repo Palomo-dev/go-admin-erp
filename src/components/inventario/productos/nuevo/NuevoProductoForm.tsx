@@ -358,81 +358,103 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
       }
 
       // 11. Crear variantes si existen
+      // Nota: cada variante se procesa de forma independiente (try/catch) para que un error
+      // puntual (ej. SKU duplicado) no descarte silenciosamente el resto del lote.
+      const variantErrors: Array<{ sku: string; message: string }> = []
+      let variantsCreated = 0
+
       if (formData.has_variants && formData.variants.length > 0) {
         for (const variant of formData.variants) {
-          const variantBarcode = variant.barcode?.trim() || formData.barcode || null
-          const { data: variantProduct, error: variantError } = await supabase
-            .from('products')
-            .insert({
-              organization_id: organization.id,
-              sku: variant.sku,
-              barcode: variantBarcode,
-              name: variant.name,
-              parent_product_id: product.id,
-              is_parent: false,
-              variant_data: variant.attributes,
-              status: 'active',
-              track_stock: formData.track_stock !== false
-            })
-            .select('id')
-            .single()
-
-          if (variantError) throw variantError
-
-          // Precio de variante
-          if (variant.price > 0) {
-            await supabase.from('product_prices').insert({
-              product_id: variantProduct.id,
-              price: variant.price,
-              effective_from: new Date().toISOString()
-            })
-          }
-
-          // Costo de variante
-          if (variant.cost > 0) {
-            await supabase.from('product_costs').insert({
-              product_id: variantProduct.id,
-              cost: variant.cost,
-              effective_from: new Date().toISOString()
-            })
-          }
-
-          // Stock de variante (solo si el producto rastrea inventario)
-          if (formData.track_stock !== false && variant.stock.length > 0) {
-            const variantStockLevels = variant.stock.map(stock => ({
-              product_id: variantProduct.id,
-              branch_id: stock.branch_id,
-              qty_on_hand: stock.qty_on_hand
-            }))
-
-            await supabase.from('stock_levels').insert(variantStockLevels)
-
-            // Movimientos de variante
-            const variantMovements = variant.stock
-              .filter(stock => stock.qty_on_hand > 0)
-              .map(stock => ({
+          try {
+            const variantBarcode = variant.barcode?.trim() || formData.barcode || null
+            const { data: variantProduct, error: variantError } = await supabase
+              .from('products')
+              .insert({
                 organization_id: organization.id,
-                branch_id: stock.branch_id,
+                sku: variant.sku,
+                barcode: variantBarcode,
+                name: variant.name,
+                parent_product_id: product.id,
+                is_parent: false,
+                variant_data: variant.attributes,
+                status: 'active',
+                track_stock: formData.track_stock !== false
+              })
+              .select('id')
+              .single()
+
+            if (variantError) throw variantError
+
+            // Precio de variante
+            if (variant.price > 0) {
+              await supabase.from('product_prices').insert({
                 product_id: variantProduct.id,
-                direction: 'in',
-                qty: stock.qty_on_hand,
-                unit_cost: variant.cost,
-                source: 'initial',
-                source_id: null,
-                note: `Stock inicial variante ${variant.sku}`
+                price: variant.price,
+                effective_from: new Date().toISOString()
+              })
+            }
+
+            // Costo de variante
+            if (variant.cost > 0) {
+              await supabase.from('product_costs').insert({
+                product_id: variantProduct.id,
+                cost: variant.cost,
+                effective_from: new Date().toISOString()
+              })
+            }
+
+            // Stock de variante (solo si el producto rastrea inventario)
+            if (formData.track_stock !== false && variant.stock?.length > 0) {
+              const variantStockLevels = variant.stock.map(stock => ({
+                product_id: variantProduct.id,
+                branch_id: stock.branch_id,
+                qty_on_hand: stock.qty_on_hand
               }))
 
-            if (variantMovements.length > 0) {
-              await supabase.from('stock_movements').insert(variantMovements)
-            }
-          }
+              await supabase.from('stock_levels').insert(variantStockLevels)
 
+              // Movimientos de variante
+              const variantMovements = variant.stock
+                .filter(stock => stock.qty_on_hand > 0)
+                .map(stock => ({
+                  organization_id: organization.id,
+                  branch_id: stock.branch_id,
+                  product_id: variantProduct.id,
+                  direction: 'in',
+                  qty: stock.qty_on_hand,
+                  unit_cost: variant.cost,
+                  source: 'initial',
+                  source_id: null,
+                  note: `Stock inicial variante ${variant.sku}`
+                }))
+
+              if (variantMovements.length > 0) {
+                await supabase.from('stock_movements').insert(variantMovements)
+              }
+            }
+
+            variantsCreated++
+          } catch (variantCatchError: any) {
+            const msg = variantCatchError?.message || variantCatchError?.details || variantCatchError?.hint || 'Error desconocido'
+            console.error(`Error creando variante ${variant.sku}:`, variantCatchError)
+            variantErrors.push({ sku: variant.sku, message: msg })
+          }
         }
+      }
+
+      if (variantErrors.length > 0) {
+        toast({
+          title: `⚠️ ${variantsCreated} de ${formData.variants.length} variantes creadas`,
+          description: `Fallaron: ${variantErrors.map(e => `${e.sku} (${e.message})`).join(' | ')}`,
+          variant: "destructive"
+        })
       }
 
       toast({
         title: "✅ Producto creado",
-        description: "El producto se ha creado exitosamente"
+        description: variantErrors.length > 0
+          ? "El producto se creó, pero revisa las variantes que fallaron arriba."
+          : "El producto se ha creado exitosamente"
       })
 
       if (onSuccess) {

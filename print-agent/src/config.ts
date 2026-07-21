@@ -1,4 +1,12 @@
-import 'dotenv/config';
+// dotenv solo existe en el print-agent standalone (consola). Dentro de
+// Go Admin Desktop (Electron) no está instalado: las variables las inyecta
+// agentRunner en process.env antes de cargar este módulo.
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require('dotenv/config');
+} catch {
+  // Sin dotenv: se usan las variables ya presentes en process.env
+}
 
 function required(name: string): string {
   const value = process.env[name];

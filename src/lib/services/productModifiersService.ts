@@ -136,6 +136,42 @@ export class ProductModifiersService {
     return map;
   }
 
+  /**
+   * Obtener valores de variantes ya guardados en el catálogo de la organización
+   * (ej. "Tomate", "Piña" en un tipo "Salsa"), para sugerirlos como opciones rápidas
+   * al crear modificadores (ej. la salsa "Tomate" de las variantes también puede
+   * ofrecerse como opción de un modificador "Salsas adicionales").
+   */
+  static async getVariantValueSuggestions(): Promise<string[]> {
+    const organizationId = getOrganizationId();
+    const { data, error } = await supabase
+      .from('variant_values')
+      .select('value, variant_types!inner(organization_id)')
+      .eq('variant_types.organization_id', organizationId);
+
+    if (error) throw error;
+
+    const uniqueValues = Array.from(new Set((data || []).map((v: { value: string }) => v.value)));
+    return uniqueValues.sort((a, b) => a.localeCompare(b));
+  }
+
+  /**
+   * Obtener nombres únicos de grupos de modificadores ya usados en la organización
+   * (ej. "Salsas", "Extras"), para sugerirlos como acceso rápido al crear un grupo nuevo.
+   */
+  static async getExistingGroupNames(): Promise<string[]> {
+    const organizationId = getOrganizationId();
+    const { data, error } = await supabase
+      .from('product_modifier_groups')
+      .select('name')
+      .eq('organization_id', organizationId);
+
+    if (error) throw error;
+
+    const uniqueNames = Array.from(new Set((data || []).map((g: { name: string }) => g.name)));
+    return uniqueNames.sort((a, b) => a.localeCompare(b));
+  }
+
   static async createGroup(input: ProductModifierGroupInput): Promise<ProductModifierGroup> {
     const organizationId = getOrganizationId();
     const { data, error } = await supabase

@@ -96,7 +96,7 @@ export default function ModuleLimitNotification({
       };
 
   return (
-    <div className="fixed top-4 right-4 z-50 w-[22rem] animate-in slide-in-from-top-2 fade-in duration-300">
+    <div className="fixed bottom-4 right-4 z-50 w-[22rem] animate-in slide-in-from-bottom-2 fade-in duration-300">
       <div
         className={`rounded-xl border ${accent.border} bg-white dark:bg-gray-900 shadow-xl ring-1 ${accent.ring} overflow-hidden`}
       >

@@ -1623,7 +1623,7 @@ export class POSService {
         .eq('product_id', productId);
 
       if (relationsError) {
-        console.error('Error getting product tax relations:', relationsError);
+        console.warn('Product tax relations error for product', productId, ':', relationsError);
         return [];
       }
       

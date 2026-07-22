@@ -154,99 +154,25 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
       console.log('✅ Contraseña actualizada exitosamente');
       // Email ya está confirmado desde el login automático
 
-      // 3. Crear o actualizar perfil del usuario con la información personal
-      // Usar upsert porque el usuario invitado puede no tener perfil aún
-      console.log('📝 Creando/actualizando perfil del usuario...');
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authData.user.id,
-          email: authData.user.email || inviteData.email,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phoneNumber,
-          last_org_id: inviteData.organization_id,
-          status: 'active'
-        });
+      // 3-5. Crear/actualizar perfil, crear/actualizar membresía en la organización
+      // y marcar la invitación como utilizada, todo en UNA SOLA transacción atómica
+      // en el servidor (accept_invitation_atomic). Antes esto eran 4 llamadas
+      // independientes desde el cliente que podían fallar a mitad de camino,
+      // dejando al usuario con perfil creado pero SIN membresía en la organización.
+      console.log('📝 Completando registro de invitación (perfil + membresía + invitación)...');
+      const { data: acceptResult, error: acceptError } = await supabase.rpc('accept_invitation_atomic', {
+        p_invite_code: inviteData.code,
+        p_first_name: formData.firstName,
+        p_last_name: formData.lastName,
+        p_phone: formData.phoneNumber
+      });
 
-      if (profileError) {
-        console.log('Error actualizando perfil:', profileError);
-        throw new Error(`Error al actualizar perfil: ${profileError.message}`);
+      if (acceptError) {
+        console.error('❌ Error completando la invitación:', acceptError);
+        throw new Error(acceptError.message || 'No se pudo completar el registro de la invitación.');
       }
 
-      console.log('✅ Perfil actualizado exitosamente');
-
-      // 4. Crear membresía en la organización
-      console.log('👥 Creando membresía en organización...');
-      const { data: existingMembership } = await supabase
-        .from('organization_members')
-        .select('id')
-        .eq('user_id', authData.user.id)
-        .eq('organization_id', inviteData.organization_id)
-        .maybeSingle();
-
-      if (!existingMembership) {
-        const { data: membershipData, error: membershipError } = await supabase
-          .from('organization_members')
-          .insert({
-            user_id: authData.user.id,
-            organization_id: inviteData.organization_id,
-            role_id: inviteData.role_id,
-            is_active: true
-          })
-          .select('id')
-          .single();
-
-        if (membershipError) {
-          console.error('❌ Error creando membresía:', membershipError);
-          throw new Error(`Error al crear membresía: ${membershipError.message}`);
-        }
-
-        if (!membershipData) {
-          console.error('❌ Membresía no fue creada (posible bloqueo de RLS)');
-          throw new Error('No se pudo crear la membresía en la organización. Contacta al administrador.');
-        }
-        console.log('✅ Membresía creada exitosamente, ID:', membershipData.id);
-      } else {
-        const { error: updateMembershipError } = await supabase
-          .from('organization_members')
-          .update({
-            role_id: inviteData.role_id,
-            is_active: true
-          })
-          .eq('user_id', authData.user.id)
-          .eq('organization_id', inviteData.organization_id);
-
-        if (updateMembershipError) {
-          console.log('Error actualizando membresía:', updateMembershipError);
-          throw new Error(`Error al actualizar membresía: ${updateMembershipError.message}`);
-        }
-        console.log('✅ Membresía actualizada exitosamente');
-      }
-
-      // 5. Marcar invitación como utilizada
-      console.log('📧 Marcando invitación como utilizada...');
-      const { data: updatedInvitation, error: invitationError } = await supabase
-        .from('invitations')
-        .update({
-          status: 'used',
-          used_at: new Date().toISOString()
-        })
-        .eq('code', inviteData.code)
-        .select('id')
-        .single();
-
-      if (invitationError) {
-        console.error('❌ Error marcando invitación:', invitationError);
-        throw new Error(`Error al marcar invitación: ${invitationError.message}`);
-      }
-
-      if (!updatedInvitation) {
-        console.error('❌ Invitación no fue actualizada (posible bloqueo de RLS - 0 filas afectadas)');
-        throw new Error('No se pudo marcar la invitación como utilizada. Es posible que no tengas permisos. Contacta al administrador.');
-      }
-
-      console.log('✅ Invitación marcada como utilizada exitosamente');
+      console.log('✅ Invitación completada exitosamente:', acceptResult);
 
       // 4. Cerrar sesión para forzar nuevo login
       await supabase.auth.signOut();

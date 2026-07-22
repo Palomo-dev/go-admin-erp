@@ -365,6 +365,8 @@ async function validateProductsImages(products: ScrapedProduct[], max = 6, check
 }
 
 async function jinaRequest(url: string, useBrowser: boolean): Promise<string | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), useBrowser ? 35000 : 20000);
   try {
     const headers: Record<string, string> = {
       "Accept": "text/plain",
@@ -377,12 +379,14 @@ async function jinaRequest(url: string, useBrowser: boolean): Promise<string | n
       headers["X-Engine"] = "browser";
       headers["X-Timeout"] = "30";
     }
-    const res = await fetch(`https://r.jina.ai/${url}`, { headers });
+    const res = await fetch(`https://r.jina.ai/${url}`, { headers, signal: ctrl.signal });
     if (!res.ok) return null;
     const text = await res.text();
     return text.length > 200 ? text : null;
   } catch (_) {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -411,14 +415,23 @@ async function fetchWithJina(url: string): Promise<string | null> {
 // para poder extraer productos de la que más contenido aporte (HTML con JSON-LD o Jina con JS renderizado)
 async function fetchSources(url: string): Promise<{ direct: string | null; jina: string | null }> {
   const [directResult, jinaResult] = await Promise.allSettled([
-    fetch(url, { headers: BROWSER_HEADERS }).then(async (res) => {
-      if (!res.ok) return null;
-      const html = await res.text();
-      if (html.length > 2000 && !/captcha|cf-challenge|access denied/i.test(html.substring(0, 3000))) {
-        return html;
+    (async () => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const res = await fetch(url, { headers: BROWSER_HEADERS, signal: ctrl.signal });
+        if (!res.ok) return null;
+        const html = await res.text();
+        if (html.length > 2000 && !/captcha|cf-challenge|access denied/i.test(html.substring(0, 3000))) {
+          return html;
+        }
+        return null;
+      } catch (_) {
+        return null;
+      } finally {
+        clearTimeout(timer);
       }
-      return null;
-    }),
+    })(),
     fetchWithJina(url),
   ]);
 
@@ -974,7 +987,7 @@ function mergeProducts(products: ScrapedProduct[]): ScrapedProduct[] {
     if ((p.variants?.length || 0) > (cur.variants?.length || 0)) cur.variants = p.variants;
     if ((p.name?.length || 0) > (cur.name?.length || 0)) cur.name = p.name;
   }
-  return [...map.values()].map(normalizePrices).slice(0, 150);
+  return [...map.values()].map(normalizePrices).slice(0, 500);
 }
 
 // El precio de comparación SIEMPRE debe ser el mayor (precio anterior/tachado).
@@ -1708,7 +1721,7 @@ Deno.serve(async (req: Request) => {
       }
       const mode: DuplicateMode = ["skip", "update", "create"].includes(duplicate_mode) ? duplicate_mode : "skip";
       const results = [];
-      for (const p of products.slice(0, 150)) {
+      for (const p of products.slice(0, 500)) {
         results.push(await importProduct(p, organization_id, branch_id || null, source_url || "", mode));
       }
       const exitosos = results.filter((r) => r.ok).length;

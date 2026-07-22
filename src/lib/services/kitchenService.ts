@@ -8,6 +8,7 @@ export interface KitchenTicket {
   printed_at: string | null;
   created_at: string;
   updated_at: string;
+  ready_at: string | null;
   priority: number;
   estimated_time: number | null;
   sale_id: string | null;
@@ -168,12 +169,21 @@ class KitchenService {
    */
   async updateTicketStatus(ticketId: number, status: KitchenTicket['status']) {
     try {
+      const now = new Date().toISOString();
+      const updateData: Record<string, any> = {
+        status,
+        updated_at: now,
+      };
+
+      if (status === 'ready') {
+        updateData.ready_at = now;
+      } else if (status === 'new' || status === 'preparing') {
+        updateData.ready_at = null;
+      }
+
       const { data, error } = await supabase
         .from('kitchen_tickets')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', ticketId)
         .select()
         .single();

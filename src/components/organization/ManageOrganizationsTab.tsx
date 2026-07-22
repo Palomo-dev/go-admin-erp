@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
-const CreateOrganizationForm = lazy(() => import('./CreateOrganizationForm'));
+const CreateOrganizationWizard = lazy(() => import('./CreateOrganizationWizard'));
 
 export default function ManageOrganizationsTab() {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -56,18 +56,28 @@ export default function ManageOrganizationsTab() {
         throw new Error(t('noPermissionsDelete'));
       }
 
+      // Soft-delete: marcar organización como inactiva en lugar de eliminar físicamente
+      // Esto evita que el CASCADE ON DELETE afecte otras membresías del usuario
       const { error: deleteError } = await supabase
         .from('organizations')
-        .delete()
+        .update({ status: 'inactive', updated_at: new Date().toISOString() })
         .eq('id', orgToDelete);
 
       if (deleteError) throw deleteError;
 
-      // Verificar si el usuario aún tiene organizaciones
+      // Desactivar la membresía del usuario en la organización eliminada
+      await supabase
+        .from('organization_members')
+        .update({ is_active: false })
+        .eq('organization_id', orgToDelete)
+        .eq('user_id', session.user.id);
+
+      // Verificar si el usuario aún tiene organizaciones activas
       const { data: remainingOrgs, error: orgCheckError } = await supabase
         .from('organization_members')
         .select('organization_id')
-        .eq('user_id', session.user.id);
+        .eq('user_id', session.user.id)
+        .eq('is_active', true);
 
       if (orgCheckError) throw orgCheckError;
 
@@ -122,10 +132,9 @@ export default function ManageOrganizationsTab() {
 
       {showCreateForm ? (
         <Suspense fallback={<div>{t('loadingForm')}</div>}>
-          <CreateOrganizationForm
-            onSuccess={handleCreateSuccess}
+          <CreateOrganizationWizard
+            onSuccess={() => handleCreateSuccess()}
             onCancel={() => setShowCreateForm(false)}
-            isSignupMode={false}
           />
         </Suspense>
       ) : (

@@ -408,6 +408,143 @@ async function checkModuleAccess(request: NextRequest, pathname: string): Promis
 }
 
 /**
+ * Rutas que siempre deben ser accesibles incluso con cuenta congelada
+ */
+const FROZEN_ALLOWED_ROUTES = [
+  '/app/cuenta-congelada',
+  '/app/plan',
+  '/app/plan/billing',
+  '/app/plan/historial',
+  '/app/organizacion',
+  '/app/roles',
+];
+
+/**
+ * Verifica el estado de la organización y suscripción.
+ * Si la org está suspendida/eliminada o el trial expiró sin pago,
+ * redirige a /app/cuenta-congelada.
+ */
+async function checkOrgAndSubscriptionStatus(request: NextRequest, pathname: string): Promise<NextResponse | null> {
+  // Solo verificar rutas /app/
+  if (!pathname.startsWith('/app/')) return null;
+
+  // Permitir rutas excluidas (cuenta-congelada, plan, auth, etc.)
+  const isAllowedRoute = FROZEN_ALLOWED_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
+  if (isAllowedRoute) return null;
+
+  try {
+    // Obtener la organización desde la cookie 'org_id' (seteada desde client-side)
+    // o desde la cookie 'organization' (subdomain) como fallback
+    const orgIdCookie = request.cookies.get('org_id');
+    const orgSubdomainCookie = request.cookies.get('organization');
+
+    let orgId: number | null = null;
+
+    if (orgIdCookie?.value) {
+      orgId = parseInt(orgIdCookie.value, 10);
+      if (isNaN(orgId)) orgId = null;
+    }
+
+    if (!orgId && orgSubdomainCookie?.value) {
+      // Fallback: buscar por subdomain
+      const { data: orgBySub, error: subError } = await supabase
+        .from('organizations')
+        .select('id, status')
+        .eq('subdomain', orgSubdomainCookie.value)
+        .single();
+
+      if (subError || !orgBySub) {
+        return null; // Permitir acceso en caso de error
+      }
+
+      orgId = orgBySub.id;
+
+      // Verificar suspensión directamente desde esta query
+      if (orgBySub.status === 'suspended' || orgBySub.status === 'deleted') {
+        const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+        redirectUrl.searchParams.set('reason', orgBySub.status);
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
+
+    if (!orgId) {
+      return null; // Sin organization identificable, permitir acceso
+    }
+
+    // Consultar estado de la organización
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id, status')
+      .eq('id', orgId)
+      .single();
+
+    if (orgError || !orgData) {
+      return null; // Permitir acceso en caso de error
+    }
+
+    // Caso 1: Organización suspendida o eliminada
+    if (orgData.status === 'suspended' || orgData.status === 'deleted') {
+      const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+      redirectUrl.searchParams.set('reason', orgData.status);
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Caso 2: Verificar suscripción
+    const { data: subData, error: subError } = await supabase
+      .from('subscriptions')
+      .select('status, trial_end, current_period_end, stripe_subscription_id, stripe_customer_id')
+      .eq('organization_id', orgId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (subError || !subData) {
+      return null; // Sin suscripción registrada, permitir (se manejará en client-side)
+    }
+
+    const now = new Date();
+
+    // Suscripción cancelada
+    if (subData.status === 'canceled') {
+      const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+      redirectUrl.searchParams.set('reason', 'canceled');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Pago pendiente (past_due)
+    if (subData.status === 'past_due') {
+      const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+      redirectUrl.searchParams.set('reason', 'payment_failed');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Trial expirado: si el status sigue "trialing" y la fecha ya pasó, bloquear
+    // sin importar si tiene stripe_subscription_id (el webhook actualizaría a "active" si pagó)
+    if (subData.status === 'trialing') {
+      const trialEnd = subData.trial_end ? new Date(subData.trial_end) : (subData.current_period_end ? new Date(subData.current_period_end) : null);
+
+      if (trialEnd && trialEnd < now) {
+        const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+        redirectUrl.searchParams.set('reason', 'trial_expired');
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
+
+    // Suscripción inactiva sin trial vigente
+    if (subData.status === 'incomplete' || subData.status === 'incomplete_expired') {
+      const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+      redirectUrl.searchParams.set('reason', 'trial_expired');
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    return null; // Todo en orden
+  } catch (error) {
+    console.error('❌ [MIDDLEWARE] Error checking org/subscription status:', error);
+    return null; // En caso de error, permitir acceso para no bloquear
+  }
+}
+
+/**
  * Maneja la protección de rutas y redirecciones
  */
 async function handleRouteProtection(request: NextRequest, isAuthenticated: boolean, isExpired: boolean) {
@@ -504,6 +641,14 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
         console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde auth a /app/inicio');
       }
       return NextResponse.redirect(new URL('/app/inicio', request.url));
+    }
+
+    // Verificar estado de la organización y suscripción (cuenta congelada)
+    if (pathname.startsWith('/app/') && pathname !== '/app/cuenta-congelada') {
+      const frozenResult = await checkOrgAndSubscriptionStatus(request, pathname);
+      if (frozenResult) {
+        return frozenResult;
+      }
     }
 
     // Verificar acceso a módulos para rutas protegidas

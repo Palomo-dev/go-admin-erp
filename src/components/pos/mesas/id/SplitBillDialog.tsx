@@ -122,6 +122,30 @@ export function SplitBillDialog({
     }));
   };
 
+  const autoAssignItemsRoundRobin = (currentSplits: BillSplit[], allItems: SaleItem[]): BillSplit[] => {
+    const result = currentSplits.map(s => ({
+      ...s,
+      items: [] as Array<{ item: SaleItem; quantity: number }>,
+    }));
+    let splitIdx = 0;
+
+    for (const item of allItems) {
+      const qty = Number(item.quantity);
+      for (let i = 0; i < qty; i++) {
+        const target = result[splitIdx % result.length];
+        const existing = target.items.find(si => si.item.id === item.id);
+        if (existing) {
+          existing.quantity += 1;
+        } else {
+          target.items.push({ item, quantity: 1 });
+        }
+        splitIdx++;
+      }
+    }
+
+    return result;
+  };
+
   const handleSplitEqually = () => {
     const perPerson = total / splits.length;
     const equalSplits: BillSplit[] = splits.map((split, i) => ({
@@ -129,7 +153,8 @@ export function SplitBillDialog({
       items: [],
       total: perPerson
     }));
-    setSplits(equalSplits);
+    const withItems = autoAssignItemsRoundRobin(equalSplits, items);
+    setSplits(withItems);
     setSplitMode('equal');
   };
 
@@ -156,7 +181,13 @@ export function SplitBillDialog({
   };
 
   const handleConfirm = () => {
-    onConfirmSplit(splits);
+    let finalSplits = splits;
+
+    if (splitMode === 'equal' || splitMode === 'custom') {
+      finalSplits = autoAssignItemsRoundRobin(splits, items);
+    }
+
+    onConfirmSplit(finalSplits);
     onOpenChange(false);
   };
 
@@ -451,11 +482,13 @@ export function SplitBillDialog({
                   const remaining = splits.length;
                   const perPerson = Math.floor(total / remaining);
                   const lastPerson = total - perPerson * (remaining - 1);
-                  setSplits(prev => prev.map((s, i) => ({
+                  const baseSplits = splits.map((s, i) => ({
                     ...s,
                     total: i === remaining - 1 ? lastPerson : perPerson,
-                    items: [],
-                  })));
+                    items: [] as Array<{ item: SaleItem; quantity: number }>,
+                  }));
+                  const withItems = autoAssignItemsRoundRobin(baseSplits, items);
+                  setSplits(withItems);
                 }}
               >
                 <Calculator className="h-4 w-4 mr-2" />

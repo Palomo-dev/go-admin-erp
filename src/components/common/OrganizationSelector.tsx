@@ -27,6 +27,8 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
   const panelRef = useRef<HTMLDivElement>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [query, setQuery] = useState('');
+  // uid resuelto (prop o auth.getUser()), usado para refetch tras crear una organización
+  const [resolvedUserId, setResolvedUserId] = useState<string>('');
 
   // Renderizamos el panel fuera del árbol del sidebar (portal) para que nunca
   // pueda afectar el ancho/layout de sus contenedores padres.
@@ -66,6 +68,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          setResolvedUserId(user.id);
           fetchOrganizations(user.id);
         }
       } catch (error) {
@@ -76,6 +79,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
     if (!userId) {
       fetchUserId();
     } else {
+      setResolvedUserId(userId);
       fetchOrganizations(userId);
     }
   }, [userId]);
@@ -285,7 +289,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
           onClose={() => setIsDialogOpen(false)}
           onSuccess={(data) => {
             // Recargar organizaciones después de crear una nueva
-            fetchOrganizations(userId || '');
+            fetchOrganizations(resolvedUserId);
             // Establecer la nueva organización como activa
             if (data && data.id) {
               handleSelectOrganization(data as Organization);
@@ -371,7 +375,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
         onClose={() => setIsDialogOpen(false)}
         onSuccess={(data) => {
           // Recargar organizaciones después de crear una nueva
-          fetchOrganizations(userId || '');
+          fetchOrganizations(resolvedUserId);
           // Establecer la nueva organización como activa
           if (data && data.id) {
             handleSelectOrganization(data as Organization);

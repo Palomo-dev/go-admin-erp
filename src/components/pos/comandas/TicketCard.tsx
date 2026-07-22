@@ -102,13 +102,14 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
 
   const timeElapsed = React.useMemo(() => {
     const created = new Date(ticket.created_at);
-    const now = new Date();
-    const diff = Math.floor((now.getTime() - created.getTime()) / 60000);
+    // Si el ticket ya está listo o entregado, usar ready_at para congelar el tiempo
+    const endTime = ticket.ready_at ? new Date(ticket.ready_at) : new Date();
+    const diff = Math.floor((endTime.getTime() - created.getTime()) / 60000);
     return diff;
-  }, [ticket.created_at]);
+  }, [ticket.created_at, ticket.ready_at]);
 
-  // Urgencia por tiempo de espera (no aplica a tickets ya entregados)
-  const isFinal = ticket.status === 'delivered';
+  // Urgencia por tiempo de espera (no aplica a tickets ya listos o entregados)
+  const isFinal = ticket.status === 'ready' || ticket.status === 'delivered';
   const timeUrgency: 'ok' | 'warning' | 'critical' = isFinal
     ? 'ok'
     : timeElapsed >= 20

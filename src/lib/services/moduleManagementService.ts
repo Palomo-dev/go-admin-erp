@@ -429,7 +429,7 @@ export const moduleManagementService = {
       .eq('organization_id', organizationId)
       .eq('module_code', moduleCode)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (error) return false;
     return !!data;

@@ -89,6 +89,7 @@ import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { SubMenuPanel } from './Sidebar/SubMenuPanel';
 import AIAssistantPanel from './Header/AIAssistantPanel';
 import { getOrganizationId, guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { useSubscriptionGuard } from '@/lib/hooks/useSubscriptionGuard';
 import { useTheme } from 'next-themes';
 import { themeService } from '@/lib/services/themeService';
 import { usePathname, useRouter } from 'next/navigation';
@@ -480,6 +481,9 @@ export const AppLayout = ({
   // Hook para obtener la ruta actual
   const pathname = usePathname();
   const router = useRouter();
+
+  // Verificación client-side del estado de suscripción (segunda capa después del middleware)
+  const subscriptionChecked = useSubscriptionGuard();
   
   // Detectar módulo activo para Multi-Column Layout
   const activeModule = useMemo(() => getActiveModule(pathname), [pathname]);
@@ -1143,7 +1147,11 @@ export const AppLayout = ({
     setProfileRefresh(prev => prev + 1);
   }, []);
 
-  
+  // Si estamos en la página de cuenta congelada, renderizar sin layout (sin sidebar/header)
+  if (pathname?.startsWith('/app/cuenta-congelada')) {
+    return <>{children}</>;
+  }
+
   return (
     <ModuleProvider>
       <BranchProvider>
@@ -1306,7 +1314,11 @@ export const AppLayout = ({
         {/* Contenido principal con scroll */}
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 overscroll-contain min-w-0">
           <div className="h-full min-w-0 w-full">
-            {children}
+            {subscriptionChecked ? children : (
+              <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -49,6 +49,7 @@ export interface SaleTicketItemPayload {
 
 export interface SaleTicketPayment {
   method: string;
+  methodName?: string;
   amount: number;
 }
 

@@ -441,7 +441,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // sale por la(s) impresora(s) con estación 'Caja'. Si no hay impresora
       // o falla, no bloquea el flujo; queda el botón "Imprimir Recibo" (PDF).
       if (cart.branch_id) {
-        const paymentsList = payments.filter(p => p.amount > 0).map(p => ({ method: p.method, amount: p.amount }));
+        const paymentsList = payments.filter(p => p.amount > 0).map(p => ({
+          method: p.method,
+          methodName: paymentMethods.find(pm => pm.code === p.method)?.name || p.method,
+          amount: p.amount,
+        }));
         PrintJobsService.enqueueSaleTicket(cart.branch_id, {
           saleId: sale.id,
           saleNumber: (sale as any).sale_number,

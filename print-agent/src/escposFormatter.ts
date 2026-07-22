@@ -4,24 +4,8 @@ function formatMoney(value: number): string {
   return value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
-const PAYMENT_METHOD_NAMES: Record<string, string> = {
-  cash: 'Efectivo',
-  card: 'Tarjeta',
-  credit_card: 'Tarjeta de Credito',
-  debit_card: 'Tarjeta Debito',
-  transfer: 'Transferencia',
-  nequi: 'Nequi',
-  daviplata: 'Daviplata',
-  pse: 'PSE',
-  payu: 'PayU',
-  mp: 'Mercado Pago',
-  credit: 'Credito',
-  check: 'Cheque',
-  other: 'Otro',
-};
-
-function translatePaymentMethod(method: string): string {
-  return PAYMENT_METHOD_NAMES[method?.toLowerCase()] || method || 'Efectivo';
+function getPaymentLabel(payment: { method: string; methodName?: string; amount: number }): string {
+  return payment.methodName || payment.method || 'Efectivo';
 }
 
 const FISCAL_RESPONSIBILITY_LABELS: Record<string, string> = {
@@ -273,7 +257,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
   if (payload.payments && payload.payments.length > 0) {
     device.text('--------------------------------');
     for (const payment of payload.payments) {
-      device.align('lt').text(`${translatePaymentMethod(payment.method)}:`).align('rt').text(formatMoney(payment.amount)).align('lt');
+      device.align('lt').text(`${getPaymentLabel(payment)}:`).align('rt').text(formatMoney(payment.amount)).align('lt');
     }
   }
 
@@ -392,7 +376,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
   if (payload.payments && payload.payments.length > 0) {
     lines.push('--------------------------------');
     for (const payment of payload.payments) {
-      lines.push(`${translatePaymentMethod(payment.method)}: ${formatMoney(payment.amount)}`);
+      lines.push(`${getPaymentLabel(payment)}: ${formatMoney(payment.amount)}`);
     }
   }
 

@@ -205,7 +205,7 @@ export class PrintJobsService {
       tipAmount?: number;
       deliveryFee?: number;
       items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
-      payments?: Array<{ method: string; amount: number }>;
+      payments?: Array<{ method: string; methodName?: string; amount: number }>;
       businessName?: string;
       businessNit?: string;
       businessPhone?: string;

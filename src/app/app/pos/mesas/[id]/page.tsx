@@ -555,7 +555,7 @@ export default function MesaDetallePage() {
       const cuenta = await PedidosService.generarPreCuenta(tableId);
       setPreCuenta(cuenta);
       setShowPreCuenta(true);
-      imprimirPreCuenta(cuenta);
+      await imprimirPreCuenta(cuenta);
     } catch (error) {
       console.error('Error generando pre-cuenta:', error);
       toast({
@@ -563,6 +563,7 @@ export default function MesaDetallePage() {
         description: 'No se pudo generar la pre-cuenta',
         variant: 'destructive',
       });
+      throw error;
     }
   };
 
@@ -623,13 +624,13 @@ export default function MesaDetallePage() {
       // impresoras/agente configurados, ya que la Comanda digital (KDS) ya se envió.
       if (branch_id && ticketsEnviados.length > 0) {
         for (const ticket of ticketsEnviados) {
-          PrintJobsService.enqueueKitchenTicket(branch_id, {
+          await PrintJobsService.enqueueKitchenTicket(branch_id, {
             ticketId: ticket.ticketId,
             tableName: mesaNombre,
             serverName,
             createdAt: ticket.createdAt,
             items: ticket.items,
-          }).catch((err) => console.warn('No se pudo encolar impresión física de comanda:', err));
+          });
         }
       }
     } catch (error) {
@@ -639,6 +640,7 @@ export default function MesaDetallePage() {
         description: 'No se pudo enviar la comanda',
         variant: 'destructive',
       });
+      throw error;
     }
   };
 

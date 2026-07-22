@@ -54,6 +54,27 @@ async function processJob(job: PrintJobRow): Promise<void> {
   if (processedIds.has(job.id)) return;
   processedIds.add(job.id);
 
+  if (job.status !== 'pending') return;
+
+  // Claim atómico: si hay más de un Print Agent corriendo (ej. 2 equipos en la
+  // misma sucursal), solo uno debe procesar cada job. Se marca 'sent' como
+  // reclamado; si 0 filas se actualizan, otro agente ya lo tomó.
+  const { data: claimed, error: claimError } = await supabase
+    .from('print_jobs')
+    .update({ status: 'sent' })
+    .eq('id', job.id)
+    .eq('status', 'pending')
+    .select('id');
+
+  if (claimError) {
+    console.error(`[print_jobs] error reclamando job ${job.id}:`, claimError.message);
+    return;
+  }
+  if (!claimed || claimed.length === 0) {
+    console.log(`[print_jobs] job ${job.id} ya fue reclamado por otro agente, omitiendo`);
+    return;
+  }
+
   console.log(`[print_jobs] procesando job ${job.id} (${job.job_type}, estación: ${job.station})`);
 
   const printer = await fetchPrinter(job.printer_id);

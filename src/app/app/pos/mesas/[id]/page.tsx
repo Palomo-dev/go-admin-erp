@@ -1592,7 +1592,10 @@ export default function MesaDetallePage() {
         preCuenta={preCuenta}
         tableName={session?.restaurant_tables?.name || mesaNombre}
         onPrint={() => preCuenta && imprimirPreCuenta(preCuenta, true)}
-        onGenerateBill={handleSolicitarCuenta}
+        onGenerateBill={() => {
+          setShowPreCuenta(false);
+          setShowCheckout(true);
+        }}
         onSplitBill={() => {
           setShowPreCuenta(false);
           setShowSplitBill(true);

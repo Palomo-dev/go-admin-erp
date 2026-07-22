@@ -481,8 +481,9 @@ export class PrintService {
       if (printed) return;
       printed = true;
       try {
-        if (printWindow && !printWindow.closed) {
-          printWindow.focus();
+        if (!printWindow || printWindow.closed) return;
+        printWindow.focus();
+        if (typeof printWindow.print === 'function') {
           printWindow.print();
         }
       } catch (e) {
@@ -505,7 +506,6 @@ export class PrintService {
           img.addEventListener('error', onDone);
         }
       });
-      // Fallback por si alguna imagen nunca dispara load/error
       setTimeout(triggerPrint, 3000);
     } else {
       setTimeout(triggerPrint, 300);

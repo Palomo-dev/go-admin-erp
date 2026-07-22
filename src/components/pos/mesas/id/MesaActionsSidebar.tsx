@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Receipt, Send, Clock, Split, DollarSign, UserCircle } from 'lucide-react';
+import { Receipt, Send, Clock, Split, DollarSign, UserCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { CustomerSelector, type OccupiedSpace } from '@/components/pos/CustomerSelector';
 import type { Customer } from '@/components/pos/types';
@@ -32,13 +32,15 @@ interface MesaActionsSidebarProps {
   taxItems: MesaTaxItem[];
   onTaxTotalsChange?: (totals: { subtotal: number; taxTotal: number; total: number; taxIncluded: boolean }) => void;
 
-  onEnviarComanda: () => void;
-  onGenerarPreCuenta: () => void;
+  onEnviarComanda: () => Promise<void>;
+  onGenerarPreCuenta: () => Promise<void>;
   onSolicitarCuenta: () => void;
   onOpenSplitBill: () => void;
   onCancelSplit: () => void;
   onCheckout: () => void;
 }
+
+type PrintBadge = { type: 'success' | 'error'; message: string } | null;
 
 export function MesaActionsSidebar({
   selectedCustomer,
@@ -62,6 +64,40 @@ export function MesaActionsSidebar({
   onCancelSplit,
   onCheckout,
 }: MesaActionsSidebarProps) {
+  const [comandaBadge, setComandaBadge] = useState<PrintBadge>(null);
+  const [preCuentaBadge, setPreCuentaBadge] = useState<PrintBadge>(null);
+  const comandaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const preCuentaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showBadge = useCallback(
+    (which: 'comanda' | 'preCuenta', badge: PrintBadge) => {
+      const setter = which === 'comanda' ? setComandaBadge : setPreCuentaBadge;
+      const timerRef = which === 'comanda' ? comandaTimerRef : preCuentaTimerRef;
+      setter(badge);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setter(null), 4000);
+    },
+    [],
+  );
+
+  const handleEnviarComandaClick = async () => {
+    try {
+      await onEnviarComanda();
+      showBadge('comanda', { type: 'success', message: 'Enviado correctamente' });
+    } catch {
+      showBadge('comanda', { type: 'error', message: 'Error al enviar' });
+    }
+  };
+
+  const handleGenerarPreCuentaClick = async () => {
+    try {
+      await onGenerarPreCuenta();
+      showBadge('preCuenta', { type: 'success', message: 'Impresión exitosa' });
+    } catch {
+      showBadge('preCuenta', { type: 'error', message: 'Error de impresión' });
+    }
+  };
+
   return (
     <div className="lg:col-span-1 space-y-4">
       {/* Cliente */}
@@ -114,25 +150,57 @@ export function MesaActionsSidebar({
 
           {/* Acciones */}
           <div className="space-y-2">
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={onEnviarComanda}
-              disabled={!itemsCount}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Enviar a Cocina
-            </Button>
+            <div className="relative">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handleEnviarComandaClick}
+                disabled={!itemsCount}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Enviar a Cocina
+              </Button>
+              {comandaBadge && (
+                <span
+                  className={`absolute -top-2 -right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shadow-md animate-in fade-in zoom-in duration-200 ${
+                    comandaBadge.type === 'success'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                  }`}
+                >
+                  {comandaBadge.type === 'success'
+                    ? <CheckCircle2 className="h-3 w-3" />
+                    : <AlertCircle className="h-3 w-3" />}
+                  {comandaBadge.message}
+                </span>
+              )}
+            </div>
 
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={onGenerarPreCuenta}
-              disabled={!itemsCount}
-            >
-              <Receipt className="h-4 w-4 mr-2" />
-              Ver Pre-Cuenta
-            </Button>
+            <div className="relative">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handleGenerarPreCuentaClick}
+                disabled={!itemsCount}
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                Ver Pre-Cuenta
+              </Button>
+              {preCuentaBadge && (
+                <span
+                  className={`absolute -top-2 -right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shadow-md animate-in fade-in zoom-in duration-200 ${
+                    preCuentaBadge.type === 'success'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                  }`}
+                >
+                  {preCuentaBadge.type === 'success'
+                    ? <CheckCircle2 className="h-3 w-3" />
+                    : <AlertCircle className="h-3 w-3" />}
+                  {preCuentaBadge.message}
+                </span>
+              )}
+            </div>
 
             <Button
               variant="outline"

@@ -483,25 +483,38 @@ export class PedidosService {
    */
   static async eliminarItem(saleItemId: string, motivo?: string): Promise<void> {
     try {
-      // Obtener datos completos del item + venta antes de eliminar (para auditoría)
+      // Consulta simple sin joins para obtener datos básicos del item (sale_id para recalcular)
       const { data: item } = await supabase
         .from('sale_items')
-        .select(`
-          sale_id,
-          product_id,
-          quantity,
-          unit_price,
-          total,
-          notes,
-          products(name),
-          sales(organization_id, branch_id, table_session_id)
-        `)
+        .select('sale_id, product_id, quantity, unit_price, total, notes')
         .eq('id', saleItemId)
         .single();
 
-      if (!item) throw new Error('Item no encontrado');
+      const saleId = item?.sale_id;
 
-      await this.registrarAuditoriaEliminacionItem(saleItemId, item, motivo);
+      // Auditoría best-effort: no bloquear la eliminación si falla
+      if (item) {
+        try {
+          // Consultar datos adicionales para auditoría con left joins (puede fallar si producto fue borrado)
+          const { data: fullItem } = await supabase
+            .from('sale_items')
+            .select(`
+              sale_id, product_id, quantity, unit_price, total, notes,
+              products!left(name),
+              sales!left(organization_id, branch_id, table_session_id)
+            `)
+            .eq('id', saleItemId)
+            .single();
+
+          if (fullItem) {
+            await this.registrarAuditoriaEliminacionItem(saleItemId, fullItem, motivo);
+          } else {
+            await this.registrarAuditoriaEliminacionItem(saleItemId, item, motivo);
+          }
+        } catch (auditErr) {
+          console.warn('Auditoría de eliminación falló (no bloquea):', auditErr);
+        }
+      }
 
       // Eliminar items de kitchen_tickets relacionados
       await supabase
@@ -518,7 +531,9 @@ export class PedidosService {
       if (error) throw error;
 
       // Recalcular total
-      await this.recalcularTotalVenta(item.sale_id);
+      if (saleId) {
+        await this.recalcularTotalVenta(saleId);
+      }
     } catch (error) {
       console.error('Error eliminando item:', error);
       throw error;

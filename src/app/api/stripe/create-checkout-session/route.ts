@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
       billingPeriod,
       successUrl,
       cancelUrl,
-      enterpriseConfig
+      enterpriseConfig,
+      couponCode
     } = await request.json()
 
     if (!organizationId || !planCode || !billingPeriod) {
@@ -155,6 +156,17 @@ export async function POST(request: NextRequest) {
 
     let customerId = currentSub?.stripe_customer_id
 
+    if (customerId) {
+      // Verificar que el customer existe en el entorno actual de Stripe (test vs live)
+      try {
+        await stripe.customers.retrieve(customerId)
+      } catch (retrieveErr: any) {
+        // El customer no existe en este entorno (ej: creado en test, ahora usamos live)
+        console.warn('⚠️ Stripe customer no encontrado, creando uno nuevo:', retrieveErr.message)
+        customerId = undefined
+      }
+    }
+
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: org.email || `org-${organizationId}@placeholder.com`,
@@ -165,6 +177,15 @@ export async function POST(request: NextRequest) {
         },
       })
       customerId = customer.id
+
+      // Actualizar el stripe_customer_id en la suscripción existente
+      if (currentSub) {
+        await supabase
+          .from('subscriptions')
+          .update({ stripe_customer_id: customerId })
+          .eq('organization_id', organizationId)
+          .eq('stripe_customer_id', currentSub.stripe_customer_id)
+      }
     }
 
     // Solo cancelar suscripción anterior si está activa o past_due (no si ya está canceled)
@@ -173,8 +194,32 @@ export async function POST(request: NextRequest) {
         await stripe.subscriptions.update(currentSub.stripe_subscription_id, {
           cancel_at_period_end: true,
         })
-      } catch (e) {
-        console.warn('⚠️ No se pudo marcar suscripción anterior:', e)
+      } catch (e: any) {
+        console.warn('⚠️ No se pudo marcar suscripción anterior (puede no existir en este entorno):', e.message)
+      }
+    }
+
+    // Buscar cupón si se proporcionó un código
+    let stripeCouponId: string | undefined
+    if (couponCode) {
+      const { data: couponData, error: couponError } = await supabase
+        .from('subscription_coupons')
+        .select('stripe_coupon_id, is_active, max_redemptions, redemption_count, valid_until')
+        .eq('code', couponCode.toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (couponError || !couponData) {
+        console.warn('⚠️ Cupón no encontrado o inactivo:', couponCode);
+      } else if (couponData.max_redemptions && couponData.redemption_count >= couponData.max_redemptions) {
+        console.warn('⚠️ Cupón alcanzó límite de redenciones:', couponCode);
+      } else if (couponData.valid_until && new Date(couponData.valid_until) < new Date()) {
+        console.warn('⚠️ Cupón expirado:', couponCode);
+      } else if (!couponData.stripe_coupon_id) {
+        console.warn('⚠️ Cupón sin stripe_coupon_id:', couponCode);
+      } else {
+        stripeCouponId = couponData.stripe_coupon_id;
+        console.log('✅ Cupón válido para checkout:', stripeCouponId);
       }
     }
 
@@ -192,12 +237,14 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
+      ...(stripeCouponId ? { discounts: [{ coupon: stripeCouponId }] } : {}),
       subscription_data: {
         metadata: {
           organizationId: organizationId.toString(),
           planCode: planCode,
           billingPeriod: billingPeriod,
           previousPlanId: currentSub?.plan_id?.toString() || '',
+          ...(couponCode ? { couponCode: couponCode.toUpperCase() } : {}),
         },
         ...(currentSub?.stripe_subscription_id ? {} : { trial_period_days: 15 }),
       },
@@ -206,10 +253,11 @@ export async function POST(request: NextRequest) {
         planCode: planCode,
         billingPeriod: billingPeriod,
         userId: effectiveUserId || 'unknown',
+        ...(couponCode ? { couponCode: couponCode.toUpperCase() } : {}),
       },
       success_url: successUrl || defaultSuccessUrl,
       cancel_url: cancelUrl || defaultCancelUrl,
-      allow_promotion_codes: true,
+      ...(stripeCouponId ? {} : { allow_promotion_codes: true }),
       billing_address_collection: 'required',
       customer_update: {
         address: 'auto',
@@ -219,6 +267,25 @@ export async function POST(request: NextRequest) {
     }
 
     const checkoutSession = await stripe.checkout.sessions.create(sessionConfig)
+
+    // Incrementar redemption_count del cupón
+    if (stripeCouponId && couponCode) {
+      try {
+        const { data: couponRow } = await supabase
+          .from('subscription_coupons')
+          .select('redemption_count')
+          .eq('code', couponCode.toUpperCase())
+          .single();
+        if (couponRow) {
+          await supabase
+            .from('subscription_coupons')
+            .update({ redemption_count: (couponRow.redemption_count || 0) + 1 })
+            .eq('code', couponCode.toUpperCase());
+        }
+      } catch (e) {
+        console.warn('⚠️ No se pudo incrementar redemption_count del cupón:', e);
+      }
+    }
 
     return NextResponse.json({
       success: true,

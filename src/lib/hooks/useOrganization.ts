@@ -29,6 +29,12 @@ export function guardarOrganizacionActiva(organizacion: Organizacion): void {
     
     // Guardar en sessionStorage como respaldo
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
+
+    // Guardar cookie org_id para que el middleware pueda validar estado de suscripción
+    document.cookie = `org_id=${organizacion.id}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax${process.env.NODE_ENV === 'production' ? '; secure' : ''}`;
+    if (organizacion.subdomain) {
+      document.cookie = `organization=${organizacion.subdomain}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax${process.env.NODE_ENV === 'production' ? '; secure' : ''}`;
+    }
     
     // Solo hacer log si es una organización nueva o diferente
     if (!isAlreadySaved) {

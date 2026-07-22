@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { Clock, AlertTriangle, XCircle, X, CreditCard, ArrowRight, Ban } from 'lucide-react';
 
@@ -24,11 +25,15 @@ type BannerState = 'trial_active' | 'trial_warning' | 'trial_expired' | 'payment
 const DISMISS_KEY = 'trial_banner_dismissed_at';
 
 export function TrialBanner({ orgId }: TrialBannerProps) {
+  const pathname = usePathname();
   const [bannerState, setBannerState] = useState<BannerState>('hidden');
   const [daysLeft, setDaysLeft] = useState(0);
   const [planName, setPlanName] = useState('');
   const [dismissed, setDismissed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  // No mostrar el banner en la página de cuenta congelada
+  if (pathname?.startsWith('/app/cuenta-congelada')) return null;
 
   useEffect(() => {
     if (!orgId) return;

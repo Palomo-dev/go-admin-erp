@@ -467,6 +467,8 @@ export default function PerfilUsuarioPage() {
                       <button
                         onClick={async () => {
                           try {
+                            // Refrescar sesión para garantizar tokens frescos
+                            await supabase.auth.refreshSession();
                             const { data: { session } } = await supabase.auth.getSession();
                             const sellersUrl = process.env.NEXT_PUBLIC_SELLERS_URL || 'https://sellers.goadmin.io';
                             if (session) {

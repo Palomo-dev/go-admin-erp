@@ -85,6 +85,11 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   // Estado para almacenar las imágenes principales de los productos
   const [productImages, setProductImages] = useState<Record<string | number, string>>({});
   
+  // Reiniciar a página 1 cuando cambia la lista de productos (búsqueda, filtros, etc.)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [productos]);
+
   // Cálculo de productos por página
   const indexOfLastProduct = currentPage * pageSize;
   const indexOfFirstProduct = indexOfLastProduct - pageSize;

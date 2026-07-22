@@ -371,6 +371,30 @@ export class PrintJobsService {
   }
 
   /**
+   * Trabajos de impresión paginados de una sucursal.
+   * Retorna los items de la página solicitada y el conteo total.
+   */
+  static async getJobsPaginated(
+    branchId: number,
+    page: number,
+    pageSize: number,
+  ): Promise<{ jobs: PrintJobWithPrinter[]; total: number }> {
+    const orgId = getOrganizationId();
+    const offset = (page - 1) * pageSize;
+
+    const { data, error, count } = await supabase
+      .from('print_jobs')
+      .select('id, branch_id, printer_id, station, job_type, reference_id, status, error_message, created_at, printed_at, printers(name)', { count: 'exact' })
+      .eq('organization_id', orgId)
+      .eq('branch_id', branchId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+
+    if (error) throw error;
+    return { jobs: (data || []) as any, total: count || 0 };
+  }
+
+  /**
    * Estado de los Print Agents (uno o varios PCs) de una sucursal.
    */
   static async getAgentsStatus(branchId: number): Promise<PrintAgentStatus[]> {

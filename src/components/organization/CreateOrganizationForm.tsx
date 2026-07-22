@@ -61,9 +61,12 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   });
   const [organizationTypes, setOrganizationTypes] = useState<Array<{ id: number; name: string }>>([]);
   const [countries, setCountries] = useState<Array<{ code: string; name: string }>>([]);
+  const [plans, setPlans] = useState<Array<{ id: number; code: string; name: string; price_usd_month: string | null; trial_days: number }>>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  const totalSteps = isSignupMode ? 2 : 3;
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [subdomainManuallyEdited, setSubdomainManuallyEdited] = useState(false);
@@ -153,9 +156,30 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   useEffect(() => {
     fetchOrganizationTypes();
     fetchCountries();
+    if (!isSignupMode) {
+      fetchPlans();
+    }
   }, []);
 
+  const fetchPlans = async () => {
+    const { data, error } = await supabase
+      .from('plans')
+      .select('id, code, name, price_usd_month, trial_days')
+      .eq('is_active', true)
+      .order('price_usd_month', { ascending: true });
 
+    if (error) {
+      console.error('Error al cargar los planes:', error);
+      return;
+    }
+
+    setPlans(data || []);
+    // Preseleccionar el plan recomendado (Pro) o el primero disponible
+    const recommended = data?.find((p) => p.code === 'pro') || data?.[0];
+    if (recommended) {
+      setSelectedPlanId(recommended.id);
+    }
+  };
 
   const fetchOrganizationTypes = async () => {
     setLoading(true);
@@ -214,6 +238,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       if (formData.subdomain && formData.subdomain.length < 3) {
         errors.subdomain = 'El subdominio debe tener al menos 3 caracteres';
       }
+    }
+
+    if (currentStep === 3 && !isSignupMode) {
+      if (!selectedPlanId) errors.plan = 'Seleccione un plan';
     }
     
     setFormErrors(errors);
@@ -282,7 +310,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             ...organizationData,
             owner_user_id: session.user.id,
             status: 'active',
-            plan_id: 1, // Default to free plan
+            plan_id: selectedPlanId,
             created_by: session.user.id
           })
           .select()
@@ -339,11 +367,24 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           <div className={`flex items-center justify-center w-10 h-10 rounded-full ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'} text-white`}>
             2
           </div>
+          {totalSteps === 3 && (
+            <div className={`h-1 w-12 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+          )}
         </div>
+        {totalSteps === 3 && (
+          <div className="flex items-center">
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'} text-white`}>
+              3
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex justify-center mt-2">
         <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">Información Básica</span>
         <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">Detalles Adicionales</span>
+        {totalSteps === 3 && (
+          <span className="text-sm font-medium mx-4 text-center text-gray-700 dark:text-gray-300">Plan</span>
+        )}
       </div>
     </div>
   );
@@ -834,12 +875,61 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     </div>
   );
 
+  const renderStep3 = () => (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md sm:rounded-lg">
+        <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">Selecciona tu Plan</h3>
+
+        <div className="grid grid-cols-1 gap-4">
+          {plans.map((plan) => (
+            <div
+              key={plan.id}
+              onClick={() => {
+                setSelectedPlanId(plan.id);
+                if (formErrors.plan) setFormErrors({ ...formErrors, plan: '' });
+              }}
+              className={`relative rounded-lg border p-4 cursor-pointer transition-all ${
+                selectedPlanId === plan.id
+                  ? 'border-blue-500 ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{plan.name}</h4>
+                  {plan.trial_days > 0 && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Incluye {plan.trial_days} días de prueba
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                    {plan.price_usd_month ? `$${plan.price_usd_month}` : 'Personalizado'}
+                  </span>
+                  {plan.price_usd_month && (
+                    <span className="text-sm text-gray-500 dark:text-gray-400">/mes</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {formErrors.plan && (
+          <p className="mt-3 text-sm text-red-600 dark:text-red-400">{formErrors.plan}</p>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto">
       {renderStepIndicator()}
       
       {step === 1 && renderStep1()}
       {step === 2 && renderStep2()}
+      {step === 3 && !isSignupMode && renderStep3()}
 
       {error && (
         <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
@@ -865,7 +955,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         
         <button
           type="button"
-          onClick={step === 1 ? nextStep : handleSubmit}
+          onClick={step === totalSteps ? handleSubmit : nextStep}
           disabled={loading || (step === 2 && (subdomainStatus === 'checking' || subdomainStatus === 'taken'))}
           className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-6 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all"
         >
@@ -875,10 +965,12 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Siguiente...
+              {step === totalSteps && !isSignupMode ? 'Creando...' : 'Siguiente...'}
             </>
           ) : subdomainStatus === 'checking' && step === 2 ? (
             'Verificando...'
+          ) : step === totalSteps && !isSignupMode ? (
+            'Crear Organización'
           ) : (
             'Siguiente'
           )}

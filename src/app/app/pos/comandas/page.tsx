@@ -121,11 +121,13 @@ export default function ComandasPage() {
     };
 
     // Actualización optimista: el ticket y todos sus items reflejan el nuevo estado
+    const nowIso = new Date().toISOString();
     setTickets(prev => prev.map(ticket =>
       ticket.id === ticketId
         ? {
             ...ticket,
             status,
+            ready_at: status === 'ready' ? nowIso : (status === 'delivered' ? ticket.ready_at : null),
             kitchen_ticket_items: ticket.kitchen_ticket_items?.map((item) => ({
               ...item,
               status: itemStatusByTicketStatus[status],

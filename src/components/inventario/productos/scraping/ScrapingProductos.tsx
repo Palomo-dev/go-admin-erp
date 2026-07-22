@@ -119,6 +119,12 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     fallidos: number;
     errores: { name: string; error?: string }[];
   } | null>(null);
+  const [progresoImport, setProgresoImport] = useState<{
+    loteActual: number;
+    totalLotes: number;
+    importados: number;
+    total: number;
+  } | null>(null);
 
   const reset = () => {
     setPaso('url');
@@ -128,6 +134,7 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     setEnriqueciendo(new Set());
     setEnriqueciendoTodo(false);
     setResultado(null);
+    setProgresoImport(null);
   };
 
   // Enriquecer un producto con los datos completos de su página de detalle
@@ -272,46 +279,86 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     }
   };
 
+  const BATCH_SIZE = 50;
+
   const handleImportar = async () => {
     if (!organization?.id || seleccionados.length === 0) return;
 
     setImportando(true);
-    try {
-      const productosAImportar = seleccionados.map((i) => productos[i]);
-      const { data, error } = await supabase.functions.invoke('product-scraper', {
-        body: {
-          action: 'import',
-          products: productosAImportar,
-          organization_id: organization.id,
-          branch_id: branch_id || null,
-          source_url: url,
-          duplicate_mode: duplicateMode,
-        },
-      });
+    const productosAImportar = seleccionados.map((i) => productos[i]);
+    const totalLotes = Math.ceil(productosAImportar.length / BATCH_SIZE);
+    let exitososAcum = 0;
+    let fallidosAcum = 0;
+    const erroresAcum: { name: string; error?: string }[] = [];
 
-      if (error) {
-        let msg = error.message || 'Error al importar';
-        try {
-          const errBody = await (error as any).context?.json?.();
-          if (errBody?.error) msg = errBody.error;
-        } catch (_) { /* usar mensaje genérico */ }
-        throw new Error(msg);
+    try {
+      for (let lote = 0; lote < totalLotes; lote++) {
+        const inicio = lote * BATCH_SIZE;
+        const fin = Math.min(inicio + BATCH_SIZE, productosAImportar.length);
+        const loteProductos = productosAImportar.slice(inicio, fin);
+
+        setProgresoImport({
+          loteActual: lote + 1,
+          totalLotes,
+          importados: exitososAcum,
+          total: productosAImportar.length,
+        });
+
+        const { data, error } = await supabase.functions.invoke('product-scraper', {
+          body: {
+            action: 'import',
+            products: loteProductos,
+            organization_id: organization.id,
+            branch_id: branch_id || null,
+            source_url: url,
+            duplicate_mode: duplicateMode,
+          },
+        });
+
+        if (error) {
+          let msg = error.message || 'Error al importar lote';
+          try {
+            const errBody = await (error as any).context?.json?.();
+            if (errBody?.error) msg = errBody.error;
+          } catch (_) { /* usar mensaje genérico */ }
+          throw new Error(`Lote ${lote + 1}/${totalLotes}: ${msg}`);
+        }
+        if (data.error) throw new Error(`Lote ${lote + 1}/${totalLotes}: ${data.error}`);
+
+        exitososAcum += data.exitosos || 0;
+        fallidosAcum += data.fallidos || 0;
+        if (data.errores) erroresAcum.push(...data.errores);
+
+        setProgresoImport({
+          loteActual: lote + 1,
+          totalLotes,
+          importados: exitososAcum,
+          total: productosAImportar.length,
+        });
       }
-      if (data.error) throw new Error(data.error);
 
       setResultado({
-        exitosos: data.exitosos || 0,
-        fallidos: data.fallidos || 0,
-        errores: data.errores || [],
+        exitosos: exitososAcum,
+        fallidos: fallidosAcum,
+        errores: erroresAcum,
       });
+      setProgresoImport(null);
       setPaso('resultado');
       onImportComplete();
     } catch (e: any) {
+      setProgresoImport(null);
+      setResultado({
+        exitosos: exitososAcum,
+        fallidos: fallidosAcum,
+        errores: erroresAcum,
+      });
+      setPaso('resultado');
       toast({
         variant: 'destructive',
-        title: 'Error al importar',
-        description: e.message || 'No se pudieron importar los productos.',
+        title: 'Error en importación',
+        description: e.message || 'No se pudieron importar todos los productos.',
       });
+      onImportComplete();
     } finally {
       setImportando(false);
     }
@@ -349,6 +396,22 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
             {paso === 'resultado' && 'Resultado de la importación.'}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Barra de progreso durante importación por lotes */}
+        {importando && progresoImport && (
+          <div className="px-6 py-2 border-b dark:border-gray-700">
+            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span>Lote {progresoImport.loteActual} de {progresoImport.totalLotes}</span>
+              <span>{progresoImport.importados} / {progresoImport.total} productos</span>
+            </div>
+            <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-600 transition-all duration-300 ease-out"
+                style={{ width: `${Math.round((progresoImport.importados / progresoImport.total) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Paso 1: URL */}
         {paso === 'url' && (

@@ -451,7 +451,6 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
               .select('id')
               .eq('product_id', productoId)
               .eq('branch_id', stockItem.branch_id)
-              .is('variant_id', null) // Solo stock del producto principal, no de variantes
               .maybeSingle();
             
             if (stockQueryError) throw stockQueryError;

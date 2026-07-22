@@ -286,7 +286,7 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
                         <Bot className="h-2.5 w-2.5 mr-0.5" />Agente
                       </Badge>
                     )}
-                    {task.parent_task && (
+                    {task.parent_task?.id && (
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onTaskClick?.({ ...task, id: task.parent_task!.id, title: task.parent_task!.title }); }}

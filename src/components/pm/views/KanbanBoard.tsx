@@ -140,7 +140,7 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, runningTimers }:
                                   <Badge className={`text-[10px] ${PRIORITY_COLORS[task.priority]}`}>
                                     {PRIORITY_LABELS[task.priority]}
                                   </Badge>
-                                  {task.parent_task && (
+                                  {task.parent_task?.id && (
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); onTaskClick?.({ ...task, id: task.parent_task!.id, title: task.parent_task!.title }); }}

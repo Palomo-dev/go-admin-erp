@@ -652,7 +652,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         </div>
 
         {/* Tarea padre (si es subtarea) */}
-        {isEdit && editTask?.parent_task && (
+        {isEdit && editTask?.parent_task?.id && (
           <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg px-3 py-2 border border-indigo-100 dark:border-indigo-800">
             <GitBranch className="h-4 w-4 text-indigo-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">

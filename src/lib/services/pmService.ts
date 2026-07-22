@@ -441,8 +441,11 @@ export const pmService = {
     const { data, error } = await query;
     if (error) { console.error('Error getTasks:', error.message); return []; }
 
-    // Enriquecer con profiles por separado si hay assigned_to
-    let tasks = data || [];
+    // Normalizar parent_task: Supabase devuelve array en self-referencing joins
+    let tasks = (data || []).map((t: any) => ({
+      ...t,
+      parent_task: Array.isArray(t.parent_task) ? (t.parent_task[0] || null) : t.parent_task
+    }));
 
     // Filtro por módulo (post-query, en cliente)
     if (filters?.module === 'crm') {
@@ -657,8 +660,13 @@ export const pmService = {
   },
 
   async getTaskById(taskId: string): Promise<PMTask | null> {
+    if (!taskId || taskId === 'undefined') { console.error('Error getTaskById: taskId inválido:', taskId); return null; }
     const { data, error } = await supabase.from('tasks').select('*, parent_task:tasks!parent_task_id(id, title, status)').eq('id', taskId).single();
     if (error) { console.error('Error getTaskById:', error.message); return null; }
+    // Normalizar parent_task: Supabase devuelve array en self-referencing joins
+    if (data && Array.isArray(data.parent_task)) {
+      data.parent_task = data.parent_task[0] || null;
+    }
     return data;
   },
 

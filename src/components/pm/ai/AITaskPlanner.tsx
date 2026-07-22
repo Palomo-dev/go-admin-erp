@@ -23,9 +23,13 @@ import {
   ChevronRight,
   Send,
   Wand2,
+  Mic,
+  MicOff,
+  AudioLines,
 } from 'lucide-react';
 import { pmService, type PMTask } from '@/lib/services/pmService';
 import { useToast } from '@/components/ui/use-toast';
+import { useSpeechToText } from '@/lib/hooks/useSpeechToText';
 
 interface AIGeneratedTask {
   title: string;
@@ -77,6 +81,21 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
   const [autoAssign, setAutoAssign] = useState(false);
   const { toast } = useToast();
+
+  const {
+    isListening,
+    isSupported: speechSupported,
+    isTranscribing,
+    error: speechError,
+    start: startListening,
+    stop: stopListening,
+    reset: resetTranscript,
+  } = useSpeechToText({
+    language: 'es-ES',
+    continuous: true,
+    interimResults: true,
+    onTranscript: (text) => setPrompt(text),
+  });
 
   // Cargar metas para poder vincular las tareas generadas a una meta
   useEffect(() => {
@@ -221,13 +240,70 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Textarea
-            placeholder="Ejemplo: Necesito crear una landing page con formulario de contacto, integrar pasarela de pagos y hacer SEO básico. Tengo 2 semanas y prioridad alta..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={4}
-            className="resize-none bg-white dark:bg-gray-900 border-purple-200 dark:border-purple-700 focus:border-purple-400"
-          />
+          <div className="relative">
+            <Textarea
+              placeholder="Ejemplo: Necesito crear una landing page con formulario de contacto, integrar pasarela de pagos y hacer SEO básico. Tengo 2 semanas y prioridad alta..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              rows={4}
+              className="resize-none bg-white dark:bg-gray-900 border-purple-200 dark:border-purple-700 focus:border-purple-400 pr-12"
+            />
+            {speechSupported && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (isListening) {
+                    stopListening();
+                  } else {
+                    resetTranscript();
+                    startListening();
+                  }
+                }}
+                disabled={isTranscribing}
+                title={isListening ? 'Detener transcripción' : 'Hablar para transcribir'}
+                className={`absolute bottom-3 right-3 p-2 rounded-full transition-all ${
+                  isListening
+                    ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30'
+                    : 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60'
+                } ${isTranscribing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isListening ? (
+                  <MicOff className="h-4 w-4" />
+                ) : isTranscribing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </button>
+            )}
+          </div>
+
+          {speechError && (
+            <p className="text-xs text-red-500 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> {speechError}
+            </p>
+          )}
+
+          {isListening && (
+            <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400">
+              <AudioLines className="h-3 w-3 animate-pulse" />
+              <span>Escuchando... habla ahora</span>
+              <button
+                type="button"
+                onClick={() => { stopListening(); }}
+                className="ml-auto text-red-500 hover:text-red-600 font-medium"
+              >
+                Detener
+              </button>
+            </div>
+          )}
+
+          {isTranscribing && (
+            <div className="flex items-center gap-2 text-xs text-blue-500">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Transcribiendo con Whisper...</span>
+            </div>
+          )}
 
           {/* Sugerencias */}
           <div className="flex flex-wrap gap-1.5">

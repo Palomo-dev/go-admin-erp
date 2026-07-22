@@ -65,6 +65,17 @@ interface VariantesTabProps {
   producto: any;
 }
 
+interface Branch {
+  id: number;
+  name: string;
+}
+
+interface StockByBranch {
+  branch_id: number;
+  branch_name: string;
+  qty_on_hand: number;
+}
+
 // Interfaz para variantes (productos hijos en tabla products)
 interface Variante {
   id: number;
@@ -74,6 +85,7 @@ interface Variante {
   price?: number;
   cost?: number;
   stock?: number;
+  stockByBranch?: StockByBranch[];
   barcode?: string;
   variant_data?: any;
   status?: string;
@@ -96,6 +108,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
   const [availableTypes, setAvailableTypes] = useState<VariantTypeOption[]>([]);
   const [availableValues, setAvailableValues] = useState<VariantValueOption[]>([]);
   const [newAttrName, setNewAttrName] = useState<string>('');
+  const [branches, setBranches] = useState<Branch[]>([]);
 
   // Cargar catálogo de tipos/valores de variantes (incluye globales + org + variant_data)
   const loadVariantCatalog = async () => {
@@ -181,7 +194,24 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
 
   useEffect(() => {
     loadVariantCatalog();
+    loadBranches();
   }, [organization?.id]);
+
+  const loadBranches = async () => {
+    if (!organization?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('id, name')
+        .eq('organization_id', organization.id)
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      if (data) setBranches(data);
+    } catch (error) {
+      console.error('Error cargando sucursales:', error);
+    }
+  };
 
   // Crea (o reutiliza) un tipo de variante en el catálogo y devuelve su id
   const createTypeInCatalog = async (name: string): Promise<number | null> => {
@@ -245,78 +275,26 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
   
   // Cargar variantes al montar el componente
   // Las variantes son productos hijos en tabla products con parent_product_id
+  // Siempre se consulta la BD para tener datos frescos
   useEffect(() => {
     const fetchVariantes = async () => {
       try {
         setLoading(true);
-        
-        // Si el producto tiene variantes pre-cargadas (children), usarlas
-        if (producto.children && producto.children.length > 0) {
-          const childIds = producto.children.map((c: any) => c.id);
 
-          // Consultar precios y costos vigentes de las variantes
-          const [pricesRes, costsRes] = await Promise.all([
-            supabase
-              .from('product_prices')
-              .select('product_id, price, effective_from, effective_to')
-              .in('product_id', childIds)
-              .or('effective_to.is.null,effective_to.gt.' + new Date().toISOString()),
-            supabase
-              .from('product_costs')
-              .select('product_id, cost, effective_from, effective_to')
-              .in('product_id', childIds)
-              .or('effective_to.is.null,effective_to.gt.' + new Date().toISOString()),
-          ]);
-
-          // Construir mapa de precio vigente por product_id (el más reciente)
-          const priceMap: Record<number, number> = {};
-          (pricesRes.data || []).forEach((pp: any) => {
-            const existing = priceMap[pp.product_id];
-            if (!existing || new Date(pp.effective_from) > new Date(existing)) {
-              priceMap[pp.product_id] = pp.price;
-            }
-          });
-
-          // Construir mapa de costo vigente por product_id
-          const costMap: Record<number, number> = {};
-          (costsRes.data || []).forEach((pc: any) => {
-            const existing = costMap[pc.product_id];
-            if (!existing || new Date(pc.effective_from) > new Date(existing)) {
-              costMap[pc.product_id] = pc.cost;
-            }
-          });
-
-          const mappedVariants = producto.children.map((child: any) => ({
-            id: child.id,
-            parent_product_id: producto.id,
-            sku: child.sku,
-            name: child.name,
-            price: priceMap[child.id] || 0,
-            cost: costMap[child.id] || 0,
-            stock: child.stock_levels?.reduce((sum: number, sl: any) => sum + (sl.qty_on_hand || 0), 0) || 0,
-            barcode: child.barcode,
-            variant_data: child.variant_data,
-            status: child.status || 'active',
-          }));
-          setVariantes(mappedVariants);
-          setLoading(false);
-          return;
-        }
-
-        // Si no hay children pre-cargados, consultar la base de datos
+        // Consultar siempre desde la base de datos para evitar datos stale
         const { data, error } = await supabase
           .from('products')
           .select(`
             id, sku, name, barcode, status, variant_data,
             product_prices(price, effective_from, effective_to),
             product_costs(cost, effective_from, effective_to),
-            stock_levels(qty_on_hand, branch_id)
+            stock_levels(qty_on_hand, branch_id, branches(id, name))
           `)
           .eq('parent_product_id', producto.id)
           .order('created_at');
-        
+
         if (error) throw error;
-        
+
         // Mapear los datos a la interfaz Variante
         const mappedVariants: Variante[] = (data || []).map((child: any) => {
           const validPrices = (child.product_prices || [])
@@ -329,8 +307,13 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
           const currentCost = validCosts[0]?.cost || 0;
 
-          const totalStock = child.stock_levels?.reduce((sum: number, sl: any) => sum + (sl.qty_on_hand || 0), 0) || 0;
-          
+          const stockByBranch: StockByBranch[] = (child.stock_levels || []).map((sl: any) => ({
+            branch_id: sl.branch_id,
+            branch_name: sl.branches?.name || `Sucursal ${sl.branch_id}`,
+            qty_on_hand: sl.qty_on_hand || 0,
+          }));
+          const totalStock = stockByBranch.reduce((sum, s) => sum + s.qty_on_hand, 0);
+
           return {
             id: child.id,
             parent_product_id: producto.id,
@@ -339,26 +322,31 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             price: currentPrice,
             cost: currentCost,
             stock: totalStock,
+            stockByBranch,
             barcode: child.barcode,
             variant_data: child.variant_data,
             status: child.status,
           };
         });
-        
+
         setVariantes(mappedVariants);
       } catch (error) {
         console.error('Error al cargar variantes:', error);
-        // No mostrar toast si simplemente no hay variantes
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchVariantes();
-  }, [producto.id, producto.children]);
+  }, [producto.id]);
   
   // Abrir diálogo para crear variante
   const handleNewVariante = () => {
+    const stockByBranch: StockByBranch[] = branches.map(b => ({
+      branch_id: b.id,
+      branch_name: b.name,
+      qty_on_hand: 0,
+    }));
     const newVariante: Variante = {
       id: 0, // Temporal, se asignará al crear
       parent_product_id: producto.id,
@@ -367,6 +355,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
       price: producto.price || 0,
       cost: producto.cost || 0,
       stock: 0,
+      stockByBranch,
       status: 'active',
     };
     setEditingVariante(newVariante);
@@ -376,7 +365,16 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
   
   // Abrir diálogo para editar variante
   const handleEditVariante = (variante: Variante) => {
-    setEditingVariante({ ...variante });
+    // Asegurar que stockByBranch esté inicializado con todas las sucursales
+    let stockByBranch = variante.stockByBranch || [];
+    if (branches.length > 0) {
+      const existingBranchIds = stockByBranch.map(sb => sb.branch_id);
+      const missing = branches
+        .filter(b => !existingBranchIds.includes(b.id))
+        .map(b => ({ branch_id: b.id, branch_name: b.name, qty_on_hand: 0 }));
+      stockByBranch = [...stockByBranch, ...missing];
+    }
+    setEditingVariante({ ...variante, stockByBranch });
     setDialogMode('edit');
     setIsDialogOpen(true);
   };
@@ -407,9 +405,9 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
           })
           .select()
           .single();
-        
+
         if (error) throw error;
-        
+
         // Crear precio inicial si hay precio definido
         if (editingVariante.price && editingVariante.price > 0) {
           await supabase.from('product_prices').insert({
@@ -418,7 +416,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             effective_from: new Date().toISOString(),
           });
         }
-        
+
         // Crear costo inicial si hay costo definido
         if (editingVariante.cost && editingVariante.cost > 0) {
           await supabase.from('product_costs').insert({
@@ -428,6 +426,31 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
           });
         }
 
+        // Insertar stock por sucursal si el producto rastrea inventario
+        if (producto.track_stock !== false && editingVariante.stockByBranch) {
+          for (const sb of editingVariante.stockByBranch) {
+            if (sb.qty_on_hand > 0) {
+              await supabase.from('stock_levels').insert({
+                product_id: data.id,
+                branch_id: sb.branch_id,
+                qty_on_hand: sb.qty_on_hand,
+              });
+
+              await supabase.from('stock_movements').insert({
+                organization_id: organization?.id,
+                branch_id: sb.branch_id,
+                product_id: data.id,
+                direction: 'in',
+                qty: sb.qty_on_hand,
+                unit_cost: editingVariante.cost || 0,
+                source: 'initial',
+                source_id: null,
+                note: `Stock inicial variante ${editingVariante.sku} - ${sb.branch_name}`,
+              });
+            }
+          }
+        }
+
         const newVariante: Variante = {
           id: data.id,
           parent_product_id: producto.id,
@@ -435,14 +458,14 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
           name: data.name,
           price: editingVariante.price,
           cost: editingVariante.cost,
-          stock: 0,
+          stock: editingVariante.stock || 0,
           barcode: data.barcode,
           variant_data: data.variant_data,
           status: data.status,
         };
-        
+
         setVariantes([...variantes, newVariante]);
-        
+
         toast({
           title: "Variante creada",
           description: "La variante se ha creado correctamente",
@@ -459,14 +482,97 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingVariante.id);
-        
+
         if (error) throw error;
-        
+
+        // Actualizar precio si cambió
+        if (editingVariante.price !== undefined) {
+          // Cerrar precio anterior
+          await supabase
+            .from('product_prices')
+            .update({ effective_to: new Date().toISOString() })
+            .eq('product_id', editingVariante.id)
+            .is('effective_to', null);
+
+          if (editingVariante.price > 0) {
+            await supabase.from('product_prices').insert({
+              product_id: editingVariante.id,
+              price: editingVariante.price,
+              effective_from: new Date().toISOString(),
+            });
+          }
+        }
+
+        // Actualizar costo si cambió
+        if (editingVariante.cost !== undefined) {
+          await supabase
+            .from('product_costs')
+            .update({ effective_to: new Date().toISOString() })
+            .eq('product_id', editingVariante.id)
+            .is('effective_to', null);
+
+          if (editingVariante.cost > 0) {
+            await supabase.from('product_costs').insert({
+              product_id: editingVariante.id,
+              cost: editingVariante.cost,
+              effective_from: new Date().toISOString(),
+            });
+          }
+        }
+
+        // Actualizar stock por sucursal si el producto rastrea inventario
+        if (producto.track_stock !== false && editingVariante.stockByBranch) {
+          for (const sb of editingVariante.stockByBranch) {
+            const { data: existingStock } = await supabase
+              .from('stock_levels')
+              .select('id, qty_on_hand')
+              .eq('product_id', editingVariante.id)
+              .eq('branch_id', sb.branch_id)
+              .maybeSingle();
+
+            const previousQty = existingStock?.qty_on_hand || 0;
+            const newQty = sb.qty_on_hand || 0;
+            const diff = newQty - previousQty;
+
+            if (existingStock) {
+              if (diff !== 0) {
+                await supabase
+                  .from('stock_levels')
+                  .update({
+                    qty_on_hand: newQty,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', existingStock.id);
+              }
+            } else if (newQty > 0) {
+              await supabase.from('stock_levels').insert({
+                product_id: editingVariante.id,
+                branch_id: sb.branch_id,
+                qty_on_hand: newQty,
+              });
+            }
+
+            if (diff !== 0) {
+              await supabase.from('stock_movements').insert({
+                organization_id: organization?.id,
+                branch_id: sb.branch_id,
+                product_id: editingVariante.id,
+                direction: diff > 0 ? 'in' : 'out',
+                qty: Math.abs(diff),
+                unit_cost: editingVariante.cost || 0,
+                source: 'adjustment',
+                source_id: null,
+                note: `Ajuste variante ${editingVariante.sku} - ${sb.branch_name}`,
+              });
+            }
+          }
+        }
+
         // Actualizar lista de variantes
         setVariantes(
           variantes.map((v) => (v.id === editingVariante.id ? editingVariante : v))
         );
-        
+
         toast({
           title: "Variante actualizada",
           description: "La variante se ha actualizado correctamente",
@@ -897,17 +1003,50 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="stock">Stock Inicial</Label>
-              <Input
-                id="stock"
-                type="number"
-                value={editingVariante?.stock || 0}
-                onChange={(e) => handleVarianteChange('stock', parseInt(e.target.value, 10))}
-                className="dark:bg-gray-800 dark:border-gray-700"
-                disabled={dialogMode === 'edit'}
-              />
-              {dialogMode === 'edit' && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">El stock se gestiona desde movimientos de inventario</p>
+              <Label>Stock por Sucursal</Label>
+              {producto.track_stock === false ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">Este producto no rastrea inventario</p>
+              ) : branches.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">No hay sucursales disponibles</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                  {editingVariante?.stockByBranch?.map((sb, idx) => (
+                    <div
+                      key={sb.branch_id}
+                      className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {sb.branch_name}
+                        </Label>
+                      </div>
+                      <div className="w-24">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={sb.qty_on_hand}
+                          onChange={(e) => {
+                            if (!editingVariante) return;
+                            const newStockByBranch = [...(editingVariante.stockByBranch || [])];
+                            newStockByBranch[idx] = {
+                              ...newStockByBranch[idx],
+                              qty_on_hand: parseInt(e.target.value, 10) || 0,
+                            };
+                            const totalStock = newStockByBranch.reduce((sum, s) => sum + s.qty_on_hand, 0);
+                            setEditingVariante({
+                              ...editingVariante,
+                              stockByBranch: newStockByBranch,
+                              stock: totalStock,
+                            });
+                          }}
+                          className="text-center dark:bg-gray-800 dark:border-gray-700"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
             

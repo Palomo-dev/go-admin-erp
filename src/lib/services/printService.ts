@@ -13,6 +13,7 @@ export interface BusinessInfo {
   phone?: string;
   email?: string;
   logoUrl?: string;
+  fiscal_responsibilities?: string[];
 }
 
 // Interfaz para datos de la sucursal
@@ -66,7 +67,7 @@ export class PrintService {
     try {
       const { data: org } = await supabase
         .from('organizations')
-        .select('id, name, legal_name, nit, tax_id, phone, email, address, city, logo_url')
+        .select('id, name, legal_name, nit, tax_id, phone, email, address, city, logo_url, fiscal_responsibilities')
         .eq('id', organizationId)
         .maybeSingle();
 
@@ -88,6 +89,7 @@ export class PrintService {
             phone: org.phone || undefined,
             email: org.email || undefined,
             logoUrl: org.logo_url || undefined,
+            fiscal_responsibilities: org.fiscal_responsibilities || undefined,
           }
         : undefined;
 
@@ -264,6 +266,7 @@ export class PrintService {
         ${business?.city ? `<div class="business-address">${business.city}</div>` : ''}
         ${business?.phone ? `<div class="business-address">Tel: ${business.phone}</div>` : ''}
         ${business?.email ? `<div class="business-address">${business.email}</div>` : ''}
+        ${business?.fiscal_responsibilities && business.fiscal_responsibilities.length > 0 ? `<div class="business-address"><strong>Régimen:</strong> ${business.fiscal_responsibilities.join(', ')}</div>` : ''}
         ${branch?.address ? `<div class="business-address" style="margin-top: 5px;">${branch.address}</div>` : ''}
         ${branch?.city ? `<div class="business-address">${branch.city}</div>` : ''}
         ${branch?.phone ? `<div class="business-address">Tel: ${branch.phone}</div>` : ''}
@@ -281,9 +284,11 @@ export class PrintService {
     ${customerName ? `
     <div class="customer-info">
         <div><strong>Cliente:</strong> ${customerName}</div>
-        ${customerDoc ? `<div><strong>Documento:</strong> ${customerDoc}</div>` : ''}
+        ${customerDoc ? `<div><strong>Documento:</strong> ${(customer as any).doc_type ? (customer as any).doc_type + ': ' : ''}${customerDoc}</div>` : ''}
         ${customer?.phone ? `<div><strong>Teléfono:</strong> ${customer.phone}</div>` : ''}
         ${customer?.email ? `<div><strong>Email:</strong> ${customer.email}</div>` : ''}
+        ${(customer as any).address ? `<div><strong>Dirección:</strong> ${(customer as any).address}</div>` : ''}
+        ${(customer as any).fiscal_responsibilities && (customer as any).fiscal_responsibilities.length > 0 ? `<div><strong>Régimen:</strong> ${(customer as any).fiscal_responsibilities.join(', ')}</div>` : ''}
     </div>
     ` : ''}
 
@@ -420,6 +425,13 @@ export class PrintService {
     <div class="footer">
         <div>¡Gracias por su compra!</div>
         <div>${businessName} - ${dateStr}</div>
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dotted #999; font-size: 9px; color: #777;">
+            <div>GO Admin S.A.S | NIT: 901479683-5</div>
+            <div>www.goadmin.io | 3113195711 | servicio@goadmin.io</div>
+        </div>
+        <div style="margin-top: 8px; text-align: center;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://goadmin.io" alt="QR" style="width: 80px; height: 80px;" />
+        </div>
     </div>
 </body>
 </html>
@@ -614,6 +626,8 @@ export class PrintService {
     ${business?.nit ? `<div class="business-address"><strong>NIT:</strong> ${business.nit}</div>` : ''}
     ${businessAddress ? `<div class="business-address">${businessAddress}</div>` : ''}
     ${business?.phone ? `<div class="business-address">Tel: ${business.phone}</div>` : ''}
+    ${business?.email ? `<div class="business-address">${business.email}</div>` : ''}
+    ${(business as any)?.fiscal_responsibilities && (business as any).fiscal_responsibilities.length > 0 ? `<div class="business-address"><strong>Régimen:</strong> ${(business as any).fiscal_responsibilities.join(', ')}</div>` : ''}
     ${branch?.name ? `<div class="business-address" style="margin-top:4px;font-weight:bold">Sucursal: ${branch.name}</div>` : ''}
     ${branch?.address ? `<div class="business-address">${branch.address}</div>` : ''}
   </div>
@@ -635,6 +649,13 @@ export class PrintService {
     <div style="font-weight:bold">*** NO ES FACTURA ***</div>
     <div>Este documento es solo informativo</div>
     <div style="margin-top:4px">¡Gracias por su preferencia!</div>
+    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dotted #999; font-size: 9px; color: #777;">
+      <div>GO Admin S.A.S | NIT: 901479683-5</div>
+      <div>www.goadmin.io | 3113195711 | servicio@goadmin.io</div>
+    </div>
+    <div style="margin-top: 8px; text-align: center;">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://goadmin.io" alt="QR" style="width: 80px; height: 80px;" />
+    </div>
   </div>
 </body></html>`;
 

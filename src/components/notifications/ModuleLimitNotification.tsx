@@ -25,28 +25,49 @@ export default function ModuleLimitNotification({
   showUpgrade = true,
 }: ModuleLimitNotificationProps) {
   const [dismissed, setDismissed] = useState(false);
+  const [autoHidden, setAutoHidden] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const { organizationStatus, activeModules, loading } = useActiveModules(organizationId);
 
   useEffect(() => {
-    // Verificar si ya fue dismisseada en esta sesión
+    // Verificar si ya fue cerrada hoy (persiste hasta el día siguiente)
     const dismissedKey = `module-limit-dismissed-${organizationId}`;
-    const wasDismissed = sessionStorage.getItem(dismissedKey);
-    if (wasDismissed) {
+    const dismissedDate = localStorage.getItem(dismissedKey);
+    const today = new Date().toDateString();
+    if (dismissedDate === today) {
       setDismissed(true);
     }
   }, [organizationId]);
+
+  // Auto-ocultar a los 15s si no hay interacción (hover) con la notificación
+  useEffect(() => {
+    if (loading || dismissed || autoHidden || isHovered || !organizationStatus || !organizationStatus.plan) {
+      return;
+    }
+
+    const hasAvailableModules = organizationStatus.available_modules && organizationStatus.available_modules.length > 0;
+    if (!hasAvailableModules) return;
+
+    const usagePercentage = organizationStatus.plan.max_modules > 0
+      ? (organizationStatus.active_modules_count / organizationStatus.plan.max_modules) * 100
+      : 0;
+    if (usagePercentage < 80) return;
+
+    const timer = setTimeout(() => setAutoHidden(true), 15000);
+    return () => clearTimeout(timer);
+  }, [loading, dismissed, autoHidden, isHovered, organizationStatus]);
 
   const handleDismiss = () => {
     setDismissed(true);
     if (organizationId) {
       const dismissedKey = `module-limit-dismissed-${organizationId}`;
-      sessionStorage.setItem(dismissedKey, 'true');
+      localStorage.setItem(dismissedKey, new Date().toDateString());
     }
     onDismiss?.();
   };
 
-  if (loading || dismissed || !organizationStatus || !organizationStatus.plan) {
+  if (loading || dismissed || autoHidden || !organizationStatus || !organizationStatus.plan) {
     return null;
   }
 
@@ -96,7 +117,11 @@ export default function ModuleLimitNotification({
       };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-[22rem] animate-in slide-in-from-bottom-2 fade-in duration-300">
+    <div
+      className="fixed bottom-4 right-4 z-50 w-[22rem] animate-in slide-in-from-bottom-2 fade-in duration-300"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div
         className={`rounded-xl border ${accent.border} bg-white dark:bg-gray-900 shadow-xl ring-1 ${accent.ring} overflow-hidden`}
       >

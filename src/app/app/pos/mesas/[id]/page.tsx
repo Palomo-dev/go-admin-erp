@@ -454,22 +454,59 @@ export default function MesaDetallePage() {
     }
   };
 
-  const imprimirPreCuenta = async (cuenta: PreCuenta) => {
+  const imprimirPreCuenta = async (cuenta: PreCuenta, forcePDF = false) => {
     // Impresión física por el Print Agent (estación 'cashier'), best-effort.
     // Si hay impresora de caja configurada, sale por ella; si no, fallback al navegador.
-    if (branch_id) {
+    // Si forcePDF=true (botón "Imprimir" del diálogo), salta la física y va directo al PDF.
+    if (branch_id && !forcePDF) {
       try {
+        const businessInfo = organization ? {
+          name: organization.name || '',
+          nit: (organization as any).nit || (organization as any).tax_id || '',
+          phone: (organization as any).phone || '',
+          address: (organization as any).address || '',
+          email: (organization as any).email || '',
+          city: (organization as any).city || '',
+          fiscalResponsibilities: (organization as any).fiscal_responsibilities || null,
+        } : undefined;
+        const branchInfo = currentBranch ? {
+          name: currentBranch.name || '',
+          address: currentBranch.address || '',
+          phone: currentBranch.phone || '',
+        } : undefined;
+
         const { enqueued } = await PrintJobsService.enqueuePreCuenta(branch_id, {
           tableId,
           tableName: session?.restaurant_tables?.name || mesaNombre,
+          serverName,
           createdAt: new Date().toISOString(),
+          subtotal: cuenta.subtotal,
+          taxTotal: cuenta.tax_total,
+          discountTotal: cuenta.discount_total,
           total: cuenta.total,
-          items: cuenta.items.map((item) => ({
-            productName: item.product?.name || 'Producto',
-            quantity: item.quantity,
-            unitPrice: item.unit_price,
-            total: item.total,
-          })),
+          items: cuenta.items.map((item) => {
+            const notesObj = typeof item.notes === 'string' ? (() => { try { return JSON.parse(item.notes || '{}'); } catch { return {}; } })() : (item.notes || {});
+            return {
+              productName: item.product?.name || 'Producto',
+              quantity: item.quantity,
+              unitPrice: item.unit_price,
+              total: item.total,
+              taxAmount: item.tax_amount,
+              discountAmount: item.discount_amount,
+              variantData: item.product?.variant_data || null,
+              modifiers: Array.isArray(notesObj?.modifiers) ? notesObj.modifiers.map((m: any) => ({ name: m.name, extraPrice: m.extraPrice || 0 })) : null,
+            };
+          }),
+          businessName: businessInfo?.name,
+          businessNit: businessInfo?.nit,
+          businessPhone: businessInfo?.phone,
+          businessAddress: businessInfo?.address,
+          businessEmail: businessInfo?.email,
+          businessCity: businessInfo?.city,
+          businessFiscalResponsibilities: businessInfo?.fiscalResponsibilities,
+          branchName: branchInfo?.name,
+          branchAddress: branchInfo?.address,
+          branchPhone: branchInfo?.phone,
         });
         if (enqueued > 0) return;
       } catch (err) {
@@ -1350,15 +1387,6 @@ export default function MesaDetallePage() {
               </div>
             ))}
           </div>
-
-          {/* Spinner centrado */}
-          <div className="flex items-center justify-center py-4 gap-3">
-            <div className="relative h-8 w-8">
-              <div className="absolute inset-0 rounded-full border-3 border-transparent bg-gradient-to-r from-blue-500 to-indigo-500 animate-spin" style={{ maskImage: 'radial-gradient(transparent 60%, black 62%)', WebkitMaskImage: 'radial-gradient(transparent 60%, black 62%)' }} />
-              <div className="absolute inset-2 rounded-full bg-blue-500/20 animate-ping" style={{ animationDuration: '1.5s' }} />
-            </div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 animate-pulse">Cargando mesa</p>
-          </div>
         </div>
       </div>
     );
@@ -1561,7 +1589,7 @@ export default function MesaDetallePage() {
         onOpenChange={setShowPreCuenta}
         preCuenta={preCuenta}
         tableName={session?.restaurant_tables?.name || mesaNombre}
-        onPrint={() => preCuenta && imprimirPreCuenta(preCuenta)}
+        onPrint={() => preCuenta && imprimirPreCuenta(preCuenta, true)}
         onGenerateBill={handleSolicitarCuenta}
         onSplitBill={() => {
           setShowPreCuenta(false);

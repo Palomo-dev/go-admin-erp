@@ -41,17 +41,52 @@ export interface SaleTicketItemPayload {
   quantity: number;
   unitPrice: number;
   total: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  variantData?: Record<string, string> | null;
+  modifiers?: Array<{ name: string; extraPrice: number }> | null;
+}
+
+export interface SaleTicketPayment {
+  method: string;
+  methodName?: string;
+  amount: number;
 }
 
 export interface SaleTicketPrintPayload {
   saleId: string;
   saleNumber?: string;
   customerName?: string;
+  customerDocType?: string;
+  customerDocNumber?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  customerAddress?: string;
+  customerFiscalResponsibilities?: string[] | null;
   title?: string;
   tableName?: string;
+  serverName?: string;
+  cashierName?: string;
   createdAt: string;
   items: SaleTicketItemPayload[];
+  subtotal?: number;
+  taxTotal?: number;
+  discountTotal?: number;
+  tipAmount?: number;
+  deliveryFee?: number;
   total: number;
+  payments?: SaleTicketPayment[];
+  businessName?: string;
+  businessNit?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  businessEmail?: string;
+  businessCity?: string;
+  businessFiscalResponsibilities?: string[] | null;
+  branchName?: string;
+  branchAddress?: string;
+  branchPhone?: string;
+  deliveryInfo?: { type: string; address: string; driverName?: string };
 }
 
 export type PrintJobPayload = KitchenTicketPrintPayload | SaleTicketPrintPayload;

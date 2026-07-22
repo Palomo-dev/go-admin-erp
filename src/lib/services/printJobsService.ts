@@ -191,9 +191,34 @@ export class PrintJobsService {
       saleId: string;
       saleNumber?: string;
       customerName?: string;
+      customerDocType?: string;
+      customerDocNumber?: string;
+      customerPhone?: string;
+      customerEmail?: string;
+      customerAddress?: string;
+      customerFiscalResponsibilities?: string[] | null;
       createdAt: string;
       total: number;
-      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number }>;
+      subtotal?: number;
+      taxTotal?: number;
+      discountTotal?: number;
+      tipAmount?: number;
+      deliveryFee?: number;
+      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+      payments?: Array<{ method: string; methodName?: string; amount: number }>;
+      businessName?: string;
+      businessNit?: string;
+      businessPhone?: string;
+      businessAddress?: string;
+      businessEmail?: string;
+      businessCity?: string;
+      businessFiscalResponsibilities?: string[] | null;
+      branchName?: string;
+      branchAddress?: string;
+      branchPhone?: string;
+      serverName?: string;
+      cashierName?: string;
+      deliveryInfo?: { type: string; address: string; driverName?: string };
     }
   ): Promise<{ enqueued: number }> {
     const orgId = getOrganizationId();
@@ -205,9 +230,34 @@ export class PrintJobsService {
       saleId: sale.saleId,
       saleNumber: sale.saleNumber,
       customerName: sale.customerName,
+      customerDocType: sale.customerDocType,
+      customerDocNumber: sale.customerDocNumber,
+      customerPhone: sale.customerPhone,
+      customerEmail: sale.customerEmail,
+      customerAddress: sale.customerAddress,
+      customerFiscalResponsibilities: sale.customerFiscalResponsibilities,
       createdAt: sale.createdAt,
       items: sale.items,
       total: sale.total,
+      subtotal: sale.subtotal,
+      taxTotal: sale.taxTotal,
+      discountTotal: sale.discountTotal,
+      tipAmount: sale.tipAmount,
+      deliveryFee: sale.deliveryFee,
+      payments: sale.payments,
+      businessName: sale.businessName,
+      businessNit: sale.businessNit,
+      businessPhone: sale.businessPhone,
+      businessAddress: sale.businessAddress,
+      businessEmail: sale.businessEmail,
+      businessCity: sale.businessCity,
+      businessFiscalResponsibilities: sale.businessFiscalResponsibilities,
+      branchName: sale.branchName,
+      branchAddress: sale.branchAddress,
+      branchPhone: sale.branchPhone,
+      serverName: sale.serverName,
+      cashierName: sale.cashierName,
+      deliveryInfo: sale.deliveryInfo,
     };
 
     const rows = printers.map((printer) => ({
@@ -239,7 +289,21 @@ export class PrintJobsService {
       tableName?: string;
       createdAt: string;
       total: number;
-      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number }>;
+      subtotal?: number;
+      taxTotal?: number;
+      discountTotal?: number;
+      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+      businessName?: string;
+      businessNit?: string;
+      businessPhone?: string;
+      businessAddress?: string;
+      businessEmail?: string;
+      businessCity?: string;
+      businessFiscalResponsibilities?: string[] | null;
+      branchName?: string;
+      branchAddress?: string;
+      branchPhone?: string;
+      serverName?: string;
     }
   ): Promise<{ enqueued: number }> {
     const orgId = getOrganizationId();
@@ -251,9 +315,23 @@ export class PrintJobsService {
       saleId: `pre-${preCuenta.tableId}`,
       title: 'PRE-CUENTA',
       tableName: preCuenta.tableName,
+      serverName: preCuenta.serverName,
       createdAt: preCuenta.createdAt,
       items: preCuenta.items,
+      subtotal: preCuenta.subtotal,
+      taxTotal: preCuenta.taxTotal,
+      discountTotal: preCuenta.discountTotal,
       total: preCuenta.total,
+      businessName: preCuenta.businessName,
+      businessNit: preCuenta.businessNit,
+      businessPhone: preCuenta.businessPhone,
+      businessAddress: preCuenta.businessAddress,
+      businessEmail: preCuenta.businessEmail,
+      businessCity: preCuenta.businessCity,
+      businessFiscalResponsibilities: preCuenta.businessFiscalResponsibilities,
+      branchName: preCuenta.branchName,
+      branchAddress: preCuenta.branchAddress,
+      branchPhone: preCuenta.branchPhone,
     };
 
     const rows = printers.map((printer) => ({

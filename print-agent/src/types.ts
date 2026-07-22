@@ -104,4 +104,5 @@ export interface PrintJobRow {
   error_message: string | null;
   created_at: string;
   printed_at: string | null;
+  retry_count: number;
 }

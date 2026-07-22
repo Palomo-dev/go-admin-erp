@@ -9,6 +9,17 @@ let processing = false;
 const processedIds = new Set<string>();
 let runtimeConfig: AgentRuntimeConfig | null = null;
 
+// Máximo de reintentos antes de marcar un job como 'error' definitivo.
+// Permite que, si este equipo no tiene acceso de red a la impresora
+// (ej. otra sucursal/WiFi), otro Print Agent con acceso pueda tomarlo.
+const MAX_PRINT_RETRIES = 5;
+
+const NETWORK_ERROR_CODES = ['ETIMEDOUT', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'ECONNRESET'];
+
+function isNetworkUnreachableError(message: string): boolean {
+  return NETWORK_ERROR_CODES.some((code) => message.includes(code));
+}
+
 async function heartbeat(): Promise<void> {
   if (!runtimeConfig) return;
   for (const branchId of runtimeConfig.branchIds) {
@@ -94,10 +105,28 @@ async function processJob(job: PrintJobRow): Promise<void> {
       .eq('id', job.id);
     console.log(`[print_jobs] job ${job.id} impreso correctamente en "${printer.name}"`);
   } catch (err: any) {
-    console.error(`[print_jobs] error imprimiendo job ${job.id}:`, err.message || err);
+    const message = String(err.message || err);
+    console.error(`[print_jobs] error imprimiendo job ${job.id}:`, message);
+
+    const retryCount = (job.retry_count || 0) + 1;
+    if (isNetworkUnreachableError(message) && retryCount <= MAX_PRINT_RETRIES) {
+      // No fue un error de impresión en sí, sino de conectividad de red de
+      // ESTE equipo hacia la impresora. Se libera el job para que otro
+      // Print Agent (con acceso a esa red) pueda reclamarlo y reintentar.
+      console.log(`[print_jobs] job ${job.id} liberado para reintento (${retryCount}/${MAX_PRINT_RETRIES}) — posible problema de red local`);
+      await supabase
+        .from('print_jobs')
+        .update({ status: 'pending', retry_count: retryCount, error_message: message })
+        .eq('id', job.id);
+      // Permitir que este mismo agente también pueda reintentarlo más adelante
+      // (ej. si recupera la red) sin quedar bloqueado por el Set local.
+      processedIds.delete(job.id);
+      return;
+    }
+
     await supabase
       .from('print_jobs')
-      .update({ status: 'error', error_message: String(err.message || err) })
+      .update({ status: 'error', error_message: message, retry_count: retryCount })
       .eq('id', job.id);
   }
 }

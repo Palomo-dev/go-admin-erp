@@ -493,7 +493,7 @@ export class PedidosService {
           unit_price,
           total,
           notes,
-          products(name),
+          products!left(name),
           sales(organization_id, branch_id, table_session_id)
         `)
         .eq('id', saleItemId)

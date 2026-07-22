@@ -441,27 +441,49 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // sale por la(s) impresora(s) con estación 'Caja'. Si no hay impresora
       // o falla, no bloquea el flujo; queda el botón "Imprimir Recibo" (PDF).
       if (cart.branch_id) {
+        const paymentsList = payments.filter(p => p.amount > 0).map(p => ({ method: p.method, amount: p.amount }));
         PrintJobsService.enqueueSaleTicket(cart.branch_id, {
           saleId: sale.id,
           saleNumber: (sale as any).sale_number,
           customerName: cart.customer?.full_name,
+          customerDocType: cart.customer?.doc_type,
+          customerDocNumber: cart.customer?.doc_number,
+          customerPhone: cart.customer?.phone,
+          customerEmail: cart.customer?.email,
+          customerAddress: cart.customer?.address,
           createdAt: new Date().toISOString(),
           subtotal: calculatedTotals.subtotal,
           taxTotal: calculatedTotals.totalTaxAmount,
+          tipAmount: (sale as any).tip_amount || 0,
+          deliveryFee: (sale as any).delivery_fee || 0,
           total: cartTotal,
           items: updatedCart.items.map((item) => ({
             productName: (item as any).name || item.product?.name || 'Producto',
             quantity: item.quantity,
             unitPrice: item.unit_price,
             total: item.total,
+            taxAmount: item.tax_amount,
+            discountAmount: item.discount_amount,
+            variantData: (item as any).product?.variant_data || null,
+            modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
           })),
+          payments: paymentsList,
           businessName: organization?.name,
           businessNit: organization?.nit || organization?.tax_id,
           businessPhone: organization?.phone,
           businessAddress: organization?.address,
+          businessEmail: organization?.email,
+          businessCity: (organization as any)?.city,
+          businessFiscalResponsibilities: (organization as any)?.fiscal_responsibilities || null,
           branchName: branch?.name,
           branchAddress: branch?.address,
           branchPhone: branch?.phone,
+          cashierName: currentUser?.name,
+          deliveryInfo: deliveryType !== 'pickup' && deliveryAddress ? {
+            type: deliveryType === 'delivery_own' ? 'Domicilio propio' : 'Domicilio',
+            address: deliveryAddress,
+            driverName: selectedDriverId ? servers.find(s => s.id === selectedDriverId)?.name : undefined,
+          } : undefined,
         }).catch((err) => console.warn('No se pudo encolar impresión física del recibo:', err));
       }
 

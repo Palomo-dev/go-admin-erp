@@ -462,9 +462,12 @@ export default function MesaDetallePage() {
       try {
         const businessInfo = organization ? {
           name: organization.name || '',
-          nit: (organization as any).tax_id || '',
+          nit: (organization as any).nit || (organization as any).tax_id || '',
           phone: (organization as any).phone || '',
           address: (organization as any).address || '',
+          email: (organization as any).email || '',
+          city: (organization as any).city || '',
+          fiscalResponsibilities: (organization as any).fiscal_responsibilities || null,
         } : undefined;
         const branchInfo = currentBranch ? {
           name: currentBranch.name || '',
@@ -481,16 +484,26 @@ export default function MesaDetallePage() {
           taxTotal: cuenta.tax_total,
           discountTotal: cuenta.discount_total,
           total: cuenta.total,
-          items: cuenta.items.map((item) => ({
-            productName: item.product?.name || 'Producto',
-            quantity: item.quantity,
-            unitPrice: item.unit_price,
-            total: item.total,
-          })),
+          items: cuenta.items.map((item) => {
+            const notesObj = typeof item.notes === 'string' ? (() => { try { return JSON.parse(item.notes || '{}'); } catch { return {}; } })() : (item.notes || {});
+            return {
+              productName: item.product?.name || 'Producto',
+              quantity: item.quantity,
+              unitPrice: item.unit_price,
+              total: item.total,
+              taxAmount: item.tax_amount,
+              discountAmount: item.discount_amount,
+              variantData: item.product?.variant_data || null,
+              modifiers: Array.isArray(notesObj?.modifiers) ? notesObj.modifiers.map((m: any) => ({ name: m.name, extraPrice: m.extraPrice || 0 })) : null,
+            };
+          }),
           businessName: businessInfo?.name,
           businessNit: businessInfo?.nit,
           businessPhone: businessInfo?.phone,
           businessAddress: businessInfo?.address,
+          businessEmail: businessInfo?.email,
+          businessCity: businessInfo?.city,
+          businessFiscalResponsibilities: businessInfo?.fiscalResponsibilities,
           branchName: branchInfo?.name,
           branchAddress: branchInfo?.address,
           branchPhone: branchInfo?.phone,

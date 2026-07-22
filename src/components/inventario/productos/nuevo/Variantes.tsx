@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GitBranch, Plus, Trash2, ChevronDown, ChevronUp, X, Tags } from 'lucide-react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 
 interface VariantesProps {
   formData: any
@@ -50,6 +51,68 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
       loadVariantTypesAndValues()
     }
   }, [organization?.id])
+
+  // Inicializar tipos de atributos y valores seleccionados desde variantes existentes
+  useEffect(() => {
+    if (formData.variants && formData.variants.length > 0) {
+      const attrTypes = new Set<string>()
+      const valuesByType: Record<string, Set<string>> = {}
+
+      formData.variants.forEach((v: any) => {
+        if (v.attributes && typeof v.attributes === 'object') {
+          Object.entries(v.attributes).forEach(([key, val]) => {
+            if (key.trim()) {
+              attrTypes.add(key.trim())
+              if (val && String(val).trim()) {
+                if (!valuesByType[key.trim()]) valuesByType[key.trim()] = new Set()
+                valuesByType[key.trim()].add(String(val).trim())
+              }
+            }
+          })
+        }
+      })
+
+      const typesArray = Array.from(attrTypes)
+      setSelectedAttributeTypes(prev => {
+        const merged = new Set([...prev, ...typesArray])
+        return Array.from(merged)
+      })
+
+      setSelectedValuesByType(prev => {
+        const merged = { ...prev }
+        Object.entries(valuesByType).forEach(([type, values]) => {
+          const existing = new Set(prev[type] || [])
+          values.forEach(v => existing.add(v))
+          merged[type] = Array.from(existing)
+        })
+        return merged
+      })
+    }
+  }, [formData.variants])
+
+  // Asegurar que cada variante tenga stock entries para todas las sucursales
+  useEffect(() => {
+    if (branches.length === 0 || !formData.variants || formData.variants.length === 0) return
+
+    const needsUpdate = formData.variants.some((v: any) => {
+      const stockArr = v.stock || []
+      if (stockArr.length !== branches.length) return true
+      const branchIds = new Set(stockArr.map((s: any) => s.branch_id))
+      return branches.some(b => !branchIds.has(b.id))
+    })
+
+    if (needsUpdate) {
+      const updatedVariants = formData.variants.map((v: any) => {
+        const stockArr = v.stock || []
+        const existingBranchIds = new Set(stockArr.map((s: any) => s.branch_id))
+        const missing = branches
+          .filter(b => !existingBranchIds.has(b.id))
+          .map(b => ({ branch_id: b.id, branch_name: b.name, qty_on_hand: 0 }))
+        return { ...v, stock: [...stockArr, ...missing] }
+      })
+      updateFormData('variants', updatedVariants)
+    }
+  }, [branches, formData.variants])
 
   const loadBranches = async () => {
     if (!organization?.id) return
@@ -659,15 +722,35 @@ export default function Variantes({ formData, updateFormData }: VariantesProps) 
                           </p>
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeVariant(index)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar variante?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción eliminará la variante <strong>{variant.sku}</strong> de la lista. Si ya existe en la base de datos, también se eliminará al guardar los cambios.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => removeVariant(index)}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
 
                     {isExpanded && (

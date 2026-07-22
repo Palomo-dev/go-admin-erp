@@ -251,7 +251,50 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           };
         });
 
-        // 10. Configurar valores iniciales en el formulario
+        // 10. Cargar variantes existentes (productos hijos)
+        const { data: childrenData } = await supabase
+          .from('products')
+          .select(`
+            id, sku, name, barcode, variant_data, status,
+            product_prices(price, effective_from, effective_to),
+            product_costs(cost, effective_from, effective_to),
+            stock_levels(branch_id, qty_on_hand, branches(id, name))
+          `)
+          .eq('parent_product_id', producto.id)
+          .order('created_at');
+
+        const existingVariants = (childrenData || []).map((child: any) => {
+          const validPrices = (child.product_prices || [])
+            .filter((pp: any) => !pp.effective_to || new Date(pp.effective_to) > new Date())
+            .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+          const childPrice = validPrices[0]?.price || 0;
+
+          const validCosts = (child.product_costs || [])
+            .filter((pc: any) => !pc.effective_to || new Date(pc.effective_to) > new Date())
+            .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+          const childCost = validCosts[0]?.cost || 0;
+
+          const childStock = (child.stock_levels || []).map((sl: any) => ({
+            branch_id: sl.branch_id,
+            branch_name: sl.branches?.name || '',
+            qty_on_hand: sl.qty_on_hand || 0
+          }));
+
+          return {
+            id: child.id,
+            sku: child.sku,
+            barcode: child.barcode || '',
+            name: child.name,
+            price: Number(childPrice) || 0,
+            cost: Number(childCost) || 0,
+            attributes: child.variant_data || {},
+            stock: childStock.length > 0 ? childStock : []
+          };
+        });
+
+        const hasVariants = (producto.is_parent || existingVariants.length > 0);
+
+        // 11. Configurar valores iniciales en el formulario
         form.reset({
           sku: producto.sku,
           barcode: producto.barcode || '',
@@ -271,8 +314,8 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           images,
           notes: notesData?.note || '',
           tags: tagIds,
-          has_variants: producto.is_parent || false,
-          variants: []
+          has_variants: hasVariants,
+          variants: existingVariants
         });
         
       } catch (error: any) {
@@ -486,6 +529,231 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           console.error('Error al actualizar stock:', stockError);
           throw new Error(`Error al actualizar stock: ${stockError.message || 'Error desconocido'}`);
         }
+      }
+      
+      // 5. Guardar variantes (productos hijos)
+      if (data.has_variants && data.variants && Array.isArray(data.variants)) {
+        // Asegurar que is_parent esté en true
+        await supabase
+          .from('products')
+          .update({ is_parent: true })
+          .eq('id', productoId);
+
+        // Obtener IDs de variantes actuales en el formulario
+        const formVariantIds = data.variants.filter((v: any) => v.id).map((v: any) => v.id);
+
+        // Obtener variantes existentes en BD
+        const { data: existingChildren } = await supabase
+          .from('products')
+          .select('id')
+          .eq('parent_product_id', productoId);
+
+        // Eliminar variantes que ya no están en el formulario
+        const toDelete = (existingChildren || []).filter(
+          (c: any) => !formVariantIds.includes(c.id)
+        );
+        if (toDelete.length > 0) {
+          await supabase
+            .from('products')
+            .delete()
+            .in('id', toDelete.map((c: any) => c.id));
+        }
+
+        // Crear o actualizar cada variante
+        for (const variant of data.variants) {
+          if (variant.id) {
+            // Actualizar variante existente
+            const { error: updateError } = await supabase
+              .from('products')
+              .update({
+                sku: variant.sku,
+                name: variant.name,
+                barcode: variant.barcode || null,
+                variant_data: variant.attributes,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', variant.id);
+
+            if (updateError) throw updateError;
+
+            // Actualizar precio si cambió
+            const now = new Date().toISOString();
+            const { data: currentPrice } = await supabase
+              .from('product_prices')
+              .select('id, price')
+              .eq('product_id', variant.id)
+              .is('effective_to', null)
+              .order('effective_from', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (!currentPrice || Number(currentPrice.price) !== Number(variant.price)) {
+              if (currentPrice) {
+                await supabase
+                  .from('product_prices')
+                  .update({ effective_to: now })
+                  .eq('id', currentPrice.id);
+              }
+              if (variant.price > 0) {
+                await supabase.from('product_prices').insert({
+                  product_id: variant.id,
+                  price: variant.price,
+                  effective_from: now,
+                });
+              }
+            }
+
+            // Actualizar costo si cambió
+            const { data: currentCost } = await supabase
+              .from('product_costs')
+              .select('id, cost')
+              .eq('product_id', variant.id)
+              .is('effective_to', null)
+              .order('effective_from', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (!currentCost || Number(currentCost.cost) !== Number(variant.cost)) {
+              if (currentCost) {
+                await supabase
+                  .from('product_costs')
+                  .update({ effective_to: now })
+                  .eq('id', currentCost.id);
+              }
+              if (variant.cost > 0) {
+                await supabase.from('product_costs').insert({
+                  product_id: variant.id,
+                  cost: variant.cost,
+                  effective_from: now,
+                });
+              }
+            }
+
+            // Actualizar stock por sucursal
+            if (variant.stock && Array.isArray(variant.stock)) {
+              for (const stockItem of variant.stock) {
+                if (!stockItem.branch_id) continue;
+                const { data: existingStock } = await supabase
+                  .from('stock_levels')
+                  .select('id, qty_on_hand')
+                  .eq('product_id', variant.id)
+                  .eq('branch_id', stockItem.branch_id)
+                  .maybeSingle();
+
+                if (existingStock) {
+                  const prevQty = Number(existingStock.qty_on_hand) || 0;
+                  const newQty = Number(stockItem.qty_on_hand) || 0;
+                  if (prevQty !== newQty) {
+                    await supabase
+                      .from('stock_levels')
+                      .update({ qty_on_hand: newQty, updated_at: now })
+                      .eq('id', existingStock.id);
+
+                    const diff = newQty - prevQty;
+                    await supabase.from('stock_movements').insert({
+                      organization_id,
+                      branch_id: stockItem.branch_id,
+                      product_id: variant.id,
+                      direction: diff > 0 ? 'in' : 'out',
+                      qty: Math.abs(diff),
+                      unit_cost: Number(variant.cost) || 0,
+                      source: 'adjustment',
+                      source_id: null,
+                      note: `Ajuste desde edición de producto`,
+                    });
+                  }
+                } else if (Number(stockItem.qty_on_hand) > 0) {
+                  await supabase.from('stock_levels').insert({
+                    product_id: variant.id,
+                    branch_id: stockItem.branch_id,
+                    qty_on_hand: stockItem.qty_on_hand,
+                  });
+
+                  await supabase.from('stock_movements').insert({
+                    organization_id,
+                    branch_id: stockItem.branch_id,
+                    product_id: variant.id,
+                    direction: 'in',
+                    qty: Number(stockItem.qty_on_hand),
+                    unit_cost: Number(variant.cost) || 0,
+                    source: 'initial',
+                    source_id: null,
+                    note: `Stock inicial desde edición`,
+                  });
+                }
+              }
+            }
+          } else {
+            // Crear nueva variante
+            const { data: newVariant, error: createError } = await supabase
+              .from('products')
+              .insert({
+                organization_id,
+                sku: variant.sku,
+                name: variant.name,
+                barcode: variant.barcode || null,
+                parent_product_id: productoId,
+                is_parent: false,
+                track_stock: data.track_stock,
+                category_id: data.category_id ?? null,
+                unit_code: data.unit_code,
+                status: 'active',
+                variant_data: variant.attributes,
+              })
+              .select()
+              .single();
+
+            if (createError) throw createError;
+
+            // Crear precio
+            if (variant.price > 0) {
+              await supabase.from('product_prices').insert({
+                product_id: newVariant.id,
+                price: variant.price,
+                effective_from: new Date().toISOString(),
+              });
+            }
+
+            // Crear costo
+            if (variant.cost > 0) {
+              await supabase.from('product_costs').insert({
+                product_id: newVariant.id,
+                cost: variant.cost,
+                effective_from: new Date().toISOString(),
+              });
+            }
+
+            // Crear stock inicial
+            if (variant.stock && Array.isArray(variant.stock)) {
+              for (const stockItem of variant.stock) {
+                if (!stockItem.branch_id || Number(stockItem.qty_on_hand) <= 0) continue;
+                await supabase.from('stock_levels').insert({
+                  product_id: newVariant.id,
+                  branch_id: stockItem.branch_id,
+                  qty_on_hand: stockItem.qty_on_hand,
+                });
+
+                await supabase.from('stock_movements').insert({
+                  organization_id,
+                  branch_id: stockItem.branch_id,
+                  product_id: newVariant.id,
+                  direction: 'in',
+                  qty: Number(stockItem.qty_on_hand),
+                  unit_cost: Number(variant.cost) || 0,
+                  source: 'initial',
+                  source_id: null,
+                  note: `Stock inicial variante ${variant.sku}`,
+                });
+              }
+            }
+          }
+        }
+      } else if (!data.has_variants && productoId) {
+        // Si se desactivaron las variantes, marcar is_parent en false
+        await supabase
+          .from('products')
+          .update({ is_parent: false })
+          .eq('id', productoId);
       }
       
       // Mostrar mensaje de éxito

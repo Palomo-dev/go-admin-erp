@@ -6,6 +6,16 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Trash2, Edit2, Check, X, Package, ChefHat, Clock, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
@@ -27,6 +37,7 @@ export function OrderItemCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editQuantity, setEditQuantity] = useState(item.quantity);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Obtener estado de cocina del item (usar el más reciente)
   const getKitchenStatus = () => {
@@ -86,8 +97,6 @@ export function OrderItemCard({
   };
 
   const handleDelete = async () => {
-    if (!confirm('¿Eliminar este item del pedido?')) return;
-
     setIsProcessing(true);
     try {
       await onDelete(item.id);
@@ -95,6 +104,7 @@ export function OrderItemCard({
       console.error('Error eliminando item:', error);
     } finally {
       setIsProcessing(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -260,7 +270,7 @@ export function OrderItemCard({
             <Button
               size="sm"
               variant="ghost"
-              onClick={handleDelete}
+              onClick={() => setShowDeleteDialog(true)}
               disabled={isProcessing}
             >
               <Trash2 className="h-4 w-4 text-red-600" />
@@ -268,6 +278,27 @@ export function OrderItemCard({
           </div>
         </div>
       </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Seguro que deseas eliminar «{item.product?.name || 'este item'}» del pedido?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isProcessing}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {isProcessing ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

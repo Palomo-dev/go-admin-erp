@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   );
 
   // Tipos de OTP soportados por verifyOtp para links de email (sin PKCE, funcionan cross-device)
-  const supportedTypes = ['signup', 'recovery', 'email_change', 'invite'];
+  const supportedTypes = ['signup', 'recovery', 'email_change', 'invite', 'magiclink'];
 
   if (token && type && supportedTypes.includes(type)) {
     try {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       
       const { data, error: verifyError } = await supabase.auth.verifyOtp({
         token_hash: token,
-        type: type as 'signup' | 'recovery' | 'email_change' | 'invite'
+        type: type as 'signup' | 'recovery' | 'email_change' | 'invite' | 'magiclink'
       });
       
       if (verifyError) {
@@ -129,6 +129,26 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(
           new URL('/auth/login?success=email-changed&message=' + encodeURIComponent('Tu correo electrónico ha sido actualizado exitosamente. Por favor, inicia sesión con tu nuevo correo.'), request.url)
         );
+      }
+
+      // magiclink: la sesión ya queda establecida (cookies). Si hay invitación
+      // pendiente, redirigir a /auth/invite para aceptarla. Si no, a la app.
+      if (type === 'magiclink') {
+        const { data: pendingInvite } = await supabase
+          .from('invitations')
+          .select('code')
+          .eq('email', user.email)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pendingInvite?.code) {
+          return NextResponse.redirect(
+            new URL(`/auth/invite?invite_code=${pendingInvite.code}`, request.url)
+          );
+        }
+        return NextResponse.redirect(new URL('/app/inicio', request.url));
       }
 
       // invite: verifyOtp establece sesión; redirigir a /auth/invite con el código

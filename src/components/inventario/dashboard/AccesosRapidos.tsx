@@ -16,7 +16,9 @@ import {
   Layers,
   Package2,
   Image,
-  BarChart3
+  BarChart3,
+  Factory,
+  ChefHat,
 } from 'lucide-react';
 
 interface QuickAccessItem {
@@ -94,6 +96,27 @@ const quickAccessItems: QuickAccessItem[] = [
     href: '/app/inventario/imagenes',
     icon: <Image className="h-6 w-6" />,
     color: 'indigo',
+  },
+  {
+    title: 'Recetas',
+    description: 'Fórmulas de producción',
+    href: '/app/inventario/recetas',
+    icon: <ChefHat className="h-6 w-6" />,
+    color: 'amber',
+  },
+  {
+    title: 'Producción',
+    description: 'Órdenes de producción',
+    href: '/app/inventario/produccion',
+    icon: <Factory className="h-6 w-6" />,
+    color: 'indigo',
+  },
+  {
+    title: 'Distribución',
+    description: 'Entre sucursales',
+    href: '/app/inventario/distribucion',
+    icon: <Truck className="h-6 w-6" />,
+    color: 'blue',
   },
   {
     title: 'Reportes',

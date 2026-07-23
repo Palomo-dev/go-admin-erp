@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
     // Si el usuario ya existe en auth.users, inviteUserByEmail genera un token
     // type=invite que falla en verifyOtp porque el usuario ya está confirmado.
-    // Solución: usar resetPasswordForEmail que envía un email con type=recovery.
+    // Solución: usar signInWithOtp que envía un email con template "Magic Link".
     // El verify route busca invitation_code en la tabla invitations por email.
     if (existsInAuth) {
       const { createClient } = await import('@supabase/supabase-js');
@@ -57,13 +57,20 @@ export async function POST(request: Request) {
         { auth: { autoRefreshToken: false, persistSession: false } }
       );
 
-      const { error: resetError } = await anonClient.auth.resetPasswordForEmail(
-        normalizedEmail,
-        { redirectTo: inviteUrl }
-      );
+      const { error: otpError } = await anonClient.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: {
+          emailRedirectTo: inviteUrl,
+          data: {
+            invitation_code: invitationCode,
+            organization_id: organizationId,
+            organization_name: organizationName,
+          },
+        },
+      });
 
-      if (resetError) {
-        console.error('Error enviando email de recovery:', resetError);
+      if (otpError) {
+        console.error('Error enviando Magic Link:', otpError);
         return NextResponse.json({
           success: true,
           inviteUrl,
@@ -71,7 +78,7 @@ export async function POST(request: Request) {
         });
       }
 
-      console.log('📧 Recovery email sent to existing user:', normalizedEmail);
+      console.log('📧 Magic Link email sent to existing user:', normalizedEmail);
       return NextResponse.json({ success: true, inviteUrl });
     }
 
@@ -101,12 +108,15 @@ export async function POST(request: Request) {
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
           { auth: { autoRefreshToken: false, persistSession: false } }
         );
-        const { error: resetError } = await anonClient.auth.resetPasswordForEmail(
-          normalizedEmail,
-          { redirectTo: inviteUrl }
-        );
-        if (!resetError) {
-          console.log('📧 Recovery email sent as fallback to:', normalizedEmail);
+        const { error: otpError } = await anonClient.auth.signInWithOtp({
+          email: normalizedEmail,
+          options: {
+            emailRedirectTo: inviteUrl,
+            data: { invitation_code: invitationCode },
+          },
+        });
+        if (!otpError) {
+          console.log('📧 Magic Link sent as fallback to:', normalizedEmail);
           return NextResponse.json({ success: true, inviteUrl });
         }
       }

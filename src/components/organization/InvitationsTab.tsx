@@ -219,8 +219,23 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .single();
       
       if (existingUser) {
-        setError(t('alreadyRegistered'));
-        return;
+        // Verificar si ya es miembro de esta organización
+        const { data: existingMember } = await supabase
+          .from('organization_members')
+          .select('id')
+          .eq('user_id', existingUser.id)
+          .eq('organization_id', orgId)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (existingMember) {
+          setError(t('alreadyMember'));
+          return;
+        }
+
+        // El usuario existe pero no es miembro: continuar con la invitación
+        // El API route /api/auth/invite enviará un Magic Link al usuario existente
+        console.log('Usuario existente detectado, se enviará Magic Link para invitación');
       }
       
       // Get current user session

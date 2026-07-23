@@ -89,7 +89,10 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Órdenes de Compra', href: '/app/inventario/ordenes-compra' },
     { name: 'Recetas', href: '/app/inventario/recetas' },
     { name: 'Producción', href: '/app/inventario/produccion' },
+    { name: 'Distribución', href: '/app/inventario/distribucion' },
     { name: 'Reportes', href: '/app/inventario/reportes' },
+    { name: 'Trazabilidad', href: '/app/inventario/reportes/trazabilidad' },
+    { name: 'Costo Recetas', href: '/app/inventario/reportes/costo-recetas' },
   ],
   pos: [
     { name: 'POS', href: '/app/pos' },

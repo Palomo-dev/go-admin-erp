@@ -922,6 +922,7 @@
     "branchesTab": {
       "loadingMap": "Cargando mapa...",
       "errorLoading": "Error al cargar sucursales",
+      "branchLimitReached": "Has alcanzado el límite de {max} sucursales de tu plan. Contrata un addon para crear más sucursales.",
       "confirmDelete": "¿Eliminar esta sucursal?",
       "errorDeleting": "Error al eliminar sucursal",
       "branchUpdated": "Sucursal actualizada exitosamente.",

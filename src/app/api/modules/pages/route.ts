@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { createClient } from '@supabase/supabase-js';
 
-// Cliente Service Role para bypass de RLS en operaciones del servidor
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -11,7 +10,7 @@ function getServiceRoleClient() {
     console.error('SUPABASE_SERVICE_ROLE_KEY no está configurado');
     return null;
   }
-  
+
   return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -20,7 +19,7 @@ function getServiceRoleClient() {
   });
 }
 
-// GET /api/modules - Obtener módulos activos de una organización
+// GET /api/modules/pages?organizationId=123
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -33,9 +32,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Usar cliente con service role para bypass de RLS
     const supabaseServer = getServiceRoleClient();
-    
     if (!supabaseServer) {
       return NextResponse.json(
         { error: 'Server configuration error' },
@@ -44,15 +41,14 @@ export async function GET(request: NextRequest) {
     }
 
     const orgId = parseInt(organizationId);
-    const status = await moduleManagementService.getOrganizationModuleStatus(orgId, supabaseServer);
-    
+    const pages = await moduleManagementService.getActiveModulePages(orgId, supabaseServer);
+
     return NextResponse.json({
       success: true,
-      data: status
+      data: pages
     });
-
   } catch (error) {
-    console.error('Error fetching modules:', error);
+    console.error('Error fetching module pages:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -60,71 +56,52 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/modules - Activar un módulo
+// POST /api/modules/pages - Toggle individual page
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { organizationId, moduleCode, action, modulePages } = body;
+    const { organizationId, moduleCode, pageHref, pageName, isActive } = body;
 
-    console.log('POST /api/modules - Request body:', { organizationId, moduleCode, action });
-
-    if (!organizationId || !moduleCode || !action) {
-      console.log('POST /api/modules - Missing required fields');
+    if (!organizationId || !moduleCode || !pageHref || !pageName) {
       return NextResponse.json(
-        { error: 'Organization ID, module code, and action are required' },
+        { error: 'organizationId, moduleCode, pageHref, and pageName are required' },
         { status: 400 }
       );
     }
 
-    // Usar cliente con service role para bypass de RLS
     const supabaseServer = getServiceRoleClient();
-    
-    console.log('POST /api/modules - Service role client:', { hasClient: !!supabaseServer });
-    
     if (!supabaseServer) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: 'Server configuration error' },
+        { status: 500 }
       );
     }
 
-    // Validar que organizationId sea un número
     const orgId = parseInt(organizationId.toString());
     if (isNaN(orgId)) {
-      console.log('POST /api/modules - Invalid organizationId:', organizationId);
       return NextResponse.json(
         { error: 'Organization ID must be a valid number' },
         { status: 400 }
       );
     }
 
-    let result;
-    if (action === 'activate') {
-      console.log(`POST /api/modules - Activating module ${moduleCode} for org ${orgId}`);
-      result = await moduleManagementService.activateModule(orgId, moduleCode, supabaseServer, modulePages);
-    } else if (action === 'deactivate') {
-      console.log(`POST /api/modules - Deactivating module ${moduleCode} for org ${orgId}`);
-      result = await moduleManagementService.deactivateModule(orgId, moduleCode, supabaseServer);
-    } else {
-      console.log('POST /api/modules - Invalid action:', action);
-      return NextResponse.json(
-        { error: 'Invalid action. Use "activate" or "deactivate"' },
-        { status: 400 }
-      );
-    }
-
-    console.log('POST /api/modules - Service result:', result);
+    const result = await moduleManagementService.toggleModulePage(
+      orgId,
+      moduleCode,
+      pageHref,
+      pageName,
+      isActive,
+      supabaseServer
+    );
 
     return NextResponse.json({
       success: result.success,
-      message: result.message,
-      data: result.data
+      message: result.message
     }, {
       status: result.success ? 200 : 400
     });
-
   } catch (error) {
-    console.error('Error managing module:', error);
+    console.error('Error toggling module page:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

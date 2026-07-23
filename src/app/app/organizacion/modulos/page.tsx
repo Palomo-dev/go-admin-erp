@@ -43,8 +43,10 @@ import Link from 'next/link';
 import { useActiveModules } from '@/hooks/useActiveModules';
 import { useModuleContext } from '@/lib/context/ModuleContext';
 import { moduleManagementService, type Module } from '@/lib/services/moduleManagementService';
+import { MODULE_PAGES, getModulePages, type ModulePage } from '@/lib/config/modulePages';
 import { ModulesSkeleton } from '@/components/organization/OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 const moduleIcons: Record<string, React.ComponentType<any>> = {
   'organizations': Building2,
@@ -87,6 +89,13 @@ export default function ModulesMarketplacePage() {
   const [isPending, startTransition] = useTransition();
   // Controlar si la carga inicial ya terminó (para no mostrar loader en toggle)
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  // Estado para páginas activas por módulo: { moduleCode: [pageHref, ...] }
+  const [activeModulePages, setActiveModulePages] = useState<Record<string, string[]>>({});
+  // Módulos expandidos para ver sus submódulos
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  // Loading state para toggle de página individual
+  const [pageActionLoading, setPageActionLoading] = useState<string | null>(null);
 
   const {
     activeModules,
@@ -137,6 +146,20 @@ export default function ModulesMarketplacePage() {
     loadAllModules();
   }, []);
 
+  // Cargar páginas activas cuando cambia organizationId
+  useEffect(() => {
+    if (!organizationId) return;
+    const loadActivePages = async () => {
+      try {
+        const pages = await moduleManagementService.getActiveModulePages(organizationId);
+        setActiveModulePages(pages);
+      } catch (err) {
+        console.error('Error loading module pages:', err);
+      }
+    };
+    loadActivePages();
+  }, [organizationId]);
+
   const handleToggleModule = useCallback(async (moduleCode: string, isActive: boolean) => {
     if (!organizationId) return;
 
@@ -158,13 +181,15 @@ export default function ModulesMarketplacePage() {
 
     try {
       // 2. LLAMADA API EN BACKGROUND
+      const modulePages = !isActive ? getModulePages(moduleCode) : undefined;
       const response = await fetch('/api/modules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           organizationId,
           moduleCode,
-          action: isActive ? 'deactivate' : 'activate'
+          action: isActive ? 'deactivate' : 'activate',
+          modulePages,
         }),
       });
 
@@ -177,13 +202,37 @@ export default function ModulesMarketplacePage() {
         return;
       }
 
+      // Si se activó, marcar todas las páginas como activas en estado local
+      let newActiveModulePages: Record<string, string[]>;
+      if (!isActive && modulePages.length > 0) {
+        newActiveModulePages = { ...activeModulePages, [moduleCode]: modulePages.map(p => p.href) };
+        setActiveModulePages(newActiveModulePages);
+      } else if (isActive) {
+        // Si se desactivó, limpiar páginas del módulo
+        newActiveModulePages = { ...activeModulePages };
+        delete newActiveModulePages[moduleCode];
+        setActiveModulePages(newActiveModulePages);
+      } else {
+        newActiveModulePages = activeModulePages;
+      }
+
       // 4. Actualizar sidebar sin recargar página completa
       startTransition(() => {
         moduleContext.refreshModules();
       });
 
-      // 5. Notificar a AppLayout para actualizar el sidebar
-      window.dispatchEvent(new Event('modules-updated'));
+      // 5. Notificar a AppLayout con datos optimistas para update inmediato
+      const newActiveCodes = isActive
+        ? Array.from(optimisticActiveModules).filter(c => c !== moduleCode)
+        : [...Array.from(optimisticActiveModules), moduleCode];
+      window.dispatchEvent(new CustomEvent('modules-updated', {
+        detail: { activeModulePages: newActiveModulePages, activeModuleCodes: newActiveCodes }
+      }));
+
+      // 6. Confirmar recargando desde DB (sin detail para que AppLayout recargue)
+      setTimeout(() => {
+        window.dispatchEvent(new Event('modules-updated'));
+      }, 500);
 
     } catch (err) {
       // REVERTIR EN CASO DE ERROR
@@ -193,7 +242,104 @@ export default function ModulesMarketplacePage() {
     } finally {
       setActionLoading(null);
     }
-  }, [organizationId, optimisticActiveModules, moduleContext]);
+  }, [organizationId, optimisticActiveModules, moduleContext, activeModulePages]);
+
+  // Toggle de página individual (submódulo)
+  const handleTogglePage = useCallback(async (moduleCode: string, page: ModulePage, isActive: boolean) => {
+    if (!organizationId) return;
+    const pageKey = `${moduleCode}:${page.href}`;
+    setPageActionLoading(pageKey);
+
+    // Calcular páginas actuales y nuevas páginas
+    let currentPagesList = activeModulePages[moduleCode];
+    if (currentPagesList === undefined) {
+      currentPagesList = (MODULE_PAGES[moduleCode] || []).map(p => p.href);
+    }
+
+    const newPages = isActive
+      ? currentPagesList.filter(href => href !== page.href)
+      : [...currentPagesList, page.href];
+
+    const willHaveZeroPages = newPages.length === 0;
+
+    // Construir nuevo estado completo
+    const newActiveModulePages = { ...activeModulePages, [moduleCode]: newPages };
+
+    // Actualización optimista local
+    const previousPages = { ...activeModulePages };
+    setActiveModulePages(newActiveModulePages);
+
+    // Si al desactivar esta página quedan 0 páginas activas, desactivar el módulo
+    if (willHaveZeroPages) {
+      setPageActionLoading(null);
+      handleToggleModule(moduleCode, true);
+      return;
+    }
+
+    // Notificar al AppLayout inmediatamente con los datos optimistas
+    window.dispatchEvent(new CustomEvent('modules-updated', {
+      detail: { activeModulePages: newActiveModulePages }
+    }));
+
+    try {
+      const response = await fetch('/api/modules/pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId,
+          moduleCode,
+          pageHref: page.href,
+          pageName: page.name,
+          isActive: !isActive,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setActiveModulePages(previousPages);
+        setError(result.message || 'Error al cambiar página');
+        // Revertir en sidebar también
+        window.dispatchEvent(new CustomEvent('modules-updated', {
+          detail: { activeModulePages: previousPages }
+        }));
+        return;
+      }
+
+      // Confirmar con recarga desde DB
+      window.dispatchEvent(new Event('modules-updated'));
+    } catch (err) {
+      setActiveModulePages(previousPages);
+      console.error('Error toggling page:', err);
+      setError('Error de conexión al cambiar página');
+      // Revertir en sidebar
+      window.dispatchEvent(new CustomEvent('modules-updated', {
+        detail: { activeModulePages: previousPages }
+      }));
+    } finally {
+      setPageActionLoading(null);
+    }
+  }, [organizationId, activeModulePages, handleToggleModule]);
+
+  // Expandir/contraer módulo para ver submódulos
+  const toggleExpand = useCallback((moduleCode: string) => {
+    setExpandedModules(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(moduleCode)) {
+        newSet.delete(moduleCode);
+      } else {
+        newSet.add(moduleCode);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Verificar si una página está activa
+  const isPageActive = useCallback((moduleCode: string, pageHref: string) => {
+    const pages = activeModulePages[moduleCode];
+    if (pages === undefined) return true; // Si no hay datos, asumir activo
+    return pages.includes(pageHref);
+  }, [activeModulePages]);
 
   // Usar estado optimista para verificar si módulo está activo
   const getModuleStatus = useCallback((moduleCode: string) => {
@@ -316,7 +462,7 @@ export default function ModulesMarketplacePage() {
           <Badge variant="secondary" className="dark:bg-gray-800 dark:text-gray-300">{t('modules.includedInAllPlans')}</Badge>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
           {coreModules.map((module) => {
             const Icon = moduleIcons[module.code] || Package;
             const isActive = getModuleStatus(module.code);
@@ -366,14 +512,14 @@ export default function ModulesMarketplacePage() {
           <Badge variant="secondary" className="dark:bg-gray-800 dark:text-gray-300">{t('modules.accordingToPlan')}</Badge>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
           {paidModules.map((module) => {
             const Icon = moduleIcons[module.code] || Package;
             const isActive = getModuleStatus(module.code);
             const canToggle = canToggleModule(module);
             
             return (
-              <Card key={module.code} className={`relative dark:bg-gray-900 dark:border-gray-800 ${isActive ? 'ring-2 ring-green-200 dark:ring-green-800' : ''}`}>
+              <Card key={module.code} className={`relative dark:bg-gray-900 dark:border-gray-800 transition-all duration-200 hover:shadow-md ${isActive ? 'ring-2 ring-green-200 dark:ring-green-800' : ''}`}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -410,6 +556,79 @@ export default function ModulesMarketplacePage() {
                     <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                       <Lock className="h-4 w-4" />
                       {t('modules.planLimitReached')}
+                    </div>
+                  )}
+
+                  {/* Sección de submódulos/páginas - solo mostrar si el módulo está activo */}
+                  {isActive && MODULE_PAGES[module.code] && MODULE_PAGES[module.code].length > 0 && (
+                    <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-3">
+                      <button
+                        onClick={() => toggleExpand(module.code)}
+                        className="flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors w-full group"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {expandedModules.has(module.code) ? (
+                            <ChevronDown className="h-4 w-4 transition-transform" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                          )}
+                          <span>Páginas del módulo</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const activeCount = (activeModulePages[module.code] || []).length;
+                            const totalCount = MODULE_PAGES[module.code].length;
+                            return (
+                              <Badge variant="outline" className="text-xs dark:border-gray-700 dark:text-gray-400">
+                                {activeCount}/{totalCount}
+                              </Badge>
+                            );
+                          })()}
+                        </div>
+                      </button>
+                      
+                      <div
+                        className="overflow-hidden transition-all duration-300 ease-in-out"
+                        style={{
+                          maxHeight: expandedModules.has(module.code) ? '500px' : '0px',
+                          opacity: expandedModules.has(module.code) ? 1 : 0,
+                        }}
+                      >
+                        <div className="mt-3 space-y-1.5">
+                          {MODULE_PAGES[module.code].map((page) => {
+                            const pageActive = isPageActive(module.code, page.href);
+                            const pageKey = `${module.code}:${page.href}`;
+                            const isPageLoading = pageActionLoading === pageKey;
+                            
+                            return (
+                              <div
+                                key={page.href}
+                                className={`flex items-center justify-between py-2 px-3 rounded-md transition-all duration-150 ${
+                                  pageActive
+                                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30'
+                                    : 'bg-gray-50 dark:bg-gray-800/50 border border-transparent'
+                                } hover:shadow-sm`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${pageActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                                  <span className={`text-sm truncate ${pageActive ? 'text-gray-800 dark:text-gray-200 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>
+                                    {page.name}
+                                  </span>
+                                  {isPageLoading && (
+                                    <Loader2 className="h-3 w-3 animate-spin text-blue-500 flex-shrink-0" />
+                                  )}
+                                </div>
+                                <Switch
+                                  checked={pageActive}
+                                  disabled={isPageLoading}
+                                  onCheckedChange={() => handleTogglePage(module.code, page, pageActive)}
+                                  className="scale-90"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>

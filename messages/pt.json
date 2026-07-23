@@ -922,6 +922,7 @@
     "branchesTab": {
       "loadingMap": "Carregando mapa...",
       "errorLoading": "Erro ao carregar filiais",
+      "branchLimitReached": "Você atingiu o limite de {max} filiais do seu plano. Contrate um addon para criar mais filiais.",
       "confirmDelete": "Excluir esta filial?",
       "errorDeleting": "Erro ao excluir filial",
       "branchUpdated": "Filial atualizada com sucesso.",

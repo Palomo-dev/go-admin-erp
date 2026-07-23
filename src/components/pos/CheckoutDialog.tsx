@@ -22,6 +22,7 @@ import {
   type OrganizationTax as TaxUtilOrganizationTax,
   type TaxCalculationItem 
 } from '@/lib/utils/taxCalculations';
+import { validateCompositeStock } from '@/lib/services/compositeStockValidation';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -381,6 +382,24 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
     setIsProcessing(true);
     try {
+      // Validar stock de ingredientes para productos compuestos
+      const branchId = cart.branch_id || 0;
+      if (branchId > 0 && cart.items.length > 0) {
+        const stockCheck = await validateCompositeStock(
+          cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity })),
+          branchId
+        );
+        if (!stockCheck.ok && stockCheck.message) {
+          const proceed = confirm(
+            `${stockCheck.message}\n\n¿Deseas continuar con la venta de todos modos?`
+          );
+          if (!proceed) {
+            setIsProcessing(false);
+            return;
+          }
+        }
+      }
+
       // Crear cart actualizado con totales calculados con impuestos
       const updatedItems = cart.items.map(item => {
         // Calcular proporción de impuestos para este item

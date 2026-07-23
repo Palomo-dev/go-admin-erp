@@ -108,7 +108,7 @@ export async function checkAICredits(organizationId: number): Promise<AICheckRes
 
   const { data: settings, error: settingsError } = await supabase
     .from('ai_settings')
-    .select('credits_remaining, credits_reset_at')
+    .select('credits_remaining, credits_reset_at, purchased_credits')
     .eq('organization_id', organizationId)
     .single();
 
@@ -152,13 +152,16 @@ export async function checkAICredits(organizationId: number): Promise<AICheckRes
                      lastReset.getFullYear() !== now.getFullYear();
 
   if (shouldReset) {
-    const unusedCredits = settings.credits_remaining || 0;
-    const rolloverCredits = Math.min(unusedCredits, aiFeatures.aiCreditsMaxRollover);
-    const newCredits = aiFeatures.aiCreditsMonthly + rolloverCredits;
+    const purchasedCredits = settings.purchased_credits || 0;
+    const totalRemaining = settings.credits_remaining || 0;
+    const unusedMonthly = Math.max(0, totalRemaining - purchasedCredits);
+    const rolloverCredits = Math.min(unusedMonthly, aiFeatures.aiCreditsMaxRollover);
+    const newCredits = aiFeatures.aiCreditsMonthly + rolloverCredits + purchasedCredits;
 
     await supabase.from('ai_settings').update({
       credits_remaining: newCredits,
       credits_reset_at: now.toISOString(),
+      last_rollover_amount: rolloverCredits,
       model: aiFeatures.aiModel,
       max_tokens: aiFeatures.aiMaxTokens,
     }).eq('organization_id', organizationId);

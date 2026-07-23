@@ -6,6 +6,7 @@ import { Fragment } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useTranslations } from 'next-intl';
 import SubscriptionPlanSelector, { SubscriptionPlan } from '../subscription/SubscriptionPlanSelector';
+import CouponInput, { ValidatedCoupon } from './CouponInput';
 
 interface ChangePlanModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export default function ChangePlanModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [validatedCoupon, setValidatedCoupon] = useState<ValidatedCoupon | null>(null);
   const t = useTranslations('org.changePlan');
   
 
@@ -73,6 +75,7 @@ export default function ChangePlanModal({
           organizationId,
           planCode,
           billingPeriod,
+          couponCode: validatedCoupon?.code,
         }),
       });
       
@@ -174,8 +177,9 @@ export default function ChangePlanModal({
                       billingPeriod={billingPeriod}
                       onChangeBillingPeriod={handleChangeBillingPeriod}
                     />
-                    
-                    
+
+                    <CouponInput onCouponValidated={setValidatedCoupon} />
+
                     <div className="mt-8 flex justify-end space-x-4">
                       <button
                         type="button"

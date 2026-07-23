@@ -620,17 +620,63 @@ export default function MesaDetallePage() {
         description: 'La comanda se ha enviado a cocina',
       });
 
-      // Impresión física (best-effort): no bloquea el flujo si falla o si no hay
-      // impresoras/agente configurados, ya que la Comanda digital (KDS) ya se envió.
-      if (branch_id && ticketsEnviados.length > 0) {
-        for (const ticket of ticketsEnviados) {
-          await PrintJobsService.enqueueKitchenTicket(branch_id, {
-            ticketId: ticket.ticketId,
-            tableName: mesaNombre,
+      // Impresión: consolidar todos los tickets en una sola comanda
+      // para evitar que salga una comanda por cada ronda de platos.
+      if (ticketsEnviados.length > 0) {
+        const allItems = ticketsEnviados.flatMap((t) => t.items);
+        const firstTicketId = ticketsEnviados[0].ticketId;
+        const createdAt = ticketsEnviados[0].createdAt;
+
+        let enqueuedToFisico = false;
+
+        if (branch_id) {
+          try {
+            const businessInfo = organization ? {
+              name: organization.name || '',
+              nit: (organization as any).nit || (organization as any).tax_id || '',
+              phone: (organization as any).phone || '',
+              address: (organization as any).address || '',
+            } : undefined;
+            const branchInfo = currentBranch ? {
+              name: currentBranch.name || '',
+              address: currentBranch.address || '',
+              phone: currentBranch.phone || '',
+            } : undefined;
+
+            const { enqueued } = await PrintJobsService.enqueueKitchenTicket(branch_id, {
+              ticketId: firstTicketId,
+              tableName: mesaNombre,
+              serverName,
+              createdAt,
+              items: allItems,
+              businessName: businessInfo?.name,
+              branchName: branchInfo?.name,
+            });
+            enqueuedToFisico = enqueued > 0;
+          } catch (err) {
+            console.warn('No se pudo encolar comanda física:', err);
+          }
+        }
+
+        if (!enqueuedToFisico) {
+          const businessInfo = organization ? {
+            name: organization.name || '',
+            nit: (organization as any).nit || (organization as any).tax_id || '',
+            phone: (organization as any).phone || '',
+            address: (organization as any).address || '',
+          } : undefined;
+          const branchInfo = currentBranch ? {
+            name: currentBranch.name || '',
+            address: currentBranch.address || '',
+            phone: currentBranch.phone || '',
+          } : undefined;
+          PrintService.printComanda(
+            mesaNombre,
             serverName,
-            createdAt: ticket.createdAt,
-            items: ticket.items,
-          });
+            allItems,
+            businessInfo,
+            branchInfo,
+          );
         }
       }
     } catch (error) {

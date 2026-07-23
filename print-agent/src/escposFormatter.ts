@@ -14,6 +14,11 @@ const FISCAL_RESPONSIBILITY_LABELS: Record<string, string> = {
   R_99: 'No responsable de IVA',
   R_48: 'Regimen simplificado',
   R_49: 'Regimen comun',
+  O_13: 'Gran contribuyente',
+  O_47: 'Regimen simple',
+  O_48: 'Responsable de IVA',
+  O_49: 'No responsable',
+  'R-99-PN': 'No responsable (PN)',
 };
 
 function translateFiscalResponsibility(code: string): string {
@@ -36,6 +41,22 @@ const STATION_LABELS: Record<string, string> = {
   all: 'COMANDA',
 };
 
+const SEP = '================================';
+const SEP_LIGHT = '--------------------------------';
+
+function padRight(label: string, value: string, width = 32): string {
+  const spaces = Math.max(1, width - label.length - value.length);
+  return label + ' '.repeat(spaces) + value;
+}
+
+function formatDateParts(iso: string): { date: string; time: string } {
+  const d = new Date(iso);
+  return {
+    date: d.toLocaleDateString('es-CO'),
+    time: d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
 /**
  * Envía a un dispositivo escpos (chainable) los comandos para imprimir una
  * comanda de cocina. `device` es una instancia de `escpos.Printer` ya
@@ -43,47 +64,70 @@ const STATION_LABELS: Record<string, string> = {
  */
 export function printKitchenTicket(device: any, payload: KitchenTicketPrintPayload): void {
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
-  const fecha = new Date(payload.createdAt).toLocaleString('es-CO');
+  const { date, time } = formatDateParts(payload.createdAt);
+  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
+  // --- Header: datos del negocio ---
   device
     .font('a')
     .align('ct')
     .style('b')
-    .size(1, 1)
-    .text(stationLabel)
-    .style('normal')
-    .text('--------------------------------')
-    .align('lt')
-    .text(`Ticket: #${payload.ticketId}`)
-    .text(`Mesa: ${payload.tableName || '-'}`);
+    .size(1, 1);
 
-  if (payload.serverName) {
-    device.text(`Mesero: ${payload.serverName}`);
+  if (payload.businessName) device.text(payload.businessName);
+  device.style('normal').size(1, 1);
+  if (payload.branchName && payload.branchName !== payload.businessName) {
+    device.text(payload.branchName);
   }
 
+  // --- Banner de comanda ---
   device
-    .text(`Fecha: ${fecha}`)
-    .text('--------------------------------');
+    .text(SEP)
+    .style('b')
+    .size(2, 2)
+    .text('*** COMANDA ***')
+    .style('normal')
+    .size(1, 1)
+    .text(SEP)
+    .align('lt');
 
+  // --- Estación ---
+  device.style('b').size(1, 1).text(`Estacion: ${stationLabel}`).style('normal');
+
+  // --- Info del ticket ---
+  device.text(`Ticket: #${payload.ticketId}`);
+  device.text(`Mesa: ${payload.tableName || '-'}`);
+  if (payload.serverName) device.text(`Mesero: ${payload.serverName}`);
+  device.text(`Fecha: ${date}  Hora: ${time}`);
+  device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  device.text(SEP_LIGHT);
+
+  // --- Items ---
   for (const item of payload.items) {
-    device.style('b').text(`${item.quantity} x ${item.productName}`).style('normal');
+    device.style('b').size(1, 1).text(`${item.quantity}x  ${item.productName}`).style('normal').size(1, 1);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
-      device.text(`  ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}`);
+      device.style('b').text(`  * ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`).style('normal');
     }
 
     if (item.modifiers && item.modifiers.length > 0) {
-      device.text(`  + ${item.modifiers.map((m) => m.name).join(', ')}`);
+      device.style('b').text(`  + ${item.modifiers.map((m) => m.name).join(', ')}`).style('normal');
     }
 
     if (item.notes) {
-      device.text(`  * ${item.notes}`);
+      device.text(`  >> ${item.notes}`);
     }
+
+    device.text(SEP_LIGHT);
   }
 
+  // --- Footer ---
   device
-    .text('--------------------------------')
+    .align('ct')
+    .style('normal')
+    .text('Comanda generada por GO Admin')
+    .text(`${date} ${time}`)
     .feed(2)
     .cut();
 }
@@ -95,33 +139,44 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
  */
 export function buildPlainTextTicket(payload: KitchenTicketPrintPayload): string {
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
-  const fecha = new Date(payload.createdAt).toLocaleString('es-CO');
+  const { date, time } = formatDateParts(payload.createdAt);
+  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
   const lines: string[] = [];
 
-  lines.push(stationLabel);
-  lines.push('--------------------------------');
+  // --- Header ---
+  if (payload.businessName) lines.push(payload.businessName);
+  if (payload.branchName && payload.branchName !== payload.businessName) {
+    lines.push(payload.branchName);
+  }
+  lines.push(SEP);
+  lines.push('*** COMANDA ***');
+  lines.push(SEP);
+  lines.push(`Estacion: ${stationLabel}`);
   lines.push(`Ticket: #${payload.ticketId}`);
   lines.push(`Mesa: ${payload.tableName || '-'}`);
   if (payload.serverName) lines.push(`Mesero: ${payload.serverName}`);
-  lines.push(`Fecha: ${fecha}`);
-  lines.push('--------------------------------');
+  lines.push(`Fecha: ${date}  Hora: ${time}`);
+  lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  lines.push(SEP_LIGHT);
 
   for (const item of payload.items) {
-    lines.push(`${item.quantity} x ${item.productName}`);
+    lines.push(`${item.quantity}x  ${item.productName}`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
-      lines.push(`  ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}`);
+      lines.push(`  * ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`);
     }
 
     if (item.modifiers && item.modifiers.length > 0) {
       lines.push(`  + ${item.modifiers.map((m) => m.name).join(', ')}`);
     }
 
-    if (item.notes) lines.push(`  * ${item.notes}`);
+    if (item.notes) lines.push(`  >> ${item.notes}`);
+    lines.push(SEP_LIGHT);
   }
 
-  lines.push('--------------------------------');
+  lines.push('Comanda generada por GO Admin');
+  lines.push(`${date} ${time}`);
   lines.push('\n\n');
 
   return lines.join('\n');
@@ -131,7 +186,9 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload): string
  * Imprime el ticket de venta (recibo de caja) en un dispositivo escpos.
  */
 export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): void {
-  const fecha = new Date(payload.createdAt).toLocaleString('es-CO');
+  const { date, time } = formatDateParts(payload.createdAt);
+  const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
+  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   // --- Header: datos del negocio ---
   device
@@ -141,7 +198,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
     .size(1, 1);
 
   if (payload.businessName) device.text(payload.businessName);
-  device.style('normal');
+  device.style('normal').size(1, 1);
   if (payload.businessNit) device.text(`NIT: ${payload.businessNit}`);
   if (payload.businessPhone) device.text(`Tel: ${payload.businessPhone}`);
   if (payload.businessAddress) device.text(payload.businessAddress);
@@ -151,7 +208,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
     device.text(payload.businessFiscalResponsibilities.map(translateFiscalResponsibility).join(', '));
   }
   if (payload.branchName && payload.branchName !== payload.businessName) {
-    device.text(payload.branchName);
+    device.style('b').text(`Sucursal: ${payload.branchName}`).style('normal');
   }
   if (payload.branchAddress && payload.branchAddress !== payload.businessAddress) {
     device.text(payload.branchAddress);
@@ -160,12 +217,13 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
 
   // --- Titulo del documento ---
   device
-    .text('--------------------------------')
+    .text(SEP)
     .style('b')
-    .size(1, 1)
+    .size(2, 2)
     .text(payload.title || 'TICKET DE VENTA')
     .style('normal')
-    .text('--------------------------------')
+    .size(1, 1)
+    .text(SEP)
     .align('lt');
 
   // --- Info del ticket ---
@@ -173,11 +231,12 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
   if (payload.tableName) device.text(`Mesa: ${payload.tableName}`);
   if (payload.cashierName) device.text(`Cajero: ${payload.cashierName}`);
   if (payload.serverName) device.text(`Mesero: ${payload.serverName}`);
-  device.text(`Fecha: ${fecha}`);
+  device.text(`Fecha: ${date}  Hora: ${time}`);
+  device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
 
   // --- Info del cliente ---
   if (payload.customerName || payload.customerDocNumber) {
-    device.text('--------------------------------');
+    device.text(SEP_LIGHT);
     if (payload.customerName) device.text(`Cliente: ${payload.customerName}`);
     if (payload.customerDocType && payload.customerDocNumber) {
       device.text(`${payload.customerDocType}: ${payload.customerDocNumber}`);
@@ -193,27 +252,30 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
 
   // --- Delivery ---
   if (payload.deliveryInfo) {
-    device.text('--------------------------------');
+    device.text(SEP_LIGHT);
     device.text(`Entrega: ${payload.deliveryInfo.type}`);
     device.text(`Direccion: ${payload.deliveryInfo.address}`);
     if (payload.deliveryInfo.driverName) device.text(`Conductor: ${payload.deliveryInfo.driverName}`);
   }
 
-  device.text('--------------------------------');
+  // --- Encabezado de items ---
+  device.text(SEP_LIGHT);
+  device.style('b').text(padRight('DESCRIPCION', 'TOTAL')).style('normal');
+  device.text(SEP_LIGHT);
 
   // --- Items ---
   for (const item of payload.items) {
-    device.style('b').text(`${item.quantity} x ${item.productName}`).style('normal');
+    device.style('b').text(`${item.quantity}x  ${item.productName}`).style('normal');
     device.align('rt').text(formatMoney(item.total)).align('lt');
     device.text(`  ${formatMoney(item.unitPrice)} c/u`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
-      device.text(`  ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}`);
+      device.style('b').text(`  * ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`).style('normal');
     }
 
     if (item.modifiers && item.modifiers.length > 0) {
-      device.text(`  + ${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}`);
+      device.style('b').text(`  + ${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}`).style('normal');
     }
 
     if (item.taxAmount && item.taxAmount > 0) {
@@ -222,47 +284,47 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
     if (item.discountAmount && item.discountAmount > 0) {
       device.text(`  Desc: -${formatMoney(item.discountAmount)}`);
     }
+
+    device.text(SEP_LIGHT);
   }
 
   // --- Totales ---
-  device.text('--------------------------------');
-
   if (payload.subtotal != null) {
-    device.align('lt').text('Subtotal:').align('rt').text(formatMoney(payload.subtotal)).align('lt');
+    device.align('lt').text(padRight('Subtotal:', formatMoney(payload.subtotal))).align('lt');
   }
   if (payload.discountTotal && payload.discountTotal > 0) {
-    device.align('lt').text('Descuento:').align('rt').text(`-${formatMoney(payload.discountTotal)}`).align('lt');
+    device.align('lt').text(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`)).align('lt');
   }
   if (payload.taxTotal && payload.taxTotal > 0) {
-    device.align('lt').text('Impuestos:').align('rt').text(formatMoney(payload.taxTotal)).align('lt');
+    device.align('lt').text(padRight('Impuestos:', formatMoney(payload.taxTotal))).align('lt');
   }
   if (payload.deliveryFee && payload.deliveryFee > 0) {
-    device.align('lt').text('Envio:').align('rt').text(formatMoney(payload.deliveryFee)).align('lt');
+    device.align('lt').text(padRight('Envio:', formatMoney(payload.deliveryFee))).align('lt');
   }
   if (payload.tipAmount && payload.tipAmount > 0) {
-    device.align('lt').text('Propina:').align('rt').text(formatMoney(payload.tipAmount)).align('lt');
+    device.align('lt').text(padRight('Propina:', formatMoney(payload.tipAmount))).align('lt');
   }
 
   device
-    .text('--------------------------------')
-    .align('rt')
+    .text(SEP)
+    .align('lt')
     .style('b')
-    .size(1, 1)
-    .text(`TOTAL: ${formatMoney(payload.total)}`)
+    .size(2, 2)
+    .text(padRight('TOTAL:', formatMoney(payload.total)))
     .style('normal')
     .size(1, 1)
     .align('lt');
 
   // --- Pagos ---
   if (payload.payments && payload.payments.length > 0) {
-    device.text('--------------------------------');
+    device.text(SEP_LIGHT);
     for (const payment of payload.payments) {
-      device.align('lt').text(`${getPaymentLabel(payment)}:`).align('rt').text(formatMoney(payment.amount)).align('lt');
+      device.align('lt').text(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount))).align('lt');
     }
   }
 
   // --- QR ---
-  device.text('--------------------------------').align('ct');
+  device.text(SEP).align('ct');
   try {
     device.qrimage('https://goadmin.io', { cellSize: 3 });
   } catch {
@@ -270,10 +332,22 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
   }
 
   // --- Footer ---
-  device
-    .text('--------------------------------')
-    .text('Gracias por su compra!')
-    .feed(1);
+  if (isPreCuenta) {
+    device
+      .text(SEP_LIGHT)
+      .style('b')
+      .size(1, 1)
+      .text('*** NO ES FACTURA ***')
+      .style('normal')
+      .text('Documento solo informativo')
+      .text('Gracias por su preferencia!')
+      .feed(1);
+  } else {
+    device
+      .text(SEP_LIGHT)
+      .text('Gracias por su compra!')
+      .feed(1);
+  }
 
   for (const line of GO_ADMIN_FOOTER) {
     device.text(line);
@@ -286,7 +360,9 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
  * Versión en texto plano del ticket de venta, para impresoras 'system'.
  */
 export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): string {
-  const fecha = new Date(payload.createdAt).toLocaleString('es-CO');
+  const { date, time } = formatDateParts(payload.createdAt);
+  const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
+  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
   const lines: string[] = [];
 
   // --- Header: datos del negocio ---
@@ -300,27 +376,28 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
     lines.push(payload.businessFiscalResponsibilities.map(translateFiscalResponsibility).join(', '));
   }
   if (payload.branchName && payload.branchName !== payload.businessName) {
-    lines.push(payload.branchName);
+    lines.push(`Sucursal: ${payload.branchName}`);
   }
   if (payload.branchAddress && payload.branchAddress !== payload.businessAddress) {
     lines.push(payload.branchAddress);
   }
   if (payload.branchPhone) lines.push(`Tel: ${payload.branchPhone}`);
 
-  lines.push('--------------------------------');
+  lines.push(SEP);
   lines.push(payload.title || 'TICKET DE VENTA');
-  lines.push('--------------------------------');
+  lines.push(SEP);
 
   // --- Info del ticket ---
   if (payload.saleNumber) lines.push(`Venta: #${payload.saleNumber}`);
   if (payload.tableName) lines.push(`Mesa: ${payload.tableName}`);
   if (payload.cashierName) lines.push(`Cajero: ${payload.cashierName}`);
   if (payload.serverName) lines.push(`Mesero: ${payload.serverName}`);
-  lines.push(`Fecha: ${fecha}`);
+  lines.push(`Fecha: ${date}  Hora: ${time}`);
+  lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
 
   // --- Info del cliente ---
   if (payload.customerName || payload.customerDocNumber) {
-    lines.push('--------------------------------');
+    lines.push(SEP_LIGHT);
     if (payload.customerName) lines.push(`Cliente: ${payload.customerName}`);
     if (payload.customerDocType && payload.customerDocNumber) {
       lines.push(`${payload.customerDocType}: ${payload.customerDocNumber}`);
@@ -336,22 +413,25 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
 
   // --- Delivery ---
   if (payload.deliveryInfo) {
-    lines.push('--------------------------------');
+    lines.push(SEP_LIGHT);
     lines.push(`Entrega: ${payload.deliveryInfo.type}`);
     lines.push(`Direccion: ${payload.deliveryInfo.address}`);
     if (payload.deliveryInfo.driverName) lines.push(`Conductor: ${payload.deliveryInfo.driverName}`);
   }
 
-  lines.push('--------------------------------');
+  // --- Encabezado de items ---
+  lines.push(SEP_LIGHT);
+  lines.push(padRight('DESCRIPCION', 'TOTAL'));
+  lines.push(SEP_LIGHT);
 
   // --- Items ---
   for (const item of payload.items) {
-    lines.push(`${item.quantity} x ${item.productName} — ${formatMoney(item.total)}`);
-    lines.push(`  ${formatMoney(item.unitPrice)} c/u`);
+    lines.push(`${item.quantity}x  ${item.productName}`);
+    lines.push(`  ${formatMoney(item.unitPrice)} c/u   ${formatMoney(item.total)}`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
-      lines.push(`  ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}`);
+      lines.push(`  * ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`);
     }
 
     if (item.modifiers && item.modifiers.length > 0) {
@@ -360,29 +440,35 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
 
     if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
     if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
+    lines.push(SEP_LIGHT);
   }
 
   // --- Totales ---
-  lines.push('--------------------------------');
-  if (payload.subtotal != null) lines.push(`Subtotal: ${formatMoney(payload.subtotal)}`);
-  if (payload.discountTotal && payload.discountTotal > 0) lines.push(`Descuento: -${formatMoney(payload.discountTotal)}`);
-  if (payload.taxTotal && payload.taxTotal > 0) lines.push(`Impuestos: ${formatMoney(payload.taxTotal)}`);
-  if (payload.deliveryFee && payload.deliveryFee > 0) lines.push(`Envio: ${formatMoney(payload.deliveryFee)}`);
-  if (payload.tipAmount && payload.tipAmount > 0) lines.push(`Propina: ${formatMoney(payload.tipAmount)}`);
-  lines.push('--------------------------------');
-  lines.push(`TOTAL: ${formatMoney(payload.total)}`);
+  if (payload.subtotal != null) lines.push(padRight('Subtotal:', formatMoney(payload.subtotal)));
+  if (payload.discountTotal && payload.discountTotal > 0) lines.push(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`));
+  if (payload.taxTotal && payload.taxTotal > 0) lines.push(padRight('Impuestos:', formatMoney(payload.taxTotal)));
+  if (payload.deliveryFee && payload.deliveryFee > 0) lines.push(padRight('Envio:', formatMoney(payload.deliveryFee)));
+  if (payload.tipAmount && payload.tipAmount > 0) lines.push(padRight('Propina:', formatMoney(payload.tipAmount)));
+  lines.push(SEP);
+  lines.push(padRight('TOTAL:', formatMoney(payload.total)));
 
   // --- Pagos ---
   if (payload.payments && payload.payments.length > 0) {
-    lines.push('--------------------------------');
+    lines.push(SEP_LIGHT);
     for (const payment of payload.payments) {
-      lines.push(`${getPaymentLabel(payment)}: ${formatMoney(payment.amount)}`);
+      lines.push(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount)));
     }
   }
 
   // --- Footer ---
-  lines.push('--------------------------------');
-  lines.push('Gracias por su compra!');
+  lines.push(SEP_LIGHT);
+  if (isPreCuenta) {
+    lines.push('*** NO ES FACTURA ***');
+    lines.push('Documento solo informativo');
+    lines.push('Gracias por su preferencia!');
+  } else {
+    lines.push('Gracias por su compra!');
+  }
   lines.push('');
   for (const line of GO_ADMIN_FOOTER) {
     lines.push(line);

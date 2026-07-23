@@ -41,6 +41,11 @@ export function ImageGallery({ productId, organizationId, readOnly = false }: Im
   const generatePublicUrl = (storagePath?: string): string => {
     if (!storagePath) return '/placeholder-product.png';
     
+    // Si es una URL externa, usarla directamente
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      return storagePath;
+    }
+    
     try {
       const bucket = storagePath.startsWith('products/') ? 'product-images' : 'organization_images';
       const { data } = supabase.storage

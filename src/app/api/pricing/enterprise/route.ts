@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         moduleUnitPrice: 49,
         branchUnitPrice: 59,
         userUnitPrice: 19,
-        aiCreditUnitPrice: 1,
+        aiCreditUnitPrice: 3,
         currency: 'usd',
       });
     }
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       moduleUnitPrice: data.module_unit_price,
       branchUnitPrice: data.branch_unit_price,
       userUnitPrice: data.user_unit_price,
-      aiCreditUnitPrice: data.ai_credit_unit_price || 1,
+      aiCreditUnitPrice: data.ai_credit_unit_price || 3,
       currency: data.currency,
     });
 

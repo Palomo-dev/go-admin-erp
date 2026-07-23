@@ -69,7 +69,18 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         .rpc('get_current_plan', { org_id: orgId });
 
       if (!planError && planData && planData.length > 0) {
-        setMaxUsers(planData[0].max_users || null);
+        const planMaxUsers = planData[0].max_users || null;
+
+        // Obtener addons activos de usuarios extra
+        const { data: addonsData } = await supabase
+          .from('subscription_addons')
+          .select('quantity')
+          .eq('organization_id', orgId)
+          .eq('addon_type', 'extra_users')
+          .eq('status', 'active');
+
+        const extraUsers = (addonsData || []).reduce((sum, a) => sum + (a.quantity || 0), 0);
+        setMaxUsers(planMaxUsers !== null ? planMaxUsers + extraUsers : null);
       }
 
       // Contar miembros activos

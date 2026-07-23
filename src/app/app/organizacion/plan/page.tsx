@@ -4,9 +4,10 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
-import { CheckCircleIcon, XCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, XMarkIcon, DocumentTextIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { PlanSkeleton } from '@/components/organization/OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 
 // Dynamic import for the PlanTab component
 const PlanTab = dynamic(() => import('../../../../components/organization/PlanTab'), {
@@ -194,10 +195,26 @@ export default function PlanPage() {
           </div>
         )}
 
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{t('plan.title')}</h1>
             <p className="mt-2 text-gray-600 dark:text-gray-400">{t('plan.description')}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/app/plan/billing"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
+            >
+              <DocumentTextIcon className="h-4 w-4 mr-2" />
+              Facturación
+            </Link>
+            <Link
+              href="/app/plan/historial"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
+            >
+              <ClockIcon className="h-4 w-4 mr-2" />
+              Historial
+            </Link>
           </div>
         </div>
         

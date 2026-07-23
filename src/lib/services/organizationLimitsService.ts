@@ -35,7 +35,18 @@ export async function getOrganizationUserLimits(organizationId: number): Promise
     };
   }
 
-  const maxUsers = planData?.plans?.max_users ?? null;
+  const planMaxUsers = planData?.plans?.max_users ?? null;
+
+  // Obtener addons activos de usuarios extra
+  const { data: addonsData } = await supabase
+    .from('subscription_addons')
+    .select('quantity')
+    .eq('organization_id', organizationId)
+    .eq('addon_type', 'extra_users')
+    .eq('status', 'active');
+
+  const extraUsers = (addonsData || []).reduce((sum, a) => sum + (a.quantity || 0), 0);
+  const maxUsers = planMaxUsers !== null ? planMaxUsers + extraUsers : null;
 
   // Contar usuarios actuales
   const { count: currentUsers, error: countError } = await supabase
@@ -84,7 +95,7 @@ export async function validateCanAddUser(organizationId: number): Promise<void> 
     if (limits.maxUsers !== null) {
       throw new Error(
         `Límite de usuarios alcanizado (${limits.currentUsers}/${limits.maxUsers}). ` +
-        'Mejora tu plan para agregar más usuarios.'
+        'Mejora tu plan o compra usuarios extra para agregar más usuarios.'
       );
     }
   }

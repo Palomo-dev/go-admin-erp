@@ -34,6 +34,8 @@ export interface KitchenTicketPrintPayload {
   station: string;
   createdAt: string;
   items: KitchenTicketItemPayload[];
+  businessName?: string;
+  branchName?: string;
 }
 
 export interface SaleTicketItemPayload {

@@ -115,7 +115,13 @@ export async function POST(request: NextRequest) {
         console.log('🎉 Checkout Session completada:', checkoutSession.id)
         
         if (checkoutSession.mode === 'subscription') {
-          await handleCheckoutSessionCompleted(checkoutSession)
+          if (checkoutSession.metadata?.type === 'addon_subscription') {
+            await handleAddonSubscriptionCompleted(checkoutSession)
+          } else {
+            await handleCheckoutSessionCompleted(checkoutSession)
+          }
+        } else if (checkoutSession.mode === 'payment' && checkoutSession.metadata?.type === 'ai_credit_purchase') {
+          await handleAiCreditPurchaseCompleted(checkoutSession)
         }
         break
       }
@@ -673,6 +679,160 @@ async function processSellerCommission(invoice: any, eventId: string) {
     }
   } catch (error) {
     console.error('❌ Error en processSellerCommission:', error)
+  }
+}
+
+/**
+ * Manejar compra de créditos IA completada
+ * Suma los créditos comprados al saldo de la organización
+ */
+async function handleAiCreditPurchaseCompleted(checkoutSession: any) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    const organizationId = parseInt(checkoutSession.metadata?.organizationId || '0', 10);
+    const creditsAmount = parseInt(checkoutSession.metadata?.creditsAmount || '0', 10);
+    const sessionId = checkoutSession.id;
+    const paymentIntentId = checkoutSession.payment_intent as string;
+
+    if (!organizationId || !creditsAmount) {
+      console.error('❌ Metadata faltante en checkout session de créditos IA:', checkoutSession.id);
+      return;
+    }
+
+    console.log(`🤖 Procesando compra de ${creditsAmount} créditos IA para org ${organizationId}`);
+
+    // 1. Actualizar el registro de compra a completed
+    const { data: purchase, error: purchaseError } = await supabase
+      .from('ai_credit_purchases')
+      .update({
+        status: 'completed',
+        stripe_payment_intent_id: paymentIntentId,
+        purchased_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('stripe_checkout_session_id', sessionId)
+      .select()
+      .single();
+
+    if (purchaseError) {
+      console.error('❌ Error actualizando ai_credit_purchases:', purchaseError);
+    }
+
+    // 2. Sumar créditos comprados a ai_settings
+    const { data: aiSettings, error: settingsError } = await supabase
+      .from('ai_settings')
+      .select('credits_remaining, purchased_credits')
+      .eq('organization_id', organizationId)
+      .single();
+
+    if (settingsError && settingsError.code !== 'PGRST116') {
+      console.error('❌ Error obteniendo ai_settings:', settingsError);
+      return;
+    }
+
+    if (!aiSettings) {
+      // Crear registro de ai_settings si no existe
+      await supabase.from('ai_settings').insert({
+        organization_id: organizationId,
+        credits_remaining: creditsAmount,
+        purchased_credits: creditsAmount,
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        is_active: true,
+        credits_reset_at: new Date().toISOString(),
+      });
+    } else {
+      const newPurchasedCredits = (aiSettings.purchased_credits || 0) + creditsAmount;
+      const newRemaining = (aiSettings.credits_remaining || 0) + creditsAmount;
+
+      await supabase
+        .from('ai_settings')
+        .update({
+          credits_remaining: newRemaining,
+          purchased_credits: newPurchasedCredits,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('organization_id', organizationId);
+    }
+
+    console.log(`✅ ${creditsAmount} créditos IA sumados a org ${organizationId}`);
+  } catch (error: any) {
+    console.error('❌ Error en handleAiCreditPurchaseCompleted:', error);
+  }
+}
+
+/**
+ * Manejar suscripción de addon completada (usuarios/sucursales extra)
+ * Activa el addon en subscription_addons
+ */
+async function handleAddonSubscriptionCompleted(checkoutSession: any) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    const organizationId = parseInt(checkoutSession.metadata?.organizationId || '0', 10);
+    const addonType = checkoutSession.metadata?.addonType;
+    const quantity = parseInt(checkoutSession.metadata?.quantity || '0', 10);
+    const sessionId = checkoutSession.id;
+    const subscriptionId = checkoutSession.subscription as string;
+
+    if (!organizationId || !addonType || !quantity) {
+      console.error('❌ Metadata faltante en checkout session de addon:', checkoutSession.id);
+      return;
+    }
+
+    console.log(`📦 Procesando addon ${addonType} x${quantity} para org ${organizationId}`);
+
+    // Obtener periodos de la suscripción de Stripe
+    let currentPeriodStart: string | null = null;
+    let currentPeriodEnd: string | null = null;
+
+    if (subscriptionId && stripe) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        currentPeriodStart = new Date(subscription.current_period_start * 1000).toISOString();
+        currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      } catch (retrieveErr: any) {
+        console.warn('⚠️ No se pudo obtener la suscripción de Stripe:', retrieveErr.message);
+      }
+    }
+
+    // Actualizar el registro de addon a active
+    const { error: updateError } = await supabase
+      .from('subscription_addons')
+      .update({
+        status: 'active',
+        stripe_subscription_id: subscriptionId,
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('stripe_checkout_session_id', sessionId)
+      .eq('status', 'pending');
+
+    if (updateError) {
+      console.error('❌ Error actualizando subscription_addons:', updateError);
+    } else {
+      console.log(`✅ Addon ${addonType} x${quantity} activado para org ${organizationId}`);
+    }
+  } catch (error: any) {
+    console.error('❌ Error en handleAddonSubscriptionCompleted:', error);
   }
 }
 

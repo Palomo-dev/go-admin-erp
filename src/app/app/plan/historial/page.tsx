@@ -2,9 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import { CalendarIcon, CreditCardIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, CreditCardIcon, CheckCircleIcon, XCircleIcon, ClockIcon, UsersIcon, Building2Icon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+interface AddonHistory {
+  id: string;
+  addon_type: string;
+  quantity: number;
+  unit_price_cents: number;
+  currency: string;
+  status: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  created_at: string;
+}
+
+interface AiCreditHistory {
+  id: string;
+  credits_amount: number;
+  unit_price_cents: number;
+  total_price_cents: number;
+  currency: string;
+  status: string;
+  created_at: string;
+}
 
 interface Subscription {
   id: string;
@@ -56,32 +78,49 @@ interface SubscriptionResponse {
   };
 }
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
+  canceled: 'bg-red-100 text-red-800',
   expired: 'bg-gray-100 text-gray-800',
   trial: 'bg-blue-100 text-blue-800',
-  pending: 'bg-yellow-100 text-yellow-800'
+  trialing: 'bg-blue-100 text-blue-800',
+  pending: 'bg-yellow-100 text-yellow-800',
+  past_due: 'bg-orange-100 text-orange-800',
+  completed: 'bg-green-100 text-green-800',
+  inactive: 'bg-gray-100 text-gray-800'
 };
 
-const statusIcons = {
+const statusIcons: Record<string, any> = {
   active: CheckCircleIcon,
   cancelled: XCircleIcon,
+  canceled: XCircleIcon,
   expired: XCircleIcon,
   trial: ClockIcon,
-  pending: ClockIcon
+  trialing: ClockIcon,
+  pending: ClockIcon,
+  past_due: ClockIcon,
+  completed: CheckCircleIcon,
+  inactive: XCircleIcon
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   active: 'Activo',
   cancelled: 'Cancelado',
+  canceled: 'Cancelado',
   expired: 'Expirado',
   trial: 'Periodo de prueba',
-  pending: 'Pendiente'
+  trialing: 'Periodo de prueba',
+  pending: 'Pendiente',
+  past_due: 'Pago pendiente',
+  completed: 'Completado',
+  inactive: 'Inactivo'
 };
 
 export default function HistorialPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [addons, setAddons] = useState<AddonHistory[]>([]);
+  const [aiCredits, setAiCredits] = useState<AiCreditHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>('');
@@ -181,6 +220,28 @@ export default function HistorialPage() {
         }));
         
         setSubscriptions(typedSubscriptions);
+
+        // Obtener historial de addons
+        const { data: addonsData, error: addonsError } = await supabase
+          .from('subscription_addons')
+          .select('id, addon_type, quantity, unit_price_cents, currency, status, current_period_start, current_period_end, created_at')
+          .eq('organization_id', currentOrgId)
+          .order('created_at', { ascending: false });
+
+        if (!addonsError && addonsData) {
+          setAddons(addonsData as unknown as AddonHistory[]);
+        }
+
+        // Obtener historial de compras de créditos IA
+        const { data: creditsData, error: creditsError } = await supabase
+          .from('ai_credit_purchases')
+          .select('id, credits_amount, unit_price_cents, total_price_cents, currency, status, created_at')
+          .eq('organization_id', currentOrgId)
+          .order('created_at', { ascending: false });
+
+        if (!creditsError && creditsData) {
+          setAiCredits(creditsData as unknown as AiCreditHistory[]);
+        }
         
       } catch (err) {
         console.error('Error in fetchSubscriptionHistory:', err);
@@ -259,7 +320,7 @@ export default function HistorialPage() {
       ) : (
         <div className="space-y-4">
           {subscriptions.map((subscription) => {
-            const StatusIcon = statusIcons[subscription.status as keyof typeof statusIcons];
+            const StatusIcon = statusIcons[subscription.status] || ClockIcon;
             
             return (
               <Card key={subscription.id} className="hover:shadow-md transition-shadow">
@@ -269,10 +330,10 @@ export default function HistorialPage() {
                       {subscription.plans.name}
                     </CardTitle>
                     <Badge 
-                      className={`${statusColors[subscription.status as keyof typeof statusColors]} flex items-center gap-1`}
+                      className={`${statusColors[subscription.status] || 'bg-gray-100 text-gray-800'} flex items-center gap-1`}
                     >
                       <StatusIcon className="h-3 w-3" />
-                      {statusLabels[subscription.status as keyof typeof statusLabels]}
+                      {statusLabels[subscription.status] || subscription.status}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -332,6 +393,81 @@ export default function HistorialPage() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Historial de Addons */}
+      {addons.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Historial de Addons</h2>
+          <div className="space-y-3">
+            {addons.map((addon) => {
+              const isUsers = addon.addon_type === 'extra_users';
+              const Icon = isUsers ? UsersIcon : Building2Icon;
+              const colorClass = isUsers ? 'text-indigo-600 bg-indigo-50' : 'text-green-600 bg-green-50';
+              const label = isUsers ? 'Usuarios extra' : 'Sucursales extra';
+              return (
+                <Card key={addon.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="flex items-center justify-between py-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${colorClass}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{label}: {addon.quantity}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDate(addon.created_at)}
+                          {addon.current_period_end && ` · Hasta: ${formatDate(addon.current_period_end)}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-500">
+                        {formatCurrency(addon.unit_price_cents / 100)}/mes
+                      </span>
+                      <Badge className={`${statusColors[addon.status] || 'bg-gray-100 text-gray-800'} flex items-center gap-1`}>
+                        {statusLabels[addon.status] || addon.status}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Historial de Créditos IA */}
+      {aiCredits.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Historial de Créditos IA</h2>
+          <div className="space-y-3">
+            {aiCredits.map((credit) => (
+              <Card key={credit.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg text-amber-600 bg-amber-50">
+                      <SparklesIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {credit.credits_amount.toLocaleString()} créditos IA
+                      </p>
+                      <p className="text-xs text-gray-500">{formatDate(credit.created_at)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-500">
+                      {formatCurrency(credit.total_price_cents / 100)}
+                    </span>
+                    <Badge className={`${statusColors[credit.status] || 'bg-gray-100 text-gray-800'} flex items-center gap-1`}>
+                      {statusLabels[credit.status] || credit.status}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
     </div>

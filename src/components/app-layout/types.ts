@@ -60,6 +60,7 @@ export interface SidebarNavigationProps {
   collapsed?: boolean;
   onNavigate?: () => void;
   activeModuleCodes?: string[];
+  activeModulePages?: Record<string, string[]>;
 }
 
 export interface AppHeaderProps {

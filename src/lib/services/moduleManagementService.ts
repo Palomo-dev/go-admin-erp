@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { MODULE_PAGES } from '@/lib/config/modulePages';
 
 export interface Module {
   code: string;
@@ -49,6 +50,18 @@ export interface OrganizationModuleStatus {
   can_activate_more: boolean;
   active_modules: string[];
   available_modules: Module[];
+}
+
+export interface ModulePageStatus {
+  module_code: string;
+  page_href: string;
+  page_name: string;
+  is_active: boolean;
+}
+
+export interface ModulePageToggleResult {
+  success: boolean;
+  message: string;
 }
 
 export const moduleManagementService = {
@@ -230,7 +243,7 @@ export const moduleManagementService = {
   /**
    * Activar un módulo para una organización
    */
-  async activateModule(organizationId: number, moduleCode: string, supabaseClient = supabase): Promise<ModuleActivationResult> {
+  async activateModule(organizationId: number, moduleCode: string, supabaseClient = supabase, modulePages?: Array<{ name: string; href: string }>): Promise<ModuleActivationResult> {
     try {
       console.log(`moduleManagementService.activateModule - Starting for org ${organizationId}, module ${moduleCode}`);
       
@@ -307,6 +320,16 @@ export const moduleManagementService = {
         await this.ensureCoreModulePermissions(organizationId, moduleCode, supabaseClient);
       }
 
+      // Activar todas las páginas del módulo por defecto
+      if (modulePages && modulePages.length > 0) {
+        try {
+          await this.activateAllModulePages(organizationId, moduleCode, modulePages, supabaseClient);
+          console.log(`moduleManagementService.activateModule - All ${modulePages.length} pages activated for ${moduleCode}`);
+        } catch (pageError) {
+          console.warn(`moduleManagementService.activateModule - Could not activate pages (non-blocking):`, pageError);
+        }
+      }
+
       console.log(`moduleManagementService.activateModule - Module ${moduleCode} activated successfully`);
       return {
         success: true,
@@ -372,6 +395,13 @@ export const moduleManagementService = {
 
       if (deactivationError) {
         throw deactivationError;
+      }
+
+      // Desactivar todas las páginas del módulo
+      try {
+        await this.deactivateAllModulePages(organizationId, moduleCode, supabaseClient);
+      } catch (pageError) {
+        console.warn('Could not deactivate module pages (non-blocking):', pageError);
       }
 
       return {
@@ -554,6 +584,164 @@ export const moduleManagementService = {
   /**
    * Corregir inconsistencias detectadas en la auditoría
    */
+  /**
+   * Obtener páginas activas de módulos para una organización
+   * Retorna un mapa: module_code -> Set de page_href activos
+   */
+  async getActiveModulePages(organizationId: number, supabaseClient = supabase): Promise<Record<string, string[]>> {
+    const { data, error } = await supabaseClient
+      .from('organization_module_pages')
+      .select('module_code, page_href')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('Error getting active module pages:', error);
+      return {};
+    }
+
+    const result: Record<string, string[]> = {};
+    for (const row of data || []) {
+      if (!result[row.module_code]) result[row.module_code] = [];
+      result[row.module_code].push(row.page_href);
+    }
+    return result;
+  },
+
+  /**
+   * Activar todas las páginas de un módulo (usado cuando se activa un módulo por primera vez)
+   */
+  async activateAllModulePages(
+    organizationId: number,
+    moduleCode: string,
+    pages: Array<{ name: string; href: string }>,
+    supabaseClient = supabase
+  ): Promise<void> {
+    const rows = pages.map(page => ({
+      organization_id: organizationId,
+      module_code: moduleCode,
+      page_href: page.href,
+      page_name: page.name,
+      is_active: true,
+      enabled_at: new Date().toISOString(),
+      disabled_at: null,
+    }));
+
+    const { error } = await supabaseClient
+      .from('organization_module_pages')
+      .upsert(rows, {
+        onConflict: 'organization_id,module_code,page_href',
+      });
+
+    if (error) {
+      console.error('Error activating all module pages:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Desactivar todas las páginas de un módulo (usado cuando se desactiva un módulo)
+   */
+  async deactivateAllModulePages(
+    organizationId: number,
+    moduleCode: string,
+    supabaseClient = supabase
+  ): Promise<void> {
+    const { error } = await supabaseClient
+      .from('organization_module_pages')
+      .update({
+        is_active: false,
+        disabled_at: new Date().toISOString(),
+      })
+      .eq('organization_id', organizationId)
+      .eq('module_code', moduleCode);
+
+    if (error) {
+      console.error('Error deactivating module pages:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Toggle individual de una página/submódulo
+   */
+  async toggleModulePage(
+    organizationId: number,
+    moduleCode: string,
+    pageHref: string,
+    pageName: string,
+    isActive: boolean,
+    supabaseClient = supabase
+  ): Promise<ModulePageToggleResult> {
+    try {
+      // Verificar si ya existen registros para este módulo en la organización
+      const { data: existingRows, error: checkError } = await supabaseClient
+        .from('organization_module_pages')
+        .select('page_href')
+        .eq('organization_id', organizationId)
+        .eq('module_code', moduleCode);
+
+      if (checkError) throw checkError;
+
+      // Si no hay registros previos, inicializar todas las páginas del módulo como activas
+      if (!existingRows || existingRows.length === 0) {
+        const modulePagesList = MODULE_PAGES[moduleCode] || [];
+        if (modulePagesList.length > 0) {
+          const rows = modulePagesList.map(page => ({
+            organization_id: organizationId,
+            module_code: moduleCode,
+            page_href: page.href,
+            page_name: page.name,
+            is_active: page.href !== pageHref ? true : isActive,
+            enabled_at: page.href !== pageHref ? new Date().toISOString() : (isActive ? new Date().toISOString() : null),
+            disabled_at: page.href === pageHref && !isActive ? new Date().toISOString() : null,
+          }));
+
+          const { error: insertError } = await supabaseClient
+            .from('organization_module_pages')
+            .upsert(rows, {
+              onConflict: 'organization_id,module_code,page_href',
+            });
+
+          if (insertError) throw insertError;
+
+          return {
+            success: true,
+            message: isActive ? 'Página activada' : 'Página desactivada',
+          };
+        }
+      }
+
+      // Si ya existen registros, hacer toggle normal de la página individual
+      const { error } = await supabaseClient
+        .from('organization_module_pages')
+        .upsert({
+          organization_id: organizationId,
+          module_code: moduleCode,
+          page_href: pageHref,
+          page_name: pageName,
+          is_active: isActive,
+          enabled_at: isActive ? new Date().toISOString() : null,
+          disabled_at: !isActive ? new Date().toISOString() : null,
+        }, {
+          onConflict: 'organization_id,module_code,page_href',
+        });
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        message: isActive ? 'Página activada' : 'Página desactivada',
+      };
+    } catch (error: any) {
+      console.error('Error toggling module page:', error);
+      return {
+        success: false,
+        message: error?.message || 'Error al cambiar estado de la página',
+      };
+    }
+  },
+
   async fixInconsistencies(organizationId: number, supabaseClient = supabase): Promise<ModuleActivationResult> {
     try {
       // 1. Asegurar que tenga una suscripción (plan gratuito por defecto)

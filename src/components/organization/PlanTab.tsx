@@ -165,7 +165,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   const [memberCount, setMemberCount] = useState(0);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [reactivating, setReactivating] = useState(false);
-  const [aiCredits, setAiCredits] = useState<{ remaining: number; monthly: number; consumed: number } | null>(null);
+  const [aiCredits, setAiCredits] = useState<{ remaining: number; monthly: number; consumed: number; purchased: number } | null>(null);
   const [showBuyAiCreditsModal, setShowBuyAiCreditsModal] = useState(false);
   const [showBuyUsersModal, setShowBuyUsersModal] = useState(false);
   const [showBuyBranchesModal, setShowBuyBranchesModal] = useState(false);
@@ -319,7 +319,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       // Obtener créditos de IA
       const { data: aiSettingsData, error: aiSettingsError } = await supabase
         .from('ai_settings')
-        .select('credits_remaining')
+        .select('credits_remaining, purchased_credits')
         .eq('organization_id', orgId)
         .single();
 
@@ -349,13 +349,15 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         setAiCredits({
           remaining: aiSettingsData.credits_remaining || 0,
           monthly: planMonthlyCredits,
-          consumed: totalConsumed
+          consumed: totalConsumed,
+          purchased: aiSettingsData.purchased_credits || 0
         });
       } else {
         setAiCredits({
           remaining: planMonthlyCredits,
           monthly: planMonthlyCredits,
-          consumed: 0
+          consumed: 0,
+          purchased: 0
         });
       }
 
@@ -806,7 +808,9 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               const maxBranches = planMaxBranches !== null ? planMaxBranches + activeAddons.extraBranches : null;
               const maxUsers = planMaxUsers !== null ? planMaxUsers + activeAddons.extraUsers : null;
               const maxStorage = currentPlan.features?.storage_gb || null;
-              const aiCreditsLimit = aiCredits?.monthly || 0;
+              const aiCreditsMonthly = aiCredits?.monthly || 0;
+              const aiCreditsPurchased = aiCredits?.purchased || 0;
+              const aiCreditsLimit = aiCreditsMonthly + aiCreditsPurchased;
               const aiCreditsUsed = aiCredits?.consumed || 0;
               const aiCreditsAvailable = Math.max(0, aiCreditsLimit - aiCreditsUsed);
               
@@ -919,9 +923,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-1">{t('aiCreditsLabel')}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {t('available', { count: aiCreditsAvailable.toLocaleString() })}
-                    </p>
+                    {aiCreditsPurchased > 0 && (
+                      <p className="text-xs text-amber-500 mt-0.5">
+                        +{aiCreditsPurchased.toLocaleString()} comprados
+                      </p>
+                    )}
                     {aiCreditsLimit > 0 && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                         <div 

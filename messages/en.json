@@ -922,6 +922,7 @@
     "branchesTab": {
       "loadingMap": "Loading map...",
       "errorLoading": "Error loading branches",
+      "branchLimitReached": "You have reached the limit of {max} branches for your plan. Purchase an addon to create more branches.",
       "confirmDelete": "Delete this branch?",
       "errorDeleting": "Error deleting branch",
       "branchUpdated": "Branch updated successfully.",

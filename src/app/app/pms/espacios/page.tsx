@@ -36,12 +36,14 @@ import { Badge } from '@/components/ui/badge';
 import { Layers } from 'lucide-react';
 import SpacesService, { type Space, type SpaceType, type SpaceStatus, type SpaceCategory } from '@/lib/services/spacesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { supabase } from '@/lib/supabase/config';
 import spaceServicesService, { type OrgServiceView, type SpaceServiceView } from '@/lib/services/spaceServicesService';
 
 export default function EspaciosPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
 
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [spaceTypes, setSpaceTypes] = useState<SpaceType[]>([]);
@@ -86,7 +88,8 @@ export default function EspaciosPage() {
     if (organization?.id) {
       loadData();
     }
-  }, [organization?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id, branchFilter]);
 
   const loadData = async () => {
     if (!organization?.id) return;
@@ -96,10 +99,10 @@ export default function EspaciosPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setCurrentUserId(user.id);
       const [spacesData, typesData, categoriesData, zonesData, orgSvcs] = await Promise.all([
-        SpacesService.getSpaces({ branchId: organization.id }),
+        SpacesService.getSpaces(branchFilter ? { branchId: branchFilter } : {}),
         SpacesService.getSpaceTypes(organization.id),
         SpacesService.getSpaceCategories(),
-        SpacesService.getFloorZones(organization.id),
+        branchFilter ? SpacesService.getFloorZones(branchFilter) : Promise.resolve([]),
         spaceServicesService.getOrgServices(organization.id),
       ]);
 

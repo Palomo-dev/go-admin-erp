@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Branch, OpeningHours, DayHours } from '@/types/branch';
 import { branchService } from '@/lib/services/branchService';
+import { supabase } from '@/lib/supabase/config';
 import { BranchForm } from '@/components/branches/BranchForm';
 import { AssignManagerModal } from '@/components/branches/AssignManagerModal';
 import BranchesMap from '@/components/maps/BranchesMap';
@@ -121,6 +122,30 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
   const [showMapModal, setShowMapModal] = useState(false);
   const [selectedBranchForMap, setSelectedBranchForMap] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
+  const [maxBranches, setMaxBranches] = useState<number | null>(null);
+
+  const fetchBranchLimit = async () => {
+    try {
+      const { data: planData, error: planError } = await supabase
+        .rpc('get_current_plan', { org_id: orgId });
+
+      if (!planError && planData && planData.length > 0) {
+        const planMaxBranches = planData[0].max_branches || null;
+
+        const { data: addonsData } = await supabase
+          .from('subscription_addons')
+          .select('quantity')
+          .eq('organization_id', orgId)
+          .eq('addon_type', 'extra_branches')
+          .eq('status', 'active');
+
+        const extraBranches = (addonsData || []).reduce((sum, a) => sum + (a.quantity || 0), 0);
+        setMaxBranches(planMaxBranches !== null ? planMaxBranches + extraBranches : null);
+      }
+    } catch (err) {
+      console.error('Error fetching branch limit:', err);
+    }
+  };
 
   const fetchBranches = async () => {
     setLoading(true);
@@ -136,12 +161,19 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
   };
 
   useEffect(() => {
-    if (orgId) fetchBranches();
+    if (orgId) {
+      fetchBranches();
+      fetchBranchLimit();
+    }
   }, [orgId]);
 
   const [autoBranchCode, setAutoBranchCode] = useState<string>('');
 
   const handleCreate = async () => {
+    if (maxBranches !== null && branches.length >= maxBranches) {
+      setError(t('branchLimitReached', { max: maxBranches }));
+      return;
+    }
     setEditingBranch(null);
     setError(null);
     try {
@@ -285,6 +317,16 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
             </svg>
             {t('fullMap')}
           </button>
+
+          {maxBranches && (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+              branches.length >= maxBranches
+                ? 'bg-red-100 text-red-800'
+                : 'bg-blue-100 text-blue-800'
+            }`}>
+              {branches.length}/{maxBranches}
+            </span>
+          )}
 
           <button
             className="btn btn-primary flex items-center gap-2 px-5 py-2 text-base font-semibold rounded-lg shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors"

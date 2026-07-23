@@ -37,6 +37,8 @@ interface MovimientosFiltersProps {
   sourceTypes: { value: string; label: string }[];
   onClearFilters: () => void;
   hasActiveFilters: boolean;
+  onlyIngredients: boolean;
+  onOnlyIngredientsChange: (value: boolean) => void;
 }
 
 export function MovimientosFilters({
@@ -55,7 +57,9 @@ export function MovimientosFilters({
   branches,
   sourceTypes,
   onClearFilters,
-  hasActiveFilters
+  hasActiveFilters,
+  onlyIngredients,
+  onOnlyIngredientsChange
 }: MovimientosFiltersProps) {
   return (
     <div className="flex flex-col gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -162,6 +166,17 @@ export function MovimientosFilters({
             />
           </PopoverContent>
         </Popover>
+
+        {/* Solo ingredientes */}
+        <Button
+          variant={onlyIngredients ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onOnlyIngredientsChange(!onlyIngredients)}
+          className={`justify-start ${onlyIngredients ? 'bg-blue-600 text-white' : 'dark:bg-gray-900 dark:border-gray-700 dark:text-white'}`}
+        >
+          <Filter className="h-4 w-4 mr-2" />
+          Solo ingredientes
+        </Button>
 
         {hasActiveFilters && (
           <Button

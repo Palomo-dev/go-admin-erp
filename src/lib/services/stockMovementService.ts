@@ -14,12 +14,15 @@ export interface StockDecrementResult {
 
 /**
  * Servicio reutilizable para descontar stock al realizar ventas.
- * Maneja la lógica de llamar a la RPC decrement_stock_on_sale por cada item.
+ * Maneja la lógica de llamar a la RPC decrement_stock_with_recipe por cada item.
  */
 export const stockMovementService = {
   /**
    * Descuenta stock por cada item de una venta.
-   * Verifica track_stock en BD (via RPC), omite items sin product_id.
+   * Usa el RPC decrement_stock_with_recipe que:
+   * - Si el producto tiene receta activa → descuenta cada ingrediente
+   * - Si no tiene receta → comporta como decrement_stock_on_sale (backward compatible)
+   * Omite items sin product_id o cantidad <= 0.
    *
    * @param organizationId - ID de la organización
    * @param branchId - ID de la sucursal
@@ -52,7 +55,7 @@ export const stockMovementService = {
         continue;
       }
 
-      const { error: rpcError } = await supabase.rpc('decrement_stock_on_sale', {
+      const { error: rpcError } = await supabase.rpc('decrement_stock_with_recipe', {
         p_organization_id: organizationId,
         p_branch_id: branchId,
         p_product_id: item.product_id,

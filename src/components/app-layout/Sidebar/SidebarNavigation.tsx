@@ -90,6 +90,8 @@ import {
   Palette,
   Radio,
   FolderKanban,
+  ChefHat,
+  Factory,
 } from 'lucide-react';
 import AccountSwitcher from '../AccountSwitcher';
 import { NavItem } from './NavItem';
@@ -105,7 +107,8 @@ const SidebarNavigationComponent = ({
   orgName,
   collapsed,
   onNavigate,
-  activeModuleCodes
+  activeModuleCodes,
+  activeModulePages
 }: SidebarNavigationProps) => {
   const pathname = usePathname();
   const t = useTranslations('nav');
@@ -214,12 +217,15 @@ const SidebarNavigationComponent = ({
             { name: "Categorías", href: "/app/inventario/categorias", icon: <FolderOpen size={16} /> },
             { name: "Etiquetas", href: "/app/inventario/etiquetas", icon: <Tag size={16} /> },
             { name: "Unidades", href: "/app/inventario/unidades", icon: <Hash size={16} /> },
+            { name: "Conversiones", href: "/app/inventario/conversiones", icon: <ArrowLeftRight size={16} /> },
             { name: "Variantes - Tipos", href: "/app/inventario/variantes/tipos", icon: <Layers size={16} /> },
             { name: "Variantes - Valores", href: "/app/inventario/variantes/valores", icon: <Tag size={16} /> },
             { name: "Lotes", href: "/app/inventario/lotes", icon: <Package size={16} /> },
             { name: "Imágenes", href: "/app/inventario/imagenes", icon: <ImageIcon size={16} /> },
             { name: "Proveedores", href: "/app/inventario/proveedores", icon: <Truck size={16} /> },
             { name: "Órdenes de Compra", href: "/app/inventario/ordenes-compra", icon: <ClipboardList size={16} /> },
+            { name: "Recetas", href: "/app/inventario/recetas", icon: <ChefHat size={16} /> },
+            { name: "Producción", href: "/app/inventario/produccion", icon: <Factory size={16} /> },
             { name: "Reportes", href: "/app/inventario/reportes", icon: <BarChart3 size={16} /> }
           ]
         },
@@ -489,14 +495,38 @@ const SidebarNavigationComponent = ({
     return navSections
       .map(section => ({
         ...section,
-        items: section.items.filter(item => {
-          // Items sin moduleCode siempre son visibles (core / siempre visible)
-          if (!(item as any).moduleCode) return true;
-          return activeModuleCodes.includes((item as any).moduleCode);
-        })
+        items: section.items
+          .filter(item => {
+            // Items sin moduleCode siempre son visibles (core / siempre visible)
+            if (!(item as any).moduleCode) return true;
+            return activeModuleCodes.includes((item as any).moduleCode);
+          })
+          .map(item => {
+            // Filtrar submenu basado en páginas activas
+            if ((item as any).submenu && (item as any).moduleCode && activeModulePages) {
+              const activePages = activeModulePages[(item as any).moduleCode];
+              if (activePages !== undefined) {
+                const filteredSubmenu = (item as any).submenu.filter((sub: any) => activePages.includes(sub.href));
+                // Si solo queda 1 página activa, convertir en link directo sin submenu
+                if (filteredSubmenu.length === 1) {
+                  const singlePage = filteredSubmenu[0];
+                  return {
+                    ...item,
+                    href: singlePage.href,
+                    submenu: undefined,
+                  };
+                }
+                return {
+                  ...item,
+                  submenu: filteredSubmenu
+                };
+              }
+            }
+            return item;
+          })
       }))
       .filter(section => section.items.length > 0);
-  }, [navSections, activeModuleCodes]);
+  }, [navSections, activeModuleCodes, activeModulePages]);
   
   return (
     <div className="flex flex-col h-full transition-all duration-300">

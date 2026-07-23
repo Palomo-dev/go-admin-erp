@@ -30,7 +30,10 @@ import {
   Trash2,
   Copy,
   PackageIcon,
-  ExternalLink
+  ExternalLink,
+  ChevronDown,
+  CheckCheck,
+  X
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
@@ -102,6 +105,12 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     .filter(id => !isNaN(id));
   const allPageSelected = numericIds.length > 0 && numericIds.every(id => selectedIds.includes(id));
 
+  // IDs de TODOS los productos (todas las páginas)
+  const allProductIds = productos
+    .map(p => typeof p.id === 'number' ? p.id : parseInt(String(p.id), 10))
+    .filter(id => !isNaN(id));
+  const allProductsSelected = allProductIds.length > 0 && allProductIds.every(id => selectedIds.includes(id));
+
   const toggleSelectAll = () => {
     if (!onSelectionChange) return;
     if (allPageSelected) {
@@ -109,6 +118,16 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     } else {
       onSelectionChange([...new Set([...selectedIds, ...numericIds])]);
     }
+  };
+
+  const selectAllProducts = () => {
+    if (!onSelectionChange) return;
+    onSelectionChange([...new Set(allProductIds)]);
+  };
+
+  const clearSelection = () => {
+    if (!onSelectionChange) return;
+    onSelectionChange([]);
   };
 
   const toggleSelect = (productoId: number | string) => {
@@ -293,14 +312,54 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
           <TableHeader className="bg-gray-50 dark:bg-gray-800">
             <TableRow className="dark:border-gray-700">
               {onSelectionChange && (
-                <TableHead className="w-[40px]">
-                  <input
-                    type="checkbox"
-                    checked={allPageSelected}
-                    onChange={toggleSelectAll}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    title="Seleccionar todos en esta página"
-                  />
+                <TableHead className="w-[60px]">
+                  <div className="flex items-center gap-0.5">
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      title="Seleccionar todos en esta página"
+                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+                          title="Opciones de selección"
+                        >
+                          <ChevronDown className="h-3 w-3 text-gray-500 dark:text-gray-400" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="dark:bg-gray-800 dark:border-gray-700 w-56">
+                        <DropdownMenuItem
+                          onClick={toggleSelectAll}
+                          className="cursor-pointer dark:text-gray-200 dark:focus:bg-gray-700"
+                        >
+                          <CheckCheck className="mr-2 h-4 w-4" />
+                          <span>Seleccionar esta página ({numericIds.length})</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={selectAllProducts}
+                          className="cursor-pointer dark:text-gray-200 dark:focus:bg-gray-700"
+                        >
+                          <PackageIcon className="mr-2 h-4 w-4" />
+                          <span>Seleccionar todos ({allProductIds.length})</span>
+                        </DropdownMenuItem>
+                        {selectedIds.length > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={clearSelection}
+                              className="cursor-pointer text-red-600 dark:text-red-400 dark:focus:bg-gray-700"
+                            >
+                              <X className="mr-2 h-4 w-4" />
+                              <span>Limpiar selección ({selectedIds.length})</span>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </TableHead>
               )}
               <TableHead className="w-[60px] sm:w-[80px] text-xs sm:text-sm dark:text-gray-300">Imagen</TableHead>

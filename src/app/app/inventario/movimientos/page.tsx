@@ -54,6 +54,7 @@ export default function MovimientosPage() {
   // Estados de UI
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [onlyIngredients, setOnlyIngredients] = useState(false);
 
   // Obtener tipos de origen
   const sourceTypes = stockService.getSourceTypes();
@@ -234,6 +235,7 @@ export default function MovimientosPage() {
     setDirection('all');
     setDateFrom(undefined);
     setDateTo(undefined);
+    setOnlyIngredients(false);
     setCurrentPage(1);
   };
 
@@ -243,7 +245,13 @@ export default function MovimientosPage() {
     source !== 'all' || 
     direction !== 'all' || 
     dateFrom !== undefined || 
-    dateTo !== undefined;
+    dateTo !== undefined ||
+    onlyIngredients;
+
+  // Filtrar movimientos por "Solo ingredientes" (client-side)
+  const filteredMovements = onlyIngredients
+    ? movements.filter((m) => m.note?.includes('Ingrediente de producto'))
+    : movements;
 
   // Calcular páginas
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -288,17 +296,19 @@ export default function MovimientosPage() {
         sourceTypes={sourceTypes}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
+        onlyIngredients={onlyIngredients}
+        onOnlyIngredientsChange={setOnlyIngredients}
       />
 
       {/* Contador de resultados */}
       <div className="text-sm text-gray-500 dark:text-gray-400">
-        Mostrando {movements.length} de {totalCount} movimientos
+        Mostrando {filteredMovements.length} de {totalCount} movimientos
         {currentPage > 1 && ` (página ${currentPage} de ${totalPages})`}
       </div>
 
       {/* Tabla */}
       <MovimientosTable
-        data={movements}
+        data={filteredMovements}
         isLoading={isRefreshing}
       />
 

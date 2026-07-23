@@ -78,6 +78,8 @@ import {
   FileBarChart,
   UserCog,
   Bell as BellIcon,
+  ChefHat,
+  Factory,
 } from 'lucide-react';
 
 // Mapa de iconos mejorado para los submenús
@@ -157,12 +159,15 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Categorías': <FolderOpen size={16} />,
     'Etiquetas': <Tag size={16} />,
     'Unidades': <Hash size={16} />,
+    'Conversiones': <ArrowLeftRight size={16} />,
     'Variantes - Tipos': <Layers size={16} />,
     'Variantes - Valores': <List size={16} />,
     'Lotes': <Package size={16} />,
     'Imágenes': <Image size={16} />,
     'Proveedores': <Truck size={16} />,
     'Órdenes de Compra': <ClipboardList size={16} />,
+    'Recetas': <ChefHat size={16} />,
+    'Producción': <Factory size={16} />,
     
     // POS
     'POS': <ShoppingCart size={16} />,

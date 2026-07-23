@@ -79,6 +79,8 @@ import {
   CalendarClock,
   Radio,
   FolderKanban,
+  ChefHat,
+  Factory,
 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
@@ -102,6 +104,7 @@ import { ModuleProvider, useModuleContext } from '@/lib/context/ModuleContext';
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
+import { getModuleCodeByHref } from '@/lib/config/modulePages';
 import { registerUserDevice } from '@/lib/auth/organizationAuth';
 
 // Función helper para obtener URL del logo
@@ -204,12 +207,15 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Categorías", href: "/app/inventario/categorias", icon: <FolderOpen size={16} /> },
       { name: "Etiquetas", href: "/app/inventario/etiquetas", icon: <Tag size={16} /> },
       { name: "Unidades", href: "/app/inventario/unidades", icon: <Hash size={16} /> },
+      { name: "Conversiones", href: "/app/inventario/conversiones", icon: <ArrowLeftRight size={16} /> },
       { name: "Variantes - Tipos", href: "/app/inventario/variantes/tipos", icon: <Layers size={16} /> },
       { name: "Variantes - Valores", href: "/app/inventario/variantes/valores", icon: <Tag size={16} /> },
       { name: "Lotes", href: "/app/inventario/lotes", icon: <Package size={16} /> },
       { name: "Imágenes", href: "/app/inventario/imagenes", icon: <ImageIcon size={16} /> },
       { name: "Proveedores", href: "/app/inventario/proveedores", icon: <Truck size={16} /> },
       { name: "Órdenes de Compra", href: "/app/inventario/ordenes-compra", icon: <ClipboardList size={16} /> },
+      { name: "Recetas", href: "/app/inventario/recetas", icon: <ChefHat size={16} /> },
+      { name: "Producción", href: "/app/inventario/produccion", icon: <Factory size={16} /> },
       { name: "Reportes", href: "/app/inventario/reportes", icon: <BarChart3 size={16} /> }
     ]
   },
@@ -561,16 +567,23 @@ export const AppLayout = ({
   
   // Estado para módulos activos de la organización (controla visibilidad del sidebar)
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
+  // Estado para páginas activas por módulo: { moduleCode: [pageHref, ...] }
+  const [activeModulePages, setActiveModulePages] = useState<Record<string, string[]> | undefined>(undefined);
 
   // Cargar módulos activos cuando cambia la organización
   const loadActiveModuleCodes = useCallback(async (organizationId: string) => {
     try {
-      const modules = await moduleManagementService.getActiveModules(parseInt(organizationId));
+      const [modules, pages] = await Promise.all([
+        moduleManagementService.getActiveModules(parseInt(organizationId)),
+        moduleManagementService.getActiveModulePages(parseInt(organizationId)),
+      ]);
       setActiveModuleCodes(modules.map(m => m.code));
+      setActiveModulePages(pages);
     } catch (error) {
       console.error('Error cargando módulos activos:', error);
       // En caso de error, no filtrar (mostrar todo)
       setActiveModuleCodes(undefined);
+      setActiveModulePages(undefined);
     }
   }, []);
 
@@ -635,11 +648,24 @@ export const AppLayout = ({
 
   // Escuchar evento personalizado para refrescar módulos cuando se activan/desactivan
   useEffect(() => {
-    const handleModulesRefresh = () => {
-      if (orgId) loadActiveModuleCodes(orgId);
+    const handleModulesRefresh = (event: Event) => {
+      // Si el evento trae datos optimistas, aplicarlos inmediatamente
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        if (customEvent.detail.activeModulePages) {
+          setActiveModulePages(customEvent.detail.activeModulePages);
+        }
+        if (customEvent.detail.activeModuleCodes) {
+          setActiveModuleCodes(customEvent.detail.activeModuleCodes);
+        }
+      }
+      // Luego recargar desde DB para confirmar (solo si no hay detail)
+      if (!customEvent.detail && orgId) {
+        loadActiveModuleCodes(orgId);
+      }
     };
-    window.addEventListener('modules-updated', handleModulesRefresh);
-    return () => window.removeEventListener('modules-updated', handleModulesRefresh);
+    window.addEventListener('modules-updated', handleModulesRefresh as EventListener);
+    return () => window.removeEventListener('modules-updated', handleModulesRefresh as EventListener);
   }, [orgId, loadActiveModuleCodes]);
 
   // Verificar estado de suscripción: redirigir si está cancelada
@@ -1268,33 +1294,50 @@ export const AppLayout = ({
               collapsed={sidebarCollapsed}
               onNavigate={() => setSidebarOpen(false)}
               activeModuleCodes={activeModuleCodes}
+              activeModulePages={activeModulePages}
             />
           </div>
         </div>
       </div>
       
-      {/* Panel de submenú Multi-Column - Solo visible en desktop cuando hay módulo activo */}
-      {activeModule && activeModule.submenu && (
-        <SubMenuPanel 
-          activeModule={activeModule}
-          collapsed={sidebarCollapsed}
-          onNavigate={() => setSidebarOpen(false)}
-          isOpen={subMenuPanelOpen}
-          onToggle={() => setSubMenuPanelOpen(!subMenuPanelOpen)}
-        />
-      )}
+      {/* Panel de submenú Multi-Column - Solo visible en desktop cuando hay módulo activo y >1 página activa */}
+      {activeModule && activeModule.submenu && (() => {
+        const moduleCode = getModuleCodeByHref(activeModule.href);
+        const activePages = activeModulePages?.[moduleCode || ''];
+        const filteredSubmenu = activePages !== undefined
+          ? activeModule.submenu.filter(item => activePages.includes(item.href))
+          : activeModule.submenu;
+        const filteredModule = { ...activeModule, submenu: filteredSubmenu };
+        // Solo mostrar el panel si hay más de 1 página activa
+        return filteredSubmenu.length > 1 ? (
+          <SubMenuPanel 
+            activeModule={filteredModule}
+            collapsed={sidebarCollapsed}
+            onNavigate={() => setSidebarOpen(false)}
+            isOpen={subMenuPanelOpen}
+            onToggle={() => setSubMenuPanelOpen(!subMenuPanelOpen)}
+          />
+        ) : null;
+      })()}
       
-      {/* Botón flotante para abrir el panel cuando está cerrado */}
-      {activeModule && activeModule.submenu && !subMenuPanelOpen && (
-        <button
-          onClick={() => setSubMenuPanelOpen(true)}
-          className="hidden lg:flex items-center justify-center h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white rounded-r-lg shadow-lg transition-all duration-200 fixed left-20 top-1/2 -translate-y-1/2 z-40"
-          style={{ left: sidebarCollapsed ? '80px' : '256px' }}
-          aria-label="Abrir panel de submenú"
-        >
-          <PanelLeft size={20} />
-        </button>
-      )}
+      {/* Botón flotante para abrir el panel cuando está cerrado - solo si >1 página activa */}
+      {activeModule && activeModule.submenu && !subMenuPanelOpen && (() => {
+        const moduleCode = getModuleCodeByHref(activeModule.href);
+        const activePages = activeModulePages?.[moduleCode || ''];
+        const filteredCount = activePages !== undefined
+          ? activeModule.submenu.filter(item => activePages.includes(item.href)).length
+          : activeModule.submenu.length;
+        return filteredCount > 1 ? (
+          <button
+            onClick={() => setSubMenuPanelOpen(true)}
+            className="hidden lg:flex items-center justify-center h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white rounded-r-lg shadow-lg transition-all duration-200 fixed left-20 top-1/2 -translate-y-1/2 z-40"
+            style={{ left: sidebarCollapsed ? '80px' : '256px' }}
+            aria-label="Abrir panel de submenú"
+          >
+            <PanelLeft size={20} />
+          </button>
+        ) : null;
+      })()}
       
       {/* Área de contenido principal */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">

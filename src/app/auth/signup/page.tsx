@@ -295,7 +295,11 @@ function SignupContent() {
       // 2. Crear organización (solo si joinType es 'create')
       if (signupData.joinType === 'create' && signupData.organizationName) {
         console.log('2️⃣ Creando organización:', signupData.organizationName);
-        
+
+        // Determinar planId antes del insert para que el trigger cree la suscripción correcta
+        const planSlug = (signupData.subscriptionPlan || '').toLowerCase();
+        const planId = planSlug.includes('ultimate') ? 5 : (planSlug.includes('business') ? 3 : 2);
+
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .insert({
@@ -321,6 +325,7 @@ function SignupContent() {
             logo_url: signupData.logoUrl || null,
             owner_user_id: userId,
             created_by: userId,
+            plan_id: planId,
             status: 'active'
           })
           .select('id')
@@ -487,19 +492,15 @@ function SignupContent() {
         console.log('5️⃣ Configurando suscripción...');
         console.log('🔍 DEBUG signup - Plan:', signupData.subscriptionPlan);
         
-        // Determinar planCode y planId basado en selección
+        // Determinar planCode basado en selección (planId ya fue calculado arriba)
         let planCode: string;
-        let planId: number;
-        
+
         if (signupData.subscriptionPlan.includes('ultimate')) {
           planCode = 'ultimate';
-          planId = 5;
         } else if (signupData.subscriptionPlan.includes('business')) {
           planCode = 'business';
-          planId = 3;
         } else {
           planCode = 'pro';
-          planId = 2;
         }
 
         // Inferir billingPeriod desde subscriptionPlan si no está explícito

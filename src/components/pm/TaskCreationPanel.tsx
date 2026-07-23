@@ -291,9 +291,14 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
   // Cargar subtareas, adjuntos y dependencias existentes al editar
   useEffect(() => {
     if (editTask) {
+      // Resetear estado de subtareas antes de cargar las nuevas
+      setSubtasks([]);
+      setShowSubtasks(false);
       pmService.getSubtasks(editTask.id).then(subs => {
         setSubtasks(subs.map(s => ({ id: s.id, title: s.title, priority: s.priority || 'med', estimated_hours: s.estimated_hours, due_date: s.due_date, assigned_to: s.assigned_to, done: s.status === 'done', persisted: true })));
         if (subs.length > 0) setShowSubtasks(true);
+      }).catch(err => {
+        console.error('Error cargando subtareas:', err);
       });
       reloadAttachments(editTask.id);
       reloadDependencies(editTask.id);

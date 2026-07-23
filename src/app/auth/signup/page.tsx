@@ -502,6 +502,9 @@ function SignupContent() {
           planId = 2;
         }
 
+        // Inferir billingPeriod desde subscriptionPlan si no está explícito
+        const billingPeriod = signupData.billingPeriod || (signupData.subscriptionPlan.includes('yearly') ? 'yearly' : 'monthly');
+
         // Obtener trial_days del plan desde la BD
         const { data: planData } = await supabase
           .from('plans')
@@ -523,7 +526,7 @@ function SignupContent() {
               body: JSON.stringify({
                 organizationId: orgId,
                 planCode: planCode,
-                billingPeriod: signupData.billingPeriod || 'monthly',
+                billingPeriod: billingPeriod,
                 useTrial: !signupData.skipTrial,
                 userId: userId,
                 email: email,
@@ -557,7 +560,7 @@ function SignupContent() {
 
         const updatePayload: any = {
           plan_id: planId,
-          billing_period: signupData.billingPeriod || 'monthly',
+          billing_period: billingPeriod,
           ...(signupData.skipTrial
             ? {
                 trial_start: null,
@@ -588,6 +591,16 @@ function SignupContent() {
           console.error('❌ Error actualizando suscripción en BD:', updateError);
         } else {
           console.log('✅ Suscripción actualizada en BD:', updateData);
+        }
+        
+        // También actualizar plan_id en organizations para que el super admin lo vea
+        const { error: orgUpdateError } = await supabase
+          .from('organizations')
+          .update({ plan_id: planId })
+          .eq('id', orgId);
+        
+        if (orgUpdateError) {
+          console.error('❌ Error actualizando plan_id en organización:', orgUpdateError);
         }
         
         // Actualizar last_org_id en el perfil

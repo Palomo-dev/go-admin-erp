@@ -428,7 +428,7 @@ export const pmService = {
     // vía el dropdown si el usuario lo selecciona.
     let query = supabase
       .from('tasks')
-      .select('*, projects(id, name), milestones(id, title), goals(id, title), parent_task:tasks!parent_task_id(id, title, status)')
+      .select('*, projects(id, name), milestones(id, title), goals(id, title)')
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false });
 
@@ -441,11 +441,20 @@ export const pmService = {
     const { data, error } = await query;
     if (error) { console.error('Error getTasks:', error.message); return []; }
 
-    // Normalizar parent_task: Supabase devuelve array en self-referencing joins
-    let tasks = (data || []).map((t: any) => ({
-      ...t,
-      parent_task: Array.isArray(t.parent_task) ? (t.parent_task[0] || null) : t.parent_task
-    }));
+    let tasks = (data || []) as any[];
+
+    // Cargar parent_task manualmente (evita self-referencing join que falla en PostgREST)
+    const parentIds = Array.from(new Set(tasks.filter(t => t.parent_task_id).map(t => t.parent_task_id)));
+    if (parentIds.length > 0) {
+      const { data: parents } = await supabase.from('tasks').select('id, title, status').in('id', parentIds);
+      const parentMap = new Map((parents || []).map((p: any) => [p.id, p]));
+      tasks = tasks.map(t => ({
+        ...t,
+        parent_task: t.parent_task_id ? (parentMap.get(t.parent_task_id) || null) : null
+      }));
+    } else {
+      tasks = tasks.map(t => ({ ...t, parent_task: null }));
+    }
 
     // Filtro por módulo (post-query, en cliente)
     if (filters?.module === 'crm') {
@@ -661,11 +670,14 @@ export const pmService = {
 
   async getTaskById(taskId: string): Promise<PMTask | null> {
     if (!taskId || taskId === 'undefined') { console.error('Error getTaskById: taskId inválido:', taskId); return null; }
-    const { data, error } = await supabase.from('tasks').select('*, parent_task:tasks!parent_task_id(id, title, status)').eq('id', taskId).single();
+    const { data, error } = await supabase.from('tasks').select('*').eq('id', taskId).single();
     if (error) { console.error('Error getTaskById:', error.message); return null; }
-    // Normalizar parent_task: Supabase devuelve array en self-referencing joins
-    if (data && Array.isArray(data.parent_task)) {
-      data.parent_task = data.parent_task[0] || null;
+    // Cargar parent_task manualmente (evita self-referencing join que falla en PostgREST)
+    if (data && data.parent_task_id) {
+      const { data: parent } = await supabase.from('tasks').select('id, title, status').eq('id', data.parent_task_id).single();
+      (data as any).parent_task = parent || null;
+    } else if (data) {
+      (data as any).parent_task = null;
     }
     return data;
   },
@@ -741,7 +753,8 @@ export const pmService = {
   },
 
   async getSubtasks(parentTaskId: string): Promise<PMTask[]> {
-    const { data, error } = await supabase.from('tasks').select('*').eq('parent_task_id', parentTaskId).order('created_at');
+    const orgId = getOrganizationId();
+    const { data, error } = await supabase.from('tasks').select('*').eq('parent_task_id', parentTaskId).eq('organization_id', orgId).order('created_at');
     if (error) { console.error('Error getSubtasks:', error.message); return []; }
     return data || [];
   },

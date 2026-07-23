@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { UserCircle } from 'lucide-react';
 import { useSession } from '@/lib/context/SessionContext';
 
@@ -11,6 +12,13 @@ import { useSession } from '@/lib/context/SessionContext';
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { session, loading } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !session) {
+      router.replace('/auth/login');
+    }
+  }, [loading, session, router]);
 
   if (loading) {
     return (
@@ -50,13 +58,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-col items-center gap-8">
-          {/* User + ondas de radar (rojo) */}
+          {/* User + ondas de radar (azul) */}
           <div className="relative h-24 w-24 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full border-2 border-red-500/20 dark:border-red-500/20 animate-ping" style={{ animationDuration: '3s' }} />
-            <div className="absolute inset-3 rounded-full border-2 border-red-500/30 dark:border-red-500/30 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
-            <div className="absolute inset-6 rounded-full border-2 border-red-500/40 dark:border-red-500/40 animate-ping" style={{ animationDuration: '2s', animationDelay: '1s' }} />
+            <div className="absolute inset-0 rounded-full border-2 border-blue-600/20 dark:border-blue-500/20 animate-ping" style={{ animationDuration: '3s' }} />
+            <div className="absolute inset-3 rounded-full border-2 border-blue-600/30 dark:border-blue-500/30 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
+            <div className="absolute inset-6 rounded-full border-2 border-blue-600/40 dark:border-blue-500/40 animate-ping" style={{ animationDuration: '2s', animationDelay: '1s' }} />
             <div className="relative z-10 flex items-center justify-center">
-              <UserCircle className="h-10 w-10 text-red-500 dark:text-red-400 animate-pulse" style={{ animationDuration: '2s' }} />
+              <UserCircle className="h-10 w-10 text-blue-600 dark:text-blue-500 animate-pulse" style={{ animationDuration: '2s' }} />
             </div>
           </div>
 
@@ -65,9 +73,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
               Redirigiendo a login
             </p>
             <div className="flex gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" style={{ animationDelay: '0ms', animationDuration: '1s' }} />
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" style={{ animationDelay: '200ms', animationDuration: '1s' }} />
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" style={{ animationDelay: '400ms', animationDuration: '1s' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" style={{ animationDelay: '0ms', animationDuration: '1s' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" style={{ animationDelay: '200ms', animationDuration: '1s' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" style={{ animationDelay: '400ms', animationDuration: '1s' }} />
             </div>
           </div>
         </div>

@@ -15,6 +15,8 @@ export interface KitchenTicketPrintPayload {
     variantData?: Record<string, string> | null;
     modifiers?: Array<{ name: string; extraPrice: number }> | null;
   }>;
+  businessName?: string;
+  branchName?: string;
 }
 
 export interface SaleTicketPrintPayload {
@@ -88,6 +90,8 @@ export class PrintJobsService {
       serverName?: string;
       createdAt: string;
       items: Array<{ productName: string; quantity: number; notes?: string | null; station?: string | null; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+      businessName?: string;
+      branchName?: string;
     }
   ): Promise<{ enqueued: number; skippedStations: string[] }> {
     const orgId = getOrganizationId();
@@ -118,6 +122,8 @@ export class PrintJobsService {
         station,
         createdAt: ticket.createdAt,
         items: items.map((i) => ({ productName: i.productName, quantity: i.quantity, notes: i.notes, variantData: i.variantData, modifiers: i.modifiers })),
+        businessName: ticket.businessName,
+        branchName: ticket.branchName,
       };
 
       const rows = printers.map((printer) => ({

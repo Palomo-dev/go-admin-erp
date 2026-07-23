@@ -133,16 +133,22 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       // Extraer IDs de productos
       const productIds = productos.map(p => p.id);
       
-      // Consultar imágenes principales para estos productos
-      const { data, error } = await supabase
-        .from('product_images')
-        .select('id, product_id, storage_path, is_primary')
-        .in('product_id', productIds)
-        .eq('is_primary', true);
-        
-      if (error) {
-        console.error('Error al cargar imágenes de productos:', error);
-        return;
+      // Consultar en lotes: evita URLs demasiado largas con .in() y el límite de 1000 filas de PostgREST
+      const CHUNK_SIZE = 300;
+      const data: ProductImage[] = [];
+      for (let i = 0; i < productIds.length; i += CHUNK_SIZE) {
+        const chunk = productIds.slice(i, i + CHUNK_SIZE);
+        const { data: chunkData, error } = await supabase
+          .from('product_images')
+          .select('id, product_id, storage_path, is_primary')
+          .in('product_id', chunk)
+          .eq('is_primary', true);
+
+        if (error) {
+          console.error('Error al cargar imágenes de productos:', error);
+          continue;
+        }
+        if (chunkData) data.push(...(chunkData as ProductImage[]));
       }
       
       console.log('Received product images data:', data);
@@ -152,6 +158,12 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       if (data && data.length > 0) {
         data.forEach((img: ProductImage) => {
           if (!img.storage_path) return;
+          
+          // Si es una URL externa, usarla directamente sin getPublicUrl
+          if (img.storage_path.startsWith('http://') || img.storage_path.startsWith('https://')) {
+            imageMap[img.product_id] = img.storage_path;
+            return;
+          }
           
           // Generar URL pública usando supabase.storage (detectar bucket correcto)
           const bucket = img.storage_path.startsWith('products/') ? 'product-images' : 'organization_images';

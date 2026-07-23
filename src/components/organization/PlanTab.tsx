@@ -29,6 +29,9 @@ import {
 } from 'lucide-react';
 import { StarIcon, ArrowUpIcon } from '@heroicons/react/24/solid';
 import ChangePlanModal from './ChangePlanModal';
+import BuyAiCreditsModal from './BuyAiCreditsModal';
+import BuyUsersModal from './BuyUsersModal';
+import BuyBranchesModal from './BuyBranchesModal';
 import { PlanSkeleton } from './OrganizationSkeletons';
 import CancelSubscriptionModal from '@/components/subscription/CancelSubscriptionModal';
 import PaymentMethodCard from './PaymentMethodCard';
@@ -163,6 +166,10 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [reactivating, setReactivating] = useState(false);
   const [aiCredits, setAiCredits] = useState<{ remaining: number; monthly: number; consumed: number } | null>(null);
+  const [showBuyAiCreditsModal, setShowBuyAiCreditsModal] = useState(false);
+  const [showBuyUsersModal, setShowBuyUsersModal] = useState(false);
+  const [showBuyBranchesModal, setShowBuyBranchesModal] = useState(false);
+  const [activeAddons, setActiveAddons] = useState<{ extraUsers: number; extraBranches: number }>({ extraUsers: 0, extraBranches: 0 });
   
   useEffect(() => {
     if (orgId) {
@@ -351,6 +358,21 @@ export default function PlanTab({ orgId }: PlanTabProps) {
           consumed: 0
         });
       }
+
+      // Obtener addons activos
+      const { data: addonsData } = await supabase
+        .from('subscription_addons')
+        .select('addon_type, quantity')
+        .eq('organization_id', orgId)
+        .eq('status', 'active');
+
+      const extraUsers = (addonsData || [])
+        .filter((a: any) => a.addon_type === 'extra_users')
+        .reduce((sum: number, a: any) => sum + a.quantity, 0);
+      const extraBranches = (addonsData || [])
+        .filter((a: any) => a.addon_type === 'extra_branches')
+        .reduce((sum: number, a: any) => sum + a.quantity, 0);
+      setActiveAddons({ extraUsers, extraBranches });
 
     } catch (err: any) {
       console.error('Error loading plan data:', err);
@@ -779,8 +801,10 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               const planMaxModules = customConfig?.total_available_modules || customConfig?.modules_count || currentPlan.max_modules || null;
               // Limitar al total real de módulos existentes en el sistema
               const maxModules = planMaxModules && allModules.length > 0 ? Math.min(planMaxModules, allModules.length) : planMaxModules;
-              const maxBranches = customConfig?.branches_count || customConfig?.branchesCount || currentPlan.max_branches || null;
-              const maxUsers = customConfig?.users_count || customConfig?.usersCount || currentPlan.max_users || null;
+              const planMaxBranches = customConfig?.branches_count || customConfig?.branchesCount || currentPlan.max_branches || null;
+              const planMaxUsers = customConfig?.users_count || customConfig?.usersCount || currentPlan.max_users || null;
+              const maxBranches = planMaxBranches !== null ? planMaxBranches + activeAddons.extraBranches : null;
+              const maxUsers = planMaxUsers !== null ? planMaxUsers + activeAddons.extraUsers : null;
               const maxStorage = currentPlan.features?.storage_gb || null;
               const aiCreditsLimit = aiCredits?.monthly || 0;
               const aiCreditsUsed = aiCredits?.consumed || 0;
@@ -825,6 +849,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-1">{t('branchesLabel')}</p>
+                    {activeAddons.extraBranches > 0 && (
+                      <p className="text-xs text-green-500 mt-0.5">
+                        +{activeAddons.extraBranches} addon
+                      </p>
+                    )}
                     {maxBranches && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                         <div 
@@ -833,6 +862,13 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         />
                       </div>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setShowBuyBranchesModal(true)}
+                      className="mt-2 inline-flex items-center text-xs font-medium text-green-600 hover:text-green-700"
+                    >
+                      + Comprar más
+                    </button>
                   </div>
                   
                   {/* Usuarios */}
@@ -844,6 +880,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-1">{t('usersLabel')}</p>
+                    {activeAddons.extraUsers > 0 && (
+                      <p className="text-xs text-indigo-500 mt-0.5">
+                        +{activeAddons.extraUsers} addon
+                      </p>
+                    )}
                     {maxUsers && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                         <div 
@@ -852,6 +893,13 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         />
                       </div>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setShowBuyUsersModal(true)}
+                      className="mt-2 inline-flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      + Comprar más
+                    </button>
                   </div>
                   
                   {/* Almacenamiento */}
@@ -882,6 +930,13 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         />
                       </div>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setShowBuyAiCreditsModal(true)}
+                      className="mt-2 inline-flex items-center text-xs font-medium text-amber-600 hover:text-amber-700"
+                    >
+                      + Comprar más
+                    </button>
                   </div>
                 </div>
               );
@@ -1165,6 +1220,40 @@ export default function PlanTab({ orgId }: PlanTabProps) {
           organizationName={organizationName}
           currentPlanId={currentPlan?.code || 'free'}
           onPlanChanged={handlePlanChanged}
+        />
+      )}
+
+      {/* Modal de compra de créditos IA */}
+      {showBuyAiCreditsModal && (
+        <BuyAiCreditsModal
+          isOpen={showBuyAiCreditsModal}
+          onClose={() => setShowBuyAiCreditsModal(false)}
+          organizationId={orgId}
+          onPurchased={loadPlanData}
+        />
+      )}
+
+      {/* Modal de compra de usuarios extra */}
+      {showBuyUsersModal && (
+        <BuyUsersModal
+          isOpen={showBuyUsersModal}
+          onClose={() => setShowBuyUsersModal(false)}
+          organizationId={orgId}
+          currentUsers={memberCount}
+          maxUsers={currentPlan?.max_users ?? null}
+          onPurchased={loadPlanData}
+        />
+      )}
+
+      {/* Modal de compra de sucursales extra */}
+      {showBuyBranchesModal && (
+        <BuyBranchesModal
+          isOpen={showBuyBranchesModal}
+          onClose={() => setShowBuyBranchesModal(false)}
+          organizationId={orgId}
+          currentBranches={branchCount}
+          maxBranches={currentPlan?.max_branches ?? null}
+          onPurchased={loadPlanData}
         />
       )}
 

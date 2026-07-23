@@ -1,5 +1,6 @@
 import type { PrinterRow, PrintJobPayload, PrintJobRow } from './types';
 import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket } from './escposFormatter';
+import { buildSaleTicketHTML, buildKitchenTicketHTML } from './htmlFormatter';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): void {
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
@@ -13,6 +14,12 @@ function renderPlainText(jobType: PrintJobRow['job_type'], payload: PrintJobPayl
   return jobType === 'sale_ticket' || jobType === 'pre_cuenta'
     ? buildPlainTextSaleTicket(payload as any)
     : buildPlainTextTicket(payload as any);
+}
+
+function renderHTML(jobType: PrintJobRow['job_type'], payload: PrintJobPayload): string {
+  return jobType === 'sale_ticket' || jobType === 'pre_cuenta'
+    ? buildSaleTicketHTML(payload as any)
+    : buildKitchenTicketHTML(payload as any);
 }
 
 // Los paquetes escpos-* no traen tipados oficiales completos; se cargan con require
@@ -141,24 +148,79 @@ function printViaBluetooth(printer: PrinterRow, jobType: PrintJobRow['job_type']
 }
 
 /**
- * Impresora estándar del sistema operativo (spooler de Windows/macOS/Linux).
- * Usa el paquete `printer` (node-printer) para enviar el texto directamente
- * a la impresora por nombre (printer.name) o a la predeterminada si no hay match.
+ * Impresora estándar del sistema operativo.
+ * Estrategia (en orden):
+ *   1. Electron BrowserWindow.print() — usa el Chromium embebido en Electron (sin dependencias extra)
+ *   2. node-printer con texto plano ESC/POS — si el módulo nativo está disponible
+ *   3. Lanza error
  */
-function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
-  const nodePrinter = tryRequire('printer');
-  if (!nodePrinter) {
-    throw new Error('Soporte de impresora del sistema no disponible: el módulo nativo printer no se pudo instalar en este equipo');
-  }
-  const text = renderPlainText(jobType, payload);
+async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
+  const html = renderHTML(jobType, payload);
 
+  // 1. Intentar impresión via Electron (Chromium embebido)
+  const electron = tryRequire('electron');
+  if (electron && electron.BrowserWindow) {
+    try {
+      await printViaElectron(html, printer.name);
+      return;
+    } catch (err: any) {
+      console.error('[printer] Error con Electron print, fallback a texto plano:', err.message);
+    }
+  }
+
+  // 2. Fallback: texto plano con node-printer
+  const nodePrinter = tryRequire('printer');
+  if (nodePrinter) {
+    const text = renderPlainText(jobType, payload);
+    return new Promise((resolve, reject) => {
+      nodePrinter.printDirect({
+        data: text,
+        printer: printer.name,
+        type: 'RAW',
+        success: () => resolve(),
+        error: (err: any) => reject(new Error(`Error imprimiendo en impresora del sistema "${printer.name}": ${err}`)),
+      });
+    });
+  }
+
+  throw new Error(`No se pudo imprimir en "${printer.name}": Electron print no disponible y módulo printer no instalado`);
+}
+
+/**
+ * Usa una BrowserWindow oculta de Electron para cargar el HTML y enviarlo a la impresora.
+ * Electron ya incluye Chromium — no requiere puppeteer ni descargas adicionales.
+ */
+function printViaElectron(html: string, printerName: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    nodePrinter.printDirect({
-      data: text,
-      printer: printer.name,
-      type: 'RAW',
-      success: () => resolve(),
-      error: (err: any) => reject(new Error(`Error imprimiendo en impresora del sistema "${printer.name}": ${err}`)),
+    const electron = require('electron');
+    const win = new electron.BrowserWindow({
+      width: 400,
+      height: 600,
+      show: false,
+      webPreferences: { contextIsolation: true, nodeIntegration: false },
+    });
+
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+
+    win.webContents.on('did-finish-load', () => {
+      win.webContents.print(
+        {
+          silent: true,
+          printBackground: true,
+          deviceName: printerName,
+          margins: { marginType: 'custom', top: 0.1, bottom: 0.1, left: 0.1, right: 0.1 },
+        },
+        (success: boolean, errorType: string) => {
+          win.destroy();
+          if (success) resolve();
+          else reject(new Error(`Error imprimiendo via Electron en "${printerName}": ${errorType}`));
+        }
+      );
+    });
+
+    win.webContents.on('did-fail-load', (_e: any, _code: number, desc: string) => {
+      win.destroy();
+      reject(new Error(`Error cargando HTML para impresión: ${desc}`));
     });
   });
 }

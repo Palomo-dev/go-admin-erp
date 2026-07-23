@@ -555,6 +555,7 @@ export class PrintService {
 
   /**
    * Imprimir pre-cuenta de mesa (ticket sin pago)
+   * Formato profesional igual al ticket de venta.
    */
   static printPreCuenta(
     tableName: string,
@@ -569,97 +570,377 @@ export class PrintService {
     driverName?: string,
     deliveryAddress?: string,
   ): void {
-    const dateStr = new Date().toLocaleDateString('es-CO');
-    const timeStr = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-CO');
+    const timeStr = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
     const businessName = business?.name || 'Restaurante';
-    const businessAddress = business?.address || '';
+    const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
     const itemsHTML = items.map(item => {
       const name = item.product?.name || 'Producto';
+      let notesObj: any = {};
+      try {
+        notesObj = typeof item.notes === 'string' ? JSON.parse(item.notes || '{}') : (item.notes || {});
+      } catch { notesObj = {}; }
+
       const variantEntries = item.product?.variant_data
         ? Object.entries(item.product.variant_data).filter(([, v]) => !!v)
         : [];
       const variantLine = variantEntries.length > 0
         ? `<div class="item-details">${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}</div>`
         : '';
-      const modifiers: Array<{ name: string; extraPrice: number }> = Array.isArray(item.notes?.modifiers) ? item.notes.modifiers : [];
+
+      const modifiers: Array<{ name: string; extraPrice: number }> = Array.isArray(notesObj?.modifiers) ? notesObj.modifiers : [];
       const modifiersLine = modifiers.length > 0
         ? `<div class="item-details">${modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatCurrency(m.extraPrice)})` : m.name).join(' · ')}</div>`
         : '';
+
+      const guestLine = notesObj?.guest_number
+        ? `<div class="item-details">Comensal #${notesObj.guest_number}</div>`
+        : '';
+
+      const extraNotes = typeof notesObj === 'object' ? notesObj?.extra : (item.notes || '');
+      const notesLine = extraNotes
+        ? `<div class="item-details">Nota: ${extraNotes}</div>`
+        : '';
+
       return `
-        <div class="item">
-          <div class="item-line">
-            <span class="item-name">${name}</span>
+    <div class="item">
+        <div class="item-line">
+            <span class="item-name">${item.quantity}× ${name}</span>
             <span>${formatCurrency(item.total)}</span>
-          </div>
-          <div class="item-details">
-            ${item.quantity} × ${formatCurrency(item.unit_price)}
-          </div>
-          ${variantLine}
-          ${modifiersLine}
-        </div>`;
+        </div>
+        <div class="item-details">
+            ${formatCurrency(item.unit_price)} c/u
+            ${item.tax_amount && Number(item.tax_amount) > 0 ? ` · Imp: ${formatCurrency(Number(item.tax_amount))}` : ''}
+            ${item.discount_amount && Number(item.discount_amount) > 0 ? ` · Desc: -${formatCurrency(Number(item.discount_amount))}` : ''}
+        </div>
+        ${variantLine}
+        ${modifiersLine}
+        ${guestLine}
+        ${notesLine}
+    </div>`;
     }).join('');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Pre-Cuenta - ${tableName}</title>
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Courier New',monospace;width:280px;margin:0 auto;padding:10px;font-size:12px}
-  .header{text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px}
-  .business-name{font-size:16px;font-weight:bold}
-  .business-address{font-size:10px;color:#555}
-  .pre-cuenta-title{text-align:center;font-size:14px;font-weight:bold;margin:8px 0;padding:6px;border:2px dashed #000;letter-spacing:1px}
-  .mesa-info{text-align:center;margin-bottom:8px;font-size:13px;font-weight:bold}
-  .items-header{display:flex;justify-content:space-between;font-weight:bold;border-bottom:1px solid #000;padding:4px 0;margin-bottom:4px;font-size:11px}
-  .item{padding:3px 0;border-bottom:1px dotted #ccc}
-  .item-line{display:flex;justify-content:space-between}
-  .item-name{flex:1;margin-right:8px;font-size:11px}
-  .item-details{font-size:10px;color:#666;margin-top:1px}
-  .totals{border-top:1px dashed #000;margin-top:8px;padding-top:8px}
-  .total-line{display:flex;justify-content:space-between;padding:2px 0}
-  .total-final{font-size:16px;font-weight:bold;border-top:2px solid #000;margin-top:4px;padding-top:6px}
-  .footer{text-align:center;border-top:1px dashed #000;margin-top:10px;padding-top:8px;font-size:10px;color:#666}
-  @media print{body{width:100%}@page{size:80mm auto;margin:0}}
-</style></head><body>
-  <div class="header">
-    ${business?.logoUrl ? `<img src="${business.logoUrl}" alt="${businessName}" style="max-height:50px;max-width:100%;margin:0 auto 6px;display:block" />` : ''}
-    <div class="business-name">${businessName}</div>
-    ${business?.nit ? `<div class="business-address"><strong>NIT:</strong> ${business.nit}</div>` : ''}
-    ${businessAddress ? `<div class="business-address">${businessAddress}</div>` : ''}
-    ${business?.phone ? `<div class="business-address">Tel: ${business.phone}</div>` : ''}
-    ${business?.email ? `<div class="business-address">${business.email}</div>` : ''}
-    ${(business as any)?.fiscal_responsibilities && (business as any).fiscal_responsibilities.length > 0 ? `<div class="business-address"><strong>Régimen:</strong> ${(business as any).fiscal_responsibilities.join(', ')}</div>` : ''}
-    ${branch?.name ? `<div class="business-address" style="margin-top:4px;font-weight:bold">Sucursal: ${branch.name}</div>` : ''}
-    ${branch?.address ? `<div class="business-address">${branch.address}</div>` : ''}
-  </div>
-  <div class="pre-cuenta-title">*** PRE-CUENTA ***</div>
-  <div class="mesa-info">${tableName}</div>
-  <div style="text-align:center;font-size:11px;margin-bottom:8px">${dateStr} - ${timeStr}</div>
-  ${serverName ? `<div style="font-size:11px;margin-bottom:4px"><strong>Mesero:</strong> ${serverName}</div>` : ''}
-  ${driverName ? `<div style="font-size:11px;margin-bottom:4px"><strong>Conductor:</strong> ${driverName}</div>` : ''}
-  ${deliveryAddress ? `<div style="font-size:11px;margin-bottom:4px"><strong>Domicilio:</strong> ${deliveryAddress}</div>` : ''}
-  <div class="items-header"><span>PRODUCTO</span><span>TOTAL</span></div>
-  ${itemsHTML}
-  <div class="totals">
-    <div class="total-line"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
-    ${discountTotal > 0 ? `<div class="total-line"><span>Descuento:</span><span>-${formatCurrency(discountTotal)}</span></div>` : ''}
-    ${taxTotal > 0 ? `<div class="total-line"><span>Impuestos:</span><span>${formatCurrency(taxTotal)}</span></div>` : ''}
-    <div class="total-line total-final"><span>TOTAL:</span><span>${formatCurrency(total)}</span></div>
-  </div>
-  <div class="footer">
-    <div style="font-weight:bold">*** NO ES FACTURA ***</div>
-    <div>Este documento es solo informativo</div>
-    <div style="margin-top:4px">¡Gracias por su preferencia!</div>
-    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dotted #999; font-size: 9px; color: #777;">
-      <div>GO Admin S.A.S | NIT: 901479683-5</div>
-      <div>www.goadmin.io | 3113195711 | servicio@goadmin.io</div>
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Pre-Cuenta - ${tableName}</title>
+    <style>
+        @media print {
+            @page { margin: 5mm; size: 80mm auto; }
+            body { margin: 0; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.3; color: black; }
+        }
+        body {
+            width: 80mm;
+            margin: 0 auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.3;
+            color: black;
+            background: white;
+            padding: 10px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .business-name { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+        .business-info { font-size: 10px; margin-bottom: 3px; color: #333; }
+        .pre-cuenta-banner {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            border: 2px dashed #000;
+            padding: 6px;
+            margin: 8px 0;
+            letter-spacing: 2px;
+        }
+        .meta-info {
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 6px 0;
+            margin-bottom: 10px;
+            font-size: 10px;
+        }
+        .meta-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .meta-label { font-weight: bold; }
+        .items-header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        .item { margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px dotted #ccc; }
+        .item-line { display: flex; justify-content: space-between; margin-bottom: 1px; }
+        .item-name { font-weight: bold; font-size: 11px; }
+        .item-details { color: #555; font-size: 9px; margin-top: 1px; }
+        .totals {
+            border-top: 2px solid #000;
+            margin-top: 10px;
+            padding-top: 8px;
+        }
+        .total-line { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+        .total-final {
+            font-weight: bold;
+            font-size: 16px;
+            border-top: 2px solid #000;
+            padding-top: 6px;
+            margin-top: 6px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 10px;
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+            color: #444;
+        }
+        .footer-brand {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dotted #999;
+            font-size: 9px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        ${business?.logoUrl
+          ? `<img src="${business.logoUrl}" alt="${businessName}" style="max-height:60px;max-width:100%;margin:0 auto 6px;display:block" />`
+          : `<div class="business-name">${businessName}</div>`}
+        ${business?.logoUrl ? `<div class="business-name">${businessName}</div>` : ''}
+        ${business?.nit ? `<div class="business-info"><strong>NIT:</strong> ${business.nit}</div>` : ''}
+        ${business?.address ? `<div class="business-info">${business.address}</div>` : ''}
+        ${business?.city ? `<div class="business-info">${business.city}</div>` : ''}
+        ${business?.phone ? `<div class="business-info">Tel: ${business.phone}</div>` : ''}
+        ${business?.fiscal_responsibilities && business.fiscal_responsibilities.length > 0 ? `<div class="business-info"><strong>Régimen:</strong> ${business.fiscal_responsibilities.join(', ')}</div>` : ''}
+        ${branch?.name ? `<div class="business-info" style="margin-top:4px;font-weight:bold">Sucursal: ${branch.name}</div>` : ''}
+        ${branch?.address ? `<div class="business-info">${branch.address}</div>` : ''}
+        ${branch?.phone ? `<div class="business-info">Tel: ${branch.phone}</div>` : ''}
     </div>
-    <div style="margin-top: 8px; text-align: center;">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://goadmin.io" alt="QR" style="width: 80px; height: 80px;" />
-    </div>
-  </div>
-</body></html>`;
 
-    const printWindow = window.open('', '_blank', 'width=300,height=600');
+    <div class="pre-cuenta-banner">*** PRE-CUENTA ***</div>
+
+    <div class="meta-info">
+        <div class="meta-row"><span class="meta-label">Mesa:</span><span>${tableName}</span></div>
+        <div class="meta-row"><span class="meta-label">Fecha:</span><span>${dateStr}</span></div>
+        <div class="meta-row"><span class="meta-label">Hora:</span><span>${timeStr}</span></div>
+        <div class="meta-row"><span class="meta-label">Items:</span><span>${items.length} productos (${itemCount} unidades)</span></div>
+        ${serverName ? `<div class="meta-row"><span class="meta-label">Mesero:</span><span>${serverName}</span></div>` : ''}
+        ${driverName ? `<div class="meta-row"><span class="meta-label">Conductor:</span><span>${driverName}</span></div>` : ''}
+        ${deliveryAddress ? `<div class="meta-row"><span class="meta-label">Domicilio:</span><span>${deliveryAddress}</span></div>` : ''}
+    </div>
+
+    <div class="items-header">
+        <span>DESCRIPCION</span>
+        <span>TOTAL</span>
+    </div>
+
+    ${itemsHTML}
+
+    <div class="totals">
+        <div class="total-line"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
+        ${discountTotal > 0 ? `<div class="total-line"><span>Descuento:</span><span>-${formatCurrency(discountTotal)}</span></div>` : ''}
+        ${taxTotal > 0 ? `<div class="total-line"><span>Impuestos:</span><span>${formatCurrency(taxTotal)}</span></div>` : ''}
+        <div class="total-line total-final"><span>TOTAL:</span><span>${formatCurrency(total)}</span></div>
+    </div>
+
+    <div class="footer">
+        <div style="font-weight:bold;font-size:11px">*** NO ES FACTURA ***</div>
+        <div>Este documento es solo informativo</div>
+        <div style="margin-top:4px">¡Gracias por su preferencia!</div>
+        <div class="footer-brand">
+            <div>GO Admin S.A.S | NIT: 901479683-5</div>
+            <div>www.goadmin.io | 3113195711 | servicio@goadmin.io</div>
+        </div>
+        <div style="margin-top: 8px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://goadmin.io" alt="QR" style="width: 80px; height: 80px;" />
+        </div>
+    </div>
+</body>
+</html>`;
+
+    const printWindow = window.open('', '_blank', 'width=320,height=700');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      this.printWhenReady(printWindow);
+    }
+  }
+
+  /**
+   * Imprimir comanda de cocina consolidada (browser fallback).
+   * Recibe todos los items agrupados y genera un solo ticket.
+   */
+  static printComanda(
+    tableName: string,
+    serverName: string | undefined,
+    items: Array<{
+      productName: string;
+      quantity: number;
+      notes?: string | null;
+      station?: string | null;
+      variantData?: Record<string, string> | null;
+      modifiers?: Array<{ name: string; extraPrice: number }> | null;
+    }>,
+    business?: BusinessInfo,
+    branch?: BranchInfo,
+  ): void {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-CO');
+    const timeStr = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    const businessName = business?.name || 'Restaurante';
+
+    const stationLabels: Record<string, string> = {
+      kitchen: 'COCINA',
+      bar: 'BAR',
+      grill: 'PARRILLA',
+      dessert: 'POSTRES',
+      all: 'GENERAL',
+    };
+
+    const stations = Array.from(new Set(items.map((i) => i.station || 'all')));
+
+    const stationsHTML = stations.map((station) => {
+      const stationItems = items.filter((i) => (i.station || 'all') === station);
+      const stationLabel = stationLabels[station] || station.toUpperCase();
+
+      const stationItemsHTML = stationItems.map((item) => {
+        const variantEntries = item.variantData
+          ? Object.entries(item.variantData).filter(([, v]) => !!v)
+          : [];
+        const variantLine = variantEntries.length > 0
+          ? `<div class="item-details">${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join(' · ')}</div>`
+          : '';
+
+        const modifiersLine = item.modifiers && item.modifiers.length > 0
+          ? `<div class="item-details">${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatCurrency(m.extraPrice)})` : m.name).join(' · ')}</div>`
+          : '';
+
+        const notesLine = item.notes
+          ? `<div class="item-notes">>> ${item.notes}</div>`
+          : '';
+
+        return `
+    <div class="item">
+        <div class="item-line">
+            <span class="item-qty">${item.quantity}×</span>
+            <span class="item-name">${item.productName}</span>
+        </div>
+        ${variantLine}
+        ${modifiersLine}
+        ${notesLine}
+    </div>`;
+      }).join('');
+
+      return `
+    <div class="station-block">
+        <div class="station-header">=== ${stationLabel} ===</div>
+        ${stationItemsHTML}
+    </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Comanda - ${tableName}</title>
+    <style>
+        @media print {
+            @page { margin: 5mm; size: 80mm auto; }
+            body { margin: 0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4; color: black; }
+        }
+        body {
+            width: 80mm;
+            margin: 0 auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            color: black;
+            background: white;
+            padding: 10px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+        .business-name { font-size: 15px; font-weight: bold; }
+        .comanda-banner {
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            border: 2px dashed #000;
+            padding: 6px;
+            margin: 6px 0;
+            letter-spacing: 2px;
+        }
+        .meta-info {
+            border-bottom: 1px dashed #000;
+            padding: 4px 0;
+            margin-bottom: 8px;
+            font-size: 11px;
+        }
+        .meta-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .meta-label { font-weight: bold; }
+        .station-block { margin-bottom: 10px; }
+        .station-header {
+            font-size: 13px;
+            font-weight: bold;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
+        }
+        .item { margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px dotted #ccc; }
+        .item-line { display: flex; gap: 6px; align-items: baseline; }
+        .item-qty { font-weight: bold; font-size: 14px; min-width: 28px; }
+        .item-name { font-size: 12px; font-weight: bold; }
+        .item-details { color: #555; font-size: 10px; margin-top: 1px; margin-left: 34px; }
+        .item-notes { color: #333; font-size: 10px; font-style: italic; margin-top: 2px; margin-left: 34px; }
+        .footer {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 10px;
+            border-top: 1px dashed #000;
+            padding-top: 8px;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="business-name">${businessName}</div>
+        ${branch?.name ? `<div style="font-size:10px">${branch.name}</div>` : ''}
+    </div>
+
+    <div class="comanda-banner">*** COMANDA ***</div>
+
+    <div class="meta-info">
+        <div class="meta-row"><span class="meta-label">Mesa:</span><span>${tableName}</span></div>
+        <div class="meta-row"><span class="meta-label">Fecha:</span><span>${dateStr} ${timeStr}</span></div>
+        ${serverName ? `<div class="meta-row"><span class="meta-label">Mesero:</span><span>${serverName}</span></div>` : ''}
+        <div class="meta-row"><span class="meta-label">Items:</span><span>${items.length} productos</span></div>
+    </div>
+
+    ${stationsHTML}
+
+    <div class="footer">
+        <div>Comanda generada por GO Admin</div>
+        <div style="margin-top:4px;font-size:9px;color:#777">${dateStr} ${timeStr}</div>
+    </div>
+</body>
+</html>`;
+
+    const printWindow = window.open('', '_blank', 'width=320,height=700');
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();

@@ -141,20 +141,31 @@ const CatalogoProductos: React.FC = () => {
         // Ordenar resultados
         mainProductsQuery = mainProductsQuery.order(filters.ordenarPor, { ascending: true });
         
-        // Ejecutar consulta
-        const { data: mainProductsData, error } = await mainProductsQuery;
-        
-        if (error) {
-          console.error('Error de Supabase al cargar productos:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-          });
-          throw new Error(`Supabase error: ${error.message || error.code || 'Unknown error'}`);
+        // El proyecto de Supabase limita cada respuesta a 1000 filas (config "Max Rows" de PostgREST),
+        // sin importar el .limit() del cliente. Para traer TODOS los productos hay que paginar con .range().
+        const PAGE_SIZE = 1000;
+        let mainProductsData: any[] = [];
+        for (let page = 0; ; page++) {
+          const desde = page * PAGE_SIZE;
+          const hasta = desde + PAGE_SIZE - 1;
+          const { data: pageData, error } = await mainProductsQuery.range(desde, hasta);
+
+          if (error) {
+            console.error('Error de Supabase al cargar productos:', {
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+              code: error.code,
+            });
+            throw new Error(`Supabase error: ${error.message || error.code || 'Unknown error'}`);
+          }
+
+          if (!pageData || pageData.length === 0) break;
+          mainProductsData = mainProductsData.concat(pageData);
+          if (pageData.length < PAGE_SIZE) break; // última página
         }
         
-        if (!mainProductsData || mainProductsData.length === 0) {
+        if (mainProductsData.length === 0) {
           setProductos([]);
           setLoading(false);
           return;

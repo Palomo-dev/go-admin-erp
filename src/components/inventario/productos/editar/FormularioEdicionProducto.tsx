@@ -239,6 +239,15 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           .order('display_order', { ascending: true });
 
         const images = (imagesData || []).map((img: any) => {
+          // Si es una URL externa, usarla directamente
+          if (img.storage_path?.startsWith('http://') || img.storage_path?.startsWith('https://')) {
+            return {
+              id: img.id,
+              url: img.storage_path,
+              storagePath: img.storage_path,
+              is_primary: img.is_primary || false
+            };
+          }
           const bucket = img.storage_path?.startsWith('products/') ? 'product-images' : 'organization_images';
           const { data: urlData } = supabase.storage
             .from(bucket)

@@ -35,6 +35,11 @@ export function getPublicUrl(storagePath: string): string {
     return '';
   }
   
+  // Si es una URL externa (http/https), retornarla directamente
+  if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+    return storagePath;
+  }
+  
   const supabase = createClientComponentClient();
   const bucket = getBucketName(storagePath);
   

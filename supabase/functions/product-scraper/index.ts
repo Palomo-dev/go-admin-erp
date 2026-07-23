@@ -188,7 +188,10 @@ function parseProductDetail(html: string, baseUrl: string): DetailData {
 }
 
 // Patrones de imágenes que NO son fotos de producto (íconos, logos, placeholders, medios de pago, redes, etc.)
-const IMAGE_BLOCKLIST = /(logo|icon|sprite|banner|flag|payment|favicon|placeholder|no[-_]?image|noimage|sin[-_]?imagen|default|blank|loader|loading|spinner|pixel|transparent|swatch|social|whatsapp|facebook|instagram|twitter|tiktok|youtube|visa|mastercard|amex|paypal|pse|addi|sistecredito|nequi|baloto|efecty|badge|sello|seal|garantia|envio|shipping|cintillo|empty|blur|skeleton)/i;
+const IMAGE_BLOCKLIST = /(logo|icon|sprite|banner|flag|payment|favicon|placeholder|no[-_]?image|noimage|sin[-_]?imagen|blank|loader|loading|spinner|pixel|transparent|swatch|social|whatsapp|facebook|instagram|twitter|tiktok|youtube|visa|mastercard|amex|paypal|sistecredito|nequi|baloto|efecty|sello|garantia|envio|shipping|cintillo|blur|skeleton)/i;
+// Palabras cortas/ambiguas: solo bloquear como palabra completa para evitar falsos positivos
+// (p. ej. "pse" aparece dentro de dominios como "copservir.vteximg.com.br" sin ser el medio de pago PSE)
+const IMAGE_BLOCKLIST_STRICT = /\b(default|pse|addi|badge|seal|empty)\b/i;
 // Tamaños diminutos típicos de íconos (16x16 ... 64x64), no de fotos de producto
 const IMAGE_TINY_SIZE = /[_\-\/](?:16|24|32|40|48|56|64)x(?:16|24|32|40|48|56|64)[_\-\/.]/;
 // Enlaces que apuntan a la página de detalle de un producto (formato común en e-commerce)
@@ -197,6 +200,7 @@ const PRODUCT_LINK_RE = /\/(?:product|products|producto|productos|item|items|dp|
 function isProductImage(url: string): boolean {
   if (!url || url.startsWith("data:")) return false;
   if (IMAGE_BLOCKLIST.test(url)) return false;
+  if (IMAGE_BLOCKLIST_STRICT.test(url)) return false;
   if (IMAGE_TINY_SIZE.test(url)) return false;
   return true;
 }
@@ -1196,19 +1200,32 @@ async function uploadImage(imageUrl: string, productId: number, index: number): 
     const res = await fetch(imageUrl, {
       headers: { "User-Agent": BROWSER_HEADERS["User-Agent"] },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log(`[uploadImage] Falló descarga (${res.status}) para producto ${productId}: ${imageUrl.substring(0, 100)}`);
+      return null;
+    }
     const contentType = res.headers.get("content-type") || "image/jpeg";
-    if (!contentType.startsWith("image/")) return null;
+    if (!contentType.startsWith("image/")) {
+      console.log(`[uploadImage] Content-type no es imagen (${contentType}) para producto ${productId}: ${imageUrl.substring(0, 100)}`);
+      return null;
+    }
     const buffer = await res.arrayBuffer();
-    if (buffer.byteLength > 5 * 1024 * 1024) return null;
+    if (buffer.byteLength > 5 * 1024 * 1024) {
+      console.log(`[uploadImage] Imagen demasiado grande (${buffer.byteLength} bytes) para producto ${productId}`);
+      return null;
+    }
     const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
     const path = `products/${productId}/scraped_${Date.now()}_${index}.${ext}`;
     const { error } = await supabase.storage
       .from("product-images")
       .upload(path, buffer, { contentType, upsert: false });
-    if (error) return null;
+    if (error) {
+      console.log(`[uploadImage] Error subiendo a storage para producto ${productId}: ${error.message}`);
+      return null;
+    }
     return path;
-  } catch (_) {
+  } catch (e) {
+    console.log(`[uploadImage] Excepción para producto ${productId}: ${(e as Error).message}`);
     return null;
   }
 }
@@ -1253,13 +1270,26 @@ async function uploadProductImages(productId: number, imageUrls: string[], altTe
   for (let i = 0; i < uploads.length; i++) {
     const path = uploads[i];
     if (path) {
-      await supabase.from("product_images").insert({
+      const { error: insErr } = await supabase.from("product_images").insert({
         product_id: productId,
         storage_path: path,
         display_order: i,
         is_primary: isPrimary,
         alt_text: altText.substring(0, 100),
       });
+      if (insErr) console.log(`[uploadProductImages] error insertando (storage) producto ${productId}: ${insErr.message}`);
+      isPrimary = false;
+    } else if (urls[i]) {
+      // Fallback: si la descarga falló, guardar la URL externa directamente
+      // El frontend detecta URLs http/https y las usa directamente sin getPublicUrl
+      const { error: insErr } = await supabase.from("product_images").insert({
+        product_id: productId,
+        storage_path: urls[i],
+        display_order: i,
+        is_primary: isPrimary,
+        alt_text: altText.substring(0, 100),
+      });
+      if (insErr) console.log(`[uploadProductImages] error insertando (externa) producto ${productId}: ${insErr.message}`);
       isPrimary = false;
     }
   }

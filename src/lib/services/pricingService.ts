@@ -54,7 +54,7 @@ export async function getEnterprisePricing(): Promise<EnterprisePricing> {
       moduleUnitPrice: 49,
       branchUnitPrice: 59,
       userUnitPrice: 19,
-      aiCreditUnitPrice: 1,
+      aiCreditUnitPrice: 3,
       currency: 'usd',
     };
   }

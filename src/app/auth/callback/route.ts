@@ -313,9 +313,12 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
     if (signupData.joinType === 'create' && signupData.organizationName) {
       console.log('2️⃣ Creating organization...');
 
-      // Determinar plan_id desde el nombre del plan (soporta sufijos como 'business-yearly')
+      // Determinar plan_id desde el nombre del plan (soporta sufijos como 'ultimate-yearly')
       const planSlug = (signupData.subscriptionPlan || '').toLowerCase();
-      const planId = planSlug.startsWith('business') ? 3 : (planSlug.startsWith('pro') ? 2 : 1);
+      const planId = planSlug.startsWith('ultimate') ? 5 : (planSlug.startsWith('business') ? 3 : (planSlug.startsWith('pro') ? 2 : 1));
+
+      // Determinar billing_period desde subscriptionPlan si billingPeriod no está explícitamente
+      const billingPeriod = signupData.billingPeriod || (planSlug.includes('yearly') ? 'yearly' : 'monthly');
 
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
@@ -447,14 +450,14 @@ export async function completeSignupAfterEmailConfirmation(supabase: any, user: 
       // insertar la organización. Aquí solo la actualizamos con período de facturación,
       // trial y datos de Stripe capturados en el signup.
       console.log('5️⃣ Updating subscription with real plan data...');
-      const trialDays = planId === 3 ? 30 : (planId === 2 ? 15 : 0);
-      const periodDays = signupData.billingPeriod === 'yearly' ? 365 : 30;
+      const trialDays = planId === 5 ? 30 : (planId === 3 ? 30 : (planId === 2 ? 15 : 0));
+      const periodDays = billingPeriod === 'yearly' ? 365 : 30;
       
       const { error: subscriptionError } = await supabase
         .from('subscriptions')
         .update({
           plan_id: planId,
-          billing_period: signupData.billingPeriod || 'monthly',
+          billing_period: billingPeriod,
           skip_trial: !!signupData.skipTrial,
           trial_start: new Date().toISOString(),
           trial_end: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString(),

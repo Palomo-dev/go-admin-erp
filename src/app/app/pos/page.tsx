@@ -99,6 +99,12 @@ export default function POSPage() {
 
   const removeCart = async (cartId: string) => {
     try {
+      // Marcar kitchen_ticket como entregado si el carrito tenía uno
+      const cartToRemove = carts.find(c => c.id === cartId);
+      if (cartToRemove?.kitchen_ticket_id) {
+        await KitchenService.markTicketAsDelivered(cartToRemove.kitchen_ticket_id);
+      }
+
       const updatedCarts = carts.filter(cart => cart.id !== cartId);
       setCarts(updatedCarts);
       
@@ -162,9 +168,10 @@ export default function POSPage() {
 
   const handleCheckoutComplete = async (sale: Sale) => {
     try {
-      // La impresión del recibo la realiza el botón "Imprimir Recibo" del diálogo
-      // (PrintService con datos completos del negocio). No imprimir aquí para evitar
-      // duplicados y datos incompletos.
+      // Marcar kitchen_ticket como entregado si existe
+      if (checkoutCart?.kitchen_ticket_id) {
+        await KitchenService.markTicketAsDelivered(checkoutCart.kitchen_ticket_id);
+      }
 
       // Remover el carrito completado
       if (checkoutCart) {
@@ -243,6 +250,9 @@ export default function POSPage() {
       serverName,
       items: ticketItems,
     });
+
+    // Guardar ticketId en el carrito para追踪amiento
+    updateCartInState({ ...cart, kitchen_ticket_id: ticketResult.ticketId });
 
     // 2. Encolar impresión física via print_jobs (para el print agent)
     const { enqueued, skippedStations } = await PrintJobsService.enqueueKitchenTicket(

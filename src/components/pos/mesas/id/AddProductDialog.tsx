@@ -154,7 +154,10 @@ export function AddProductDialog({
     addToCart({ ...variant, station: inheritedStation, requires_preparation: inheritedRequiresPreparation, categories: selectedParentProduct?.categories }, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
-    variantDialogOpeningRef.current = false;
+    // Retrasar reset del ref para prevenir race condition en móvil
+    setTimeout(() => {
+      variantDialogOpeningRef.current = false;
+    }, 100);
   };
 
   // Agregar producto al carrito
@@ -682,8 +685,12 @@ export function AddProductDialog({
         onOpenChange={(open) => {
           setShowVariantDialog(open);
           if (!open) {
-            variantDialogOpeningRef.current = false;
             setSelectedParentProduct(null);
+            // Retrasar el reset del ref para que el handleClose del padre
+            // aún vea variantDialogOpeningRef=true y no se cierre en móvil
+            setTimeout(() => {
+              variantDialogOpeningRef.current = false;
+            }, 100);
           }
         }}
         product={selectedParentProduct}

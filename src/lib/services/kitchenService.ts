@@ -382,6 +382,29 @@ class KitchenService {
       })),
     };
   }
+
+  /**
+   * Marcar un ticket como entregado (cuando se completa checkout, se elimina carrito o se procesa deuda)
+   */
+  async markTicketAsDelivered(ticketId: number) {
+    if (!ticketId) return;
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from('kitchen_tickets')
+        .update({ status: 'delivered', updated_at: now })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+
+      await supabase
+        .from('kitchen_ticket_items')
+        .update({ status: 'delivered', updated_at: now })
+        .eq('kitchen_ticket_id', ticketId);
+    } catch (error) {
+      console.error('Error marcando ticket como entregado:', error);
+    }
+  }
 }
 
 export default new KitchenService();

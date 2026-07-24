@@ -210,7 +210,7 @@ export default function ConductoresPage() {
   const handleStatusChange = async (driverId: string, isActive: boolean) => {
     setIsSaving(true);
     try {
-      await transportService.updateDriver(driverId, { is_active_driver: isActive });
+      await transportService.updateDriver(driverId, { is_active: isActive });
       toast({
         title: 'Éxito',
         description: isActive ? 'Conductor activado' : 'Conductor desactivado',

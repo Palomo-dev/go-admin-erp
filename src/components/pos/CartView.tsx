@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, Clock, CheckCircle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { POSService } from '@/lib/services/posService';
 import { PrintService } from '@/lib/services/printService';
+import { KitchenService } from '@/lib/services/kitchenService';
+import { supabase } from '@/lib/supabase/config';
 import { Cart, CartItem, Sale, SaleItem, Customer } from './types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { TaxSummary } from './TaxSummary';
@@ -61,6 +63,45 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
   // Estado para envío de comanda
   const [isSendingComanda, setIsSendingComanda] = useState(false);
+
+  // Estado del kitchen ticket en tiempo real
+  const [kitchenStatus, setKitchenStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!cart.kitchen_ticket_id) {
+      setKitchenStatus(null);
+      return;
+    }
+
+    // Cargar estado inicial
+    KitchenService.getKitchenTickets().then(tickets => {
+      const ticket = tickets.find(t => t.id === cart.kitchen_ticket_id);
+      if (ticket) setKitchenStatus(ticket.status);
+    }).catch(() => {});
+
+    // Suscribirse a cambios en tiempo real del ticket específico
+    const channel = supabase
+      .channel(`kitchen_ticket_${cart.kitchen_ticket_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'kitchen_tickets',
+          filter: `id=eq.${cart.kitchen_ticket_id}`
+        },
+        (payload: any) => {
+          if (payload.new?.status) {
+            setKitchenStatus(payload.new.status);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [cart.kitchen_ticket_id]);
 
   // Detectar si hay items que requieren preparación
   const hasPreparationItems = cart.items.some(item => {
@@ -126,6 +167,11 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const handleHoldWithDebt = async () => {
     setIsProcessingHoldWithDebt(true);
     try {
+      // Marcar kitchen_ticket como entregado si existe
+      if (cart.kitchen_ticket_id) {
+        await KitchenService.markTicketAsDelivered(cart.kitchen_ticket_id);
+      }
+
       const result = await POSService.holdCartWithDebt({
         cartId: cart.id,
         reason: holdWithDebtReason || 'Sin motivo especificado',
@@ -325,6 +371,22 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                     <span className="hidden xs:inline">Deuda</span>
                   </Badge>
                 )}
+                {cart.kitchen_ticket_id && kitchenStatus && (() => {
+                  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+                    new: { label: 'Enviado a cocina', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700', icon: Send },
+                    preparing: { label: 'En preparación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-300 dark:border-orange-700', icon: ChefHat },
+                    ready: { label: '¡Listo!', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700 animate-pulse', icon: CheckCircle },
+                    delivered: { label: 'Entregado', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300 dark:border-gray-700', icon: Check },
+                  };
+                  const config = statusConfig[kitchenStatus] || statusConfig.new;
+                  const Icon = config.icon;
+                  return (
+                    <Badge variant="outline" className={`text-xs px-1.5 py-0 flex items-center gap-1 ${config.color}`}>
+                      <Icon className="h-3 w-3" />
+                      <span className="hidden xs:inline">{config.label}</span>
+                    </Badge>
+                  );
+                })()}
               </CardTitle>
               {isOnHold && (
                 <Button
@@ -399,6 +461,26 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                             <h4 className="font-medium text-xs sm:text-sm dark:text-gray-100 text-gray-900 line-clamp-2 leading-tight" title={item.product.name}>
                               {item.product.name}
                             </h4>
+
+                            {/* Badge de estado de cocina si el ticket fue enviado */}
+                            {cart.kitchen_ticket_id && kitchenStatus && (() => {
+                              const product = item.product as any;
+                              const cat = product?.category || product?.categories;
+                              const requiresPrep = Array.isArray(cat) ? cat[0]?.requires_preparation : cat?.requires_preparation;
+                              if (!requiresPrep) return null;
+                              const itemStatusConfig: Record<string, { label: string; color: string }> = {
+                                new: { label: 'Enviado a cocina', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300 dark:border-yellow-700' },
+                                preparing: { label: 'En preparación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-300 dark:border-orange-700' },
+                                ready: { label: '¡Listo!', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700 animate-pulse' },
+                                delivered: { label: 'Entregado', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300 dark:border-gray-700' },
+                              };
+                              const cfg = itemStatusConfig[kitchenStatus] || itemStatusConfig.new;
+                              return (
+                                <Badge variant="outline" className={`text-[0.6rem] sm:text-[0.65rem] px-1 py-0 mt-1 ${cfg.color}`}>
+                                  {cfg.label}
+                                </Badge>
+                              );
+                            })()}
 
                             {/* Badges de variantes seleccionadas */}
                             {variantEntries.length > 0 && (

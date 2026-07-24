@@ -446,10 +446,10 @@ const SidebarNavigationComponent = ({
       items: [
         { 
           name: t('notifications'), 
-          href: "/app/notificaciones", 
+          href: userData?.role && ['admin', 'owner', 'super admin', 'admin de organización'].includes(userData.role.toLowerCase()) ? "/app/notificaciones" : "/app/notificaciones/bandeja", 
           icon: <Bell size={18} />,
           moduleCode: 'notifications',
-          submenu: [
+          submenu: userData?.role && ['admin', 'owner', 'super admin', 'admin de organización'].includes(userData.role.toLowerCase()) ? [
             { name: "Dashboard", href: "/app/notificaciones", icon: <Home size={16} /> },
             { name: "Bandeja", href: "/app/notificaciones/bandeja", icon: <Inbox size={16} /> },
             { name: "Alertas", href: "/app/notificaciones/alertas", icon: <Bell size={16} /> },
@@ -458,6 +458,8 @@ const SidebarNavigationComponent = ({
             { name: "Plantillas", href: "/app/notificaciones/plantillas", icon: <FileText size={16} /> },
             { name: "Logs de Envío", href: "/app/notificaciones/logs", icon: <Activity size={16} /> },
             { name: "Preferencias", href: "/app/notificaciones/preferencias", icon: <Settings size={16} /> },
+          ] : [
+            { name: "Bandeja", href: "/app/notificaciones/bandeja", icon: <Inbox size={16} /> },
           ]
         },
         { 

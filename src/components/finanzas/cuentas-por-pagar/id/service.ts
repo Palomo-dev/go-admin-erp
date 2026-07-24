@@ -281,6 +281,8 @@ export class CuentaPorPagarDetailService {
     const branchId = getCurrentBranchId();
     const createdBy = await getCurrentUserId();
 
+    if (!branchId) throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
+
     try {
       // Crear registro de pago
       const paymentData: any = {

@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
+import { SearchSelectCombobox, type SearchSelectOption } from '../SearchSelectCombobox';
+import { Store } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -58,11 +60,12 @@ export function NuevaOrdenCompraForm() {
   const [notes, setNotes] = useState<string>('');
   const [items, setItems] = useState<OrderItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
 
   // Datos de selectores
-  const [suppliers, setSuppliers] = useState<{ id: number; uuid: string; name: string }[]>([]);
-  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
-  const [products, setProducts] = useState<{ id: number; uuid: string; sku: string; name: string }[]>([]);
+  const [suppliers, setSuppliers] = useState<SearchSelectOption[]>([]);
+  const [branches, setBranches] = useState<SearchSelectOption[]>([]);
+  const [products, setProducts] = useState<ProductOption[]>([]);
 
   // Item temporal para agregar
   const [selectedProduct, setSelectedProduct] = useState<string>('');
@@ -168,14 +171,14 @@ export function NuevaOrdenCompraForm() {
 
       if (error) throw error;
 
-      toast({
-        title: sendToSupplier ? 'Orden enviada' : 'Orden creada',
-        description: sendToSupplier 
-          ? 'La orden ha sido creada y enviada al proveedor'
-          : 'La orden ha sido guardada como borrador'
-      });
-
       if (data) {
+        setHasSaved(true);
+        toast({
+          title: sendToSupplier ? 'Orden enviada' : 'Orden creada',
+          description: sendToSupplier 
+            ? 'La orden ha sido creada y enviada al proveedor'
+            : 'La orden ha sido guardada como borrador'
+        });
         router.push(`/app/inventario/ordenes-compra/${data.uuid}`);
       } else {
         router.push('/app/inventario/ordenes-compra');
@@ -227,34 +230,24 @@ export function NuevaOrdenCompraForm() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="dark:text-gray-300">Proveedor *</Label>
-                  <Select value={supplierId} onValueChange={setSupplierId}>
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700">
-                      <SelectValue placeholder="Seleccionar proveedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchSelectCombobox
+                    options={suppliers}
+                    value={supplierId}
+                    onSelect={(opt) => setSupplierId(opt ? opt.id.toString() : '')}
+                    placeholder="Buscar proveedor..."
+                    icon={<Truck className="h-4 w-4 text-gray-400" />}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label className="dark:text-gray-300">Sucursal Destino *</Label>
-                  <Select value={branchId} onValueChange={setBranchId}>
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700">
-                      <SelectValue placeholder="Seleccionar sucursal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches.map((b) => (
-                        <SelectItem key={b.id} value={b.id.toString()}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchSelectCombobox
+                    options={branches}
+                    value={branchId}
+                    onSelect={(opt) => setBranchId(opt ? opt.id.toString() : '')}
+                    placeholder="Buscar sucursal..."
+                    icon={<Store className="h-4 w-4 text-gray-400" />}
+                  />
                 </div>
               </div>
 
@@ -295,9 +288,14 @@ export function NuevaOrdenCompraForm() {
                 <div className="space-y-1">
                   <Label className="text-xs text-gray-500 dark:text-gray-400">Buscar Producto</Label>
                   <ProductSearchCombobox
-                    products={products as ProductOption[]}
+                    products={products}
                     value={selectedProduct}
-                    onSelect={(product) => setSelectedProduct(product ? product.id.toString() : '')}
+                    onSelect={(product) => {
+                      setSelectedProduct(product ? product.id.toString() : '');
+                      if (product?.cost && product.cost > 0) {
+                        setItemCost(product.cost.toString());
+                      }
+                    }}
                     placeholder="Buscar por nombre o SKU..."
                   />
                 </div>
@@ -436,7 +434,7 @@ export function NuevaOrdenCompraForm() {
               <div className="pt-4 space-y-3">
                 <Button
                   onClick={() => handleSubmit(false)}
-                  disabled={isSaving}
+                  disabled={isSaving || hasSaved}
                   variant="outline"
                   className="w-full dark:border-gray-700"
                 >
@@ -449,7 +447,7 @@ export function NuevaOrdenCompraForm() {
                 </Button>
                 <Button
                   onClick={() => handleSubmit(true)}
-                  disabled={isSaving}
+                  disabled={isSaving || hasSaved}
                   className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   {isSaving ? (

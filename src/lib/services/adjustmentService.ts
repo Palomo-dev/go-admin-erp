@@ -92,19 +92,33 @@ export const ADJUSTMENT_TYPES = [
   { value: 'loss', label: 'Salida (Pérdida)' },
 ];
 
-// Razones de ajuste
-export const ADJUSTMENT_REASONS = [
+// Razones para ajustes de entrada (gain)
+export const GAIN_REASONS = [
   { value: 'physical_count', label: 'Conteo físico programado' },
-  { value: 'discrepancy', label: 'Discrepancia detectada' },
+  { value: 'discrepancy', label: 'Discrepancia detectada (sobrante)' },
+  { value: 'initial_setup', label: 'Configuración inicial' },
+  { value: 'purchase_return', label: 'Devolución de compra' },
+  { value: 'production_input', label: 'Ingreso por producción' },
+  { value: 'audit', label: 'Auditoría' },
+  { value: 'system_error', label: 'Error del sistema' },
+  { value: 'other', label: 'Otro' }
+];
+
+// Razones para ajustes de salida (loss)
+export const LOSS_REASONS = [
+  { value: 'physical_count', label: 'Conteo físico programado' },
+  { value: 'discrepancy', label: 'Discrepancia detectada (faltante)' },
   { value: 'damaged', label: 'Producto dañado' },
   { value: 'expired', label: 'Producto vencido' },
   { value: 'theft', label: 'Robo/Hurto' },
   { value: 'production_waste', label: 'Merma de producción' },
   { value: 'system_error', label: 'Error del sistema' },
-  { value: 'initial_setup', label: 'Configuración inicial' },
   { value: 'audit', label: 'Auditoría' },
   { value: 'other', label: 'Otro' }
 ];
+
+// Razones de ajuste (compatibilidad - une ambas listas)
+export const ADJUSTMENT_REASONS = [...GAIN_REASONS, ...LOSS_REASONS];
 
 class AdjustmentService {
   /**
@@ -187,6 +201,10 @@ class AdjustmentService {
           branches (
             id,
             name
+          ),
+          creator:created_by (
+            id,
+            email
           )
         `)
         .eq('id', adjustmentId)

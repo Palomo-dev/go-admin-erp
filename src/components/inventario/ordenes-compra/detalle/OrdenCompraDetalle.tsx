@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderWithItems } from '@/lib/services/purchaseOrderService';
+import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +41,12 @@ import {
   Building2,
   Calendar,
   FileText,
-  CheckCircle
+  CheckCircle,
+  Mail,
+  Phone,
+  User,
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 
@@ -66,6 +72,10 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const [showReceiveDialog, setShowReceiveDialog] = useState(false);
   const [receivedQuantities, setReceivedQuantities] = useState<Record<number, number>>({});
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Estados para factura y cuenta por pagar vinculadas
+  const [linkedInvoice, setLinkedInvoice] = useState<{ id: number; number_ext: string; total: number; status: string } | null>(null);
+  const [linkedPayable, setLinkedPayable] = useState<{ id: number; balance: number; status: string } | null>(null);
 
   // Cargar datos
   const loadData = useCallback(async () => {
@@ -94,6 +104,25 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
         quantities[item.id] = item.received_quantity || 0;
       });
       setReceivedQuantities(quantities);
+
+      // Buscar factura vinculada y cuenta por pagar
+      if (data.id) {
+        const { data: invoice } = await supabase
+          .from('invoice_purchase')
+          .select('id, number_ext, total, status')
+          .eq('po_id', data.id)
+          .single();
+        setLinkedInvoice(invoice as any);
+
+        if (invoice) {
+          const { data: payable } = await supabase
+            .from('accounts_payable')
+            .select('id, balance, status')
+            .eq('invoice_id', (invoice as any).id)
+            .single();
+          setLinkedPayable(payable as any);
+        }
+      }
     } catch (error: any) {
       console.error('Error cargando orden:', error);
       toast({
@@ -442,6 +471,62 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                   {formatCurrency(order.total || 0)}
                 </span>
               </div>
+
+              {/* Info de contacto del proveedor */}
+              {(order.suppliers as any)?.email || (order.suppliers as any)?.phone || (order.suppliers as any)?.contact_name ? (
+                <div className="pt-3 border-t dark:border-gray-700 space-y-2">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Contacto del Proveedor</p>
+                  {(order.suppliers as any)?.contact_name && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <User className="h-3.5 w-3.5" />
+                      {(order.suppliers as any).contact_name}
+                    </div>
+                  )}
+                  {(order.suppliers as any)?.email && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Mail className="h-3.5 w-3.5" />
+                      {(order.suppliers as any).email}
+                    </div>
+                  )}
+                  {(order.suppliers as any)?.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Phone className="h-3.5 w-3.5" />
+                      {(order.suppliers as any).phone}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Factura y cuenta por pagar vinculadas */}
+              {linkedInvoice && (
+                <div className="pt-3 border-t dark:border-gray-700 space-y-2">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Documentos Vinculados</p>
+                  <Link
+                    href={`/app/finanzas/facturas-compra/${linkedInvoice.id}`}
+                    className="flex items-center justify-between p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+                      <Receipt className="h-4 w-4" />
+                      Factura {linkedInvoice.number_ext || `#${linkedInvoice.id}`}
+                    </span>
+                    <Badge variant="outline" className="text-xs">{linkedInvoice.status}</Badge>
+                  </Link>
+                  {linkedPayable && (
+                    <Link
+                      href={`/app/finanzas/cuentas-por-pagar`}
+                      className="flex items-center justify-between p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                    >
+                      <span className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+                        <CreditCard className="h-4 w-4" />
+                        Cuenta por Pagar
+                      </span>
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                        {formatCurrency(linkedPayable.balance)}
+                      </span>
+                    </Link>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

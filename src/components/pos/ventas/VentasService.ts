@@ -458,9 +458,8 @@ export class VentasService {
   }
 
   // Sesión de caja actual
-  static async getCurrentCashSession(): Promise<CashSession | null> {
+  static async getCurrentCashSession(branchId: number): Promise<CashSession | null> {
     const organizationId = getOrganizationId();
-    const branchId = getCurrentBranchId();
 
     const { data, error } = await supabase
       .from('cash_sessions')
@@ -484,7 +483,9 @@ export class VentasService {
   static async openCashSession(initialAmount: number, notes?: string): Promise<CashSession> {
     const organizationId = getOrganizationId();
     const branchId = getCurrentBranchId();
-    
+
+    if (!branchId) throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
+
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('Usuario no autenticado');
 

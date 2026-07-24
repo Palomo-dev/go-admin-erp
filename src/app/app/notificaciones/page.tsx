@@ -12,6 +12,7 @@ import {
   type NotificationChannel,
   type NotificationRow,
 } from '@/lib/services/notificacionesDashboardService';
+import { Loader2 } from 'lucide-react';
 import {
   NotificacionesHeader,
   NotificacionesKPIs,
@@ -35,6 +36,43 @@ export default function NotificacionesPage() {
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingRole, setCheckingRole] = useState(true);
+
+  // Verificar rol del usuario
+  useEffect(() => {
+    const checkRole = async () => {
+      const userId = await getCurrentUserId();
+      if (!userId || !organizationId) {
+        setCheckingRole(false);
+        return;
+      }
+
+      try {
+        const { supabase } = await import('@/lib/supabase/config');
+        const { data } = await supabase
+          .from('organization_members')
+          .select('is_super_admin, role_id, roles(name)')
+          .eq('organization_id', organizationId)
+          .eq('user_id', userId)
+          .single();
+
+        if (data) {
+          const roleName = (data as any).roles?.name?.toLowerCase() || '';
+          const admin = data.is_super_admin || roleName === 'admin' || roleName === 'owner' || roleName === 'super admin' || roleName === 'admin de organización';
+          setIsAdmin(admin);
+          if (!admin) {
+            router.replace('/app/notificaciones/bandeja');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error verificando rol:', error);
+      }
+      setCheckingRole(false);
+    };
+    checkRole();
+  }, [organizationId, router]);
 
   // Cargar todos los datos
   const loadData = useCallback(async () => {
@@ -132,6 +170,24 @@ export default function NotificacionesPage() {
       toast({ title: 'Error', description: 'No se pudo reintentar el envío', variant: 'destructive' });
     }
   };
+
+  // Loading mientras verifica rol
+  if (checkingRole) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  // Si no es admin, no renderizar el dashboard (ya fue redirigido)
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">

@@ -15,6 +15,7 @@ export interface ProductOption {
   unit_code?: string;
   category?: string;
   status?: string;
+  cost?: number;
 }
 
 interface ProductSearchComboboxProps {

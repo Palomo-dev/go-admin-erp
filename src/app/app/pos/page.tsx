@@ -14,12 +14,16 @@ import { CartTabs } from '@/components/pos/CartTabs';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { POSService } from '@/lib/services/posService';
 import { useOrganization, getCurrentBranchIdWithFallback, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { Product, Customer, Cart, Sale, CartItemModifier } from '@/components/pos/types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { VentasService, DailySummary, CashSession } from '@/components/pos/ventas';
+import { PrintJobsService } from '@/lib/services/printJobsService';
+import { toast } from 'sonner';
 
 export default function POSPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
   const [carts, setCarts] = useState<Cart[]>([]);
   const [activeCartId, setActiveCartId] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>();
@@ -33,17 +37,17 @@ export default function POSPage() {
 
   // Cargar datos iniciales
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && branchFilter !== null) {
       initializePOS();
       loadDashboardData();
     }
-  }, [organization]);
+  }, [organization, branchFilter]);
 
   const loadDashboardData = async () => {
     try {
       const [summary, session] = await Promise.all([
         VentasService.getDailySummary(),
-        VentasService.getCurrentCashSession()
+        VentasService.getCurrentCashSession(branchFilter)
       ]);
       setDailySummary(summary);
       setCashSession(session);
@@ -184,6 +188,32 @@ export default function POSPage() {
   const handleHoldCart = (cart: Cart, reason?: string) => {
     updateCartInState(cart);
     alert(`Carrito puesto en espera${reason ? ': ' + reason : ''}`);
+  };
+
+  const handleSendComanda = async (cart: Cart) => {
+    if (!cart.branch_id) return;
+    const { enqueued, skippedStations } = await PrintJobsService.enqueueKitchenTicketFromSale(
+      cart.branch_id,
+      {
+        saleId: cart.id,
+        createdAt: new Date().toISOString(),
+        items: cart.items.map((item) => ({
+          productName: item.product?.name || 'Producto',
+          quantity: item.quantity,
+          productId: item.product_id,
+          notes: item.notes || null,
+          variantData: (item.product as any)?.variant_data || null,
+          modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+        })),
+        businessName: organization?.name,
+        branchName: undefined,
+      }
+    );
+    if (enqueued > 0) {
+      toast.success(`Comanda enviada (${enqueued} impresora${enqueued > 1 ? 's' : ''})`);
+    } else {
+      toast.info('No hay impresoras configuradas para las estaciones de los productos');
+    }
   };
 
   // Obtener carrito activo
@@ -413,6 +443,7 @@ export default function POSPage() {
                   onCartUpdate={handleCartUpdate}
                   onCheckout={handleCheckout}
                   onHold={handleHoldCart}
+                  onSendComanda={handleSendComanda}
                 />
               </div>
             )}

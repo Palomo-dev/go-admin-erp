@@ -85,6 +85,7 @@ export const saldosAFavorService = {
   async crear(input: CrearSaldoInput): Promise<string> {
     const userId = await getCurrentUserId();
     const branchId = getCurrentBranchId();
+    if (!branchId) throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
     const { data, error } = await supabase.rpc('fn_create_customer_credit', {
       p_org: input.organizationId,
       p_customer: input.customerId,

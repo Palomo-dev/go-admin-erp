@@ -89,6 +89,8 @@ class FoliosService {
   async getFolios(filters?: {
     status?: 'open' | 'closed' | 'all';
     reservation_id?: string;
+    organizationId?: number;
+    branchId?: number | null;
   }): Promise<Folio[]> {
     try {
       let query = supabase
@@ -105,6 +107,8 @@ class FoliosService {
             checkin,
             checkout,
             customer_id,
+            organization_id,
+            branch_id,
             customers (
               first_name,
               last_name,
@@ -120,6 +124,12 @@ class FoliosService {
 
       if (filters?.reservation_id) {
         query = query.eq('reservation_id', filters.reservation_id);
+      }
+
+      if (filters?.branchId) {
+        query = query.eq('reservations.branch_id', filters.branchId);
+      } else if (filters?.organizationId) {
+        query = query.eq('reservations.organization_id', filters.organizationId);
       }
 
       const { data, error } = await query;
@@ -240,6 +250,10 @@ class FoliosService {
         try {
           const orgId = getOrganizationId();
           const branchId = getCurrentBranchId();
+          if (!branchId) {
+            console.warn('⚠️ No se pudo obtener branch_id para descontar stock del folio item');
+            return;
+          }
           const stockResult = await stockMovementService.decrementOnSale(
             orgId,
             branchId,
@@ -294,6 +308,10 @@ class FoliosService {
         try {
           const orgId = getOrganizationId();
           const branchId = getCurrentBranchId();
+          if (!branchId) {
+            console.warn('⚠️ No se pudo obtener branch_id para revertir stock del folio item');
+            return;
+          }
           await stockMovementService.incrementOnPurchase(
             orgId,
             branchId,

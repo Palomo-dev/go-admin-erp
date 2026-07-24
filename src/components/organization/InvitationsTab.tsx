@@ -37,10 +37,12 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [roles, setRoles] = useState<{ id: string; name: string; code: string }[]>([]);
+  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
 
   // Form state
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
+  const [branchId, setBranchId] = useState<string>('');
   const [sendingInvitation, setSendingInvitation] = useState(false);
 
   // Límite de usuarios del plan
@@ -59,8 +61,29 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       fetchInvitations();
       fetchRoles();
       fetchUserLimits();
+      fetchBranches();
     }
   }, [orgId]);
+
+  const fetchBranches = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('id, name')
+        .eq('organization_id', orgId)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+
+      setBranches(data || []);
+      if (data && data.length > 0) {
+        setBranchId(String(data[0].id));
+      }
+    } catch (err: any) {
+      console.error('Error fetching branches:', err);
+    }
+  };
 
   const fetchUserLimits = async () => {
     try {
@@ -275,6 +298,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             code: code,
             role_id: roleId,
             organization_id: orgId,
+            branch_id: branchId ? parseInt(branchId, 10) : null,
             created_by: currentUserId,
             expires_at: expiresAt.toISOString(),
             status: 'pending'
@@ -320,6 +344,9 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       // Reset form
       setEmail('');
       setRoleId('');
+      if (branches.length > 0) {
+        setBranchId(String(branches[0].id));
+      }
       
       // Refresh invitations list y conteos de límite
       fetchInvitations();
@@ -746,6 +773,31 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 ))}
               </select>
             </div>
+            
+            {branches.length > 0 && (
+              <div>
+                <label htmlFor="branch" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Sucursal
+                </label>
+                <select
+                  id="branch"
+                  name="branch"
+                  value={branchId}
+                  onChange={(e) => setBranchId(e.target.value)}
+                  disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
+                  className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                >
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  El empleado será asignado automáticamente a esta sucursal al aceptar la invitación.
+                </p>
+              </div>
+            )}
             
             <div className="pt-2">
               <EmailConfirmedGate>

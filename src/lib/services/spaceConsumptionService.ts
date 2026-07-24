@@ -203,6 +203,10 @@ class SpaceConsumptionService {
       try {
         const orgId = getOrganizationId();
         const branchId = getCurrentBranchId();
+        if (!branchId) {
+          console.warn('⚠️ No se pudo obtener branch_id para descontar stock del consumo');
+          return;
+        }
         const stockResult = await stockMovementService.decrementOnSale(
           orgId,
           branchId,

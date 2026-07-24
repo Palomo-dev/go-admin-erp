@@ -63,10 +63,11 @@ class TapeChartService {
   async getTapeChartData(
     organizationId: number,
     startDate: string,
-    endDate: string
+    endDate: string,
+    branchId?: number
   ): Promise<TapeChartData> {
-    // Get spaces
-    const { data: spacesData, error: spacesError } = await supabase
+    // Get spaces filtered by branch_id (not organization_id)
+    let spacesQuery = supabase
       .from('spaces')
       .select(`
         id,
@@ -78,8 +79,13 @@ class TapeChartService {
           name
         )
       `)
-      .eq('branch_id', organizationId)
       .order('label');
+
+    if (branchId) {
+      spacesQuery = spacesQuery.eq('branch_id', branchId);
+    }
+
+    const { data: spacesData, error: spacesError } = await spacesQuery;
 
     if (spacesError) {
       console.error('Error fetching spaces:', spacesError);
@@ -95,7 +101,7 @@ class TapeChartService {
     }));
 
     // Get reservations in date range (overlap check: checkin <= endDate AND checkout >= startDate)
-    const { data: reservationsData, error: reservationsError } = await supabase
+    let reservationsQuery = supabase
       .from('reservations')
       .select(`
         id,
@@ -112,10 +118,17 @@ class TapeChartService {
           space_id
         )
       `)
-      .eq('organization_id', organizationId)
       .not('status', 'eq', 'cancelled')
       .lte('checkin', endDate)
       .gte('checkout', startDate);
+
+    if (branchId) {
+      reservationsQuery = reservationsQuery.eq('branch_id', branchId);
+    } else {
+      reservationsQuery = reservationsQuery.eq('organization_id', organizationId);
+    }
+
+    const { data: reservationsData, error: reservationsError } = await reservationsQuery;
 
     if (reservationsError) {
       console.error('Error fetching reservations:', reservationsError);
@@ -156,13 +169,20 @@ class TapeChartService {
       });
     });
 
-    // Get blocks in date range (overlap check: date_from <= endDate AND date_to >= startDate)
-    const { data: blocksData, error: blocksError } = await supabase
+    // Get blocks in date range
+    let blocksQuery = supabase
       .from('reservation_blocks')
       .select('id, space_id, date_from, date_to, block_type, reason')
-      .eq('organization_id', organizationId)
       .lte('date_from', endDate)
       .gte('date_to', startDate);
+
+    if (branchId) {
+      blocksQuery = blocksQuery.eq('branch_id', branchId);
+    } else {
+      blocksQuery = blocksQuery.eq('organization_id', organizationId);
+    }
+
+    const { data: blocksData, error: blocksError } = await blocksQuery;
 
     if (blocksError) {
       console.error('Error fetching blocks:', blocksError);
@@ -185,12 +205,18 @@ class TapeChartService {
   async getOccupancyData(
     organizationId: number,
     startDate: string,
-    endDate: string
+    endDate: string,
+    branchId?: number
   ): Promise<OccupancyData[]> {
-    const { data: spacesData } = await supabase
+    let spacesQuery = supabase
       .from('spaces')
-      .select('id')
-      .eq('branch_id', organizationId);
+      .select('id');
+
+    if (branchId) {
+      spacesQuery = spacesQuery.eq('branch_id', branchId);
+    }
+
+    const { data: spacesData } = await spacesQuery;
 
     const totalSpaces = spacesData?.length || 0;
 
@@ -198,12 +224,19 @@ class TapeChartService {
       return [];
     }
 
-    const { data: reservationsData } = await supabase
+    let reservationsQuery = supabase
       .from('reservations')
       .select('checkin, checkout, space_id')
-      .eq('organization_id', organizationId)
       .in('status', ['confirmed', 'checked_in'])
       .or(`checkin.lte.${endDate},checkout.gte.${startDate}`);
+
+    if (branchId) {
+      reservationsQuery = reservationsQuery.eq('branch_id', branchId);
+    } else {
+      reservationsQuery = reservationsQuery.eq('organization_id', organizationId);
+    }
+
+    const { data: reservationsData } = await reservationsQuery;
 
     const occupancyMap: Record<string, Set<string>> = {};
 

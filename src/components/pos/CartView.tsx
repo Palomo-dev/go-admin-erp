@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { POSService } from '@/lib/services/posService';
 import { PrintService } from '@/lib/services/printService';
-import { KitchenService } from '@/lib/services/kitchenService';
+import KitchenService from '@/lib/services/kitchenService';
 import { supabase } from '@/lib/supabase/config';
 import { Cart, CartItem, Sale, SaleItem, Customer } from './types';
 import { formatCurrency, cn } from '@/utils/Utils';

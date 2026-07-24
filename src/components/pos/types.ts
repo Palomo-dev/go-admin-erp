@@ -107,6 +107,7 @@ export interface Cart {
   hold_reason?: string;
   tax_included?: boolean;
   applied_tax_ids?: string[];
+  kitchen_ticket_id?: number | null;
 }
 
 export interface Sale {

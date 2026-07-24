@@ -241,7 +241,8 @@ class ShipmentsService {
         *,
         transport_stops(id, name, city)
       `)
-      .eq('shipment_id', shipmentId)
+      .eq('reference_type', 'shipment')
+      .eq('reference_id', shipmentId)
       .order('event_time', { ascending: true });
 
     if (error) throw error;

@@ -274,6 +274,13 @@ export class POSService {
         .from('products')
         .select(`
           *,
+          categories(
+            id,
+            name,
+            slug,
+            station,
+            requires_preparation
+          ),
           product_prices(price)
         `)
         .eq('parent_product_id', parentProductId)

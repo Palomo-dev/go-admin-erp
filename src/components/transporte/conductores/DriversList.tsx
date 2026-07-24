@@ -88,7 +88,7 @@ export function DriversList({
       {drivers.map((driver) => {
         const profile = driver.employments?.organization_members?.profiles;
         const licenseStatus = getExpiryStatus(driver.license_expiry);
-        const medicalStatus = getExpiryStatus(driver.medical_cert_expiry);
+        const medicalStatus = getExpiryStatus(driver.medical_certificate_expiry);
         const hasWarnings = licenseStatus === 'warning' || medicalStatus === 'warning';
         const hasExpired = licenseStatus === 'expired' || medicalStatus === 'expired';
         const fullName = profile 
@@ -170,10 +170,10 @@ export function DriversList({
                   <Calendar className="h-3 w-3" />
                   Licencia vence: {format(new Date(driver.license_expiry), 'dd/MM/yyyy')}
                 </p>
-                {driver.medical_cert_expiry && (
+                {driver.medical_certificate_expiry && (
                   <p className={`flex items-center gap-2 ${medicalStatus === 'expired' ? 'text-red-600' : medicalStatus === 'warning' ? 'text-yellow-600' : ''}`}>
                     <Calendar className="h-3 w-3" />
-                    Examen médico: {format(new Date(driver.medical_cert_expiry), 'dd/MM/yyyy')}
+                    Examen médico: {format(new Date(driver.medical_certificate_expiry), 'dd/MM/yyyy')}
                   </p>
                 )}
                 {profile?.phone && (
@@ -188,11 +188,11 @@ export function DriversList({
                     {profile.email}
                   </p>
                 )}
-                {driver.certifications && driver.certifications.length > 0 && (
+                {driver.metadata?.certifications && driver.metadata.certifications.length > 0 && (
                   <div className="pt-2">
                     <p className="text-xs font-medium mb-1">Certificaciones:</p>
                     <div className="flex flex-wrap gap-1">
-                      {driver.certifications.map((cert, i) => (
+                      {driver.metadata.certifications.map((cert, i) => (
                         <Badge key={i} variant="secondary" className="text-xs">
                           {cert}
                         </Badge>

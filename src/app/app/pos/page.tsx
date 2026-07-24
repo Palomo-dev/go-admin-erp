@@ -19,6 +19,9 @@ import { Product, Customer, Cart, Sale, CartItemModifier } from '@/components/po
 import { formatCurrency, cn } from '@/utils/Utils';
 import { VentasService, DailySummary, CashSession } from '@/components/pos/ventas';
 import { PrintJobsService } from '@/lib/services/printJobsService';
+import KitchenService from '@/lib/services/kitchenService';
+import { getUserName } from '@/lib/services/userService';
+import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 
 export default function POSPage() {
@@ -96,6 +99,12 @@ export default function POSPage() {
 
   const removeCart = async (cartId: string) => {
     try {
+      // Marcar kitchen_ticket como entregado si el carrito tenía uno
+      const cartToRemove = carts.find(c => c.id === cartId);
+      if (cartToRemove?.kitchen_ticket_id) {
+        await KitchenService.markTicketAsDelivered(cartToRemove.kitchen_ticket_id);
+      }
+
       const updatedCarts = carts.filter(cart => cart.id !== cartId);
       setCarts(updatedCarts);
       
@@ -159,9 +168,10 @@ export default function POSPage() {
 
   const handleCheckoutComplete = async (sale: Sale) => {
     try {
-      // La impresión del recibo la realiza el botón "Imprimir Recibo" del diálogo
-      // (PrintService con datos completos del negocio). No imprimir aquí para evitar
-      // duplicados y datos incompletos.
+      // Marcar kitchen_ticket como entregado si existe
+      if (checkoutCart?.kitchen_ticket_id) {
+        await KitchenService.markTicketAsDelivered(checkoutCart.kitchen_ticket_id);
+      }
 
       // Remover el carrito completado
       if (checkoutCart) {
@@ -192,27 +202,78 @@ export default function POSPage() {
 
   const handleSendComanda = async (cart: Cart) => {
     if (!cart.branch_id) return;
-    const { enqueued, skippedStations } = await PrintJobsService.enqueueKitchenTicketFromSale(
+
+    // Filtrar solo items que requieren preparación
+    const prepItems = cart.items.filter((item) => {
+      const product = item.product as any;
+      const cat = product?.category || product?.categories;
+      const requiresPrep = Array.isArray(cat) ? cat[0]?.requires_preparation : cat?.requires_preparation;
+      return requiresPrep === true;
+    });
+
+    if (prepItems.length === 0) {
+      toast.info('No hay productos que requieran preparación en el carrito');
+      return;
+    }
+
+    // Obtener nombre del usuario actual
+    let serverName = 'POS';
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const name = await getUserName(user.id);
+        if (name) serverName = name;
+      }
+    } catch {
+      // fallback: usar 'POS'
+    }
+
+    // Mapear items para el ticket de cocina
+    const ticketItems = prepItems.map((item) => {
+      const product = item.product as any;
+      const cat = product?.category || product?.categories;
+      const station = Array.isArray(cat) ? cat[0]?.station : cat?.station;
+      return {
+        productName: item.product?.name || 'Producto',
+        quantity: item.quantity,
+        station: station || product?.station || null,
+        notes: item.notes || null,
+        variantData: (item.product as any)?.variant_data || null,
+        modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+      };
+    });
+
+    // 1. Crear kitchen_ticket en la BD (para que aparezca en /comandas)
+    const ticketResult = await KitchenService.createKitchenTicketFromPOS({
+      organizationId: organization?.id || 0,
+      branchId: cart.branch_id,
+      serverName,
+      items: ticketItems,
+    });
+
+    // Guardar ticketId en el carrito para追踪amiento
+    updateCartInState({ ...cart, kitchen_ticket_id: ticketResult.ticketId });
+
+    // 2. Encolar impresión física via print_jobs (para el print agent)
+    const { enqueued, skippedStations } = await PrintJobsService.enqueueKitchenTicket(
       cart.branch_id,
       {
-        saleId: cart.id,
-        createdAt: new Date().toISOString(),
-        items: cart.items.map((item) => ({
-          productName: item.product?.name || 'Producto',
-          quantity: item.quantity,
-          productId: item.product_id,
-          notes: item.notes || null,
-          variantData: (item.product as any)?.variant_data || null,
-          modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
-        })),
+        ticketId: ticketResult.ticketId,
+        tableName: 'POS',
+        serverName,
+        createdAt: ticketResult.createdAt,
+        items: ticketItems,
         businessName: organization?.name,
         branchName: undefined,
       }
     );
+
     if (enqueued > 0) {
-      toast.success(`Comanda enviada (${enqueued} impresora${enqueued > 1 ? 's' : ''})`);
+      toast.success(`Comanda enviada a cocina (${enqueued} impresora${enqueued > 1 ? 's' : ''})`);
+    } else if (skippedStations.length > 0) {
+      toast.info(`Ticket creado en /comandas. Sin impresoras para: ${skippedStations.join(', ')}`);
     } else {
-      toast.info('No hay impresoras configuradas para las estaciones de los productos');
+      toast.success('Comanda enviada a cocina');
     }
   };
 

@@ -185,7 +185,17 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   // Manejar selección de variante (y sus modificadores) desde el diálogo
   const handleVariantSelect = (variant: any, modifiers: SelectedModifier[] = []) => {
-    onProductSelect(variant, modifiers);
+    // Heredar categoría y datos de preparación del producto padre si la variante no los trae
+    const parent = selectedParentProduct as any;
+    const inheritedCategory = variant.categories || variant.category || parent?.categories || parent?.category || null;
+    const inheritedStation = variant.station || inheritedCategory?.station || parent?.station || null;
+    const enrichedVariant = {
+      ...variant,
+      category: inheritedCategory,
+      categories: inheritedCategory,
+      station: inheritedStation,
+    };
+    onProductSelect(enrichedVariant, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };

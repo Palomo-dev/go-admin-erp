@@ -215,7 +215,13 @@ export function VariantSelectorDialog({
 
   return (
     <Dialog open={open} onOpenChange={resetAndClose}>
-      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col p-0">
+      <DialogContent 
+        className="max-w-lg w-[95vw] max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col p-0"
+        onInteractOutside={(e) => {
+          // Prevenir cierre accidental en móvil cuando se abre desde otro dialog
+          e.preventDefault();
+        }}
+      >
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-600" />

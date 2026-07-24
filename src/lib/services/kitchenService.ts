@@ -13,6 +13,8 @@ export interface KitchenTicket {
   estimated_time: number | null;
   sale_id: string | null;
   table_session_id: string | null;
+  server_name?: string | null;
+  source?: string | null;
   table_sessions?: {
     id: string;
     restaurant_table_id: string | null;
@@ -30,13 +32,17 @@ export interface KitchenTicketItem {
   id: number;
   organization_id: number;
   kitchen_ticket_id: number;
-  sale_item_id: string;
+  sale_item_id: string | null;
   station: 'hot_kitchen' | 'cold_kitchen' | 'bar' | null;
   notes: string | null;
   status: 'pending' | 'in_progress' | 'ready' | 'delivered';
   created_at: string;
   updated_at: string;
   preparation_time: number | null;
+  product_name?: string | null;
+  quantity?: number | null;
+  variant_data?: Record<string, string> | null;
+  modifiers?: Array<{ name: string; extraPrice: number }> | null;
   sale_items?: {
     quantity: number;
     product_id: number;
@@ -300,6 +306,80 @@ class KitchenService {
 
     return () => {
       supabase.removeChannel(channel);
+    };
+  }
+
+  /**
+   * Crear un ticket de cocina desde el POS (sin mesa/session).
+   * A diferencia de las mesas, aquí no hay sale_items previos, así que guardamos
+   * product_name, quantity, variant_data y modifiers directamente en kitchen_ticket_items.
+   */
+  async createKitchenTicketFromPOS(params: {
+    organizationId: number;
+    branchId: number;
+    serverName: string;
+    items: Array<{
+      productName: string;
+      quantity: number;
+      station: string | null;
+      notes?: string | null;
+      variantData?: Record<string, string> | null;
+      modifiers?: Array<{ name: string; extraPrice: number }> | null;
+    }>;
+  }): Promise<{ ticketId: number; createdAt: string; items: Array<{ productName: string; quantity: number; notes: string | null; station: string | null; variantData: Record<string, string> | null; modifiers: Array<{ name: string; extraPrice: number }> | null }> }> {
+    const { organizationId, branchId, serverName, items } = params;
+
+    if (!items.length) {
+      return { ticketId: 0, createdAt: new Date().toISOString(), items: [] };
+    }
+
+    // 1. Crear el ticket de cocina
+    const { data: ticket, error: ticketError } = await supabase
+      .from('kitchen_tickets')
+      .insert({
+        organization_id: organizationId,
+        branch_id: branchId,
+        status: 'new',
+        priority: 0,
+        source: 'pos',
+        server_name: serverName,
+      })
+      .select()
+      .single();
+
+    if (ticketError) throw ticketError;
+
+    // 2. Crear los items del ticket
+    const ticketItems = items.map((item) => ({
+      organization_id: organizationId,
+      kitchen_ticket_id: ticket.id,
+      sale_item_id: null,
+      station: item.station || null,
+      notes: item.notes || null,
+      status: 'pending' as const,
+      product_name: item.productName,
+      quantity: item.quantity,
+      variant_data: item.variantData || null,
+      modifiers: item.modifiers || null,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('kitchen_ticket_items')
+      .insert(ticketItems);
+
+    if (itemsError) throw itemsError;
+
+    return {
+      ticketId: ticket.id,
+      createdAt: ticket.created_at,
+      items: items.map((i) => ({
+        productName: i.productName,
+        quantity: i.quantity,
+        notes: i.notes || null,
+        station: i.station || null,
+        variantData: i.variantData || null,
+        modifiers: i.modifiers || null,
+      })),
     };
   }
 }

@@ -268,7 +268,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     setIsSendingComanda(true);
     try {
       await onSendComanda(cart);
-      toast.success('Comanda enviada a cocina');
+      toast.success('Enviado a cocina');
     } catch (error: any) {
       console.error('Error enviando comanda:', error);
       toast.error('Error al enviar comanda', { description: error.message || 'No se pudo enviar' });
@@ -654,7 +654,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                         ) : (
                           <Send className="h-3 w-3 sm:mr-1" />
                         )}
-                        <span className="text-xs">{isSendingComanda ? 'Enviando...' : 'Enviar Comanda'}</span>
+                        <span className="text-xs">{isSendingComanda ? 'Enviando...' : 'Enviar Cocina'}</span>
                       </Button>
                     )}
 

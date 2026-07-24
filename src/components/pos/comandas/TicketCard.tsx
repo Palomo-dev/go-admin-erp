@@ -96,9 +96,9 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
   const statusInfo = getStatusInfo(ticket.status);
   const StatusIcon = statusInfo.icon;
   
-  const tableName = ticket.table_sessions?.restaurant_tables?.name || 'Mesa';
+  const tableName = ticket.table_sessions?.restaurant_tables?.name || (ticket.source === 'pos' ? 'POS' : 'Mesa');
   const zoneName = ticket.table_sessions?.restaurant_tables?.zone || '';
-  const serverName = ticket.table_sessions?.serverName;
+  const serverName = ticket.table_sessions?.serverName || ticket.server_name || null;
 
   const timeElapsed = React.useMemo(() => {
     const created = new Date(ticket.created_at);
@@ -209,6 +209,16 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
           const itemStatusInfo = getItemStatusInfo(item.status);
           const isItemReady = item.status === 'ready' || item.status === 'delivered';
           const matchesStation = stationFilter === 'all' || item.station === stationFilter;
+          // Soporte para items desde POS (sin sale_items): usar product_name y quantity directos
+          const itemQuantity = item.sale_items?.quantity ?? item.quantity ?? 1;
+          const productName = product?.name || item.product_name || 'Producto';
+          const variantData = product?.variant_data || item.variant_data;
+          const itemModifiers = (() => {
+            const saleItemNotes = item.sale_items?.notes;
+            const mods = saleItemNotes && typeof saleItemNotes === 'object' ? saleItemNotes.modifiers || [] : [];
+            if (mods.length > 0) return mods;
+            return item.modifiers || [];
+          })();
           
           const handleItemClick = (e: React.MouseEvent) => {
             e.stopPropagation();
@@ -219,7 +229,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
             const nextStatus = item.status === 'pending' ? 'in_progress' : 
                               item.status === 'in_progress' ? 'ready' : 
                               item.status === 'ready' ? 'pending' : 'pending';
-            onItemStatusChange(item.id, nextStatus as KitchenTicketItem['status'], product?.name);
+            onItemStatusChange(item.id, nextStatus as KitchenTicketItem['status'], productName);
             // Liberar después de 1.5s
             setTimeout(() => {
               setUpdatingItems(prev => {
@@ -259,16 +269,16 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`font-semibold ${isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'}`}>
-                      {item.sale_items?.quantity}x
+                      {itemQuantity}x
                     </span>
                     <span className={isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'}>
-                      {product?.name || 'Producto'}
+                      {productName}
                     </span>
                   </div>
 
-                  {product?.variant_data && Object.keys(product.variant_data).length > 0 && (
+                  {variantData && Object.keys(variantData).length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap mb-1">
-                      {Object.entries(product.variant_data).filter(([, v]) => !!v).map(([attr, value]) => (
+                      {Object.entries(variantData).filter(([, v]) => !!v).map(([attr, value]) => (
                         <Badge key={attr} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300">
                           {attr}: {value}
                         </Badge>
@@ -276,20 +286,15 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                     </div>
                   )}
 
-                  {(() => {
-                    const saleItemNotes = item.sale_items?.notes;
-                    const modifiers: Array<{ modifierId: number; name: string; extraPrice: number }> = saleItemNotes && typeof saleItemNotes === 'object' ? saleItemNotes.modifiers || [] : [];
-                    if (modifiers.length === 0) return null;
-                    return (
-                      <div className="flex items-center gap-1 flex-wrap mb-1">
-                        {modifiers.map((mod) => (
-                          <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
-                            {mod.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    );
-                  })()}
+                  {itemModifiers.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap mb-1">
+                      {itemModifiers.map((mod: any, idx: number) => (
+                        <Badge key={idx} variant="outline" className="text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                          {mod.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={`${stationInfo.color} text-xs`}>
@@ -302,6 +307,11 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {product.categories.name}
                       </span>
+                    )}
+                    {ticket.source === 'pos' && (
+                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                        POS
+                      </Badge>
                     )}
                   </div>
                   

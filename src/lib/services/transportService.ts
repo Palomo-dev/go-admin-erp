@@ -63,7 +63,7 @@ export interface DriverCredential {
   license_category: string;
   license_expiry: string;
   license_restrictions?: string;
-  medical_cert_expiry?: string;
+  medical_certificate_expiry?: string;
   hazmat_certified?: boolean;
   passenger_certified?: boolean;
   is_active: boolean;
@@ -702,7 +702,7 @@ class TransportService {
         )
       `)
       .eq('is_active', true)
-      .or(`license_expiry.lte.${dateStr},medical_cert_expiry.lte.${dateStr}`);
+      .or(`license_expiry.lte.${dateStr},medical_certificate_expiry.lte.${dateStr}`);
 
     if (error) throw error;
     return (data || []).filter((d: any) =>

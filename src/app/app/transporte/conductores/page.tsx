@@ -101,19 +101,19 @@ export default function ConductoresPage() {
     // Filtro de estado
     let matchesStatus = true;
     if (statusFilter === 'active') {
-      matchesStatus = d.is_active_driver === true;
+      matchesStatus = d.is_active === true;
     } else if (statusFilter === 'inactive') {
-      matchesStatus = d.is_active_driver === false;
+      matchesStatus = d.is_active === false;
     } else if (statusFilter === 'expiring') {
       const licenseExpiry = new Date(d.license_expiry);
-      const medicalExpiry = d.medical_cert_expiry ? new Date(d.medical_cert_expiry) : null;
+      const medicalExpiry = d.medical_certificate_expiry ? new Date(d.medical_certificate_expiry) : null;
       const soon = addDays(new Date(), 30);
       const licenseExpiring = licenseExpiry <= soon && !isPast(licenseExpiry);
       const medicalExpiring = medicalExpiry ? (medicalExpiry <= soon && !isPast(medicalExpiry)) : false;
       matchesStatus = licenseExpiring || medicalExpiring;
     } else if (statusFilter === 'expired') {
       const licenseExpiry = new Date(d.license_expiry);
-      const medicalExpiry = d.medical_cert_expiry ? new Date(d.medical_cert_expiry) : null;
+      const medicalExpiry = d.medical_certificate_expiry ? new Date(d.medical_certificate_expiry) : null;
       matchesStatus = isPast(licenseExpiry) || !!(medicalExpiry && isPast(medicalExpiry));
     }
     

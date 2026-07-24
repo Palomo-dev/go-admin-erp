@@ -83,9 +83,9 @@ export function DriverDialog({
         license_number: driver.license_number,
         license_category: driver.license_category,
         license_expiry: driver.license_expiry,
-        medical_cert_expiry: driver.medical_cert_expiry || '',
-        certifications: driver.certifications?.join(', ') || '',
-        is_active_driver: driver.is_active_driver,
+        medical_cert_expiry: driver.medical_certificate_expiry || driver.medical_cert_expiry || '',
+        certifications: driver.metadata?.certifications?.join(', ') || '',
+        is_active_driver: driver.is_active,
       });
     } else {
       reset({
@@ -110,9 +110,9 @@ export function DriverDialog({
       license_number: data.license_number,
       license_category: data.license_category,
       license_expiry: data.license_expiry,
-      medical_cert_expiry: data.medical_cert_expiry || null,
-      certifications: certArray.length > 0 ? certArray : null,
-      is_active_driver: data.is_active_driver,
+      medical_certificate_expiry: data.medical_cert_expiry || null,
+      metadata: certArray.length > 0 ? { certifications: certArray } : null,
+      is_active: data.is_active_driver,
     } as Partial<DriverCredential>);
   };
 

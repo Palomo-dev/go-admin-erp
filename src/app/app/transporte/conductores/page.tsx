@@ -170,10 +170,7 @@ export default function ConductoresPage() {
           description: 'Conductor actualizado correctamente',
         });
       } else {
-        await transportService.createDriver({
-          ...data,
-          organization_id: organization.id,
-        });
+        await transportService.createDriver(data);
         toast({
           title: 'Éxito',
           description: 'Conductor creado correctamente',

@@ -208,6 +208,8 @@ export class CuentaPorCobrarDetailService {
     const branchId = getCurrentBranchId();
     const createdBy = await getCurrentUserId();
     
+    if (!branchId) throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
+    
     console.log('💰 DEBUG aplicarPago:', { accountId, amount, method, organizationId, branchId, createdBy, paymentDate });
     
     try {

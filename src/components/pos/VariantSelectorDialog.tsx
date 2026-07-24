@@ -215,8 +215,8 @@ export function VariantSelectorDialog({
 
   return (
     <Dialog open={open} onOpenChange={resetAndClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-600" />
             {variants.length > 0 ? 'Seleccionar Variante' : 'Personalizar Producto'}
@@ -228,7 +228,7 @@ export function VariantSelectorDialog({
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             {/* Nombre del producto */}
             <div className="text-center pb-2 border-b">
               <h3 className="font-semibold text-lg">{product.name}</h3>
@@ -396,8 +396,10 @@ export function VariantSelectorDialog({
               </div>
             )}
 
-            {/* Botones de acción */}
-            <div className="flex gap-2 pt-4 border-t">
+          </div>
+        )}
+            {/* Botones de acción fijos al final */}
+            <div className="flex gap-2 px-6 py-4 border-t bg-white dark:bg-gray-900 shrink-0">
               <Button
                 variant="outline"
                 className="flex-1"
@@ -413,8 +415,6 @@ export function VariantSelectorDialog({
                 Agregar al Carrito
               </Button>
             </div>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );

@@ -6,6 +6,8 @@ import { FoliosHeader, FoliosList, FolioDetailDialog } from '@/components/pms/fo
 import FoliosService, { type Folio } from '@/lib/services/foliosService';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import {
   Select,
   SelectContent,
@@ -18,6 +20,8 @@ import { Label } from '@/components/ui/label';
 export default function FoliosPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
 
   // Estado de datos
   const [folios, setFolios] = useState<Folio[]>([]);
@@ -34,13 +38,17 @@ export default function FoliosPage() {
   // Cargar datos iniciales
   useEffect(() => {
     loadData();
-  }, []);
+  }, [organization?.id, branchFilter]);
 
   const loadData = async () => {
+    if (!organization?.id) return;
     try {
       setIsLoading(true);
 
-      const foliosData = await FoliosService.getFolios();
+      const foliosData = await FoliosService.getFolios({
+        organizationId: organization.id,
+        branchId: branchFilter,
+      });
       setFolios(foliosData);
       setFilteredFolios(foliosData);
     } catch (error) {

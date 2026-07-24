@@ -878,24 +878,40 @@ export class PedidosService {
       const isPaid = data.total_paid >= data.total;
       const now = new Date().toISOString();
 
+      // 0. Verificar estado actual de la venta para evitar re-disparar el trigger
+      const { data: existingSale } = await supabase
+        .from('sales')
+        .select('status')
+        .eq('id', saleId)
+        .single();
+
+      const alreadyPaid = existingSale?.status === 'paid';
+
       // 1. Actualizar la venta existente con totales, propina y vínculos
+      // Si la venta ya estaba 'paid', no cambiar status para evitar re-disparar
+      // el trigger trg_auto_journal_sale_pos (asiento contable duplicado)
+      const updateData: Record<string, any> = {
+        subtotal: data.subtotal,
+        tax_total: data.tax_total,
+        total: data.total,
+        balance,
+        tax_included: data.tax_included || false,
+        tax_breakdown: data.tax_breakdown || null,
+        tip_amount: data.tip_amount || 0,
+        tip_server_id: data.tip_server_id || null,
+        driver_id: data.driver_id || null,
+        table_session_id: data.table_session_id || null,
+        updated_at: now,
+      };
+
+      if (!alreadyPaid) {
+        updateData.status = isPaid ? 'paid' : 'pending';
+        updateData.payment_status = isPaid ? 'paid' : 'partial';
+      }
+
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
-        .update({
-          subtotal: data.subtotal,
-          tax_total: data.tax_total,
-          total: data.total,
-          balance,
-          status: isPaid ? 'paid' : 'pending',
-          payment_status: isPaid ? 'paid' : 'partial',
-          tax_included: data.tax_included || false,
-          tax_breakdown: data.tax_breakdown || null,
-          tip_amount: data.tip_amount || 0,
-          tip_server_id: data.tip_server_id || null,
-          driver_id: data.driver_id || null,
-          table_session_id: data.table_session_id || null,
-          updated_at: now,
-        })
+        .update(updateData)
         .eq('id', saleId)
         .select()
         .single();

@@ -168,6 +168,9 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Órdenes de Compra': <ClipboardList size={16} />,
     'Recetas': <ChefHat size={16} />,
     'Producción': <Factory size={16} />,
+    'Distribución': <Truck size={16} />,
+    'Trazabilidad': <Search size={16} />,
+    'Costo Recetas': <DollarSign size={16} />,
     
     // POS
     'POS': <ShoppingCart size={16} />,

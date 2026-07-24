@@ -30,6 +30,9 @@ export class CajasService {
    */
   static async getActiveSession(): Promise<CashSession | null> {
     try {
+      if (!this.branchId) {
+        return null;
+      }
       const { data, error } = await supabase
         .from('cash_sessions')
         .select('*')
@@ -63,6 +66,9 @@ export class CajasService {
       const userId = await getCurrentUserId();
       if (!userId) {
         throw new Error('Usuario no autenticado');
+      }
+      if (!this.branchId) {
+        throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
       }
 
       // Verificar que no hay sesión abierta

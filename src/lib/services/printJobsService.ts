@@ -358,6 +358,105 @@ export class PrintJobsService {
   }
 
   /**
+   * Encola automáticamente una comanda de cocina a partir de una venta completada.
+   * Consulta las categorías de los productos del carrito, filtra solo los items
+   * cuya categoría tiene requires_preparation = true, y los envía a la(s)
+   * impresora(s) de la estación correspondiente.
+   *
+   * Si ningún item requiere preparación, no encola nada.
+   * Si no hay impresoras físicas configuradas, retorna { enqueued: 0 }.
+   */
+  static async enqueueKitchenTicketFromSale(
+    branchId: number,
+    sale: {
+      saleId: string;
+      tableName?: string;
+      serverName?: string;
+      createdAt: string;
+      items: Array<{
+        productName: string;
+        quantity: number;
+        productId: number;
+        notes?: string | null;
+        variantData?: Record<string, string> | null;
+        modifiers?: Array<{ name: string; extraPrice: number }> | null;
+      }>;
+      businessName?: string;
+      branchName?: string;
+    }
+  ): Promise<{ enqueued: number; skippedStations: string[] }> {
+    if (!sale.items.length) return { enqueued: 0, skippedStations: [] };
+
+    const orgId = getOrganizationId();
+
+    // Consultar categorías de los productos para saber requires_preparation y station
+    const productIds = sale.items.map(i => i.productId);
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('id, category_id, station, categories!left(id, requires_preparation, station)')
+      .in('id', productIds)
+      .eq('organization_id', orgId);
+
+    if (error || !products) {
+      console.warn('No se pudo consultar categorías para comanda automática:', error);
+      return { enqueued: 0, skippedStations: [] };
+    }
+
+    // Mapear product_id -> { requires_preparation, station }
+    const productPrepMap = new Map<number, { requiresPreparation: boolean; station: string | null }>();
+    for (const p of products as any[]) {
+      const cat = p.categories;
+      if (cat) {
+        productPrepMap.set(p.id, {
+          requiresPreparation: cat.requires_preparation ?? false,
+          station: cat.station || p.station || null,
+        });
+      } else {
+        // Producto sin categoría: usar station del producto si existe
+        productPrepMap.set(p.id, {
+          requiresPreparation: false,
+          station: p.station || null,
+        });
+      }
+    }
+
+    // Filtrar items que requieren preparación
+    const prepItems = sale.items
+      .filter(item => {
+        const prep = productPrepMap.get(item.productId);
+        return prep?.requiresPreparation === true;
+      })
+      .map(item => {
+        const prep = productPrepMap.get(item.productId);
+        return {
+          productName: item.productName,
+          quantity: item.quantity,
+          notes: item.notes || null,
+          station: prep?.station || 'all',
+          variantData: item.variantData || null,
+          modifiers: item.modifiers || null,
+        };
+      });
+
+    if (prepItems.length === 0) {
+      return { enqueued: 0, skippedStations: [] };
+    }
+
+    // Generar un ticketId pseudo-aleatorio basado en el saleId
+    const ticketId = Math.floor(Math.abs(Math.random() * 1000000));
+
+    return this.enqueueKitchenTicket(branchId, {
+      ticketId,
+      tableName: sale.tableName,
+      serverName: sale.serverName,
+      createdAt: sale.createdAt,
+      items: prepItems,
+      businessName: sale.businessName,
+      branchName: sale.branchName,
+    });
+  }
+
+  /**
    * Últimos trabajos de impresión de una sucursal, con el nombre de la impresora,
    * para diagnóstico en Configuración > Impresoras.
    */

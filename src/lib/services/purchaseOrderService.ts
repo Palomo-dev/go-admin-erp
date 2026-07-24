@@ -153,7 +153,7 @@ class PurchaseOrderService {
         .from('purchase_orders')
         .select(`
           *,
-          suppliers:supplier_id (id, name, uuid),
+          suppliers:supplier_id (id, name, uuid, email, phone, contact_name),
           branches:branch_id (id, name)
         `)
         .eq('uuid', orderUuid)
@@ -521,6 +521,15 @@ class PurchaseOrderService {
         const newStatus = isComplete ? 'received' : (isPartial ? 'partial' : 'sent');
 
         await this.updateStatus(orderUuid, organizationId, newStatus);
+
+        // Si la recepción es completa, generar factura de compra y cuenta por pagar automáticamente
+        if (isComplete) {
+          try {
+            await this.generateInvoiceFromPurchaseOrder(orderId, organizationId, branchId);
+          } catch (invError) {
+            console.warn('⚠️ Error generando factura automática (no bloquea recepción):', invError);
+          }
+        }
       }
 
       return { success: true, error: null };
@@ -528,6 +537,147 @@ class PurchaseOrderService {
       console.error('Error recibiendo items:', error?.message || error);
       return { success: false, error: error as Error };
     }
+  }
+
+  /**
+   * Generar factura de compra y cuenta por pagar automáticamente desde una OC recibida
+   */
+  private async generateInvoiceFromPurchaseOrder(
+    orderId: number,
+    organizationId: number,
+    branchId: number
+  ): Promise<void> {
+    // Obtener datos de la OC y sus items
+    const { data: order, error: orderError } = await supabase
+      .from('purchase_orders')
+      .select('id, supplier_id, total, notes, created_at')
+      .eq('id', orderId)
+      .single();
+
+    if (orderError || !order) {
+      throw new Error('No se pudo obtener la orden de compra para generar factura');
+    }
+
+    // Verificar si ya existe una factura para esta OC (evitar duplicados)
+    const { data: existingInvoice } = await supabase
+      .from('invoice_purchase')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('supplier_id', order.supplier_id)
+      .eq('total', order.total)
+      .eq('issue_date', new Date().toISOString().split('T')[0])
+      .ilike('notes', `%OC-${orderId}%`)
+      .limit(1);
+
+    if (existingInvoice && existingInvoice.length > 0) {
+      console.log('ℹ️ Ya existe factura para esta OC, se omite generación automática');
+      return;
+    }
+
+    // Obtener items de la OC con datos del producto
+    const { data: items, error: itemsError } = await supabase
+      .from('purchase_order_items')
+      .select(`
+        id, product_id, quantity, unit_cost, subtotal,
+        products(id, name, sku)
+      `)
+      .eq('purchase_order_id', orderId);
+
+    if (itemsError || !items) {
+      throw new Error('No se pudieron obtener los items de la OC');
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+    const dueDateStr = dueDate.toISOString().split('T')[0];
+
+    // Generar número de factura
+    const { data: lastInvoice } = await supabase
+      .from('invoice_purchase')
+      .select('number_ext')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const year = new Date().getFullYear();
+    const nextNum = lastInvoice && lastInvoice.length > 0
+      ? (parseInt(lastInvoice[0].number_ext?.split('-').pop() || '0') + 1)
+      : 1;
+    const numberExt = `COMP-${year}-${String(nextNum).padStart(4, '0')}`;
+
+    // Calcular subtotal
+    const subtotal = items.reduce((sum: number, item: any) => sum + Number(item.subtotal || item.quantity * item.unit_cost), 0);
+
+    // Crear factura de compra
+    const { data: factura, error: facturaError } = await supabase
+      .from('invoice_purchase')
+      .insert({
+        organization_id: organizationId,
+        branch_id: branchId,
+        supplier_id: order.supplier_id,
+        number_ext: numberExt,
+        issue_date: today,
+        due_date: dueDateStr,
+        currency: 'COP',
+        subtotal,
+        tax_total: 0,
+        total: subtotal,
+        balance: subtotal,
+        status: 'received',
+        notes: `Factura generada automáticamente desde Orden de Compra OC-${orderId}. ${(order.notes || '').trim()}`.trim(),
+        payment_terms: 30,
+        tax_included: false,
+      })
+      .select()
+      .single();
+
+    if (facturaError || !factura) {
+      throw new Error(`Error creando factura automática: ${facturaError?.message}`);
+    }
+
+    // Crear items de la factura
+    const invoiceItems = items.map((item: any) => ({
+      invoice_id: factura.id,
+      invoice_type: 'purchase',
+      invoice_purchase_id: factura.id,
+      invoice_sales_id: null,
+      product_id: item.product_id || null,
+      description: item.products?.name || 'Producto',
+      qty: Number(item.quantity),
+      unit_price: Number(item.unit_cost),
+      tax_rate: 0,
+      total_line: Number(item.subtotal || item.quantity * item.unit_cost),
+      discount_amount: 0,
+      tax_included: false,
+    }));
+
+    const { error: invItemsError } = await supabase
+      .from('invoice_items')
+      .insert(invoiceItems);
+
+    if (invItemsError) {
+      console.warn('⚠️ Error creando items de factura automática:', invItemsError);
+    }
+
+    // Crear cuenta por pagar
+    const { error: apError } = await supabase
+      .from('accounts_payable')
+      .insert({
+        organization_id: organizationId,
+        supplier_id: order.supplier_id,
+        invoice_id: factura.id,
+        amount: subtotal,
+        balance: subtotal,
+        due_date: dueDateStr,
+        status: 'pending',
+      });
+
+    if (apError) {
+      console.warn('⚠️ Error creando cuenta por pagar automática:', apError);
+    }
+
+    console.log(`✅ Factura ${numberExt} generada automáticamente desde OC-${orderId}`);
   }
 
   /**
@@ -598,16 +748,37 @@ class PurchaseOrderService {
   /**
    * Obtener productos para selector
    */
-  async getProducts(organizationId: number): Promise<{ id: number; uuid: string; sku: string; name: string }[]> {
+  async getProducts(organizationId: number): Promise<{ id: number; uuid: string; sku: string; name: string; unit_code?: string; category?: string; cost?: number }[]> {
     try {
       const { data } = await supabase
         .from('products')
-        .select('id, uuid, sku, name')
+        .select('id, uuid, sku, name, unit_code, categories(name)')
         .eq('organization_id', organizationId)
         .eq('status', 'active')
         .order('name');
 
-      return data || [];
+      if (!data) return [];
+
+      // Obtener costos actuales de product_costs
+      const productIds = data.map(p => p.id);
+      const { data: costs } = await supabase
+        .from('product_costs')
+        .select('product_id, cost')
+        .in('product_id', productIds)
+        .is('effective_to', null);
+
+      const costMap = new Map<number, number>();
+      (costs || []).forEach(c => costMap.set(c.product_id, Number(c.cost)));
+
+      return data.map((p: any) => ({
+        id: p.id,
+        uuid: p.uuid,
+        sku: p.sku,
+        name: p.name,
+        unit_code: p.unit_code,
+        category: p.categories?.name,
+        cost: costMap.get(p.id) || 0,
+      }));
     } catch (error) {
       console.error('Error obteniendo productos:', error);
       return [];

@@ -169,7 +169,12 @@ class SpacesService {
         console.error('Error obteniendo reservas:', error);
         throw error;
       }
-      return data || [];
+
+      // Normalizar customer: Supabase puede devolver array u objeto
+      return (data || []).map((r: any) => ({
+        ...r,
+        customer: Array.isArray(r.customer) ? r.customer[0] : r.customer,
+      }));
     } catch (error) {
       console.error('Error obteniendo reservas:', error);
       throw error;

@@ -305,6 +305,10 @@ export class CuentasPorCobrarService {
     const currentBranchId = getCurrentBranchId();
     const currentUserId = await getCurrentUserId();
     
+    if (!currentBranchId) {
+      throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
+    }
+    
     // Crear el registro de pago
     const { error: paymentError } = await supabase
       .from('payments')

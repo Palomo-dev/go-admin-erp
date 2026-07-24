@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import {
   Dialog,
@@ -43,6 +43,9 @@ interface AddProductDialogProps {
   onOpenChange: (open: boolean) => void;
   onAddProducts: (products: ProductToAdd[]) => Promise<void>;
   comensales?: number;
+  title?: string;
+  subtitle?: string;
+  submitLabel?: string;
 }
 
 export function AddProductDialog({
@@ -50,6 +53,9 @@ export function AddProductDialog({
   onOpenChange,
   onAddProducts,
   comensales = 1,
+  title = 'Agregar Productos',
+  subtitle,
+  submitLabel = 'Agregar al Pedido',
 }: AddProductDialogProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,6 +69,8 @@ export function AddProductDialog({
   // Estado para selector de variantes
   const [showVariantDialog, setShowVariantDialog] = useState(false);
   const [selectedParentProduct, setSelectedParentProduct] = useState<any>(null);
+  // Ref sincrónico para prevenir cierre del diálogo cuando se abre el selector de variantes
+  const variantDialogOpeningRef = useRef(false);
 
   // Cargar productos reales de la base de datos
   useEffect(() => {
@@ -129,6 +137,7 @@ export function AddProductDialog({
   const handleProductClick = (product: any) => {
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
     if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
+      variantDialogOpeningRef.current = true;
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
     } else {
@@ -145,6 +154,7 @@ export function AddProductDialog({
     addToCart({ ...variant, station: inheritedStation, requires_preparation: inheritedRequiresPreparation, categories: selectedParentProduct?.categories }, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
+    variantDialogOpeningRef.current = false;
   };
 
   // Agregar producto al carrito
@@ -254,6 +264,10 @@ export function AddProductDialog({
 
   // Resetear estado al cerrar
   const handleClose = (open: boolean) => {
+    // Evitar que Radix cierre este diálogo cuando se abre el VariantSelectorDialog
+    // (conflicto de diálogos anidados en móvil). Usar ref además del state para
+    // evitar race conditions (el state puede no haberse actualizado aún).
+    if (!open && (showVariantDialog || variantDialogOpeningRef.current)) return;
     if (!open) {
       setCart(new Map());
       setSearchTerm('');
@@ -287,13 +301,30 @@ export function AddProductDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[100vw] sm:max-w-[95vw] w-full sm:w-[1400px] max-h-[100vh] sm:max-h-[85vh] h-[100vh] sm:h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogContent 
+        className="max-w-[100vw] sm:max-w-[95vw] w-full sm:w-[1400px] max-h-[100dvh] sm:max-h-[85vh] h-[100dvh] sm:h-[85vh] p-0 gap-0 overflow-hidden flex flex-col"
+        onInteractOutside={(e) => {
+          // Prevenir cierre cuando el VariantSelectorDialog está abierto o abriéndose
+          if (showVariantDialog || variantDialogOpeningRef.current) {
+            e.preventDefault();
+          }
+        }}
+        onEscapeKeyDown={(e) => {
+          // Prevenir cierre con ESC cuando el VariantSelectorDialog está abierto
+          if (showVariantDialog || variantDialogOpeningRef.current) {
+            e.preventDefault();
+          }
+        }}
+      >
         <div className="flex flex-col sm:flex-row flex-1 min-h-0">
           {/* Panel izquierdo - Productos */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <DialogHeader className="px-3 sm:px-6 py-3 border-b shrink-0 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <DialogTitle className="text-base sm:text-xl shrink-0">Agregar Productos</DialogTitle>
+                <DialogTitle className="text-base sm:text-xl shrink-0">{title}</DialogTitle>
+                {subtitle && (
+                  <p className="text-sm text-gray-500 hidden sm:block">{subtitle}</p>
+                )}
                 <div className="relative w-full sm:w-80">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -453,7 +484,7 @@ export function AddProductDialog({
           </div>
 
           {/* Panel derecho - Carrito */}
-          <div className="w-full sm:w-[380px] border-t sm:border-l bg-gray-50 dark:bg-gray-900 flex flex-col min-h-0 overflow-hidden max-h-[40vh] sm:max-h-none">
+          <div className="w-full sm:w-[380px] border-t sm:border-l bg-gray-50 dark:bg-gray-900 flex flex-col min-h-0 overflow-hidden max-h-[35vh] sm:max-h-none">
             <div className="px-4 py-3 border-b bg-white dark:bg-gray-800 shrink-0">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-6 w-6 text-blue-600" />
@@ -633,7 +664,7 @@ export function AddProductDialog({
                   ) : (
                     <>
                       <Plus className="h-4 w-4 mr-2" />
-                      Agregar al Pedido
+                      {submitLabel}
                     </>
                   )}
                 </Button>
@@ -648,7 +679,13 @@ export function AddProductDialog({
     {selectedParentProduct && (
       <VariantSelectorDialog
         open={showVariantDialog}
-        onOpenChange={setShowVariantDialog}
+        onOpenChange={(open) => {
+          setShowVariantDialog(open);
+          if (!open) {
+            variantDialogOpeningRef.current = false;
+            setSelectedParentProduct(null);
+          }
+        }}
         product={selectedParentProduct}
         onSelectVariant={handleVariantSelect}
       />

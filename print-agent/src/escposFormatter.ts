@@ -84,7 +84,7 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
   device
     .text(SEP)
     .style('b')
-    .size(2, 2)
+    .size(1, 1)
     .text('*** COMANDA ***')
     .style('normal')
     .size(1, 1)
@@ -219,7 +219,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
   device
     .text(SEP)
     .style('b')
-    .size(2, 2)
+    .size(1, 1)
     .text(payload.title || 'TICKET DE VENTA')
     .style('normal')
     .size(1, 1)
@@ -309,7 +309,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
     .text(SEP)
     .align('lt')
     .style('b')
-    .size(2, 2)
+    .size(1, 1)
     .text(padRight('TOTAL:', formatMoney(payload.total)))
     .style('normal')
     .size(1, 1)

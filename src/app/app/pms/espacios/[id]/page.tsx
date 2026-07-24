@@ -30,9 +30,10 @@ import {
   SpaceMaintenance,
   SpaceBlocks,
   QuickReservationDrawer,
-  AddConsumptionDialog,
   SpaceImageGallery,
 } from '@/components/pms/espacios/id';
+import { AddProductDialog } from '@/components/pos/mesas/id/AddProductDialog';
+import type { ProductToAdd } from '@/components/pos/mesas/id/types';
 import { SpaceDialog } from '@/components/pms/espacios';
 import SpacesService, { type Space, type SpaceType } from '@/lib/services/spacesService';
 import SpaceConsumptionService from '@/lib/services/spaceConsumptionService';
@@ -299,13 +300,7 @@ export default function SpaceDetailPage() {
     });
   };
 
-  const handleAddConsumption = async (consumptions: Array<{
-    product_id: number;
-    product_name: string;
-    quantity: number;
-    unit_price: number;
-    notes: string;
-  }>) => {
+  const handleAddConsumption = async (products: ProductToAdd[]) => {
     try {
       // Obtener usuario autenticado
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -313,6 +308,15 @@ export default function SpaceDetailPage() {
       if (userError || !user) {
         throw new Error('Usuario no autenticado');
       }
+
+      // Convertir ProductToAdd a formato de consumo
+      const consumptions = products.map(p => ({
+        product_id: p.product_id,
+        product_name: p.product_name,
+        quantity: p.quantity,
+        unit_price: p.unit_price,
+        notes: p.notes,
+      }));
 
       await SpaceConsumptionService.addConsumptions(
         spaceId,
@@ -618,13 +622,15 @@ export default function SpaceDetailPage() {
         />
       )}
 
-      {/* Diálogo de Agregar Consumos */}
+      {/* Diálogo de Agregar Consumos - Unificado con POS */}
       {space && (
-        <AddConsumptionDialog
+        <AddProductDialog
           open={showAddConsumptionDialog}
           onOpenChange={setShowAddConsumptionDialog}
-          onAddConsumptions={handleAddConsumption}
-          spaceName={space.label}
+          onAddProducts={handleAddConsumption}
+          title="Agregar Consumos"
+          subtitle={space.label}
+          submitLabel="Agregar al Folio"
         />
       )}
     </div>

@@ -38,7 +38,10 @@ import {
   Building2,
   User,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Package
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { 
@@ -258,7 +261,7 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
             </Button>
           </Link>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Ajuste #{adjustment.id}
               </h1>
@@ -266,9 +269,20 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
                 <StatusIcon className="h-3 w-3 mr-1" />
                 {statusBadge.label}
               </Badge>
+              <Badge className={
+                adjustment.type === 'gain'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+              }>
+                {adjustment.type === 'gain'
+                  ? <TrendingUp className="h-3 w-3 mr-1" />
+                  : <TrendingDown className="h-3 w-3 mr-1" />
+                }
+                {getTypeLabel(adjustment.type)}
+              </Badge>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {getTypeLabel(adjustment.type)} - {getReasonLabel(adjustment.reason)}
+              {getReasonLabel(adjustment.reason)}
             </p>
           </div>
         </div>
@@ -387,10 +401,12 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
                     {items.map((item, index) => (
                       <TableRow key={index} className="dark:border-gray-700">
                         <TableCell>
-                          <div>
-                            <p className="font-medium dark:text-white">{item.products?.name || 'N/A'}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{item.products?.sku || '-'}</p>
-                          </div>
+                          <Link href={`/app/inventario/productos/${item.products?.uuid || ''}`} className="hover:underline">
+                            <div>
+                              <p className="font-medium dark:text-white">{item.products?.name || 'N/A'}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{item.products?.sku || '-'}</p>
+                            </div>
+                          </Link>
                         </TableCell>
                         <TableCell className="text-right dark:text-gray-300">
                           {item.system_qty || 0}
@@ -525,6 +541,17 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
                   {statusBadge.label}
                 </Badge>
               </div>
+
+              {/* Info de quién creó el ajuste */}
+              {(adjustment as any)?.creator?.email && (
+                <div className="pt-3 border-t dark:border-gray-700 space-y-2">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Auditoría</p>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <User className="h-3.5 w-3.5" />
+                    Creado por: {(adjustment as any).creator.email}
+                  </div>
+                </div>
+              )}
 
               {adjustment.status === 'posted' && (
                 <div className="mt-4">

@@ -861,6 +861,7 @@
       "userLimitReached": "Você atingiu o limite de {max} usuários do seu plano. Atualize seu plano para convidar mais membros.",
       "alreadyInvited": "Já existe um convite ativo para este e-mail",
       "alreadyRegistered": "Este e-mail já está registrado no sistema",
+      "alreadyMember": "Este usuário já é membro da organização",
       "noCurrentUser": "Não foi possível obter as informações do usuário atual",
       "noOrgInfo": "Não foi possível obter as informações da organização",
       "inviteCreatedManual": "Convite criado para {email}. Envie esta URL manualmente: {url}",

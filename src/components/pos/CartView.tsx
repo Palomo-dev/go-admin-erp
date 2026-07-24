@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,10 +23,11 @@ interface CartViewProps {
   onCartUpdate: (cart: Cart) => void;
   onCheckout: (cart: Cart) => void;
   onHold: (cart: Cart, reason?: string) => void;
+  onSendComanda?: (cart: Cart) => Promise<void>;
   className?: string;
 }
 
-export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: CartViewProps) {
+export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className }: CartViewProps) {
   const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
@@ -57,6 +58,12 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
+
+  // Estado para envío de comanda
+  const [isSendingComanda, setIsSendingComanda] = useState(false);
+
+  // Detectar si hay items que requieren preparación
+  const hasPreparationItems = cart.items.some(item => item.product?.category?.requires_preparation === true);
 
   // Actualizar cantidad de un item
   const handleQuantityChange = async (itemId: string, newQuantity: number) => {
@@ -248,6 +255,21 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
     });
     // Reactivar temporalmente para checkout
     onCheckout(cart);
+  };
+
+  // Enviar comanda a cocina
+  const handleSendComanda = async () => {
+    if (!onSendComanda || isSendingComanda) return;
+    setIsSendingComanda(true);
+    try {
+      await onSendComanda(cart);
+      toast.success('Comanda enviada a cocina');
+    } catch (error: any) {
+      console.error('Error enviando comanda:', error);
+      toast.error('Error al enviar comanda', { description: error.message || 'No se pudo enviar' });
+    } finally {
+      setIsSendingComanda(false);
+    }
   };
 
   // Anular deuda con nota de crédito
@@ -614,6 +636,23 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, className }: 
                       </Button>
                     </div>
                     
+                    {hasPreparationItems && onSendComanda && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendComanda}
+                        disabled={isOnHold || isOnHoldWithDebt || isSendingComanda}
+                        className="w-full h-8 sm:h-9 dark:border-green-600 dark:text-green-400 dark:hover:bg-green-500/20 dark:bg-green-500/10 border-green-500 text-green-700 hover:bg-green-50 bg-green-50/50 text-xs font-medium"
+                      >
+                        {isSendingComanda ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current sm:mr-1" />
+                        ) : (
+                          <Send className="h-3 w-3 sm:mr-1" />
+                        )}
+                        <span className="text-xs">{isSendingComanda ? 'Enviando...' : 'Enviar Comanda'}</span>
+                      </Button>
+                    )}
+
                     <Button
                       onClick={() => onCheckout(cart)}
                       disabled={isOnHold || isOnHoldWithDebt}

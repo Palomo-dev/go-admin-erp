@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -29,7 +29,6 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Plus, 
   Trash2, 
-  Search, 
   Save, 
   ArrowLeft,
   Loader2,
@@ -40,11 +39,15 @@ import { formatCurrency } from '@/utils/Utils';
 import { 
   adjustmentService, 
   ADJUSTMENT_TYPES, 
-  ADJUSTMENT_REASONS 
+  GAIN_REASONS,
+  LOSS_REASONS
 } from '@/lib/services/adjustmentService';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
+import { SearchSelectCombobox, type SearchSelectOption } from '@/components/inventario/ordenes-compra/SearchSelectCombobox';
+import { ProductSearchCombobox, type ProductOption } from '@/components/inventario/ordenes-compra/ProductSearchCombobox';
+import { Store } from 'lucide-react';
 
 interface ProductForAdjustment {
   id: number;
@@ -94,16 +97,36 @@ export function NuevoAjusteForm() {
   
   // Estados de productos
   const [items, setItems] = useState<AdjustmentItemInput[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<ProductForAdjustment[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<string>('');
   
   // Estados de datos
-  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
+  const [branches, setBranches] = useState<SearchSelectOption[]>([]);
+  const [products, setProducts] = useState<ProductOption[]>([]);
   
   // Estados de UI
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Cargar productos para el buscador
+  useEffect(() => {
+    const loadProducts = async () => {
+      if (!organization?.id) return;
+      try {
+        const { data } = await supabase
+          .from('products')
+          .select('id, uuid, sku, name, status')
+          .eq('organization_id', organization.id)
+          .eq('status', 'active')
+          .order('name');
+        if (data) {
+          setProducts(data.map((p: any) => ({ id: p.id, uuid: p.uuid, sku: p.sku, name: p.name, status: p.status })));
+        }
+      } catch (error) {
+        console.error('Error cargando productos:', error);
+      }
+    };
+    loadProducts();
+  }, [organization?.id]);
 
   // Cargar sucursales
   useEffect(() => {
@@ -112,7 +135,7 @@ export function NuevoAjusteForm() {
       
       try {
         const branchesData = await adjustmentService.getBranches(organization.id);
-        setBranches(branchesData);
+        setBranches(branchesData.map((b: any) => ({ id: b.id, name: b.name })));
         
         // Seleccionar sucursal del param o la primera por defecto
         if (branchesData.length > 0 && !branchId) {
@@ -244,61 +267,69 @@ export function NuevoAjusteForm() {
     preloadProduct();
   }, [paramProductId, organization?.id, branchId]);
 
-  // Buscar productos
-  const searchProducts = useCallback(async () => {
-    if (!organization?.id || !branchId || searchTerm.length < 2) {
-      setSearchResults([]);
+  // Reset razón cuando cambia el tipo
+  useEffect(() => {
+    setReason('');
+  }, [type]);
+
+  // Agregar producto a la lista
+  const handleAddProduct = async (product: ProductOption | ProductForAdjustment) => {
+    // Si ya tiene current_qty y avg_cost, usarlos directamente
+    if ('current_qty' in product && 'avg_cost' in product) {
+      const newItem: AdjustmentItemInput = {
+        product_id: product.id,
+        product_name: product.name,
+        product_sku: product.sku,
+        system_qty: product.current_qty,
+        counted_qty: product.current_qty,
+        difference: 0,
+        unit_cost: product.avg_cost
+      };
+      setItems(prev => [...prev, newItem]);
       return;
     }
 
+    // Si viene del ProductSearchCombobox, obtener stock y costo desde Supabase
     try {
-      setIsSearching(true);
-      const products = await adjustmentService.getProductsForAdjustment(
-        organization.id,
-        parseInt(branchId),
-        searchTerm
-      );
-      
-      // Filtrar productos que ya están en la lista
-      const existingIds = items.map(i => i.product_id);
-      const filtered = products.filter(p => !existingIds.includes(p.id));
-      
-      setSearchResults(filtered);
+      const branchIdNum = parseInt(branchId);
+      const { data: stockData } = await supabase
+        .from('stock_levels')
+        .select('qty_on_hand, avg_cost')
+        .eq('product_id', product.id)
+        .eq('branch_id', branchIdNum)
+        .single();
+
+      const { data: costData } = await supabase
+        .from('product_costs')
+        .select('cost')
+        .eq('product_id', product.id)
+        .is('effective_to', null)
+        .order('effective_from', { ascending: false })
+        .limit(1)
+        .single();
+
+      const currentQty = stockData?.qty_on_hand || 0;
+      const unitCost = costData ? parseFloat(costData.cost) : parseFloat(stockData?.avg_cost || '0');
+
+      const newItem: AdjustmentItemInput = {
+        product_id: product.id,
+        product_name: product.name,
+        product_sku: product.sku,
+        system_qty: currentQty,
+        counted_qty: currentQty,
+        difference: 0,
+        unit_cost: unitCost
+      };
+
+      setItems(prev => [...prev, newItem]);
     } catch (error) {
-      console.error('Error buscando productos:', error);
-    } finally {
-      setIsSearching(false);
+      console.error('Error agregando producto:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo obtener la información del producto'
+      });
     }
-  }, [organization?.id, branchId, searchTerm, items]);
-
-  // Efecto para búsqueda con debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm.length >= 2) {
-        searchProducts();
-      } else {
-        setSearchResults([]);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm, searchProducts]);
-
-  // Agregar producto a la lista
-  const handleAddProduct = (product: ProductForAdjustment) => {
-    const newItem: AdjustmentItemInput = {
-      product_id: product.id,
-      product_name: product.name,
-      product_sku: product.sku,
-      system_qty: product.current_qty,
-      counted_qty: product.current_qty,
-      difference: 0,
-      unit_cost: product.avg_cost
-    };
-
-    setItems([...items, newItem]);
-    setSearchTerm('');
-    setSearchResults([]);
   };
 
   // Actualizar cantidad contada
@@ -460,18 +491,13 @@ export function NuevoAjusteForm() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="dark:text-gray-300">Sucursal *</Label>
-                  <Select value={branchId} onValueChange={setBranchId}>
-                    <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700">
-                      <SelectValue placeholder="Seleccionar sucursal" />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                      {branches.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id.toString()}>
-                          {branch.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchSelectCombobox
+                    options={branches}
+                    value={branchId}
+                    onSelect={(opt) => setBranchId(opt ? opt.id.toString() : '')}
+                    placeholder="Buscar sucursal..."
+                    icon={<Store className="h-4 w-4 text-gray-400" />}
+                  />
                 </div>
 
                 <div>
@@ -497,7 +523,7 @@ export function NuevoAjusteForm() {
                       <SelectValue placeholder="Seleccionar razón" />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                      {ADJUSTMENT_REASONS.map((r) => (
+                      {(type === 'gain' ? GAIN_REASONS : type === 'loss' ? LOSS_REASONS : []).map((r) => (
                         <SelectItem key={r.value} value={r.value}>
                           {r.label}
                         </SelectItem>
@@ -525,46 +551,25 @@ export function NuevoAjusteForm() {
             <CardHeader>
               <CardTitle className="text-lg dark:text-white">Agregar Productos</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Buscar producto por nombre o SKU..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 dark:bg-gray-900 dark:border-gray-700"
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500 dark:text-gray-400">Buscar Producto</Label>
+                <ProductSearchCombobox
+                  products={products}
+                  value={selectedProduct}
+                  onSelect={(product) => {
+                    if (product) {
+                      handleAddProduct(product as any);
+                      setSelectedProduct('');
+                    }
+                  }}
+                  placeholder="Buscar por nombre o SKU..."
                   disabled={!branchId}
                 />
-                {isSearching && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
-                )}
               </div>
 
-              {/* Resultados de búsqueda */}
-              {searchResults.length > 0 && (
-                <div className="mt-2 border dark:border-gray-700 rounded-lg overflow-hidden">
-                  {searchResults.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b last:border-b-0 dark:border-gray-700"
-                      onClick={() => handleAddProduct(product)}
-                    >
-                      <div>
-                        <p className="font-medium dark:text-white">{product.name}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          SKU: {product.sku} | Stock: {product.current_qty}
-                        </p>
-                      </div>
-                      <Button size="sm" variant="ghost">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {!branchId && (
-                <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                <p className="text-sm text-yellow-600 dark:text-yellow-400">
                   Selecciona una sucursal para buscar productos
                 </p>
               )}

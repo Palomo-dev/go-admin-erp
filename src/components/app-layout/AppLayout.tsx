@@ -216,7 +216,10 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Órdenes de Compra", href: "/app/inventario/ordenes-compra", icon: <ClipboardList size={16} /> },
       { name: "Recetas", href: "/app/inventario/recetas", icon: <ChefHat size={16} /> },
       { name: "Producción", href: "/app/inventario/produccion", icon: <Factory size={16} /> },
-      { name: "Reportes", href: "/app/inventario/reportes", icon: <BarChart3 size={16} /> }
+      { name: "Distribución", href: "/app/inventario/distribucion", icon: <Truck size={16} /> },
+      { name: "Reportes", href: "/app/inventario/reportes", icon: <BarChart3 size={16} /> },
+      { name: "Trazabilidad", href: "/app/inventario/reportes/trazabilidad", icon: <Search size={16} /> },
+      { name: "Costo Recetas", href: "/app/inventario/reportes/costo-recetas", icon: <DollarSign size={16} /> }
     ]
   },
   { 

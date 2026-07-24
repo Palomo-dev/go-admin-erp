@@ -278,6 +278,9 @@ export class CuentasPorPagarService {
       if (!organizationId || !userId) {
         throw new Error('Organization ID o User ID no disponibles');
       }
+      if (!branchId) {
+        throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
+      }
 
       // Validaciones adicionales para UUIDs
       const userIdStr = String(userId);
@@ -344,6 +347,9 @@ export class CuentasPorPagarService {
       
       if (!organizationId || !userId) {
         throw new Error('Organization ID o User ID no disponibles');
+      }
+      if (!branchId) {
+        throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
       }
 
       // Obtener información de la cuenta por pagar

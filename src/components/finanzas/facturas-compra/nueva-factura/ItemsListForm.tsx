@@ -125,7 +125,8 @@ export function ItemsListForm({
     // En lugar de usar onAgregarItem + onItemChange, usar directamente onDirectAddItem
     // que agregará el producto completo de una vez
     if (onDirectAddItem) {
-      const newItem = {
+      const newItem: InvoiceItemForm = {
+        product_id: product.id,
         description: `${product.name} (${product.sku})`,
         qty: 1,
         unit_price: product.cost,
@@ -144,6 +145,7 @@ export function ItemsListForm({
         const lastIndex = items.length; // Debería ser el nuevo índice
         console.log('Actualizando item en índice:', lastIndex);
         
+        onItemChange(lastIndex, 'product_id', product.id);
         onItemChange(lastIndex, 'description', `${product.name} (${product.sku})`);
         onItemChange(lastIndex, 'qty', 1);
         onItemChange(lastIndex, 'unit_price', product.cost);

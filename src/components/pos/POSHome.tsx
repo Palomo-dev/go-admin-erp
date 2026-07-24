@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { VentasService, DailySummary, CashSession } from './ventas';
 import { formatCurrency } from '@/utils/Utils';
 import { cn } from '@/utils/Utils';
@@ -41,26 +42,27 @@ interface QuickAction {
 
 export function POSHome() {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && branchFilter !== null) {
       loadData();
     }
 
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
-  }, [organization]);
+  }, [organization, branchFilter]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       const [summary, session] = await Promise.all([
         VentasService.getDailySummary(),
-        VentasService.getCurrentCashSession()
+        VentasService.getCurrentCashSession(branchFilter!)
       ]);
       setDailySummary(summary);
       setCashSession(session);

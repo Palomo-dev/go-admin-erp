@@ -861,6 +861,7 @@
       "userLimitReached": "Vous avez atteint la limite de {max} utilisateurs de votre plan. Mettez à jour votre plan pour inviter plus de membres.",
       "alreadyInvited": "Une invitation active existe déjà pour cet e-mail",
       "alreadyRegistered": "Cet e-mail est déjà enregistré dans le système",
+      "alreadyMember": "Cet utilisateur est déjà membre de l'organisation",
       "noCurrentUser": "Impossible d'obtenir les informations de l'utilisateur actuel",
       "noOrgInfo": "Impossible d'obtenir les informations de l'organisation",
       "inviteCreatedManual": "Invitation créée pour {email}. Envoyez cette URL manuellement : {url}",

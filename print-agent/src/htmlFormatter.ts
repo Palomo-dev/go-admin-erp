@@ -32,57 +32,57 @@ const STATION_LABELS: Record<string, string> = {
 const SHARED_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   @media print {
-    @page { margin: 4mm; size: 80mm auto; }
+    @page { margin: 0; size: 80mm auto; }
     body { -webkit-print-color-adjust: exact; }
   }
   body {
-    width: 80mm;
+    width: 76mm;
     margin: 0 auto;
     font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 11px;
-    line-height: 1.4;
+    font-size: 8px;
+    line-height: 1.35;
     color: #1a1a1a;
     background: #fff;
-    padding: 6mm;
+    padding: 2mm;
   }
   .header {
     text-align: center;
-    border-bottom: 2px solid #1a1a1a;
-    padding-bottom: 8px;
-    margin-bottom: 8px;
+    border-bottom: 1px solid #1a1a1a;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
   }
   .business-name {
-    font-size: 16px;
+    font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.5px;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
   .business-info {
-    font-size: 9px;
+    font-size: 7px;
     color: #555;
     margin-bottom: 1px;
   }
   .branch-name {
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 700;
-    margin-top: 4px;
+    margin-top: 3px;
     color: #333;
   }
   .banner {
     text-align: center;
-    font-size: 14px;
+    font-size: 10px;
     font-weight: 800;
-    border: 2px solid #1a1a1a;
-    padding: 5px;
-    margin: 6px 0;
-    letter-spacing: 2px;
+    border: 1px solid #1a1a1a;
+    padding: 3px;
+    margin: 4px 0;
+    letter-spacing: 1px;
   }
   .meta {
     border-top: 1px dashed #999;
     border-bottom: 1px dashed #999;
-    padding: 5px 0;
-    margin-bottom: 6px;
-    font-size: 10px;
+    padding: 3px 0;
+    margin-bottom: 4px;
+    font-size: 8px;
   }
   .meta-row {
     display: flex;
@@ -92,26 +92,26 @@ const SHARED_CSS = `
   .meta-label { font-weight: 700; color: #333; }
   .meta-value { color: #555; }
   .section-title {
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 700;
     text-transform: uppercase;
     border-bottom: 1px solid #1a1a1a;
     padding-bottom: 2px;
-    margin: 6px 0 4px;
+    margin: 4px 0 3px;
   }
   .items-header {
     display: flex;
     justify-content: space-between;
     border-bottom: 1px solid #1a1a1a;
-    padding-bottom: 3px;
-    margin-bottom: 4px;
+    padding-bottom: 2px;
+    margin-bottom: 3px;
     font-weight: 700;
-    font-size: 9px;
+    font-size: 7px;
     text-transform: uppercase;
   }
   .item {
-    margin-bottom: 5px;
-    padding-bottom: 4px;
+    margin-bottom: 3px;
+    padding-bottom: 2px;
     border-bottom: 1px dotted #ddd;
   }
   .item-line {
@@ -121,24 +121,24 @@ const SHARED_CSS = `
   }
   .item-name {
     font-weight: 700;
-    font-size: 11px;
+    font-size: 9px;
   }
   .item-total {
     font-weight: 700;
-    font-size: 11px;
+    font-size: 9px;
   }
   .item-detail {
-    font-size: 9px;
+    font-size: 7px;
     color: #666;
     margin-top: 1px;
-    padding-left: 4px;
+    padding-left: 3px;
   }
   .item-variant {
-    font-weight: 600;
-    color: #444;
+    font-weight: 700;
+    color: #333;
   }
   .item-modifier {
-    font-weight: 600;
+    font-weight: 700;
     color: #2c7a2c;
   }
   .item-notes {
@@ -147,72 +147,72 @@ const SHARED_CSS = `
     margin-top: 1px;
   }
   .totals {
-    border-top: 2px solid #1a1a1a;
-    margin-top: 8px;
-    padding-top: 6px;
+    border-top: 1px solid #1a1a1a;
+    margin-top: 5px;
+    padding-top: 4px;
   }
   .total-line {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 3px;
-    font-size: 11px;
+    margin-bottom: 2px;
+    font-size: 9px;
   }
   .total-final {
     font-weight: 800;
-    font-size: 15px;
+    font-size: 12px;
     border-top: 2px solid #1a1a1a;
-    padding-top: 5px;
-    margin-top: 5px;
+    padding-top: 4px;
+    margin-top: 4px;
   }
   .payments {
-    margin-top: 6px;
-    padding-top: 4px;
+    margin-top: 4px;
+    padding-top: 3px;
     border-top: 1px dashed #999;
   }
   .payment-line {
     display: flex;
     justify-content: space-between;
-    font-size: 10px;
+    font-size: 8px;
     margin-bottom: 2px;
   }
   .footer {
     text-align: center;
-    margin-top: 10px;
-    font-size: 9px;
+    margin-top: 6px;
+    font-size: 7px;
     border-top: 1px dashed #999;
-    padding-top: 8px;
+    padding-top: 5px;
     color: #555;
   }
   .footer-banner {
     font-weight: 800;
-    font-size: 11px;
-    margin-bottom: 3px;
+    font-size: 9px;
+    margin-bottom: 2px;
   }
   .footer-brand {
-    margin-top: 6px;
-    padding-top: 6px;
+    margin-top: 4px;
+    padding-top: 4px;
     border-top: 1px dotted #ccc;
-    font-size: 8px;
+    font-size: 6px;
     color: #888;
   }
   .qr-container {
     text-align: center;
-    margin-top: 6px;
+    margin-top: 4px;
   }
   .customer-box {
     border: 1px solid #ddd;
     border-radius: 3px;
-    padding: 5px;
-    margin: 4px 0;
-    font-size: 10px;
+    padding: 3px;
+    margin: 3px 0;
+    font-size: 8px;
   }
   .customer-box .label { font-weight: 700; color: #333; }
   .delivery-box {
     border: 1px dashed #999;
     border-radius: 3px;
-    padding: 5px;
-    margin: 4px 0;
-    font-size: 10px;
+    padding: 3px;
+    margin: 3px 0;
+    font-size: 8px;
   }
 `;
 
@@ -343,7 +343,7 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload): string {
       : `<div>Gracias por su compra!</div>`
     }
     <div class="qr-container">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=https://goadmin.io" alt="QR" style="width:70px;height:70px" />
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=https://goadmin.io" alt="QR" style="width:50px;height:50px" />
     </div>
     <div class="footer-brand">
       <div>GO Admin S.A.S | NIT: 901479683-5</div>

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { stockMovementService } from '@/lib/services/stockMovementService';
 import { 
   InvoicePurchase, 
   SupplierBase, 
@@ -179,6 +180,12 @@ export class FacturasCompraService {
   static async crearFactura(formData: NuevaFacturaCompraForm & { _calculatedTotals?: { subtotal: number; taxTotal: number; total: number }; appliedTaxes?: {[key: string]: boolean} }): Promise<InvoicePurchase> {
     try {
       const currentUserId = await getCurrentUserId();
+
+      // Validar que todos los items tengan product_id
+      const itemsWithoutProduct = formData.items.filter(item => !item.product_id);
+      if (itemsWithoutProduct.length > 0) {
+        throw new Error(`Hay ${itemsWithoutProduct.length} item(s) sin producto vinculado. Todos los items deben tener un producto asociado para actualizar el inventario correctamente.`);
+      }
       
       // Usar totales calculados del formulario si están disponibles, sino calcular básico
       let subtotal, taxTotal, total;
@@ -764,114 +771,36 @@ export class FacturasCompraService {
     branchId: number
   ): Promise<void> {
     try {
-      console.log('=== Actualizando inventario por compra ===');
-      console.log('Factura ID:', facturaId);
-      console.log('Branch ID:', branchId);
-      console.log('Items a procesar:', items);
+      console.log('=== Actualizando inventario por compra (via stockMovementService) ===');
 
-      for (const item of items) {
-        // Solo procesar items que tienen product_id válido
-        if (!item.product_id || item.qty <= 0) {
-          console.log(`Saltando item sin product_id o cantidad inválida:`, item);
-          continue;
-        }
+      const stockItems = items
+        .filter(item => item.product_id && item.qty > 0)
+        .map(item => ({
+          product_id: item.product_id!,
+          quantity: item.qty,
+          unit_price: item.unit_price,
+        }));
 
-        console.log(`Procesando producto ID ${item.product_id}, cantidad: ${item.qty}`);
-
-        // 1. Verificar si existe stock_level para este producto y sucursal
-        const { data: stockExistente, error: stockCheckError } = await supabase
-          .from('stock_levels')
-          .select('id, qty_on_hand, avg_cost')
-          .eq('product_id', item.product_id)
-          .eq('branch_id', branchId)
-          .single();
-
-        if (stockCheckError && stockCheckError.code !== 'PGRST116') {
-          console.error('Error verificando stock existente:', stockCheckError);
-          continue;
-        }
-
-        const nuevaCantidad = (stockExistente?.qty_on_hand || 0) + item.qty;
-        const costoAnterior = stockExistente?.avg_cost || 0;
-        const cantidadAnterior = stockExistente?.qty_on_hand || 0;
-        
-        // Calcular nuevo costo promedio ponderado
-        const nuevoCostoPromedio = cantidadAnterior > 0 
-          ? ((costoAnterior * cantidadAnterior) + (item.unit_price * item.qty)) / nuevaCantidad
-          : item.unit_price;
-
-        if (stockExistente) {
-          // 2a. Actualizar stock existente
-          console.log(`Actualizando stock existente para producto ${item.product_id}:`);
-          console.log(`  Cantidad anterior: ${cantidadAnterior} -> Nueva: ${nuevaCantidad}`);
-          console.log(`  Costo anterior: ${costoAnterior} -> Nuevo: ${nuevoCostoPromedio}`);
-
-          const { error: updateError } = await supabase
-            .from('stock_levels')
-            .update({
-              qty_on_hand: nuevaCantidad,
-              avg_cost: nuevoCostoPromedio,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', stockExistente.id);
-
-          if (updateError) {
-            console.error(`Error actualizando stock para producto ${item.product_id}:`, updateError);
-            continue;
-          }
-        } else {
-          // 2b. Crear nuevo registro de stock
-          console.log(`Creando nuevo stock para producto ${item.product_id}:`);
-          console.log(`  Cantidad inicial: ${item.qty}`);
-          console.log(`  Costo inicial: ${item.unit_price}`);
-
-          const { error: insertError } = await supabase
-            .from('stock_levels')
-            .insert({
-              product_id: item.product_id,
-              branch_id: branchId,
-              qty_on_hand: item.qty,
-              qty_reserved: 0,
-              avg_cost: item.unit_price,
-              min_level: 0
-            });
-
-          if (insertError) {
-            console.error(`Error creando stock para producto ${item.product_id}:`, insertError);
-            continue;
-          }
-        }
-
-        // 3. Crear movimiento de inventario
-        console.log(`Creando movimiento de inventario para producto ${item.product_id}`);
-        const { error: movementError } = await supabase
-          .from('stock_movements')
-          .insert({
-            organization_id: this.organizationId,
-            branch_id: branchId,
-            product_id: item.product_id,
-            direction: 'in',
-            qty: item.qty,
-            unit_cost: item.unit_price,
-            source: 'purchase',
-            source_id: facturaId,
-            note: `Compra - Factura ${facturaId}`,
-            updated_by: await getCurrentUserId()
-          });
-
-        if (movementError) {
-          console.error(`Error creando movimiento para producto ${item.product_id}:`, movementError);
-          continue;
-        }
-
-        console.log(`✅ Inventario actualizado correctamente para producto ${item.product_id}`);
+      if (stockItems.length === 0) {
+        console.log('ℹ️ No hay items válidos para actualizar stock');
+        return;
       }
 
-      console.log('=== Actualización de inventario completada ===');
+      const stockResult = await stockMovementService.incrementOnPurchase(
+        this.organizationId,
+        branchId,
+        facturaId,
+        stockItems,
+        'purchase_invoice'
+      );
+
+      if (stockResult.errors.length > 0) {
+        console.warn('⚠️ Algunos items no sumaron stock:', stockResult.errors);
+      }
+
+      console.log(`📦 Stock incrementado: ${stockItems.length - stockResult.skipped} items procesados, ${stockResult.skipped} saltados (track_stock=false)`);
     } catch (error) {
       console.error('Error actualizando inventario por compra:', error);
-      // No lanzamos el error para no bloquear la creación de la factura
-      // El inventario se puede corregir manualmente si es necesario
     }
   }
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import TapeChartService, {
   type TapeChartData,
@@ -20,6 +21,7 @@ import {
 export default function CalendarioPage() {
   const router = useRouter();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
 
   const [startDate, setStartDate] = useState(() => {
@@ -52,13 +54,14 @@ export default function CalendarioPage() {
 
   const loadData = async () => {
     if (!organization?.id) return;
+    const branchId = branchFilter ?? undefined;
 
     try {
       const startDateStr = startDate.toISOString().split('T')[0];
       
       const [data, occupancy] = await Promise.all([
-        TapeChartService.getTapeChartData(organization.id, startDateStr, endDateStr),
-        TapeChartService.getOccupancyData(organization.id, startDateStr, endDateStr),
+        TapeChartService.getTapeChartData(organization.id, startDateStr, endDateStr, branchId),
+        TapeChartService.getOccupancyData(organization.id, startDateStr, endDateStr, branchId),
       ]);
 
       setChartData(data);
@@ -81,7 +84,7 @@ export default function CalendarioPage() {
       setIsLoading(true);
       loadData();
     }
-  }, [organization?.id, startDate, daysToShow]);
+  }, [organization?.id, branchFilter, startDate, daysToShow]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -251,6 +254,7 @@ export default function CalendarioPage() {
     reason: string
   ) => {
     if (!organization?.id) return;
+    // organization.id se usa para organization_id en reservation_blocks
     
     try {
       await TapeChartService.createBlock(

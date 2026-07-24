@@ -588,9 +588,9 @@ export default function ModulesMarketplacePage() {
                       </button>
                       
                       <div
-                        className="overflow-hidden transition-all duration-300 ease-in-out"
+                        className="transition-all duration-300 ease-in-out overflow-y-auto"
                         style={{
-                          maxHeight: expandedModules.has(module.code) ? '500px' : '0px',
+                          maxHeight: expandedModules.has(module.code) ? '600px' : '0px',
                           opacity: expandedModules.has(module.code) ? 1 : 0,
                         }}
                       >

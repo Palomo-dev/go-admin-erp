@@ -85,6 +85,7 @@ export function NuevaFacturaForm({
         tax_included: facturaInicial.tax_included || false,
         notes: facturaInicial.notes || '',
         items: facturaInicial.items?.map((item: any) => ({
+          product_id: item.product_id,
           description: item.description,
           qty: item.qty,
           unit_price: item.unit_price,

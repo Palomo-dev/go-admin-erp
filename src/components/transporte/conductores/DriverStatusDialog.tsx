@@ -39,7 +39,7 @@ export function DriverStatusDialog({
   const fullName = profile 
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() 
     : driver.license_number;
-  const isCurrentlyActive = driver.is_active_driver;
+  const isCurrentlyActive = driver.is_active;
   const newStatus = !isCurrentlyActive;
 
   const handleConfirm = async () => {

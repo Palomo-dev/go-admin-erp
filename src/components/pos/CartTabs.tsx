@@ -7,6 +7,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Cart } from './types';
 import { formatCurrency } from '@/utils/Utils';
 
@@ -32,6 +42,10 @@ export function CartTabs({
   const [dragStartX, setDragStartX] = useState(0);
   const [scrollStartX, setScrollStartX] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchMovedRef = useRef(false);
+  const [cartToRemove, setCartToRemove] = useState<string | null>(null);
 
   // Funciones para scroll con drag y arrastrar (click and drag scrolling)
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -54,27 +68,38 @@ export function CartTabs({
 
   // Touch events para dispositivos móviles
   const handleTouchStart = (e: React.TouchEvent) => {
-    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
-    if (!viewport) return;
-    
     const touch = e.touches[0];
-    setIsDragging(true);
-    setDragStartX(touch.clientX);
-    setScrollStartX(viewport.scrollLeft);
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+    touchMovedRef.current = false;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    
-    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
-    if (!viewport) return;
-    
     const touch = e.touches[0];
-    const deltaX = touch.clientX - dragStartX;
-    const newScrollX = scrollStartX - deltaX;
-    
-    viewport.scrollLeft = Math.max(0, Math.min(newScrollX, viewport.scrollWidth - viewport.clientWidth));
-    e.preventDefault(); // Prevenir scroll de la página
+    const deltaX = Math.abs(touch.clientX - touchStartX.current);
+    const deltaY = Math.abs(touch.clientY - touchStartY.current);
+
+    // Solo activar drag si el movimiento es mayormente horizontal y supera 10px
+    if (!touchMovedRef.current && deltaX > 10 && deltaX > deltaY) {
+      touchMovedRef.current = true;
+      const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+      if (viewport) {
+        setIsDragging(true);
+        setDragStartX(touch.clientX);
+        setScrollStartX(viewport.scrollLeft);
+      }
+    }
+
+    if (isDragging) {
+      const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+      if (!viewport) return;
+
+      const dX = touch.clientX - dragStartX;
+      const newScrollX = scrollStartX - dX;
+
+      viewport.scrollLeft = Math.max(0, Math.min(newScrollX, viewport.scrollWidth - viewport.clientWidth));
+      e.preventDefault();
+    }
   };
 
   const handleTouchEnd = () => {
@@ -124,11 +149,18 @@ export function CartTabs({
 
   const handleRemoveCart = (cartId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    // Solo remover si hay más de 1 carrito
+    e.preventDefault();
+    // Solo mostrar confirmación si hay más de 1 carrito
     if (carts.length > 1) {
-      onRemoveCart(cartId);
+      setCartToRemove(cartId);
     }
+  };
+
+  const confirmRemoveCart = () => {
+    if (cartToRemove) {
+      onRemoveCart(cartToRemove);
+    }
+    setCartToRemove(null);
   };
 
   const getCartDisplayName = (cart: Cart, index: number) => {
@@ -214,7 +246,7 @@ export function CartTabs({
                       <div
                         role="button"
                         tabIndex={0}
-                        className="h-5 w-5 p-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity dark:hover:bg-red-500/20 dark:hover:text-red-400 hover:bg-red-100 hover:text-red-600 rounded flex items-center justify-center cursor-pointer"
+                        className="h-5 w-5 p-0 ml-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity dark:hover:bg-red-500/20 dark:hover:text-red-400 hover:bg-red-100 hover:text-red-600 rounded flex items-center justify-center cursor-pointer"
                         onClick={(e) => handleRemoveCart(cart.id, e)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -302,6 +334,34 @@ export function CartTabs({
           </CardContent>
         </Card>
       )}
+
+      {/* Confirmación al cerrar carrito */}
+      <AlertDialog open={!!cartToRemove} onOpenChange={(open) => { if (!open) setCartToRemove(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cerrar este carrito?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminarán todos los productos del carrito. Esta acción no se puede deshacer.
+              {cartToRemove && (() => {
+                const cart = carts.find(c => c.id === cartToRemove);
+                if (cart && cart.items.length > 0) {
+                  return ` Tiene ${cart.items.length} producto(s) por ${formatCurrency(cart.total)}.`;
+                }
+                return '';
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveCart}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sí, cerrar carrito
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -405,6 +405,63 @@ class KitchenService {
       console.error('Error marcando ticket como entregado:', error);
     }
   }
+
+  /**
+   * Agregar items a un ticket de cocina existente (para cuando se envían más productos al mismo ticket)
+   */
+  async addItemsToTicket(ticketId: number, organizationId: number, items: Array<{
+    productName: string;
+    quantity: number;
+    station: string | null;
+    notes?: string | null;
+    variantData?: Record<string, string> | null;
+    modifiers?: Array<{ name: string; extraPrice: number }> | null;
+  }>) {
+    if (!items.length) return;
+
+    const ticketItems = items.map((item) => ({
+      organization_id: organizationId,
+      kitchen_ticket_id: ticketId,
+      sale_item_id: null,
+      station: item.station || null,
+      notes: item.notes || null,
+      status: 'pending' as const,
+      product_name: item.productName,
+      quantity: item.quantity,
+      variant_data: item.variantData || null,
+      modifiers: item.modifiers || null,
+    }));
+
+    const { error } = await supabase
+      .from('kitchen_ticket_items')
+      .insert(ticketItems);
+
+    if (error) throw error;
+
+    // Actualizar updated_at del ticket
+    await supabase
+      .from('kitchen_tickets')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', ticketId);
+  }
+
+  /**
+   * Obtener los items de un ticket de cocina específico
+   */
+  async getTicketItems(ticketId: number): Promise<KitchenTicketItem[]> {
+    try {
+      const { data, error } = await supabase
+        .from('kitchen_ticket_items')
+        .select('*')
+        .eq('kitchen_ticket_id', ticketId);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error obteniendo items del ticket:', error);
+      return [];
+    }
+  }
 }
 
 export default new KitchenService();

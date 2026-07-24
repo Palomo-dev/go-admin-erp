@@ -101,7 +101,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [cart.kitchen_ticket_id]);
+  }, [cart.kitchen_ticket_id, cart.branch_id]);
 
   // Detectar si hay items que requieren preparación
   const hasPreparationItems = cart.items.some(item => {

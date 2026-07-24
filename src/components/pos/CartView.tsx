@@ -63,7 +63,12 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const [isSendingComanda, setIsSendingComanda] = useState(false);
 
   // Detectar si hay items que requieren preparación
-  const hasPreparationItems = cart.items.some(item => item.product?.category?.requires_preparation === true);
+  const hasPreparationItems = cart.items.some(item => {
+    const product = item.product as any;
+    const cat = product?.category || product?.categories;
+    const requiresPrep = Array.isArray(cat) ? cat[0]?.requires_preparation : cat?.requires_preparation;
+    return requiresPrep === true;
+  });
 
   // Actualizar cantidad de un item
   const handleQuantityChange = async (itemId: string, newQuantity: number) => {

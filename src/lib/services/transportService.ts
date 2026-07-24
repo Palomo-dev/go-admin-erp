@@ -607,15 +607,18 @@ class TransportService {
   // ==================== DRIVERS ====================
 
   async getDrivers(organizationId: number) {
+    // Usar join explícito via organization_members para filtrar por organization_id
     const { data, error } = await supabase
       .from('driver_credentials')
       .select(`
         *,
         employments(
           id,
+          organization_member_id,
           organization_members(
             id,
             organization_id,
+            user_id,
             profiles(id, first_name, last_name, email, phone)
           )
         )
@@ -626,9 +629,18 @@ class TransportService {
       console.warn('Error fetching drivers:', error.message);
       return [];
     }
-    return (data || []).filter((d: any) =>
-      d.employments?.[0]?.organization_members?.organization_id === organizationId
-    ) as DriverCredential[];
+
+    // Filtrar por organization_id de forma robusta (organization_members puede ser objeto o array)
+    return (data || []).filter((d: any) => {
+      const emp = d.employments;
+      if (!emp || (Array.isArray(emp) && emp.length === 0)) return false;
+      const firstEmp = Array.isArray(emp) ? emp[0] : emp;
+      const om = firstEmp?.organization_members;
+      if (!om) return false;
+      // organization_members puede ser objeto o array
+      const omObj = Array.isArray(om) ? om[0] : om;
+      return omObj?.organization_id === organizationId;
+    }) as DriverCredential[];
   }
 
   async getDriverById(id: string) {
@@ -705,9 +717,15 @@ class TransportService {
       .or(`license_expiry.lte.${dateStr},medical_certificate_expiry.lte.${dateStr}`);
 
     if (error) throw error;
-    return (data || []).filter((d: any) =>
-      d.employments?.[0]?.organization_members?.organization_id === organizationId
-    ) as DriverCredential[];
+    return (data || []).filter((d: any) => {
+      const emp = d.employments;
+      if (!emp || (Array.isArray(emp) && emp.length === 0)) return false;
+      const firstEmp = Array.isArray(emp) ? emp[0] : emp;
+      const om = firstEmp?.organization_members;
+      if (!om) return false;
+      const omObj = Array.isArray(om) ? om[0] : om;
+      return omObj?.organization_id === organizationId;
+    }) as DriverCredential[];
   }
 
   // ==================== STOPS ====================

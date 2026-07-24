@@ -161,7 +161,7 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
   const electron = tryRequire('electron');
   if (electron && electron.BrowserWindow) {
     try {
-      await printViaElectron(html, printer.name);
+      await printViaElectron(html, printer.name, printer.paper_width || '80mm');
       return;
     } catch (err: any) {
       console.error('[printer] Error con Electron print, fallback a texto plano:', err.message);
@@ -189,8 +189,15 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
 /**
  * Usa una BrowserWindow oculta de Electron para cargar el HTML y enviarlo a la impresora.
  * Electron ya incluye Chromium — no requiere puppeteer ni descargas adicionales.
+ *
+ * IMPORTANTE: se debe pasar `pageSize` explícito en MICRONES. Sin él, Chromium usa
+ * Letter/A4 y el driver térmico escala la página completa a 80mm, dejando el ticket
+ * ilegible (texto microscópico) y casi todo el papel en blanco.
  */
-function printViaElectron(html: string, printerName: string): Promise<void> {
+function printViaElectron(html: string, printerName: string, paperWidth: '58mm' | '80mm' = '80mm'): Promise<void> {
+  // Ancho imprimible en micrones (1mm = 1000 micrones)
+  const widthMicrons = paperWidth === '58mm' ? 58000 : 80000;
+
   return new Promise((resolve, reject) => {
     const electron = require('electron');
     const win = new electron.BrowserWindow({
@@ -200,27 +207,62 @@ function printViaElectron(html: string, printerName: string): Promise<void> {
       webPreferences: { contextIsolation: true, nodeIntegration: false },
     });
 
+    let settled = false;
+    const finish = (err?: Error) => {
+      if (settled) return;
+      settled = true;
+      try { win.destroy(); } catch { /* ignore */ }
+      if (err) reject(err); else resolve();
+    };
+
     win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
 
-    win.webContents.on('did-finish-load', () => {
-      win.webContents.print(
-        {
-          silent: true,
-          printBackground: true,
-          deviceName: printerName,
-          margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 },
-        },
-        (success: boolean, errorType: string) => {
-          win.destroy();
-          if (success) resolve();
-          else reject(new Error(`Error imprimiendo via Electron en "${printerName}": ${errorType}`));
-        }
-      );
+    win.webContents.on('did-finish-load', async () => {
+      try {
+        // Esperar a que todas las imágenes terminen de cargar (QR, logos).
+        // Sin esto, se imprime antes de que rendericen y salen huecos en blanco.
+        await win.webContents.executeJavaScript(`
+          new Promise((res) => {
+            const imgs = Array.from(document.images);
+            if (imgs.length === 0) return res(true);
+            let pending = imgs.length;
+            const done = () => { if (--pending <= 0) res(true); };
+            imgs.forEach((img) => {
+              if (img.complete) return done();
+              img.addEventListener('load', done, { once: true });
+              img.addEventListener('error', done, { once: true });
+            });
+            // Tope de seguridad: no bloquear la impresión más de 3s
+            setTimeout(() => res(true), 3000);
+          })
+        `);
+
+        // Altura real del contenido en px CSS -> micrones (1px CSS = 1/96 pulgada = 264.583 micrones)
+        const heightPx: number = await win.webContents.executeJavaScript(
+          'Math.ceil(document.documentElement.scrollHeight)'
+        );
+        const heightMicrons = Math.max(20000, Math.round(heightPx * 264.583));
+
+        win.webContents.print(
+          {
+            silent: true,
+            printBackground: true,
+            deviceName: printerName,
+            pageSize: { width: widthMicrons, height: heightMicrons },
+            margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 },
+          },
+          (success: boolean, errorType: string) => {
+            if (success) finish();
+            else finish(new Error(`Error imprimiendo via Electron en "${printerName}": ${errorType}`));
+          }
+        );
+      } catch (err: any) {
+        finish(new Error(`Error preparando impresión: ${err.message || err}`));
+      }
     });
 
     win.webContents.on('did-fail-load', (_e: any, _code: number, desc: string) => {
-      win.destroy();
-      reject(new Error(`Error cargando HTML para impresión: ${desc}`));
+      finish(new Error(`Error cargando HTML para impresión: ${desc}`));
     });
   });
 }

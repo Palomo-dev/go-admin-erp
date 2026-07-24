@@ -243,6 +243,51 @@ export default function POSPage() {
       };
     });
 
+    // Si ya existe un ticket, agregar solo items nuevos
+    if (cart.kitchen_ticket_id) {
+      const existingItems = await KitchenService.getTicketItems(cart.kitchen_ticket_id);
+
+      // Identificar items nuevos comparando por productName + variantData
+      const existingKeys = new Set(
+        existingItems.map((ti: any) =>
+          `${ti.product_name}_${ti.quantity}_${JSON.stringify(ti.variant_data)}`
+        )
+      );
+
+      const newItems = ticketItems.filter(
+        (item) => !existingKeys.has(`${item.productName}_${item.quantity}_${JSON.stringify(item.variantData)}`)
+      );
+
+      if (newItems.length === 0) {
+        toast.info('No hay productos nuevos para enviar a cocina');
+        return;
+      }
+
+      // Agregar items nuevos al ticket existente
+      await KitchenService.addItemsToTicket(
+        cart.kitchen_ticket_id,
+        organization?.id || 0,
+        newItems
+      );
+
+      // Encolar impresión solo de los items nuevos
+      await PrintJobsService.enqueueKitchenTicket(
+        cart.branch_id,
+        {
+          ticketId: cart.kitchen_ticket_id,
+          tableName: 'POS',
+          serverName,
+          createdAt: new Date().toISOString(),
+          items: newItems,
+          businessName: organization?.name,
+          branchName: undefined,
+        }
+      );
+
+      toast.success(`Nuevos productos enviados a cocina (${newItems.length})`);
+      return;
+    }
+
     // 1. Crear kitchen_ticket en la BD (para que aparezca en /comandas)
     const ticketResult = await KitchenService.createKitchenTicketFromPOS({
       organizationId: organization?.id || 0,

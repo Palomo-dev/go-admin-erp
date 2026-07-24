@@ -133,7 +133,7 @@ export function DriversList({
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onToggleStatus(driver)}>
                       <Power className="h-4 w-4 mr-2" />
-                      {driver.is_active_driver ? 'Desactivar' : 'Activar'}
+                      {driver.is_active ? 'Desactivar' : 'Activar'}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onViewHistory(driver)}>
                       <History className="h-4 w-4 mr-2" />
@@ -154,8 +154,8 @@ export function DriversList({
                 <Badge variant="outline">
                   Cat. {driver.license_category}
                 </Badge>
-                <Badge variant={driver.is_active_driver ? 'default' : 'secondary'}>
-                  {driver.is_active_driver ? 'Activo' : 'Inactivo'}
+                <Badge variant={driver.is_active ? 'default' : 'secondary'}>
+                  {driver.is_active ? 'Activo' : 'Inactivo'}
                 </Badge>
                 {(hasWarnings || hasExpired) && (
                   <Badge variant={hasExpired ? 'destructive' : 'outline'} className={hasWarnings && !hasExpired ? 'border-yellow-500 text-yellow-600' : ''}>

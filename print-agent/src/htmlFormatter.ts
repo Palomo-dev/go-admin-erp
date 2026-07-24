@@ -29,190 +29,198 @@ const STATION_LABELS: Record<string, string> = {
   all: 'COMANDA',
 };
 
+// NOTA sobre impresoras térmicas:
+// - Todo debe ser NEGRO PURO (#000). Los grises se difuminan (dithering) y salen
+//   casi invisibles en papel térmico.
+// - Fuentes < 10px resultan ilegibles a 203dpi.
+// - El body NO debe centrarse (margin: 0 auto) ni tener ancho fijo en mm: el
+//   pageSize ya lo define Electron. Un ancho fijo + centrado desplaza el contenido.
 const SHARED_CSS = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @media print {
-    @page { margin: 0; size: 80mm auto; }
-    body { -webkit-print-color-adjust: exact; }
-  }
+  @page { margin: 0; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body {
-    width: 76mm;
-    margin: 0 auto;
+    width: 100%;
+    margin: 0;
     font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 8px;
-    line-height: 1.35;
-    color: #1a1a1a;
+    font-size: 12px;
+    line-height: 1.3;
+    color: #000;
     background: #fff;
-    padding: 2mm;
+    padding: 6px 8px;
+    font-weight: 500;
   }
   .header {
     text-align: center;
-    border-bottom: 1px solid #1a1a1a;
-    padding-bottom: 4px;
-    margin-bottom: 4px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
   }
   .business-name {
-    font-size: 12px;
+    font-size: 17px;
     font-weight: 800;
     letter-spacing: 0.5px;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
   }
   .business-info {
-    font-size: 7px;
-    color: #555;
+    font-size: 11px;
+    color: #000;
     margin-bottom: 1px;
   }
   .branch-name {
-    font-size: 9px;
+    font-size: 13px;
     font-weight: 700;
     margin-top: 3px;
-    color: #333;
+    color: #000;
   }
   .banner {
     text-align: center;
-    font-size: 10px;
+    font-size: 15px;
     font-weight: 800;
-    border: 1px solid #1a1a1a;
-    padding: 3px;
-    margin: 4px 0;
+    border: 2px solid #000;
+    padding: 4px;
+    margin: 5px 0;
     letter-spacing: 1px;
   }
   .meta {
-    border-top: 1px dashed #999;
-    border-bottom: 1px dashed #999;
-    padding: 3px 0;
-    margin-bottom: 4px;
-    font-size: 8px;
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+    padding: 4px 0;
+    margin-bottom: 5px;
+    font-size: 12px;
   }
   .meta-row {
     display: flex;
     justify-content: space-between;
     margin-bottom: 2px;
   }
-  .meta-label { font-weight: 700; color: #333; }
-  .meta-value { color: #555; }
+  .meta-label { font-weight: 700; color: #000; }
+  .meta-value { color: #000; }
   .section-title {
-    font-size: 8px;
+    font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid #000;
     padding-bottom: 2px;
-    margin: 4px 0 3px;
+    margin: 5px 0 3px;
   }
   .items-header {
     display: flex;
     justify-content: space-between;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 2px solid #000;
     padding-bottom: 2px;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
     font-weight: 700;
-    font-size: 7px;
+    font-size: 11px;
     text-transform: uppercase;
   }
   .item {
-    margin-bottom: 3px;
-    padding-bottom: 2px;
-    border-bottom: 1px dotted #ddd;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #000;
   }
   .item-line {
     display: flex;
     justify-content: space-between;
+    gap: 6px;
     margin-bottom: 1px;
   }
   .item-name {
     font-weight: 700;
-    font-size: 9px;
+    font-size: 13px;
+    flex: 1;
   }
   .item-total {
     font-weight: 700;
-    font-size: 9px;
+    font-size: 13px;
+    white-space: nowrap;
   }
   .item-detail {
-    font-size: 7px;
-    color: #666;
+    font-size: 11px;
+    color: #000;
     margin-top: 1px;
-    padding-left: 3px;
+    padding-left: 6px;
   }
   .item-variant {
     font-weight: 700;
-    color: #333;
+    color: #000;
   }
   .item-modifier {
     font-weight: 700;
-    color: #2c7a2c;
+    color: #000;
   }
   .item-notes {
-    font-style: italic;
-    color: #b8860b;
-    margin-top: 1px;
+    font-weight: 700;
+    color: #000;
+    margin-top: 2px;
+    padding-left: 6px;
+    font-size: 12px;
   }
   .totals {
-    border-top: 1px solid #1a1a1a;
-    margin-top: 5px;
-    padding-top: 4px;
+    border-top: 2px solid #000;
+    margin-top: 6px;
+    padding-top: 5px;
   }
   .total-line {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 2px;
-    font-size: 9px;
+    margin-bottom: 3px;
+    font-size: 13px;
   }
   .total-final {
     font-weight: 800;
-    font-size: 12px;
-    border-top: 2px solid #1a1a1a;
-    padding-top: 4px;
-    margin-top: 4px;
+    font-size: 18px;
+    border-top: 2px solid #000;
+    padding-top: 5px;
+    margin-top: 5px;
   }
   .payments {
-    margin-top: 4px;
-    padding-top: 3px;
-    border-top: 1px dashed #999;
+    margin-top: 5px;
+    padding-top: 4px;
+    border-top: 1px solid #000;
   }
   .payment-line {
     display: flex;
     justify-content: space-between;
-    font-size: 8px;
+    font-size: 12px;
     margin-bottom: 2px;
   }
   .footer {
     text-align: center;
-    margin-top: 6px;
-    font-size: 7px;
-    border-top: 1px dashed #999;
-    padding-top: 5px;
-    color: #555;
+    margin-top: 7px;
+    font-size: 11px;
+    border-top: 1px solid #000;
+    padding-top: 6px;
+    color: #000;
   }
   .footer-banner {
     font-weight: 800;
-    font-size: 9px;
-    margin-bottom: 2px;
+    font-size: 14px;
+    margin-bottom: 3px;
   }
   .footer-brand {
-    margin-top: 4px;
-    padding-top: 4px;
-    border-top: 1px dotted #ccc;
-    font-size: 6px;
-    color: #888;
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px solid #000;
+    font-size: 10px;
+    color: #000;
   }
   .qr-container {
     text-align: center;
-    margin-top: 4px;
+    margin-top: 5px;
   }
   .customer-box {
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    padding: 3px;
-    margin: 3px 0;
-    font-size: 8px;
+    border: 1px solid #000;
+    padding: 4px;
+    margin: 4px 0;
+    font-size: 12px;
   }
-  .customer-box .label { font-weight: 700; color: #333; }
+  .customer-box .label { font-weight: 700; color: #000; }
   .delivery-box {
-    border: 1px dashed #999;
-    border-radius: 3px;
-    padding: 3px;
-    margin: 3px 0;
-    font-size: 8px;
+    border: 1px solid #000;
+    padding: 4px;
+    margin: 4px 0;
+    font-size: 12px;
   }
 `;
 

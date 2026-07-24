@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { POSService } from '@/lib/services/posService';
 import { PrintService } from '@/lib/services/printService';
-import { KitchenService } from '@/lib/services/kitchenService';
+import KitchenService from '@/lib/services/kitchenService';
 import { supabase } from '@/lib/supabase/config';
 import { Cart, CartItem, Sale, SaleItem, Customer } from './types';
 import { formatCurrency, cn } from '@/utils/Utils';
@@ -101,7 +101,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [cart.kitchen_ticket_id]);
+  }, [cart.kitchen_ticket_id, cart.branch_id]);
 
   // Detectar si hay items que requieren preparación
   const hasPreparationItems = cart.items.some(item => {

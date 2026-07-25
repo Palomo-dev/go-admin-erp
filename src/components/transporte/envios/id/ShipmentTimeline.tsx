@@ -44,6 +44,8 @@ interface TransportEvent {
   event_time: string;
   description?: string;
   location_text?: string;
+  actor_type?: string;
+  actor_id?: string;
   transport_stops?: { id: string; name: string; city: string };
 }
 
@@ -56,12 +58,12 @@ interface ShipmentTimelineProps {
 
 const EVENT_TYPES = [
   { value: 'created', label: 'Creado', icon: Package, color: 'bg-gray-100 text-gray-800' },
-  { value: 'received', label: 'Recibido en bodega', icon: Package, color: 'bg-blue-100 text-blue-800' },
-  { value: 'picked', label: 'Preparado/Empacado', icon: Package, color: 'bg-indigo-100 text-indigo-800' },
+  { value: 'assigned', label: 'Conductor asignado', icon: Package, color: 'bg-cyan-100 text-cyan-800' },
+  { value: 'ready', label: 'Listo para despacho', icon: Package, color: 'bg-blue-100 text-blue-800' },
+  { value: 'picked', label: 'Recogido', icon: Package, color: 'bg-indigo-100 text-indigo-800' },
   { value: 'dispatched', label: 'Despachado', icon: Truck, color: 'bg-purple-100 text-purple-800' },
   { value: 'in_transit', label: 'En tránsito', icon: Truck, color: 'bg-purple-100 text-purple-800' },
   { value: 'out_for_delivery', label: 'En reparto', icon: MapPin, color: 'bg-orange-100 text-orange-800' },
-  { value: 'arrived', label: 'Llegó a destino', icon: MapPin, color: 'bg-indigo-100 text-indigo-800' },
   { value: 'delivered', label: 'Entregado', icon: CheckCircle, color: 'bg-green-100 text-green-800' },
   { value: 'failed_delivery', label: 'Entrega fallida', icon: XCircle, color: 'bg-red-100 text-red-800' },
   { value: 'returned', label: 'Devuelto', icon: RotateCcw, color: 'bg-orange-100 text-orange-800' },
@@ -71,6 +73,13 @@ const EVENT_TYPES = [
   { value: 'incident', label: 'Incidente', icon: AlertTriangle, color: 'bg-red-100 text-red-800' },
   { value: 'note', label: 'Nota', icon: Clock, color: 'bg-gray-100 text-gray-700' },
 ];
+
+const ACTOR_LABELS: Record<string, string> = {
+  system: 'Sistema',
+  driver: 'Conductor',
+  user: 'Usuario',
+  admin: 'Admin',
+};
 
 export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }: ShipmentTimelineProps) {
   const [showDialog, setShowDialog] = useState(false);
@@ -147,6 +156,12 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
                   {event.description && (
                     <p className="text-sm text-gray-600 dark:text-gray-400">{event.description}</p>
                   )}
+                  {event.actor_type && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                      Por: {ACTOR_LABELS[event.actor_type] || event.actor_type}
+                      {event.actor_id && ` (${event.actor_id.slice(0, 8)}...)`}
+                    </p>
+                  )}
                   {event.location_text && (
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                       <MapPin className="h-3 w-3" />
@@ -182,7 +197,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {EVENT_TYPES.filter(e => ['picked', 'dispatched', 'out_for_delivery', 'arrived', 'note'].includes(e.value)).map((type) => (
+                  {EVENT_TYPES.filter(e => ['picked', 'dispatched', 'in_transit', 'out_for_delivery', 'delivered', 'note'].includes(e.value)).map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       <div className="flex items-center gap-2">
                         <type.icon className="h-4 w-4" />

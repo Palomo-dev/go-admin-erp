@@ -21,12 +21,16 @@ import { formatCurrency } from '@/utils/Utils';
 import type { DeliveryShipment } from '@/lib/services/deliveryIntegrationService';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Package }> = {
+  draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: Clock },
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock },
   assigned: { label: 'Asignado', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: User },
-  picked_up: { label: 'Recogido', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Package },
+  ready: { label: 'Listo', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Package },
+  picked: { label: 'Recogido', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Package },
+  dispatched: { label: 'Despachado', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400', icon: Navigation },
   in_transit: { label: 'En tránsito', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', icon: Truck },
   out_for_delivery: { label: 'En entrega', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: Navigation },
   delivered: { label: 'Entregado', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
+  failed: { label: 'Fallido', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: AlertCircle },
   returned: { label: 'Devuelto', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: AlertCircle },
   cancelled: { label: 'Cancelado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: AlertCircle },
 };
@@ -154,12 +158,12 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus }: ShipmentC
         {!isDelivered && !isCancelled && (
           <div className="flex flex-wrap gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
             {(status === 'pending' || status === 'assigned') && (
-              <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'picked_up')} disabled={isUpdating}>
+              <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'picked')} disabled={isUpdating}>
                 {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4 mr-1" />}
                 Recoger
               </Button>
             )}
-            {status === 'picked_up' && (
+            {status === 'picked' && (
               <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'in_transit')} disabled={isUpdating}>
                 {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4 mr-1" />}
                 Iniciar ruta

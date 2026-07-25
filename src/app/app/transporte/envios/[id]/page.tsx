@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,14 +37,16 @@ import {
 } from '@/components/transporte/envios/id';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-800', icon: <Package className="h-4 w-4" /> },
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: <Package className="h-4 w-4" /> },
   assigned: { label: 'Asignado', color: 'bg-cyan-100 text-cyan-800', icon: <User className="h-4 w-4" /> },
-  received: { label: 'Recibido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
+  ready: { label: 'Listo', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
+  picked: { label: 'Recogido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
+  dispatched: { label: 'Despachado', color: 'bg-indigo-100 text-indigo-800', icon: <MapPin className="h-4 w-4" /> },
   in_transit: { label: 'En Tránsito', color: 'bg-purple-100 text-purple-800', icon: <Truck className="h-4 w-4" /> },
-  arrived: { label: 'Llegó', color: 'bg-indigo-100 text-indigo-800', icon: <MapPin className="h-4 w-4" /> },
   out_for_delivery: { label: 'En Entrega', color: 'bg-orange-100 text-orange-800', icon: <Truck className="h-4 w-4" /> },
-  picked_up: { label: 'Recogido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
   delivered: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-4 w-4" /> },
+  failed: { label: 'Fallido', color: 'bg-red-100 text-red-800', icon: <AlertTriangle className="h-4 w-4" /> },
   returned: { label: 'Devuelto', color: 'bg-orange-100 text-orange-800', icon: <Package className="h-4 w-4" /> },
   cancelled: { label: 'Cancelado', color: 'bg-gray-100 text-gray-500', icon: <AlertTriangle className="h-4 w-4" /> },
 };
@@ -67,6 +70,7 @@ export default function ShipmentDetailPage() {
   const [pod, setPod] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showIncidentDialog, setShowIncidentDialog] = useState(false);
+  const [driverName, setDriverName] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!shipmentId) return;
@@ -85,6 +89,38 @@ export default function ShipmentDetailPage() {
       setItems(itemsData);
       setAttempts(attemptsData);
       setPod(podData);
+
+      // Cargar nombre del conductor desde metadata.driver_id
+      const meta = shipmentData?.metadata as Record<string, unknown> | null;
+      const driverId = meta?.driver_id as string | undefined;
+      if (driverId) {
+        const { data: driverData } = await supabase
+          .from('driver_credentials')
+          .select(`
+            id,
+            employment:employments(
+              organization_member:organization_members(
+                id,
+                user_id
+              )
+            )
+          `)
+          .eq('id', driverId)
+          .single();
+
+        if (driverData?.employment?.organization_member?.user_id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', driverData.employment.organization_member.user_id)
+            .single();
+          if (profile?.full_name) {
+            setDriverName(profile.full_name);
+          }
+        }
+      } else {
+        setDriverName(null);
+      }
     } catch (error) {
       console.error('Error loading shipment:', error);
       toast({
@@ -202,8 +238,8 @@ export default function ShipmentDetailPage() {
   };
 
   const canEdit = shipment?.status !== 'delivered' && shipment?.status !== 'cancelled';
-  const canRegisterPOD = shipment?.status === 'arrived' || shipment?.status === 'out_for_delivery' || shipment?.status === 'in_transit';
-  const canRegisterAttempt = shipment?.status === 'in_transit' || shipment?.status === 'arrived' || shipment?.status === 'out_for_delivery';
+  const canRegisterPOD = shipment?.status === 'dispatched' || shipment?.status === 'out_for_delivery' || shipment?.status === 'in_transit';
+  const canRegisterAttempt = shipment?.status === 'in_transit' || shipment?.status === 'dispatched' || shipment?.status === 'out_for_delivery';
   const showCODButton = shipment?.payment_status === 'cod' && shipment?.status === 'delivered';
 
   if (isLoading) {
@@ -263,25 +299,25 @@ export default function ShipmentDetailPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {(shipment.status === 'pending' || shipment.status === 'assigned') && (
-            <Button variant="outline" onClick={() => handleStatusChange('picked_up')}>
+            <Button variant="outline" onClick={() => handleStatusChange('picked')}>
               <Package className="h-4 w-4 mr-2" />
               Recoger
             </Button>
           )}
-          {shipment.status === 'received' && (
+          {shipment.status === 'ready' && (
             <Button variant="outline" onClick={() => handleStatusChange('in_transit')}>
               <Truck className="h-4 w-4 mr-2" />
               Despachar
             </Button>
           )}
-          {shipment.status === 'picked_up' && (
+          {shipment.status === 'picked' && (
             <Button variant="outline" onClick={() => handleStatusChange('in_transit')}>
               <Truck className="h-4 w-4 mr-2" />
               Iniciar Ruta
             </Button>
           )}
           {shipment.status === 'in_transit' && (
-            <Button variant="outline" onClick={() => handleStatusChange('arrived')}>
+            <Button variant="outline" onClick={() => handleStatusChange('dispatched')}>
               <MapPin className="h-4 w-4 mr-2" />
               Marcar Llegada
             </Button>
@@ -403,15 +439,13 @@ export default function ShipmentDetailPage() {
                   </div>
                 )}
                 {(() => {
-                  const meta = shipment.metadata as Record<string, unknown> | null;
-                  const driverId = meta?.driver_id as string | undefined;
-                  if (!driverId) return null;
+                  if (!driverName) return null;
                   return (
                     <div className="flex items-start gap-2">
                       <Truck className="h-4 w-4 text-gray-400 mt-0.5" />
                       <div>
                         <p className="text-gray-500">Conductor asignado</p>
-                        <p className="font-medium text-blue-600 dark:text-blue-400">{driverId.slice(-8).toUpperCase()}</p>
+                        <p className="font-medium text-blue-600 dark:text-blue-400">{driverName}</p>
                       </div>
                     </div>
                   );

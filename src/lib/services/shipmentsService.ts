@@ -39,7 +39,7 @@ export interface ShipmentWithDetails {
   picked_at?: string;
   dispatched_at?: string;
   delivered_at?: string;
-  status?: 'pending' | 'assigned' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'returned' | 'cancelled' | 'received' | 'arrived';
+  status?: 'draft' | 'pending' | 'assigned' | 'ready' | 'picked' | 'dispatched' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'returned' | 'cancelled';
   notes?: string;
   internal_notes?: string;
   created_by?: string;
@@ -109,6 +109,33 @@ class ShipmentsService {
 
     let results = (data || []) as ShipmentWithDetails[];
 
+    // Derivar payment_status de ventas relacionadas (batch)
+    const saleIds = results
+      .filter((s) => s.source_type === 'sale' && s.source_id)
+      .map((s) => s.source_id as string);
+
+    if (saleIds.length > 0) {
+      const { data: salesData } = await supabase
+        .from('sales')
+        .select('id, payment_status')
+        .in('id', saleIds);
+
+      const salePaymentMap = new Map<string, string>();
+      (salesData || []).forEach((sale) => {
+        salePaymentMap.set(sale.id, sale.payment_status);
+      });
+
+      results = results.map((s) => {
+        if (!s.payment_status && s.source_type === 'sale' && s.source_id) {
+          const salePayment = salePaymentMap.get(s.source_id);
+          if (salePayment) {
+            s.payment_status = salePayment as ShipmentWithDetails['payment_status'];
+          }
+        }
+        return s;
+      });
+    }
+
     // Mapear campos legacy para compatibilidad con ShipmentsList
     results = results.map((s) => {
       const metadata = s.metadata as Record<string, unknown> | null;
@@ -171,6 +198,22 @@ class ShipmentsService {
       s.receiver_phone = s.delivery_contact_phone || s.customer?.phone || '';
     }
 
+    // Derivar payment_status de la venta relacionada si source_type es 'sale'
+    if (!s.payment_status && s.source_type === 'sale' && s.source_id) {
+      try {
+        const { data: sale } = await supabase
+          .from('sales')
+          .select('payment_status')
+          .eq('id', s.source_id)
+          .maybeSingle();
+        if (sale?.payment_status) {
+          s.payment_status = sale.payment_status as ShipmentWithDetails['payment_status'];
+        }
+      } catch {
+        // Si no se puede obtener, dejar como undefined
+      }
+    }
+
     return s;
   }
 
@@ -216,8 +259,11 @@ class ShipmentsService {
     const now = new Date().toISOString();
 
     switch (status) {
-      case 'picked_up':
+      case 'picked':
         updates.picked_at = now;
+        break;
+      case 'dispatched':
+        updates.dispatched_at = now;
         break;
       case 'in_transit':
         updates.dispatched_at = now;
@@ -227,7 +273,26 @@ class ShipmentsService {
         break;
     }
 
-    return this.updateShipment(id, updates);
+    const updated = await this.updateShipment(id, updates);
+
+    const eventDescriptions: Record<string, string> = {
+      picked: 'Pedido recogido',
+      dispatched: 'Despachado / Llegó a destino',
+      in_transit: 'En tránsito al destino',
+      out_for_delivery: 'En entrega final',
+      delivered: 'Entregado exitosamente',
+      returned: 'Devuelto',
+      cancelled: 'Cancelado',
+      ready: 'Listo para despacho',
+      assigned: 'Conductor asignado',
+    };
+
+    await this.createEvent(id, {
+      event_type: status,
+      description: eventDescriptions[status] || `Estado cambiado a: ${status}`,
+    });
+
+    return updated;
   }
 
   async getShipmentStats(organizationId: number) {
@@ -245,7 +310,7 @@ class ShipmentsService {
     return {
       total: shipments.length,
       pending: shipments.filter((s) => s.status === 'pending').length,
-      pickedUp: shipments.filter((s) => s.status === 'picked_up').length,
+      pickedUp: shipments.filter((s) => s.status === 'picked').length,
       inTransit: shipments.filter((s) => s.status === 'in_transit').length,
       delivered: shipments.filter((s) => s.status === 'delivered').length,
       cancelled: shipments.filter((s) => s.status === 'cancelled').length,

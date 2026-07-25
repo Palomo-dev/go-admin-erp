@@ -167,6 +167,19 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       if (customerName && !deliveryContactName) {
         setDeliveryContactName(customerName);
       }
+      // Cargar ciudad desde fiscal_municipality_id
+      if (cart.customer.fiscal_municipality_id && !deliveryCity) {
+        supabase
+          .from('municipalities')
+          .select('name, state_name')
+          .eq('id', cart.customer.fiscal_municipality_id)
+          .single()
+          .then(({ data: munData }) => {
+            if (munData?.name) {
+              setDeliveryCity(munData.name);
+            }
+          });
+      }
     }
   }, [deliveryType, cart.customer]);
 
@@ -222,7 +235,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, first_name, last_name, address, city, phone')
+        .select(`
+          id, first_name, last_name, address, phone,
+          municipality:municipalities(name, state_name)
+        `)
         .eq('organization_id', cart.organization_id)
         .not('address', 'is', null)
         .or(`address.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,phone.ilike.%${query}%`)
@@ -232,7 +248,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         id: c.id,
         name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Sin nombre',
         address: c.address || '',
-        city: c.city || undefined,
+        city: c.municipality?.name || undefined,
         phone: c.phone || undefined,
       }));
       setAddressResults(results);
@@ -1040,17 +1056,18 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       <div className="space-y-1 relative">
                         <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          Buscar dirección de cliente
+                          Dirección de entrega *
                         </Label>
                         <Input
-                          value={addressSearch}
+                          value={deliveryAddress}
                           onChange={(e) => {
+                            setDeliveryAddress(e.target.value);
                             setAddressSearch(e.target.value);
                             searchCustomerAddresses(e.target.value);
                           }}
                           onFocus={() => { if (addressResults.length > 0) setShowAddressDropdown(true); }}
                           onBlur={() => setTimeout(() => setShowAddressDropdown(false), 200)}
-                          placeholder="Buscar por dirección, nombre o teléfono..."
+                          placeholder="Escribe la dirección o busca por nombre/teléfono..."
                           className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
                         />
                         {showAddressDropdown && addressResults.length > 0 && (
@@ -1071,18 +1088,6 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                             ))}
                           </div>
                         )}
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          Dirección de entrega *
-                        </Label>
-                        <Input
-                          value={deliveryAddress}
-                          onChange={(e) => setDeliveryAddress(e.target.value)}
-                          placeholder="Calle 123 #45-67"
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="space-y-1">

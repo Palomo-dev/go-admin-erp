@@ -24,7 +24,7 @@ export interface DeliveryShipment {
   picked_at?: string;
   dispatched_at?: string;
   delivered_at?: string;
-  status: 'pending' | 'assigned' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'returned' | 'cancelled';
+  status: 'draft' | 'pending' | 'assigned' | 'ready' | 'picked' | 'dispatched' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'returned' | 'cancelled';
   notes?: string;
   internal_notes?: string;
   created_by?: string;
@@ -36,8 +36,6 @@ export interface DeliveryShipment {
   driver?: DeliveryDriver;
   web_order?: WebOrder;
   // Campos adicionales de la tabla shipments
-  branch_id?: number;
-  shipment_number?: string;
   customer?: { id: string; full_name: string; phone?: string; email?: string } | null;
   shipment_items?: { id: string; description: string; qty: number }[];
   cod_amount?: number;
@@ -316,7 +314,7 @@ class DeliveryIntegrationService {
     await this.createTransportEvent({
       reference_type: 'shipment',
       reference_id: shipmentId,
-      event_type: 'picked_up',
+      event_type: 'picked',
       actor_type: 'driver',
       actor_id: driverId,
       latitude: location?.latitude,
@@ -646,7 +644,7 @@ class DeliveryIntegrationService {
       updated_at: new Date().toISOString(),
     };
 
-    if (newStatus === 'picked_up') updates.picked_at = new Date().toISOString();
+    if (newStatus === 'picked') updates.picked_at = new Date().toISOString();
     if (newStatus === 'in_transit' || newStatus === 'out_for_delivery') updates.dispatched_at = new Date().toISOString();
     if (newStatus === 'delivered') updates.delivered_at = new Date().toISOString();
 
@@ -672,12 +670,15 @@ class DeliveryIntegrationService {
 
     // Registrar evento de transporte
     const eventDescriptions: Record<string, string> = {
-      picked_up: 'Pedido recogido por conductor',
+      picked: 'Pedido recogido por conductor',
+      dispatched: 'Despachado / Llegó a destino',
       in_transit: 'En tránsito al destino',
       out_for_delivery: 'En entrega final',
       delivered: 'Entregado exitosamente',
       returned: 'Devuelto',
       cancelled: 'Cancelado',
+      ready: 'Listo para despacho',
+      assigned: 'Conductor asignado',
     };
 
     await this.createTransportEvent({

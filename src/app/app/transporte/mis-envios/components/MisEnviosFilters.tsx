@@ -12,6 +12,7 @@ import { Search } from 'lucide-react';
 
 const statusOptions = [
   { value: 'pending', label: 'Pendiente' },
+  { value: 'assigned', label: 'Asignado' },
   { value: 'picked_up', label: 'Recogido' },
   { value: 'in_transit', label: 'En tránsito' },
   { value: 'out_for_delivery', label: 'En entrega' },

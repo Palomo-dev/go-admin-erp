@@ -25,8 +25,9 @@ export default function MisEnviosPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [driver, setDriver] = useState<DeliveryDriver | null>(null);
   const [driverLoaded, setDriverLoaded] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Obtener driver_credentials del usuario logueado
+  // Obtener driver_credentials del usuario logueado y verificar si es admin
   useEffect(() => {
     const loadDriver = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -36,6 +37,20 @@ export default function MisEnviosPage() {
       }
 
       try {
+        // Verificar si el usuario es admin de la organización
+        const { data: memberData } = await supabase
+          .from('organization_members')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('organization_id', organization?.id)
+          .single();
+
+        const userRole = memberData?.role;
+        const adminRoles = ['admin', 'owner', 'super_admin', 'manager'];
+        if (adminRoles.includes(userRole)) {
+          setIsAdmin(true);
+        }
+
         const driverData = await deliveryIntegrationService.getDriverForUser(user.id);
         setDriver(driverData);
       } catch (error) {
@@ -45,10 +60,42 @@ export default function MisEnviosPage() {
       }
     };
     loadDriver();
-  }, []);
+  }, [organization?.id]);
 
   const cargarEnvios = useCallback(async () => {
-    if (!organization?.id || !driver?.id) {
+    if (!organization?.id) {
+      setIsLoading(false);
+      return;
+    }
+    // Si es admin sin driver_credentials, cargar todos los envíos
+    if (isAdmin && !driver?.id) {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('shipments')
+          .select(`
+            *,
+            customer:customers(id, full_name, phone, email),
+            shipment_items(id, description, qty)
+          `)
+          .eq('organization_id', organization.id)
+          .order('created_at', { ascending: false })
+          .limit(200);
+        if (error) throw error;
+        setShipments(data || []);
+      } catch (error) {
+        console.error('Error cargando envíos:', error);
+        toast({
+          title: 'Error',
+          description: 'No se pudieron cargar los envíos',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+    if (!driver?.id) {
       setIsLoading(false);
       return;
     }
@@ -69,21 +116,33 @@ export default function MisEnviosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, driver?.id, toast]);
+  }, [organization?.id, driver?.id, isAdmin, toast]);
 
   useEffect(() => {
     cargarEnvios();
   }, [cargarEnvios]);
 
   const actualizarEstado = async (shipmentId: string, newStatus: string) => {
-    if (!driver?.id) return;
     setUpdatingId(shipmentId);
     try {
-      await deliveryIntegrationService.updateShipmentStatusByDriver(
-        shipmentId,
-        newStatus as DeliveryShipment['status'],
-        driver.id
-      );
+      if (driver?.id) {
+        await deliveryIntegrationService.updateShipmentStatusByDriver(
+          shipmentId,
+          newStatus as DeliveryShipment['status'],
+          driver.id
+        );
+      } else {
+        // Admin sin credenciales: actualizar directamente
+        const updates: Record<string, unknown> = {
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        };
+        if (newStatus === 'picked_up') updates.picked_at = new Date().toISOString();
+        if (newStatus === 'in_transit' || newStatus === 'out_for_delivery') updates.dispatched_at = new Date().toISOString();
+        if (newStatus === 'delivered') updates.delivered_at = new Date().toISOString();
+        const { error } = await supabase.from('shipments').update(updates).eq('id', shipmentId);
+        if (error) throw error;
+      }
 
       toast({
         title: 'Estado actualizado',
@@ -116,7 +175,7 @@ export default function MisEnviosPage() {
 
   const stats = {
     total: shipments.length,
-    pendientes: shipments.filter((s) => s.status === 'pending').length,
+    pendientes: shipments.filter((s) => s.status === 'pending' || s.status === 'assigned').length,
     enRuta: shipments.filter((s) => ['picked_up', 'in_transit', 'out_for_delivery'].includes(s.status || '')).length,
     entregados: shipments.filter((s) => s.status === 'delivered').length,
   };
@@ -129,7 +188,7 @@ export default function MisEnviosPage() {
     );
   }
 
-  if (!driver) {
+  if (!driver && !isAdmin) {
     return (
       <div className="container mx-auto px-4 py-6 space-y-6">
         <MisEnviosHeader />
@@ -143,6 +202,10 @@ export default function MisEnviosPage() {
         </div>
       </div>
     );
+  }
+
+  if (!driver && isAdmin) {
+    // Admin sin credenciales: puede ver todos los envíos pero no actualizar estado
   }
 
   return (

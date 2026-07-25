@@ -22,6 +22,7 @@ import type { DeliveryShipment } from '@/lib/services/deliveryIntegrationService
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Package }> = {
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock },
+  assigned: { label: 'Asignado', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: User },
   picked_up: { label: 'Recogido', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Package },
   in_transit: { label: 'En tránsito', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', icon: Truck },
   out_for_delivery: { label: 'En entrega', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: Navigation },
@@ -152,7 +153,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus }: ShipmentC
         {/* Acciones */}
         {!isDelivered && !isCancelled && (
           <div className="flex flex-wrap gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
-            {status === 'pending' && (
+            {(status === 'pending' || status === 'assigned') && (
               <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'picked_up')} disabled={isUpdating}>
                 {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4 mr-1" />}
                 Recoger

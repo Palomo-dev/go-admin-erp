@@ -128,7 +128,7 @@ export class PrintJobsService {
 
       const rows = printers.map((printer) => ({
         organization_id: orgId,
-        branch_id: branchId,
+        branch_id: printer.branch_id || branchId,
         printer_id: printer.id,
         station,
         job_type: 'kitchen_ticket' as const,
@@ -224,7 +224,7 @@ export class PrintJobsService {
       branchPhone?: string;
       serverName?: string;
       cashierName?: string;
-      deliveryInfo?: { type: string; address: string; driverName?: string };
+      deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string };
     }
   ): Promise<{ enqueued: number }> {
     const orgId = getOrganizationId();
@@ -268,7 +268,7 @@ export class PrintJobsService {
 
     const rows = printers.map((printer) => ({
       organization_id: orgId,
-      branch_id: branchId,
+      branch_id: printer.branch_id || branchId,
       printer_id: printer.id,
       station: 'cashier',
       job_type: 'sale_ticket' as const,
@@ -342,7 +342,7 @@ export class PrintJobsService {
 
     const rows = printers.map((printer) => ({
       organization_id: orgId,
-      branch_id: branchId,
+      branch_id: printer.branch_id || branchId,
       printer_id: printer.id,
       station: 'cashier',
       job_type: 'pre_cuenta' as const,

@@ -39,22 +39,47 @@ export class POSService {
   // Obtener branch_id dinámicamente (caché simple)
   private static async getBranchId(): Promise<number> {
     if (this.branchId) return this.branchId;
-    
+
+    // 1. Intentar obtener de localStorage (sucursal seleccionada por el usuario)
+    const localBranchId = getCurrentBranchId();
+    if (localBranchId) {
+      this.branchId = localBranchId;
+      return localBranchId;
+    }
+
+    // 2. Consultar la primera branch de la organización
     try {
       const { data, error } = await supabase
         .from('branches')
         .select('id')
         .eq('organization_id', this.organizationId)
+        .eq('is_active', true)
         .order('id')
         .limit(1)
         .single();
-      
+
       if (error) throw error;
       this.branchId = data.id;
       return data.id;
     } catch (error) {
-      console.warn('Error getting branch_id, using default:', error);
-      return 2; // Fallback a branch_id 2
+      console.warn('Error getting branch_id, querying all branches:', error);
+      // 3. Último recurso: buscar sin filtro de is_active
+      try {
+        const { data: fallbackData } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('organization_id', this.organizationId)
+          .order('id')
+          .limit(1)
+          .single();
+        if (fallbackData) {
+          this.branchId = fallbackData.id;
+          return fallbackData.id;
+        }
+      } catch (e) {
+        console.error('No branches found for organization:', this.organizationId, e);
+      }
+      throw new Error(`No se encontró ninguna sucursal para la organización ${this.organizationId}`);
     }
   }
 

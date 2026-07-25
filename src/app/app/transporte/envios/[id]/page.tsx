@@ -37,9 +37,12 @@ import {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: <Package className="h-4 w-4" /> },
+  assigned: { label: 'Asignado', color: 'bg-cyan-100 text-cyan-800', icon: <User className="h-4 w-4" /> },
   received: { label: 'Recibido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
   in_transit: { label: 'En Tránsito', color: 'bg-purple-100 text-purple-800', icon: <Truck className="h-4 w-4" /> },
   arrived: { label: 'Llegó', color: 'bg-indigo-100 text-indigo-800', icon: <MapPin className="h-4 w-4" /> },
+  out_for_delivery: { label: 'En Entrega', color: 'bg-orange-100 text-orange-800', icon: <Truck className="h-4 w-4" /> },
+  picked_up: { label: 'Recogido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
   delivered: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-4 w-4" /> },
   returned: { label: 'Devuelto', color: 'bg-orange-100 text-orange-800', icon: <Package className="h-4 w-4" /> },
   cancelled: { label: 'Cancelado', color: 'bg-gray-100 text-gray-500', icon: <AlertTriangle className="h-4 w-4" /> },
@@ -199,7 +202,7 @@ export default function ShipmentDetailPage() {
   };
 
   const canEdit = shipment?.status !== 'delivered' && shipment?.status !== 'cancelled';
-  const canRegisterPOD = shipment?.status === 'arrived' || shipment?.status === 'out_for_delivery';
+  const canRegisterPOD = shipment?.status === 'arrived' || shipment?.status === 'out_for_delivery' || shipment?.status === 'in_transit';
   const canRegisterAttempt = shipment?.status === 'in_transit' || shipment?.status === 'arrived' || shipment?.status === 'out_for_delivery';
   const showCODButton = shipment?.payment_status === 'cod' && shipment?.status === 'delivered';
 
@@ -259,16 +262,22 @@ export default function ShipmentDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {shipment.status === 'pending' && (
-            <Button variant="outline" onClick={() => handleStatusChange('received')}>
+          {(shipment.status === 'pending' || shipment.status === 'assigned') && (
+            <Button variant="outline" onClick={() => handleStatusChange('picked_up')}>
               <Package className="h-4 w-4 mr-2" />
-              Recibir
+              Recoger
             </Button>
           )}
           {shipment.status === 'received' && (
             <Button variant="outline" onClick={() => handleStatusChange('in_transit')}>
               <Truck className="h-4 w-4 mr-2" />
               Despachar
+            </Button>
+          )}
+          {shipment.status === 'picked_up' && (
+            <Button variant="outline" onClick={() => handleStatusChange('in_transit')}>
+              <Truck className="h-4 w-4 mr-2" />
+              Iniciar Ruta
             </Button>
           )}
           {shipment.status === 'in_transit' && (
@@ -351,6 +360,65 @@ export default function ShipmentDetailPage() {
               </div>
             </Card>
           </div>
+
+          {/* Información de Entrega */}
+          {(shipment.delivery_address || shipment.delivery_city || shipment.delivery_contact_name || shipment.delivery_instructions) && (
+            <Card className="p-4">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Información de Entrega
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                {shipment.delivery_address && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-gray-500">Dirección</p>
+                      <p className="font-medium">{shipment.delivery_address}</p>
+                      {shipment.delivery_city && (
+                        <p className="text-gray-500 text-xs">{shipment.delivery_city}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {shipment.delivery_contact_name && (
+                  <div className="flex items-start gap-2">
+                    <User className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-gray-500">Contacto</p>
+                      <p className="font-medium">{shipment.delivery_contact_name}</p>
+                      {shipment.delivery_contact_phone && (
+                        <p className="text-gray-500 text-xs flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {shipment.delivery_contact_phone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {shipment.delivery_instructions && (
+                  <div className="md:col-span-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
+                    <p className="font-medium text-xs mb-1">Instrucciones:</p>
+                    <p>{shipment.delivery_instructions}</p>
+                  </div>
+                )}
+                {(() => {
+                  const meta = shipment.metadata as Record<string, unknown> | null;
+                  const driverId = meta?.driver_id as string | undefined;
+                  if (!driverId) return null;
+                  return (
+                    <div className="flex items-start gap-2">
+                      <Truck className="h-4 w-4 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-gray-500">Conductor asignado</p>
+                        <p className="font-medium text-blue-600 dark:text-blue-400">{driverId.slice(-8).toUpperCase()}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </Card>
+          )}
 
           {/* Detalles del Paquete */}
           <Card className="p-4">
@@ -467,7 +535,7 @@ export default function ShipmentDetailPage() {
               <div className="flex justify-between">
                 <span className="text-gray-500">Flete</span>
                 <span className="font-medium">
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: shipment.currency || 'COP', minimumFractionDigits: 0 }).format(shipment.freight_cost || 0)}
+                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: shipment.currency || 'COP', minimumFractionDigits: 0 }).format(shipment.shipping_fee || shipment.freight_cost || 0)}
                 </span>
               </div>
               {shipment.insurance_cost && shipment.insurance_cost > 0 && (

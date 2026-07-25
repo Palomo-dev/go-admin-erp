@@ -35,6 +35,18 @@ export interface DeliveryShipment {
   vehicle?: DeliveryVehicle;
   driver?: DeliveryDriver;
   web_order?: WebOrder;
+  // Campos adicionales de la tabla shipments
+  branch_id?: number;
+  shipment_number?: string;
+  customer?: { id: string; full_name: string; phone?: string; email?: string } | null;
+  shipment_items?: { id: string; description: string; qty: number }[];
+  cod_amount?: number;
+  shipping_fee?: number;
+  total_cost?: number;
+  currency?: string;
+  package_count?: number;
+  declared_value?: number;
+  weight_kg?: number;
 }
 
 export interface DeliveryVehicle {
@@ -709,9 +721,27 @@ class DeliveryIntegrationService {
       contact_phone?: string;
       instructions?: string;
     };
+    saleItems?: Array<{
+      description: string;
+      qty: number;
+      unit_value: number;
+      total_value: number;
+    }>;
   }): Promise<DeliveryShipment> {
     const trackingNumber = await this.generateTrackingNumber(params.organizationId);
     const shipmentNumber = `POS-${params.saleId.slice(-8).toUpperCase()}`;
+
+    // Obtener nombre de la organización (remitente)
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('name, phone, address')
+      .eq('id', params.organizationId)
+      .single();
+
+    const senderName = orgData?.name || 'Empresa';
+    const senderPhone = orgData?.phone || '';
+    const contactName = params.deliveryInfo.contact_name || params.customerName || '';
+    const contactPhone = params.deliveryInfo.contact_phone || params.customerPhone || '';
 
     const shipmentData = {
       organization_id: params.organizationId,
@@ -723,15 +753,22 @@ class DeliveryIntegrationService {
       customer_id: params.customerId || null,
       delivery_address: params.deliveryInfo.address,
       delivery_city: params.deliveryInfo.city || '',
-      delivery_contact_name: params.deliveryInfo.contact_name || params.customerName || '',
-      delivery_contact_phone: params.deliveryInfo.contact_phone || params.customerPhone || '',
+      delivery_contact_name: contactName,
+      delivery_contact_phone: contactPhone,
       delivery_instructions: params.deliveryInfo.instructions || '',
+      package_count: params.itemsCount,
+      declared_value: params.total,
+      total_cost: params.total,
+      shipping_fee: 0,
+      currency: 'COP',
       status: params.driverId ? 'assigned' as const : 'pending' as const,
       notes: `Venta POS: ${params.saleId.slice(-8)}`,
       metadata: {
         pos_sale_id: params.saleId,
         pos_total: params.total,
         items_count: params.itemsCount,
+        sender_name: senderName,
+        sender_phone: senderPhone,
         ...(params.driverId && { driver_id: params.driverId, assigned_at: new Date().toISOString() }),
       },
     };
@@ -743,6 +780,27 @@ class DeliveryIntegrationService {
       .single();
 
     if (error) throw error;
+
+    // Crear shipment_items con los productos de la venta
+    if (params.saleItems && params.saleItems.length > 0) {
+      const itemsToInsert = params.saleItems.map((item) => ({
+        shipment_id: data.id,
+        description: item.description,
+        qty: item.qty,
+        unit_value: item.unit_value,
+        total_value: item.total_value,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('shipment_items')
+        .insert(itemsToInsert);
+
+      if (itemsError) {
+        console.warn('Error creando shipment_items:', itemsError);
+      }
+    }
+
+    // El conductor se guarda en metadata del shipment (no hay tabla intermedia)
 
     await this.createTransportEvent({
       organization_id: params.organizationId,

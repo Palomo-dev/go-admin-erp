@@ -50,8 +50,11 @@ interface ShipmentsListProps {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: <Package className="h-3 w-3" /> },
+  assigned: { label: 'Asignado', color: 'bg-cyan-100 text-cyan-800', icon: <Package className="h-3 w-3" /> },
   received: { label: 'Recibido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-3 w-3" /> },
+  picked_up: { label: 'Recogido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-3 w-3" /> },
   in_transit: { label: 'En Tránsito', color: 'bg-purple-100 text-purple-800', icon: <Truck className="h-3 w-3" /> },
+  out_for_delivery: { label: 'En Entrega', color: 'bg-orange-100 text-orange-800', icon: <Truck className="h-3 w-3" /> },
   arrived: { label: 'Llegó', color: 'bg-indigo-100 text-indigo-800', icon: <MapPin className="h-3 w-3" /> },
   delivered: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-3 w-3" /> },
   returned: { label: 'Devuelto', color: 'bg-orange-100 text-orange-800', icon: <RotateCcw className="h-3 w-3" /> },
@@ -162,8 +165,11 @@ export function ShipmentsList({
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">
-                    <p>{shipment.origin_stop?.name || '-'}</p>
-                    <p className="text-gray-500">→ {shipment.destination_stop?.name || '-'}</p>
+                    <p>{shipment.origin_stop?.name || shipment.sender_name || 'Sucursal'}</p>
+                    <p className="text-gray-500">→ {shipment.destination_stop?.name || shipment.delivery_address || shipment.receiver_name || '-'}</p>
+                    {shipment.delivery_city && !shipment.destination_stop && (
+                      <p className="text-gray-400 text-xs">{shipment.delivery_city}</p>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>

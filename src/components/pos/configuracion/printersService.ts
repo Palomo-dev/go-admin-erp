@@ -189,6 +189,7 @@ export class PrintersService {
   static async getPrintersByStation(branchId: number, station: PrinterStation): Promise<Printer[]> {
     const orgId = getOrganizationId();
 
+    // 1. Buscar impresoras asignadas a esta estación para la sucursal específica (o global)
     const { data, error } = await supabase
       .from('printer_station_assignments')
       .select('printers!inner(*)')
@@ -198,6 +199,19 @@ export class PrintersService {
       .eq('printers.is_active', true);
 
     if (error) throw error;
-    return (data || []).map((row: any) => row.printers).filter(Boolean);
+    const printers = (data || []).map((row: any) => row.printers).filter(Boolean);
+    if (printers.length > 0) return printers;
+
+    // 2. Fallback: si no hay impresoras para esta sucursal, buscar cualquier impresora
+    //    de la organización con esa estación (sin importar branch_id)
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('printer_station_assignments')
+      .select('printers!inner(*)')
+      .eq('organization_id', orgId)
+      .in('station', [station, 'all'])
+      .eq('printers.is_active', true);
+
+    if (fallbackError) throw fallbackError;
+    return (fallbackData || []).map((row: any) => row.printers).filter(Boolean);
   }
 }

@@ -39,7 +39,7 @@ export interface ShipmentWithDetails {
   picked_at?: string;
   dispatched_at?: string;
   delivered_at?: string;
-  status?: 'pending' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'returned' | 'cancelled' | 'received' | 'arrived';
+  status?: 'pending' | 'assigned' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'returned' | 'cancelled' | 'received' | 'arrived';
   notes?: string;
   internal_notes?: string;
   created_by?: string;
@@ -109,6 +109,24 @@ class ShipmentsService {
 
     let results = (data || []) as ShipmentWithDetails[];
 
+    // Mapear campos legacy para compatibilidad con ShipmentsList
+    results = results.map((s) => {
+      const metadata = s.metadata as Record<string, unknown> | null;
+      if (!s.sender_name && metadata?.sender_name) {
+        s.sender_name = metadata.sender_name as string;
+      }
+      if (!s.sender_phone && metadata?.sender_phone) {
+        s.sender_phone = metadata.sender_phone as string;
+      }
+      if (!s.receiver_name) {
+        s.receiver_name = s.delivery_contact_name || s.customer?.full_name || '';
+      }
+      if (!s.receiver_phone) {
+        s.receiver_phone = s.delivery_contact_phone || s.customer?.phone || '';
+      }
+      return s;
+    });
+
     if (filters?.search) {
       const search = filters.search.toLowerCase();
       results = results.filter((s) =>
@@ -137,7 +155,23 @@ class ShipmentsService {
       if (error.code === 'PGRST116') return null;
       throw error;
     }
-    return data as ShipmentWithDetails;
+
+    const s = data as ShipmentWithDetails;
+    const metadata = s.metadata as Record<string, unknown> | null;
+    if (!s.sender_name && metadata?.sender_name) {
+      s.sender_name = metadata.sender_name as string;
+    }
+    if (!s.sender_phone && metadata?.sender_phone) {
+      s.sender_phone = metadata.sender_phone as string;
+    }
+    if (!s.receiver_name) {
+      s.receiver_name = s.delivery_contact_name || s.customer?.full_name || '';
+    }
+    if (!s.receiver_phone) {
+      s.receiver_phone = s.delivery_contact_phone || s.customer?.phone || '';
+    }
+
+    return s;
   }
 
   async createShipment(shipment: Partial<ShipmentWithDetails>): Promise<ShipmentWithDetails> {

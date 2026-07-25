@@ -121,7 +121,7 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: { type: string; address: string; driverName?: string }
+    deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string }
   ): string {
     const businessName = business?.name || 'Mi Empresa';
     const businessAddress = business?.address || '';
@@ -296,7 +296,11 @@ export class PrintService {
     <div class="customer-info">
         <div><strong>Entrega:</strong> ${deliveryInfo.type}</div>
         <div><strong>Dirección:</strong> ${deliveryInfo.address}</div>
+        ${deliveryInfo.city ? `<div><strong>Ciudad:</strong> ${deliveryInfo.city}</div>` : ''}
+        ${deliveryInfo.contactName ? `<div><strong>Contacto:</strong> ${deliveryInfo.contactName}</div>` : ''}
+        ${deliveryInfo.contactPhone ? `<div><strong>Tel:</strong> ${deliveryInfo.contactPhone}</div>` : ''}
         ${deliveryInfo.driverName ? `<div><strong>Conductor:</strong> ${deliveryInfo.driverName}</div>` : ''}
+        ${deliveryInfo.instructions ? `<div><strong>Instrucciones:</strong> ${deliveryInfo.instructions}</div>` : ''}
     </div>
     ` : ''}
 
@@ -450,7 +454,7 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: { type: string; address: string; driverName?: string }
+    deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string }
   ): void {
     const html = this.generateTicketHTML(
       sale, 
@@ -524,7 +528,7 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: { type: string; address: string; driverName?: string }
+    deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string }
   ): void {
     const html = this.generateTicketHTML(
       sale, 
@@ -983,7 +987,7 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: { type: string; address: string; driverName?: string }
+    deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string }
   ): void {
     if (this.canPrint()) {
       this.printTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines, deliveryInfo);

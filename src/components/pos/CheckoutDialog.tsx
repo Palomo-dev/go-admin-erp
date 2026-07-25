@@ -101,6 +101,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [drivers, setDrivers] = useState<Array<{ id: string; name: string; phone?: string }>>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
 
+  // Estados para búsqueda de direcciones de clientes
+  const [addressSearch, setAddressSearch] = useState<string>('');
+  const [addressResults, setAddressResults] = useState<Array<{ id: string; name: string; address: string; city?: string; phone?: string }>>([]);
+  const [showAddressDropdown, setShowAddressDropdown] = useState<boolean>(false);
+
   // Comisión calculada
   const commissionAmount = commissionRate > 0 && salespersonId
     ? Math.round((calculatedTotals.subtotal || cart.subtotal) * commissionRate / 100 * 100) / 100
@@ -143,6 +148,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setDeliveryContactPhone('');
       setDeliveryInstructions('');
       setSelectedDriverId('');
+      setAddressSearch('');
+      setAddressResults([]);
+      setShowAddressDropdown(false);
       loadDrivers();
     }
   }, [open]);
@@ -188,7 +196,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       const mapped = driversData
         .filter((d: any) => d.is_active)
         .map((d: any) => {
-          const profile = d.employments?.[0]?.organization_members?.profiles;
+          const emp = d.employments;
+          const firstEmp = Array.isArray(emp) ? emp[0] : emp;
+          const om = firstEmp?.organization_members;
+          const omObj = Array.isArray(om) ? om[0] : om;
+          const profileData = omObj?.profiles;
+          const profile = Array.isArray(profileData) ? profileData[0] : profileData;
           const name = profile
             ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email
             : 'Conductor';
@@ -198,6 +211,46 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     } catch (error) {
       console.error('Error loading drivers:', error);
     }
+  };
+
+  const searchCustomerAddresses = async (query: string) => {
+    if (query.trim().length < 3) {
+      setAddressResults([]);
+      setShowAddressDropdown(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, first_name, last_name, address, city, phone')
+        .eq('organization_id', cart.organization_id)
+        .not('address', 'is', null)
+        .or(`address.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,phone.ilike.%${query}%`)
+        .limit(8);
+      if (error) throw error;
+      const results = (data || []).map((c: any) => ({
+        id: c.id,
+        name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Sin nombre',
+        address: c.address || '',
+        city: c.city || undefined,
+        phone: c.phone || undefined,
+      }));
+      setAddressResults(results);
+      setShowAddressDropdown(results.length > 0);
+    } catch (err) {
+      console.error('Error searching addresses:', err);
+      setAddressResults([]);
+      setShowAddressDropdown(false);
+    }
+  };
+
+  const selectCustomerAddress = (addr: { id: string; name: string; address: string; city?: string; phone?: string }) => {
+    setDeliveryAddress(addr.address);
+    if (addr.city && !deliveryCity) setDeliveryCity(addr.city);
+    if (addr.phone && !deliveryContactPhone) setDeliveryContactPhone(addr.phone);
+    if (addr.name && !deliveryContactName) setDeliveryContactName(addr.name);
+    setAddressSearch(addr.address);
+    setShowAddressDropdown(false);
   };
 
   const loadServers = async () => {
@@ -505,7 +558,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           deliveryInfo: deliveryType !== 'pickup' && deliveryAddress ? {
             type: deliveryType === 'delivery_own' ? 'Domicilio propio' : 'Domicilio',
             address: deliveryAddress,
-            driverName: selectedDriverId ? servers.find(s => s.id === selectedDriverId)?.name : undefined,
+            driverName: selectedDriverId ? drivers.find(d => d.id === selectedDriverId)?.name : undefined,
+            contactName: deliveryContactName || cart.customer?.full_name || undefined,
+            contactPhone: deliveryContactPhone || cart.customer?.phone || undefined,
+            city: deliveryCity || undefined,
+            instructions: deliveryInstructions || undefined,
           } : undefined,
         }).catch((err) => console.warn('No se pudo encolar impresión física del recibo:', err));
       }
@@ -519,16 +576,24 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             organizationId: cart.organization_id,
             branchId: cart.branch_id || 0,
             customerId: cart.customer_id,
+            customerName: cart.customer?.full_name,
+            customerPhone: cart.customer?.phone,
             total: cart.total,
             itemsCount: cart.items.length,
             driverId: selectedDriverId || undefined,
             deliveryInfo: {
               address: deliveryAddress,
               city: deliveryCity,
-              contact_name: deliveryContactName,
-              contact_phone: deliveryContactPhone,
+              contact_name: deliveryContactName || cart.customer?.full_name || '',
+              contact_phone: deliveryContactPhone || cart.customer?.phone || '',
               instructions: deliveryInstructions,
             },
+            saleItems: cart.items.map((item) => ({
+              description: (item as any).name || item.product?.name || 'Producto',
+              qty: item.quantity,
+              unit_value: item.unit_price,
+              total_value: item.total,
+            })),
           });
         } catch (shipmentError) {
           console.error('Error creando shipment:', shipmentError);
@@ -620,6 +685,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         type: deliveryType === 'delivery_own' ? 'Envío propio' : 'Envío tercero',
         address: deliveryAddress,
         driverName: selectedDriverId ? drivers.find(d => d.id === selectedDriverId)?.name : undefined,
+        contactName: deliveryContactName || cart.customer?.full_name || undefined,
+        contactPhone: deliveryContactPhone || cart.customer?.phone || undefined,
+        city: deliveryCity || undefined,
+        instructions: deliveryInstructions || undefined,
       } : undefined;
 
       PrintService.printTicket(
@@ -942,24 +1011,6 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                   {/* Campos de delivery cuando no es pickup */}
                   {deliveryType !== 'pickup' && (
                     <div className="space-y-3 pt-2 border-t dark:border-gray-700 border-gray-200">
-                      {deliveryType === 'delivery_own' && cart.customer?.address && (
-                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span>Dirección del cliente cargada. Puedes modificarla si el envío es a otro lugar.</span>
-                        </div>
-                      )}
-                      <div className="space-y-1">
-                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          Dirección de entrega *
-                        </Label>
-                        <Input
-                          value={deliveryAddress}
-                          onChange={(e) => setDeliveryAddress(e.target.value)}
-                          placeholder="Calle 123 #45-67"
-                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
-                        />
-                      </div>
                       {deliveryType === 'delivery_own' && drivers.length > 0 && (
                         <div className="space-y-1">
                           <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
@@ -980,6 +1031,59 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           </Select>
                         </div>
                       )}
+                      {deliveryType === 'delivery_own' && cart.customer?.address && (
+                        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span>Dirección del cliente cargada. Puedes modificarla si el envío es a otro lugar.</span>
+                        </div>
+                      )}
+                      <div className="space-y-1 relative">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          Buscar dirección de cliente
+                        </Label>
+                        <Input
+                          value={addressSearch}
+                          onChange={(e) => {
+                            setAddressSearch(e.target.value);
+                            searchCustomerAddresses(e.target.value);
+                          }}
+                          onFocus={() => { if (addressResults.length > 0) setShowAddressDropdown(true); }}
+                          onBlur={() => setTimeout(() => setShowAddressDropdown(false), 200)}
+                          placeholder="Buscar por dirección, nombre o teléfono..."
+                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                        />
+                        {showAddressDropdown && addressResults.length > 0 && (
+                          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                            {addressResults.map((addr) => (
+                              <button
+                                key={addr.id}
+                                type="button"
+                                onMouseDown={() => selectCustomerAddress(addr)}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                              >
+                                <div className="text-sm font-medium dark:text-white text-gray-900">{addr.name}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 shrink-0" />
+                                  {addr.address}{addr.city ? `, ${addr.city}` : ''}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          Dirección de entrega *
+                        </Label>
+                        <Input
+                          value={deliveryAddress}
+                          onChange={(e) => setDeliveryAddress(e.target.value)}
+                          placeholder="Calle 123 #45-67"
+                          className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
+                        />
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <Label className="text-xs dark:text-gray-400 text-gray-600">

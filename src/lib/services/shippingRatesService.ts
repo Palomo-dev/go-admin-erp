@@ -151,10 +151,10 @@ class ShippingRatesService {
       query = query.eq('is_active', filters.is_active);
     }
     if (filters?.origin_city) {
-      query = query.ilike('origin_city', `%${filters.origin_city}%`);
+      // No filtrar en query: se filtra en JS para incluir tarifas sin ciudad (aplican a cualquier origen)
     }
     if (filters?.destination_city) {
-      query = query.ilike('destination_city', `%${filters.destination_city}%`);
+      // No filtrar en query: se filtra en JS para incluir tarifas sin ciudad (aplican a cualquier destino)
     }
     if (filters?.search) {
       query = query.or(`rate_name.ilike.%${filters.search}%,rate_code.ilike.%${filters.search}%`);
@@ -163,7 +163,28 @@ class ShippingRatesService {
     const { data, error } = await query;
 
     if (error) throw error;
-    return data || [];
+
+    let result = data || [];
+
+    // Filtrar por origin_city y destination_city en JS: incluir tarifas sin ciudad (aplican a cualquier destino)
+    if (filters?.origin_city) {
+      const originLower = filters.origin_city.toLowerCase();
+      result = result.filter(r =>
+        !r.origin_city ||
+        r.origin_city === '' ||
+        r.origin_city.toLowerCase().includes(originLower)
+      );
+    }
+    if (filters?.destination_city) {
+      const destLower = filters.destination_city.toLowerCase();
+      result = result.filter(r =>
+        !r.destination_city ||
+        r.destination_city === '' ||
+        r.destination_city.toLowerCase().includes(destLower)
+      );
+    }
+
+    return result;
   }
 
   /**

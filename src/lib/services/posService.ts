@@ -1100,6 +1100,11 @@ export class POSService {
     try {
       const { cart, payments } = checkoutData;
 
+      // Calcular total final incluyendo flete y propina
+      const shippingFee = checkoutData.shipping_fee || 0;
+      const tipAmount = checkoutData.tip_amount || 0;
+      const finalTotal = cart.total + shippingFee + tipAmount;
+
       // Crear la venta en la base de datos
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
@@ -1111,16 +1116,18 @@ export class POSService {
           subtotal: cart.subtotal,
           tax_total: cart.tax_total,
           discount_total: cart.discount_total,
-          total: cart.total,
-          balance: Math.max(0, cart.total - checkoutData.total_paid),
-          status: checkoutData.total_paid >= cart.total ? 'paid' : 'pending',
-          payment_status: checkoutData.total_paid >= cart.total ? 'paid' : 'partial',
+          total: finalTotal,
+          balance: Math.max(0, finalTotal - checkoutData.total_paid),
+          status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
+          payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
           tax_included: checkoutData.tax_included || false,
           tax_breakdown: checkoutData.tax_breakdown || null,
           sale_date: new Date().toISOString(),
           salesperson_id: checkoutData.salesperson_id || null,
           commission_rate: checkoutData.commission_rate || 0,
-          commission_type: checkoutData.commission_type || 'none'
+          commission_type: checkoutData.commission_type || 'none',
+          delivery_fee: shippingFee > 0 ? shippingFee : 0,
+          tip_amount: tipAmount > 0 ? tipAmount : null
         })
         .select()
         .single();
@@ -1186,7 +1193,7 @@ export class POSService {
           currency: baseCurrency.code,
           subtotal: cart.subtotal,
           tax_total: cart.tax_total,
-          total: cart.total,
+          total: finalTotal,
           balance: saleData.balance,
           status: saleData.balance > 0 ? 'partial' : 'paid',
           tax_included: checkoutData.tax_included || false,

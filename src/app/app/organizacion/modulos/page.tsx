@@ -204,7 +204,7 @@ export default function ModulesMarketplacePage() {
 
       // Si se activó, marcar todas las páginas como activas en estado local
       let newActiveModulePages: Record<string, string[]>;
-      if (!isActive && modulePages.length > 0) {
+      if (!isActive && modulePages && modulePages.length > 0) {
         newActiveModulePages = { ...activeModulePages, [moduleCode]: modulePages.map(p => p.href) };
         setActiveModulePages(newActiveModulePages);
       } else if (isActive) {
@@ -576,8 +576,9 @@ export default function ModulesMarketplacePage() {
                         </div>
                         <div className="flex items-center gap-2">
                           {(() => {
-                            const activeCount = (activeModulePages[module.code] || []).length;
+                            const modulePageList = activeModulePages[module.code];
                             const totalCount = MODULE_PAGES[module.code].length;
+                            const activeCount = modulePageList === undefined ? totalCount : modulePageList.length;
                             return (
                               <Badge variant="outline" className="text-xs dark:border-gray-700 dark:text-gray-400">
                                 {activeCount}/{totalCount}

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { POSService } from '@/lib/services/posService';
 import { useOrganization, getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
@@ -52,6 +53,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showCustomerList, setShowCustomerList] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 640px)');
 
   // Buscar clientes Y espacios ocupados
   const searchCustomers = async (term: string) => {
@@ -253,6 +255,172 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
     onCustomerSelect(undefined, undefined);
   };
 
+  // Contenido de búsqueda reutilizable para Popover (desktop) y Dialog (móvil)
+  const customerSearchContent = (
+    <div className="p-4 space-y-4">
+      {/* Header con campo de búsqueda */}
+      <div className="space-y-2">
+        <h4 className="font-semibold dark:text-white text-gray-900">Buscar Cliente</h4>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
+          <Input
+            placeholder="Nombre, email, teléfono o documento..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300 focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+        </div>
+      </div>
+
+      <Separator className="dark:bg-gray-800 bg-gray-200" />
+
+      {/* Resultados de búsqueda */}
+      <ScrollArea className="h-80">
+        <div className="space-y-3 pr-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-2 text-sm dark:text-gray-400 text-gray-600">
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <span>Buscando...</span>
+              </div>
+            </div>
+          ) : occupiedSpaces.length === 0 && customers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <User className="h-12 w-12 dark:text-gray-600 text-gray-400 mb-2" />
+              <p className="text-sm font-medium dark:text-gray-400 text-gray-600 mb-1">
+                {searchTerm ? 'No se encontraron resultados' : 'No hay clientes registrados'}
+              </p>
+              <p className="text-xs dark:text-gray-500 text-gray-500">
+                {searchTerm ? 'Intenta con otro término de búsqueda' : 'Crea un nuevo cliente para comenzar'}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Espacios Ocupados */}
+              {occupiedSpaces.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <Building2 className="h-3.5 w-3.5 text-green-600" />
+                    <p className="text-xs font-semibold dark:text-gray-400 text-gray-600">
+                      ESPACIOS OCUPADOS ({occupiedSpaces.length})
+                    </p>
+                  </div>
+                  {occupiedSpaces.map((room) => (
+                    <div
+                      key={`${room.space_id}-${room.reservation_id}`}
+                      className="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-green-900/20 hover:bg-green-50 dark:border-green-500/30 border-green-200 border"
+                      onClick={() => handleSelectRoom(room)}
+                    >
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-sm dark:text-white text-gray-900">
+                            {room.space_label}
+                          </p>
+                          <Badge className="bg-green-600 text-xs">Ocupada</Badge>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600 mb-0.5">
+                          <User className="h-3 w-3" />
+                          <span className="font-medium">{room.customer_name}</span>
+                        </div>
+                        {room.customer_email && (
+                          <div className="flex items-center gap-1 text-xs dark:text-gray-500 text-gray-500">
+                            <Mail className="h-3 w-3" />
+                            <span className="truncate">{room.customer_email}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Separador si hay ambos */}
+              {occupiedSpaces.length > 0 && customers.length > 0 && (
+                <Separator className="dark:bg-gray-800 bg-gray-200" />
+              )}
+
+              {/* Clientes Regulares */}
+              {customers.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <User className="h-3.5 w-3.5 text-blue-600" />
+                    <p className="text-xs font-semibold dark:text-gray-400 text-gray-600">
+                      CLIENTES ({customers.length})
+                    </p>
+                  </div>
+                  {customers.map((customer) => (
+                    <div
+                      key={customer.id}
+                      className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-gray-800 hover:bg-gray-50 dark:hover:border-blue-500/30 hover:border-blue-200 border border-transparent"
+                      onClick={() => handleSelectCustomer(customer)}
+                    >
+                      <UserAvatar 
+                        name={customer.full_name} 
+                        avatarUrl={customer.avatar_url} 
+                        size="sm" 
+                        className="shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-sm dark:text-white text-gray-900 truncate">
+                            {customer.full_name}
+                          </p>
+                          {customer.customer_type === 'company' && (
+                            <Building2 className="h-3 w-3 text-blue-500 dark:text-blue-400 shrink-0" />
+                          )}
+                        </div>
+                        {customer.customer_type === 'company' && (customer as any).primary_contact_name && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            Contacto: {(customer as any).primary_contact_name}{(customer as any).primary_contact_position ? ` (${(customer as any).primary_contact_position})` : ''}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          {customer.email && (
+                            <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
+                              <Mail className="h-3 w-3" />
+                              <span className="truncate max-w-[120px]">{customer.email}</span>
+                            </div>
+                          )}
+                          {customer.phone && (
+                            <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
+                              <Phone className="h-3 w-3" />
+                              <span>{customer.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </ScrollArea>
+
+      <Separator className="dark:bg-gray-800 bg-gray-200" />
+
+      {/* Botón para crear nuevo cliente */}
+      <Button
+        onClick={() => {
+          setShowCreateDialog(true);
+          setShowCustomerList(false);
+        }}
+        className="w-full justify-start dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 transition-colors"
+        size="lg"
+      >
+        <UserPlus className="h-4 w-4 mr-2" />
+        Crear nuevo cliente
+      </Button>
+    </div>
+  );
+
   const content = (
     <div className={`space-y-2 ${open ? '' : className}`}>
       {/* Cliente seleccionado */}
@@ -313,6 +481,38 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
       ) : (
         /* Selector de cliente */
         <div className="space-y-2">
+          {/* Móvil: Dialog centrado que no se sale del viewport */}
+          {isMobile ? (
+            <Dialog open={showCustomerList} onOpenChange={setShowCustomerList}>
+              <Button
+                variant="outline"
+                onClick={() => setShowCustomerList(true)}
+                className="w-full justify-start text-left h-auto p-3 dark:border-gray-700 dark:hover:bg-gray-800/50 dark:hover:border-blue-500/50 border-gray-300 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-full dark:bg-blue-500/20 bg-blue-100 shrink-0">
+                    <User className="h-4 w-4 dark:text-blue-400 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium dark:text-white text-gray-900 text-sm truncate">
+                      Seleccionar cliente
+                    </p>
+                    <p className="text-xs dark:text-gray-400 text-gray-600 truncate">
+                      Buscar cliente
+                    </p>
+                  </div>
+                  <Search className="h-3.5 w-3.5 dark:text-gray-400 text-gray-500 shrink-0" />
+                </div>
+              </Button>
+              <DialogContent className="sm:hidden max-w-[95vw] max-h-[85vh] p-0 dark:bg-gray-900 dark:border-gray-800">
+                <DialogHeader className="p-4 pb-2">
+                  <DialogTitle className="text-base">Seleccionar Cliente</DialogTitle>
+                </DialogHeader>
+                {customerSearchContent}
+              </DialogContent>
+            </Dialog>
+          ) : (
+          /* Desktop: Popover con posicionamiento automático */
           <Popover open={showCustomerList} onOpenChange={setShowCustomerList}>
             <PopoverTrigger asChild>
               <Button
@@ -345,170 +545,10 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-96 p-0 dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200" align="start">
-              <div className="p-4 space-y-4">
-                {/* Header con campo de búsqueda */}
-                <div className="space-y-2">
-                  <h4 className="font-semibold dark:text-white text-gray-900">Buscar Cliente</h4>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
-                    <Input
-                      placeholder="Nombre, email, teléfono o documento..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300 focus:ring-2 focus:ring-blue-500"
-                      autoFocus
-                    />
-                  </div>
-                </div>
-
-                <Separator className="dark:bg-gray-800 bg-gray-200" />
-
-                {/* Resultados de búsqueda */}
-                <ScrollArea className="h-80">
-                  <div className="space-y-3 pr-4">
-                    {isLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="flex items-center gap-2 text-sm dark:text-gray-400 text-gray-600">
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                          <span>Buscando...</span>
-                        </div>
-                      </div>
-                    ) : occupiedSpaces.length === 0 && customers.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <User className="h-12 w-12 dark:text-gray-600 text-gray-400 mb-2" />
-                        <p className="text-sm font-medium dark:text-gray-400 text-gray-600 mb-1">
-                          {searchTerm ? 'No se encontraron resultados' : 'No hay clientes registrados'}
-                        </p>
-                        <p className="text-xs dark:text-gray-500 text-gray-500">
-                          {searchTerm ? 'Intenta con otro término de búsqueda' : 'Crea un nuevo cliente para comenzar'}
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Espacios Ocupados */}
-                        {occupiedSpaces.length > 0 && (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 px-1">
-                              <Building2 className="h-3.5 w-3.5 text-green-600" />
-                              <p className="text-xs font-semibold dark:text-gray-400 text-gray-600">
-                                ESPACIOS OCUPADOS ({occupiedSpaces.length})
-                              </p>
-                            </div>
-                            {occupiedSpaces.map((room) => (
-                              <div
-                                key={`${room.space_id}-${room.reservation_id}`}
-                                className="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-green-900/20 hover:bg-green-50 dark:border-green-500/30 border-green-200 border"
-                                onClick={() => handleSelectRoom(room)}
-                              >
-                                <div className="flex-shrink-0">
-                                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                                    <Building2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                  </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <p className="font-semibold text-sm dark:text-white text-gray-900">
-                                      {room.space_label}
-                                    </p>
-                                    <Badge className="bg-green-600 text-xs">Ocupada</Badge>
-                                  </div>
-                                  <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600 mb-0.5">
-                                    <User className="h-3 w-3" />
-                                    <span className="font-medium">{room.customer_name}</span>
-                                  </div>
-                                  {room.customer_email && (
-                                    <div className="flex items-center gap-1 text-xs dark:text-gray-500 text-gray-500">
-                                      <Mail className="h-3 w-3" />
-                                      <span className="truncate">{room.customer_email}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Separador si hay ambos */}
-                        {occupiedSpaces.length > 0 && customers.length > 0 && (
-                          <Separator className="dark:bg-gray-800 bg-gray-200" />
-                        )}
-
-                        {/* Clientes Regulares */}
-                        {customers.length > 0 && (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 px-1">
-                              <User className="h-3.5 w-3.5 text-blue-600" />
-                              <p className="text-xs font-semibold dark:text-gray-400 text-gray-600">
-                                CLIENTES ({customers.length})
-                              </p>
-                            </div>
-                            {customers.map((customer) => (
-                              <div
-                                key={customer.id}
-                                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-gray-800 hover:bg-gray-50 dark:hover:border-blue-500/30 hover:border-blue-200 border border-transparent"
-                                onClick={() => handleSelectCustomer(customer)}
-                              >
-                                <UserAvatar 
-                                  name={customer.full_name} 
-                                  avatarUrl={customer.avatar_url} 
-                                  size="sm" 
-                                  className="shrink-0"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <p className="font-medium text-sm dark:text-white text-gray-900 truncate">
-                                      {customer.full_name}
-                                    </p>
-                                    {customer.customer_type === 'company' && (
-                                      <Building2 className="h-3 w-3 text-blue-500 dark:text-blue-400 shrink-0" />
-                                    )}
-                                  </div>
-                                  {customer.customer_type === 'company' && (customer as any).primary_contact_name && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                      Contacto: {(customer as any).primary_contact_name}{(customer as any).primary_contact_position ? ` (${(customer as any).primary_contact_position})` : ''}
-                                    </p>
-                                  )}
-                                  <div className="flex items-center gap-2 mt-1">
-                                    {customer.email && (
-                                      <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
-                                        <Mail className="h-3 w-3" />
-                                        <span className="truncate max-w-[120px]">{customer.email}</span>
-                                      </div>
-                                    )}
-                                    {customer.phone && (
-                                      <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
-                                        <Phone className="h-3 w-3" />
-                                        <span>{customer.phone}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </ScrollArea>
-
-                <Separator className="dark:bg-gray-800 bg-gray-200" />
-
-                {/* Botón para crear nuevo cliente */}
-                <Button
-                  onClick={() => {
-                    setShowCreateDialog(true);
-                    setShowCustomerList(false);
-                  }}
-                  className="w-full justify-start dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 transition-colors"
-                  size="lg"
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Crear nuevo cliente
-                </Button>
-              </div>
+              {customerSearchContent}
             </PopoverContent>
           </Popover>
+          )}
         </div>
       )}
 

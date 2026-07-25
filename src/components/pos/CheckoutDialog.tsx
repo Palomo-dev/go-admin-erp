@@ -854,6 +854,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         ...completedSale,
         subtotal: calculatedTotals.subtotal || completedSale.subtotal,
         tax_total: calculatedTotals.totalTaxAmount || completedSale.tax_total,
+        delivery_fee: shippingFee > 0 ? shippingFee : completedSale.delivery_fee,
+        tip_amount: tipAmount > 0 ? tipAmount : completedSale.tip_amount,
+        total: cartTotal,
         tax_included: taxIncluded,
         _source: 'pos',
       } as any;
@@ -976,7 +979,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 <div className="flex justify-between items-center">
                   <span className="text-sm sm:text-base dark:text-gray-400 text-gray-600">Total:</span>
                   <span className="font-bold text-base sm:text-lg dark:text-white text-gray-900">
-                    {formatCurrency(completedSale.total)}
+                    {formatCurrency(cartTotal)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

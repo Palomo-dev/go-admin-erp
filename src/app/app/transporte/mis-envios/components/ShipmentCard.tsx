@@ -200,8 +200,8 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
 
         {/* Acciones */}
         <div className="flex flex-wrap gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
-          {/* Botón marcar pagado: solo cuando se puede marcar como entregado (out_for_delivery) */}
-          {shipment.payment_status === 'pending' && onMarkPaid && !isCancelled && status === 'out_for_delivery' && (
+          {/* Botón marcar pagado: cuando hay pago pendiente y el envío está activo o entregado */}
+          {shipment.payment_status === 'pending' && onMarkPaid && !isCancelled && (status === 'out_for_delivery' || status === 'delivered') && (
             <Button
               size="sm"
               className="bg-green-600 hover:bg-green-700 text-white"
@@ -297,6 +297,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
       <DeliveryPhotoDialog
         open={showDeliveryDialog}
         onOpenChange={setShowDeliveryDialog}
+        initialRecipientName={shipment.delivery_contact_name || undefined}
         onSubmit={async (data) => {
           if (onDeliveryWithPhoto) {
             await onDeliveryWithPhoto(shipment.id, data);

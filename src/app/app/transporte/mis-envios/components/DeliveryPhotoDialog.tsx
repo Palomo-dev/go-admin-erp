@@ -24,9 +24,10 @@ interface DeliveryPhotoDialogProps {
     photoUrl: string;
     notes?: string;
   }) => Promise<void>;
+  initialRecipientName?: string;
 }
 
-export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit }: DeliveryPhotoDialogProps) {
+export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecipientName }: DeliveryPhotoDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recipientName, setRecipientName] = useState('');
   const [notes, setNotes] = useState('');
@@ -119,6 +120,12 @@ export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit }: DeliveryPh
   useEffect(() => {
     return () => stopCamera();
   }, [stopCamera]);
+
+  useEffect(() => {
+    if (open && initialRecipientName) {
+      setRecipientName(initialRecipientName);
+    }
+  }, [open, initialRecipientName]);
 
   const handleSubmit = async () => {
     if (!recipientName || !photoFile) return;

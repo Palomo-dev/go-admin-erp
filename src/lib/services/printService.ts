@@ -144,12 +144,13 @@ export class PrintService {
     <meta charset="UTF-8">
     <title>Ticket de Venta</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         @media print {
             @page { margin: 0; size: 80mm auto; }
             html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
+        html, body { width: 80mm; }
         body {
-            width: 100%;
             margin: 0;
             font-family: 'Courier New', monospace;
             font-size: 12px;
@@ -468,7 +469,7 @@ export class PrintService {
       deliveryInfo
     );
 
-    const printWindow = window.open('', '_blank', 'width=300,height=600');
+    const printWindow = window.open('', '_blank', 'width=320,height=600');
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
@@ -632,12 +633,13 @@ export class PrintService {
     <meta charset="UTF-8">
     <title>Pre-Cuenta - ${tableName}</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         @media print {
             @page { margin: 0; size: 80mm auto; }
             html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
+        html, body { width: 80mm; }
         body {
-            width: 100%;
             margin: 0;
             font-family: 'Courier New', monospace;
             font-size: 12px;
@@ -859,12 +861,13 @@ export class PrintService {
     <meta charset="UTF-8">
     <title>Comanda - ${tableName}</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         @media print {
             @page { margin: 0; size: 80mm auto; }
             html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
+        html, body { width: 80mm; }
         body {
-            width: 100%;
             margin: 0;
             font-family: 'Courier New', monospace;
             font-size: 13px;

@@ -706,22 +706,22 @@ export default function ShipmentDetailPage() {
 
           {/* Tabs para Items, Timeline, Intentos, POD */}
           <Tabs defaultValue="items" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="items" className="flex items-center gap-1">
-                <Package className="h-4 w-4" />
-                <span className="hidden sm:inline">Items</span>
+            <TabsList className="flex w-full overflow-x-auto sm:grid sm:grid-cols-4">
+              <TabsTrigger value="items" className="flex items-center gap-1.5 flex-1 sm:flex-initial justify-center whitespace-nowrap">
+                <Package className="h-4 w-4 shrink-0" />
+                <span>Items</span>
               </TabsTrigger>
-              <TabsTrigger value="timeline" className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                <span className="hidden sm:inline">Timeline</span>
+              <TabsTrigger value="timeline" className="flex items-center gap-1.5 flex-1 sm:flex-initial justify-center whitespace-nowrap">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span>Timeline</span>
               </TabsTrigger>
-              <TabsTrigger value="attempts" className="flex items-center gap-1">
-                <Truck className="h-4 w-4" />
-                <span className="hidden sm:inline">Intentos</span>
+              <TabsTrigger value="attempts" className="flex items-center gap-1.5 flex-1 sm:flex-initial justify-center whitespace-nowrap">
+                <Truck className="h-4 w-4 shrink-0" />
+                <span>Intentos</span>
               </TabsTrigger>
-              <TabsTrigger value="pod" className="flex items-center gap-1">
-                <FileCheck className="h-4 w-4" />
-                <span className="hidden sm:inline">POD</span>
+              <TabsTrigger value="pod" className="flex items-center gap-1.5 flex-1 sm:flex-initial justify-center whitespace-nowrap">
+                <FileCheck className="h-4 w-4 shrink-0" />
+                <span>POD</span>
               </TabsTrigger>
             </TabsList>
 

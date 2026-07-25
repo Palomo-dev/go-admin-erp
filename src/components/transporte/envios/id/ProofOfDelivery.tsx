@@ -75,6 +75,7 @@ const LOCATION_TYPES = [
 
 export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: ProofOfDeliveryProps) {
   const [showDialog, setShowDialog] = useState(false);
+  const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     recipient_name: '',
@@ -172,7 +173,13 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
               </div>
               <div className="flex gap-2 flex-wrap">
                 {pod.photo_urls.map((url, idx) => (
-                  <img key={idx} src={url} alt={`Foto ${idx + 1}`} className="h-20 w-20 object-cover rounded border" />
+                  <img
+                    key={idx}
+                    src={url}
+                    alt={`Foto ${idx + 1}`}
+                    className="h-20 w-20 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setExpandedPhoto(url)}
+                  />
                 ))}
               </div>
             </div>
@@ -352,6 +359,18 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
               Confirmar Entrega
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!expandedPhoto} onOpenChange={(v) => !v && setExpandedPhoto(null)}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+          {expandedPhoto && (
+            <img
+              src={expandedPhoto}
+              alt="Foto ampliada"
+              className="w-full h-auto max-h-[80vh] object-contain"
+            />
+          )}
         </DialogContent>
       </Dialog>
     </Card>

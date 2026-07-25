@@ -13,10 +13,13 @@ import { Search } from 'lucide-react';
 const statusOptions = [
   { value: 'pending', label: 'Pendiente' },
   { value: 'assigned', label: 'Asignado' },
-  { value: 'picked_up', label: 'Recogido' },
+  { value: 'ready', label: 'Listo' },
+  { value: 'picked', label: 'Recogido' },
+  { value: 'dispatched', label: 'Despachado' },
   { value: 'in_transit', label: 'En tránsito' },
   { value: 'out_for_delivery', label: 'En entrega' },
   { value: 'delivered', label: 'Entregado' },
+  { value: 'failed', label: 'Fallido' },
   { value: 'returned', label: 'Devuelto' },
   { value: 'cancelled', label: 'Cancelado' },
 ];

@@ -49,14 +49,16 @@ interface ShipmentsListProps {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-800', icon: <Package className="h-3 w-3" /> },
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: <Package className="h-3 w-3" /> },
   assigned: { label: 'Asignado', color: 'bg-cyan-100 text-cyan-800', icon: <Package className="h-3 w-3" /> },
-  received: { label: 'Recibido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-3 w-3" /> },
-  picked_up: { label: 'Recogido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-3 w-3" /> },
+  ready: { label: 'Listo', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-3 w-3" /> },
+  picked: { label: 'Recogido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-3 w-3" /> },
+  dispatched: { label: 'Despachado', color: 'bg-indigo-100 text-indigo-800', icon: <Truck className="h-3 w-3" /> },
   in_transit: { label: 'En Tránsito', color: 'bg-purple-100 text-purple-800', icon: <Truck className="h-3 w-3" /> },
   out_for_delivery: { label: 'En Entrega', color: 'bg-orange-100 text-orange-800', icon: <Truck className="h-3 w-3" /> },
-  arrived: { label: 'Llegó', color: 'bg-indigo-100 text-indigo-800', icon: <MapPin className="h-3 w-3" /> },
   delivered: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-3 w-3" /> },
+  failed: { label: 'Fallido', color: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" /> },
   returned: { label: 'Devuelto', color: 'bg-orange-100 text-orange-800', icon: <RotateCcw className="h-3 w-3" /> },
   cancelled: { label: 'Cancelado', color: 'bg-gray-100 text-gray-500', icon: <XCircle className="h-3 w-3" /> },
 };

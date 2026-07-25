@@ -304,6 +304,7 @@ export default function CargoDetailPage() {
         <JobPositionPermissionsManager
           jobPositionId={position.id}
           jobPositionName={position.name}
+          organizationId={organization?.id || 0}
           onClose={() => setShowPermissionsDialog(false)}
           onPermissionsUpdated={loadData}
         />

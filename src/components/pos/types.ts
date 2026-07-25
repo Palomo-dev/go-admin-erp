@@ -243,6 +243,7 @@ export interface CheckoutData {
     instructions?: string;
   };
   driver_id?: string;
+  shipping_fee?: number;
 }
 
 // Para impuestos

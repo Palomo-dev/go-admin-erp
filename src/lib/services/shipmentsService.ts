@@ -39,7 +39,7 @@ export interface ShipmentWithDetails {
   picked_at?: string;
   dispatched_at?: string;
   delivered_at?: string;
-  status?: 'pending' | 'assigned' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'returned' | 'cancelled' | 'received' | 'arrived';
+  status?: 'draft' | 'pending' | 'assigned' | 'ready' | 'picked' | 'dispatched' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'returned' | 'cancelled';
   notes?: string;
   internal_notes?: string;
   created_by?: string;
@@ -109,6 +109,33 @@ class ShipmentsService {
 
     let results = (data || []) as ShipmentWithDetails[];
 
+    // Derivar payment_status de ventas relacionadas (batch)
+    const saleIds = results
+      .filter((s) => s.source_type === 'sale' && s.source_id)
+      .map((s) => s.source_id as string);
+
+    if (saleIds.length > 0) {
+      const { data: salesData } = await supabase
+        .from('sales')
+        .select('id, payment_status')
+        .in('id', saleIds);
+
+      const salePaymentMap = new Map<string, string>();
+      (salesData || []).forEach((sale) => {
+        salePaymentMap.set(sale.id, sale.payment_status);
+      });
+
+      results = results.map((s) => {
+        if (!s.payment_status && s.source_type === 'sale' && s.source_id) {
+          const salePayment = salePaymentMap.get(s.source_id);
+          if (salePayment) {
+            s.payment_status = salePayment as ShipmentWithDetails['payment_status'];
+          }
+        }
+        return s;
+      });
+    }
+
     // Mapear campos legacy para compatibilidad con ShipmentsList
     results = results.map((s) => {
       const metadata = s.metadata as Record<string, unknown> | null;
@@ -171,6 +198,22 @@ class ShipmentsService {
       s.receiver_phone = s.delivery_contact_phone || s.customer?.phone || '';
     }
 
+    // Derivar payment_status de la venta relacionada si source_type es 'sale'
+    if (!s.payment_status && s.source_type === 'sale' && s.source_id) {
+      try {
+        const { data: sale } = await supabase
+          .from('sales')
+          .select('payment_status')
+          .eq('id', s.source_id)
+          .maybeSingle();
+        if (sale?.payment_status) {
+          s.payment_status = sale.payment_status as ShipmentWithDetails['payment_status'];
+        }
+      } catch {
+        // Si no se puede obtener, dejar como undefined
+      }
+    }
+
     return s;
   }
 
@@ -216,8 +259,11 @@ class ShipmentsService {
     const now = new Date().toISOString();
 
     switch (status) {
-      case 'picked_up':
+      case 'picked':
         updates.picked_at = now;
+        break;
+      case 'dispatched':
+        updates.dispatched_at = now;
         break;
       case 'in_transit':
         updates.dispatched_at = now;
@@ -227,7 +273,31 @@ class ShipmentsService {
         break;
     }
 
-    return this.updateShipment(id, updates);
+    const updated = await this.updateShipment(id, updates);
+
+    const eventDescriptions: Record<string, string> = {
+      picked: 'Pedido recogido',
+      dispatched: 'Despachado / Llegó a destino',
+      in_transit: 'En tránsito al destino',
+      out_for_delivery: 'En entrega final',
+      delivered: 'Entregado exitosamente',
+      returned: 'Devuelto',
+      cancelled: 'Cancelado',
+      ready: 'Listo para despacho',
+      assigned: 'Conductor asignado',
+    };
+
+    try {
+      await this.createEvent(id, {
+        event_type: status,
+        description: eventDescriptions[status] || `Estado cambiado a: ${status}`,
+        organization_id: updated.organization_id,
+      });
+    } catch (eventError) {
+      console.error('Error creating transport event:', eventError);
+    }
+
+    return updated;
   }
 
   async getShipmentStats(organizationId: number) {
@@ -245,7 +315,7 @@ class ShipmentsService {
     return {
       total: shipments.length,
       pending: shipments.filter((s) => s.status === 'pending').length,
-      pickedUp: shipments.filter((s) => s.status === 'picked_up').length,
+      pickedUp: shipments.filter((s) => s.status === 'picked').length,
       inTransit: shipments.filter((s) => s.status === 'in_transit').length,
       delivered: shipments.filter((s) => s.status === 'delivered').length,
       cancelled: shipments.filter((s) => s.status === 'cancelled').length,
@@ -283,7 +353,9 @@ class ShipmentsService {
     return data || [];
   }
 
-  async createEvent(shipmentId: string, eventData: { event_type: string; description?: string; location_text?: string }) {
+  async createEvent(shipmentId: string, eventData: { event_type: string; description?: string; location_text?: string; organization_id?: number }) {
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data, error } = await supabase
       .from('transport_events')
       .insert({
@@ -294,7 +366,9 @@ class ShipmentsService {
         location_text: eventData.location_text,
         event_time: new Date().toISOString(),
         actor_type: 'user',
+        actor_id: user?.id || null,
         source: 'internal',
+        organization_id: eventData.organization_id || null,
       })
       .select()
       .single();
@@ -402,7 +476,23 @@ class ShipmentsService {
       .order('created_at');
 
     if (error) throw error;
-    return data || [];
+
+    // Procesar para obtener la imagen desde notes.product_image
+    const processedData = (data || []).map((item: any) => {
+      let productImage: string | null = null;
+      if (item.notes) {
+        try {
+          const parsed = JSON.parse(item.notes);
+          if (parsed.product_image) {
+            productImage = parsed.product_image;
+          }
+        } catch {}
+      }
+      const { ...productData } = item.products || {};
+      return { ...item, products: productData.id ? { id: productData.id, name: productData.name, sku: productData.sku } : undefined, product_image: productImage };
+    });
+
+    return processedData;
   }
 
   async addShipmentItem(shipmentId: string, item: {
@@ -449,12 +539,34 @@ class ShipmentsService {
   }
 
   async deleteShipmentItem(itemId: string) {
+    const { data: itemData, error: fetchError } = await supabase
+      .from('shipment_items')
+      .select('shipment_id, description, products(name)')
+      .eq('id', itemId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
     const { error } = await supabase
       .from('shipment_items')
       .delete()
       .eq('id', itemId);
 
     if (error) throw error;
+
+    if (itemData?.shipment_id) {
+      const itemName = (itemData.products as any)?.name || itemData.description || 'item';
+      const { data: shipment } = await supabase
+        .from('shipments')
+        .select('organization_id')
+        .eq('id', itemData.shipment_id)
+        .single();
+      await this.createEvent(itemData.shipment_id, {
+        event_type: 'note',
+        description: `Item eliminado: ${itemName}`,
+        organization_id: shipment?.organization_id,
+      }).catch((err) => console.error('Error creating delete event:', err));
+    }
   }
 
   // ==================== DELIVERY ATTEMPTS ====================

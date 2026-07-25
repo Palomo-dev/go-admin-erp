@@ -6,21 +6,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Package, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Package, Plus, Trash2, Loader2, Tag, Percent } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+interface ItemModifier {
+  groupId: number;
+  groupName: string;
+  modifierId: number;
+  name: string;
+  extraPrice: number;
+}
 
 interface ShipmentItem {
   id: string;
@@ -32,6 +43,9 @@ interface ShipmentItem {
   total_value?: number;
   weight_kg?: number;
   notes?: string;
+  product_id?: number;
+  sale_item_id?: string;
+  product_image?: string | null;
   products?: { id: number; name: string; sku: string };
 }
 
@@ -46,6 +60,8 @@ interface ShipmentItemsProps {
 export function ShipmentItems({ items, isLoading, canEdit, onAddItem, onDeleteItem }: ShipmentItemsProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ShipmentItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     description: '',
     sku: '',
@@ -82,6 +98,39 @@ export function ShipmentItems({ items, isLoading, canEdit, onAddItem, onDeleteIt
   const totalValue = items.reduce((sum, item) => sum + (item.total_value || 0), 0);
   const totalWeight = items.reduce((sum, item) => sum + ((item.weight_kg || 0) * (item.qty || 1)), 0);
 
+  const formatCOP = (value: number) =>
+    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+
+  const parseItemNotes = (notes?: string): {
+    modifiers?: ItemModifier[];
+    variant_data?: Record<string, string>;
+    discount_amount?: number;
+    tax_amount?: number;
+    tax_rate?: number;
+    tax_excluded?: boolean;
+    product_image?: string;
+  } => {
+    if (!notes) return {};
+    try {
+      return JSON.parse(notes);
+    } catch {
+      return {};
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteItem(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
@@ -105,54 +154,118 @@ export function ShipmentItems({ items, isLoading, canEdit, onAddItem, onDeleteIt
         <p className="text-gray-500 text-center py-4">No hay items registrados</p>
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Descripción</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead className="text-right">Cantidad</TableHead>
-                <TableHead className="text-right">Valor Unit.</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Peso</TableHead>
-                {canEdit && <TableHead className="w-10"></TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">
-                    {item.products?.name || item.description}
-                  </TableCell>
-                  <TableCell className="text-gray-500">{item.sku || item.products?.sku || '-'}</TableCell>
-                  <TableCell className="text-right">{item.qty} {item.unit}</TableCell>
-                  <TableCell className="text-right">
-                    {item.unit_value
-                      ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.unit_value)
-                      : '-'}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {item.total_value
-                      ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.total_value)
-                      : '-'}
-                  </TableCell>
-                  <TableCell className="text-right">{item.weight_kg ? `${item.weight_kg} kg` : '-'}</TableCell>
-                  {canEdit && (
-                    <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => onDeleteItem(item.id)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
+          <div className="space-y-3">
+            {items.map((item) => {
+              const { modifiers, variant_data, discount_amount, tax_amount, tax_rate, tax_excluded, product_image: noteImage } = parseItemNotes(item.notes);
+              const variantEntries = variant_data
+                ? Object.entries(variant_data).filter(([, v]) => !!v)
+                : [];
+              const productSku = item.sku || item.products?.sku || null;
+              const productName = item.products?.name || item.description;
+              const productImage = item.product_image || noteImage || null;
+
+              return (
+                <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50">
+                  {/* Imagen del producto */}
+                  <div className="shrink-0">
+                    {productImage ? (
+                      <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800">
+                        <img
+                          src={productImage}
+                          alt={productName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <Package className="h-6 w-6 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Información del producto */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight" title={productName}>
+                      {productName}
+                    </h4>
+
+                    {/* Badges de variantes */}
+                    {variantEntries.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                        {variantEntries.map(([attr, value]) => (
+                          <Badge key={attr} variant="outline" className="text-[0.65rem] px-1 py-0 border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300 shrink-0">
+                            {attr}: {value}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Badges de modificadores */}
+                    {modifiers && modifiers.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                        {modifiers.map((mod) => (
+                          <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300 shrink-0">
+                            {mod.name}{mod.extraPrice > 0 ? ` (+${formatCOP(mod.extraPrice)})` : ''}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Badge de descuento */}
+                    {discount_amount && discount_amount > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                        <Badge variant="outline" className="text-[0.65rem] px-1 py-0 border-red-300 text-red-700 dark:border-red-700 dark:text-red-300 shrink-0">
+                          <Tag className="h-3 w-3 mr-0.5" />
+                          Desc: -{formatCOP(discount_amount)}
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Badge de impuesto */}
+                    {tax_amount && tax_amount > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                        <Badge variant="outline" className="text-[0.65rem] px-1 py-0 border-green-300 text-green-700 dark:border-green-700 dark:text-green-300 shrink-0">
+                          <Percent className="h-3 w-3 mr-0.5" />
+                          Imp: {formatCOP(tax_amount)} ({tax_rate || 0}%{tax_excluded ? ' excl.' : ' incl.'})
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* SKU y info secundaria */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      {productSku && (
+                        <Badge variant="outline" className="text-[0.65rem] px-1 py-0 dark:border-gray-600 dark:text-gray-400 border-gray-400 text-gray-600 shrink-0">
+                          {productSku}
+                        </Badge>
+                      )}
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {item.qty} {item.unit || 'und'} × {item.unit_value ? formatCOP(item.unit_value) : '-'}
+                      </span>
+                      {item.weight_kg ? (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{item.weight_kg} kg</span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Total y acciones */}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                      {item.total_value ? formatCOP(item.total_value) : '-'}
+                    </div>
+                    {canEdit && (
+                      <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(item)} className="h-6 w-6 p-0">
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
                       </Button>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
           <div className="mt-4 pt-4 border-t flex justify-between text-sm">
             <span className="text-gray-500">Peso Total: <strong>{totalWeight.toFixed(2)} kg</strong></span>
             <span className="text-gray-500">
-              Valor Total: <strong className="text-blue-600">
-                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalValue)}
-              </strong>
+              Valor Total: <strong className="text-blue-600">{formatCOP(totalValue)}</strong>
             </span>
           </div>
         </>
@@ -219,6 +332,29 @@ export function ShipmentItems({ items, isLoading, canEdit, onAddItem, onDeleteIt
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar item del envío?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará <strong>{deleteTarget?.products?.name || deleteTarget?.description}</strong> del envío.
+              Esta acción no se puede deshacer y se registrará en el timeline.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

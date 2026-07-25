@@ -104,6 +104,7 @@ import { ModuleProvider, useModuleContext } from '@/lib/context/ModuleContext';
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
+import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
 import { getModuleCodeByHref } from '@/lib/config/modulePages';
 import { registerUserDevice } from '@/lib/auth/organizationAuth';
 
@@ -572,6 +573,9 @@ export const AppLayout = ({
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
   // Estado para páginas activas por módulo: { moduleCode: [pageHref, ...] }
   const [activeModulePages, setActiveModulePages] = useState<Record<string, string[]> | undefined>(undefined);
+  // Estado para acceso del cargo del usuario: null = sin restricciones
+  const [jobPositionVisibleModules, setJobPositionVisibleModules] = useState<string[] | null | undefined>(undefined);
+  const [jobPositionVisiblePages, setJobPositionVisiblePages] = useState<string[] | null | undefined>(undefined);
 
   // Cargar módulos activos cuando cambia la organización
   const loadActiveModuleCodes = useCallback(async (organizationId: string) => {
@@ -584,7 +588,6 @@ export const AppLayout = ({
       setActiveModulePages(pages);
     } catch (error) {
       console.error('Error cargando módulos activos:', error);
-      // En caso de error, no filtrar (mostrar todo)
       setActiveModuleCodes(undefined);
       setActiveModulePages(undefined);
     }
@@ -595,6 +598,32 @@ export const AppLayout = ({
       loadActiveModuleCodes(orgId);
     }
   }, [orgId, loadActiveModuleCodes]);
+
+  // Cargar acceso por cargo del usuario actual
+  const loadJobPositionAccess = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId || !orgId) {
+        setJobPositionVisibleModules(null);
+        setJobPositionVisiblePages(null);
+        return;
+      }
+      const access = await jobPositionModuleAccessService.getUserAccess(userId, parseInt(orgId));
+      setJobPositionVisibleModules(access.visibleModules);
+      setJobPositionVisiblePages(access.visiblePages);
+    } catch (error) {
+      console.error('Error cargando acceso por cargo:', error);
+      setJobPositionVisibleModules(null);
+      setJobPositionVisiblePages(null);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    if (orgId) {
+      loadJobPositionAccess();
+    }
+  }, [orgId, loadJobPositionAccess]);
 
   // Verificar si el usuario actual es administrador de la organización activa
   useEffect(() => {
@@ -1298,6 +1327,8 @@ export const AppLayout = ({
               onNavigate={() => setSidebarOpen(false)}
               activeModuleCodes={activeModuleCodes}
               activeModulePages={activeModulePages}
+              jobPositionVisibleModules={jobPositionVisibleModules}
+              jobPositionVisiblePages={jobPositionVisiblePages}
             />
           </div>
         </div>
@@ -1307,9 +1338,13 @@ export const AppLayout = ({
       {activeModule && activeModule.submenu && (() => {
         const moduleCode = getModuleCodeByHref(activeModule.href);
         const activePages = activeModulePages?.[moduleCode || ''];
-        const filteredSubmenu = activePages !== undefined
+        let filteredSubmenu = activePages !== undefined
           ? activeModule.submenu.filter(item => activePages.includes(item.href))
           : activeModule.submenu;
+        // Filtrar también por acceso del cargo a páginas
+        if (jobPositionVisiblePages !== null && jobPositionVisiblePages !== undefined) {
+          filteredSubmenu = filteredSubmenu.filter(item => jobPositionVisiblePages.includes(item.href));
+        }
         const filteredModule = { ...activeModule, submenu: filteredSubmenu };
         // Solo mostrar el panel si hay más de 1 página activa
         return filteredSubmenu.length > 1 ? (
@@ -1327,9 +1362,15 @@ export const AppLayout = ({
       {activeModule && activeModule.submenu && !subMenuPanelOpen && (() => {
         const moduleCode = getModuleCodeByHref(activeModule.href);
         const activePages = activeModulePages?.[moduleCode || ''];
-        const filteredCount = activePages !== undefined
+        let filteredCount = activePages !== undefined
           ? activeModule.submenu.filter(item => activePages.includes(item.href)).length
           : activeModule.submenu.length;
+        // Considerar también el filtrado por cargo
+        if (jobPositionVisiblePages !== null && jobPositionVisiblePages !== undefined) {
+          filteredCount = activeModule.submenu.filter(item => 
+            (activePages === undefined || activePages.includes(item.href)) && jobPositionVisiblePages.includes(item.href)
+          ).length;
+        }
         return filteredCount > 1 ? (
           <button
             onClick={() => setSubMenuPanelOpen(true)}

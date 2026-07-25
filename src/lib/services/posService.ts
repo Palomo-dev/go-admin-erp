@@ -423,7 +423,7 @@ export class POSService {
 
       const { data, error } = await query
         .order('full_name')
-        .limit(20);
+        .limit(filter.search ? 20 : 50);
 
       if (error) throw error;
       return data || [];

@@ -130,59 +130,55 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
         setOccupiedSpaces(spaces);
       }
 
-      // 2. Buscar clientes regulares solo si hay término de búsqueda
-      if (term.trim()) {
-        const filter: CustomerFilter = {
-          search: term.trim(),
-          status: 'active'
-        };
-        
-        const results = await POSService.searchCustomers(filter);
-        
-        // Obtener contactos principales para empresas
-        const companyResults = results.filter((c: any) => c.customer_type === 'company');
-        if (companyResults.length > 0) {
-          const companyIds = companyResults.map((c: any) => c.id);
-          const { data: links } = await supabase
-            .from('customer_company_links')
-            .select(`
-              company_id,
-              is_primary,
-              position,
-              person:customers!customer_company_links_person_id_fkey(first_name, last_name)
-            `)
-            .in('company_id', companyIds)
-            .order('is_primary', { ascending: false });
+      // 2. Buscar clientes (siempre, incluso sin término de búsqueda)
+      const filter: CustomerFilter = {
+        search: term.trim() || undefined,
+        status: 'active'
+      };
+      
+      const results = await POSService.searchCustomers(filter);
+      
+      // Obtener contactos principales para empresas
+      const companyResults = results.filter((c: any) => c.customer_type === 'company');
+      if (companyResults.length > 0) {
+        const companyIds = companyResults.map((c: any) => c.id);
+        const { data: links } = await supabase
+          .from('customer_company_links')
+          .select(`
+            company_id,
+            is_primary,
+            position,
+            person:customers!customer_company_links_person_id_fkey(first_name, last_name)
+          `)
+          .in('company_id', companyIds)
+          .order('is_primary', { ascending: false });
 
-          if (links) {
-            const contactMap = new Map<string, { name: string; position: string | null }>();
-            for (const link of links as any[]) {
-              if (!contactMap.has(link.company_id)) {
-                const person = link.person;
-                if (person) {
-                  contactMap.set(link.company_id, {
-                    name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
-                    position: link.position || null,
-                  });
-                }
+        if (links) {
+          const contactMap = new Map<string, { name: string; position: string | null }>();
+          for (const link of links as any[]) {
+            if (!contactMap.has(link.company_id)) {
+              const person = link.person;
+              if (person) {
+                contactMap.set(link.company_id, {
+                  name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
+                  position: link.position || null,
+                });
               }
             }
-            results.forEach((c: any) => {
-              if (c.customer_type === 'company') {
-                const contact = contactMap.get(c.id);
-                if (contact) {
-                  c.primary_contact_name = contact.name;
-                  c.primary_contact_position = contact.position;
-                }
-              }
-            });
           }
+          results.forEach((c: any) => {
+            if (c.customer_type === 'company') {
+              const contact = contactMap.get(c.id);
+              if (contact) {
+                c.primary_contact_name = contact.name;
+                c.primary_contact_position = contact.position;
+              }
+            }
+          });
         }
-        
-        setCustomers(results);
-      } else {
-        setCustomers([]);
       }
+      
+      setCustomers(results);
     } catch (error) {
       console.error('Error searching:', error);
       setCustomers([]);
@@ -200,6 +196,13 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Cargar clientes al abrir el popover
+  useEffect(() => {
+    if (showCustomerList && organization?.id && customers.length === 0 && !searchTerm) {
+      searchCustomers('');
+    }
+  }, [showCustomerList, organization?.id]);
 
   // Cuando el diálogo compartido crea un cliente, seleccionarlo
   const handleCustomerCreated = (customer: any) => {
@@ -361,7 +364,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                 <Separator className="dark:bg-gray-800 bg-gray-200" />
 
                 {/* Resultados de búsqueda */}
-                <ScrollArea className="h-64">
+                <ScrollArea className="h-80">
                   <div className="space-y-3 pr-4">
                     {isLoading ? (
                       <div className="flex items-center justify-center py-8">
@@ -370,11 +373,15 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                           <span>Buscando...</span>
                         </div>
                       </div>
-                    ) : occupiedSpaces.length === 0 && customers.length === 0 && searchTerm ? (
+                    ) : occupiedSpaces.length === 0 && customers.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
                         <User className="h-12 w-12 dark:text-gray-600 text-gray-400 mb-2" />
-                        <p className="text-sm font-medium dark:text-gray-400 text-gray-600 mb-1">No se encontraron resultados</p>
-                        <p className="text-xs dark:text-gray-500 text-gray-500">Intenta con otro término de búsqueda</p>
+                        <p className="text-sm font-medium dark:text-gray-400 text-gray-600 mb-1">
+                          {searchTerm ? 'No se encontraron resultados' : 'No hay clientes registrados'}
+                        </p>
+                        <p className="text-xs dark:text-gray-500 text-gray-500">
+                          {searchTerm ? 'Intenta con otro término de búsqueda' : 'Crea un nuevo cliente para comenzar'}
+                        </p>
                       </div>
                     ) : (
                       <>
@@ -422,12 +429,12 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                         )}
 
                         {/* Separador si hay ambos */}
-                        {occupiedSpaces.length > 0 && customers.length > 0 && searchTerm && (
+                        {occupiedSpaces.length > 0 && customers.length > 0 && (
                           <Separator className="dark:bg-gray-800 bg-gray-200" />
                         )}
 
                         {/* Clientes Regulares */}
-                        {customers.length > 0 && searchTerm && (
+                        {customers.length > 0 && (
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 px-1">
                               <User className="h-3.5 w-3.5 text-blue-600" />
@@ -478,15 +485,6 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                                 </div>
                               </div>
                             ))}
-                          </div>
-                        )}
-
-                        {/* Estado vacío inicial */}
-                        {!searchTerm && occupiedSpaces.length === 0 && customers.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <Search className="h-12 w-12 dark:text-gray-600 text-gray-400 mb-2" />
-                            <p className="text-sm font-medium dark:text-gray-400 text-gray-600 mb-1">Comienza a escribir</p>
-                            <p className="text-xs dark:text-gray-500 text-gray-500">Busca espacios ocupados o clientes</p>
                           </div>
                         )}
                       </>

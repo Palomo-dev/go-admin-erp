@@ -24,7 +24,7 @@ export interface DeliveryShipment {
   picked_at?: string;
   dispatched_at?: string;
   delivered_at?: string;
-  status: 'pending' | 'assigned' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'returned' | 'cancelled';
+  status: 'draft' | 'pending' | 'assigned' | 'ready' | 'picked' | 'dispatched' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'returned' | 'cancelled';
   notes?: string;
   internal_notes?: string;
   created_by?: string;
@@ -36,8 +36,6 @@ export interface DeliveryShipment {
   driver?: DeliveryDriver;
   web_order?: WebOrder;
   // Campos adicionales de la tabla shipments
-  branch_id?: number;
-  shipment_number?: string;
   customer?: { id: string; full_name: string; phone?: string; email?: string } | null;
   shipment_items?: { id: string; description: string; qty: number }[];
   cod_amount?: number;
@@ -47,6 +45,7 @@ export interface DeliveryShipment {
   package_count?: number;
   declared_value?: number;
   weight_kg?: number;
+  payment_status?: 'pending' | 'paid' | 'cod' | 'cancelled';
 }
 
 export interface DeliveryVehicle {
@@ -316,7 +315,7 @@ class DeliveryIntegrationService {
     await this.createTransportEvent({
       reference_type: 'shipment',
       reference_id: shipmentId,
-      event_type: 'picked_up',
+      event_type: 'picked',
       actor_type: 'driver',
       actor_id: driverId,
       latitude: location?.latitude,
@@ -646,7 +645,7 @@ class DeliveryIntegrationService {
       updated_at: new Date().toISOString(),
     };
 
-    if (newStatus === 'picked_up') updates.picked_at = new Date().toISOString();
+    if (newStatus === 'picked') updates.picked_at = new Date().toISOString();
     if (newStatus === 'in_transit' || newStatus === 'out_for_delivery') updates.dispatched_at = new Date().toISOString();
     if (newStatus === 'delivered') updates.delivered_at = new Date().toISOString();
 
@@ -672,12 +671,15 @@ class DeliveryIntegrationService {
 
     // Registrar evento de transporte
     const eventDescriptions: Record<string, string> = {
-      picked_up: 'Pedido recogido por conductor',
+      picked: 'Pedido recogido por conductor',
+      dispatched: 'Despachado / Llegó a destino',
       in_transit: 'En tránsito al destino',
       out_for_delivery: 'En entrega final',
       delivered: 'Entregado exitosamente',
       returned: 'Devuelto',
       cancelled: 'Cancelado',
+      ready: 'Listo para despacho',
+      assigned: 'Conductor asignado',
     };
 
     await this.createTransportEvent({
@@ -712,8 +714,11 @@ class DeliveryIntegrationService {
     customerName?: string;
     customerPhone?: string;
     total: number;
+    shippingFee?: number;
+    shippingRateId?: string;
     itemsCount: number;
     driverId?: string;
+    paymentStatus?: 'pending' | 'paid';
     deliveryInfo: {
       address: string;
       city?: string;
@@ -726,6 +731,10 @@ class DeliveryIntegrationService {
       qty: number;
       unit_value: number;
       total_value: number;
+      product_id?: number;
+      sku?: string;
+      sale_item_id?: string;
+      notes?: string;
     }>;
   }): Promise<DeliveryShipment> {
     const trackingNumber = await this.generateTrackingNumber(params.organizationId);
@@ -758,14 +767,17 @@ class DeliveryIntegrationService {
       delivery_instructions: params.deliveryInfo.instructions || '',
       package_count: params.itemsCount,
       declared_value: params.total,
-      total_cost: params.total,
-      shipping_fee: 0,
+      total_cost: params.total + (params.shippingFee || 0),
+      shipping_fee: params.shippingFee || 0,
       currency: 'COP',
       status: params.driverId ? 'assigned' as const : 'pending' as const,
+      payment_status: params.paymentStatus || 'pending',
       notes: `Venta POS: ${params.saleId.slice(-8)}`,
       metadata: {
         pos_sale_id: params.saleId,
         pos_total: params.total,
+        shipping_fee: params.shippingFee || 0,
+        shipping_rate_id: params.shippingRateId || null,
         items_count: params.itemsCount,
         sender_name: senderName,
         sender_phone: senderPhone,
@@ -789,6 +801,10 @@ class DeliveryIntegrationService {
         qty: item.qty,
         unit_value: item.unit_value,
         total_value: item.total_value,
+        product_id: item.product_id || null,
+        sku: item.sku || null,
+        sale_item_id: item.sale_item_id || null,
+        notes: item.notes || null,
       }));
 
       const { error: itemsError } = await supabase

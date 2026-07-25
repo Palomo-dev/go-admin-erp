@@ -41,9 +41,8 @@ export default function IncidentDetailPage() {
   const [relatedTrip, setRelatedTrip] = useState<{
     id: string;
     trip_code: string;
-    departure_datetime: string;
-    origin?: string;
-    destination?: string;
+    scheduled_departure: string;
+    scheduled_arrival?: string;
     status: string;
   } | null>(null);
   const [relatedShipment, setRelatedShipment] = useState<{
@@ -56,7 +55,7 @@ export default function IncidentDetailPage() {
 
   // Datos auxiliares para edición
   const [employees, setEmployees] = useState<Array<{ id: number; full_name: string; email?: string }>>([]);
-  const [trips, setTrips] = useState<Array<{ id: string; trip_code: string; departure_datetime: string }>>([]);
+  const [trips, setTrips] = useState<Array<{ id: string; trip_code: string; scheduled_departure: string }>>([]);
   const [shipments, setShipments] = useState<Array<{ id: string; tracking_number: string; status: string }>>([]);
 
   // Diálogos

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,9 @@ interface TransportEvent {
   event_time: string;
   description?: string;
   location_text?: string;
+  actor_type?: string;
+  actor_id?: string;
+  actor_name?: string;
   transport_stops?: { id: string; name: string; city: string };
 }
 
@@ -56,12 +59,12 @@ interface ShipmentTimelineProps {
 
 const EVENT_TYPES = [
   { value: 'created', label: 'Creado', icon: Package, color: 'bg-gray-100 text-gray-800' },
-  { value: 'received', label: 'Recibido en bodega', icon: Package, color: 'bg-blue-100 text-blue-800' },
-  { value: 'picked', label: 'Preparado/Empacado', icon: Package, color: 'bg-indigo-100 text-indigo-800' },
+  { value: 'assigned', label: 'Conductor asignado', icon: Package, color: 'bg-cyan-100 text-cyan-800' },
+  { value: 'ready', label: 'Listo para despacho', icon: Package, color: 'bg-blue-100 text-blue-800' },
+  { value: 'picked', label: 'Recogido', icon: Package, color: 'bg-indigo-100 text-indigo-800' },
   { value: 'dispatched', label: 'Despachado', icon: Truck, color: 'bg-purple-100 text-purple-800' },
   { value: 'in_transit', label: 'En tránsito', icon: Truck, color: 'bg-purple-100 text-purple-800' },
   { value: 'out_for_delivery', label: 'En reparto', icon: MapPin, color: 'bg-orange-100 text-orange-800' },
-  { value: 'arrived', label: 'Llegó a destino', icon: MapPin, color: 'bg-indigo-100 text-indigo-800' },
   { value: 'delivered', label: 'Entregado', icon: CheckCircle, color: 'bg-green-100 text-green-800' },
   { value: 'failed_delivery', label: 'Entrega fallida', icon: XCircle, color: 'bg-red-100 text-red-800' },
   { value: 'returned', label: 'Devuelto', icon: RotateCcw, color: 'bg-orange-100 text-orange-800' },
@@ -72,14 +75,86 @@ const EVENT_TYPES = [
   { value: 'note', label: 'Nota', icon: Clock, color: 'bg-gray-100 text-gray-700' },
 ];
 
+const ACTOR_LABELS: Record<string, string> = {
+  system: 'Sistema',
+  driver: 'Conductor',
+  user: 'Usuario',
+  admin: 'Admin',
+};
+
 export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }: ShipmentTimelineProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actorNames, setActorNames] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     event_type: 'note',
     description: '',
     location_text: '',
   });
+
+  useEffect(() => {
+    const userIds = events
+      .filter(e => e.actor_type === 'user' && e.actor_id)
+      .map(e => e.actor_id!) as string[];
+    const driverIds = events
+      .filter(e => e.actor_type === 'driver' && e.actor_id)
+      .map(e => e.actor_id!) as string[];
+    const uniqueUserIds = [...new Set(userIds)];
+    const uniqueDriverIds = [...new Set(driverIds)];
+    if (uniqueUserIds.length === 0 && uniqueDriverIds.length === 0) return;
+
+    const fetchNames = async () => {
+      try {
+        const { supabase } = await import('@/lib/supabase/config');
+        const names: Record<string, string> = {};
+
+        if (uniqueUserIds.length > 0) {
+          const { data } = await supabase
+            .from('organization_members')
+            .select('user_id, profiles(first_name, last_name, email)')
+            .in('user_id', uniqueUserIds);
+          (data || []).forEach((m: any) => {
+            const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+            if (p) {
+              const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email;
+              if (m.user_id) names[m.user_id] = name;
+            }
+          });
+        }
+
+        if (uniqueDriverIds.length > 0) {
+          const { data: driverData } = await supabase
+            .from('driver_credentials')
+            .select(`
+              id,
+              employments(
+                organization_members(
+                  user_id,
+                  profiles(first_name, last_name, email)
+                )
+              )
+            `)
+            .in('id', uniqueDriverIds);
+          (driverData || []).forEach((d: any) => {
+            const emp = Array.isArray(d.employments) ? d.employments[0] : d.employments;
+            const om = emp?.organization_members;
+            const member = Array.isArray(om) ? om[0] : om;
+            const p = member?.profiles;
+            const profile = Array.isArray(p) ? p[0] : p;
+            if (profile) {
+              const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email;
+              if (d.id) names[d.id] = name;
+            }
+          });
+        }
+
+        setActorNames(names);
+      } catch (err) {
+        console.error('Error fetching actor names:', err);
+      }
+    };
+    fetchNames();
+  }, [events]);
 
   const handleSubmit = async () => {
     if (!formData.event_type) return;
@@ -147,6 +222,13 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
                   {event.description && (
                     <p className="text-sm text-gray-600 dark:text-gray-400">{event.description}</p>
                   )}
+                  {event.actor_type && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                      Por: {event.actor_id && actorNames[event.actor_id]
+                        ? actorNames[event.actor_id]
+                        : ACTOR_LABELS[event.actor_type] || event.actor_type}
+                    </p>
+                  )}
                   {event.location_text && (
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                       <MapPin className="h-3 w-3" />
@@ -182,7 +264,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {EVENT_TYPES.filter(e => ['picked', 'dispatched', 'out_for_delivery', 'arrived', 'note'].includes(e.value)).map((type) => (
+                  {EVENT_TYPES.filter(e => ['picked', 'dispatched', 'in_transit', 'out_for_delivery', 'delivered', 'note'].includes(e.value)).map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       <div className="flex items-center gap-2">
                         <type.icon className="h-4 w-4" />

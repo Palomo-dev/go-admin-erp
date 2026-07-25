@@ -61,6 +61,8 @@ export interface SidebarNavigationProps {
   onNavigate?: () => void;
   activeModuleCodes?: string[];
   activeModulePages?: Record<string, string[]>;
+  jobPositionVisibleModules?: string[] | null;
+  jobPositionVisiblePages?: string[] | null;
 }
 
 export interface AppHeaderProps {

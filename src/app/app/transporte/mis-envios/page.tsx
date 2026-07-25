@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
 import type { DeliveryShipment, DeliveryDriver } from '@/lib/services/deliveryIntegrationService';
+import { shipmentsService } from '@/lib/services/shipmentsService';
 import {
   MisEnviosHeader,
   MisEnviosStats,
@@ -29,6 +30,7 @@ export default function MisEnviosPage() {
 
   // Obtener driver_credentials del usuario logueado y verificar si es admin
   useEffect(() => {
+    if (!organization?.id) return;
     const loadDriver = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -43,7 +45,7 @@ export default function MisEnviosPage() {
           .select('role')
           .eq('user_id', user.id)
           .eq('organization_id', organization?.id)
-          .single();
+          .maybeSingle();
 
         const userRole = memberData?.role;
         const adminRoles = ['admin', 'owner', 'super_admin', 'manager'];
@@ -67,11 +69,11 @@ export default function MisEnviosPage() {
       setIsLoading(false);
       return;
     }
-    // Si es admin sin driver_credentials, cargar todos los envíos
-    if (isAdmin && !driver?.id) {
+    // Si es admin, cargar todos los envíos de la organización
+    if (isAdmin) {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('shipments')
           .select(`
             *,
@@ -81,6 +83,11 @@ export default function MisEnviosPage() {
           .eq('organization_id', organization.id)
           .order('created_at', { ascending: false })
           .limit(200);
+        // Si el admin también es conductor, filtrar por sus envíos
+        if (driver?.id) {
+          query = query.contains('metadata', { driver_id: driver.id });
+        }
+        const { data, error } = await query;
         if (error) throw error;
         setShipments(data || []);
       } catch (error) {
@@ -137,7 +144,7 @@ export default function MisEnviosPage() {
           status: newStatus,
           updated_at: new Date().toISOString(),
         };
-        if (newStatus === 'picked_up') updates.picked_at = new Date().toISOString();
+        if (newStatus === 'picked') updates.picked_at = new Date().toISOString();
         if (newStatus === 'in_transit' || newStatus === 'out_for_delivery') updates.dispatched_at = new Date().toISOString();
         if (newStatus === 'delivered') updates.delivered_at = new Date().toISOString();
         const { error } = await supabase.from('shipments').update(updates).eq('id', shipmentId);
@@ -162,6 +169,87 @@ export default function MisEnviosPage() {
     }
   };
 
+  const marcarPagado = async (shipmentId: string) => {
+    setUpdatingId(shipmentId);
+    try {
+      const { error } = await supabase
+        .from('shipments')
+        .update({ payment_status: 'paid', updated_at: new Date().toISOString() })
+        .eq('id', shipmentId);
+      if (error) throw error;
+
+      toast({
+        title: 'Pago registrado',
+        description: 'El envío ha sido marcado como pagado.',
+      });
+
+      await cargarEnvios();
+    } catch (error) {
+      console.error('Error marcando como pagado:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo marcar como pagado',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const reportarIncidente = async (shipmentId: string, incident: {
+    incident_type: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    title: string;
+    description?: string;
+    location_description?: string;
+  }) => {
+    if (!organization?.id) return;
+    setUpdatingId(shipmentId);
+    try {
+      await shipmentsService.createShipmentIncident(shipmentId, organization.id, incident);
+      toast({ title: 'Incidente reportado', description: 'Se ha registrado el incidente correctamente.' });
+      await cargarEnvios();
+    } catch (error) {
+      console.error('Error reportando incidente:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo reportar el incidente',
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const entregarConFoto = async (shipmentId: string, data: {
+    recipientName: string;
+    photoUrl: string;
+    notes?: string;
+  }) => {
+    setUpdatingId(shipmentId);
+    try {
+      await shipmentsService.createProofOfDelivery(shipmentId, {
+        recipient_name: data.recipientName,
+        photo_urls: [data.photoUrl],
+        notes: data.notes,
+        delivery_location_type: 'door',
+      });
+      toast({ title: 'Entrega confirmada', description: 'Se registró la prueba de entrega con foto.' });
+      await cargarEnvios();
+    } catch (error) {
+      console.error('Error registrando entrega:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo registrar la entrega',
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const filteredShipments = shipments.filter((s) => {
     const matchesSearch =
       !searchTerm ||
@@ -176,7 +264,7 @@ export default function MisEnviosPage() {
   const stats = {
     total: shipments.length,
     pendientes: shipments.filter((s) => s.status === 'pending' || s.status === 'assigned').length,
-    enRuta: shipments.filter((s) => ['picked_up', 'in_transit', 'out_for_delivery'].includes(s.status || '')).length,
+    enRuta: shipments.filter((s) => ['picked', 'dispatched', 'in_transit', 'out_for_delivery'].includes(s.status || '')).length,
     entregados: shipments.filter((s) => s.status === 'delivered').length,
   };
 
@@ -228,6 +316,9 @@ export default function MisEnviosPage() {
               shipment={shipment}
               updatingId={updatingId}
               onUpdateStatus={actualizarEstado}
+              onMarkPaid={marcarPagado}
+              onReportIncident={reportarIncidente}
+              onDeliveryWithPhoto={entregarConFoto}
             />
           ))}
         </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,14 +37,16 @@ import {
 } from '@/components/transporte/envios/id';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-800', icon: <Package className="h-4 w-4" /> },
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: <Package className="h-4 w-4" /> },
   assigned: { label: 'Asignado', color: 'bg-cyan-100 text-cyan-800', icon: <User className="h-4 w-4" /> },
-  received: { label: 'Recibido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
+  ready: { label: 'Listo', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
+  picked: { label: 'Recogido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
+  dispatched: { label: 'Despachado', color: 'bg-indigo-100 text-indigo-800', icon: <MapPin className="h-4 w-4" /> },
   in_transit: { label: 'En Tránsito', color: 'bg-purple-100 text-purple-800', icon: <Truck className="h-4 w-4" /> },
-  arrived: { label: 'Llegó', color: 'bg-indigo-100 text-indigo-800', icon: <MapPin className="h-4 w-4" /> },
   out_for_delivery: { label: 'En Entrega', color: 'bg-orange-100 text-orange-800', icon: <Truck className="h-4 w-4" /> },
-  picked_up: { label: 'Recogido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-4 w-4" /> },
   delivered: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-4 w-4" /> },
+  failed: { label: 'Fallido', color: 'bg-red-100 text-red-800', icon: <AlertTriangle className="h-4 w-4" /> },
   returned: { label: 'Devuelto', color: 'bg-orange-100 text-orange-800', icon: <Package className="h-4 w-4" /> },
   cancelled: { label: 'Cancelado', color: 'bg-gray-100 text-gray-500', icon: <AlertTriangle className="h-4 w-4" /> },
 };
@@ -67,6 +70,15 @@ export default function ShipmentDetailPage() {
   const [pod, setPod] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showIncidentDialog, setShowIncidentDialog] = useState(false);
+  const [driverInfo, setDriverInfo] = useState<{
+    name: string;
+    phone?: string;
+    email?: string;
+    avatar_url?: string;
+    license_number?: string;
+    license_category?: string;
+  } | null>(null);
+  const [orgInfo, setOrgInfo] = useState<{ name: string; logo_url?: string; phone?: string; email?: string; address?: string } | null>(null);
 
   const loadData = useCallback(async () => {
     if (!shipmentId) return;
@@ -85,6 +97,65 @@ export default function ShipmentDetailPage() {
       setItems(itemsData);
       setAttempts(attemptsData);
       setPod(podData);
+
+      // Cargar info de la organización (remitente)
+      if (shipmentData?.organization_id) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('name, logo_url, phone, email, address')
+          .eq('id', shipmentData.organization_id)
+          .single();
+        if (orgData) {
+          setOrgInfo({
+            name: orgData.name || '',
+            logo_url: orgData.logo_url || undefined,
+            phone: orgData.phone || undefined,
+            email: orgData.email || undefined,
+            address: orgData.address || undefined,
+          });
+        }
+      }
+
+      // Cargar información del conductor desde metadata.driver_id
+      const meta = shipmentData?.metadata as Record<string, unknown> | null;
+      const driverId = meta?.driver_id as string | undefined;
+      if (driverId) {
+        const { data: driverData } = await supabase
+          .from('driver_credentials')
+          .select(`
+            id,
+            license_number,
+            license_category,
+            employment:employments(
+              organization_member:organization_members(
+                id,
+                user_id
+              )
+            )
+          `)
+          .eq('id', driverId)
+          .single();
+
+        if (driverData?.employment?.organization_member?.user_id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, phone, email, avatar_url')
+            .eq('id', driverData.employment.organization_member.user_id)
+            .single();
+          if (profile) {
+            setDriverInfo({
+              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+              phone: profile.phone || undefined,
+              email: profile.email || undefined,
+              avatar_url: profile.avatar_url || undefined,
+              license_number: driverData.license_number || undefined,
+              license_category: driverData.license_category || undefined,
+            });
+          }
+        }
+      } else {
+        setDriverInfo(null);
+      }
     } catch (error) {
       console.error('Error loading shipment:', error);
       toast({
@@ -202,9 +273,119 @@ export default function ShipmentDetailPage() {
   };
 
   const canEdit = shipment?.status !== 'delivered' && shipment?.status !== 'cancelled';
-  const canRegisterPOD = shipment?.status === 'arrived' || shipment?.status === 'out_for_delivery' || shipment?.status === 'in_transit';
-  const canRegisterAttempt = shipment?.status === 'in_transit' || shipment?.status === 'arrived' || shipment?.status === 'out_for_delivery';
+  const canRegisterPOD = shipment?.status === 'dispatched' || shipment?.status === 'out_for_delivery' || shipment?.status === 'in_transit';
+
+  const getInitials = (name: string) => {
+    if (!name) return '??';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  };
+
+  const AVATAR_COLORS = [
+    'rgb(139, 92, 246)', 'rgb(59, 130, 246)', 'rgb(16, 185, 129)',
+    'rgb(245, 158, 11)', 'rgb(239, 68, 68)', 'rgb(236, 72, 153)',
+    'rgb(20, 184, 166)', 'rgb(168, 85, 247)',
+  ];
+
+  const getAvatarColor = (name: string) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  };
+  const canRegisterAttempt = shipment?.status === 'in_transit' || shipment?.status === 'dispatched' || shipment?.status === 'out_for_delivery';
   const showCODButton = shipment?.payment_status === 'cod' && shipment?.status === 'delivered';
+
+  const imprimirEtiqueta = () => {
+    if (!shipment) return;
+
+    const tracking = shipment.tracking_number || shipment.shipment_number || shipment.id.slice(0, 8).toUpperCase();
+    const destinatario = shipment.delivery_contact_name || shipment.customer?.full_name || 'N/A';
+    const telefono = shipment.delivery_contact_phone || shipment.customer?.phone || '';
+    const direccion = shipment.delivery_address || 'N/A';
+    const ciudad = [shipment.delivery_city, shipment.delivery_department].filter(Boolean).join(', ') || '';
+    const remitente = orgInfo?.name || 'N/A';
+    const remitentePhone = orgInfo?.phone || '';
+    const peso = shipment.weight_kg ? `${shipment.weight_kg} kg` : '';
+    const paquetes = shipment.package_count ? `${shipment.package_count} paq` : '';
+    const fecha = shipment.created_at ? format(new Date(shipment.created_at), 'dd/MM/yyyy') : '';
+
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) {
+      toast({ title: 'Error', description: 'No se pudo abrir la ventana de impresión. Verifica que no estén bloqueadas las ventanas emergentes.', variant: 'destructive' });
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8">
+        <title>Etiqueta - ${tracking}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Courier New', monospace; width: 96mm; padding: 4mm; color: #000; }
+          .label { border: 2px solid #000; padding: 8px; }
+          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px; }
+          .header h2 { font-size: 14px; font-weight: bold; }
+          .tracking { text-align: center; font-size: 18px; font-weight: bold; letter-spacing: 2px; margin: 8px 0; padding: 6px; border: 1px solid #000; }
+          .section { margin-bottom: 6px; }
+          .section-title { font-size: 9px; font-weight: bold; text-transform: uppercase; border-bottom: 1px dashed #000; margin-bottom: 2px; padding-bottom: 1px; }
+          .section-content { font-size: 12px; font-weight: bold; }
+          .section-sub { font-size: 10px; }
+          .footer { margin-top: 8px; padding-top: 6px; border-top: 1px solid #000; font-size: 9px; text-align: center; }
+          .grid { display: flex; justify-content: space-between; font-size: 10px; margin-top: 6px; }
+          .grid-item { text-align: center; }
+          .grid-item strong { display: block; font-size: 12px; }
+          @media print { body { width: auto; } }
+        </style>
+      </head>
+      <body>
+        <div class="label">
+          <div class="header">
+            <h2>${remitente}</h2>
+            ${remitentePhone ? `<div style="font-size:10px">Tel: ${remitentePhone}</div>` : ''}
+          </div>
+
+          <div class="tracking">${tracking}</div>
+
+          <div class="section">
+            <div class="section-title">Destinatario</div>
+            <div class="section-content">${destinatario}</div>
+            ${telefono ? `<div class="section-sub">Tel: ${telefono}</div>` : ''}
+          </div>
+
+          <div class="section">
+            <div class="section-title">Direccion de Entrega</div>
+            <div class="section-content">${direccion}</div>
+            ${ciudad ? `<div class="section-sub">${ciudad}</div>` : ''}
+          </div>
+
+          ${shipment.delivery_instructions ? `
+          <div class="section">
+            <div class="section-title">Instrucciones</div>
+            <div class="section-sub">${shipment.delivery_instructions}</div>
+          </div>
+          ` : ''}
+
+          <div class="grid">
+            ${peso ? `<div class="grid-item"><strong>${peso}</strong>Peso</div>` : ''}
+            ${paquetes ? `<div class="grid-item"><strong>${paquetes}</strong>Bultos</div>` : ''}
+            ${fecha ? `<div class="grid-item"><strong>${fecha}</strong>Fecha</div>` : ''}
+          </div>
+
+          <div class="footer">
+            ${shipment.status ? `Estado: ${shipment.status.toUpperCase()}` : ''}
+          </div>
+        </div>
+        <script>
+          window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   if (isLoading) {
     return (
@@ -263,25 +444,25 @@ export default function ShipmentDetailPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {(shipment.status === 'pending' || shipment.status === 'assigned') && (
-            <Button variant="outline" onClick={() => handleStatusChange('picked_up')}>
+            <Button variant="outline" onClick={() => handleStatusChange('picked')}>
               <Package className="h-4 w-4 mr-2" />
               Recoger
             </Button>
           )}
-          {shipment.status === 'received' && (
+          {shipment.status === 'ready' && (
             <Button variant="outline" onClick={() => handleStatusChange('in_transit')}>
               <Truck className="h-4 w-4 mr-2" />
               Despachar
             </Button>
           )}
-          {shipment.status === 'picked_up' && (
+          {shipment.status === 'picked' && (
             <Button variant="outline" onClick={() => handleStatusChange('in_transit')}>
               <Truck className="h-4 w-4 mr-2" />
               Iniciar Ruta
             </Button>
           )}
           {shipment.status === 'in_transit' && (
-            <Button variant="outline" onClick={() => handleStatusChange('arrived')}>
+            <Button variant="outline" onClick={() => handleStatusChange('dispatched')}>
               <MapPin className="h-4 w-4 mr-2" />
               Marcar Llegada
             </Button>
@@ -298,13 +479,32 @@ export default function ShipmentDetailPage() {
               Cobrar COD
             </Button>
           )}
+          {shipment?.payment_status === 'pending' && canEdit && (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  await shipmentsService.updateShipment(shipmentId, { payment_status: 'paid' } as any);
+                  toast({ title: 'Pago registrado', description: 'El envío ha sido marcado como pagado.' });
+                  loadData();
+                } catch (error) {
+                  console.error('Error marking as paid:', error);
+                  toast({ title: 'Error', description: 'No se pudo registrar el pago', variant: 'destructive' });
+                }
+              }}
+              className="border-green-500 text-green-600"
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Marcar Pagado
+            </Button>
+          )}
           {canEdit && (
             <Button variant="outline" onClick={() => setShowIncidentDialog(true)} className="border-red-300 text-red-600">
               <AlertTriangle className="h-4 w-4 mr-2" />
               Reportar Incidente
             </Button>
           )}
-          <Button variant="outline">
+          <Button variant="outline" onClick={imprimirEtiqueta}>
             <Tag className="h-4 w-4 mr-2" />
             Imprimir Etiqueta
           </Button>
@@ -321,20 +521,35 @@ export default function ShipmentDetailPage() {
                 <User className="h-4 w-4" />
                 Remitente
               </h3>
-              <div className="space-y-2 text-sm">
-                <p className="font-medium">{shipment.sender_name}</p>
-                {shipment.sender_phone && (
-                  <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                    <Phone className="h-4 w-4" />
-                    {shipment.sender_phone}
-                  </p>
+              <div className="flex items-start gap-3">
+                {orgInfo?.logo_url ? (
+                  <img src={orgInfo.logo_url} alt={orgInfo.name} className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-sm shrink-0" style={{ backgroundColor: getAvatarColor(orgInfo?.name || shipment.sender_name || '') }}>
+                    {getInitials(orgInfo?.name || shipment.sender_name || '')}
+                  </div>
                 )}
-                {shipment.origin_stop && (
-                  <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                    <MapPin className="h-4 w-4" />
-                    {shipment.origin_stop.name} - {shipment.origin_stop.city}
-                  </p>
-                )}
+                <div className="min-w-0 flex-1 space-y-1.5 text-sm">
+                  <p className="font-medium truncate">{orgInfo?.name || shipment.sender_name}</p>
+                  {orgInfo?.phone && (
+                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                      <Phone className="h-4 w-4 shrink-0" />
+                      {orgInfo.phone}
+                    </p>
+                  )}
+                  {orgInfo?.email && (
+                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                      <span className="truncate">{orgInfo.email}</span>
+                    </p>
+                  )}
+                  {shipment.origin_stop && (
+                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                      <MapPin className="h-4 w-4 shrink-0" />
+                      {shipment.origin_stop.name} - {shipment.origin_stop.city}
+                    </p>
+                  )}
+                </div>
               </div>
             </Card>
 
@@ -343,20 +558,31 @@ export default function ShipmentDetailPage() {
                 <User className="h-4 w-4" />
                 Destinatario
               </h3>
-              <div className="space-y-2 text-sm">
-                <p className="font-medium">{shipment.receiver_name}</p>
-                {shipment.receiver_phone && (
-                  <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                    <Phone className="h-4 w-4" />
-                    {shipment.receiver_phone}
-                  </p>
-                )}
-                {shipment.destination_stop && (
-                  <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                    <MapPin className="h-4 w-4" />
-                    {shipment.destination_stop.name} - {shipment.destination_stop.city}
-                  </p>
-                )}
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-sm shrink-0" style={{ backgroundColor: getAvatarColor(shipment.receiver_name || '') }}>
+                  {getInitials(shipment.receiver_name || '')}
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5 text-sm">
+                  <p className="font-medium truncate">{shipment.receiver_name}</p>
+                  {shipment.receiver_phone && (
+                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                      <Phone className="h-4 w-4 shrink-0" />
+                      {shipment.receiver_phone}
+                    </p>
+                  )}
+                  {shipment.customer?.email && (
+                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                      <span className="truncate">{shipment.customer.email}</span>
+                    </p>
+                  )}
+                  {shipment.destination_stop && (
+                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                      <MapPin className="h-4 w-4 shrink-0" />
+                      {shipment.destination_stop.name} - {shipment.destination_stop.city}
+                    </p>
+                  )}
+                </div>
               </div>
             </Card>
           </div>
@@ -383,7 +609,9 @@ export default function ShipmentDetailPage() {
                 )}
                 {shipment.delivery_contact_name && (
                   <div className="flex items-start gap-2">
-                    <User className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-medium text-xs shrink-0" style={{ backgroundColor: getAvatarColor(shipment.delivery_contact_name) }}>
+                      {getInitials(shipment.delivery_contact_name)}
+                    </div>
                     <div>
                       <p className="text-gray-500">Contacto</p>
                       <p className="font-medium">{shipment.delivery_contact_name}</p>
@@ -402,20 +630,32 @@ export default function ShipmentDetailPage() {
                     <p>{shipment.delivery_instructions}</p>
                   </div>
                 )}
-                {(() => {
-                  const meta = shipment.metadata as Record<string, unknown> | null;
-                  const driverId = meta?.driver_id as string | undefined;
-                  if (!driverId) return null;
-                  return (
-                    <div className="flex items-start gap-2">
-                      <Truck className="h-4 w-4 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="text-gray-500">Conductor asignado</p>
-                        <p className="font-medium text-blue-600 dark:text-blue-400">{driverId.slice(-8).toUpperCase()}</p>
+                {driverInfo && (
+                  <div className="flex items-start gap-2">
+                    <Truck className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-gray-500">Conductor asignado</p>
+                      <div className="flex items-center gap-2">
+                        {driverInfo.avatar_url ? (
+                          <img src={driverInfo.avatar_url} alt={driverInfo.name} className="w-6 h-6 rounded-full object-cover" />
+                        ) : null}
+                        <p className="font-medium text-blue-600 dark:text-blue-400">{driverInfo.name}</p>
                       </div>
+                      {driverInfo.phone && (
+                        <p className="text-gray-500 text-xs flex items-center gap-1 mt-0.5">
+                          <Phone className="h-3 w-3" />
+                          {driverInfo.phone}
+                        </p>
+                      )}
+                      {driverInfo.license_number && (
+                        <p className="text-gray-500 text-xs mt-0.5">
+                          Licencia: {driverInfo.license_number}
+                          {driverInfo.license_category && ` (${driverInfo.license_category})`}
+                        </p>
+                      )}
                     </div>
-                  );
-                })()}
+                  </div>
+                )}
               </div>
             </Card>
           )}

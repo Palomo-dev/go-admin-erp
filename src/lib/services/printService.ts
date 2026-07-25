@@ -145,27 +145,19 @@ export class PrintService {
     <title>Ticket de Venta</title>
     <style>
         @media print {
-            @page { 
-                margin: 5mm; 
-                size: 80mm auto; 
-            }
-            body { 
-                margin: 0; 
-                font-family: 'Courier New', monospace; 
-                font-size: 12px; 
-                line-height: 1.2; 
-                color: black;
-            }
+            @page { margin: 0; size: 80mm auto; }
+            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         body {
-            width: 80mm;
-            margin: 0 auto;
+            width: 100%;
+            margin: 0;
             font-family: 'Courier New', monospace;
             font-size: 12px;
-            line-height: 1.2;
-            color: black;
-            background: white;
-            padding: 10px;
+            line-height: 1.3;
+            color: #000;
+            background: #fff;
+            padding: 4px 6px;
+            font-weight: 500;
         }
         .header {
             text-align: center;
@@ -179,19 +171,20 @@ export class PrintService {
             margin-bottom: 5px;
         }
         .business-address {
-            font-size: 10px;
-            margin-bottom: 5px;
+            font-size: 11px;
+            margin-bottom: 3px;
+            color: #000;
         }
         .sale-info {
-            margin-bottom: 10px;
-            font-size: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
         }
         .customer-info {
-            border-top: 1px dashed #000;
-            border-bottom: 1px dashed #000;
-            padding: 5px 0;
-            margin-bottom: 10px;
-            font-size: 10px;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            padding: 4px 0;
+            margin-bottom: 8px;
+            font-size: 12px;
         }
         .items-header {
             border-bottom: 1px solid #000;
@@ -202,20 +195,26 @@ export class PrintService {
             justify-content: space-between;
         }
         .item {
-            margin-bottom: 3px;
-            font-size: 10px;
+            margin-bottom: 4px;
+            font-size: 12px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #000;
         }
         .item-line {
             display: flex;
             justify-content: space-between;
+            gap: 6px;
             margin-bottom: 1px;
         }
         .item-name {
             font-weight: bold;
+            font-size: 13px;
+            flex: 1;
         }
         .item-details {
-            color: #666;
-            font-size: 9px;
+            color: #000;
+            font-size: 11px;
+            margin-top: 1px;
         }
         .totals {
             border-top: 1px solid #000;
@@ -229,28 +228,29 @@ export class PrintService {
         }
         .total-final {
             font-weight: bold;
-            font-size: 14px;
-            border-top: 1px solid #000;
+            font-size: 16px;
+            border-top: 2px solid #000;
             padding-top: 5px;
             margin-top: 5px;
         }
         .payments {
-            border-top: 1px dashed #000;
-            margin-top: 10px;
-            padding-top: 10px;
+            border-top: 1px solid #000;
+            margin-top: 8px;
+            padding-top: 6px;
         }
         .payment-line {
             display: flex;
             justify-content: space-between;
             margin-bottom: 2px;
-            font-size: 10px;
+            font-size: 12px;
         }
         .footer {
             text-align: center;
-            margin-top: 20px;
-            font-size: 10px;
-            border-top: 1px dashed #000;
-            padding-top: 10px;
+            margin-top: 10px;
+            font-size: 11px;
+            border-top: 1px solid #000;
+            padding-top: 6px;
+            color: #000;
         }
     </style>
 </head>
@@ -425,7 +425,7 @@ export class PrintService {
     <div class="footer">
         <div>¡Gracias por su compra!</div>
         <div>${businessName} - ${dateStr}</div>
-        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dotted #999; font-size: 9px; color: #777;">
+        <div style="margin-top: 6px; padding-top: 5px; border-top: 1px solid #000; font-size: 10px; color: #000;">
             <div>GO Admin S.A.S | NIT: 901479683-5</div>
             <div>www.goadmin.io | 3113195711 | servicio@goadmin.io</div>
         </div>
@@ -629,85 +629,86 @@ export class PrintService {
     <title>Pre-Cuenta - ${tableName}</title>
     <style>
         @media print {
-            @page { margin: 5mm; size: 80mm auto; }
-            body { margin: 0; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.3; color: black; }
+            @page { margin: 0; size: 80mm auto; }
+            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         body {
-            width: 80mm;
-            margin: 0 auto;
+            width: 100%;
+            margin: 0;
             font-family: 'Courier New', monospace;
             font-size: 12px;
             line-height: 1.3;
-            color: black;
-            background: white;
-            padding: 10px;
+            color: #000;
+            background: #fff;
+            padding: 4px 6px;
+            font-weight: 500;
         }
         .header {
             text-align: center;
-            border-bottom: 2px dashed #000;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 6px;
+            margin-bottom: 6px;
         }
-        .business-name { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
-        .business-info { font-size: 10px; margin-bottom: 3px; color: #333; }
+        .business-name { font-size: 17px; font-weight: bold; margin-bottom: 3px; }
+        .business-info { font-size: 11px; margin-bottom: 2px; color: #000; }
         .pre-cuenta-banner {
             text-align: center;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
-            border: 2px dashed #000;
-            padding: 6px;
-            margin: 8px 0;
+            border: 2px solid #000;
+            padding: 4px;
+            margin: 5px 0;
             letter-spacing: 2px;
         }
         .meta-info {
-            border-top: 1px dashed #000;
-            border-bottom: 1px dashed #000;
-            padding: 6px 0;
-            margin-bottom: 10px;
-            font-size: 10px;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            padding: 4px 0;
+            margin-bottom: 6px;
+            font-size: 12px;
         }
         .meta-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
         .meta-label { font-weight: bold; }
         .items-header {
             display: flex;
             justify-content: space-between;
-            border-bottom: 1px solid #000;
-            padding-bottom: 3px;
-            margin-bottom: 5px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
             font-weight: bold;
-            font-size: 10px;
+            font-size: 11px;
         }
-        .item { margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px dotted #ccc; }
-        .item-line { display: flex; justify-content: space-between; margin-bottom: 1px; }
-        .item-name { font-weight: bold; font-size: 11px; }
-        .item-details { color: #555; font-size: 9px; margin-top: 1px; }
+        .item { margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px solid #000; }
+        .item-line { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 1px; }
+        .item-name { font-weight: bold; font-size: 13px; flex: 1; }
+        .item-details { color: #000; font-size: 11px; margin-top: 1px; }
         .totals {
             border-top: 2px solid #000;
-            margin-top: 10px;
-            padding-top: 8px;
+            margin-top: 6px;
+            padding-top: 5px;
         }
-        .total-line { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+        .total-line { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 13px; }
         .total-final {
             font-weight: bold;
-            font-size: 16px;
+            font-size: 18px;
             border-top: 2px solid #000;
-            padding-top: 6px;
-            margin-top: 6px;
+            padding-top: 5px;
+            margin-top: 5px;
         }
         .footer {
             text-align: center;
-            margin-top: 15px;
-            font-size: 10px;
-            border-top: 1px dashed #000;
-            padding-top: 10px;
-            color: #444;
+            margin-top: 8px;
+            font-size: 11px;
+            border-top: 1px solid #000;
+            padding-top: 6px;
+            color: #000;
         }
         .footer-brand {
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px dotted #999;
-            font-size: 9px;
-            color: #777;
+            margin-top: 5px;
+            padding-top: 5px;
+            border-top: 1px solid #000;
+            font-size: 10px;
+            color: #000;
         }
     </style>
 </head>
@@ -754,7 +755,7 @@ export class PrintService {
     </div>
 
     <div class="footer">
-        <div style="font-weight:bold;font-size:11px">*** NO ES FACTURA ***</div>
+        <div style="font-weight:bold;font-size:13px">*** NO ES FACTURA ***</div>
         <div>Este documento es solo informativo</div>
         <div style="margin-top:4px">¡Gracias por su preferencia!</div>
         <div class="footer-brand">
@@ -855,64 +856,65 @@ export class PrintService {
     <title>Comanda - ${tableName}</title>
     <style>
         @media print {
-            @page { margin: 5mm; size: 80mm auto; }
-            body { margin: 0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4; color: black; }
+            @page { margin: 0; size: 80mm auto; }
+            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         body {
-            width: 80mm;
-            margin: 0 auto;
+            width: 100%;
+            margin: 0;
             font-family: 'Courier New', monospace;
             font-size: 13px;
             line-height: 1.4;
-            color: black;
-            background: white;
-            padding: 10px;
+            color: #000;
+            background: #fff;
+            padding: 4px 6px;
+            font-weight: 500;
         }
         .header {
             text-align: center;
-            border-bottom: 2px dashed #000;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 6px;
+            margin-bottom: 6px;
         }
-        .business-name { font-size: 15px; font-weight: bold; }
+        .business-name { font-size: 16px; font-weight: bold; }
         .comanda-banner {
             text-align: center;
             font-size: 16px;
             font-weight: bold;
-            border: 2px dashed #000;
-            padding: 6px;
-            margin: 6px 0;
+            border: 2px solid #000;
+            padding: 4px;
+            margin: 5px 0;
             letter-spacing: 2px;
         }
         .meta-info {
-            border-bottom: 1px dashed #000;
+            border-bottom: 1px solid #000;
             padding: 4px 0;
-            margin-bottom: 8px;
-            font-size: 11px;
+            margin-bottom: 6px;
+            font-size: 12px;
         }
         .meta-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
         .meta-label { font-weight: bold; }
-        .station-block { margin-bottom: 10px; }
+        .station-block { margin-bottom: 8px; }
         .station-header {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
             border-bottom: 1px solid #000;
             padding-bottom: 3px;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
-        .item { margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px dotted #ccc; }
+        .item { margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px solid #000; }
         .item-line { display: flex; gap: 6px; align-items: baseline; }
-        .item-qty { font-weight: bold; font-size: 14px; min-width: 28px; }
-        .item-name { font-size: 12px; font-weight: bold; }
-        .item-details { color: #555; font-size: 10px; margin-top: 1px; margin-left: 34px; }
-        .item-notes { color: #333; font-size: 10px; font-style: italic; margin-top: 2px; margin-left: 34px; }
+        .item-qty { font-weight: bold; font-size: 15px; min-width: 30px; }
+        .item-name { font-size: 13px; font-weight: bold; }
+        .item-details { color: #000; font-size: 11px; margin-top: 1px; margin-left: 36px; }
+        .item-notes { color: #000; font-size: 12px; font-weight: bold; margin-top: 2px; margin-left: 36px; }
         .footer {
             text-align: center;
-            margin-top: 12px;
-            font-size: 10px;
-            border-top: 1px dashed #000;
-            padding-top: 8px;
-            color: #444;
+            margin-top: 10px;
+            font-size: 11px;
+            border-top: 1px solid #000;
+            padding-top: 6px;
+            color: #000;
         }
     </style>
 </head>
@@ -935,7 +937,7 @@ export class PrintService {
 
     <div class="footer">
         <div>Comanda generada por GO Admin</div>
-        <div style="margin-top:4px;font-size:9px;color:#777">${dateStr} ${timeStr}</div>
+        <div style="margin-top:4px;font-size:10px;color:#000">${dateStr} ${timeStr}</div>
     </div>
 </body>
 </html>`;

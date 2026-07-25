@@ -43,6 +43,7 @@ export function ProofOfDeliveryView({
 }: ProofOfDeliveryViewProps) {
   const [proof, setProof] = useState<ProofOfDelivery | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
 
   useEffect(() => {
     if (variant === 'dialog' && !open) return;
@@ -236,19 +237,18 @@ export function ProofOfDeliveryView({
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {proof.photo_urls.map((url, index) => (
-                  <a
+                  <button
                     key={index}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="border dark:border-gray-700 rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
+                    type="button"
+                    onClick={() => setExpandedPhoto(url)}
+                    className="border dark:border-gray-700 rounded-lg overflow-hidden hover:opacity-80 transition-opacity cursor-pointer"
                   >
                     <img
                       src={url}
                       alt={`Foto de entrega ${index + 1}`}
                       className="w-full h-24 object-cover"
                     />
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
@@ -260,29 +260,55 @@ export function ProofOfDeliveryView({
 
   if (variant === 'dialog') {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 dark:text-gray-100">
-              <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
-              Prueba de Entrega
-            </DialogTitle>
-          </DialogHeader>
-          {renderContent()}
-        </DialogContent>
-      </Dialog>
+      <>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 dark:text-gray-100">
+                <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
+                Prueba de Entrega
+              </DialogTitle>
+            </DialogHeader>
+            {renderContent()}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={!!expandedPhoto} onOpenChange={(v) => !v && setExpandedPhoto(null)}>
+          <DialogContent className="max-w-3xl p-0 overflow-hidden">
+            {expandedPhoto && (
+              <img
+                src={expandedPhoto}
+                alt="Foto ampliada"
+                className="w-full h-auto max-h-[80vh] object-contain"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
-          <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
-          Prueba de Entrega
-        </CardTitle>
-      </CardHeader>
-      <CardContent>{renderContent()}</CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
+            <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
+            Prueba de Entrega
+          </CardTitle>
+        </CardHeader>
+        <CardContent>{renderContent()}</CardContent>
+      </Card>
+      <Dialog open={!!expandedPhoto} onOpenChange={(v) => !v && setExpandedPhoto(null)}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+          {expandedPhoto && (
+            <img
+              src={expandedPhoto}
+              alt="Foto ampliada"
+              className="w-full h-auto max-h-[80vh] object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

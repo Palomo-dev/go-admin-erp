@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, Clock, CheckCircle, Check } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, Clock, CheckCircle, Check, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +63,10 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
   // Estado para envío de comanda
   const [isSendingComanda, setIsSendingComanda] = useState(false);
+
+  // Estado para edición de notas por item
+  const [editingNotesItemId, setEditingNotesItemId] = useState<string | null>(null);
+  const [itemNotesValue, setItemNotesValue] = useState('');
 
   // Estado del kitchen ticket en tiempo real
   const [kitchenStatus, setKitchenStatus] = useState<string | null>(null);
@@ -139,6 +143,24 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         : item
     );
     onCartUpdate({ ...cart, items: updatedItems });
+  };
+
+  // Guardar notas de un item del carrito
+  const handleSaveNotes = (itemId: string) => {
+    const updatedItems = cart.items.map(item =>
+      item.id === itemId
+        ? { ...item, notes: itemNotesValue.trim() || undefined }
+        : item
+    );
+    onCartUpdate({ ...cart, items: updatedItems });
+    setEditingNotesItemId(null);
+    setItemNotesValue('');
+  };
+
+  // Iniciar edición de notas de un item
+  const handleStartEditNotes = (itemId: string, currentNotes?: string) => {
+    setEditingNotesItemId(itemId);
+    setItemNotesValue(currentNotes || '');
   };
 
   // Poner carrito en espera
@@ -504,6 +526,52 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                               </div>
                             )}
 
+                            {/* Badge de nota del producto */}
+                            {item.notes && editingNotesItemId !== item.id && (
+                              <div className="flex items-center gap-1 flex-wrap mt-1">
+                                <Badge variant="outline" className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300 shrink-0 cursor-pointer" onClick={() => handleStartEditNotes(item.id, item.notes)}>
+                                  <StickyNote className="h-2.5 w-2.5 mr-0.5" />
+                                  {item.notes}
+                                </Badge>
+                              </div>
+                            )}
+
+                            {/* Input inline para editar nota */}
+                            {editingNotesItemId === item.id && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Input
+                                  type="text"
+                                  value={itemNotesValue}
+                                  onChange={(e) => setItemNotesValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveNotes(item.id);
+                                    if (e.key === 'Escape') { setEditingNotesItemId(null); setItemNotesValue(''); }
+                                  }}
+                                  placeholder="Ej: Sin cebolla, bien cocido..."
+                                  className="h-6 sm:h-7 text-xs flex-1 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 bg-white border-gray-300 px-2"
+                                  autoFocus
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-green-400 dark:hover:bg-green-500/20 text-green-600 hover:bg-green-100 shrink-0"
+                                  onClick={() => handleSaveNotes(item.id)}
+                                  title="Guardar nota"
+                                >
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-gray-400 dark:hover:bg-gray-600/20 text-gray-500 hover:bg-gray-100 shrink-0"
+                                  onClick={() => { setEditingNotesItemId(null); setItemNotesValue(''); }}
+                                  title="Cancelar"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+
                             {/* Info secundaria responsive */}
                             <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 mt-1">
                               <Badge variant="outline" className="text-[0.65rem] sm:text-xs px-1 py-0 dark:border-gray-600 dark:text-gray-400 border-gray-400 text-gray-600 shrink-0">
@@ -608,6 +676,23 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                           title={item.tax_excluded ? "Impuesto excluido - clic para incluir" : "Excluir impuesto de este producto"}
                         >
                           <ReceiptText className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        </Button>
+
+                        {/* Agregar/editar nota del producto */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={cn(
+                            "h-6 w-6 sm:h-7 sm:w-7 p-0 shrink-0",
+                            item.notes
+                              ? "dark:text-blue-400 dark:hover:bg-blue-500/20 text-blue-600 hover:bg-blue-100"
+                              : "dark:text-gray-400 dark:hover:bg-gray-600/20 text-gray-500 hover:bg-gray-100"
+                          )}
+                          onClick={() => handleStartEditNotes(item.id, item.notes)}
+                          disabled={isOnHold}
+                          title={item.notes ? "Editar nota" : "Agregar nota"}
+                        >
+                          <StickyNote className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         </Button>
 
                         {/* Eliminar item */}

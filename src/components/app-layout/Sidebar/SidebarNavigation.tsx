@@ -108,7 +108,9 @@ const SidebarNavigationComponent = ({
   collapsed,
   onNavigate,
   activeModuleCodes,
-  activeModulePages
+  activeModulePages,
+  jobPositionVisibleModules,
+  jobPositionVisiblePages
 }: SidebarNavigationProps) => {
   const pathname = usePathname();
   const t = useTranslations('nav');
@@ -493,7 +495,7 @@ const SidebarNavigationComponent = ({
     }
   ], [t]);
 
-  // Filtrar items según módulos activos de la organización
+  // Filtrar items según módulos activos de la organización y acceso del cargo
   const filteredSections = useMemo(() => {
     if (!activeModuleCodes) return navSections;
 
@@ -504,14 +506,24 @@ const SidebarNavigationComponent = ({
           .filter(item => {
             // Items sin moduleCode siempre son visibles (core / siempre visible)
             if (!(item as any).moduleCode) return true;
-            return activeModuleCodes.includes((item as any).moduleCode);
+            // Filtrar por módulos activos de la organización
+            if (!activeModuleCodes.includes((item as any).moduleCode)) return false;
+            // Filtrar por acceso del cargo (null = sin restricciones)
+            if (jobPositionVisibleModules !== null && jobPositionVisibleModules !== undefined) {
+              if (!jobPositionVisibleModules.includes((item as any).moduleCode)) return false;
+            }
+            return true;
           })
           .map(item => {
-            // Filtrar submenu basado en páginas activas
+            // Filtrar submenu basado en páginas activas y acceso del cargo
             if ((item as any).submenu && (item as any).moduleCode && activeModulePages) {
               const activePages = activeModulePages[(item as any).moduleCode];
               if (activePages !== undefined) {
-                const filteredSubmenu = (item as any).submenu.filter((sub: any) => activePages.includes(sub.href));
+                let filteredSubmenu = (item as any).submenu.filter((sub: any) => activePages.includes(sub.href));
+                // Filtrar también por acceso del cargo a páginas
+                if (jobPositionVisiblePages !== null && jobPositionVisiblePages !== undefined) {
+                  filteredSubmenu = filteredSubmenu.filter((sub: any) => jobPositionVisiblePages.includes(sub.href));
+                }
                 // Si solo queda 1 página activa, convertir en link directo sin submenu
                 if (filteredSubmenu.length === 1) {
                   const singlePage = filteredSubmenu[0];
@@ -531,7 +543,7 @@ const SidebarNavigationComponent = ({
           })
       }))
       .filter(section => section.items.length > 0);
-  }, [navSections, activeModuleCodes, activeModulePages]);
+  }, [navSections, activeModuleCodes, activeModulePages, jobPositionVisibleModules, jobPositionVisiblePages]);
   
   return (
     <div className="flex flex-col h-full transition-all duration-300">

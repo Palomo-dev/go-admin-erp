@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +46,7 @@ interface TransportEvent {
   location_text?: string;
   actor_type?: string;
   actor_id?: string;
+  actor_name?: string;
   transport_stops?: { id: string; name: string; city: string };
 }
 
@@ -84,11 +85,76 @@ const ACTOR_LABELS: Record<string, string> = {
 export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }: ShipmentTimelineProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actorNames, setActorNames] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     event_type: 'note',
     description: '',
     location_text: '',
   });
+
+  useEffect(() => {
+    const userIds = events
+      .filter(e => e.actor_type === 'user' && e.actor_id)
+      .map(e => e.actor_id!) as string[];
+    const driverIds = events
+      .filter(e => e.actor_type === 'driver' && e.actor_id)
+      .map(e => e.actor_id!) as string[];
+    const uniqueUserIds = [...new Set(userIds)];
+    const uniqueDriverIds = [...new Set(driverIds)];
+    if (uniqueUserIds.length === 0 && uniqueDriverIds.length === 0) return;
+
+    const fetchNames = async () => {
+      try {
+        const { supabase } = await import('@/lib/supabase/config');
+        const names: Record<string, string> = {};
+
+        if (uniqueUserIds.length > 0) {
+          const { data } = await supabase
+            .from('organization_members')
+            .select('user_id, profiles(first_name, last_name, email)')
+            .in('user_id', uniqueUserIds);
+          (data || []).forEach((m: any) => {
+            const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+            if (p) {
+              const name = `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email;
+              if (m.user_id) names[m.user_id] = name;
+            }
+          });
+        }
+
+        if (uniqueDriverIds.length > 0) {
+          const { data: driverData } = await supabase
+            .from('driver_credentials')
+            .select(`
+              id,
+              employments(
+                organization_members(
+                  user_id,
+                  profiles(first_name, last_name, email)
+                )
+              )
+            `)
+            .in('id', uniqueDriverIds);
+          (driverData || []).forEach((d: any) => {
+            const emp = Array.isArray(d.employments) ? d.employments[0] : d.employments;
+            const om = emp?.organization_members;
+            const member = Array.isArray(om) ? om[0] : om;
+            const p = member?.profiles;
+            const profile = Array.isArray(p) ? p[0] : p;
+            if (profile) {
+              const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email;
+              if (d.id) names[d.id] = name;
+            }
+          });
+        }
+
+        setActorNames(names);
+      } catch (err) {
+        console.error('Error fetching actor names:', err);
+      }
+    };
+    fetchNames();
+  }, [events]);
 
   const handleSubmit = async () => {
     if (!formData.event_type) return;
@@ -158,8 +224,9 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
                   )}
                   {event.actor_type && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      Por: {ACTOR_LABELS[event.actor_type] || event.actor_type}
-                      {event.actor_id && ` (${event.actor_id.slice(0, 8)}...)`}
+                      Por: {event.actor_id && actorNames[event.actor_id]
+                        ? actorNames[event.actor_id]
+                        : ACTOR_LABELS[event.actor_type] || event.actor_type}
                     </p>
                   )}
                   {event.location_text && (

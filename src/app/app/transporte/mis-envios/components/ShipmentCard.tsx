@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,13 @@ import {
   User,
   PackageCheck,
   AlertCircle,
+  DollarSign,
+  AlertTriangle,
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { DeliveryShipment } from '@/lib/services/deliveryIntegrationService';
+import { IncidentDialog } from '@/components/transporte/envios/id';
+import { DeliveryPhotoDialog } from './DeliveryPhotoDialog';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Package }> = {
   draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: Clock },
@@ -39,9 +44,24 @@ interface ShipmentCardProps {
   shipment: DeliveryShipment;
   updatingId: string | null;
   onUpdateStatus: (shipmentId: string, newStatus: string) => void;
+  onMarkPaid?: (shipmentId: string) => void;
+  onReportIncident?: (shipmentId: string, incident: {
+    incident_type: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    title: string;
+    description?: string;
+    location_description?: string;
+  }) => Promise<void>;
+  onDeliveryWithPhoto?: (shipmentId: string, data: {
+    recipientName: string;
+    photoUrl: string;
+    notes?: string;
+  }) => Promise<void>;
 }
 
-export function ShipmentCard({ shipment, updatingId, onUpdateStatus }: ShipmentCardProps) {
+export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid, onReportIncident, onDeliveryWithPhoto }: ShipmentCardProps) {
+  const [showIncidentDialog, setShowIncidentDialog] = useState(false);
+  const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const status = (shipment.status || 'pending') as string;
   const config = statusConfig[status] || statusConfig.pending;
   const StatusIcon = config.icon;
@@ -138,6 +158,30 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus }: ShipmentC
           </div>
         )}
 
+        {/* Badge de estado de pago */}
+        {shipment.payment_status && (
+          <div className="flex items-center gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
+            {shipment.payment_status === 'paid' && (
+              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Pagado
+              </Badge>
+            )}
+            {shipment.payment_status === 'pending' && (
+              <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                <Clock className="h-3 w-3 mr-1" />
+                Pago pendiente
+              </Badge>
+            )}
+            {shipment.payment_status === 'cod' && (
+              <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                <DollarSign className="h-3 w-3 mr-1" />
+                Contra entrega
+              </Badge>
+            )}
+          </div>
+        )}
+
         {/* COD y costo */}
         {(shipment.cod_amount > 0 || shipment.shipping_fee > 0) && (
           <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-800 pt-3 text-sm">
@@ -155,39 +199,79 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus }: ShipmentC
         )}
 
         {/* Acciones */}
-        {!isDelivered && !isCancelled && (
-          <div className="flex flex-wrap gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
-            {(status === 'pending' || status === 'assigned') && (
-              <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'picked')} disabled={isUpdating}>
-                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4 mr-1" />}
-                Recoger
-              </Button>
-            )}
-            {status === 'picked' && (
-              <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'in_transit')} disabled={isUpdating}>
-                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4 mr-1" />}
-                Iniciar ruta
-              </Button>
-            )}
-            {status === 'in_transit' && (
-              <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'out_for_delivery')} disabled={isUpdating}>
-                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4 mr-1" />}
-                En entrega
-              </Button>
-            )}
-            {status === 'out_for_delivery' && (
-              <Button
-                size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => onUpdateStatus(shipment.id, 'delivered')}
-                disabled={isUpdating}
-              >
-                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4 mr-1" />}
-                Marcar entregado
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2 border-t border-gray-100 dark:border-gray-800 pt-3">
+          {/* Botón marcar pagado: solo cuando se puede marcar como entregado (out_for_delivery) */}
+          {shipment.payment_status === 'pending' && onMarkPaid && !isCancelled && status === 'out_for_delivery' && (
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => onMarkPaid(shipment.id)}
+              disabled={isUpdating}
+            >
+              {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4 mr-1" />}
+              Marcar pagado
+            </Button>
+          )}
+
+          {!isDelivered && !isCancelled && (
+            <>
+              {(status === 'pending' || status === 'assigned') && (
+                <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'picked')} disabled={isUpdating}>
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4 mr-1" />}
+                  Recoger
+                </Button>
+              )}
+              {status === 'picked' && (
+                <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'in_transit')} disabled={isUpdating}>
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4 mr-1" />}
+                  Iniciar ruta
+                </Button>
+              )}
+              {status === 'in_transit' && (
+                <Button size="sm" onClick={() => onUpdateStatus(shipment.id, 'out_for_delivery')} disabled={isUpdating}>
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4 mr-1" />}
+                  En entrega
+                </Button>
+              )}
+              {status === 'out_for_delivery' && onDeliveryWithPhoto && (
+                <Button
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => setShowDeliveryDialog(true)}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4 mr-1" />}
+                  Marcar entregado
+                </Button>
+              )}
+              {status === 'out_for_delivery' && !onDeliveryWithPhoto && (
+                <Button
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => onUpdateStatus(shipment.id, 'delivered')}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4 mr-1" />}
+                  Marcar entregado
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* Botón reportar incidente */}
+          {onReportIncident && !isCancelled && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowIncidentDialog(true)}
+              className="border-red-300 text-red-600 dark:border-red-800 dark:text-red-400"
+              disabled={isUpdating}
+            >
+              <AlertTriangle className="h-4 w-4 mr-1" />
+              Incidente
+            </Button>
+          )}
+        </div>
 
         {/* Fecha de entrega */}
         {isDelivered && shipment.delivered_at && (
@@ -197,6 +281,28 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus }: ShipmentC
           </div>
         )}
       </div>
+
+      {/* Dialog de incidente */}
+      <IncidentDialog
+        open={showIncidentDialog}
+        onOpenChange={setShowIncidentDialog}
+        onSubmit={async (incident) => {
+          if (onReportIncident) {
+            await onReportIncident(shipment.id, incident);
+          }
+        }}
+      />
+
+      {/* Dialog de entrega con foto */}
+      <DeliveryPhotoDialog
+        open={showDeliveryDialog}
+        onOpenChange={setShowDeliveryDialog}
+        onSubmit={async (data) => {
+          if (onDeliveryWithPhoto) {
+            await onDeliveryWithPhoto(shipment.id, data);
+          }
+        }}
+      />
     </Card>
   );
 }

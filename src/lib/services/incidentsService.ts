@@ -48,7 +48,7 @@ export interface IncidentWithDetails extends TransportIncident {
   trip?: {
     id: string;
     trip_code: string;
-    departure_datetime: string;
+    scheduled_departure: string;
   };
   shipment?: {
     id: string;
@@ -130,8 +130,8 @@ class IncidentsService {
       .from('transport_incidents')
       .select(`
         *,
-        assigned_user:employees!transport_incidents_assigned_to_fkey(id, full_name, email),
-        reported_user:employees!transport_incidents_reported_by_fkey(id, full_name)
+        assigned_user:organization_members!transport_incidents_assigned_to_fkey(id, profiles(first_name, last_name, email)),
+        reported_user:organization_members!transport_incidents_reported_by_fkey(id, profiles(first_name, last_name))
       `)
       .eq('organization_id', organizationId)
       .order('occurred_at', { ascending: false });
@@ -175,8 +175,8 @@ class IncidentsService {
       .from('transport_incidents')
       .select(`
         *,
-        assigned_user:employees!transport_incidents_assigned_to_fkey(id, full_name, email),
-        reported_user:employees!transport_incidents_reported_by_fkey(id, full_name)
+        assigned_user:organization_members!transport_incidents_assigned_to_fkey(id, profiles(first_name, last_name, email)),
+        reported_user:organization_members!transport_incidents_reported_by_fkey(id, profiles(first_name, last_name))
       `)
       .eq('id', incidentId)
       .single();
@@ -382,12 +382,12 @@ class IncidentsService {
   /**
    * Obtiene viajes para vincular
    */
-  async getTrips(organizationId: number): Promise<Array<{ id: string; trip_code: string; departure_datetime: string }>> {
+  async getTrips(organizationId: number): Promise<Array<{ id: string; trip_code: string; scheduled_departure: string }>> {
     const { data, error } = await supabase
       .from('trips')
-      .select('id, trip_code, departure_datetime')
+      .select('id, trip_code, scheduled_departure')
       .eq('organization_id', organizationId)
-      .order('departure_datetime', { ascending: false })
+      .order('scheduled_departure', { ascending: false })
       .limit(100);
 
     if (error) throw error;
@@ -604,15 +604,13 @@ class IncidentsService {
   async getRelatedTrip(tripId: string): Promise<{
     id: string;
     trip_code: string;
-    departure_datetime: string;
-    arrival_datetime?: string;
-    origin?: string;
-    destination?: string;
+    scheduled_departure: string;
+    scheduled_arrival?: string;
     status: string;
   } | null> {
     const { data, error } = await supabase
       .from('trips')
-      .select('id, trip_code, departure_datetime, arrival_datetime, origin, destination, status')
+      .select('id, trip_code, scheduled_departure, scheduled_arrival, status')
       .eq('id', tripId)
       .single();
 

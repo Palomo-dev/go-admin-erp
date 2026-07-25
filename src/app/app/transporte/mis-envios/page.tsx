@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
 import type { DeliveryShipment, DeliveryDriver } from '@/lib/services/deliveryIntegrationService';
+import { shipmentsService } from '@/lib/services/shipmentsService';
 import {
   MisEnviosHeader,
   MisEnviosStats,
@@ -168,6 +169,87 @@ export default function MisEnviosPage() {
     }
   };
 
+  const marcarPagado = async (shipmentId: string) => {
+    setUpdatingId(shipmentId);
+    try {
+      const { error } = await supabase
+        .from('shipments')
+        .update({ payment_status: 'paid', updated_at: new Date().toISOString() })
+        .eq('id', shipmentId);
+      if (error) throw error;
+
+      toast({
+        title: 'Pago registrado',
+        description: 'El envío ha sido marcado como pagado.',
+      });
+
+      await cargarEnvios();
+    } catch (error) {
+      console.error('Error marcando como pagado:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo marcar como pagado',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const reportarIncidente = async (shipmentId: string, incident: {
+    incident_type: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    title: string;
+    description?: string;
+    location_description?: string;
+  }) => {
+    if (!organization?.id) return;
+    setUpdatingId(shipmentId);
+    try {
+      await shipmentsService.createShipmentIncident(shipmentId, organization.id, incident);
+      toast({ title: 'Incidente reportado', description: 'Se ha registrado el incidente correctamente.' });
+      await cargarEnvios();
+    } catch (error) {
+      console.error('Error reportando incidente:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo reportar el incidente',
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const entregarConFoto = async (shipmentId: string, data: {
+    recipientName: string;
+    photoUrl: string;
+    notes?: string;
+  }) => {
+    setUpdatingId(shipmentId);
+    try {
+      await shipmentsService.createProofOfDelivery(shipmentId, {
+        recipient_name: data.recipientName,
+        photo_urls: [data.photoUrl],
+        notes: data.notes,
+        delivery_location_type: 'door',
+      });
+      toast({ title: 'Entrega confirmada', description: 'Se registró la prueba de entrega con foto.' });
+      await cargarEnvios();
+    } catch (error) {
+      console.error('Error registrando entrega:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo registrar la entrega',
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const filteredShipments = shipments.filter((s) => {
     const matchesSearch =
       !searchTerm ||
@@ -234,6 +316,9 @@ export default function MisEnviosPage() {
               shipment={shipment}
               updatingId={updatingId}
               onUpdateStatus={actualizarEstado}
+              onMarkPaid={marcarPagado}
+              onReportIncident={reportarIncidente}
+              onDeliveryWithPhoto={entregarConFoto}
             />
           ))}
         </div>

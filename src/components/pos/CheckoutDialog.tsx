@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle } from 'lucide-react';
+import { Calculator, CreditCard, DollarSign, Receipt, Printer, CheckCircle, Banknote, User, ShoppingCart, Wallet, Plus, Trash2, X, Percent, Truck, MapPin, Phone, Navigation, UserCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -101,6 +101,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [drivers, setDrivers] = useState<Array<{ id: string; name: string; phone?: string }>>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
 
+  // Estados para tarifas de envío y flete
+  const [shippingRates, setShippingRates] = useState<Array<{ id: string; rate_name: string; total_cost: number; currency: string }>>([]);
+  const [selectedRateId, setSelectedRateId] = useState<string>('');
+  const [shippingFee, setShippingFee] = useState<number>(0);
+
+  // Estado para pago del envío (pagado/pendiente)
+  const [shipmentPaymentStatus, setShipmentPaymentStatus] = useState<'paid' | 'pending'>('paid');
+
   // Estados para búsqueda de direcciones de clientes
   const [addressSearch, setAddressSearch] = useState<string>('');
   const [addressResults, setAddressResults] = useState<Array<{ id: string; name: string; address: string; city?: string; phone?: string }>>([]);
@@ -118,7 +126,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const baseTotal = (calculatedTotals.totalTaxAmount === 0 && cart.tax_total > 0)
     ? cart.total
     : (calculatedTotals.finalTotal > 0 ? calculatedTotals.finalTotal : cart.total);
-  const cartTotal = baseTotal + tipAmount;
+  const cartTotal = baseTotal + tipAmount + shippingFee;
   const remaining = Math.max(0, cartTotal - totalPaid);
   const change = Math.max(0, totalPaid - cartTotal);
   const canComplete = totalPaid >= cartTotal;
@@ -151,28 +159,46 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setAddressSearch('');
       setAddressResults([]);
       setShowAddressDropdown(false);
+      setShippingRates([]);
+      setSelectedRateId('');
+      setShippingFee(0);
+      setShipmentPaymentStatus('paid');
       loadDrivers();
     }
   }, [open]);
   
   // Auto-llenar dirección del cliente al seleccionar delivery_own
   useEffect(() => {
-    if (deliveryType === 'delivery_own' && !deliveryAddress && cart.customer?.address) {
-      setDeliveryAddress(cart.customer.address);
-      if (cart.customer.phone && !deliveryContactPhone) {
-        setDeliveryContactPhone(cart.customer.phone);
+    if (deliveryType !== 'delivery_own') return;
+
+    const fillCustomerData = async () => {
+      let customer = cart.customer;
+      if (!customer && cart.customer_id) {
+        const { data: fetched } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', cart.customer_id)
+          .single();
+        if (fetched) customer = fetched as any;
       }
-      const customerName = cart.customer.full_name ||
-        [cart.customer.first_name, cart.customer.last_name].filter(Boolean).join(' ');
+      if (!customer) return;
+
+      if (!deliveryAddress && customer.address) {
+        setDeliveryAddress(customer.address);
+      }
+      if (customer.phone && !deliveryContactPhone) {
+        setDeliveryContactPhone(customer.phone);
+      }
+      const customerName = customer.full_name ||
+        [customer.first_name, customer.last_name].filter(Boolean).join(' ');
       if (customerName && !deliveryContactName) {
         setDeliveryContactName(customerName);
       }
-      // Cargar ciudad desde fiscal_municipality_id
-      if (cart.customer.fiscal_municipality_id && !deliveryCity) {
+      if (customer.fiscal_municipality_id && !deliveryCity) {
         supabase
           .from('municipalities')
           .select('name, state_name')
-          .eq('id', cart.customer.fiscal_municipality_id)
+          .eq('id', customer.fiscal_municipality_id)
           .single()
           .then(({ data: munData }) => {
             if (munData?.name) {
@@ -180,8 +206,78 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             }
           });
       }
+    };
+
+    fillCustomerData();
+  }, [deliveryType, cart.customer, cart.customer_id]);
+
+  // Cargar tarifas de envío disponibles para POS cuando es delivery
+  useEffect(() => {
+    if (deliveryType === 'pickup') {
+      setShippingRates([]);
+      setSelectedRateId('');
+      setShippingFee(0);
+      return;
     }
-  }, [deliveryType, cart.customer]);
+
+    const loadShippingRates = async () => {
+      try {
+        const { shippingRatesService } = await import('@/lib/services/shippingRatesService');
+        const rates = await shippingRatesService.getShippingRates(cart.organization_id, {
+          is_active: true,
+        });
+        const posRates = rates.filter(r => r.show_on_pos);
+
+        if (posRates.length === 0) {
+          setShippingRates([]);
+          setSelectedRateId('');
+          setShippingFee(0);
+          return;
+        }
+
+        // Calcular costo para cada tarifa usando simulateShipping
+        const subtotal = calculatedTotals.subtotal || cart.subtotal;
+        const simulated = await shippingRatesService.simulateShipping(cart.organization_id, {
+          destination_city: deliveryCity || undefined,
+          weight_kg: 1,
+          declared_value: subtotal,
+        });
+
+        const rateOptions = simulated
+          .filter(s => posRates.some(pr => pr.id === s.rate.id))
+          .map(s => ({
+            id: s.rate.id,
+            rate_name: s.rate.rate_name,
+            total_cost: s.total_cost,
+            currency: s.rate.currency,
+          }));
+
+        setShippingRates(rateOptions);
+
+        // Auto-seleccionar la más económica
+        if (rateOptions.length > 0) {
+          const cheapest = rateOptions[0];
+          setSelectedRateId(cheapest.id);
+          setShippingFee(cheapest.total_cost);
+        }
+      } catch (error) {
+        console.error('Error loading shipping rates:', error);
+        setShippingRates([]);
+      }
+    };
+
+    loadShippingRates();
+  }, [deliveryType, deliveryCity, cart.organization_id, cart.subtotal, calculatedTotals.subtotal]);
+
+  // Actualizar shippingFee cuando cambia selectedRateId
+  useEffect(() => {
+    if (selectedRateId && shippingRates.length > 0) {
+      const rate = shippingRates.find(r => r.id === selectedRateId);
+      setShippingFee(rate?.total_cost || 0);
+    } else if (!selectedRateId) {
+      setShippingFee(0);
+    }
+  }, [selectedRateId, shippingRates]);
 
   // Calcular totales con impuestos cuando cambie el carrito o configuración de impuestos
   useEffect(() => {
@@ -451,6 +547,20 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
     setIsProcessing(true);
     try {
+      // Asegurar que los datos del cliente estén disponibles
+      let customerData = cart.customer;
+      if (cart.customer_id && !customerData) {
+        const { supabase } = await import('@/lib/supabase/config');
+        const { data: fetchedCustomer } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', cart.customer_id)
+          .single();
+        if (fetchedCustomer) {
+          customerData = fetchedCustomer as any;
+        }
+      }
+
       // Validar stock de ingredientes para productos compuestos
       const branchId = cart.branch_id || 0;
       if (branchId > 0 && cart.items.length > 0) {
@@ -517,6 +627,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           instructions: deliveryInstructions,
         } : undefined,
         driver_id: deliveryType === 'delivery_own' ? (selectedDriverId || undefined) : undefined,
+        shipping_fee: shippingFee > 0 ? shippingFee : undefined,
       };
 
       const sale = onProcessPayment 
@@ -537,12 +648,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         PrintJobsService.enqueueSaleTicket(cart.branch_id, {
           saleId: sale.id,
           saleNumber: (sale as any).sale_number,
-          customerName: cart.customer?.full_name,
-          customerDocType: cart.customer?.doc_type,
-          customerDocNumber: cart.customer?.doc_number,
-          customerPhone: cart.customer?.phone,
-          customerEmail: cart.customer?.email,
-          customerAddress: cart.customer?.address,
+          customerName: customerData?.full_name,
+          customerDocType: customerData?.doc_type,
+          customerDocNumber: customerData?.doc_number,
+          customerPhone: customerData?.phone,
+          customerEmail: customerData?.email,
+          customerAddress: customerData?.address,
           createdAt: new Date().toISOString(),
           subtotal: calculatedTotals.subtotal,
           taxTotal: calculatedTotals.totalTaxAmount,
@@ -575,8 +686,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             type: deliveryType === 'delivery_own' ? 'Domicilio propio' : 'Domicilio',
             address: deliveryAddress,
             driverName: selectedDriverId ? drivers.find(d => d.id === selectedDriverId)?.name : undefined,
-            contactName: deliveryContactName || cart.customer?.full_name || undefined,
-            contactPhone: deliveryContactPhone || cart.customer?.phone || undefined,
+            contactName: deliveryContactName || customerData?.full_name || undefined,
+            contactPhone: deliveryContactPhone || customerData?.phone || undefined,
             city: deliveryCity || undefined,
             instructions: deliveryInstructions || undefined,
           } : undefined,
@@ -592,24 +703,60 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             organizationId: cart.organization_id,
             branchId: cart.branch_id || 0,
             customerId: cart.customer_id,
-            customerName: cart.customer?.full_name,
-            customerPhone: cart.customer?.phone,
-            total: cart.total,
+            customerName: customerData?.full_name,
+            customerPhone: customerData?.phone,
+            total: cartTotal,
+            shippingFee: shippingFee > 0 ? shippingFee : undefined,
+            shippingRateId: selectedRateId || undefined,
             itemsCount: cart.items.length,
             driverId: selectedDriverId || undefined,
+            paymentStatus: shipmentPaymentStatus,
             deliveryInfo: {
               address: deliveryAddress,
               city: deliveryCity,
-              contact_name: deliveryContactName || cart.customer?.full_name || '',
-              contact_phone: deliveryContactPhone || cart.customer?.phone || '',
+              contact_name: deliveryContactName || customerData?.full_name || '',
+              contact_phone: deliveryContactPhone || customerData?.phone || '',
               instructions: deliveryInstructions,
             },
-            saleItems: cart.items.map((item) => ({
-              description: (item as any).name || item.product?.name || 'Producto',
-              qty: item.quantity,
-              unit_value: item.unit_price,
-              total_value: item.total,
-            })),
+            saleItems: cart.items.map((item) => {
+              const product = item.product as any;
+              const variantData = product?.variant_data
+                ? Object.fromEntries(Object.entries(product.variant_data as Record<string, string>).filter(([, v]) => !!v))
+                : undefined;
+              const notes: Record<string, unknown> = {};
+              if (item.modifiers && item.modifiers.length > 0) {
+                notes.modifiers = item.modifiers;
+              }
+              if (variantData && Object.keys(variantData).length > 0) {
+                notes.variant_data = variantData;
+              }
+              if (product?.name) {
+                notes.product_name = product.name;
+              }
+              if (item.discount_amount && item.discount_amount > 0) {
+                notes.discount_amount = item.discount_amount;
+              }
+              if (item.tax_amount && item.tax_amount > 0) {
+                notes.tax_amount = item.tax_amount;
+                notes.tax_rate = item.tax_rate || 0;
+              }
+              if (item.tax_excluded !== undefined) {
+                notes.tax_excluded = item.tax_excluded;
+              }
+              if (product?.image) {
+                notes.product_image = product.image;
+              }
+              return {
+                description: product?.name || item.product?.name || 'Producto',
+                qty: item.quantity,
+                unit_value: item.unit_price,
+                total_value: item.total,
+                product_id: item.product_id,
+                sku: item.product?.sku,
+                sale_item_id: item.id,
+                notes: Object.keys(notes).length > 0 ? JSON.stringify(notes) : undefined,
+              };
+            }),
           });
         } catch (shipmentError) {
           console.error('Error creando shipment:', shipmentError);
@@ -629,6 +776,21 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
   const handlePrint = async () => {
     if (completedSale) {
+      // Asegurar datos del cliente para impresión
+      let printCustomerData = cart.customer;
+      if (cart.customer_id && !printCustomerData) {
+        try {
+          const { supabase } = await import('@/lib/supabase/config');
+          const { data: fetched } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('id', cart.customer_id)
+            .single();
+          if (fetched) printCustomerData = fetched as any;
+        } catch (e) {
+          console.warn('No se pudo obtener datos del cliente para impresión');
+        }
+      }
       // Convertir items del carrito a formato SaleItem para impresión
       const saleItems = cart.items.map(item => ({
         id: item.id,
@@ -701,8 +863,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         type: deliveryType === 'delivery_own' ? 'Envío propio' : 'Envío tercero',
         address: deliveryAddress,
         driverName: selectedDriverId ? drivers.find(d => d.id === selectedDriverId)?.name : undefined,
-        contactName: deliveryContactName || cart.customer?.full_name || undefined,
-        contactPhone: deliveryContactPhone || cart.customer?.phone || undefined,
+        contactName: deliveryContactName || printCustomerData?.full_name || undefined,
+        contactPhone: deliveryContactPhone || printCustomerData?.phone || undefined,
         city: deliveryCity || undefined,
         instructions: deliveryInstructions || undefined,
       } : undefined;
@@ -710,7 +872,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       PrintService.printTicket(
         saleForPrint,
         saleItems as any,
-        cart.customer as any,
+        printCustomerData as any,
         paymentsList as any,
         businessInfo,
         cashierInfo,
@@ -958,6 +1120,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       <span className="dark:text-green-400 text-green-600">{formatCurrency(tipAmount)}</span>
                     </div>
                   )}
+                  {shippingFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="dark:text-gray-400 text-gray-600">Flete:</span>
+                      <span className="dark:text-orange-400 text-orange-600">{formatCurrency(shippingFee)}</span>
+                    </div>
+                  )}
                   <Separator className="dark:bg-gray-700 bg-gray-200" />
                   <div className="flex justify-between text-base font-semibold">
                     <span className="dark:text-gray-300 text-gray-700">Total a pagar:</span>
@@ -1135,6 +1303,61 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           placeholder="Portón negro, apartamento 302..."
                           className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300"
                         />
+                      </div>
+                      {shippingRates.length > 0 && (
+                        <div className="space-y-1 pt-2 border-t dark:border-gray-700 border-gray-200">
+                          <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
+                            <Truck className="h-3 w-3" />
+                            Tarifa de envío
+                          </Label>
+                          <Select value={selectedRateId} onValueChange={setSelectedRateId}>
+                            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
+                              <SelectValue placeholder="Seleccionar tarifa..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {shippingRates.map((rate) => (
+                                <SelectItem key={rate.id} value={rate.id}>
+                                  {rate.rate_name} - {formatCurrency(rate.total_cost)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Estado de pago del envío */}
+                      <div className="space-y-1 pt-2 border-t dark:border-gray-700 border-gray-200">
+                        <Label className="text-xs dark:text-gray-400 text-gray-600 flex items-center gap-1">
+                          <Wallet className="h-3 w-3" />
+                          Pago del envío
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={shipmentPaymentStatus === 'paid' ? 'default' : 'outline'}
+                            onClick={() => setShipmentPaymentStatus('paid')}
+                            className={`h-auto py-2 ${shipmentPaymentStatus === 'paid' ? 'bg-green-600 hover:bg-green-700 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                          >
+                            <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                            <span className="text-xs">Pagado</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={shipmentPaymentStatus === 'pending' ? 'default' : 'outline'}
+                            onClick={() => setShipmentPaymentStatus('pending')}
+                            className={`h-auto py-2 ${shipmentPaymentStatus === 'pending' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'dark:border-gray-600 dark:hover:bg-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                          >
+                            <Clock className="h-3.5 w-3.5 mr-1" />
+                            <span className="text-xs">Pendiente</span>
+                          </Button>
+                        </div>
+                        {shipmentPaymentStatus === 'pending' && (
+                          <p className="text-xs text-yellow-600 dark:text-yellow-400">
+            El envío se creará como pendiente de pago. Podrás marcarlo como pagado al entregar.
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}

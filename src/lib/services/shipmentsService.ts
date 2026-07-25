@@ -287,10 +287,15 @@ class ShipmentsService {
       assigned: 'Conductor asignado',
     };
 
-    await this.createEvent(id, {
-      event_type: status,
-      description: eventDescriptions[status] || `Estado cambiado a: ${status}`,
-    });
+    try {
+      await this.createEvent(id, {
+        event_type: status,
+        description: eventDescriptions[status] || `Estado cambiado a: ${status}`,
+        organization_id: updated.organization_id,
+      });
+    } catch (eventError) {
+      console.error('Error creating transport event:', eventError);
+    }
 
     return updated;
   }
@@ -348,7 +353,9 @@ class ShipmentsService {
     return data || [];
   }
 
-  async createEvent(shipmentId: string, eventData: { event_type: string; description?: string; location_text?: string }) {
+  async createEvent(shipmentId: string, eventData: { event_type: string; description?: string; location_text?: string; organization_id?: number }) {
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data, error } = await supabase
       .from('transport_events')
       .insert({
@@ -359,7 +366,9 @@ class ShipmentsService {
         location_text: eventData.location_text,
         event_time: new Date().toISOString(),
         actor_type: 'user',
+        actor_id: user?.id || null,
         source: 'internal',
+        organization_id: eventData.organization_id || null,
       })
       .select()
       .single();
@@ -467,7 +476,23 @@ class ShipmentsService {
       .order('created_at');
 
     if (error) throw error;
-    return data || [];
+
+    // Procesar para obtener la imagen desde notes.product_image
+    const processedData = (data || []).map((item: any) => {
+      let productImage: string | null = null;
+      if (item.notes) {
+        try {
+          const parsed = JSON.parse(item.notes);
+          if (parsed.product_image) {
+            productImage = parsed.product_image;
+          }
+        } catch {}
+      }
+      const { ...productData } = item.products || {};
+      return { ...item, products: productData.id ? { id: productData.id, name: productData.name, sku: productData.sku } : undefined, product_image: productImage };
+    });
+
+    return processedData;
   }
 
   async addShipmentItem(shipmentId: string, item: {
@@ -514,12 +539,34 @@ class ShipmentsService {
   }
 
   async deleteShipmentItem(itemId: string) {
+    const { data: itemData, error: fetchError } = await supabase
+      .from('shipment_items')
+      .select('shipment_id, description, products(name)')
+      .eq('id', itemId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
     const { error } = await supabase
       .from('shipment_items')
       .delete()
       .eq('id', itemId);
 
     if (error) throw error;
+
+    if (itemData?.shipment_id) {
+      const itemName = (itemData.products as any)?.name || itemData.description || 'item';
+      const { data: shipment } = await supabase
+        .from('shipments')
+        .select('organization_id')
+        .eq('id', itemData.shipment_id)
+        .single();
+      await this.createEvent(itemData.shipment_id, {
+        event_type: 'note',
+        description: `Item eliminado: ${itemName}`,
+        organization_id: shipment?.organization_id,
+      }).catch((err) => console.error('Error creating delete event:', err));
+    }
   }
 
   // ==================== DELIVERY ATTEMPTS ====================

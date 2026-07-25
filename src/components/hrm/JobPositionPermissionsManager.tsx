@@ -164,8 +164,12 @@ export default function JobPositionPermissionsManager({
       // Construir estado de acceso a páginas
       const pageAccessState: PageAccessState[] = [];
       for (const code of moduleCodes) {
-        const activeHrefs = pages[code] || [];
         const modulePages = MODULE_PAGES[code] || [];
+        // Si no hay datos en organization_module_pages para este módulo,
+        // asumir que todas las páginas están activas (organizaciones viejas)
+        const activeHrefs = pages[code] === undefined
+          ? modulePages.map(p => p.href)
+          : pages[code];
         for (const href of activeHrefs) {
           const pageDef = modulePages.find(p => p.href === href);
           const existing = access.pages.find(p => p.page_href === href);

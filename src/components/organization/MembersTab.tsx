@@ -6,6 +6,7 @@ import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMa
 import BranchAssignmentModal from './BranchAssignmentModal';
 import { MembersSkeleton } from './OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 interface MemberProps {
   id: string;
@@ -19,6 +20,7 @@ interface MemberProps {
   status: string;
   branch_id: string | null;
   branch_name: string;
+  job_position_name: string;
   created_at: string;
 }
 
@@ -41,6 +43,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   const [branchFilter, setBranchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(true); // Por defecto mostramos los filtros
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   
   // Estado para el modal de asignación de sucursales
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
@@ -125,6 +131,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             branch_id: member.branch_id,
             branch_name: member.branch_name || t('noBranch'),
             branch_names: [], // Array to store all branch names
+            job_position_name: member.job_position_name || t('noJobPosition'),
             created_at: new Date(member.created_at).toLocaleDateString()
           });
         }
@@ -322,7 +329,18 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       return nameMatches && emailMatches && roleMatches && branchMatches && statusMatches;
     });
   }, [members, nameFilter, emailFilter, roleFilter, branchFilter, statusFilter]);
-  
+
+  // Paginación
+  const totalPages = Math.ceil(filteredMembers.length / pageSize);
+  const paginatedMembers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredMembers.slice(start, start + pageSize);
+  }, [filteredMembers, currentPage, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [pageSize]);
+
   // Calcular arrays de roles únicos para select
   const uniqueRoles = useMemo(() => {
     const roles = Array.from(new Set(members.map(member => member.role)));
@@ -599,6 +617,9 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                 {t('thRole')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {t('thJobPosition')}
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {t('thBranch')}
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -615,12 +636,12 @@ export default function MembersTab({ orgId }: { orgId: number }) {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredMembers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                   {members.length === 0 ? t('noMembers') : t('noResults')}
                 </td>
               </tr>
             ) : (
-              filteredMembers.map((member) => (
+              paginatedMembers.map((member) => (
                 <tr key={member.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {member.full_name}
@@ -636,12 +657,20 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       disabled={member.is_admin} // Disable changing role for owners/admins
                     >
                       <option value="">{t('selectRole')}</option>
-                      {roles.map(role => (
-                        <option key={role.id} value={role.code}>
-                          {roleDisplayMap[role.code] || role.name}
-                        </option>
-                      ))}
+                      {roles.map(role => {
+                        const roleTranslationKey = `role${role.code.charAt(0).toUpperCase() + role.code.slice(1)}`;
+                        const roleTranslation = t(roleTranslationKey as any);
+                        const displayName = roleTranslation !== roleTranslationKey ? roleTranslation : (roleDisplayMap[role.code] || role.name);
+                        return (
+                          <option key={role.id} value={role.code}>
+                            {displayName}
+                          </option>
+                        );
+                      })}
                     </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {member.job_position_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <button
@@ -683,6 +712,19 @@ export default function MembersTab({ orgId }: { orgId: number }) {
           </tbody>
         </table>
       </div>
+
+      {filteredMembers.length > 0 && (
+        <div className="px-4 py-3 border-t border-gray-200">
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredMembers.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
+      )}
     </div>
       {/* Modal de asignación de sucursales */}
       {isBranchModalOpen && selectedMember && (

@@ -386,7 +386,7 @@ async function checkModuleAccess(request: NextRequest, pathname: string): Promis
       return null;
     }
 
-    // Verificar si la organización puede acceder al módulo
+    // 1. Verificar si la organización puede acceder al módulo
     const canAccess = await moduleManagementService.canAccessModule(organizationId, moduleCode);
     
     if (!canAccess) {
@@ -397,6 +397,46 @@ async function checkModuleAccess(request: NextRequest, pathname: string): Promis
       redirectUrl.searchParams.set('error', 'module_not_activated');
       redirectUrl.searchParams.set('module', moduleCode);
       return NextResponse.redirect(redirectUrl);
+    }
+
+    // 2. Verificar acceso a nivel de cargo (job_position)
+    // Obtener el job_position_id del usuario en esta organización
+    const { data: memberData, error: memberError } = await supabase
+      .from('organization_members')
+      .select('job_position_id')
+      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (memberError || !memberData) {
+      // Si no se encuentra el miembro, permitir acceso (fallback)
+      return null;
+    }
+
+    const jobPositionId = memberData.job_position_id;
+
+    if (jobPositionId) {
+      // Verificar que el cargo tenga acceso al módulo
+      const { data: positionAccess, error: positionError } = await supabase
+        .from('job_position_module_access')
+        .select('can_access')
+        .eq('job_position_id', jobPositionId)
+        .eq('module_code', moduleCode)
+        .maybeSingle();
+
+      if (positionError) {
+        console.warn('⚠️ [MIDDLEWARE] Error checking job position access:', positionError);
+        return null;
+      }
+
+      if (!positionAccess || !positionAccess.can_access) {
+        console.log(`🚫 [MIDDLEWARE] Access denied to module ${moduleCode} for job position ${jobPositionId}`);
+        const redirectUrl = new URL('/app/inicio', request.url);
+        redirectUrl.searchParams.set('error', 'job_position_no_access');
+        redirectUrl.searchParams.set('module', moduleCode);
+        return NextResponse.redirect(redirectUrl);
+      }
     }
 
     return null; // Permitir acceso

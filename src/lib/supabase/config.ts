@@ -857,6 +857,8 @@ export const validateInvitation = async (inviteCode: string) => {
       code,
       role_id,
       organization_id,
+      job_position_id,
+      branch_id,
       created_at,
       expires_at,
       used_at,
@@ -914,6 +916,8 @@ export const validateInvitation = async (inviteCode: string) => {
     organization_name: organizationName,
     role_id: data.role_id,
     role_name: roleName,
+    job_position_id: data.job_position_id,
+    branch_id: data.branch_id,
     created_at: data.created_at,
     expires_at: data.expires_at
   };
@@ -1124,6 +1128,7 @@ export const createProfileFromInvitation = async ({
           user_id: authUserId,
           organization_id: inviteData.organization_id,
           role_id: inviteData.role_id,
+          job_position_id: inviteData.job_position_id || null,
           is_active: true
         });
 
@@ -1138,6 +1143,7 @@ export const createProfileFromInvitation = async ({
         .from('organization_members')
         .update({
           role_id: inviteData.role_id,
+          job_position_id: inviteData.job_position_id || undefined,
           is_active: true
         })
         .eq('user_id', authUserId)

@@ -210,15 +210,17 @@ class JobPositionsService {
     const employmentIds = data.map(e => e.id);
     const { data: members } = await supabase
       .from('organization_members')
-      .select('user_id, profiles:user_id(full_name, email)')
+      .select('user_id, profiles:user_id(first_name, last_name, email)')
       .eq('organization_id', this.organizationId);
 
     const profileMap: Record<string, { full_name: string; email: string }> = {};
     if (members) {
       members.forEach((m: any) => {
         if (m.profiles) {
+          const firstName = m.profiles.first_name || '';
+          const lastName = m.profiles.last_name || '';
           profileMap[m.user_id] = {
-            full_name: m.profiles.full_name || 'Sin nombre',
+            full_name: `${firstName} ${lastName}`.trim() || 'Sin nombre',
             email: m.profiles.email || '',
           };
         }
@@ -389,6 +391,80 @@ class JobPositionsService {
 
     const levels = Array.from(new Set(data.map(d => d.level).filter(Boolean))) as string[];
     return levels.sort();
+  }
+
+  async getUnassignedEmployees(): Promise<Array<{ employment_id: string; member_id: number; full_name: string; email: string; employee_code: string | null; current_position: string | null }>> {
+    const { data: employments, error } = await supabase
+      .from('employments')
+      .select(`
+        id,
+        employee_code,
+        organization_member_id,
+        status
+      `)
+      .eq('status', 'active')
+      .is('position_id', null);
+
+    if (error) {
+      console.error('Error fetching unassigned employees:', error);
+      throw error;
+    }
+
+    if (!employments || employments.length === 0) return [];
+
+    const memberIds = employments.map(e => e.organization_member_id);
+    const { data: members } = await supabase
+      .from('organization_members')
+      .select('id, user_id, profiles:user_id(first_name, last_name, email)')
+      .eq('organization_id', this.organizationId)
+      .in('id', memberIds);
+
+    const memberMap: Record<number, { full_name: string; email: string }> = {};
+    if (members) {
+      members.forEach((m: any) => {
+        if (m.profiles) {
+          const firstName = m.profiles.first_name || '';
+          const lastName = m.profiles.last_name || '';
+          memberMap[m.id] = {
+            full_name: `${firstName} ${lastName}`.trim() || 'Sin nombre',
+            email: m.profiles.email || '',
+          };
+        }
+      });
+    }
+
+    return employments.map(e => ({
+      employment_id: e.id,
+      member_id: e.organization_member_id,
+      full_name: memberMap[e.organization_member_id]?.full_name || 'Sin nombre',
+      email: memberMap[e.organization_member_id]?.email || '',
+      employee_code: e.employee_code,
+      current_position: null,
+    }));
+  }
+
+  async assignEmployee(employmentId: string, positionId: string): Promise<void> {
+    const { error } = await supabase
+      .from('employments')
+      .update({ position_id: positionId, updated_at: new Date().toISOString() })
+      .eq('id', employmentId);
+
+    if (error) {
+      console.error('Error assigning employee:', error);
+      throw error;
+    }
+  }
+
+  async unassignEmployee(employmentId: string): Promise<void> {
+    const { error } = await supabase
+      .from('employments')
+      .update({ position_id: null, updated_at: new Date().toISOString() })
+      .eq('id', employmentId);
+
+    if (error) {
+      console.error('Error unassigning employee:', error);
+      throw error;
+    }
   }
 
   async validateCode(code: string, excludeId?: string): Promise<boolean> {

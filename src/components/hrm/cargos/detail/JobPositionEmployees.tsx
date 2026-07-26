@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/table';
 import { Users, Eye, UserPlus } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
+import { AssignEmployeeDialog } from './AssignEmployeeDialog';
 
 export interface JobPositionEmployee {
   id: string;
@@ -26,9 +28,13 @@ export interface JobPositionEmployee {
 interface JobPositionEmployeesProps {
   employees: JobPositionEmployee[];
   positionId: string;
+  positionName?: string;
+  organizationId?: number;
+  onEmployeesChanged?: () => void;
 }
 
-export function JobPositionEmployees({ employees, positionId }: JobPositionEmployeesProps) {
+export function JobPositionEmployees({ employees, positionId, positionName, organizationId, onEmployeesChanged }: JobPositionEmployeesProps) {
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('es-CO', {
@@ -67,6 +73,7 @@ export function JobPositionEmployees({ employees, positionId }: JobPositionEmplo
   };
 
   return (
+    <div className="space-y-4">
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
@@ -77,7 +84,12 @@ export function JobPositionEmployees({ employees, positionId }: JobPositionEmplo
               {employees.length}
             </Badge>
           </CardTitle>
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAssignDialog(true)}
+            disabled={!organizationId}
+          >
             <UserPlus className="h-4 w-4 mr-2" />
             Asignar
           </Button>
@@ -146,6 +158,18 @@ export function JobPositionEmployees({ employees, positionId }: JobPositionEmplo
         )}
       </CardContent>
     </Card>
+
+      {showAssignDialog && organizationId && (
+        <AssignEmployeeDialog
+          open={showAssignDialog}
+          onOpenChange={setShowAssignDialog}
+          positionId={positionId}
+          positionName={positionName || ''}
+          organizationId={organizationId}
+          onAssigned={() => onEmployeesChanged?.()}
+        />
+      )}
+    </div>
   );
 }
 

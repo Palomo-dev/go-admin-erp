@@ -185,7 +185,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
           }
           
           // Generar URL pública usando supabase.storage (detectar bucket correcto)
-          const bucket = img.storage_path.startsWith('products/') ? 'product-images' : 'organization_images';
+          const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
           const { data: urlData } = supabase.storage
             .from(bucket)
             .getPublicUrl(img.storage_path);

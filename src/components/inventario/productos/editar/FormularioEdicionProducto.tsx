@@ -248,7 +248,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
               is_primary: img.is_primary || false
             };
           }
-          const bucket = img.storage_path?.startsWith('products/') ? 'product-images' : 'organization_images';
+          const bucket = (img.storage_path?.startsWith('products/') || img.storage_path?.startsWith('productos/')) ? 'product-images' : 'organization_images';
           const { data: urlData } = supabase.storage
             .from(bucket)
             .getPublicUrl(img.storage_path);

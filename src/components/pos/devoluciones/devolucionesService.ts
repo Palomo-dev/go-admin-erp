@@ -16,7 +16,7 @@ import {
 // Función helper para obtener URL pública de imagen
 const getStorageImageUrl = (storagePath: string): string => {
   if (!storagePath) return '';
-  const bucket = storagePath.startsWith('products/') ? 'product-images' : 'organization_images';
+  const bucket = (storagePath.startsWith('products/') || storagePath.startsWith('productos/')) ? 'product-images' : 'organization_images';
   const { data } = supabase.storage
     .from(bucket)
     .getPublicUrl(storagePath);

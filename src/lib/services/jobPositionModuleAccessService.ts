@@ -46,9 +46,24 @@ export const jobPositionModuleAccessService = {
    * Si no hay registros, retorna null (significa que no hay restricciones)
    */
   async getVisibleModuleCodes(jobPositionId: string): Promise<string[] | null> {
+    // Primero verificar si existen registros para este cargo
+    const { data: allRecords, error: countError } = await supabase
+      .from('job_position_module_access')
+      .select('module_code')
+      .eq('job_position_id', jobPositionId);
+
+    if (countError) {
+      console.error('Error getting visible module codes:', countError);
+      return null;
+    }
+
+    // Si no hay registros, no hay restricciones
+    if (!allRecords || allRecords.length === 0) return null;
+
+    // Si hay registros, filtrar por can_view = true
     const { data, error } = await supabase
       .from('job_position_module_access')
-      .select('module_code, can_view')
+      .select('module_code')
       .eq('job_position_id', jobPositionId)
       .eq('can_view', true);
 
@@ -57,8 +72,7 @@ export const jobPositionModuleAccessService = {
       return null;
     }
 
-    if (!data || data.length === 0) return null;
-    return data.map(d => d.module_code);
+    return (data || []).map(d => d.module_code);
   },
 
   /**
@@ -66,9 +80,24 @@ export const jobPositionModuleAccessService = {
    * Si no hay registros, retorna null (significa que no hay restricciones)
    */
   async getVisiblePageHrefs(jobPositionId: string): Promise<string[] | null> {
+    // Primero verificar si existen registros para este cargo
+    const { data: allRecords, error: countError } = await supabase
+      .from('job_position_page_access')
+      .select('page_href')
+      .eq('job_position_id', jobPositionId);
+
+    if (countError) {
+      console.error('Error getting visible page hrefs:', countError);
+      return null;
+    }
+
+    // Si no hay registros, no hay restricciones
+    if (!allRecords || allRecords.length === 0) return null;
+
+    // Si hay registros, filtrar por can_view = true
     const { data, error } = await supabase
       .from('job_position_page_access')
-      .select('page_href, can_view')
+      .select('page_href')
       .eq('job_position_id', jobPositionId)
       .eq('can_view', true);
 
@@ -77,8 +106,7 @@ export const jobPositionModuleAccessService = {
       return null;
     }
 
-    if (!data || data.length === 0) return null;
-    return data.map(d => d.page_href);
+    return (data || []).map(d => d.page_href);
   },
 
   /**
@@ -154,7 +182,7 @@ export const jobPositionModuleAccessService = {
     // Verificar si es super admin
     const { data: memberData } = await supabase
       .from('organization_members')
-      .select('is_super_admin, job_position_id')
+      .select('is_super_admin, job_position_id, id')
       .eq('user_id', userId)
       .eq('organization_id', organizationId)
       .maybeSingle();
@@ -163,7 +191,23 @@ export const jobPositionModuleAccessService = {
       return { visibleModules: null, visiblePages: null };
     }
 
-    const jobPositionId = memberData?.job_position_id;
+    let jobPositionId = memberData?.job_position_id;
+
+    // Fallback: si no hay job_position_id en organization_members,
+    // buscar el cargo asignado via employments.position_id
+    if (!jobPositionId && memberData?.id) {
+      const { data: employmentData } = await supabase
+        .from('employments')
+        .select('position_id')
+        .eq('organization_member_id', memberData.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (employmentData?.position_id) {
+        jobPositionId = employmentData.position_id;
+      }
+    }
+
     if (!jobPositionId) {
       return { visibleModules: null, visiblePages: null };
     }

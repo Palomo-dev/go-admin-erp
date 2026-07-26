@@ -33,6 +33,9 @@ export interface Product {
   cost?: number;
   stock_quantity?: number;
   min_stock_level?: number;
+  track_stock?: boolean;
+  is_out_of_stock?: boolean;
+  qty_reserved?: number;
   created_at: string;
   updated_at: string;
   tag_id?: number;

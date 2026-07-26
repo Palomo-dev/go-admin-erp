@@ -30,7 +30,7 @@ export class ImagenesService {
         // Generar URL pública
         let publicUrl = '';
         if (img.storage_path) {
-          const bucket = img.storage_path.startsWith('products/') ? 'product-images' : 'organization_images';
+          const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
           const { data: urlData } = supabase.storage
             .from(bucket)
             .getPublicUrl(img.storage_path);
@@ -168,7 +168,7 @@ export class ImagenesService {
 
     // Eliminar archivo de Storage
     if (img?.storage_path) {
-      const bucket = img.storage_path.startsWith('products/') ? 'product-images' : 'organization_images';
+      const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
       await supabase.storage
         .from(bucket)
         .remove([img.storage_path]);

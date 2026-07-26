@@ -135,6 +135,10 @@ export function AddProductDialog({
 
   // Agregar producto al carrito (manejar variantes)
   const handleProductClick = (product: any) => {
+    // Bloquear si el producto está agotado
+    if (product.is_out_of_stock) {
+      return;
+    }
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
     if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
       variantDialogOpeningRef.current = true;
@@ -390,13 +394,15 @@ export function AddProductDialog({
                         key={product.id}
                         onClick={() => handleProductClick(product)}
                         className={cn(
-                          'relative group rounded-xl border overflow-hidden transition-all duration-200 cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]',
-                          inCart
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                          'relative group rounded-xl border overflow-hidden transition-all duration-200',
+                          product.is_out_of_stock
+                            ? 'opacity-50 cursor-not-allowed border-gray-300 dark:border-gray-700'
+                            : inCart
+                            ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-blue-500 bg-blue-50 dark:bg-blue-950/20'
                             : hasVariants
-                              ? 'border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-800/50 hover:border-purple-400'
+                              ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-800/50 hover:border-purple-400'
                               : hasModifiersOnly
-                                ? 'border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-800/50 hover:border-amber-400'
+                                ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-800/50 hover:border-amber-400'
                                 : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 hover:border-blue-300'
                         )}
                       >
@@ -414,6 +420,12 @@ export function AddProductDialog({
                             <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
                               <ImageIcon className="h-10 w-10 mb-1" />
                               <span className="text-[0.6rem]">Sin imagen</span>
+                            </div>
+                          )}
+                          {/* Badge de agotado */}
+                          {product.is_out_of_stock && (
+                            <div className="absolute inset-0 m-auto w-fit h-fit bg-red-600 text-white rounded px-3 py-1 text-sm font-bold z-20 pointer-events-none">
+                              Agotado
                             </div>
                           )}
                           {/* Badge de descuento */}

@@ -144,16 +144,16 @@ export class PrintService {
     <meta charset="UTF-8">
     <title>Ticket de Venta</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; max-width: 100%; }
         @media print {
-            @page { margin: 0; size: 80mm auto; }
-            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 80mm; max-width: 80mm; }
+            @page { margin: 0; size: 80mm auto !important; }
+            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 80mm !important; max-width: 80mm !important; overflow: hidden !important; }
         }
         html, body { width: 80mm; max-width: 80mm; overflow: hidden; }
         body {
             margin: 0;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 11px;
             line-height: 1.3;
             color: #000;
             background: #fff;
@@ -171,7 +171,7 @@ export class PrintService {
             overflow: hidden;
         }
         .business-name {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             margin-bottom: 5px;
             word-wrap: break-word;
@@ -222,7 +222,7 @@ export class PrintService {
         }
         .item-name {
             font-weight: bold;
-            font-size: 13px;
+            font-size: 11px;
             flex: 1;
             word-wrap: break-word;
             overflow-wrap: break-word;
@@ -250,7 +250,7 @@ export class PrintService {
         .total-line span:last-child { white-space: nowrap; flex-shrink: 0; }
         .total-final {
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
             border-top: 2px solid #000;
             padding-top: 5px;
             margin-top: 5px;
@@ -460,7 +460,7 @@ export class PrintService {
             <div>www.goadmin.io | 3113195711 | servicio@goadmin.io</div>
         </div>
         <div style="margin-top: 8px; text-align: center;">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://goadmin.io" alt="QR" style="width: 80px; height: 80px;" />
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=https://goadmin.io" alt="QR" style="width: 60px; height: 60px;" />
         </div>
     </div>
 </body>
@@ -494,7 +494,7 @@ export class PrintService {
       deliveryInfo
     );
 
-    const printWindow = window.open('', '_blank', 'width=320,height=600');
+    const printWindow = window.open('', '_blank', 'width=302,height=600');
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
@@ -658,16 +658,16 @@ export class PrintService {
     <meta charset="UTF-8">
     <title>Pre-Cuenta - ${tableName}</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; max-width: 100%; }
         @media print {
-            @page { margin: 0; size: 80mm auto; }
-            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 80mm; max-width: 80mm; }
+            @page { margin: 0; size: 80mm auto !important; }
+            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 80mm !important; max-width: 80mm !important; overflow: hidden !important; }
         }
         html, body { width: 80mm; max-width: 80mm; overflow: hidden; }
         body {
             margin: 0;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 11px;
             line-height: 1.3;
             color: #000;
             background: #fff;
@@ -684,16 +684,16 @@ export class PrintService {
             margin-bottom: 6px;
             overflow: hidden;
         }
-        .business-name { font-size: 17px; font-weight: bold; margin-bottom: 3px; word-wrap: break-word; overflow-wrap: break-word; }
+        .business-name { font-size: 14px; font-weight: bold; margin-bottom: 3px; word-wrap: break-word; overflow-wrap: break-word; }
         .business-info { font-size: 11px; margin-bottom: 2px; color: #000; word-wrap: break-word; overflow-wrap: break-word; }
         .pre-cuenta-banner {
             text-align: center;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: bold;
             border: 2px solid #000;
             padding: 4px;
             margin: 5px 0;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
         }
         .meta-info {
             border-top: 1px solid #000;
@@ -719,19 +719,19 @@ export class PrintService {
         }
         .item { margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px solid #000; overflow: hidden; }
         .item-line { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 1px; }
-        .item-name { font-weight: bold; font-size: 13px; flex: 1; word-wrap: break-word; overflow-wrap: break-word; min-width: 0; }
-        .item-details { color: #000; font-size: 11px; margin-top: 1px; word-wrap: break-word; overflow-wrap: break-word; }
+        .item-name { font-weight: bold; font-size: 11px; flex: 1; word-wrap: break-word; overflow-wrap: break-word; min-width: 0; }
+        .item-details { color: #000; font-size: 10px; margin-top: 1px; word-wrap: break-word; overflow-wrap: break-word; }
         .totals {
             border-top: 2px solid #000;
             margin-top: 6px;
             padding-top: 5px;
         }
-        .total-line { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 13px; gap: 6px; }
+        .total-line { display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 12px; gap: 6px; }
         .total-line span { word-wrap: break-word; overflow-wrap: break-word; min-width: 0; }
         .total-line span:last-child { white-space: nowrap; flex-shrink: 0; }
         .total-final {
             font-weight: bold;
-            font-size: 18px;
+            font-size: 15px;
             border-top: 2px solid #000;
             padding-top: 5px;
             margin-top: 5px;
@@ -807,13 +807,13 @@ export class PrintService {
             <div>www.goadmin.io | 3113195711 | servicio@goadmin.io</div>
         </div>
         <div style="margin-top: 8px;">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://goadmin.io" alt="QR" style="width: 80px; height: 80px;" />
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=https://goadmin.io" alt="QR" style="width: 60px; height: 60px;" />
         </div>
     </div>
 </body>
 </html>`;
 
-    const printWindow = window.open('', '_blank', 'width=320,height=700');
+    const printWindow = window.open('', '_blank', 'width=302,height=700');
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();

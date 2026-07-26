@@ -139,6 +139,11 @@ export function ShipmentsList({
                     <Package className="h-4 w-4 text-gray-400" />
                     <span className="text-blue-600 dark:text-blue-400">{shipment.tracking_number}</span>
                   </div>
+                  {shipment.shipment_number && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Envío: {shipment.shipment_number}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500">
                     {format(new Date(shipment.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
                   </p>

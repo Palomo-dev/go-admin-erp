@@ -6,6 +6,7 @@ import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMa
 import { InvitationsSkeleton } from './OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
 import { EmailConfirmedGate, EmailConfirmedWarning } from '@/components/auth/EmailConfirmedGate';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,8 @@ interface InvitationProps {
   email: string;
   code?: string;
   role_name: string;
+  branch_name: string;
+  job_position_name: string;
   created_at: string;
   expires_at: string | null;
   used: boolean;
@@ -38,11 +41,13 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [success, setSuccess] = useState<string | null>(null);
   const [roles, setRoles] = useState<{ id: string; name: string; code: string }[]>([]);
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
+  const [jobPositions, setJobPositions] = useState<{ id: string; name: string }[]>([]);
 
   // Form state
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
   const [branchId, setBranchId] = useState<string>('');
+  const [jobPositionId, setJobPositionId] = useState<string>('');
   const [sendingInvitation, setSendingInvitation] = useState(false);
 
   // Límite de usuarios del plan
@@ -56,12 +61,17 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(true); // Por defecto mostramos los filtros
 
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   useEffect(() => {
     if (orgId) {
       fetchInvitations();
       fetchRoles();
       fetchUserLimits();
       fetchBranches();
+      fetchJobPositions();
     }
   }, [orgId]);
 
@@ -139,7 +149,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
       const { data, error } = await supabase
       .from('invitations')
-      .select('id, email, code, role_id, created_at, expires_at, used_at, status')
+      .select('id, email, code, role_id, branch_id, job_position_id, created_at, expires_at, used_at, status')
       .eq('organization_id', orgId);
 
       if (error) throw error;
@@ -156,14 +166,39 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         }, {});
       }
 
+      // Fetch branches map
+      const { data: branchesData } = await supabase
+        .from('branches')
+        .select('id, name')
+        .eq('organization_id', orgId);
+      const branchMap: { [key: number]: string } = {};
+      if (branchesData) {
+        branchesData.forEach((b: any) => { branchMap[b.id] = b.name; });
+      }
+
+      // Fetch job positions map
+      const { data: positionsData } = await supabase
+        .from('job_positions')
+        .select('id, name')
+        .eq('organization_id', orgId);
+      const positionMap: { [key: string]: string } = {};
+      if (positionsData) {
+        positionsData.forEach((p: any) => { positionMap[p.id] = p.name; });
+      }
+
       const formattedInvitations = data.map((invite) => {
         const roleInfo = getRoleInfoById(invite.role_id);
+        const roleTranslationKey = `role${roleInfo.code.charAt(0).toUpperCase() + roleInfo.code.slice(1)}`;
+        const roleTranslation = t(roleTranslationKey as any);
+        const displayName = roleTranslation !== roleTranslationKey ? roleTranslation : roleInfo.name;
 
         return {
           id: invite.id,
           email: invite.email,
           code: invite.code,
-          role_name: roleInfo.name,
+          role_name: displayName,
+          branch_name: invite.branch_id ? (branchMap[invite.branch_id] || '-') : '-',
+          job_position_name: invite.job_position_id ? (positionMap[invite.job_position_id] || '-') : '-',
           created_at: new Date(invite.created_at).toLocaleDateString(),
           expires_at: invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : t('noExpires'),
           status: invite.status,
@@ -178,6 +213,23 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       setError(err.message || t('errorLoading'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchJobPositions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('job_positions')
+        .select('id, name')
+        .eq('organization_id', orgId)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+
+      setJobPositions(data || []);
+    } catch (err: any) {
+      console.error('Error fetching job positions:', err);
     }
   };
 
@@ -299,6 +351,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             role_id: roleId,
             organization_id: orgId,
             branch_id: branchId ? parseInt(branchId, 10) : null,
+            job_position_id: jobPositionId || null,
             created_by: currentUserId,
             expires_at: expiresAt.toISOString(),
             status: 'pending'
@@ -344,6 +397,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       // Reset form
       setEmail('');
       setRoleId('');
+      setJobPositionId('');
       if (branches.length > 0) {
         setBranchId(String(branches[0].id));
       }
@@ -514,7 +568,18 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       return emailMatches && roleMatches && statusMatches;
     });
   }, [invitations, emailFilter, roleFilter, statusFilter]);
-  
+
+  // Paginación
+  const totalPages = Math.ceil(filteredInvitations.length / pageSize);
+  const paginatedInvitations = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredInvitations.slice(start, start + pageSize);
+  }, [filteredInvitations, currentPage, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [pageSize]);
+
   // Calcular arrays de roles únicos para select
   const uniqueRoles = useMemo(() => {
     const roles = Array.from(new Set(invitations.map(invite => invite.role_name)));
@@ -766,11 +831,16 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 required
               >
                 <option value="" disabled>{t('selectRole')}</option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {roleDisplayMap[role.code] || role.name}
-                  </option>
-                ))}
+                {roles.map((role) => {
+                  const roleTranslationKey = `role${role.code.charAt(0).toUpperCase() + role.code.slice(1)}`;
+                  const roleTranslation = t(roleTranslationKey as any);
+                  const displayName = roleTranslation !== roleTranslationKey ? roleTranslation : (roleDisplayMap[role.code] || role.name);
+                  return (
+                    <option key={role.id} value={role.id}>
+                      {displayName}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             
@@ -795,6 +865,32 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 </select>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   El empleado será asignado automáticamente a esta sucursal al aceptar la invitación.
+                </p>
+              </div>
+            )}
+            
+            {jobPositions.length > 0 && (
+              <div>
+                <label htmlFor="jobPosition" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Cargo
+                </label>
+                <select
+                  id="jobPosition"
+                  name="jobPosition"
+                  value={jobPositionId}
+                  onChange={(e) => setJobPositionId(e.target.value)}
+                  disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
+                  className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                >
+                  <option value="">Sin cargo específico</option>
+                  {jobPositions.map((position) => (
+                    <option key={position.id} value={position.id}>
+                      {position.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  El cargo determina los permisos de visualización del usuario en el sistema.
                 </p>
               </div>
             )}
@@ -863,6 +959,12 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   {t('thRole')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {t('thBranch')}
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {t('thJobPosition')}
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('thStatus')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -880,7 +982,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
               {filteredInvitations.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={7}
                     className="px-6 py-10 text-center text-sm font-medium text-gray-500 dark:text-gray-400"
                   >
                     {invitations.length === 0 ? 
@@ -889,13 +991,19 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   </td>
                 </tr>
               ) : (
-                filteredInvitations.map((invitation) => (
+                paginatedInvitations.map((invitation) => (
                   <tr key={invitation.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {invitation.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {invitation.role_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {invitation.branch_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {invitation.job_position_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(invitation)}
@@ -952,6 +1060,19 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             </tbody>
           </table>
         </div>
+
+        {filteredInvitations.length > 0 && (
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={filteredInvitations.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        )}
       </div>
 
       {/* AlertDialog de confirmación de revocación */}

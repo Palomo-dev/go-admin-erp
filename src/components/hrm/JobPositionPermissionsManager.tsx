@@ -19,7 +19,8 @@ import {
   LayoutGrid,
   FileText,
   Lock,
-  Unlock
+  Unlock,
+  Info
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -234,8 +235,10 @@ export default function JobPositionPermissionsManager({
   };
 
   const saveModuleAccess = async () => {
+    const prevModuleAccess = [...moduleAccess];
+    const prevPageAccess = [...pageAccess];
     try {
-      setAccessSaving(true);
+      // Guardar en background sin mostrar loader
       await jobPositionModuleAccessService.setModuleAccess(
         jobPositionId,
         moduleAccess.map(m => ({ module_code: m.module_code, can_view: m.can_view, can_access: m.can_access }))
@@ -249,13 +252,13 @@ export default function JobPositionPermissionsManager({
           can_access: p.can_access,
         }))
       );
-      toast.success('Acceso a módulos y páginas actualizado correctamente');
-      onPermissionsUpdated?.();
+      toast.success('Acceso actualizado correctamente');
     } catch (error) {
+      // Revertir estado local en caso de error
+      setModuleAccess(prevModuleAccess);
+      setPageAccess(prevPageAccess);
       console.error('Error saving module access:', error);
       toast.error('Error al guardar acceso a módulos');
-    } finally {
-      setAccessSaving(false);
     }
   };
 
@@ -378,18 +381,18 @@ export default function JobPositionPermissionsManager({
   };
 
   const savePermissions = async () => {
+    const prevPermissions = [...currentPermissions];
     try {
-      setSaving(true);
-      await jobPositionPermissionsService.setJobPositionPermissions(jobPositionId, selectedPermissions);
+      // Actualizar estado local inmediatamente (guardado optimista)
       setCurrentPermissions([...selectedPermissions]);
+      await jobPositionPermissionsService.setJobPositionPermissions(jobPositionId, selectedPermissions);
       toast.success('Permisos actualizados correctamente');
-      onPermissionsUpdated?.();
     } catch (error) {
+      // Revertir en caso de error
+      setCurrentPermissions(prevPermissions);
+      setSelectedPermissions(prevPermissions);
       console.error('Error saving permissions:', error);
       toast.error('Error al guardar permisos');
-      setSelectedPermissions([...currentPermissions]);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -587,12 +590,12 @@ export default function JobPositionPermissionsManager({
                   <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">Cancelar</button>
                   <button
                     onClick={savePermissions}
-                    disabled={!hasChanges() || saving}
+                    disabled={!hasChanges()}
                     className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                      hasChanges() && !saving ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+                      hasChanges() ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-gray-400 bg-gray-200 cursor-not-allowed'
                     }`}
                   >
-                    {saving ? (<><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>Guardando...</>) : (<><Save className="h-4 w-4 mr-2" />Guardar Permisos</>)}
+                    <Save className="h-4 w-4 mr-2" />Guardar Permisos
                   </button>
                 </div>
               </div>
@@ -644,6 +647,9 @@ export default function JobPositionPermissionsManager({
                                 {mod.can_view ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                                 <span>Ver</span>
                               </button>
+                              <span title="Controla si el módulo aparece visible en el menú lateral del usuario.">
+                                <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                              </span>
                             </label>
                             <label className="flex items-center space-x-2 cursor-pointer">
                               <button
@@ -655,6 +661,9 @@ export default function JobPositionPermissionsManager({
                                 {mod.can_access ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                                 <span>Acceder</span>
                               </button>
+                              <span title="Controla si el usuario puede entrar a las páginas del módulo. Si está desactivado, el middleware bloqueará el acceso.">
+                                <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                              </span>
                             </label>
                           </div>
                         </div>
@@ -671,12 +680,9 @@ export default function JobPositionPermissionsManager({
                   <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">Cancelar</button>
                   <button
                     onClick={saveModuleAccess}
-                    disabled={accessSaving}
-                    className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                      !accessSaving ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-gray-400 bg-gray-200 cursor-not-allowed'
-                    }`}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                   >
-                    {accessSaving ? (<><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>Guardando...</>) : (<><Save className="h-4 w-4 mr-2" />Guardar Acceso</>)}
+                    <Save className="h-4 w-4 mr-2" />Guardar Acceso
                   </button>
                 </div>
               </div>
@@ -752,6 +758,9 @@ export default function JobPositionPermissionsManager({
                                         {page.can_view ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                                         <span>Ver</span>
                                       </button>
+                                      <span title="Controla si esta página aparece visible en el menú lateral del usuario.">
+                                        <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                                      </span>
                                       <button
                                         onClick={() => togglePageAccess(page.page_href)}
                                         className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium ${
@@ -761,6 +770,9 @@ export default function JobPositionPermissionsManager({
                                         {page.can_access ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                                         <span>Acceder</span>
                                       </button>
+                                      <span title="Controla si el usuario puede entrar a esta página. Si está desactivado, el middleware bloqueará el acceso.">
+                                        <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                                      </span>
                                     </div>
                                   </div>
                                 ))}
@@ -781,12 +793,9 @@ export default function JobPositionPermissionsManager({
                   <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">Cancelar</button>
                   <button
                     onClick={saveModuleAccess}
-                    disabled={accessSaving}
-                    className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                      !accessSaving ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-gray-400 bg-gray-200 cursor-not-allowed'
-                    }`}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                   >
-                    {accessSaving ? (<><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>Guardando...</>) : (<><Save className="h-4 w-4 mr-2" />Guardar Acceso</>)}
+                    <Save className="h-4 w-4 mr-2" />Guardar Acceso
                   </button>
                 </div>
               </div>

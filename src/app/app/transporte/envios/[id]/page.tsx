@@ -428,6 +428,11 @@ export default function ShipmentDetailPage() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {shipment.tracking_number}
               </h1>
+              {shipment.shipment_number && (
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                  {shipment.shipment_number}
+                </span>
+              )}
               <Badge className={`${status.color} flex items-center gap-1`}>
                 {status.icon}
                 {status.label}

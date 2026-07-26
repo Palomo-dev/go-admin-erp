@@ -85,6 +85,11 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
               <p className="font-bold text-gray-900 dark:text-gray-100">
                 {shipment.shipment_number}
               </p>
+              {shipment.tracking_number && (
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  Tracking: {shipment.tracking_number}
+                </p>
+              )}
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {new Date(shipment.created_at).toLocaleDateString()}
               </p>

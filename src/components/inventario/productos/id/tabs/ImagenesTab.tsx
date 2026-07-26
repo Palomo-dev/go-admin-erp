@@ -93,7 +93,7 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
     }
     
     try {
-      const bucket = storagePath.startsWith('products/') ? 'product-images' : 'organization_images';
+      const bucket = (storagePath.startsWith('products/') || storagePath.startsWith('productos/')) ? 'product-images' : 'organization_images';
       const { data } = supabase.storage
         .from(bucket)
         .getPublicUrl(storagePath);

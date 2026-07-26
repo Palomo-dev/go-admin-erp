@@ -173,6 +173,15 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   // Manejar selección de producto (con o sin variantes)
   const handleProductClick = (product: any) => {
+    // Bloquear si el producto está agotado
+    if (product.is_out_of_stock) {
+      toast({
+        title: 'Producto agotado',
+        description: `${product.name} no tiene stock disponible`,
+        variant: 'destructive',
+      });
+      return;
+    }
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
     if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
       setSelectedParentProduct(product);
@@ -410,7 +419,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                 {productsData.data.map((product: any) => (
                   <Card 
                     key={product.id}
-                    className="group overflow-hidden hover:shadow-xl transition-all duration-200 cursor-pointer border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 bg-white hover:scale-[1.02] active:scale-[0.98]"
+                    className={cn(
+                      "group overflow-hidden hover:shadow-xl transition-all duration-200 border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 bg-white",
+                      product.is_out_of_stock
+                        ? "opacity-60 cursor-not-allowed"
+                        : "cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                    )}
                     onClick={() => handleProductClick(product)}
                   >
                     {/* Imagen del producto */}
@@ -447,6 +461,15 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                           variant="secondary"
                         >
                           {product.category.name}
+                        </Badge>
+                      )}
+
+                      {/* Badge de agotado */}
+                      {product.is_out_of_stock && (
+                        <Badge 
+                          className="absolute inset-0 m-auto w-fit h-fit bg-red-600 text-white hover:bg-red-700 text-xs sm:text-sm z-20 pointer-events-none"
+                        >
+                          Agotado
                         </Badge>
                       )}
 
@@ -527,12 +550,15 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                         size="sm" 
                         className={cn(
                           "w-full text-white h-7 sm:h-8 text-xs sm:text-sm",
-                          product.has_variants && product.variant_count > 0
+                          product.is_out_of_stock
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : product.has_variants && product.variant_count > 0
                             ? "bg-purple-600 hover:bg-purple-700"
                             : product.has_modifiers
                             ? "bg-amber-600 hover:bg-amber-700"
                             : "bg-blue-600 hover:bg-blue-700"
                         )}
+                        disabled={product.is_out_of_stock}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleProductClick(product);

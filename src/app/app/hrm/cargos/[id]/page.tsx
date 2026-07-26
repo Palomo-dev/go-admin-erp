@@ -11,8 +11,12 @@ import {
   JobPositionEmployees,
 } from '@/components/hrm/cargos/detail';
 import JobPositionPermissionsManager from '@/components/hrm/JobPositionPermissionsManager';
+import { jobPositionPermissionsService } from '@/lib/services/jobPositionPermissionsService';
+import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
+import { MODULE_PAGES } from '@/lib/config/modulePages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +45,9 @@ export default function CargoDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPermissionsDialog, setShowPermissionsDialog] = useState(false);
+  const [permissionsCount, setPermissionsCount] = useState(0);
+  const [visibleModules, setVisibleModules] = useState<string[]>([]);
+  const [visiblePages, setVisiblePages] = useState<string[]>([]);
 
   // Servicio
   const getService = useCallback(() => {
@@ -67,6 +74,15 @@ export default function CargoDetailPage() {
 
       setPosition(posData);
       setEmployees(empData);
+
+      // Cargar permisos y acceso a módulos
+      const [permDetails, access] = await Promise.all([
+        jobPositionPermissionsService.getJobPositionPermissionsWithDetails(positionId),
+        jobPositionModuleAccessService.getJobPositionAccess(positionId),
+      ]);
+      setPermissionsCount(permDetails.length);
+      setVisibleModules(access.modules.filter(m => m.can_view).map(m => m.module_code));
+      setVisiblePages(access.pages.filter(p => p.can_view).map(p => p.page_href));
     } catch (error) {
       console.error('Error loading position:', error);
       toast({
@@ -232,6 +248,9 @@ export default function CargoDetailPage() {
           <JobPositionEmployees
             employees={employees}
             positionId={position.id}
+            positionName={position.name}
+            organizationId={organization?.id}
+            onEmployeesChanged={loadData}
           />
           
           {/* Permisos del Cargo */}
@@ -252,9 +271,70 @@ export default function CargoDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Los empleados con este cargo tendrán acceso a los permisos configurados aquí.
-              </p>
+              {permissionsCount === 0 && visibleModules.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No hay permisos configurados para este cargo.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {/* Resumen de permisos */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                      {permissionsCount} permiso{permissionsCount !== 1 ? 's' : ''}
+                    </Badge>
+                    {visibleModules.length > 0 && (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                        {visibleModules.length} módulo{visibleModules.length !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                    {visiblePages.length > 0 && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        {visiblePages.length} página{visiblePages.length !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Módulos accesibles */}
+                  {visibleModules.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Módulos accesibles:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {visibleModules.map((modCode) => {
+                          const pages = MODULE_PAGES[modCode];
+                          const modName = pages && pages.length > 0 ? pages[0].name : modCode;
+                          return (
+                            <Badge key={modCode} variant="outline" className="text-xs">
+                              {modName}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Páginas accesibles */}
+                  {visiblePages.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Páginas accesibles:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {visiblePages.slice(0, 10).map((href) => {
+                          const pageName = Object.values(MODULE_PAGES).flat().find(p => p.href === href)?.name || href;
+                          return (
+                            <Badge key={href} variant="outline" className="text-xs">
+                              {pageName}
+                            </Badge>
+                          );
+                        })}
+                        {visiblePages.length > 10 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{visiblePages.length - 10} más
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

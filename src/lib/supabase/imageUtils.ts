@@ -22,7 +22,7 @@ export interface ProductImageType {
  * Determina el bucket correcto según el path de almacenamiento
  */
 export function getBucketName(storagePath?: string): StorageBucket {
-  if (storagePath?.startsWith('products/')) return 'product-images';
+  if (storagePath?.startsWith('products/') || storagePath?.startsWith('productos/')) return 'product-images';
   return 'organization_images';
 }
 

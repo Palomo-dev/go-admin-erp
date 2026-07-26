@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentBranchId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculationForLog, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
@@ -25,7 +25,7 @@ import {
 // Función para obtener URL de imagen desde storage path usando el cliente de supabase
 const getStorageImageUrl = (storagePath: string): string => {
   if (!storagePath) return '';
-  const bucket = storagePath.startsWith('products/') ? 'product-images' : 'organization_images';
+  const bucket = (storagePath.startsWith('products/') || storagePath.startsWith('productos/')) ? 'product-images' : 'organization_images';
   const { data } = supabase.storage
     .from(bucket)
     .getPublicUrl(storagePath);
@@ -169,6 +169,8 @@ export class POSService {
     includeVariants?: boolean;
   }) {
     try {
+      const currentBranchId = getCurrentBranchId();
+
       let query = supabase
       .from('products')
       .select(`
@@ -264,20 +266,47 @@ export class POSService {
         (modifierGroups || []).forEach((g: any) => productsWithModifiers.add(g.product_id));
       }
 
-      const products = data?.map((product: any) => ({
-        ...product,
-        category: product.categories,
-        price: product.product_prices?.[0]?.price || null,
-        compare_price: product.product_prices?.[0]?.compare_price || null,
-        product_images: productImagesMap[product.id] || [],
-        // Información de variantes
-        has_variants: product.is_parent === true,
-        variant_count: variantCountMap[product.id] || 0,
-        has_modifiers: productsWithModifiers.has(product.id),
-        // Mantener compatibilidad con código que use 'image'
-        image: productImagesMap[product.id]?.[0]?.storage_path ? 
-          getStorageImageUrl(productImagesMap[product.id][0].storage_path) : null
-      })) || [];
+      // Obtener stock_levels por branch_id actual
+      let stockMap: Record<number, { qty_on_hand: number; qty_reserved: number }> = {};
+      if (productIds.length > 0 && currentBranchId) {
+        const { data: stockData } = await supabase
+          .from('stock_levels')
+          .select('product_id, qty_on_hand, qty_reserved')
+          .in('product_id', productIds)
+          .eq('branch_id', currentBranchId)
+          .is('lot_id', null);
+        (stockData || []).forEach((s: any) => {
+          stockMap[s.product_id] = {
+            qty_on_hand: Number(s.qty_on_hand) || 0,
+            qty_reserved: Number(s.qty_reserved) || 0,
+          };
+        });
+      }
+
+      const products = data?.map((product: any) => {
+        const stock = stockMap[product.id];
+        const stockQty = stock?.qty_on_hand ?? 0;
+        const isOutOfStock = product.track_stock === true && stockQty <= 0;
+        return {
+          ...product,
+          category: product.categories,
+          price: product.product_prices?.[0]?.price || null,
+          compare_price: product.product_prices?.[0]?.compare_price || null,
+          product_images: productImagesMap[product.id] || [],
+          // Información de variantes
+          has_variants: product.is_parent === true,
+          variant_count: variantCountMap[product.id] || 0,
+          has_modifiers: productsWithModifiers.has(product.id),
+          // Información de stock
+          track_stock: product.track_stock,
+          stock_quantity: stockQty,
+          qty_reserved: stock?.qty_reserved ?? 0,
+          is_out_of_stock: isOutOfStock,
+          // Mantener compatibilidad con código que use 'image'
+          image: productImagesMap[product.id]?.[0]?.storage_path ? 
+            getStorageImageUrl(productImagesMap[product.id][0].storage_path) : null
+        };
+      }) || [];
 
       return {
         data: products,
@@ -449,7 +478,7 @@ export class POSService {
         address: customerData.address,
         roles: customerData.roles || ['cliente', 'huesped'],
         fiscal_responsibilities: ['R-99-PN'],
-        fiscal_municipality_id: customerData.municipality_id || 'aa4b6637-0060-41bb-9459-bc95f9789e08',
+        fiscal_municipality_id: customerData.fiscal_municipality_id || 'aa4b6637-0060-41bb-9459-bc95f9789e08',
         tags: customerData.tags || [],
         preferences: customerData.preferences || {},
         metadata: {
@@ -978,7 +1007,7 @@ export class POSService {
       try {
         const stockResult = await stockMovementService.decrementOnSale(
           this.organizationId,
-          getCurrentBranchId(),
+          getCurrentBranchIdWithFallback(),
           sale.id,
           cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
           'sale'
@@ -1163,7 +1192,7 @@ export class POSService {
       try {
         const stockResult = await stockMovementService.decrementOnSale(
           cart.organization_id,
-          getCurrentBranchId(),
+          getCurrentBranchIdWithFallback(),
           saleData.id,
           cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
           'sale'

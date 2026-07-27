@@ -23,6 +23,7 @@ import {
   LayoutGrid,
   Image as ImageIcon,
   Search,
+  Printer,
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/utils/Utils';
 import { SearchSelect } from '@/components/ui/search-select';
@@ -328,6 +329,23 @@ export function ConfiguracionPage() {
                     </div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/app/pos/configuracion/impresiones">
+              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+                      <Printer className="h-5 w-5 text-cyan-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Previsualizar Impresiones</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Ver tickets antes de imprimir</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
                 </div>
               </div>
             </Link>

@@ -458,23 +458,27 @@ export default function MesaDetallePage() {
     // Impresión física por el Print Agent (estación 'cashier'), best-effort.
     // Si hay impresora de caja configurada, sale por ella; si no, fallback al navegador.
     // Si forcePDF=true (botón "Imprimir" del diálogo), salta la física y va directo al PDF.
+    // Los datos del negocio se arman una sola vez: antes habia dos versiones,
+    // y la del fallback por navegador omitia el correo, la ciudad y el regimen,
+    // asi que el mismo ticket salia distinto segun por donde se imprimiera.
+    const businessInfo = organization ? {
+      name: organization.name || '',
+      nit: (organization as any).nit || (organization as any).tax_id || '',
+      phone: (organization as any).phone || '',
+      address: (organization as any).address || '',
+      email: (organization as any).email || '',
+      city: (organization as any).city || '',
+      logoUrl: (organization as any).logo_url || undefined,
+      fiscal_responsibilities: (organization as any).fiscal_responsibilities || undefined,
+    } : undefined;
+    const branchInfo = currentBranch ? {
+      name: currentBranch.name || '',
+      address: currentBranch.address || '',
+      phone: currentBranch.phone || '',
+    } : undefined;
+
     if (branch_id && !forcePDF) {
       try {
-        const businessInfo = organization ? {
-          name: organization.name || '',
-          nit: (organization as any).nit || (organization as any).tax_id || '',
-          phone: (organization as any).phone || '',
-          address: (organization as any).address || '',
-          email: (organization as any).email || '',
-          city: (organization as any).city || '',
-          fiscalResponsibilities: (organization as any).fiscal_responsibilities || null,
-        } : undefined;
-        const branchInfo = currentBranch ? {
-          name: currentBranch.name || '',
-          address: currentBranch.address || '',
-          phone: currentBranch.phone || '',
-        } : undefined;
-
         const { enqueued } = await PrintJobsService.enqueuePreCuenta(branch_id, {
           tableId,
           tableName: session?.restaurant_tables?.name || mesaNombre,
@@ -503,7 +507,8 @@ export default function MesaDetallePage() {
           businessAddress: businessInfo?.address,
           businessEmail: businessInfo?.email,
           businessCity: businessInfo?.city,
-          businessFiscalResponsibilities: businessInfo?.fiscalResponsibilities,
+          businessFiscalResponsibilities: businessInfo?.fiscal_responsibilities,
+          businessLogoUrl: businessInfo?.logoUrl,
           branchName: branchInfo?.name,
           branchAddress: branchInfo?.address,
           branchPhone: branchInfo?.phone,
@@ -514,17 +519,6 @@ export default function MesaDetallePage() {
       }
     }
 
-    const businessInfo = organization ? {
-      name: organization.name || '',
-      nit: (organization as any).tax_id || '',
-      phone: (organization as any).phone || '',
-      address: (organization as any).address || '',
-    } : undefined;
-    const branchInfo = currentBranch ? {
-      name: currentBranch.name || '',
-      address: currentBranch.address || '',
-      phone: currentBranch.phone || '',
-    } : undefined;
     PrintService.printPreCuenta(
       session?.restaurant_tables?.name || mesaNombre,
       cuenta.items,
@@ -535,7 +529,6 @@ export default function MesaDetallePage() {
       businessInfo,
       branchInfo,
       serverName,
-      undefined,
     );
   };
 

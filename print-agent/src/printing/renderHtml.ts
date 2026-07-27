@@ -1,4 +1,5 @@
 import type { KitchenTicketPrintPayload, SaleTicketPrintPayload } from './types';
+import type { PaperSpec } from './paper';
 
 function formatMoney(value: number): string {
   return value.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -33,11 +34,17 @@ const STATION_LABELS: Record<string, string> = {
 // - Todo debe ser NEGRO PURO (#000). Los grises se difuminan (dithering) y salen
 //   casi invisibles en papel térmico.
 // - Fuentes < 10px resultan ilegibles a 203dpi.
-// - El body NO debe centrarse (margin: 0 auto) ni tener ancho fijo en mm: el
-//   pageSize ya lo define Electron. Un ancho fijo + centrado desplaza el contenido.
-const SHARED_CSS = `
+// - El ancho se define UNA sola vez, en `@page size`. Poner además un ancho en
+//   `html`/`body` crea dos fuentes de verdad que se contradicen: Chromium
+//   maqueta con el tamaño de página y el driver escala el resultado, lo que
+//   produce texto diminuto y desplazado. `body` usa width: 100% para llenar
+//   exactamente la página que declara `@page`.
+// - `size` usa el ancho IMPRIMIBLE (72mm en un rollo de 80mm), no el ancho del
+//   rollo: los bordes son mecánicamente inalcanzables para el cabezal.
+function buildCss(paper: PaperSpec): string {
+  return `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @page { margin: 0; }
+  @page { size: ${paper.printableMm}mm auto; margin: 0; }
   html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body {
     width: 100%;
@@ -55,6 +62,18 @@ const SHARED_CSS = `
     border-bottom: 2px solid #000;
     padding-bottom: 5px;
     margin-bottom: 5px;
+  }
+  .business-logo {
+    /* El alto se acota porque el rollo es continuo: un logo grande no rompe
+       la maquetacion, pero se come varios centimetros de papel en cada
+       ticket. En 58mm se reduce proporcionalmente via max-width. */
+    max-width: 60%;
+    max-height: 90px;
+    margin: 0 auto 4px;
+    display: block;
+    /* El termico solo imprime negro: se fuerza el contraste para que un logo
+       de color no salga como una mancha gris ilegible. */
+    filter: grayscale(100%) contrast(140%);
   }
   .business-name {
     font-size: 17px;
@@ -222,14 +241,35 @@ const SHARED_CSS = `
     margin: 4px 0;
     font-size: 12px;
   }
+  .delivery-box .label { font-weight: 700; color: #000; }
+  .delivery-title {
+    font-weight: 800;
+    text-align: center;
+    border-bottom: 1px solid #000;
+    margin-bottom: 3px;
+    padding-bottom: 2px;
+  }
+  .delivery-instructions {
+    margin-top: 3px;
+    padding-top: 3px;
+    border-top: 1px dashed #000;
+  }
+  .change-line {
+    font-weight: 800;
+    font-size: 14px;
+    border-top: 1px solid #000;
+    margin-top: 3px;
+    padding-top: 3px;
+  }
 `;
+}
 
-export function buildSaleTicketHTML(payload: SaleTicketPrintPayload): string {
+export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: PaperSpec): string {
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
   const title = payload.title || 'TICKET DE VENTA';
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO');
-  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   const businessFiscal = payload.businessFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
@@ -276,26 +316,51 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload): string {
       ${customerFiscal ? `<div><span class="label">Regimen:</span> ${customerFiscal}</div>` : ''}
     </div>` : '';
 
-  const deliveryHTML = payload.deliveryInfo ? `
+  // Bloque de entrega: es lo que lee el conductor, asi que va completo aunque
+  // ocupe papel. Las instrucciones se separan porque suelen ser el dato que
+  // evita la llamada de "no encuentro la direccion".
+  const delivery = payload.deliveryInfo;
+  const deliveryHTML = delivery ? `
     <div class="delivery-box">
-      <div><span class="label">Entrega:</span> ${payload.deliveryInfo.type}</div>
-      <div><span class="label">Direccion:</span> ${payload.deliveryInfo.address}</div>
-      ${payload.deliveryInfo.driverName ? `<div><span class="label">Conductor:</span> ${payload.deliveryInfo.driverName}</div>` : ''}
+      <div class="delivery-title">DATOS DE ENTREGA</div>
+      <div><span class="label">Tipo:</span> ${delivery.type}</div>
+      <div><span class="label">Direccion:</span> ${delivery.address}</div>
+      ${delivery.city ? `<div><span class="label">Ciudad:</span> ${delivery.city}</div>` : ''}
+      ${delivery.contactName ? `<div><span class="label">Recibe:</span> ${delivery.contactName}</div>` : ''}
+      ${delivery.contactPhone ? `<div><span class="label">Tel:</span> ${delivery.contactPhone}</div>` : ''}
+      ${delivery.driverName ? `<div><span class="label">Conductor:</span> ${delivery.driverName}</div>` : ''}
+      ${delivery.instructions ? `<div class="delivery-instructions"><span class="label">Indicaciones:</span> ${delivery.instructions}</div>` : ''}
     </div>` : '';
+
+  // Con desglose (IVA, ICA...) se imprime una linea por impuesto; sin el, solo
+  // el agregado. El rotulo cambia si el precio ya lleva el impuesto incluido.
+  const taxSuffix = payload.taxIncluded ? ' (incluido)' : '';
+  const taxHTML = payload.taxLines && payload.taxLines.length > 0
+    ? payload.taxLines
+        .map(t => `<div class="total-line"><span>${t.name}${taxSuffix}:</span><span>${formatMoney(t.amount)}</span></div>`)
+        .join('')
+    : (payload.taxTotal && payload.taxTotal > 0
+        ? `<div class="total-line"><span>Impuestos${taxSuffix}:</span><span>${formatMoney(payload.taxTotal)}</span></div>`
+        : '');
 
   const totalsHTML = `
     <div class="totals">
       ${payload.subtotal != null ? `<div class="total-line"><span>Subtotal:</span><span>${formatMoney(payload.subtotal)}</span></div>` : ''}
       ${payload.discountTotal && payload.discountTotal > 0 ? `<div class="total-line"><span>Descuento:</span><span>-${formatMoney(payload.discountTotal)}</span></div>` : ''}
-      ${payload.taxTotal && payload.taxTotal > 0 ? `<div class="total-line"><span>Impuestos:</span><span>${formatMoney(payload.taxTotal)}</span></div>` : ''}
+      ${taxHTML}
       ${payload.deliveryFee && payload.deliveryFee > 0 ? `<div class="total-line"><span>Envio:</span><span>${formatMoney(payload.deliveryFee)}</span></div>` : ''}
       ${payload.tipAmount && payload.tipAmount > 0 ? `<div class="total-line"><span>Propina:</span><span>${formatMoney(payload.tipAmount)}</span></div>` : ''}
       <div class="total-line total-final"><span>TOTAL:</span><span>${formatMoney(payload.total)}</span></div>
     </div>`;
 
-  const paymentsHTML = payload.payments && payload.payments.length > 0 ? `
+  // El vuelto solo tiene sentido si hubo pago, por eso vive dentro de este
+  // bloque y no en los totales.
+  const hasPayments = !!payload.payments && payload.payments.length > 0;
+  const paymentsHTML = hasPayments ? `
     <div class="payments">
-      ${payload.payments.map(p => `<div class="payment-line"><span>${p.methodName || p.method || 'Efectivo'}:</span><span>${formatMoney(p.amount)}</span></div>`).join('')}
+      ${payload.payments!.map(p => `<div class="payment-line"><span>${p.methodName || p.method || 'Efectivo'}:</span><span>${formatMoney(p.amount)}</span></div>`).join('')}
+      ${payload.totalPaid && payload.totalPaid > 0 ? `<div class="payment-line"><span>Recibido:</span><span>${formatMoney(payload.totalPaid)}</span></div>` : ''}
+      ${payload.changeAmount && payload.changeAmount > 0 ? `<div class="payment-line change-line"><span>CAMBIO:</span><span>${formatMoney(payload.changeAmount)}</span></div>` : ''}
     </div>` : '';
 
   return `<!DOCTYPE html>
@@ -304,15 +369,17 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
-  <style>${SHARED_CSS}</style>
+  <style>${buildCss(paper)}</style>
 </head>
 <body>
   <div class="header">
+    ${payload.businessLogoUrl ? `<img class="business-logo" src="${payload.businessLogoUrl}" alt="" />` : ''}
     <div class="business-name">${payload.businessName || 'Restaurante'}</div>
     ${payload.businessNit ? `<div class="business-info">NIT: ${payload.businessNit}</div>` : ''}
     ${payload.businessAddress ? `<div class="business-info">${payload.businessAddress}</div>` : ''}
     ${payload.businessCity ? `<div class="business-info">${payload.businessCity}</div>` : ''}
     ${payload.businessPhone ? `<div class="business-info">Tel: ${payload.businessPhone}</div>` : ''}
+    ${payload.businessEmail ? `<div class="business-info">${payload.businessEmail}</div>` : ''}
     ${businessFiscal ? `<div class="business-info">Regimen: ${businessFiscal}</div>` : ''}
     ${payload.branchName && payload.branchName !== payload.businessName ? `<div class="branch-name">Sucursal: ${payload.branchName}</div>` : ''}
     ${payload.branchAddress && payload.branchAddress !== payload.businessAddress ? `<div class="business-info">${payload.branchAddress}</div>` : ''}
@@ -362,11 +429,11 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload): string {
 </html>`;
 }
 
-export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload): string {
+function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO');
-  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   const itemsHTML = payload.items.map(item => {
@@ -395,15 +462,7 @@ export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload): stri
     </div>`;
   }).join('');
 
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Comanda #${payload.ticketId}</title>
-  <style>${SHARED_CSS}</style>
-</head>
-<body>
+  return `
   <div class="header">
     <div class="business-name">${payload.businessName || 'Restaurante'}</div>
     ${payload.branchName && payload.branchName !== payload.businessName ? `<div class="branch-name">${payload.branchName}</div>` : ''}
@@ -430,7 +489,42 @@ export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload): stri
   <div class="footer">
     <div>Comanda generada por GO Admin</div>
     <div style="margin-top:3px;font-size:8px;color:#888">${dateStr} ${timeStr}</div>
-  </div>
+  </div>`;
+}
+
+/** Envuelve uno o varios cuerpos en un documento imprimible completo. */
+function wrapDocument(title: string, paper: PaperSpec, bodies: string[]): string {
+  // Cada comanda ocupa su propia hoja: en papel continuo eso se traduce en un
+  // corte por estacion, que es como salen tambien por impresora fisica.
+  const sections = bodies
+    .map((body, i) => `<div${i < bodies.length - 1 ? ' style="page-break-after: always"' : ''}>${body}</div>`)
+    .join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>${buildCss(paper)}</style>
+</head>
+<body>
+${sections}
 </body>
 </html>`;
+}
+
+export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload, paper: PaperSpec): string {
+  return wrapDocument(`Comanda #${payload.ticketId}`, paper, [buildKitchenTicketBody(payload)]);
+}
+
+/**
+ * Varias comandas en un unico documento, una por estacion.
+ *
+ * Lo usa la impresion por navegador: al no haber una impresora por estacion,
+ * se emite un solo documento con un salto de pagina entre comandas.
+ */
+export function buildKitchenTicketsHTML(payloads: KitchenTicketPrintPayload[], paper: PaperSpec): string {
+  const title = payloads.length === 1 ? `Comanda #${payloads[0].ticketId}` : 'Comandas';
+  return wrapDocument(title, paper, payloads.map(buildKitchenTicketBody));
 }

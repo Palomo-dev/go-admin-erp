@@ -1,25 +1,27 @@
 import type { PrinterRow, PrintJobPayload, PrintJobRow } from './types';
-import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket } from './escposFormatter';
-import { buildSaleTicketHTML, buildKitchenTicketHTML } from './htmlFormatter';
+import type { PaperSpec } from './printing/paper';
+import { getPaperSpec } from './printing/paper';
+import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket } from './printing/renderEscpos';
+import { buildSaleTicketHTML, buildKitchenTicketHTML } from './printing/renderHtml';
 
-function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): void {
+function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): void {
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
-    printSaleTicket(device_, payload as any);
+    printSaleTicket(device_, payload as any, paper);
   } else {
-    printKitchenTicket(device_, payload as any);
+    printKitchenTicket(device_, payload as any, paper);
   }
 }
 
-function renderPlainText(jobType: PrintJobRow['job_type'], payload: PrintJobPayload): string {
+function renderPlainText(jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): string {
   return jobType === 'sale_ticket' || jobType === 'pre_cuenta'
-    ? buildPlainTextSaleTicket(payload as any)
-    : buildPlainTextTicket(payload as any);
+    ? buildPlainTextSaleTicket(payload as any, paper)
+    : buildPlainTextTicket(payload as any, paper);
 }
 
-function renderHTML(jobType: PrintJobRow['job_type'], payload: PrintJobPayload): string {
+function renderHTML(jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): string {
   return jobType === 'sale_ticket' || jobType === 'pre_cuenta'
-    ? buildSaleTicketHTML(payload as any)
-    : buildKitchenTicketHTML(payload as any);
+    ? buildSaleTicketHTML(payload as any, paper)
+    : buildKitchenTicketHTML(payload as any, paper);
 }
 
 // Los paquetes escpos-* no traen tipados oficiales completos; se cargan con require
@@ -69,6 +71,8 @@ function printViaNetwork(printer: PrinterRow, jobType: PrintJobRow['job_type'], 
   }
   const port = printer.port || 9100;
 
+  const paper = getPaperSpec(printer.paper_width);
+
   return new Promise((resolve, reject) => {
     const device = new escpos.Network(printer.ip_address, port);
     const device_ = new escpos.Printer(device);
@@ -76,7 +80,7 @@ function printViaNetwork(printer: PrinterRow, jobType: PrintJobRow['job_type'], 
     device.open((err: any) => {
       if (err) return reject(new Error(`No se pudo conectar a ${printer.ip_address}:${port} — ${err.message || err}`));
       try {
-        renderToDevice(device_, jobType, payload);
+        renderToDevice(device_, jobType, payload, paper);
         device_.close(() => resolve());
       } catch (printErr) {
         reject(printErr);
@@ -99,6 +103,8 @@ function printViaUsb(printer: PrinterRow, jobType: PrintJobRow['job_type'], payl
     throw new Error(`Impresora "${printer.name}" no tiene vendor_id/product_id configurados`);
   }
 
+  const paper = getPaperSpec(printer.paper_width);
+
   return new Promise((resolve, reject) => {
     try {
       const device = new escpos.USB(Number(printer.vendor_id), Number(printer.product_id));
@@ -107,7 +113,7 @@ function printViaUsb(printer: PrinterRow, jobType: PrintJobRow['job_type'], payl
       device.open((err: any) => {
         if (err) return reject(new Error(`No se pudo abrir la impresora USB "${printer.name}" — ${err.message || err}`));
         try {
-          renderToDevice(device_, jobType, payload);
+          renderToDevice(device_, jobType, payload, paper);
           device_.close(() => resolve());
         } catch (printErr) {
           reject(printErr);
@@ -131,6 +137,8 @@ function printViaBluetooth(printer: PrinterRow, jobType: PrintJobRow['job_type']
     throw new Error(`Impresora "${printer.name}" no tiene mac_address configurada`);
   }
 
+  const paper = getPaperSpec(printer.paper_width);
+
   return new Promise((resolve, reject) => {
     const device = new escpos.Bluetooth(printer.mac_address);
     const device_ = new escpos.Printer(device);
@@ -138,7 +146,7 @@ function printViaBluetooth(printer: PrinterRow, jobType: PrintJobRow['job_type']
     device.open((err: any) => {
       if (err) return reject(new Error(`No se pudo conectar por Bluetooth a "${printer.name}" — ${err.message || err}`));
       try {
-        renderToDevice(device_, jobType, payload);
+        renderToDevice(device_, jobType, payload, paper);
         device_.close(() => resolve());
       } catch (printErr) {
         reject(printErr);
@@ -155,13 +163,19 @@ function printViaBluetooth(printer: PrinterRow, jobType: PrintJobRow['job_type']
  *   3. Lanza error
  */
 async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
-  const html = renderHTML(jobType, payload);
+  const paper = getPaperSpec(printer.paper_width);
+  const html = renderHTML(jobType, payload, paper);
+
+  console.log(
+    `[printer] printViaSystem: printer="${printer.name}", paper_width="${printer.paper_width}" -> ` +
+    `${paper.width} (imprimible ${paper.printableMm}mm, ${paper.cssPx}px CSS, ${paper.charsPerLine} cols)`
+  );
 
   // 1. Intentar impresión via Electron (Chromium embebido)
   const electron = tryRequire('electron');
   if (electron && electron.BrowserWindow) {
     try {
-      await printViaElectron(html, printer.name, printer.paper_width || '80mm');
+      await printViaElectron(html, printer.name, paper);
       return;
     } catch (err: any) {
       console.error('[printer] Error con Electron print, fallback a texto plano:', err.message);
@@ -171,7 +185,7 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
   // 2. Fallback: texto plano con node-printer
   const nodePrinter = tryRequire('printer');
   if (nodePrinter) {
-    const text = renderPlainText(jobType, payload);
+    const text = renderPlainText(jobType, payload, paper);
     return new Promise((resolve, reject) => {
       nodePrinter.printDirect({
         data: text,
@@ -193,15 +207,26 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
  * IMPORTANTE: se debe pasar `pageSize` explícito en MICRONES. Sin él, Chromium usa
  * Letter/A4 y el driver térmico escala la página completa a 80mm, dejando el ticket
  * ilegible (texto microscópico) y casi todo el papel en blanco.
+ *
+ * IGUAL DE IMPORTANTE: la ventana debe tener EXACTAMENTE el ancho al que se va a
+ * imprimir. La altura del ticket se calcula midiendo `scrollHeight`, y ese valor
+ * depende del ancho con el que se maqueta: una ventana más ancha produce menos
+ * saltos de línea y por tanto una altura menor que la real. Si la ventana mide
+ * 400px pero se imprime a 272px, la página resulta más corta que el contenido y
+ * el ticket sale recortado.
  */
-function printViaElectron(html: string, printerName: string, paperWidth: '58mm' | '80mm' = '80mm'): Promise<void> {
-  // Ancho imprimible en micrones (1mm = 1000 micrones)
-  const widthMicrons = paperWidth === '58mm' ? 58000 : 80000;
+function printViaElectron(html: string, printerName: string, paper: PaperSpec): Promise<void> {
+  console.log(
+    `[printer] printViaElectron: printer="${printerName}", ${paper.width} -> ` +
+    `ancho ${paper.printableMicrons} micrones / ${paper.cssPx}px CSS`
+  );
 
   return new Promise((resolve, reject) => {
     const electron = require('electron');
     const win = new electron.BrowserWindow({
-      width: 400,
+      // El ancho debe coincidir con el de impresión para que la altura medida
+      // más abajo corresponda a la maquetación real.
+      width: paper.cssPx,
       height: 600,
       show: false,
       webPreferences: { contextIsolation: true, nodeIntegration: false },
@@ -241,14 +266,19 @@ function printViaElectron(html: string, printerName: string, paperWidth: '58mm' 
         const heightPx: number = await win.webContents.executeJavaScript(
           'Math.ceil(document.documentElement.scrollHeight)'
         );
-        const heightMicrons = Math.max(20000, Math.round(heightPx * 264.583));
+        // +2mm de holgura: el redondeo de subpíxeles y el interlineado de la
+        // última línea pueden desbordar la página y provocar que se corte.
+        const SAFETY_MARGIN_MICRONS = 2000;
+        const heightMicrons = Math.max(20000, Math.round(heightPx * 264.583) + SAFETY_MARGIN_MICRONS);
+
+        console.log(`[printer] printViaElectron: alto medido ${heightPx}px CSS -> ${heightMicrons} micrones`);
 
         win.webContents.print(
           {
             silent: true,
             printBackground: true,
             deviceName: printerName,
-            pageSize: { width: widthMicrons, height: heightMicrons },
+            pageSize: { width: paper.printableMicrons, height: heightMicrons },
             margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 },
           },
           (success: boolean, errorType: string) => {

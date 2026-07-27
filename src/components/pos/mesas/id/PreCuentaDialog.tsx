@@ -4,6 +4,7 @@ import React from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -59,6 +60,9 @@ export function PreCuentaDialog({
               </p>
             </div>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Resumen de la cuenta de {tableName} con {preCuenta.items.length} productos antes de procesar el pago.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 sm:space-y-4">

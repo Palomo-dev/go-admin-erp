@@ -16,6 +16,7 @@ export interface ProductOption {
   category?: string;
   status?: string;
   cost?: number;
+  image?: string | null;
 }
 
 interface ProductSearchComboboxProps {
@@ -89,9 +90,22 @@ export function ProductSearchCombobox({
       {/* Input de búsqueda o producto seleccionado */}
       {selectedProduct ? (
         <div className="flex items-center gap-3 p-3 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700">
-          {/* Icono/Imagen del producto */}
-          <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Package className="h-5 w-5 text-gray-400" />
+          {/* Imagen del producto */}
+          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+            {selectedProduct.image ? (
+              <img
+                src={selectedProduct.image}
+                alt={selectedProduct.name}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                }}
+              />
+            ) : (
+              <Package className="h-5 w-5 text-gray-400" />
+            )}
           </div>
           
           {/* Info del producto */}
@@ -156,7 +170,7 @@ export function ProductSearchCombobox({
             </div>
           ) : (
             <div className="py-1">
-              {filteredProducts.slice(0, 50).map((product) => (
+              {filteredProducts.map((product) => (
                 <button
                   key={product.id}
                   type="button"
@@ -166,9 +180,22 @@ export function ProductSearchCombobox({
                     value === product.id.toString() && "bg-blue-50 dark:bg-blue-900/20"
                   )}
                 >
-                  {/* Icono/Imagen */}
-                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Package className="h-5 w-5 text-gray-400" />
+                  {/* Imagen del producto */}
+                  <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                    {product.image ? (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                        }}
+                      />
+                    ) : (
+                      <Package className="h-5 w-5 text-gray-400" />
+                    )}
                   </div>
 
                   {/* Info */}
@@ -194,11 +221,6 @@ export function ProductSearchCombobox({
                   )}
                 </button>
               ))}
-              {filteredProducts.length > 50 && (
-                <p className="p-2 text-center text-xs text-gray-500 dark:text-gray-400 border-t dark:border-gray-700">
-                  Mostrando 50 de {filteredProducts.length} resultados. Refina tu búsqueda.
-                </p>
-              )}
             </div>
           )}
         </div>

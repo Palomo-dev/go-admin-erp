@@ -20,6 +20,15 @@ export interface DesktopNetworkPrinter {
   port: number;
 }
 
+export interface DesktopUsbDevice {
+  /** Hexadecimal con prefijo, ej. "0x04b8". Se guarda tal cual en `printers`. */
+  vendorId: string;
+  productId: string;
+  name?: string;
+  /** El dispositivo se declara de clase Impresora en el bus USB. */
+  isPrinter: boolean;
+}
+
 /** Respuesta del handler `printing:list` del proceso principal. */
 export interface DesktopPrintersResponse {
   printers?: DesktopSystemPrinter[];
@@ -30,6 +39,11 @@ export interface DesktopDiscoverResponse {
   printers?: DesktopNetworkPrinter[];
 }
 
+/** Respuesta del endpoint `/usb` del agente (o su handler equivalente). */
+export interface DesktopUsbResponse {
+  devices?: DesktopUsbDevice[];
+}
+
 /**
  * API expuesta por el preload de Go Admin Desktop.
  * Los métodos son opcionales porque un cliente puede tener una versión antigua
@@ -38,6 +52,7 @@ export interface DesktopDiscoverResponse {
 export interface GoAdminDesktopBridge {
   listPrinters?: () => Promise<DesktopPrintersResponse>;
   discoverNetwork?: () => Promise<DesktopDiscoverResponse>;
+  listUsbDevices?: () => Promise<DesktopUsbResponse>;
   version?: () => Promise<string>;
   updateState?: () => Promise<unknown>;
   checkForUpdates?: () => Promise<unknown>;

@@ -489,54 +489,79 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       // 3. Variantes, notas y etiquetas se manejan a través de formData (no requiere refs)
       
       // 4. Actualizar el stock del producto principal (sin variantes)
-      if (data.stock_inicial && Array.isArray(data.stock_inicial) && data.stock_inicial.length > 0) {
-        console.log('Actualizando stock del producto...', data.stock_inicial);
+      // Si track_stock está activo, se sincronizan TODAS las sucursales activas
+      // (igual que al crear un producto): las que ya tenían fila se actualizan,
+      // las que no tenían se crean con qty 0. Esto evita que un producto quede
+      // sin registro en una sucursal nueva y aparezca como no disponible.
+      if (!data.has_variants && data.track_stock) {
+        console.log('Sincronizando stock con sucursales activas...', data.stock_inicial);
         
         try {
-          // Para cada elemento de stock, verificar si ya existe y actualizarlo o crearlo
-          for (const stockItem of data.stock_inicial) {
-            if (!stockItem.branch_id) continue; // Ignorar items sin sucursal
+          // Obtener todas las sucursales activas de la organización
+          const { data: activeBranches, error: branchesError } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('organization_id', organization_id)
+            .eq('is_active', true);
+          
+          if (branchesError) throw branchesError;
+          
+          // Mapa de stock inicial por branch_id
+          const initialByBranch = new Map(
+            (data.stock_inicial || []).map((s: any) => [s.branch_id, s])
+          );
+          
+          // IDs de sucursales a sincronizar: activas + las que ya tenían stock
+          const branchIds = Array.from(new Set<number>([
+            ...(activeBranches || []).map((b: any) => b.id as number),
+            ...(data.stock_inicial || []).map((s: any) => s.branch_id as number),
+          ]));
+          
+          for (const bId of branchIds) {
+            const inicial = initialByBranch.get(bId);
             
             // Verificar si ya existe un registro para esta sucursal y producto
             const { data: existingStock, error: stockQueryError } = await supabase
               .from('stock_levels')
               .select('id')
               .eq('product_id', productoId)
-              .eq('branch_id', stockItem.branch_id)
+              .eq('branch_id', bId)
               .maybeSingle();
             
             if (stockQueryError) throw stockQueryError;
             
             if (existingStock) {
-              // Actualizar stock existente
+              // Actualizar stock existente (incluye min_level)
               const { error: updateStockError } = await supabase
                 .from('stock_levels')
                 .update({
-                  qty_on_hand: stockItem.qty_on_hand || 0,
-                  avg_cost: stockItem.avg_cost || 0
+                  qty_on_hand: inicial?.qty_on_hand ?? 0,
+                  avg_cost: inicial?.avg_cost ?? 0,
+                  min_level: inicial?.min_level ?? 0
                 })
                 .eq('id', existingStock.id);
               
               if (updateStockError) throw updateStockError;
             } else {
-              // Crear nuevo registro de stock
+              // Crear nuevo registro de stock para sucursal sin fila
               const { error: insertStockError } = await supabase
                 .from('stock_levels')
                 .insert({
                   product_id: productoId,
-                  branch_id: stockItem.branch_id,
-                  qty_on_hand: stockItem.qty_on_hand || 0,
-                  avg_cost: stockItem.avg_cost || 0
+                  branch_id: bId,
+                  qty_on_hand: inicial?.qty_on_hand ?? 0,
+                  avg_cost: inicial?.avg_cost ?? 0,
+                  min_level: inicial?.min_level ?? 0
                 });
               
               if (insertStockError) throw insertStockError;
             }
           }
           
-          console.log('Stock actualizado correctamente');
+          console.log('Stock sincronizado correctamente');
         } catch (stockError: any) {
-          console.error('Error al actualizar stock:', stockError);
-          throw new Error(`Error al actualizar stock: ${stockError.message || 'Error desconocido'}`);
+          console.error('Error al sincronizar stock:', stockError);
+          throw new Error(`Error al sincronizar stock: ${stockError.message || 'Error desconocido'}`);
         }
       }
       

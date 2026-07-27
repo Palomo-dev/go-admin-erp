@@ -7,6 +7,59 @@ import {
   type SaleTicketPrintPayload as SharedSaleTicketPrintPayload,
 } from '@printing';
 import { rasterizeLogo } from './logoRasterService';
+import { PrintService } from './printService';
+
+/** Campos de cabecera que comparten el ticket de venta y la pre-cuenta. */
+interface BusinessHeader {
+  businessName?: string;
+  businessNit?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  businessEmail?: string;
+  businessCity?: string;
+  businessFiscalResponsibilities?: string[] | null;
+  businessLogoUrl?: string;
+  branchName?: string;
+  branchAddress?: string;
+  branchPhone?: string;
+}
+
+/**
+ * Completa la cabecera del negocio cuando el llamador no la aporta.
+ *
+ * El payload se guarda en `print_jobs` y lo consume el agente, donde ya no hay
+ * contexto de React: lo que no viaje en el JSON no existe. Varias pantallas
+ * encolaban sin la organizacion cargada y el ticket salia sin nombre, sin NIT y
+ * sin sucursal. Resolverlo aqui, en el unico punto por el que pasan todos los
+ * llamadores, evita que cada pantalla tenga que acordarse de pasar 11 campos.
+ */
+async function resolveBusinessHeader(provided: BusinessHeader): Promise<BusinessHeader> {
+  if (provided.businessName) return provided;
+
+  try {
+    const { business, branch } = await PrintService.getBusinessAndBranch(getOrganizationId());
+    if (!business) return provided;
+
+    return {
+      businessName: business.name,
+      businessNit: provided.businessNit || business.nit || business.taxId,
+      businessPhone: provided.businessPhone || business.phone,
+      businessAddress: provided.businessAddress || business.address,
+      businessEmail: provided.businessEmail || business.email,
+      businessCity: provided.businessCity || business.city,
+      businessFiscalResponsibilities:
+        provided.businessFiscalResponsibilities || business.fiscal_responsibilities || null,
+      businessLogoUrl: provided.businessLogoUrl || business.logoUrl,
+      branchName: provided.branchName || branch?.name,
+      branchAddress: provided.branchAddress || branch?.address,
+      branchPhone: provided.branchPhone || branch?.phone,
+    };
+  } catch (error) {
+    // Un ticket con cabecera incompleta es mejor que no imprimir la venta.
+    console.warn('No se pudo completar la cabecera del negocio del ticket:', error);
+    return provided;
+  }
+}
 
 /**
  * Rasteriza el logo una vez por cada ancho de papel presente entre las
@@ -139,7 +192,10 @@ export class PrintJobsService {
     let enqueued = 0;
     const skippedStations: string[] = [];
 
-    for (const [station, items] of itemsByStation.entries()) {
+    // Array.from y no `for...of` sobre el iterador del Map: el tsconfig del ERP
+    // no habilita downlevelIteration, asi que el iterador nativo no compila y
+    // `items` acababa inferido como `any`.
+    for (const [station, items] of Array.from(itemsByStation.entries())) {
       const printers = await PrintersService.getPrintersByStation(branchId, station as PrinterStation);
 
       if (printers.length === 0) {
@@ -267,7 +323,8 @@ export class PrintJobsService {
 
     if (printers.length === 0) return { enqueued: 0 };
 
-    const logoRasters = await buildLogoRasters(sale.businessLogoUrl, printers);
+    const header = await resolveBusinessHeader(sale);
+    const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
 
     const payload: SaleTicketPrintPayload = {
       saleId: sale.saleId,
@@ -288,21 +345,11 @@ export class PrintJobsService {
       tipAmount: sale.tipAmount,
       deliveryFee: sale.deliveryFee,
       payments: sale.payments,
-      businessName: sale.businessName,
-      businessNit: sale.businessNit,
-      businessPhone: sale.businessPhone,
-      businessAddress: sale.businessAddress,
-      businessEmail: sale.businessEmail,
-      businessCity: sale.businessCity,
-      businessFiscalResponsibilities: sale.businessFiscalResponsibilities,
-      branchName: sale.branchName,
-      branchAddress: sale.branchAddress,
-      branchPhone: sale.branchPhone,
+      ...header,
       serverName: sale.serverName,
       cashierName: sale.cashierName,
       totalPaid: sale.totalPaid,
       changeAmount: sale.changeAmount,
-      businessLogoUrl: sale.businessLogoUrl,
       deliveryInfo: sale.deliveryInfo,
     };
 
@@ -366,7 +413,8 @@ export class PrintJobsService {
 
     if (printers.length === 0) return { enqueued: 0 };
 
-    const logoRasters = await buildLogoRasters(preCuenta.businessLogoUrl, printers);
+    const header = await resolveBusinessHeader(preCuenta);
+    const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
 
     const payload = {
       saleId: `pre-${preCuenta.tableId}`,
@@ -384,17 +432,7 @@ export class PrintJobsService {
       tipAmount: preCuenta.tipAmount && preCuenta.tipAmount > 0 ? preCuenta.tipAmount : undefined,
       deliveryInfo: preCuenta.deliveryInfo,
       total: preCuenta.total,
-      businessName: preCuenta.businessName,
-      businessNit: preCuenta.businessNit,
-      businessPhone: preCuenta.businessPhone,
-      businessAddress: preCuenta.businessAddress,
-      businessEmail: preCuenta.businessEmail,
-      businessCity: preCuenta.businessCity,
-      businessFiscalResponsibilities: preCuenta.businessFiscalResponsibilities,
-      businessLogoUrl: preCuenta.businessLogoUrl,
-      branchName: preCuenta.branchName,
-      branchAddress: preCuenta.branchAddress,
-      branchPhone: preCuenta.branchPhone,
+      ...header,
     };
 
     const rows = printers.map((printer) => ({

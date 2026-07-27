@@ -14,7 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SearchSelect } from '@/components/ui/search-select';
-import { Loader2, Wifi, Printer as PrinterIcon, Check } from 'lucide-react';
+import { Loader2, Wifi, Printer as PrinterIcon, Check, Usb, AlertTriangle } from 'lucide-react';
+import { cn } from '@/utils/Utils';
 import {
   type Printer,
   type PrinterFormData,
@@ -29,6 +30,8 @@ import {
   getDesktopBridge,
   type DesktopPrintersResponse,
   type DesktopDiscoverResponse,
+  type DesktopUsbResponse,
+  type DesktopUsbDevice,
 } from '@/lib/utils/desktop';
 
 const DISCOVERY_URL = 'http://localhost:3456';
@@ -66,6 +69,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
   const [detecting, setDetecting] = useState(false);
   const [systemPrinters, setSystemPrinters] = useState<{ name: string; isDefault: boolean }[]>([]);
   const [networkPrinters, setNetworkPrinters] = useState<{ ip: string; port: number }[]>([]);
+  const [usbDevices, setUsbDevices] = useState<DesktopUsbDevice[]>([]);
   const [showDetected, setShowDetected] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
 
@@ -79,18 +83,37 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
    * de consola (HTTP en localhost).
    */
   const fetchDetection = (): Promise<
-    [PromiseSettledResult<DesktopPrintersResponse>, PromiseSettledResult<DesktopDiscoverResponse>]
+    [
+      PromiseSettledResult<DesktopPrintersResponse>,
+      PromiseSettledResult<DesktopDiscoverResponse>,
+      PromiseSettledResult<DesktopUsbResponse>,
+    ]
   > => {
     const bridge = getDesktopBridge();
 
-    if (bridge && desktopSupports('listPrinters') && desktopSupports('discoverNetwork')) {
-      return Promise.allSettled([bridge.listPrinters!(), bridge.discoverNetwork!()]);
-    }
+    // El USB se pide por el puente si el Desktop instalado lo soporta, y si no
+    // por HTTP: el servidor de descubrimiento del agente expone /usb en ambos
+    // casos, asi que un .exe antiguo sigue detectando dispositivos.
+    const usb: Promise<DesktopUsbResponse> =
+      bridge && desktopSupports('listUsbDevices')
+        ? bridge.listUsbDevices!()
+        : fetch(`${DISCOVERY_URL}/usb`).then((r) => r.json());
 
-    return Promise.allSettled([
-      fetch(`${DISCOVERY_URL}/printers`).then((r) => r.json()),
-      fetch(`${DISCOVERY_URL}/discover`).then((r) => r.json()),
-    ]);
+    const base =
+      bridge && desktopSupports('listPrinters') && desktopSupports('discoverNetwork')
+        ? [bridge.listPrinters!(), bridge.discoverNetwork!()]
+        : [
+            fetch(`${DISCOVERY_URL}/printers`).then((r) => r.json()),
+            fetch(`${DISCOVERY_URL}/discover`).then((r) => r.json()),
+          ];
+
+    return Promise.allSettled([...base, usb]) as Promise<
+      [
+        PromiseSettledResult<DesktopPrintersResponse>,
+        PromiseSettledResult<DesktopDiscoverResponse>,
+        PromiseSettledResult<DesktopUsbResponse>,
+      ]
+    >;
   };
 
   const handleDetect = async () => {
@@ -98,9 +121,10 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
     setDetectError(null);
     setSystemPrinters([]);
     setNetworkPrinters([]);
+    setUsbDevices([]);
     setShowDetected(true);
     try {
-      const [printersRes, discoverRes] = await fetchDetection();
+      const [printersRes, discoverRes, usbRes] = await fetchDetection();
 
       if (printersRes.status === 'fulfilled' && printersRes.value?.printers) {
         setSystemPrinters(printersRes.value.printers);
@@ -108,7 +132,14 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
       if (discoverRes.status === 'fulfilled' && discoverRes.value?.printers) {
         setNetworkPrinters(discoverRes.value.printers);
       }
-      if (printersRes.status === 'rejected' && discoverRes.status === 'rejected') {
+      if (usbRes.status === 'fulfilled' && usbRes.value?.devices) {
+        setUsbDevices(usbRes.value.devices);
+      }
+      if (
+        printersRes.status === 'rejected' &&
+        discoverRes.status === 'rejected' &&
+        usbRes.status === 'rejected'
+      ) {
         setDetectError(detectionErrorMessage);
       }
     } catch {
@@ -125,6 +156,17 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
 
   const selectNetworkPrinter = (ip: string, port: number) => {
     setForm((f) => ({ ...f, connection_type: 'network', ip_address: ip, port, name: f.name || `Impresora ${ip}` }));
+    setShowDetected(false);
+  };
+
+  const selectUsbDevice = (device: DesktopUsbDevice) => {
+    setForm((f) => ({
+      ...f,
+      connection_type: 'usb',
+      vendor_id: device.vendorId,
+      product_id: device.productId,
+      name: f.name || device.name || `USB ${device.vendorId}:${device.productId}`,
+    }));
     setShowDetected(false);
   };
 
@@ -160,8 +202,30 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
     }));
   };
 
+  /**
+   * Cada tipo de conexion necesita sus propios datos para que el agente pueda
+   * hablarle al hardware. Antes solo se exigia el nombre, asi que se podia
+   * guardar una impresora USB sin Vendor/Product ID: el agente fallaba al
+   * imprimir y el error no llegaba a esta pantalla, con lo que parecia que
+   * ESC/POS simplemente no funcionaba.
+   */
+  const validationError = ((): string | null => {
+    if (!form.name.trim()) return 'Escribe un nombre para identificar la impresora.';
+
+    if (form.connection_type === 'network' && !form.ip_address?.trim()) {
+      return 'Una impresora de red necesita su direccion IP.';
+    }
+    if (form.connection_type === 'usb' && (!form.vendor_id?.trim() || !form.product_id?.trim())) {
+      return 'Una impresora USB necesita Vendor ID y Product ID. Pulsa "Detectar impresoras" para rellenarlos.';
+    }
+    if (form.connection_type === 'bluetooth' && !form.mac_address?.trim()) {
+      return 'Una impresora Bluetooth necesita su direccion MAC.';
+    }
+    return null;
+  })();
+
   const handleSubmit = async () => {
-    if (!form.name.trim()) return;
+    if (validationError) return;
     setSaving(true);
     try {
       await onSave(form);
@@ -296,6 +360,40 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
                   )}
                 </div>
 
+                {/* Dispositivos USB */}
+                <div>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-1">
+                    <Usb className="h-3 w-3" />
+                    Dispositivos USB ({usbDevices.length})
+                  </p>
+                  {usbDevices.length === 0 ? (
+                    <p className="text-xs text-gray-400">
+                      No se encontraron dispositivos USB. Una impresora ya instalada en Windows no
+                      aparece aqui: pertenece al spooler y esta via no la alcanza. Usala como{' '}
+                      <strong>Impresora del sistema</strong>.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {usbDevices.map((d) => (
+                        <button
+                          key={`${d.vendorId}:${d.productId}`}
+                          type="button"
+                          onClick={() => selectUsbDevice(d)}
+                          className="flex items-center justify-between w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            <Usb className={cn('h-3 w-3 shrink-0', d.isPrinter ? 'text-green-500' : 'text-gray-400')} />
+                            <span className="truncate">{d.name || `${d.vendorId}:${d.productId}`}</span>
+                          </span>
+                          <span className="shrink-0 ml-2 text-[10px] text-gray-400 font-mono">
+                            {d.vendorId}:{d.productId}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <p className="text-[10px] text-gray-400">
                   Haz clic en una impresora para autocompletar el formulario
                 </p>
@@ -322,6 +420,18 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
                   placeholder="9100"
                 />
               </div>
+            </div>
+          )}
+
+          {form.connection_type === 'usb' && (
+            <div className="flex gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                La conexion USB le habla al dispositivo por libusb, saltandose Windows. Si esta
+                impresora ya aparece instalada en Windows, el spooler tiene el dispositivo tomado y
+                esta via <strong>no va a funcionar</strong>: elige <strong>Impresora del sistema</strong>{' '}
+                y seleccionala por su nombre.
+              </span>
             </div>
           )}
 
@@ -396,11 +506,15 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
           </div>
         </div>
 
+        {validationError && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 text-right">{validationError}</p>
+        )}
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={saving || !form.name.trim()}>
+          <Button onClick={handleSubmit} disabled={saving || !!validationError}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Guardar
           </Button>

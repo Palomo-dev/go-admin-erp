@@ -433,7 +433,8 @@ function SignupContent() {
             opening_hours: openingHours,
             features: features,
             is_main: true,
-            is_active: true
+            is_active: true,
+            is_web_stock_source: true
           })
           .eq('organization_id', orgId)
           .eq('is_main', true)

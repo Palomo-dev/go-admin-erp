@@ -186,7 +186,8 @@ export const branchService = {
         branch_type: branch.branch_type || null,
         zone: branch.zone || null,
         branch_code: branch.branch_code,
-        is_active: branch.is_active ?? true
+        is_active: branch.is_active ?? true,
+        is_web_stock_source: branch.is_web_stock_source ?? false
       };
 
       const { data, error } = await supabase
@@ -236,6 +237,7 @@ export const branchService = {
     if (branch.zone !== undefined) formattedBranch.zone = branch.zone;
     if (branch.branch_code !== undefined) formattedBranch.branch_code = branch.branch_code;
     if (branch.is_active !== undefined) formattedBranch.is_active = branch.is_active;
+    if (branch.is_web_stock_source !== undefined) formattedBranch.is_web_stock_source = branch.is_web_stock_source;
     
     // Handle JSON fields - normalize opening hours
     if (branch.opening_hours !== undefined) {

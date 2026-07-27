@@ -34,6 +34,7 @@ interface ProductFormData {
   cost: number
   
   // Inventario
+  track_stock: boolean
   stock_inicial: Array<{
     branch_id: number
     qty_on_hand: number
@@ -99,6 +100,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
     price: 0,
     compare_price: 0,
     cost: 0,
+    track_stock: true,
     stock_inicial: [],
     tax_id: null,
     images: [],
@@ -189,7 +191,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           status: 'active',
           is_parent: formData.has_variants,
           station: formData.station,
-          track_stock: formData.track_stock !== false
+          track_stock: formData.track_stock
         })
         .select('id, uuid')
         .single()
@@ -255,20 +257,43 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
       // 7. Guardar stock inicial por sucursal (SOLO si NO tiene variantes)
       // Si tiene variantes, el stock se gestiona en cada variante individual
-      if (!formData.has_variants && formData.stock_inicial.length > 0) {
-        const stockLevels = formData.stock_inicial.map(stock => ({
-          product_id: product.id,
-          branch_id: stock.branch_id,
-          qty_on_hand: stock.qty_on_hand,
-          min_level: stock.min_level,
-          avg_cost: formData.cost || 0
-        }))
+      if (!formData.has_variants && formData.track_stock) {
+        // Un producto que rastrea inventario necesita una fila en stock_levels por
+        // sucursal aunque quede en 0: sin fila no existe registro de existencias y el
+        // producto aparece como no disponible en el POS y en la tienda web.
+        const { data: activeBranches } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('organization_id', organization.id)
+          .eq('is_active', true)
 
-        const { error: stockError } = await supabase
-          .from('stock_levels')
-          .insert(stockLevels)
-        
-        if (stockError) throw stockError
+        const initialByBranch = new Map(
+          formData.stock_inicial.map(stock => [stock.branch_id, stock])
+        )
+
+        const branchIds = Array.from(new Set<number>([
+          ...(activeBranches || []).map((b: any) => b.id as number),
+          ...formData.stock_inicial.map(stock => stock.branch_id),
+        ]))
+
+        const stockLevels = branchIds.map(bId => {
+          const inicial = initialByBranch.get(bId)
+          return {
+            product_id: product.id,
+            branch_id: bId,
+            qty_on_hand: inicial?.qty_on_hand ?? 0,
+            min_level: inicial?.min_level ?? 0,
+            avg_cost: formData.cost || 0
+          }
+        })
+
+        if (stockLevels.length > 0) {
+          const { error: stockError } = await supabase
+            .from('stock_levels')
+            .insert(stockLevels)
+
+          if (stockError) throw stockError
+        }
 
         // Crear movimientos de inventario
         const movements = formData.stock_inicial
@@ -364,6 +389,17 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
       let variantsCreated = 0
 
       if (formData.has_variants && formData.variants.length > 0) {
+        // Sucursales activas donde cada variante que rastrea inventario tendra fila en 0
+        let variantBranchIdsBase: number[] = []
+        if (formData.track_stock) {
+          const { data: activeBranches } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('organization_id', organization.id)
+            .eq('is_active', true)
+          variantBranchIdsBase = (activeBranches || []).map((b: any) => b.id as number)
+        }
+
         for (const variant of formData.variants) {
           try {
             const variantBarcode = variant.barcode?.trim() || formData.barcode || null
@@ -378,7 +414,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
                 is_parent: false,
                 variant_data: variant.attributes,
                 status: 'active',
-                track_stock: formData.track_stock !== false
+                track_stock: formData.track_stock
               })
               .select('id')
               .single()
@@ -404,17 +440,31 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
             }
 
             // Stock de variante (solo si el producto rastrea inventario)
-            if (formData.track_stock !== false && variant.stock?.length > 0) {
-              const variantStockLevels = variant.stock.map(stock => ({
+            if (formData.track_stock) {
+              // Igual que el producto simple: la variante necesita fila por sucursal
+              // aunque quede en 0, para que exista registro de existencias.
+              const variantStock = variant.stock || []
+              const variantInitialByBranch = new Map(
+                variantStock.map(stock => [stock.branch_id, stock])
+              )
+              const variantBranchIds = Array.from(new Set<number>([
+                ...variantBranchIdsBase,
+                ...variantStock.map(stock => stock.branch_id),
+              ]))
+
+              const variantStockLevels = variantBranchIds.map(bId => ({
                 product_id: variantProduct.id,
-                branch_id: stock.branch_id,
-                qty_on_hand: stock.qty_on_hand
+                branch_id: bId,
+                qty_on_hand: variantInitialByBranch.get(bId)?.qty_on_hand ?? 0,
+                avg_cost: variant.cost || 0
               }))
 
-              await supabase.from('stock_levels').insert(variantStockLevels)
+              if (variantStockLevels.length > 0) {
+                await supabase.from('stock_levels').insert(variantStockLevels)
+              }
 
               // Movimientos de variante
-              const variantMovements = variant.stock
+              const variantMovements = variantStock
                 .filter(stock => stock.qty_on_hand > 0)
                 .map(stock => ({
                   organization_id: organization.id,

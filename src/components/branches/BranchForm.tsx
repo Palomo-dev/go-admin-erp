@@ -100,6 +100,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     zone: initialData.zone || '',
     branch_code: initialData.branch_code || '',
     is_active: hideStatusSection ? true : (initialData.is_active ?? true), // Force true during signup
+    is_web_stock_source: hideStatusSection ? true : (initialData.is_web_stock_source ?? false), // La sucursal del signup surte la web
     organization_id: initialData.organization_id!,
   });
 
@@ -547,6 +548,21 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   className="checkbox checkbox-sm checkbox-primary"
                 />
                 <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Sucursal activa</span>
+              </label>
+            </div>
+            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
+              <label className="flex items-start space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="is_web_stock_source"
+                  checked={!!form.is_web_stock_source}
+                  onChange={handleChange}
+                  className="checkbox checkbox-sm checkbox-primary mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">Surte la tienda web</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">El sitio web usa el inventario de esta sucursal</span>
+                </span>
               </label>
             </div>
           </div>

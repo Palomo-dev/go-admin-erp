@@ -13,6 +13,9 @@ export interface Product {
   sku?: string;
   barcode?: string;
   unit_code?: string;
+  track_stock?: boolean;
+  image?: string | null;
+  category?: string;
 }
 
 export interface Lot {

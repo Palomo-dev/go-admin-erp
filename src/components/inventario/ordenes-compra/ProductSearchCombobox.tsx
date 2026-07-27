@@ -17,6 +17,7 @@ export interface ProductOption {
   status?: string;
   cost?: number;
   image?: string | null;
+  track_stock?: boolean;
 }
 
 interface ProductSearchComboboxProps {

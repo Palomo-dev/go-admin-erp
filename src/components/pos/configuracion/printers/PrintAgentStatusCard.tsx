@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Radio, Server, Download, MapPin } from 'lucide-react';
 import { PrintJobsService, type PrintAgentStatus } from '@/lib/services/printJobsService';
 import { DownloadDesktopDialog } from './DownloadDesktopDialog';
+import { isDesktop, getDesktopVersion } from '@/lib/utils/desktop';
 
 interface PrintAgentStatusCardProps {
   branchId: number | null;
@@ -16,6 +17,16 @@ export function PrintAgentStatusCard({ branchId }: PrintAgentStatusCardProps) {
   const [agents, setAgents] = useState<PrintAgentStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDownload, setShowDownload] = useState(false);
+  const [desktopVersion, setDesktopVersion] = useState<string | null>(null);
+
+  // Si la página se abre dentro de Go Admin Desktop no tiene sentido ofrecer
+  // la descarga: en su lugar se muestra la versión instalada.
+  const runningInDesktop = isDesktop();
+
+  useEffect(() => {
+    if (!runningInDesktop) return;
+    getDesktopVersion().then(setDesktopVersion);
+  }, [runningInDesktop]);
 
   const loadAgents = useCallback(async () => {
     if (!branchId) return;
@@ -49,10 +60,16 @@ export function PrintAgentStatusCard({ branchId }: PrintAgentStatusCardProps) {
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowDownload(true)}>
-            <Download className="h-4 w-4 mr-2" />
-            Descargar Go Admin Desktop
-          </Button>
+          {runningInDesktop ? (
+            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+              Go Admin Desktop{desktopVersion ? ` v${desktopVersion}` : ''}
+            </Badge>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setShowDownload(true)}>
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Go Admin Desktop
+            </Button>
+          )}
           <Button variant="outline" size="icon" onClick={loadAgents} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>

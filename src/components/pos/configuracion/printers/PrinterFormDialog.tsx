@@ -23,6 +23,13 @@ import {
   STATION_LABELS,
   CONNECTION_TYPE_LABELS,
 } from '../printersService';
+import {
+  isDesktop,
+  desktopSupports,
+  getDesktopBridge,
+  type DesktopPrintersResponse,
+  type DesktopDiscoverResponse,
+} from '@/lib/utils/desktop';
 
 const DISCOVERY_URL = 'http://localhost:3456';
 
@@ -62,6 +69,30 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
   const [showDetected, setShowDetected] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
 
+  const detectionErrorMessage = isDesktop()
+    ? 'No se pudieron detectar impresoras. Verifica que el agente esté iniciado en Go Admin Desktop.'
+    : 'No se pudo conectar al Print Agent. Instala Go Admin Desktop o asegúrate de que el agente esté corriendo en esta PC.';
+
+  /**
+   * Dentro de Go Admin Desktop se consulta el hardware por IPC nativo.
+   * En el navegador se usa el servidor de descubrimiento del print-agent
+   * de consola (HTTP en localhost).
+   */
+  const fetchDetection = (): Promise<
+    [PromiseSettledResult<DesktopPrintersResponse>, PromiseSettledResult<DesktopDiscoverResponse>]
+  > => {
+    const bridge = getDesktopBridge();
+
+    if (bridge && desktopSupports('listPrinters') && desktopSupports('discoverNetwork')) {
+      return Promise.allSettled([bridge.listPrinters!(), bridge.discoverNetwork!()]);
+    }
+
+    return Promise.allSettled([
+      fetch(`${DISCOVERY_URL}/printers`).then((r) => r.json()),
+      fetch(`${DISCOVERY_URL}/discover`).then((r) => r.json()),
+    ]);
+  };
+
   const handleDetect = async () => {
     setDetecting(true);
     setDetectError(null);
@@ -69,10 +100,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
     setNetworkPrinters([]);
     setShowDetected(true);
     try {
-      const [printersRes, discoverRes] = await Promise.allSettled([
-        fetch(`${DISCOVERY_URL}/printers`).then((r) => r.json()),
-        fetch(`${DISCOVERY_URL}/discover`).then((r) => r.json()),
-      ]);
+      const [printersRes, discoverRes] = await fetchDetection();
 
       if (printersRes.status === 'fulfilled' && printersRes.value?.printers) {
         setSystemPrinters(printersRes.value.printers);
@@ -81,10 +109,10 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
         setNetworkPrinters(discoverRes.value.printers);
       }
       if (printersRes.status === 'rejected' && discoverRes.status === 'rejected') {
-        setDetectError('No se pudo conectar al Print Agent. Asegúrate de que esté corriendo en esta PC.');
+        setDetectError(detectionErrorMessage);
       }
     } catch {
-      setDetectError('No se pudo conectar al Print Agent. Asegúrate de que esté corriendo en esta PC.');
+      setDetectError(detectionErrorMessage);
     } finally {
       setDetecting(false);
     }
